@@ -140,7 +140,7 @@ describe("research page data-mode isolation", () => {
     });
   });
 
-  it("loads discovery only on its explicit workspace route", async () => {
+  it("loads discovery with account or local access only on its explicit workspace route", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
     vi.stubEnv("RESEARCH_COCKPIT_WEB_AUTH", "account");
     const { default: DiscoveryPage } = await import("../app/discover/page");
@@ -156,6 +156,8 @@ describe("research page data-mode isolation", () => {
       researchCore: 0,
       synthetic: 0,
     });
+    vi.stubEnv("RESEARCH_COCKPIT_WEB_AUTH", "local");
+    expect(DiscoveryPage().props).toEqual({ authMode: "local" });
   });
 
   it("does not expose discovery outside personal workspace mode", async () => {

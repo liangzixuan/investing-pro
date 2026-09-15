@@ -36,6 +36,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
+import { LocalWorkspaceAccessPanel } from "./LocalWorkspaceAccessPanel";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
@@ -91,8 +92,9 @@ class WorkspaceSnapshotChangedError extends Error {}
 
 export function SecurityDiscoveryWorkspace({
   authMode = "bootstrap",
-}: { authMode?: "account" | "bootstrap" } = {}) {
+}: { authMode?: "account" | "bootstrap" | "local" } = {}) {
   const [workspace, setWorkspace] = useState<LoadedWorkspace | null>(null);
+  const [localAccessInvalidation, setLocalAccessInvalidation] = useState(0);
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [portfolioSelection, setPortfolioSelection] =
@@ -268,16 +270,22 @@ export function SecurityDiscoveryWorkspace({
         return false;
       }
     },
-    [],
+    [authMode],
   );
 
   function clearWorkspaceForSessionLoss() {
+    if (authMode === "local" && workspaceActivityReady.current)
+      setLocalAccessInvalidation((value) => value + 1);
     workspaceActivityReady.current = false;
     ownerActivityStart.current = null;
     workspaceEpoch.current += 1;
     searchEpoch.current += 1;
     setWorkspace(null);
-    setWorkspaceMessage(SESSION_REVALIDATION_MESSAGE);
+    setWorkspaceMessage(
+      authMode === "local"
+        ? "The local workspace connection is unavailable."
+        : SESSION_REVALIDATION_MESSAGE,
+    );
     setQuery("");
     setResults([]);
     setHasSearched(false);
@@ -1302,22 +1310,38 @@ export function SecurityDiscoveryWorkspace({
         machine. No browser storage or synthetic fallback is used.
       </div>
       <main className="research-shell discovery-shell" id="main-content">
-        <OwnerSessionPanel
-          authMode={authMode}
-          onActivityHandlerChange={handleOwnerActivityChange}
-          onSessionChange={handleOwnerSessionChange}
-        />
+        {authMode === "local" ? (
+          <LocalWorkspaceAccessPanel
+            invalidationKey={localAccessInvalidation}
+            onActivityHandlerChange={handleOwnerActivityChange}
+            onSessionChange={handleOwnerSessionChange}
+          />
+        ) : (
+          <OwnerSessionPanel
+            authMode={authMode}
+            onActivityHandlerChange={handleOwnerActivityChange}
+            onSessionChange={handleOwnerSessionChange}
+          />
+        )}
         {workspace === null ? (
           <section className="personal-locked-state" aria-live="polite">
-            <p className="eyebrow">Security discovery locked</p>
+            <p className="eyebrow">
+              {authMode === "local"
+                ? "Local connection"
+                : "Security discovery locked"}
+            </p>
             <h1>
-              {authMode === "account"
-                ? "Sign in to search companies."
-                : "Start or revalidate the owner session to search companies."}
+              {authMode === "local"
+                ? "Connect to the local workspace to search companies."
+                : authMode === "account"
+                  ? "Sign in to search companies."
+                  : "Start or revalidate the owner session to search companies."}
             </h1>
             <p>
               {workspaceMessage ??
-                "Your local universe and durable watchlist load only after owner access is confirmed."}
+                (authMode === "local"
+                  ? "Your local universe and watchlist load after the API confirms local access."
+                  : "Your local universe and durable watchlist load only after owner access is confirmed.")}
             </p>
           </section>
         ) : (

@@ -11,10 +11,13 @@ import {
 } from "./personal-owner-session";
 import {
   authorizePersonalJsonRouteRequest,
+  authorizePersonalVaultMutationRouteRequest,
   PERSONAL_OWNER_BOOTSTRAP_HEADER_NAME,
   PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
   PERSONAL_OWNER_INTENT_HEADER_NAME,
   PERSONAL_OWNER_SESSION_BOOTSTRAP_PATH,
+  PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+  PERSONAL_OWNER_SESSION_LOGIN_PATH,
   PERSONAL_OWNER_SESSION_LOGOUT_PATH,
   PERSONAL_OWNER_SESSION_PATH,
   PERSONAL_OWNER_SESSION_REVOKE_PATH,
@@ -40,6 +43,202 @@ afterEach(async () => {
 });
 
 describe("personal owner-session routes", () => {
+  it("probes explicit local access without creating a cookie and denies normal modes", async () => {
+    const { app, authority } = await localAccessApp();
+    for (const path of [
+      PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+      PERSONAL_OWNER_SESSION_PATH,
+    ]) {
+      const response = await app.inject({
+        method: "GET",
+        url: path,
+        headers: allowedHeaders(),
+        remoteAddress: "127.0.0.1",
+      });
+      expect(response.statusCode).toBe(204);
+      expect(response.headers["set-cookie"]).toBeUndefined();
+      expect(response.headers["cache-control"]).toBe("private, no-store");
+    }
+    authority.close();
+    const closed = await app.inject({
+      method: "GET",
+      url: PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+      headers: allowedHeaders(),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(closed.statusCode).toBe(401);
+    const normal = await personalApp();
+    const response = await normal.app.inject({
+      method: "GET",
+      url: PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+      headers: allowedHeaders(),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it.each([
+    ["remote peer", {}, "192.0.2.10"],
+    ["wrong host", { host: "localhost:3100" }],
+    ["wrong origin", { origin: "http://localhost:3000" }],
+    ["untrusted origin", { origin: "https://untrusted.example" }],
+    ["forwarded peer", { forwarded: "for=127.0.0.1" }],
+    ["cross-site fetch", { "sec-fetch-site": "cross-site" }],
+    ["unexpected intent", { [PERSONAL_OWNER_INTENT_HEADER_NAME]: "login" }],
+    [
+      "malformed cookie",
+      { cookie: `${PERSONAL_OWNER_SESSION_COOKIE_NAME}=bad` },
+    ],
+    ["duplicate cookie", { cookie: "duplicate=one; duplicate=two" }],
+  ] as const)(
+    "retains %s rejection in local mode",
+    async (_label, change, peer?: string) => {
+      const { app } = await localAccessApp();
+      for (const path of [
+        PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+        PERSONAL_OWNER_SESSION_PATH,
+      ]) {
+        const response = await app.inject({
+          method: "GET",
+          url: path,
+          headers: { ...allowedHeaders(), ...change },
+          remoteAddress: peer ?? "127.0.0.1",
+        });
+        expect(response.statusCode).toBe(403);
+      }
+    },
+  );
+
+  it("keeps credential and session mutations unavailable in local mode", async () => {
+    const { app } = await localAccessApp();
+    const staleCookie = `${PERSONAL_OWNER_SESSION_COOKIE_NAME}=${"a".repeat(43)}`;
+    expect((await bootstrap(app, "a".repeat(64), staleCookie)).statusCode).toBe(
+      403,
+    );
+    for (const [path, intent] of [
+      [PERSONAL_OWNER_SESSION_ROTATE_PATH, "rotate"],
+      [PERSONAL_OWNER_SESSION_LOGOUT_PATH, "logout"],
+      [PERSONAL_OWNER_SESSION_REVOKE_PATH, "revoke"],
+    ] as const) {
+      expect((await mutate(app, path, intent, staleCookie)).statusCode).toBe(
+        403,
+      );
+    }
+    const login = await app.inject({
+      method: "POST",
+      url: PERSONAL_OWNER_SESSION_LOGIN_PATH,
+      headers: {
+        ...allowedHeaders(),
+        "content-type": "application/json",
+        [PERSONAL_OWNER_INTENT_HEADER_NAME]: "login",
+      },
+      payload: { username: "owner", password: "not a credential" },
+      remoteAddress: "127.0.0.1",
+    });
+    expect(login.statusCode).toBe(401);
+    expect(login.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("retains read JSON and vault mutation boundaries before body parsing in local mode", async () => {
+    const { app, authority } = await localAccessApp();
+    const readPath = "/v1/personal-filing/test/local-read";
+    const writePath = "/v1/personal-filing/test/local-write";
+    let handled = 0;
+    for (const path of [readPath, writePath]) {
+      app.post(
+        path,
+        {
+          onRequest: async (request, reply) => {
+            const options = { host: "127.0.0.1" as const, port: 3100 };
+            const authorized =
+              path === readPath
+                ? authorizePersonalJsonRouteRequest(
+                    request,
+                    authority,
+                    options,
+                    path,
+                  )
+                : authorizePersonalVaultMutationRouteRequest(
+                    request,
+                    authority,
+                    options,
+                    path,
+                    "personal-vault-create",
+                    "json",
+                  );
+            if (!authorized)
+              return sendPersonalOwnerSessionProblem(reply, request);
+          },
+        },
+        (_request, reply) => {
+          handled++;
+          return reply.status(204).send();
+        },
+      );
+    }
+    const request = (
+      path: string,
+      changes: Record<string, string | undefined> = {},
+      payload = "{}",
+    ) => {
+      const headers: Record<string, string> = {
+        ...allowedHeaders(),
+        "content-type": "application/json",
+        ...(path === writePath
+          ? {
+              [PERSONAL_OWNER_INTENT_HEADER_NAME]: "personal-vault-create",
+              [PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME]: "local-test-create",
+              "if-none-match": "*",
+            }
+          : {}),
+      };
+      for (const [name, value] of Object.entries(changes)) {
+        if (value === undefined) delete headers[name];
+        else headers[name] = value;
+      }
+      return app.inject({
+        method: "POST",
+        url: path,
+        headers,
+        payload,
+        remoteAddress: "127.0.0.1",
+      });
+    };
+    expect((await request(readPath)).statusCode).toBe(204);
+    expect((await request(writePath)).statusCode).toBe(204);
+    for (const change of [
+      { [PERSONAL_OWNER_INTENT_HEADER_NAME]: undefined },
+      { [PERSONAL_OWNER_INTENT_HEADER_NAME]: "personal-vault-delete" },
+      { [PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME]: undefined },
+      { origin: "http://localhost:3000" },
+      { forwarded: "for=127.0.0.1" },
+      { cookie: `${PERSONAL_OWNER_SESSION_COOKIE_NAME}=bad` },
+      { "content-type": "text/plain" },
+    ]) {
+      expect(
+        (await request(writePath, change, "unparseable-json")).statusCode,
+      ).toBe(403);
+    }
+    expect(
+      (
+        await request(readPath, {
+          [PERSONAL_OWNER_INTENT_HEADER_NAME]: "personal-vault-create",
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await request(readPath, {
+          [PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME]: "unexpected",
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(handled).toBe(2);
+    authority.close();
+    expect((await request(readPath)).statusCode).toBe(403);
+    expect((await request(writePath)).statusCode).toBe(403);
+  });
+
   it("bootstraps once into a host-only nonpersistent HttpOnly cookie", async () => {
     const { app, secret } = await personalApp();
     const response = await bootstrap(app, secret);
@@ -425,6 +624,21 @@ async function personalApp() {
   const app = await buildPersonalReadinessApp(fixture.capability, authority);
   apps.push(app);
   return { app, secret };
+}
+
+async function localAccessApp() {
+  const authority = PersonalOwnerSessionAuthority.createForLocalAccess();
+  const app = Fastify({ trustProxy: false });
+  await registerPersonalOwnerSessionRoutes(app, authority, {
+    host: "127.0.0.1",
+    port: 3100,
+  });
+  app.addHook("onClose", (_instance, done) => {
+    authority.close();
+    done();
+  });
+  apps.push(app);
+  return { app, authority };
 }
 
 function bootstrap(

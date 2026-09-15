@@ -16,6 +16,8 @@ export const PERSONAL_OWNER_SESSION_BOOTSTRAP_PATH =
   "/v1/personal-filing/session/bootstrap" as const;
 export const PERSONAL_OWNER_SESSION_LOGIN_PATH =
   "/v1/personal-filing/session/login" as const;
+export const PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH =
+  "/v1/personal-filing/session/local-access" as const;
 export const PERSONAL_OWNER_SESSION_ROTATE_PATH =
   "/v1/personal-filing/session/rotate" as const;
 export const PERSONAL_OWNER_SESSION_LOGOUT_PATH =
@@ -135,6 +137,26 @@ export async function registerPersonalOwnerSessionRoutes(
         if (result.kind === "denied")
           return sendOwnerSessionProblem(reply, request, 401);
         return sendNoContent(reply, activeCookie(result.token));
+      },
+    );
+
+    routes.get(
+      PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+      { exposeHeadRoute: false },
+      (request, reply) => {
+        const boundary = inspectPersonalRequest(
+          request,
+          listenOptions,
+          PERSONAL_OWNER_SESSION_LOCAL_ACCESS_PATH,
+          "GET",
+        );
+        if (boundary === undefined || boundary.cookie.kind === "invalid") {
+          return sendOwnerSessionProblem(reply, request);
+        }
+        if (!authority.isLocalAccessEnabled()) {
+          return sendOwnerSessionProblem(reply, request, 401);
+        }
+        return sendNoContent(reply);
       },
     );
 
@@ -358,8 +380,12 @@ function authorizeBoundary(
   authority: PersonalOwnerSessionAuthority,
   boundary: PersonalRequestBoundary | undefined,
 ): boolean {
+  if (boundary === undefined || boundary.cookie.kind === "invalid") {
+    return false;
+  }
+  if (authority.isLocalAccessEnabled()) return true;
   return (
-    boundary?.cookie.kind === "value" &&
+    boundary.cookie.kind === "value" &&
     authority.authorize(boundary.cookie.value, boundary.sessionBinding)
   );
 }

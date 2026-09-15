@@ -14,6 +14,29 @@ const binding = Object.freeze({
 });
 
 describe("personal owner-session authority", () => {
+  it("supports explicit local access without issuing credentials and stops on close", async () => {
+    const authority = PersonalOwnerSessionAuthority.createForLocalAccess();
+    const token = "a".repeat(43);
+    expect(isPersonalOwnerSessionAuthority(authority)).toBe(true);
+    expect(authority.isLocalAccessEnabled()).toBe(true);
+    expect(authority.bootstrap(freshSecret(), binding)).toBeUndefined();
+    expect(await authority.login("owner", "not a credential", binding)).toEqual(
+      {
+        kind: "denied",
+      },
+    );
+    expect(authority.authorize(token, binding)).toBe(false);
+    expect(authority.rotate(token, binding)).toBeUndefined();
+    expect(authority.logout(token, binding)).toBe(false);
+    expect(authority.revoke(token, binding)).toBe(false);
+    authority.close();
+    expect(authority.isLocalAccessEnabled()).toBe(false);
+
+    const normal = PersonalOwnerSessionAuthority.create(freshSecret());
+    expect(normal.isLocalAccessEnabled()).toBe(false);
+    normal.close();
+  });
+
   it("requires the exact bootstrap encoding shape and rejects forgeries", () => {
     for (const invalid of [
       "",

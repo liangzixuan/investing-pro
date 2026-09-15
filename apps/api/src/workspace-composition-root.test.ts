@@ -40,6 +40,7 @@ import {
   capturePersonalWorkspaceApiEnvironment,
   createPersonalWorkspaceConfiguredApp,
   PERSONAL_WORKSPACE_API_MODE,
+  PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY,
 } from "./workspace-composition-root";
 import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-routes";
 import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
@@ -72,6 +73,148 @@ afterEach(async () => {
 });
 
 describe("personal workspace composition root", () => {
+  it("explicitly opens the existing encrypted vault without login and preserves data across restart", async () => {
+    const fixture = await createWorkspaceFixture();
+    const bootstrap = randomBytes(32).toString("hex");
+    const original = await createPersonalWorkspaceConfiguredApp(
+      capturePersonalWorkspaceApiEnvironment(
+        workspaceEnvironment(fixture, "initialize", bootstrap),
+      ),
+    );
+    applications.push(original);
+    const originalCookie = await bootstrapTestPersonalOwnerSession(
+      original,
+      bootstrap,
+    );
+    const payload = productionWatchlistPayload(fixture.expectedSnapshotSha256);
+    expect(
+      (
+        await putMainWatchlist(
+          original,
+          originalCookie,
+          payload,
+          0,
+          "local-access-seed",
+        )
+      ).statusCode,
+    ).toBe(201);
+    const before = await original.inject({
+      method: "GET",
+      url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+      headers: ownerHeaders(originalCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    await closeTracked(original);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const environment = {
+        ...workspaceEnvironment(fixture, "open", bootstrap),
+        [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: undefined,
+        [PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY]: "enabled",
+      };
+      const captured = capturePersonalWorkspaceApiEnvironment(environment);
+      expect(
+        environment[PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY],
+      ).toBeUndefined();
+      const app = await createPersonalWorkspaceConfiguredApp(captured);
+      applications.push(app);
+      expect(
+        captured[PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY],
+      ).toBeUndefined();
+      const probe = await app.inject({
+        method: "GET",
+        url: "/v1/personal-filing/session/local-access",
+        headers: ownerHeaders(),
+        remoteAddress: "127.0.0.1",
+      });
+      expect(probe.statusCode).toBe(204);
+      expect(probe.headers["set-cookie"]).toBeUndefined();
+      const after = await app.inject({
+        method: "GET",
+        url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+        headers: ownerHeaders(),
+        remoteAddress: "127.0.0.1",
+      });
+      expect(after.statusCode).toBe(200);
+      expect(after.json()).toEqual(before.json());
+      await closeTracked(app);
+    }
+
+    const restored = await createPersonalWorkspaceConfiguredApp(
+      capturePersonalWorkspaceApiEnvironment(
+        workspaceEnvironment(fixture, "open", bootstrap),
+      ),
+    );
+    applications.push(restored);
+    const denied = await restored.inject({
+      method: "GET",
+      url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+      headers: ownerHeaders(),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(denied.statusCode).toBe(403);
+    const restoredCookie = await bootstrapTestPersonalOwnerSession(
+      restored,
+      bootstrap,
+    );
+    const retained = await restored.inject({
+      method: "GET",
+      url: PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH,
+      headers: ownerHeaders(restoredCookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(retained.json()).toEqual(before.json());
+  }, 30_000);
+
+  it("rejects invalid and mixed local-access configuration before opening a vault", async () => {
+    const fixture = await createWorkspaceFixture();
+    const secret = randomBytes(32).toString("hex");
+    const base = {
+      ...workspaceEnvironment(fixture, "initialize", secret),
+      [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: undefined,
+    };
+    for (const value of ["", "true", "disabled", " enabled", "ENABLED"]) {
+      await expect(
+        createPersonalWorkspaceConfiguredApp(
+          capturePersonalWorkspaceApiEnvironment({
+            ...base,
+            [PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY]: value,
+          }),
+        ),
+      ).rejects.toMatchObject({
+        code: "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID",
+      });
+    }
+    for (const extra of [
+      { [PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY]: secret },
+      {
+        [PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY]: join(
+          fixture.parent,
+          "missing-account.json",
+        ),
+      },
+    ]) {
+      await expect(
+        createPersonalWorkspaceConfiguredApp(
+          capturePersonalWorkspaceApiEnvironment({
+            ...base,
+            ...extra,
+            [PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY]: "enabled",
+          }),
+        ),
+      ).rejects.toMatchObject({
+        code: "PERSONAL_OWNER_SESSION_CONFIGURATION_INVALID",
+      });
+    }
+    await expect(
+      createPersonalWorkspaceConfiguredApp(
+        capturePersonalWorkspaceApiEnvironment({ ...base }),
+      ),
+    ).rejects.toMatchObject({
+      code: "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED",
+    });
+  });
+
   it("migrates an existing vault to reusable account login and retains it across restart", async () => {
     const fixture = await createWorkspaceFixture();
     const bootstrap = randomBytes(32).toString("hex");
@@ -1151,10 +1294,10 @@ async function closeTracked(app: FastifyInstance): Promise<void> {
   applications.splice(applications.indexOf(app), 1);
 }
 
-function ownerHeaders(cookie: string): Record<string, string> {
+function ownerHeaders(cookie?: string): Record<string, string> {
   return {
     accept: "application/json",
-    cookie,
+    ...(cookie === undefined ? {} : { cookie }),
     host: "127.0.0.1:3100",
     origin: "http://127.0.0.1:3000",
   };

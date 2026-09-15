@@ -264,6 +264,31 @@ export function fetchOwnerSession(signal: AbortSignal): Promise<boolean> {
   return requestOwnerSession(ownerSessionPath, { method: "GET", signal });
 }
 
+export async function fetchLocalWorkspaceAccess(
+  signal: AbortSignal,
+): Promise<boolean> {
+  if (signal.aborted)
+    throw new DOMException("The operation was aborted.", "AbortError");
+  const personalBaseUrl = getPersonalApiBaseUrl();
+  if (personalBaseUrl === null) return false;
+  try {
+    const response = await fetch(
+      new URL(`${ownerSessionPath}/local-access`, personalBaseUrl),
+      {
+        ...ownerSessionRequestOptions,
+        credentials: "omit",
+        method: "GET",
+        signal,
+      },
+    );
+    return !signal.aborted && response.status === 204;
+  } catch {
+    if (signal.aborted)
+      throw new DOMException("The operation was aborted.", "AbortError");
+    return false;
+  }
+}
+
 export type OwnerLoginResult =
   | { readonly status: "active" | "invalid_credentials" | "unavailable" }
   | {

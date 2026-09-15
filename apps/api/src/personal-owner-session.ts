@@ -71,6 +71,7 @@ export class PersonalOwnerSessionAuthority {
   #loginAttemptTimes: number[] = [];
   #loginBusy = false;
   #lastLoginObservation = 0;
+  readonly #localAccess: boolean;
   readonly #now: () => number;
   readonly #randomBytes: (size: number) => Uint8Array;
 
@@ -78,7 +79,9 @@ export class PersonalOwnerSessionAuthority {
     bootstrapSecret: string | undefined,
     options: PersonalOwnerSessionOptions,
     account?: PersonalOwnerAccountRecord,
+    localAccess = false,
   ) {
+    this.#localAccess = localAccess;
     this.#absoluteTtlMs =
       options.absoluteTtlMs ?? PERSONAL_OWNER_SESSION_ABSOLUTE_TTL_MS;
     this.#idleTtlMs = options.idleTtlMs ?? PERSONAL_OWNER_SESSION_IDLE_TTL_MS;
@@ -121,6 +124,15 @@ export class PersonalOwnerSessionAuthority {
       options,
       validatePersonalOwnerAccountRecord(account),
     );
+  }
+
+  /** Explicit combined-workspace mode; request boundaries remain mandatory. */
+  static createForLocalAccess(): PersonalOwnerSessionAuthority {
+    return new PersonalOwnerSessionAuthority(undefined, {}, undefined, true);
+  }
+
+  isLocalAccessEnabled(): boolean {
+    return this.#localAccess && !this.#closed;
   }
 
   async login(

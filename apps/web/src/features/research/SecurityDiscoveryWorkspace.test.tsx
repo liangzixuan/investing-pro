@@ -23,6 +23,7 @@ import {
 
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { OwnerSessionPanelProps } from "./OwnerSessionPanel";
+import type { LocalWorkspaceAccessPanelProps } from "./LocalWorkspaceAccessPanel";
 import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
 import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
@@ -143,6 +144,7 @@ const componentMocks = vi.hoisted(() => ({
   ManualPeerComparison: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
+  LocalAccess: () => null,
   QuarterlyFinancials: () => null,
   SecQuarterlyEvidence: () => null,
   StockScreener: () => null,
@@ -236,6 +238,10 @@ vi.mock("./PersonalValuationHistory", () => ({
 
 import { SecurityDiscoveryWorkspace } from "./SecurityDiscoveryWorkspace";
 
+vi.mock("./LocalWorkspaceAccessPanel", () => ({
+  LocalWorkspaceAccessPanel: componentMocks.LocalAccess,
+}));
+
 beforeEach(() => {
   hookHarness.reset();
   for (const mock of Object.values(apiMocks)) mock.mockReset();
@@ -264,6 +270,55 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("selects only the explicit local panel and reconnects after an active operation loses access", async () => {
+    let view = renderWorkspace("local");
+    expect(findOwnerSession(view)).toBeUndefined();
+    const local = findElement<LocalWorkspaceAccessPanelProps>(
+      view,
+      componentMocks.LocalAccess,
+    )!;
+    expect(local.props.invalidationKey).toBe(0);
+    await local.props.onSessionChange(true, new AbortController().signal);
+    local.props.onActivityHandlerChange?.(() => () => true);
+    view = renderWorkspace("local");
+    const screen = findElement<PersonalFinancialScreenerProps>(
+      view,
+      componentMocks.FinancialScreener,
+    )!;
+    expect(screen.props.onActivityStart()?.()).toBe(true);
+    screen.props.onSessionUnavailable();
+    view = renderWorkspace("local");
+    expect(findElement(view, componentMocks.FinancialScreener)).toBeUndefined();
+    const retry = findElement<LocalWorkspaceAccessPanelProps>(
+      view,
+      componentMocks.LocalAccess,
+    )!;
+    expect(retry.props.invalidationKey).toBe(1);
+    apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("session_unavailable"),
+    );
+    await expect(
+      retry.props.onSessionChange(true, new AbortController().signal),
+    ).resolves.toBe(false);
+    expect(
+      findElement<LocalWorkspaceAccessPanelProps>(
+        renderWorkspace("local"),
+        componentMocks.LocalAccess,
+      )?.props.invalidationKey,
+    ).toBe(1);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it.each(["bootstrap", "account"] as const)(
+    "preserves the %s panel without exposing local access",
+    (authMode) => {
+      const view = renderWorkspace(authMode);
+      expect(requireOwnerSession(view).props.authMode).toBe(authMode);
+      expect(findElement(view, componentMocks.LocalAccess)).toBeUndefined();
+      expect(apiMocks.fetchPersonalSecurityMasterStatus).not.toHaveBeenCalled();
+    },
+  );
+
   it("credits financial activity without reloading the workspace or its selected company", async () => {
     await activateWorkspace();
     const owner = requireOwnerSession(renderWorkspace());
@@ -1912,9 +1967,13 @@ async function activateWorkspace() {
   await owner.props.onSessionChange(true, new AbortController().signal);
 }
 
-function renderWorkspace(): React.ReactNode {
+function renderWorkspace(
+  authMode?: "account" | "bootstrap" | "local",
+): React.ReactNode {
   hookHarness.beginRender();
-  return SecurityDiscoveryWorkspace();
+  return SecurityDiscoveryWorkspace(
+    authMode === undefined ? undefined : { authMode },
+  );
 }
 
 function findOwnerSession(value: unknown) {

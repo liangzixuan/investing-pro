@@ -8,6 +8,11 @@ import {
 } from "./web-mode";
 
 describe("owner authentication mode", () => {
+  it("requires the exact local opt-in and rejects unknown modes", () => {
+    expect(resolveOwnerAuthMode("local")).toBe("local");
+    for (const value of ["", " local", "local ", "LOCAL", "enabled", "none"])
+      expect(() => resolveOwnerAuthMode(value)).toThrow("configuration");
+  });
   it("selects account login explicitly and preserves legacy defaults", () => {
     expect(resolveOwnerAuthMode("account")).toBe("account");
     expect(resolveOwnerAuthMode(undefined)).toBe("bootstrap");

@@ -12,7 +12,8 @@ export function isPersonalWorkspaceWebMode(value: string | undefined): boolean {
 
 export function resolveOwnerAuthMode(
   value: string | undefined,
-): "account" | "bootstrap" {
+): "account" | "bootstrap" | "local" {
+  if (value === "local") return "local";
   if (value === "account") return "account";
   if (value === undefined || value === "bootstrap") return "bootstrap";
   throw new Error("The owner sign-in configuration is invalid.");

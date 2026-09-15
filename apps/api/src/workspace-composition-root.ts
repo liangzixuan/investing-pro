@@ -47,6 +47,8 @@ import {
 } from "./personal-sec-filing-context-provider";
 
 export const PERSONAL_WORKSPACE_API_MODE = "personal_workspace" as const;
+export const PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY =
+  "RESEARCH_COCKPIT_LOCAL_ACCESS" as const;
 
 export type PersonalWorkspaceApiEnvironment = Readonly<
   Record<string, string | undefined>
@@ -71,6 +73,7 @@ const FORBIDDEN_PRIVATE_CONFIGURATION_KEYS = [
   "PERSONAL_FILING_DOSSIER_RELEASE_APPROVAL_PATH",
 ] as const;
 const PERSONAL_WORKSPACE_PRIVATE_ENVIRONMENT_KEYS = [
+  PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY,
   PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY,
   PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY,
   PERSONAL_SECURITY_MASTER_SNAPSHOT_PATH_ENVIRONMENT_KEY,
@@ -183,10 +186,16 @@ async function preparePersonalWorkspaceConfiguredApp(
   }
   const bootstrapSecret = environment[PERSONAL_OWNER_BOOTSTRAP_ENVIRONMENT_KEY];
   const accountFile = environment[PERSONAL_OWNER_ACCOUNT_FILE_ENVIRONMENT_KEY];
+  const localAccess =
+    environment[PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY];
   const marketDataToken =
     environment[PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY];
   const secUserAgent = environment[PERSONAL_SEC_USER_AGENT];
-  if (bootstrapSecret === undefined && accountFile === undefined) {
+  if (
+    localAccess === undefined &&
+    bootstrapSecret === undefined &&
+    accountFile === undefined
+  ) {
     throw new PersonalWorkspaceApiCompositionError(
       "PERSONAL_OWNER_SESSION_CONFIGURATION_REQUIRED",
     );
@@ -194,15 +203,23 @@ async function preparePersonalWorkspaceConfiguredApp(
 
   let ownerSession: PersonalOwnerSessionAuthority;
   try {
-    if (accountFile !== undefined && bootstrapSecret !== undefined) {
+    if (
+      (accountFile !== undefined && bootstrapSecret !== undefined) ||
+      (localAccess !== undefined &&
+        (localAccess !== "enabled" ||
+          accountFile !== undefined ||
+          bootstrapSecret !== undefined))
+    ) {
       throw new PersonalOwnerSessionConfigurationError();
     }
     ownerSession =
-      accountFile !== undefined
-        ? PersonalOwnerSessionAuthority.createWithAccount(
-            readPersonalOwnerAccountFile(accountFile),
-          )
-        : PersonalOwnerSessionAuthority.create(bootstrapSecret!);
+      localAccess === "enabled"
+        ? PersonalOwnerSessionAuthority.createForLocalAccess()
+        : accountFile !== undefined
+          ? PersonalOwnerSessionAuthority.createWithAccount(
+              readPersonalOwnerAccountFile(accountFile),
+            )
+          : PersonalOwnerSessionAuthority.create(bootstrapSecret!);
   } catch (error) {
     if (
       error instanceof PersonalOwnerSessionConfigurationError ||

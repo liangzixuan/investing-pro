@@ -1,5 +1,35 @@
 # Local owner login
 
+## Temporary local access without login
+
+The combined personal workspace can explicitly disable login on a trusted local
+computer. Set `RESEARCH_COCKPIT_LOCAL_ACCESS=enabled` in the API environment and
+`RESEARCH_COCKPIT_WEB_AUTH=local` in the web environment, and remove the API's
+`RESEARCH_COCKPIT_OWNER_ACCOUNT_FILE` and `RESEARCH_COCKPIT_OWNER_BOOTSTRAP_SECRET`
+settings. Restart the configured app with its existing catalog and vault. Other
+values and mixed authentication settings fail startup.
+
+The page displays **Local access** and verifies the API's local-access mode
+before opening the workspace. No password or session cookie is required, and
+there is no session-expiry timer. Private views clear when the page becomes
+hidden and reload after the page is active and the connection is verified again.
+Localhost, exact Host/Origin, forwarded-header and mutation-request protections
+remain enforced. The vault remains encrypted on disk; anyone who can use the
+app on this computer can access its workspace while this mode is enabled.
+
+This does not delete or reset the saved account. To restore login, remove
+`RESEARCH_COCKPIT_LOCAL_ACCESS`, restore the API's account-file setting, set
+`RESEARCH_COCKPIT_WEB_AUTH=account`, and restart. Existing account-mode session
+limits and credential checks then apply again.
+
+The configured Windows launcher supports `-AccessMode local` or `-AccessMode
+account`. Its nonsecret `tmp/local-access.enabled` flag, containing `enabled`,
+selects local access across ordinary restarts. Remove that flag to restore the
+default account mode. An explicit parameter overrides the flag. When rolling
+back to a release that predates local access, use `-AccessMode account`.
+
+## Persistent account
+
 The personal workspace can use one persistent local username and password.
 Create the login once, then use **Sign in** at `http://127.0.0.1:3000/discover`.
 Logout, session expiry and app restarts do not require a new password or an API

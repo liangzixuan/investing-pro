@@ -15,6 +15,21 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
+## Immediate delivery: temporary local access
+
+The owner requested disabling login to remove repeated browser sign-in blockers.
+Add an explicit, reversible local-access mode to the combined workspace: the
+API verifies existing loopback and request boundaries without requiring a
+session, and the web page probes that mode before loading private views. Keep
+account mode unchanged, the saved account intact and the existing vault encrypted.
+The configured launcher selects this mode across restarts and can restore normal
+account login. See [local owner login](./LOCAL_OWNER_LOGIN.md).
+
+Starter-screen release `a6990c3` passed its native and applicable hosted gates and
+is serving. Its desktop/mobile browser acceptance remains pending; complete that
+acceptance after activating local access. Local-access implementation and release
+verification are in progress; the workspace checkpoint records actual outcomes.
+
 ## Current position
 
 | User job                  | Implemented capability                                                                                                                      | Important remaining gap                                               |
