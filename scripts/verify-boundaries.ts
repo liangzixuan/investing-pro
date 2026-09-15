@@ -173,6 +173,7 @@ const localResearchVaultPackagePaths = [
   `${localResearchVaultPackagePrefix}src/sqlite-local-research-vault.ts`,
   `${localResearchVaultPackagePrefix}src/vault-crypto.ts`,
   `${localResearchVaultPackagePrefix}src/vault-schema.ts`,
+  `${localResearchVaultPackagePrefix}src/windows-owner-only-acl-executor.test.ts`,
   `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts`,
   localResearchVaultWindowsAclPath,
   `${localResearchVaultPackagePrefix}tsconfig.json`,
@@ -12799,7 +12800,7 @@ async function localResearchVaultBoundaryViolations(): Promise<string[]> {
     .sort();
   if (!localResearchVaultExactTree(actualTree))
     found.push(
-      `${localResearchVaultPackagePrefix}: Cycle 3d package tree must remain the exact twenty-file reviewed vault surface`,
+      `${localResearchVaultPackagePrefix}: Cycle 3d package tree must remain the exact twenty-one-file reviewed vault surface`,
     );
 
   const manifestPath = `${localResearchVaultPackagePrefix}package.json`;
@@ -13202,8 +13203,13 @@ function localResearchVaultExpectedModulesByPath(): ReadonlyMap<
       ["node:crypto", "node:sqlite", "./errors", "./model"],
     ],
     [
+      `${localResearchVaultPackagePrefix}src/windows-owner-only-acl-executor.test.ts`,
+      ["node:path", "vitest", "./errors", "./windows-owner-only-acl"],
+    ],
+    [
       `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts`,
       [
+        "node:child_process",
         "node:fs/promises",
         "node:os",
         "node:path",
@@ -13239,6 +13245,8 @@ function localResearchVaultSourceViolation(
   if (
     modules.some((module) => childProcessModule.test(module)) &&
     path !== localResearchVaultWindowsAclPath &&
+    path !==
+      `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts` &&
     path !== localResearchVaultCrashRecoveryTestPath
   )
     return "production child_process capability is restricted to the Windows owner-only ACL adapter";
