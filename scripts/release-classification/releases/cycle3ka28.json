@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "caseNumber": 28,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "a6990c38e72b474fcc3fa6df03d62fbdbc31eaec",
+  "featureRevision": "3653c7a791ecbd919dcca3749a669a74a6b9619f",
+  "featureCount": 157,
+  "closureCount": 158,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-owner-session-routes.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/personal-owner-session-routes.ts", "status": "M" },
+    { "path": "apps/api/src/personal-owner-session.test.ts", "status": "M" },
+    { "path": "apps/api/src/personal-owner-session.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-composition-root.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/workspace-composition-root.ts", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/LocalWorkspaceAccessPanel.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/LocalWorkspaceAccessPanel.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/local-workspace-access-api.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/lib/personal-api.ts", "status": "M" },
+    { "path": "apps/web/src/lib/web-mode.test.ts", "status": "M" },
+    { "path": "apps/web/src/lib/web-mode.ts", "status": "M" },
+    { "path": "apps/web/src/research-page-mode.test.tsx", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/LOCAL_OWNER_LOGIN.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka28.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka28.json",
+  "presentation": {
+    "featureDescription": "Explicit local workspace access without login",
+    "closureDescription": "Explicit local workspace access without login",
+    "inventoryDescription": "Explicit local workspace access without login",
+    "testBinding": "localWorkspaceAccess",
+    "routingDescription": "Explicit local workspace access without login",
+    "summaryDescription": "Explicit local workspace access without login"
+  }
+}
