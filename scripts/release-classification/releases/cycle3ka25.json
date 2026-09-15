@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "caseNumber": 25,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "9405f3846b0928c218afe38edd4cd7c4b63321d6",
+  "featureRevision": "f57231fd3e0e4dfc7728b8dc5389f4eea76634a7",
+  "featureCount": 151,
+  "closureCount": 152,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-sec-financial-provider.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-financial-provider.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-request-scheduler.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.ts",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka25.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka25.json",
+  "presentation": {
+    "featureDescription": "Selected revenue YoY screening",
+    "closureDescription": "Selected revenue YoY screening",
+    "inventoryDescription": "Selected revenue YoY screening",
+    "testBinding": "selectedRevenueYoyScreening",
+    "routingDescription": "Selected revenue YoY screening",
+    "summaryDescription": "Selected revenue YoY screening"
+  }
+}
