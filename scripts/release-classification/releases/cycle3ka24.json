@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "caseNumber": 24,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "30c788b455f2d980801d766cdbeaec2dc44809e4",
+  "featureRevision": "ca4b0f42ae5efa1f35de5c1e440f9bf251db15b6",
+  "featureCount": 149,
+  "closureCount": 150,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka24.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka24.json",
+  "presentation": {
+    "featureDescription": "Financial screen readability",
+    "closureDescription": "Financial screen readability",
+    "inventoryDescription": "Financial screen readability",
+    "testBinding": "financialScreenReadability",
+    "routingDescription": "Financial screen readability",
+    "summaryDescription": "Financial screen readability"
+  }
+}
