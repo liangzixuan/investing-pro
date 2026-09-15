@@ -13,7 +13,7 @@ import {
   type PersonalSecurityMasterScreenRowDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import {
   fetchPersonalFinancialSavedViews,
@@ -31,6 +31,56 @@ import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 
 export const PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE = 25;
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
+const columnViews = {
+  overview: {
+    label: "Overview",
+    metrics: [
+      "revenue",
+      "netIncome",
+      "operatingCashFlow",
+      "netMargin",
+      "currentRatio",
+    ],
+  },
+  profitability: {
+    label: "Profitability",
+    metrics: [
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "grossMargin",
+      "netMargin",
+      "operatingMargin",
+    ],
+  },
+  cashFlow: {
+    label: "Cash flow",
+    metrics: [
+      "operatingCashFlow",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "operatingCashFlowMargin",
+      "operatingCashFlowToNetIncome",
+    ],
+  },
+  q4Balances: {
+    label: "Q4 balances",
+    metrics: ["currentAssets", "currentLiabilities", "currentRatio"],
+  },
+  all: { label: "All metrics", metrics },
+} as const satisfies Record<
+  string,
+  { label: string; metrics: readonly PersonalFinancialScreenMetricDto[] }
+>;
+function orderedMetrics(selected: readonly PersonalFinancialScreenMetricDto[]) {
+  return metrics.filter((metric) => selected.includes(metric));
+}
+interface FinancialSourceSelection {
+  readonly response: PersonalFinancialScreenResponseDto;
+  readonly listingId: string;
+  readonly metric: PersonalFinancialScreenMetricDto;
+}
 const revenueBasisLabels: Readonly<
   Record<PersonalFinancialRevenueBasisDto, string>
 > = {
@@ -227,6 +277,17 @@ export function PersonalFinancialScreener({
     useState<PersonalFinancialScreenCriteriaDto>(defaultCriteria());
   const [response, setResponse] =
     useState<PersonalFinancialScreenResponseDto | null>(null);
+  const [visibleMetrics, setVisibleMetrics] = useState<
+    readonly PersonalFinancialScreenMetricDto[]
+  >(orderedMetrics(columnViews.overview.metrics));
+  const [inspection, setInspection] = useState<FinancialSourceSelection | null>(
+    null,
+  );
+  const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
+  const inspectionHeading = useRef<HTMLHeadingElement | null>(null);
+  const resultsHeading = useRef<HTMLHeadingElement | null>(null);
+  const currentResponse = useRef(response);
+  currentResponse.current = response;
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState(
     "Choose financial criteria, then run the screen.",
@@ -255,6 +316,9 @@ export function PersonalFinancialScreener({
     screenController.current?.abort();
     savedController.current?.abort();
     setCriteria(defaultCriteria());
+    setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
+    clearInspection();
+    currentResponse.current = null;
     setResponse(null);
     setRunning(false);
     setSavedPayload(emptySaved);
@@ -275,15 +339,65 @@ export function PersonalFinancialScreener({
       screenEpoch.current += 1;
       screenController.current?.abort();
       savedController.current?.abort();
+      inspectionTrigger.current = null;
+      currentResponse.current = null;
     };
     // The snapshot/session boundary owns all in-memory results and pending operations.
   }, [snapshot.snapshotSha256, enabled]);
+
+  useEffect(() => {
+    if (inspection !== null && inspection.response === currentResponse.current)
+      inspectionHeading.current?.focus();
+  }, [inspection]);
+
+  function clearInspection() {
+    setInspection(null);
+    inspectionTrigger.current = null;
+  }
+
+  function changeVisibleMetrics(
+    next: readonly PersonalFinancialScreenMetricDto[],
+  ) {
+    const ordered = orderedMetrics(next);
+    if (ordered.length === 0) return;
+    clearInspection();
+    setVisibleMetrics(ordered);
+  }
+
+  function openInspection(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    listingId: string,
+    metric: PersonalFinancialScreenMetricDto,
+    trigger: HTMLButtonElement | null,
+  ) {
+    if (
+      !enabled ||
+      selectedResponse !== currentResponse.current ||
+      !visibleMetrics.includes(metric) ||
+      !selectedResponse.rows.some((row) => row.identity.listingId === listingId)
+    )
+      return;
+    inspectionTrigger.current = trigger;
+    setInspection({ response: selectedResponse, listingId, metric });
+  }
+
+  function closeInspection() {
+    const trigger = inspectionTrigger.current;
+    const restoreTrigger =
+      inspection?.response === currentResponse.current && trigger?.isConnected;
+    clearInspection();
+    if (restoreTrigger) trigger.focus();
+    else resultsHeading.current?.focus();
+  }
 
   function clearSession() {
     epoch.current += 1;
     screenEpoch.current += 1;
     screenController.current?.abort();
     savedController.current?.abort();
+    setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
+    clearInspection();
+    currentResponse.current = null;
     setResponse(null);
     setCriteria(defaultCriteria());
     setSavedPayload(emptySaved);
@@ -305,6 +419,8 @@ export function PersonalFinancialScreener({
     screenController.current?.abort();
     screenController.current = null;
     setRunning(false);
+    clearInspection();
+    currentResponse.current = null;
     setResponse(null);
     setCriteria(next);
     setMessage("Criteria changed. Run screen to load matching annual data.");
@@ -342,6 +458,8 @@ export function PersonalFinancialScreener({
     const session = epoch.current;
     const financialSnapshotSha256 =
       paginate && !refresh ? (response?.financialSnapshotSha256 ?? null) : null;
+    clearInspection();
+    currentResponse.current = null;
     setResponse(null);
     setRunning(true);
     setMessage(
@@ -375,6 +493,7 @@ export function PersonalFinancialScreener({
         return;
       }
       setCriteria(normalized);
+      currentResponse.current = result;
       setResponse(result);
       setMessage(
         result.totalMatches === 0
@@ -392,6 +511,8 @@ export function PersonalFinancialScreener({
         clearSession();
         return;
       }
+      clearInspection();
+      currentResponse.current = null;
       setResponse(null);
       setMessage(screenErrorMessage(error));
     } finally {
@@ -555,6 +676,14 @@ export function PersonalFinancialScreener({
   }
 
   const selected = savedPayload.views.find((view) => view.id === selectedId);
+  const columnView =
+    Object.entries(columnViews).find(([, view]) => {
+      const ordered = orderedMetrics(view.metrics);
+      return (
+        ordered.length === visibleMetrics.length &&
+        ordered.every((metric, index) => metric === visibleMetrics[index])
+      );
+    })?.[0] ?? "custom";
   return (
     <section
       className="security-search-panel personal-financial-screener"
@@ -810,6 +939,61 @@ export function PersonalFinancialScreener({
       <p className="discovery-status" aria-live="polite">
         {message}
       </p>
+      <fieldset className="financial-screen-view-controls" disabled={!enabled}>
+        <legend>Display columns</legend>
+        <label>
+          <span>Financial column view</span>
+          <select
+            aria-label="Financial column view"
+            aria-describedby="financial-column-view-help"
+            value={columnView}
+            onChange={(event) => {
+              const view = Object.entries(columnViews).find(
+                ([key]) => key === event.target.value,
+              )?.[1];
+              if (view) changeVisibleMetrics(view.metrics);
+            }}
+          >
+            {Object.entries(columnViews).map(([key, view]) => (
+              <option key={key} value={key}>
+                {view.label}
+              </option>
+            ))}
+            {columnView === "custom" && <option value="custom">Custom</option>}
+          </select>
+        </label>
+        <details className="financial-screen-column-picker">
+          <summary>Choose columns</summary>
+          <div className="financial-screen-column-options">
+            {metrics.map((metric) => (
+              <label key={metric}>
+                <input
+                  type="checkbox"
+                  aria-label={`Show ${labels[metric]} column`}
+                  checked={visibleMetrics.includes(metric)}
+                  disabled={
+                    visibleMetrics.length === 1 &&
+                    visibleMetrics.includes(metric)
+                  }
+                  onChange={(event) =>
+                    changeVisibleMetrics(
+                      event.target.checked
+                        ? [...visibleMetrics, metric]
+                        : visibleMetrics.filter((item) => item !== metric),
+                    )
+                  }
+                />
+                <span>{metricOptionLabel(metric)}</span>
+              </label>
+            ))}
+          </div>
+        </details>
+        <p id="financial-column-view-help" className="market-scope-note">
+          Columns affect display only. All criteria and the selected sort still
+          apply, including fields hidden from the table. Choose at least one
+          metric.
+        </p>
+      </fieldset>
       {response === null ? (
         <div className="discovery-empty-state">
           <strong>
@@ -832,6 +1016,15 @@ export function PersonalFinancialScreener({
           onOpenResearch={onOpenResearch}
           savedListingIds={savedListingIds}
           onPage={(offset) => void runScreen(offset, false, true)}
+          criteria={criteria}
+          visibleMetrics={visibleMetrics}
+          inspection={inspection}
+          inspectionHeading={inspectionHeading}
+          resultsHeading={resultsHeading}
+          onInspect={(listingId, metric, trigger) =>
+            openInspection(response, listingId, metric, trigger)
+          }
+          onCloseInspection={closeInspection}
         />
       )}
       <fieldset
@@ -947,6 +1140,13 @@ function FinancialResults({
   onOpenResearch,
   savedListingIds,
   onPage,
+  criteria,
+  visibleMetrics,
+  inspection,
+  inspectionHeading,
+  resultsHeading,
+  onInspect,
+  onCloseInspection,
 }: Pick<
   PersonalFinancialScreenerProps,
   | "canAddToWatchlist"
@@ -957,10 +1157,47 @@ function FinancialResults({
   readonly response: PersonalFinancialScreenResponseDto;
   readonly running: boolean;
   readonly onPage: (offset: number) => void;
+  readonly criteria: PersonalFinancialScreenCriteriaDto;
+  readonly visibleMetrics: readonly PersonalFinancialScreenMetricDto[];
+  readonly inspection: FinancialSourceSelection | null;
+  readonly inspectionHeading: RefObject<HTMLHeadingElement | null>;
+  readonly resultsHeading: RefObject<HTMLHeadingElement | null>;
+  readonly onInspect: (
+    listingId: string,
+    metric: PersonalFinancialScreenMetricDto,
+    trigger: HTMLButtonElement | null,
+  ) => void;
+  readonly onCloseInspection: () => void;
 }) {
   const revenueBasis = response.revenueBasis ?? "agreement";
+  const selectedRow =
+    inspection?.response === response &&
+    visibleMetrics.includes(inspection.metric)
+      ? response.rows.find(
+          (row) => row.identity.listingId === inspection.listingId,
+        )
+      : undefined;
   return (
     <div className="financial-screen-results">
+      <h3 ref={resultsHeading} tabIndex={-1}>
+        Financial results
+      </h3>
+      <p className="financial-screen-applied-criteria">
+        <strong>Applied filters:</strong>{" "}
+        {criteria.clauses.length === 0
+          ? "No numeric filters."
+          : criteria.clauses
+              .map(
+                (clause) =>
+                  `${labels[clause.field]} ${clause.operator === "gte" ? "≥" : "≤"} ${clause.value} ${metricUnitLabel(clause.field)}`,
+              )
+              .join("; ") + "."}{" "}
+        <strong>Sort:</strong>{" "}
+        {criteria.sort.field === "symbol"
+          ? "Symbol"
+          : labels[criteria.sort.field]}
+        , {criteria.sort.direction === "asc" ? "ascending" : "descending"}.
+      </p>
       <p className="market-scope-note">
         <strong>Revenue basis: {revenueBasisLabels[revenueBasis]}.</strong>{" "}
         {revenueExplanation(revenueBasis)}
@@ -1052,17 +1289,68 @@ function FinancialResults({
             : "SEC source coverage is partial. Some concepts were unavailable; inspect source statuses and unknown counts before using these results."}
         </p>
       )}
-      <div className="personal-stock-screener-table-wrap">
+      {selectedRow !== undefined && inspection !== null && (
+        <section
+          id="financial-screen-source-inspector"
+          className="financial-screen-source-inspector"
+          aria-labelledby="financial-screen-inspector-title"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              onCloseInspection();
+            }
+          }}
+        >
+          <header className="financial-screen-inspector-header">
+            <div>
+              <h3
+                id="financial-screen-inspector-title"
+                ref={inspectionHeading}
+                tabIndex={-1}
+              >
+                {selectedRow.identity.symbol} · {labels[inspection.metric]}
+              </h3>
+              <p>
+                {selectedRow.identity.issuerName} ·{" "}
+                {selectedRow.identity.exchangeMic} · {selectedRow.identity.cik}
+              </p>
+            </div>
+            <button
+              className="secondary-action compact-action"
+              type="button"
+              onClick={onCloseInspection}
+            >
+              Close details
+            </button>
+          </header>
+          <FinancialCellDetails
+            cell={selectedRow.metrics[inspection.metric]}
+            metric={inspection.metric}
+            cik={selectedRow.identity.cik}
+            revenueBasis={revenueBasis}
+            revenueUnresolved={
+              selectedRow.metrics.revenue.status === "unavailable"
+            }
+          />
+        </section>
+      )}
+      <div
+        className="personal-stock-screener-table-wrap"
+        role="region"
+        aria-label="Financial results table"
+        tabIndex={0}
+      >
         <table className="personal-stock-screener-table financial-screen-table">
           <caption>
             Matching financials for calendar-aligned {response.calendarYear}:
-            annual flows and Q4 instant balances. Expand a value to inspect its
+            annual flows and Q4 instant balances. Select a value to inspect its
             actual period or balance date and sources.
           </caption>
           <thead>
             <tr>
               <th scope="col">Company</th>
-              {metrics.map((metric) => (
+              {visibleMetrics.map((metric) => (
                 <th scope="col" key={metric}>
                   {labels[metric]}
                   {metric !== "grossMargin" &&
@@ -1090,16 +1378,17 @@ function FinancialResults({
                     {row.identity.exchangeMic} · {row.identity.cik}
                   </small>
                 </th>
-                {metrics.map((metric) => (
+                {visibleMetrics.map((metric) => (
                   <td key={metric}>
                     <FinancialCell
                       cell={row.metrics[metric]}
                       metric={metric}
-                      cik={row.identity.cik}
                       symbol={row.identity.symbol}
-                      revenueBasis={revenueBasis}
-                      revenueUnresolved={
-                        row.metrics.revenue.status === "unavailable"
+                      expanded={
+                        selectedRow === row && inspection?.metric === metric
+                      }
+                      onInspect={(trigger) =>
+                        onInspect(row.identity.listingId, metric, trigger)
                       }
                     />
                   </td>
@@ -1134,7 +1423,7 @@ function FinancialResults({
             ))}
             {response.rows.length === 0 && (
               <tr>
-                <td colSpan={metrics.length + 2}>
+                <td colSpan={visibleMetrics.length + 2}>
                   No matching financial results.
                 </td>
               </tr>
@@ -1175,20 +1464,36 @@ function FinancialResults({
   );
 }
 
+function scrollFinancialValueIntoView(button: HTMLButtonElement) {
+  button.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const company = button
+    .closest("tr")
+    ?.querySelector<HTMLElement>('th[scope="row"]');
+  const scroller = button.closest<HTMLElement>(
+    ".personal-stock-screener-table-wrap",
+  );
+  if (!company || !scroller) return;
+  const valueBounds = button.getBoundingClientRect();
+  const leftClearance = company.getBoundingClientRect().right + 8;
+  const rightClearance = scroller.getBoundingClientRect().right - 8;
+  if (valueBounds.left < leftClearance)
+    scroller.scrollLeft += valueBounds.left - leftClearance;
+  else if (valueBounds.right > rightClearance)
+    scroller.scrollLeft += valueBounds.right - rightClearance;
+}
+
 function FinancialCell({
   cell,
   metric,
-  cik,
   symbol,
-  revenueBasis,
-  revenueUnresolved,
+  expanded,
+  onInspect,
 }: {
   readonly cell: PersonalFinancialScreenCellDto;
   readonly metric: PersonalFinancialScreenMetricDto;
-  readonly cik: string;
   readonly symbol: string;
-  readonly revenueBasis: PersonalFinancialRevenueBasisDto;
-  readonly revenueUnresolved: boolean;
+  readonly expanded: boolean;
+  readonly onInspect: (trigger: HTMLButtonElement | null) => void;
 }) {
   const display =
     cell.status === "available"
@@ -1206,91 +1511,120 @@ function FinancialCell({
             })
       : "Unknown";
   return (
-    <details className="financial-screen-cell">
-      <summary
-        aria-label={`${symbol} ${labels[metric]}: ${display}. Show source details`}
-      >
-        {display}
-      </summary>
-      <div>
-        <p>
-          {cell.status === "available"
-            ? `Exact value: ${cell.value} ${cell.unit === "multiple" ? "×" : cell.unit}`
-            : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
-        </p>
-        <p>{formulaFor(metric, revenueBasis)}</p>
-        {["currentAssets", "currentLiabilities", "currentRatio"].includes(
-          metric,
-        ) && (
-          <>
-            <p>
-              The Q4 frame selection is separate from annual flow periods.
-              Inspect each actual balance date. The October–December window is
-              an app rule, not an SEC-published date tolerance.
-            </p>
-            {metric === "currentRatio" && (
-              <p>
-                Calculated by this app from reported current balances. Current
-                classifications and industry differences affect comparability.
-              </p>
-            )}
-            {cell.status === "unavailable" && (
-              <p>{currentRatioUnknownExplanation(cell)}</p>
-            )}
-          </>
-        )}
-        {metric === "grossMargin" && (
-          <>
-            <p>
-              This app ratio uses the selected revenue definition. Matching
-              dates and filing accessions establish period and filing vintage;
-              they do not establish that the company defines gross profit using
-              this revenue concept. Comparability depends on the company’s
-              accounting and the chosen denominator.
-            </p>
-            {cell.status === "unavailable" && (
-              <p>{grossMarginUnknownExplanation(cell)}</p>
-            )}
-          </>
-        )}
-        {metric === "operatingCashFlowToNetIncome" && (
-          <>
-            <p>
-              This app calculation compares reported operating cash flow with
-              reported net income. It is not a company-reported cash-conversion
-              measure or a quality score. Working-capital timing and noncash
-              items affect the comparison.
-            </p>
-            {cell.status === "unavailable" && (
-              <p>{cashFlowToIncomeUnknownExplanation(cell)}</p>
-            )}
-          </>
-        )}
-        {metric === "operatingCashFlowLessPpePurchases" &&
-          cell.status === "unavailable" && (
-            <p>{cashFlowUnknownExplanation(cell)}</p>
-          )}
-        {metric === "revenue" &&
-          cell.status === "unavailable" &&
-          cell.reason === "conflicting" && (
-            <p>
-              {revenueBasis === "agreement" &&
-              new Set(cell.sources.map((source) => source.concept)).size > 1
-                ? "Revenue inputs remain unresolved. Retained concepts can describe different definitions; compare their amounts and reporting periods below. This screen does not select a value from conflicting inputs."
-                : "Revenue inputs remain unresolved. Any retained source references are shown below; this screen does not select a value from ambiguous or conflicting inputs."}
-            </p>
-          )}
-        {metric.endsWith("Margin") && (
+    <button
+      className="financial-screen-value-button"
+      type="button"
+      aria-label={`${symbol} ${labels[metric]}: ${display}. Show source details`}
+      aria-expanded={expanded}
+      aria-controls={expanded ? "financial-screen-source-inspector" : undefined}
+      onFocus={(event) => scrollFinancialValueIntoView(event.currentTarget)}
+      onClick={(event) => onInspect(event?.currentTarget ?? null)}
+    >
+      {display}
+    </button>
+  );
+}
+
+function FinancialCellDetails({
+  cell,
+  metric,
+  cik,
+  revenueBasis,
+  revenueUnresolved,
+}: {
+  readonly cell: PersonalFinancialScreenCellDto;
+  readonly metric: PersonalFinancialScreenMetricDto;
+  readonly cik: string;
+  readonly revenueBasis: PersonalFinancialRevenueBasisDto;
+  readonly revenueUnresolved: boolean;
+}) {
+  return (
+    <div>
+      <p className="financial-screen-inspector-value">
+        {cell.status === "available"
+          ? `Exact value: ${cell.value} ${cell.unit === "multiple" ? "×" : cell.unit}`
+          : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
+      </p>
+      <p>{formulaFor(metric, revenueBasis)}</p>
+      {["currentAssets", "currentLiabilities", "currentRatio"].includes(
+        metric,
+      ) && (
+        <>
           <p>
-            Revenue denominator: {revenueBasisLabels[revenueBasis]}.
-            {revenueUnresolved &&
-              (metric === "grossMargin"
-                ? " This ratio remains unknown because selected revenue is unresolved."
-                : " This margin remains unknown because revenue is unresolved.")}
+            The Q4 frame selection is separate from annual flow periods. Inspect
+            each actual balance date. The October–December window is an app
+            rule, not an SEC-published date tolerance.
+          </p>
+          {metric === "currentRatio" && (
+            <p>
+              Calculated by this app from reported current balances. Current
+              classifications and industry differences affect comparability.
+            </p>
+          )}
+          {cell.status === "unavailable" && (
+            <p>{currentRatioUnknownExplanation(cell)}</p>
+          )}
+        </>
+      )}
+      {metric === "grossMargin" && (
+        <>
+          <p>
+            This app ratio uses the selected revenue definition. Matching dates
+            and filing accessions establish period and filing vintage; they do
+            not establish that the company defines gross profit using this
+            revenue concept. Comparability depends on the company’s accounting
+            and the chosen denominator.
+          </p>
+          {cell.status === "unavailable" && (
+            <p>{grossMarginUnknownExplanation(cell)}</p>
+          )}
+        </>
+      )}
+      {metric === "operatingCashFlowToNetIncome" && (
+        <>
+          <p>
+            This app calculation compares reported operating cash flow with
+            reported net income. It is not a company-reported cash-conversion
+            measure or a quality score. Working-capital timing and noncash items
+            affect the comparison.
+          </p>
+          {cell.status === "unavailable" && (
+            <p>{cashFlowToIncomeUnknownExplanation(cell)}</p>
+          )}
+        </>
+      )}
+      {metric === "operatingCashFlowLessPpePurchases" &&
+        cell.status === "unavailable" && (
+          <p>{cashFlowUnknownExplanation(cell)}</p>
+        )}
+      {metric === "revenue" &&
+        cell.status === "unavailable" &&
+        cell.reason === "conflicting" && (
+          <p>
+            {revenueBasis === "agreement" &&
+            new Set(cell.sources.map((source) => source.concept)).size > 1
+              ? "Revenue inputs remain unresolved. Retained concepts can describe different definitions; compare their amounts and reporting periods below. This screen does not select a value from conflicting inputs."
+              : "Revenue inputs remain unresolved. Any retained source references are shown below; this screen does not select a value from ambiguous or conflicting inputs."}
           </p>
         )}
+      {metric.endsWith("Margin") && (
+        <p>
+          Revenue denominator: {revenueBasisLabels[revenueBasis]}.
+          {revenueUnresolved &&
+            (metric === "grossMargin"
+              ? " This ratio remains unknown because selected revenue is unresolved."
+              : " This margin remains unknown because revenue is unresolved.")}
+        </p>
+      )}
+      {cell.sources.length === 0 && (
+        <p>No source references were retained for this value.</p>
+      )}
+      <div className="financial-screen-source-cards">
         {cell.sources.map((source, index) => (
-          <p key={`${source.concept}-${String(index)}`}>
+          <article
+            className="financial-screen-source-card"
+            key={`${source.concept}-${String(index)}`}
+          >
             {metric === "operatingCashFlowLessPpePurchases" && (
               <>
                 {source.concept === "NetCashProvidedByUsedInOperatingActivities"
@@ -1338,10 +1672,10 @@ function FinancialCell({
             >
               Filing {source.accessionNumber}
             </a>
-          </p>
+          </article>
         ))}
       </div>
-    </details>
+    </div>
   );
 }
 

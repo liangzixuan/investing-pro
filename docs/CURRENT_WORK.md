@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-14 following the handover from **Investing Pro+** to
+Updated 2026-09-15 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                             | Important remaining gap                                       |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                   | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                       | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                        | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                            | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                               | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Catalog filters, twelve SEC annual metrics and three Q4 balance fields, explicit revenue basis, stable pages and saved definitions | Current-balance release acceptance, then growth/value inputs  |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                       | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                     | Further corporate actions, benchmarks and live coverage       |
+| User job                  | Implemented capability                                                                                                             | Important remaining gap                                               |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                   | Catalog refresh and broader discovery data                            |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                       | Wider reconciliation and benchmark-relative analysis                  |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                        | Verified TTM and the shared 30-core-metric screening registry         |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                            | Direct normalized FCFF inputs and further justified models            |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                               | Compatible multi-company coverage and automatic peer metadata         |
+| Screen for ideas          | Catalog filters, twelve SEC annual metrics and three Q4 balance fields, explicit revenue basis, stable pages and saved definitions | Readable column views and source inspection, then growth/value inputs |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                       | Broader live samples, upcoming events, alerts and exports             |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                     | Further corporate actions, benchmarks and live coverage               |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -34,10 +34,12 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Accepted baseline `beb991c` includes Operating cash flow / net income (%) and
-its completed ACL integration fixes. Native and hosted acceptance, coordinated
-activation and configured Chrome QA are complete. The Q4 current-balance feature
-below is active implementation work; it has not passed release acceptance.
+Accepted baseline `30c788b` includes the twelve annual screening metrics plus
+Q4 current assets, current liabilities and current ratio. Native acceptance
+passed 5,213 tests with nine existing skips and 24 builds; all five applicable
+hosted workflows/six jobs passed on attempt 1. Coordinated activation, fresh
+ten-Frame coverage, two primary-filing comparisons and configured Chrome QA
+are complete. The readability work below is the next view-only delivery.
 
 The configured catalog contains **3,227 listings**. Normal account login is
 accepted, and the serving app runs from an isolated release checkout while
@@ -82,11 +84,33 @@ owns the contract and check/write sequence. Use it for ordinary feature releases
 the local handoff records actual verification and the separately attributed
 historical failures.
 
-## Active delivery: Q4 current balances and current ratio
+## Active delivery: readable financial screen results
 
-Add reported **Current assets**, **Current liabilities**, and
-**Current assets / current liabilities (×)** using two typed instant inputs beside
-the unchanged twelve annual metrics. The existing selected completed year fixes
+The fifteen-column screen needs clearer comparisons and usable source details.
+Add Overview, Profitability, Cash flow, Q4 balances and All metrics views, with
+individual column selection. Keep company identity visible during horizontal
+scrolling. Value buttons open one wide, named source inspector outside the table,
+with exact values, actual periods or balance dates, unknown explanations and all
+retained filing references. Keyboard opening, closing and focus restoration are
+part of acceptance.
+
+Column choices affect presentation only. Every numeric criterion still applies;
+show the applied filters and sort even when their fields are hidden. Keep column
+choices through reruns and paging, but clear them at owner/catalog boundaries.
+Clear source inspection whenever its result or view changes. Do not add provider
+reads, change formulas, alter cached snapshots or extend saved criteria v1.
+
+Complete focused behavior checks, generated closure, isolated native/applicable
+hosted gates and configured Chrome QA before activation is accepted. Financial
+source code is inherited from `30c788b`; record exact source identity instead of
+claiming a new data-coverage measurement for this presentation change. Then
+evaluate selected-revenue YoY screening from fresh comparability evidence.
+
+## Completed delivery: Q4 current balances and current ratio
+
+The screen's **Current assets**, **Current liabilities**, and
+**Current assets / current liabilities (×)** are accepted at `30c788b`. They use
+two typed instant inputs beside the unchanged twelve annual metrics. The selected completed year fixes
 the two new sources to its Q4 instant Frame; only actual balance dates from
 October 1–December 31 inclusive qualify. This is an app date rule, not a
 published SEC tolerance or an exact common fiscal year-end. Keep out-of-window
@@ -100,12 +124,13 @@ version 1. Coordinated transport v6/formula-set 1.4 adds fifteen metric keys and
 ten source concepts. Ten fixed initial/refresh reads reuse one cached snapshot;
 paging and basis changes add none.
 
-The bounded two-Frame feasibility found 2,319 eligible listings / 2,303 issuers
-under the Q4 rule, excluding 198 otherwise-compatible January/February listings.
-Those preliminary observations do not establish production acceptance. Complete
-focused checks, the actual boundary guard, generated release closure and isolated
-native/hosted gates, then fresh production coverage, bounded filing comparisons
-and configured Chrome QA. The local checkpoint owns exact source/runtime state;
+Fresh production coverage found 2,319 eligible listings / 2,303 issuers out of
+3,227 listings, with 908 unknown ratios: 706 missing, 198 outside the app date
+window and four filing mismatches. Seventy-two scenarios and 633 decoder pages
+preserved all twelve annual metrics across all four revenue bases. Two primary
+filings corroborated Apple's 0.97× and Walmart's retained out-of-window balances;
+Walmart's ratio remains unknown. These are snapshot-specific observations, not
+guarantees for subsequent source reads. The local checkpoint owns exact source/runtime state;
 the [screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) owns metric semantics.
 
 ## Completed delivery: Operating cash flow / net income (%)

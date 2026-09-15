@@ -150,6 +150,514 @@ afterEach(() => {
 
 describe("PersonalFinancialScreener", () => {
   it.each([
+    [
+      "overview",
+      [
+        "Revenue USD",
+        "Net income USD",
+        "Operating cash flow USD",
+        "Net margin %",
+        "Current assets / current liabilities (×)",
+      ],
+    ],
+    [
+      "profitability",
+      [
+        "Revenue USD",
+        "Gross profit USD",
+        "Net income USD",
+        "Operating income USD",
+        "Net margin %",
+        "Operating margin %",
+        "Gross profit / selected revenue (%)",
+      ],
+    ],
+    [
+      "cashFlow",
+      [
+        "Operating cash flow USD",
+        "Operating cash flow margin %",
+        "PP&E purchases USD",
+        "Operating cash flow less PP&E purchases USD",
+        "Operating cash flow / net income (%)",
+      ],
+    ],
+    [
+      "q4Balances",
+      [
+        "Current assets USD",
+        "Current liabilities USD",
+        "Current assets / current liabilities (×)",
+      ],
+    ],
+    [
+      "all",
+      [
+        "Revenue USD",
+        "Gross profit USD",
+        "Net income USD",
+        "Operating income USD",
+        "Operating cash flow USD",
+        "Net margin %",
+        "Operating margin %",
+        "Operating cash flow margin %",
+        "PP&E purchases USD",
+        "Operating cash flow less PP&E purchases USD",
+        "Gross profit / selected revenue (%)",
+        "Operating cash flow / net income (%)",
+        "Current assets USD",
+        "Current liabilities USD",
+        "Current assets / current liabilities (×)",
+      ],
+    ],
+  ] as const)(
+    "shows the %s preset in canonical order without another request",
+    async (viewName, columns) => {
+      await mount();
+      expect(input(render(), "Financial column view").props.value).toBe(
+        "overview",
+      );
+      change(render(), "Financial column view", viewName);
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+      submit(render());
+      await flush();
+      expect(columnHeaders(render())).toEqual([
+        "Company",
+        ...columns,
+        "Actions",
+      ]);
+      expect(inspector(render())).toBeUndefined();
+      expect(text(render())).not.toContain("Exact value:");
+      expect(
+        elements(render()).find(
+          (item) => item.props["aria-label"] === "Financial results table",
+        )?.props,
+      ).toMatchObject({ role: "region", tabIndex: 0 });
+      change(render(), "Financial column view", "overview");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(1);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps hidden filters and sorting explicit while custom columns stay outside requests and saved v1", async () => {
+    await mount();
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "operatingCashFlowLessPpePurchases");
+    change(render(), "Financial comparison 1", "lte");
+    change(render(), "Financial threshold 1", "-0.00001");
+    change(render(), "Financial sort field", "grossMargin");
+    change(render(), "Financial sort direction", "desc");
+    change(render(), "Financial column view", "q4Balances");
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 26));
+    submit(render());
+    await flush();
+    const firstRequest = structuredClone(
+      api.screenPersonalFinancials.mock.calls[0]?.[0],
+    ) as PersonalFinancialScreenRequestDto;
+    const summary = elements(render()).find(
+      (item) => item.props.className === "financial-screen-applied-criteria",
+    );
+    expect(text(summary)).toContain(
+      "Operating cash flow less PP&E purchases ≤ -0.00001 USD",
+    );
+    expect(text(summary)).toContain(
+      "Gross profit / selected revenue (%) , descending",
+    );
+    expect(columnHeaders(render())).not.toContain(
+      "Gross profit / selected revenue (%)",
+    );
+    expect(text(render())).toContain("Columns affect display only");
+    toggleColumn(render(), "Revenue", true);
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(columnHeaders(render())).toEqual([
+      "Company",
+      "Revenue USD",
+      "Current assets USD",
+      "Current liabilities USD",
+      "Current assets / current liabilities (×)",
+      "Actions",
+    ]);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
+      firstRequest,
+    );
+    expect(Object.keys(firstRequest.criteria).sort()).toEqual([
+      "calendarYear",
+      "clauses",
+      "identityText",
+      "sort",
+    ]);
+    change(render(), "Financial screen name", "Hidden financial filters");
+    click(render(), "Save financial screen");
+    await flush();
+    const saved = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(saved.schemaVersion).toBe(1);
+    expect(saved.views[0]?.criteria).toEqual(firstRequest.criteria);
+    expect(Object.keys(saved.views[0]!).sort()).toEqual([
+      "createdAgainstCatalogSnapshotSha256",
+      "createdAgainstFinancialSnapshotSha256",
+      "criteria",
+      "id",
+      "name",
+    ]);
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(25, 26));
+    click(render(), "Next financial page");
+    await flush();
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials.mock.calls[1]?.[0]).toMatchObject({
+      criteria: firstRequest.criteria,
+      financialSnapshotSha256: sha("b"),
+      page: { offset: 25, limit: 25 },
+    });
+    click(render(), "Reset financial criteria");
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "operatingCashFlowLessPpePurchases",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    submit(render());
+    await flush();
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toMatchObject({
+      criteria: firstRequest.criteria,
+      financialSnapshotSha256: null,
+    });
+  });
+
+  it("keeps at least one column and adjusts empty results to the visible table", async () => {
+    await mount();
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 0));
+    submit(render());
+    await flush();
+    expect(
+      elements(render()).find((item) => item.type === "td")?.props.colSpan,
+    ).toBe(7);
+    for (const label of [
+      "Revenue",
+      "Net income",
+      "Operating cash flow",
+      "Net margin",
+    ])
+      toggleColumn(render(), label, false);
+    const checkbox = elements(render()).find(
+      (item) =>
+        item.props["aria-label"] ===
+        "Show Current assets / current liabilities (×) column",
+    );
+    expect(checkbox?.props).toMatchObject({ checked: true, disabled: true });
+    toggleColumn(render(), "Current assets / current liabilities (×)", false);
+    expect(
+      elements(render()).find((item) => item.type === "td")?.props.colSpan,
+    ).toBe(3);
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+  });
+
+  it("scrolls each focused value into the padded viewport without opening details or requesting data", async () => {
+    await mount();
+    change(render(), "Financial column view", "all");
+    submit(render());
+    await flush();
+    const values = elements(render()).filter(
+      (item) =>
+        item.type === "button" &&
+        item.props.className === "financial-screen-value-button",
+    );
+    expect(values).toHaveLength(15);
+    for (const value of values) {
+      const scrollIntoView = vi.fn();
+      const closest = vi.fn().mockReturnValue(null);
+      (
+        value.props.onFocus as (event: {
+          currentTarget: {
+            scrollIntoView: typeof scrollIntoView;
+            closest: typeof closest;
+          };
+        }) => void
+      )({ currentTarget: { scrollIntoView, closest } });
+      expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(value.props["aria-expanded"]).toBe(false);
+    }
+    expect(inspector(render())).toBeUndefined();
+    expect(input(render(), "Financial column view").props.value).toBe("all");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(1);
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(activityStart).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["covered by company", 775, 862, true, true, 1399],
+    ["beyond the right edge", 1200, 1320, true, true, 1556],
+    ["already visible", 900, 1000, true, true, 1508],
+    ["missing scroller", 775, 862, false, true, 1508],
+    ["missing company", 775, 862, true, false, 1508],
+  ] as const)(
+    "keeps the focused value clear when %s without changing selection or requests",
+    async (_name, left, right, hasScroller, hasCompany, expectedScroll) => {
+      await mount();
+      change(render(), "Financial column view", "all");
+      submit(render());
+      await flush();
+      const value = ratioCell(
+        render(),
+        "Operating cash flow less PP&E purchases",
+      )!;
+      const scroller = {
+        scrollLeft: 1508,
+        getBoundingClientRect: vi.fn(() => ({ right: 1280 })),
+      };
+      const company = { getBoundingClientRect: vi.fn(() => ({ right: 876 })) };
+      const querySelector = vi.fn((selector: string) =>
+        selector === 'th[scope="row"]' && hasCompany ? company : null,
+      );
+      const closest = vi.fn((selector: string) =>
+        selector === "tr"
+          ? { querySelector }
+          : selector === ".personal-stock-screener-table-wrap" && hasScroller
+            ? scroller
+            : null,
+      );
+      const scrollIntoView = vi.fn();
+      const getBoundingClientRect = vi.fn(() => ({ left, right }));
+      (value.props.onFocus as (event: unknown) => void)({
+        currentTarget: { closest, scrollIntoView, getBoundingClientRect },
+      });
+      expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(closest).toHaveBeenCalledWith("tr");
+      expect(closest).toHaveBeenCalledWith(
+        ".personal-stock-screener-table-wrap",
+      );
+      expect(querySelector).toHaveBeenCalledExactlyOnceWith('th[scope="row"]');
+      expect(scroller.scrollLeft).toBe(expectedScroll);
+      if (hasScroller && hasCompany)
+        expect(scrollIntoView.mock.invocationCallOrder[0]).toBeLessThan(
+          getBoundingClientRect.mock.invocationCallOrder[0]!,
+        );
+      else expect(getBoundingClientRect).not.toHaveBeenCalled();
+      expect(inspector(render())).toBeUndefined();
+      expect(value.props["aria-expanded"]).toBe(false);
+      expect(input(render(), "Financial column view").props.value).toBe("all");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(1);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(activityStart).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("focuses one named inspector, preserves link access, and restores focus on Close or Escape", async () => {
+    await mount();
+    submit(render());
+    await flush();
+    const triggerFocus = vi.fn();
+    const trigger = {
+      isConnected: true,
+      focus: triggerFocus,
+    } as unknown as HTMLButtonElement;
+    const headingFocus = vi.fn();
+    const heading = { focus: headingFocus } as unknown as HTMLHeadingElement;
+    const fallbackFocus = vi.fn();
+    const fallback = { focus: fallbackFocus } as unknown as HTMLHeadingElement;
+    const source = ratioCell(
+      render(),
+      "Current assets / current liabilities (×)",
+    )!;
+    expect(source.props).toMatchObject({
+      type: "button",
+      "aria-expanded": false,
+    });
+    expect(source.props["aria-controls"]).toBeUndefined();
+    (
+      source.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+      }) => void
+    )({ currentTarget: trigger });
+    render((view) => {
+      attachHeading(view, "financial-screen-inspector-title", heading);
+      const resultsTitle = elements(view).find(
+        (item) => item.type === "h3" && text(item) === "Financial results",
+      )!;
+      (
+        resultsTitle.props.ref as React.RefObject<HTMLHeadingElement | null>
+      ).current = fallback;
+    });
+    expect(headingFocus).toHaveBeenCalledOnce();
+    const opened = inspector(render())!;
+    expect(opened.props).toMatchObject({
+      "aria-labelledby": "financial-screen-inspector-title",
+    });
+    expect(opened.props["aria-modal"]).toBeUndefined();
+    expect(text(opened)).toContain(
+      "ONE · Current assets / current liabilities (×)",
+    );
+    expect(elements(opened).filter((item) => item.type === "a")).toHaveLength(
+      2,
+    );
+    expect(
+      ratioCell(render(), "Current assets / current liabilities (×)")?.props,
+    ).toMatchObject({
+      "aria-expanded": true,
+      "aria-controls": "financial-screen-source-inspector",
+    });
+    const preventDefault = vi.fn(),
+      stopPropagation = vi.fn();
+    (opened.props.onKeyDown as (event: unknown) => void)({
+      key: "Tab",
+      preventDefault,
+      stopPropagation,
+    });
+    expect(preventDefault).not.toHaveBeenCalled();
+    (opened.props.onKeyDown as (event: unknown) => void)({
+      key: "Escape",
+      preventDefault,
+      stopPropagation,
+    });
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(stopPropagation).toHaveBeenCalledOnce();
+    expect(triggerFocus).toHaveBeenCalledOnce();
+    expect(inspector(render())).toBeUndefined();
+    inspectCell(render(), "Net income", "ONE", trigger);
+    expect(text(inspector(render()))).not.toContain("Current assets numerator");
+    click(render(), "Close details");
+    expect(triggerFocus).toHaveBeenCalledTimes(2);
+    inspectCell(render(), "Net income", "ONE", {
+      isConnected: false,
+      focus: vi.fn(),
+    } as unknown as HTMLButtonElement);
+    click(render(), "Close details");
+    expect(fallbackFocus).toHaveBeenCalledOnce();
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    expect(activityStart).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it.each(["run", "refresh", "page"] as const)(
+    "clears inspection before %s and cannot revive it from an old response sharing the snapshot",
+    async (action) => {
+      await mount();
+      api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 26));
+      submit(render());
+      await flush();
+      const triggerFocus = vi.fn();
+      const trigger = {
+        isConnected: true,
+        focus: triggerFocus,
+      } as unknown as HTMLButtonElement;
+      inspectCell(render(), "Net income", "ONE", trigger);
+      const staleButton = ratioCell(render(), "Net income")!;
+      const pending = deferred<PersonalFinancialScreenResponseDto>();
+      api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+      if (action === "run") submit(render());
+      else
+        click(
+          render(),
+          action === "refresh" ? "Refresh SEC data" : "Next financial page",
+        );
+      expect(inspector(render())).toBeUndefined();
+      expect(triggerFocus).not.toHaveBeenCalled();
+      (staleButton.props.onClick as () => void)();
+      expect(inspector(render())).toBeUndefined();
+      pending.resolve(response(action === "page" ? 25 : 0, 26));
+      await flush();
+      expect(inspector(render())).toBeUndefined();
+      (staleButton.props.onClick as () => void)();
+      expect(inspector(render())).toBeUndefined();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each([
+    "basis",
+    "company",
+    "sort",
+    "reset",
+    "load",
+    "view",
+    "columns",
+  ] as const)(
+    "clears source inspection on %s without restoring old focus or dispatching a screen",
+    async (action) => {
+      await mount();
+      submit(render());
+      await flush();
+      change(render(), "Financial screen name", "Inspection criteria");
+      click(render(), "Save financial screen");
+      await flush();
+      const triggerFocus = vi.fn();
+      const trigger = {
+        isConnected: true,
+        focus: triggerFocus,
+      } as unknown as HTMLButtonElement;
+      inspectCell(render(), "Net income", "ONE", trigger);
+      if (action === "basis") change(render(), "Revenue basis", "Revenues");
+      else if (action === "company")
+        change(render(), "Financial company filter", "Other");
+      else if (action === "sort")
+        change(render(), "Financial sort field", "currentRatio");
+      else if (action === "reset") click(render(), "Reset financial criteria");
+      else if (action === "load") click(render(), "Load financial criteria");
+      else if (action === "view")
+        change(render(), "Financial column view", "q4Balances");
+      else toggleColumn(render(), "Revenue", false);
+      expect(inspector(render())).toBeUndefined();
+      expect(triggerFocus).not.toHaveBeenCalled();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(["snapshot", "disabled", "session"] as const)(
+    "clears inspector and resets columns immediately on the %s boundary",
+    async (boundary) => {
+      await mount();
+      change(render(), "Financial column view", "q4Balances");
+      submit(render());
+      await flush();
+      const triggerFocus = vi.fn();
+      const trigger = {
+        isConnected: true,
+        focus: triggerFocus,
+      } as unknown as HTMLButtonElement;
+      inspectCell(
+        render(),
+        "Current assets / current liabilities (×)",
+        "ONE",
+        trigger,
+      );
+      if (boundary === "snapshot")
+        props = {
+          ...props,
+          snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+        };
+      else if (boundary === "disabled") props = { ...props, disabled: true };
+      else {
+        api.fetchPersonalFinancialSavedViews.mockRejectedValueOnce(
+          new PersonalWorkspaceApiError("session_unavailable"),
+        );
+        click(render(), "Reload saved screens");
+        await flush();
+      }
+      render();
+      expect(inspector(render())).toBeUndefined();
+      expect(input(render(), "Financial column view").props.value).toBe(
+        "overview",
+      );
+      expect(triggerFocus).not.toHaveBeenCalled();
+      if (boundary === "session")
+        expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
     ["currentAssets", "Current assets (USD)", "USD", "1000000000 = $1 billion"],
     [
       "currentLiabilities",
@@ -203,7 +711,7 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
-    const cell = ratioCell(
+    const cell = inspectCell(
       render(),
       "Current assets / current liabilities (×)",
     );
@@ -259,13 +767,13 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = ratioCell(
+      const cell = inspectCell(
         render(),
         "Current assets / current liabilities (×)",
       );
       const display = value.replace(/\B(?=(\d{3})+(?!\d))/gu, ",");
       expect(
-        elements(cell).find((element) => element.type === "summary")?.props[
+        elements(cell).find((element) => element.type === "button")?.props[
           "aria-label"
         ],
       ).toBe(
@@ -312,7 +820,7 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = ratioCell(
+      const cell = inspectCell(
         render(),
         "Current assets / current liabilities (×)",
       );
@@ -463,6 +971,7 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
+    inspectCell(render(), "Operating cash flow less PP&E purchases");
     const view = render();
     expect(text(view)).toContain("PP&E purchases (USD)");
     expect(text(view)).toContain(
@@ -480,7 +989,7 @@ describe("PersonalFinancialScreener", () => {
     expect(
       elements(view).some(
         (element) =>
-          element.type === "summary" &&
+          element.type === "button" &&
           element.props["aria-label"] ===
             "ONE Operating cash flow less PP&E purchases: -$123.1. Show source details",
       ),
@@ -550,9 +1059,12 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
+      expect(text(inspectCell(render(), "PP&E purchases"))).toContain(
+        "Exact value: -23.00002 USD",
+      );
+      inspectCell(render(), "Operating cash flow less PP&E purchases");
       const view = render();
       expect(text(view)).toContain(explanation);
-      expect(text(view)).toContain("Exact value: -23.00002 USD");
       expect(text(view)).toContain("Reported: -23.00002 USD");
       expect(
         elements(view).some(
@@ -827,6 +1339,7 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
+    inspectCell(render(), "Gross profit");
     const view = render();
     expect(text(view)).toContain("Gross profit (USD)");
     expect(text(view)).toContain("Exact value: -123.00001 USD");
@@ -837,7 +1350,7 @@ describe("PersonalFinancialScreener", () => {
     expect(
       elements(view).some(
         (element) =>
-          element.type === "summary" &&
+          element.type === "button" &&
           element.props["aria-label"] ===
             "ONE Gross profit: -$123. Show source details",
       ),
@@ -867,7 +1380,7 @@ describe("PersonalFinancialScreener", () => {
     api.screenPersonalFinancials.mockResolvedValueOnce(ratioResponse());
     submit(render());
     await flush();
-    const cell = ratioCell(render());
+    const cell = inspectCell(render());
     expect(text(cell)).toContain("Exact value: 25.00 percent");
     expect(text(cell)).toContain(
       "Reported GrossProfit / selected revenue × 100",
@@ -933,9 +1446,9 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = ratioCell(render());
+      const cell = inspectCell(render());
       expect(
-        elements(cell).find((element) => element.type === "summary")?.props[
+        elements(cell).find((element) => element.type === "button")?.props[
           "aria-label"
         ],
       ).toBe(
@@ -1004,7 +1517,7 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = ratioCell(render());
+      const cell = inspectCell(render());
       expect(text(cell)).toContain(
         `Unavailable: ${reason.replaceAll("_", " ")}.`,
       );
@@ -1015,14 +1528,16 @@ describe("PersonalFinancialScreener", () => {
         expect(text(cell)).toContain("Reported: 30 USD");
       }
       expect(
-        elements(cell).find((element) => element.type === "summary")?.props[
+        elements(cell).find((element) => element.type === "button")?.props[
           "aria-label"
         ],
       ).toBe(
         "ONE Gross profit / selected revenue (%): Unknown. Show source details",
       );
       if (reason !== "missing")
-        expect(text(render())).toContain("Exact value: 30 USD");
+        expect(text(inspectCell(render(), "Gross profit"))).toContain(
+          "Exact value: 30 USD",
+        );
     },
   );
 
@@ -1049,6 +1564,7 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
+    change(render(), "Financial column view", "all");
     expect(
       elements(render()).some(
         (element) =>
@@ -1120,7 +1636,7 @@ describe("PersonalFinancialScreener", () => {
         sort: { field: "operatingCashFlowToNetIncome", direction: "desc" },
       },
     });
-    const cell = cashIncomeCell(render());
+    const cell = inspectCell(render(), "Operating cash flow / net income (%)");
     expect(text(cell)).toContain("Exact value: 150.00 percent");
     expect(text(cell)).toContain("Requires positive reported net income");
     expect(text(cell)).toContain("335–395 inclusive days");
@@ -1181,9 +1697,12 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = cashIncomeCell(render());
+      const cell = inspectCell(
+        render(),
+        "Operating cash flow / net income (%)",
+      );
       expect(
-        elements(cell).find((element) => element.type === "summary")?.props[
+        elements(cell).find((element) => element.type === "button")?.props[
           "aria-label"
         ],
       ).toBe(
@@ -1272,7 +1791,10 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      const cell = cashIncomeCell(render());
+      const cell = inspectCell(
+        render(),
+        "Operating cash flow / net income (%)",
+      );
       expect(text(cell)).toContain(
         `Unavailable: ${reason.replaceAll("_", " ")}.`,
       );
@@ -1288,7 +1810,7 @@ describe("PersonalFinancialScreener", () => {
         expect(text(cell)).toContain("Reported: 150 USD");
       }
       expect(
-        elements(cell).find((element) => element.type === "summary")?.props[
+        elements(cell).find((element) => element.type === "button")?.props[
           "aria-label"
         ],
       ).toBe(
@@ -1341,6 +1863,7 @@ describe("PersonalFinancialScreener", () => {
       }),
       expect.any(AbortSignal),
     );
+    inspectCell(render(), "Operating cash flow");
     view = render();
     click(view, "Open ONE");
     click(view, "Add ONE");
@@ -1408,6 +1931,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Revenue basis: Revenues (broad concept)");
+    inspectCell(render());
     expect(ratioCell(render())).toBeDefined();
     expect(text(render())).toContain(
       "without substituting another revenue concept",
@@ -1463,8 +1987,9 @@ describe("PersonalFinancialScreener", () => {
       page: { offset: 0, limit: 25 },
       refresh: false,
     });
-    expect(text(ratioCell(render()))).toContain("Exact value: 30.00 percent");
-    expect(text(ratioCell(render()))).toContain(
+    const details = inspectCell(render());
+    expect(text(details)).toContain("Exact value: 30.00 percent");
+    expect(text(details)).toContain(
       "Revenue denominator: Customer-contract revenue, excluding tax",
     );
   });
@@ -1574,26 +2099,28 @@ describe("PersonalFinancialScreener", () => {
       });
       submit(render());
       await flush();
+      inspectCell(render(), "Revenue");
       const rendered = text(render());
       expect(rendered).toContain(`Unavailable: ${reason}`);
-      expect(
-        rendered.match(
-          /This margin remains unknown because revenue is unresolved\./gu,
-        ),
-      ).toHaveLength(3);
-      expect(rendered).toContain(
+      for (const label of [
+        "Net margin",
+        "Operating margin",
+        "Operating cash flow margin",
+      ])
+        expect(text(inspectCell(render(), label))).toContain(
+          "This margin remains unknown because revenue is unresolved.",
+        );
+      expect(text(inspectCell(render()))).toContain(
         "This ratio remains unknown because selected revenue is unresolved.",
       );
-      expect(text(cashIncomeCell(render()))).toContain(
-        "Exact value: -823045260.80 percent",
+      const cashCell = inspectCell(
+        render(),
+        "Operating cash flow / net income (%)",
       );
-      expect(text(cashIncomeCell(render()))).toContain(
-        "Net income denominator NetIncomeLoss",
-      );
-      expect(text(cashIncomeCell(render()))).not.toContain(
-        "Revenue denominator:",
-      );
-      expect(text(cashIncomeCell(render()))).not.toContain("Unavailable:");
+      expect(text(cashCell)).toContain("Exact value: -823045260.80 percent");
+      expect(text(cashCell)).toContain("Net income denominator NetIncomeLoss");
+      expect(text(cashCell)).not.toContain("Revenue denominator:");
+      expect(text(cashCell)).not.toContain("Unavailable:");
       if (basis === "agreement") {
         expect(rendered).toContain(
           "Retained concepts can describe different definitions",
@@ -1744,7 +2271,9 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("SEC source coverage is partial");
-    expect(text(render())).toContain("Unavailable: period mismatch");
+    expect(text(inspectCell(render(), "Net margin"))).toContain(
+      "Unavailable: period mismatch",
+    );
     expect(text(render())).toContain("upstream unavailable");
   });
 
@@ -1912,6 +2441,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Private saved criteria");
+    inspectCell(render(), "Operating cash flow / net income (%)");
     expect(cashIncomeCell(render())).toBeDefined();
     const pending = deferred<PersonalFinancialScreenResponseDto>();
     api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
@@ -1990,6 +2520,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(text(render())).toContain("Open ONE");
+    change(render(), "Financial column view", "all");
     expect(ratioCell(render())).toBeDefined();
     expect(cashIncomeCell(render())).toBeDefined();
     props = { ...props, disabled: true };
@@ -2000,9 +2531,10 @@ describe("PersonalFinancialScreener", () => {
   });
 });
 
-function render() {
+function render(beforeEffects?: (view: unknown) => void) {
   harness.begin();
   const view = PersonalFinancialScreener(props);
+  beforeEffects?.(view);
   harness.effects();
   return view;
 }
@@ -2062,6 +2594,38 @@ function input(value: unknown, label: string) {
 function change(value: unknown, label: string, next: string) {
   input(value, label).props.onChange({ target: { value: next } });
 }
+function toggleColumn(value: unknown, label: string, checked: boolean) {
+  const checkbox = elements(value).find(
+    (item) => item.props["aria-label"] === `Show ${label} column`,
+  );
+  if (checkbox === undefined)
+    throw new Error(`Missing column checkbox: ${label}`);
+  (
+    checkbox.props.onChange as (event: { target: { checked: boolean } }) => void
+  )({ target: { checked } });
+}
+function columnHeaders(value: unknown) {
+  const table = elements(value).find(
+    (item) =>
+      item.type === "table" &&
+      String(item.props.className).includes("financial-screen-table"),
+  );
+  return elements(table)
+    .filter((item) => item.type === "th" && item.props.scope === "col")
+    .map((item) => text(item).trim());
+}
+function attachHeading(
+  value: unknown,
+  id: string,
+  heading: HTMLHeadingElement,
+) {
+  const element = elements(value).find(
+    (item) => item.type === "h3" && item.props.id === id,
+  );
+  if (element === undefined) throw new Error(`Missing heading: ${id}`);
+  (element.props.ref as React.RefObject<HTMLHeadingElement | null>).current =
+    heading;
+}
 function button(value: unknown, label: string) {
   const found = elements(value).find(
     (element) => element.type === "button" && text(element) === label,
@@ -2097,14 +2661,40 @@ function ratioCell(
 ) {
   return elements(value).find(
     (element) =>
-      element.type === "details" &&
-      element.props.className === "financial-screen-cell" &&
-      elements(element).some(
-        (child) =>
-          child.type === "summary" &&
-          String(child.props["aria-label"]).startsWith(`${symbol} ${label}:`),
-      ),
+      element.type === "button" &&
+      element.props.className === "financial-screen-value-button" &&
+      String(element.props["aria-label"]).startsWith(`${symbol} ${label}:`),
   );
+}
+function inspector(value: unknown) {
+  return elements(value).find(
+    (element) =>
+      element.type === "section" &&
+      element.props.id === "financial-screen-source-inspector",
+  );
+}
+function inspectCell(
+  value: unknown,
+  label = "Gross profit / selected revenue (%)",
+  symbol = "ONE",
+  trigger: HTMLButtonElement | null = null,
+) {
+  let cell = ratioCell(value, label, symbol);
+  if (cell === undefined) {
+    change(value, "Financial column view", "all");
+    cell = ratioCell(render(), label, symbol);
+  }
+  if (cell === undefined)
+    throw new Error(`Missing source button: ${symbol} ${label}`);
+  (
+    cell.props.onClick as (event: {
+      currentTarget: HTMLButtonElement | null;
+    }) => void
+  )({ currentTarget: trigger });
+  const opened = inspector(render());
+  if (opened === undefined)
+    throw new Error(`Source inspector did not open: ${symbol} ${label}`);
+  return [ratioCell(render(), label, symbol), opened];
 }
 function cashIncomeCell(value: unknown) {
   return ratioCell(value, "Operating cash flow / net income (%)");

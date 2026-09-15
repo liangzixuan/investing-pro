@@ -25,6 +25,32 @@ named definition to reuse criteria, then explicitly rerun it when loaded.
 Refresh requests a new source read. Page navigation remains bound to both
 catalog and financial content digests; changed content requires a rerun.
 
+### Read and inspect results
+
+The default **Overview** shows revenue, net income, operating cash flow, net
+margin and current ratio. **Financial column view** also offers Profitability,
+Cash flow, Q4 balances and All metrics. Open **Choose columns** to make a custom
+selection; at least one financial field stays visible. Company identity remains
+visible as the table scrolls sideways. The table region is keyboard focusable
+for horizontal scrolling.
+
+These choices change only the displayed columns. All filters and the selected
+sort still apply, including fields outside the chosen view; their applied summary
+remains visible above the results. Column choices survive paging, reruns and
+loading saved criteria in the current owner/catalog context. They are not saved
+in criteria payload v1 and return to Overview when that context changes. Changing
+columns does not request or refresh SEC data.
+
+Activate a value or **Unknown** to open its source inspector above the table.
+The inspector identifies the company and metric, preserves the exact value or
+unknown reason, and shows the calculation and every retained source reference
+with its actual period or balance date. Opening focuses the inspector heading;
+**Close details** or Escape within the inspector returns focus to the value.
+The inspector is nonmodal, so filing links and the rest of the screen remain
+keyboard accessible. Changing columns, criteria or results closes old inspection;
+owner/session loss clears private results. Display preferences do not count as
+owner-session activity or modify provider cache expiry.
+
 The eight annual concepts use the public endpoint template
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
 Two balance-sheet concepts use
