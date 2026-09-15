@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                | Important remaining gap                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                      | Catalog refresh and broader discovery data                                 |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                          | Wider reconciliation and benchmark-relative analysis                       |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                           | Verified TTM and the shared 30-core-metric screening registry              |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                               | Direct normalized FCFF inputs and further justified models                 |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                  | Compatible multi-company coverage and automatic peer metadata              |
-| Screen for ideas          | Fifteen SEC financial fields, readable column views and source inspection, explicit revenue basis, stable pages and saved definitions | Complete selected-revenue YoY acceptance, then further growth/value inputs |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                          | Broader live samples, upcoming events, alerts and exports                  |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                        | Further corporate actions, benchmarks and live coverage                    |
+| User job                  | Implemented capability                                                                                                                | Important remaining gap                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                      | Catalog refresh and broader discovery data                              |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                          | Wider reconciliation and benchmark-relative analysis                    |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                           | Verified TTM and the shared 30-core-metric screening registry           |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                               | Direct normalized FCFF inputs and further justified models              |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                  | Compatible multi-company coverage and automatic peer metadata           |
+| Screen for ideas          | Sixteen SEC financial fields, readable column views and source inspection, explicit revenue basis, stable pages and saved definitions | Finish mobile inspector focus correction, then editable starter screens |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                          | Broader live samples, upcoming events, alerts and exports               |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                        | Further corporate actions, benchmarks and live coverage                 |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -86,7 +86,7 @@ historical failures.
 
 ## Active delivery: selected revenue YoY change
 
-Add **Selected revenue YoY change (%)** as the sixteenth metric, with signed
+Implemented **Selected revenue YoY change (%)** as the sixteenth metric, with signed
 filters, sorting, saved criteria and exact current/prior source inspection.
 Resolve the same selected revenue basis independently in two adjacent supported
 annual periods. Require unchanged concept sets, positive prior revenue and one
@@ -100,12 +100,22 @@ with one bounded snapshot/cache. Saved definitions remain version1. Selected
 Overview/Profitability/Cash flow/Q4 presets retain their memberships; choose
 the new field individually or through All metrics.
 
-The six-Frame feasibility on 2026-09-15 found 2,009 eligible agreement listings /
-1,997 issuers under the selected strict rule, from 3,227 listings/3,209 issuers.
-This aggregate observation is not production acceptance or proof of unchanged
-business/accounting scope. Fresh thirteen-Frame product coverage, bounded filing
-corroboration, isolated native/applicable hosted gates and configured Chrome QA
-remain required. The workspace checkpoint owns actual progress and source pins.
+Release `41d9994` passed the isolated native gate (5,381 checks, nine existing
+skips, 24 builds) and all five applicable hosted workflows/six jobs. Its dated
+thirteen-Frame production coverage found 2,009 eligible agreement listings /
+1,997 issuers from 3,227 listings/3,209 issuers. Three primary filings corroborated
+eight exact annual operands, including WMT's conflicting revenue definitions.
+These observations do not establish unchanged business or accounting scope.
+
+Configured Chrome confirmed live sources, signed thresholds, both sort
+directions, cache/paging, preserved column choices and unknown explanations.
+The 390px check found that closing the tall source inspector could focus a value
+above the viewport: focus ran before React removed the panel. The follow-up
+commits panel removal before returning focus and rechecks the target afterward.
+Automatic result, criteria and session invalidation still clears inspection
+without restoring stale focus. The fix requires its own native/hosted gates and
+configured Chrome acceptance. Financial semantics and source receipts are
+inherited unchanged; the workspace checkpoint owns actual progress and pins.
 
 ## Completed delivery: readable financial screen results
 

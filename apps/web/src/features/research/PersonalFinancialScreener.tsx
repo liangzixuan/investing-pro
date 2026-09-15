@@ -15,6 +15,7 @@ import {
   type PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { flushSync } from "react-dom";
 
 import {
   fetchPersonalFinancialSavedViews,
@@ -414,9 +415,11 @@ export function PersonalFinancialScreener({
 
   function closeInspection() {
     const trigger = inspectionTrigger.current;
+    const selectedResponse = inspection?.response;
+    // Remove the panel before focus scrolls the value into its final position.
+    flushSync(() => clearInspection());
     const restoreTrigger =
-      inspection?.response === currentResponse.current && trigger?.isConnected;
-    clearInspection();
+      selectedResponse === currentResponse.current && trigger?.isConnected;
     if (restoreTrigger) trigger.focus();
     else resultsHeading.current?.focus();
   }

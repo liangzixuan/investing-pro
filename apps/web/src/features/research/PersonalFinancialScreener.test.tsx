@@ -23,6 +23,7 @@ const harness = vi.hoisted(() => {
   let stateIndex = 0;
   let refIndex = 0;
   let effectIndex = 0;
+  let commit: (() => void) | undefined;
   return {
     reset() {
       states.splice(0);
@@ -30,6 +31,7 @@ const harness = vi.hoisted(() => {
       dependencies.splice(0);
       cleanup.clear();
       pending = [];
+      commit = undefined;
     },
     begin() {
       stateIndex = 0;
@@ -40,6 +42,14 @@ const harness = vi.hoisted(() => {
       const effects = pending;
       pending = [];
       effects.forEach((effect) => effect());
+    },
+    onCommit(callback: () => void) {
+      commit = callback;
+    },
+    flushSync<T>(callback: () => T): T {
+      const result = callback();
+      commit?.();
+      return result;
     },
     unmount() {
       cleanup.forEach((fn) => fn());
@@ -98,6 +108,9 @@ vi.mock("react", async (original) => ({
     effect: () => (() => void) | void,
     deps: readonly unknown[] | undefined,
   ) => harness.useEffect(effect, deps),
+}));
+vi.mock("react-dom", () => ({
+  flushSync: <T,>(callback: () => T) => harness.flushSync(callback),
 }));
 vi.mock("@/lib/personal-financial-screen-api", async () => ({
   ...(await import("../../lib/personal-financial-screen-api")),
@@ -717,6 +730,117 @@ describe("PersonalFinancialScreener", () => {
     expect(activityStart).toHaveBeenCalledOnce();
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
   });
+
+  it.each(["Close details", "Escape"] as const)(
+    "commits inspector removal before %s restores focus and measures the value",
+    async (action) => {
+      api.screenPersonalFinancials.mockResolvedValueOnce(growthResponse());
+      await mount();
+      submit(render());
+      await flush();
+      const label = "Selected revenue YoY change (%)";
+      let committedView: unknown;
+      const scrollIntoView = vi.fn(() => {
+        expect(inspector(committedView)).toBeUndefined();
+      });
+      const triggerFocus = vi.fn(() => {
+        // Do not render here: a queued state change is not a DOM commit.
+        expect(inspector(committedView)).toBeUndefined();
+        const value = ratioCell(committedView, label)!;
+        (value.props.onFocus as (event: unknown) => void)({
+          currentTarget: trigger,
+        });
+      });
+      const trigger = {
+        isConnected: true,
+        focus: triggerFocus,
+        scrollIntoView,
+        closest: () => null,
+      } as unknown as HTMLButtonElement;
+      inspectCell(render(), label, "ONE", trigger);
+      committedView = render();
+      expect(inspector(committedView)).toBeDefined();
+      harness.onCommit(() => {
+        committedView = render();
+      });
+      const requestCount = api.screenPersonalFinancials.mock.calls.length;
+      const activityCount = activityStart.mock.calls.length;
+      if (action === "Close details") click(committedView, action);
+      else {
+        const preventDefault = vi.fn();
+        const stopPropagation = vi.fn();
+        (inspector(committedView)!.props.onKeyDown as (event: unknown) => void)(
+          {
+            key: "Escape",
+            preventDefault,
+            stopPropagation,
+          },
+        );
+        expect(preventDefault).toHaveBeenCalledOnce();
+        expect(stopPropagation).toHaveBeenCalledOnce();
+      }
+      expect(inspector(committedView)).toBeUndefined();
+      expect(triggerFocus).toHaveBeenCalledOnce();
+      expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(requestCount);
+      expect(activityStart).toHaveBeenCalledTimes(activityCount);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["detached trigger", "invalidated response"] as const)(
+    "rechecks the %s after committing inspector removal",
+    async (boundary) => {
+      await mount();
+      submit(render());
+      await flush();
+      const triggerFocus = vi.fn();
+      const trigger = {
+        isConnected: true,
+        focus: triggerFocus,
+      };
+      inspectCell(
+        render(),
+        "Net income",
+        "ONE",
+        trigger as unknown as HTMLButtonElement,
+      );
+      let committedView: unknown;
+      const fallbackFocus = vi.fn(() => {
+        expect(inspector(committedView)).toBeUndefined();
+      });
+      const fallback = {
+        focus: fallbackFocus,
+      } as unknown as HTMLHeadingElement;
+      const resultsRef = elements(render()).find(
+        (item) => item.type === "h3" && text(item) === "Financial results",
+      )!.props.ref as React.RefObject<HTMLHeadingElement | null>;
+      resultsRef.current = fallback;
+      committedView = render();
+      harness.onCommit(() => {
+        // Model other queued work flushed before imperative focus restoration.
+        if (boundary === "detached trigger") trigger.isConnected = false;
+        else change(committedView, "Financial company filter", "Other");
+        committedView = render();
+        if (boundary === "invalidated response") resultsRef.current = null;
+      });
+      const requestCount = api.screenPersonalFinancials.mock.calls.length;
+      const activityCount = activityStart.mock.calls.length;
+      click(committedView, "Close details");
+      expect(inspector(committedView)).toBeUndefined();
+      expect(triggerFocus).not.toHaveBeenCalled();
+      expect(fallbackFocus).toHaveBeenCalledTimes(
+        boundary === "detached trigger" ? 1 : 0,
+      );
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(requestCount);
+      expect(activityStart).toHaveBeenCalledTimes(activityCount);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["run", "refresh", "page"] as const)(
     "clears inspection before %s and cannot revive it from an old response sharing the snapshot",

@@ -48,7 +48,8 @@ Activate a value or **Unknown** to open its source inspector above the table.
 The inspector identifies the company and metric, preserves the exact value or
 unknown reason, and shows the calculation and every retained source reference
 with its actual period or balance date. Opening focuses the inspector heading;
-**Close details** or Escape within the inspector returns focus to the value.
+**Close details** or Escape within the inspector removes the panel before
+returning focus to the value, so scrolling uses the final table position.
 The inspector is nonmodal, so filing links and the rest of the screen remain
 keyboard accessible. Changing columns, criteria or results closes old inspection;
 owner/session loss clears private results. Display preferences do not count as
