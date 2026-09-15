@@ -2,10 +2,15 @@ import { createHash } from "node:crypto";
 
 import {
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
   type PersonalSecAnnualConceptDto,
   type PersonalSecAnnualFactDto,
-  type PersonalSecAnnualFinancialSnapshotDto,
   type PersonalSecAnnualFrameDto,
+  type PersonalSecFinancialConceptDto,
+  type PersonalSecFinancialSnapshotDto,
+  type PersonalSecInstantConceptDto,
+  type PersonalSecInstantFactDto,
+  type PersonalSecInstantFrameDto,
 } from "@research-cockpit/contracts";
 
 import {
@@ -25,7 +30,7 @@ export interface PersonalSecFinancialProvider {
     calendarYear: number,
     signal?: AbortSignal,
     refresh?: boolean,
-  ): Promise<PersonalSecAnnualFinancialSnapshotDto>;
+  ): Promise<PersonalSecFinancialSnapshotDto>;
 }
 
 export interface SecPersonalFinancialProviderDependencies {
@@ -37,7 +42,7 @@ export interface SecPersonalFinancialProviderDependencies {
 interface ActiveSnapshotLoad {
   readonly calendarYear: number;
   readonly controller: AbortController;
-  readonly promise: Promise<PersonalSecAnnualFinancialSnapshotDto>;
+  readonly promise: Promise<PersonalSecFinancialSnapshotDto>;
   consumers: number;
 }
 
@@ -84,7 +89,7 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
   readonly #now: () => Date;
   readonly #scheduler: PersonalSecRequestScheduler;
   #closed = false;
-  #cache: PersonalSecAnnualFinancialSnapshotDto | undefined;
+  #cache: PersonalSecFinancialSnapshotDto | undefined;
   #active: ActiveSnapshotLoad | undefined;
   #requestHasRun = false;
 
@@ -122,7 +127,7 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
     calendarYear: number,
     signal?: AbortSignal,
     refresh = false,
-  ): Promise<PersonalSecAnnualFinancialSnapshotDto> {
+  ): Promise<PersonalSecFinancialSnapshotDto> {
     if (this.#closed || signal?.aborted === true) fail("aborted");
     if (this.#userAgent === undefined) fail("not_configured");
     const now = this.#now();
@@ -158,7 +163,7 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
   async #join(
     active: ActiveSnapshotLoad,
     signal?: AbortSignal,
-  ): Promise<PersonalSecAnnualFinancialSnapshotDto> {
+  ): Promise<PersonalSecFinancialSnapshotDto> {
     active.consumers += 1;
     try {
       return await withAbort(active.promise, signal);
@@ -174,7 +179,7 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
   async #load(
     calendarYear: number,
     signal: AbortSignal,
-  ): Promise<PersonalSecAnnualFinancialSnapshotDto> {
+  ): Promise<PersonalSecFinancialSnapshotDto> {
     const frames: PersonalSecAnnualFrameDto[] = [];
     for (const concept of PERSONAL_SEC_ANNUAL_CONCEPTS) {
       if (signal.aborted) fail("aborted");
@@ -191,12 +196,28 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
       this.#requestHasRun = true;
       frames.push(await this.#loadFrame(concept, calendarYear, signal));
     }
+    const instantFrames: PersonalSecInstantFrameDto[] = [];
+    for (const concept of PERSONAL_SEC_INSTANT_CONCEPTS) {
+      if (signal.aborted) fail("aborted");
+      if (this.#requestHasRun) await delay(REQUEST_INTERVAL_MS, signal);
+      try {
+        await this.#scheduler.wait(signal);
+      } catch {
+        if (this.#closed || signal.aborted) fail("aborted");
+        fail("busy");
+      }
+      if (this.#closed || signal.aborted) fail("aborted");
+      this.#requestHasRun = true;
+      instantFrames.push(await this.#loadFrame(concept, calendarYear, signal));
+    }
     if (this.#closed || signal.aborted) fail("aborted");
     const fetchedAt = this.#now();
     if (!validClock(fetchedAt)) fail("invalid_request");
     const normalized = Object.freeze(frames);
-    const snapshot: PersonalSecAnnualFinancialSnapshotDto = Object.freeze({
+    const normalizedInstant = Object.freeze(instantFrames);
+    const snapshot: PersonalSecFinancialSnapshotDto = Object.freeze({
       calendarYear,
+      instantQuarter: 4,
       fetchedAt: fetchedAt.toISOString(),
       expiresAt: new Date(
         fetchedAt.getTime() + CACHE_DURATION_MS,
@@ -204,9 +225,17 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
       // Source content, source statuses, and selected year define the digest.
       // A refresh of identical facts does not invalidate pagination unnecessarily.
       snapshotSha256: `sha256:${createHash("sha256")
-        .update(JSON.stringify({ calendarYear, frames: normalized }))
+        .update(
+          JSON.stringify({
+            calendarYear,
+            instantQuarter: 4,
+            frames: normalized,
+            instantFrames: normalizedInstant,
+          }),
+        )
         .digest("hex")}`,
       frames: normalized,
+      instantFrames: normalizedInstant,
     });
     this.#cache = snapshot;
     return snapshot;
@@ -216,8 +245,20 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
     concept: PersonalSecAnnualConceptDto,
     calendarYear: number,
     signal: AbortSignal,
-  ): Promise<PersonalSecAnnualFrameDto> {
-    const sourceUrl = `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY${calendarYear}.json`;
+  ): Promise<PersonalSecAnnualFrameDto>;
+  async #loadFrame(
+    concept: PersonalSecInstantConceptDto,
+    calendarYear: number,
+    signal: AbortSignal,
+  ): Promise<PersonalSecInstantFrameDto>;
+  async #loadFrame(
+    concept: PersonalSecFinancialConceptDto,
+    calendarYear: number,
+    signal: AbortSignal,
+  ): Promise<PersonalSecAnnualFrameDto | PersonalSecInstantFrameDto> {
+    const sourceUrl = isInstantConcept(concept)
+      ? `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY${calendarYear}Q4I.json`
+      : `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY${calendarYear}.json`;
     const controller = new AbortController();
     const onAbort = (): void => controller.abort();
     signal.addEventListener("abort", onAbort, { once: true });
@@ -255,30 +296,105 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
         );
       }
       const text = await readBoundedText(response, controller.signal);
-      const result = normalizeFrame(
-        parseLosslessJson(text),
-        concept,
-        calendarYear,
-        sourceUrl,
-      );
+      const parsed = parseLosslessJson(text);
+      const result = isInstantConcept(concept)
+        ? normalizeInstantFrame(parsed, concept, calendarYear, sourceUrl)
+        : normalizeFrame(parsed, concept, calendarYear, sourceUrl);
       if (controller.signal.aborted)
         throw new FrameError("upstream_unavailable");
       return result;
     } catch (error) {
       if (this.#closed || signal.aborted) fail("aborted");
-      return Object.freeze({
-        concept,
+      const status: PersonalSecAnnualFrameDto["status"] =
+        error instanceof FrameError ? error.status : "upstream_unavailable";
+      const unavailable = {
         sourceUrl,
-        status:
-          error instanceof FrameError ? error.status : "upstream_unavailable",
+        status,
         facts: Object.freeze([]),
         unknownCiks: Object.freeze([]),
-      });
+      };
+      return isInstantConcept(concept)
+        ? Object.freeze({ concept, ...unavailable })
+        : Object.freeze({ concept, ...unavailable });
     } finally {
       clearTimeout(timeout);
       signal.removeEventListener("abort", onAbort);
     }
   }
+}
+
+function isInstantConcept(
+  concept: PersonalSecFinancialConceptDto,
+): concept is PersonalSecInstantConceptDto {
+  return concept === "AssetsCurrent" || concept === "LiabilitiesCurrent";
+}
+
+function normalizeInstantFrame(
+  value: unknown,
+  concept: PersonalSecInstantConceptDto,
+  calendarYear: number,
+  sourceUrl: string,
+): PersonalSecInstantFrameDto {
+  if (
+    !isRecord(value) ||
+    value.taxonomy !== "us-gaap" ||
+    value.tag !== concept ||
+    value.ccp !== `CY${calendarYear}Q4I` ||
+    value.uom !== "USD" ||
+    !Array.isArray(value.data) ||
+    value.data.length > MAX_FRAME_ROWS ||
+    String(value.pts) !== String(value.data.length)
+  )
+    throw new FrameError("invalid_response");
+  const facts = new Map<string, PersonalSecInstantFactDto>();
+  const unknownCiks = new Set<string>();
+  const seen = new Set<string>();
+  for (const candidate of value.data) {
+    if (!isRecord(candidate)) throw new FrameError("invalid_response");
+    const cik = normalizeCik(candidate.cik);
+    if (cik === undefined) throw new FrameError("invalid_response");
+    if (seen.has(cik)) {
+      facts.delete(cik);
+      unknownCiks.add(cik);
+      continue;
+    }
+    seen.add(cik);
+    const asOfDate = normalizeDate(candidate.end);
+    const decimal = normalizeDecimal(candidate.val);
+    // Admission retains real balance dates. The screen separately applies its
+    // app-owned Q4 applicability window, preserving out-of-window evidence.
+    if (
+      Object.hasOwn(candidate, "start") ||
+      asOfDate === undefined ||
+      Math.abs(Number(asOfDate.slice(0, 4)) - calendarYear) > 1 ||
+      decimal === undefined ||
+      typeof candidate.accn !== "string" ||
+      !/^\d{10}-\d{2}-\d{6}$/u.test(candidate.accn)
+    ) {
+      unknownCiks.add(cik);
+      continue;
+    }
+    facts.set(
+      cik,
+      Object.freeze({
+        cik,
+        accessionNumber: candidate.accn,
+        asOfDate,
+        value: decimal,
+      }),
+    );
+  }
+  return Object.freeze({
+    concept,
+    status: "available",
+    sourceUrl,
+    facts: Object.freeze(
+      [...facts.values()].sort((left, right) =>
+        left.cik.localeCompare(right.cik),
+      ),
+    ),
+    unknownCiks: Object.freeze([...unknownCiks].sort()),
+  });
 }
 
 function normalizeFrame(

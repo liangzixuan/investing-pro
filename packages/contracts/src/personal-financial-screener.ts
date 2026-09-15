@@ -1,6 +1,6 @@
 import type { PersonalSecurityMasterScreenRowDto } from "./index";
 
-export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
+export const PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS = [
   "revenue",
   "grossProfit",
   "netIncome",
@@ -13,6 +13,19 @@ export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
   "operatingCashFlowLessPpePurchases",
   "grossMargin",
   "operatingCashFlowToNetIncome",
+] as const;
+export type PersonalFinancialScreenAnnualMetricDto =
+  (typeof PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS)[number];
+export const PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS = [
+  "currentAssets",
+  "currentLiabilities",
+  "currentRatio",
+] as const;
+export type PersonalFinancialScreenInstantMetricDto =
+  (typeof PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS)[number];
+export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
+  ...PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
+  ...PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
 ] as const;
 export type PersonalFinancialScreenMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_METRICS)[number];
@@ -36,6 +49,37 @@ export const PERSONAL_FINANCIAL_REVENUE_BASES = [
 ] as const;
 export type PersonalFinancialRevenueBasisDto =
   (typeof PERSONAL_FINANCIAL_REVENUE_BASES)[number];
+export const PERSONAL_SEC_INSTANT_CONCEPTS = [
+  "AssetsCurrent",
+  "LiabilitiesCurrent",
+] as const;
+export type PersonalSecInstantConceptDto =
+  (typeof PERSONAL_SEC_INSTANT_CONCEPTS)[number];
+export type PersonalSecFinancialConceptDto =
+  PersonalSecAnnualConceptDto | PersonalSecInstantConceptDto;
+export interface PersonalSecInstantFactDto {
+  readonly cik: string;
+  readonly accessionNumber: string;
+  readonly asOfDate: string;
+  readonly value: string;
+}
+export interface PersonalSecInstantFrameDto {
+  readonly concept: PersonalSecInstantConceptDto;
+  readonly status: PersonalSecAnnualFrameDto["status"];
+  readonly sourceUrl: string;
+  readonly facts: readonly PersonalSecInstantFactDto[];
+  readonly unknownCiks: readonly string[];
+}
+export interface PersonalSecFinancialSnapshotDto extends PersonalSecAnnualFinancialSnapshotDto {
+  readonly instantQuarter: 4;
+  readonly instantFrames: readonly PersonalSecInstantFrameDto[];
+}
+export interface PersonalFinancialScreenInstantSourceRefDto {
+  readonly concept: PersonalSecInstantConceptDto;
+  readonly accessionNumber: string;
+  readonly asOfDate: string;
+  readonly value: string;
+}
 export interface PersonalSecAnnualFactDto {
   readonly cik: string;
   readonly accessionNumber: string;
@@ -69,7 +113,7 @@ export interface PersonalFinancialScreenSourceRefDto {
   readonly endDate: string;
   readonly value: string;
 }
-export type PersonalFinancialScreenCellDto =
+export type PersonalFinancialScreenAnnualCellDto =
   | {
       readonly status: "available";
       readonly value: string;
@@ -91,6 +135,30 @@ export type PersonalFinancialScreenCellDto =
       readonly unit: "USD" | "percent";
       readonly sources: readonly PersonalFinancialScreenSourceRefDto[];
     };
+export type PersonalFinancialScreenInstantCellDto =
+  | {
+      readonly status: "available";
+      readonly value: string;
+      readonly unit: "USD" | "multiple";
+      readonly sources: readonly PersonalFinancialScreenInstantSourceRefDto[];
+    }
+  | {
+      readonly status: "unavailable";
+      readonly reason:
+        | "missing"
+        | "conflicting"
+        | "source_unavailable"
+        | "invalid_value"
+        | "unsupported_balance_date"
+        | "balance_date_mismatch"
+        | "filing_mismatch"
+        | "nonpositive_current_liabilities"
+        | "unsupported_sign";
+      readonly unit: "USD" | "multiple";
+      readonly sources: readonly PersonalFinancialScreenInstantSourceRefDto[];
+    };
+export type PersonalFinancialScreenCellDto =
+  PersonalFinancialScreenAnnualCellDto | PersonalFinancialScreenInstantCellDto;
 export interface PersonalFinancialScreenClauseDto {
   readonly field: PersonalFinancialScreenMetricDto;
   readonly operator: "gte" | "lte";
@@ -108,7 +176,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "5.0.0";
+  readonly schemaVersion: "6.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -118,11 +186,19 @@ export interface PersonalFinancialScreenRequestDto {
 export interface PersonalFinancialScreenRowDto {
   readonly identity: PersonalSecurityMasterScreenRowDto;
   readonly metrics: Readonly<
-    Record<PersonalFinancialScreenMetricDto, PersonalFinancialScreenCellDto>
+    Record<
+      PersonalFinancialScreenAnnualMetricDto,
+      PersonalFinancialScreenAnnualCellDto
+    > &
+      Record<
+        PersonalFinancialScreenInstantMetricDto,
+        PersonalFinancialScreenInstantCellDto
+      >
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "5.0.0";
+  readonly schemaVersion: "6.0.0";
+  readonly instantQuarter: 4;
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;
@@ -131,7 +207,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly fetchedAt: string;
   readonly expiresAt: string;
   readonly sources: readonly {
-    readonly concept: PersonalSecAnnualConceptDto;
+    readonly concept: PersonalSecFinancialConceptDto;
     readonly status: PersonalSecAnnualFrameDto["status"];
     readonly sourceUrl: string;
   }[];
@@ -150,7 +226,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.3.0";
+  readonly formulaVersion: "1.4.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

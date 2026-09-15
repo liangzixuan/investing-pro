@@ -2,8 +2,14 @@ import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
+  PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
   type PersonalFinancialRevenueBasisDto,
-  type PersonalFinancialScreenCellDto,
+  type PersonalFinancialScreenAnnualCellDto,
+  type PersonalFinancialScreenInstantCellDto,
+  type PersonalFinancialScreenInstantMetricDto,
+  type PersonalFinancialScreenInstantSourceRefDto,
+  type PersonalSecFinancialConceptDto,
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenMetricDto,
   type PersonalFinancialScreenRequestDto,
@@ -25,6 +31,8 @@ const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
 const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
+const instantConcepts = PERSONAL_SEC_INSTANT_CONCEPTS;
+const allConcepts = [...concepts, ...instantConcepts];
 const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
   "netMargin",
   "operatingMargin",
@@ -62,10 +70,20 @@ export interface PersonalFinancialSavedViews {
 
 /** The provider link is reconstructed from an admitted concept/year, never arbitrary upstream text. */
 export function personalFinancialSourceUrl(
-  concept: (typeof concepts)[number],
+  concept: PersonalSecFinancialConceptDto,
   year: number,
 ): string {
-  return `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY${String(year)}.json`;
+  const period = member(instantConcepts, concept) ? "Q4I" : "";
+  return `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY${String(year)}${period}.json`;
+}
+
+/** Narrow only already-decoded references, preserving the annual payload shape. */
+export function isPersonalFinancialInstantSource(
+  source:
+    | PersonalFinancialScreenSourceRefDto
+    | PersonalFinancialScreenInstantSourceRefDto,
+): source is PersonalFinancialScreenInstantSourceRefDto {
+  return member(instantConcepts, source.concept);
 }
 
 export function isPersonalFinancialScreenCriteria(
@@ -111,7 +129,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "5.0.0" ||
+    input.schemaVersion !== "6.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -298,6 +316,7 @@ function isResponse(
       "catalogSnapshotSha256",
       "financialSnapshotSha256",
       "calendarYear",
+      "instantQuarter",
       "fetchedAt",
       "expiresAt",
       "sources",
@@ -313,8 +332,9 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "5.0.0" ||
-    value.formulaVersion !== "1.3.0" ||
+    value.schemaVersion !== "6.0.0" ||
+    value.formulaVersion !== "1.4.0" ||
+    value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
     !integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) ||
@@ -332,7 +352,7 @@ function isResponse(
     !integer(value.limitApplied, 1, 250) ||
     typeof value.hasMore !== "boolean" ||
     !Array.isArray(value.sources) ||
-    value.sources.length !== concepts.length ||
+    value.sources.length !== allConcepts.length ||
     !keys(value.metricCoverage, metrics) ||
     !Array.isArray(value.rows)
   )
@@ -345,7 +365,7 @@ function isResponse(
     !value.sources.every(
       (source) =>
         keys(source, ["concept", "status", "sourceUrl"]) &&
-        member(concepts, source.concept) &&
+        member(allConcepts, source.concept) &&
         member(frameStatuses, source.status) &&
         source.sourceUrl === personalFinancialSourceUrl(source.concept, year),
     ) ||
@@ -353,7 +373,7 @@ function isResponse(
       (value.sources as PersonalFinancialScreenResponseDto["sources"]).map(
         (source) => source.concept,
       ),
-    ).size !== concepts.length ||
+    ).size !== allConcepts.length ||
     !Object.values(value.metricCoverage).every(
       (coverage) =>
         keys(coverage, ["known", "unknown"]) &&
@@ -373,7 +393,15 @@ function isResponse(
         identity(row.identity) &&
         keys(row.metrics, metrics) &&
         metrics.every((metric) =>
-          cell((row.metrics as Record<string, unknown>)[metric], metric),
+          cell(
+            (row.metrics as Record<string, unknown>)[metric],
+            metric,
+            year,
+            value.sources as PersonalFinancialScreenResponseDto["sources"],
+          ),
+        ) &&
+        currentAssetsToLiabilities(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         cashFlowLessPpe(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
@@ -482,7 +510,11 @@ function identity(value: unknown): boolean {
 function cell(
   value: unknown,
   metric: PersonalFinancialScreenMetricDto,
+  year: number,
+  sourceStatuses: PersonalFinancialScreenResponseDto["sources"],
 ): boolean {
+  if (member(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS, metric))
+    return instantCell(value, metric, year, sourceStatuses);
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
   const exactRatio =
     metric === "grossMargin" || metric === "operatingCashFlowToNetIncome";
@@ -532,7 +564,7 @@ function cell(
     !["grossProfit", "ppePurchases", "operatingCashFlow"].includes(metric)
   )
     return valid;
-  const reported = value as unknown as PersonalFinancialScreenCellDto;
+  const reported = value as unknown as PersonalFinancialScreenAnnualCellDto;
   if (reported.status === "unavailable")
     return [
       "missing",
@@ -547,6 +579,178 @@ function cell(
       source.startDate === first.startDate &&
       source.endDate === first.endDate,
   );
+}
+
+function instantCell(
+  value: unknown,
+  metric: PersonalFinancialScreenInstantMetricDto,
+  year: number,
+  sourceStatuses: PersonalFinancialScreenResponseDto["sources"],
+): boolean {
+  const ratio = metric === "currentRatio";
+  if (
+    (!keys(value, ["status", "value", "unit", "sources"]) &&
+      !keys(value, ["status", "reason", "unit", "sources"])) ||
+    value.unit !== (ratio ? "multiple" : "USD") ||
+    !Array.isArray(value.sources) ||
+    value.sources.length > (ratio ? 12 : 6) ||
+    !value.sources.every(
+      (source) =>
+        keys(source, ["concept", "accessionNumber", "asOfDate", "value"]) &&
+        member(instantConcepts, source.concept) &&
+        (ratio ||
+          source.concept ===
+            (metric === "currentAssets"
+              ? "AssetsCurrent"
+              : "LiabilitiesCurrent")) &&
+        matches(source.accessionNumber, /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u) &&
+        date(source.asOfDate) &&
+        Math.abs(Number(source.asOfDate.slice(0, 4)) - year) <= 1 &&
+        decimal(source.value),
+    )
+  )
+    return false;
+  if (!ratio) {
+    const concept =
+      metric === "currentAssets" ? "AssetsCurrent" : "LiabilitiesCurrent";
+    const frameStatus = sourceStatuses.find(
+      (source) => source.concept === concept,
+    )?.status;
+    if (frameStatus !== "available")
+      return (
+        value.status === "unavailable" &&
+        "reason" in value &&
+        value.reason ===
+          (frameStatus === "not_covered" ? "missing" : "source_unavailable") &&
+        value.sources.length === 0
+      );
+    if (
+      value.status === "unavailable" &&
+      "reason" in value &&
+      value.reason === "source_unavailable"
+    )
+      return false;
+  }
+  if (value.status === "available") {
+    if (
+      !("value" in value) ||
+      !decimal(value.value, ratio ? 129 : 64) ||
+      value.sources.length === 0
+    )
+      return false;
+    const reportedValue = value.value;
+    if (ratio) return true; // Independently bound to both reported operands below.
+    const sources =
+      value.sources as unknown as readonly PersonalFinancialScreenInstantSourceRefDto[];
+    return sources.every(
+      (source) =>
+        normalizedDecimal(source.value) === normalizedDecimal(reportedValue) &&
+        source.asOfDate === sources[0]!.asOfDate &&
+        supportedBalanceDate(source.asOfDate, year),
+    );
+  }
+  if (
+    value.status !== "unavailable" ||
+    !("reason" in value) ||
+    !member(
+      [
+        "missing",
+        "conflicting",
+        "source_unavailable",
+        "invalid_value",
+        "unsupported_balance_date",
+        ...(ratio
+          ? [
+              "balance_date_mismatch",
+              "filing_mismatch",
+              "nonpositive_current_liabilities",
+              "unsupported_sign",
+            ]
+          : []),
+      ],
+      value.reason,
+    )
+  )
+    return false;
+  if (ratio) return true;
+  // Invalid reported decimal references cannot cross this decoder's strict source boundary.
+  if (value.reason === "invalid_value") return false;
+  const sources =
+    value.sources as unknown as readonly PersonalFinancialScreenInstantSourceRefDto[];
+  if (value.reason === "missing" || value.reason === "source_unavailable")
+    return sources.length === 0;
+  if (value.reason === "unsupported_balance_date") {
+    const first = sources[0];
+    return (
+      first !== undefined &&
+      !supportedBalanceDate(first.asOfDate, year) &&
+      sources.every(
+        (source) =>
+          source.asOfDate === first.asOfDate &&
+          normalizedDecimal(source.value) === normalizedDecimal(first.value),
+      )
+    );
+  }
+  // A quarantined CIK can conflict even when its retained references agree or are empty.
+  return true;
+}
+
+function supportedBalanceDate(asOfDate: string, year: number): boolean {
+  return (
+    asOfDate >= `${String(year)}-10-01` && asOfDate <= `${String(year)}-12-31`
+  );
+}
+
+/** Verify source multiplicity and the ratio independently of the server's decimal library. */
+function currentAssetsToLiabilities(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const assets = cells.currentAssets;
+  const liabilities = cells.currentLiabilities;
+  const ratio = cells.currentRatio;
+  const sources = [...assets.sources, ...liabilities.sources];
+  const sourceKey = (source: PersonalFinancialScreenInstantSourceRefDto) =>
+    JSON.stringify([
+      source.concept,
+      source.asOfDate,
+      source.accessionNumber,
+      source.value,
+    ]);
+  const expected = sources.map(sourceKey).sort();
+  const actual = ratio.sources.map(sourceKey).sort();
+  if (
+    expected.length !== actual.length ||
+    expected.some((key, index) => key !== actual[index])
+  )
+    return false;
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenInstantCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ) => ratio.status === "unavailable" && ratio.reason === reason;
+  if (liabilities.status === "unavailable") return unknown(liabilities.reason);
+  if (assets.status === "unavailable") return unknown(assets.reason);
+  const first = sources[0]!;
+  if (sources.some((source) => source.asOfDate !== first.asOfDate))
+    return unknown("balance_date_mismatch");
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unknown("filing_mismatch");
+  const denominator = scaledDecimal(liabilities.value);
+  const numerator = scaledDecimal(assets.value);
+  if (denominator.coefficient <= 0n)
+    return unknown("nonpositive_current_liabilities");
+  if (numerator.coefficient < 0n) return unknown("unsupported_sign");
+  // Multiple hundredths = assets / liabilities * 100; no percentage conversion.
+  const dividend =
+    numerator.coefficient * 10n ** BigInt(denominator.scale) * 100n;
+  const divisor = denominator.coefficient * 10n ** BigInt(numerator.scale);
+  const rounded =
+    dividend / divisor + (2n * (dividend % divisor) >= divisor ? 1n : 0n);
+  const expectedValue = `${String(rounded / 100n)}.${String(rounded % 100n).padStart(2, "0")}`;
+  return ratio.status === "available" && ratio.value === expectedValue;
 }
 
 function admittedSource(

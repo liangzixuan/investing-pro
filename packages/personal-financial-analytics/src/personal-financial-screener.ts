@@ -1,14 +1,18 @@
 import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   type PersonalFinancialRevenueBasisDto,
-  type PersonalFinancialScreenCellDto,
+  type PersonalFinancialScreenAnnualCellDto,
+  type PersonalFinancialScreenInstantCellDto,
+  type PersonalFinancialScreenInstantSourceRefDto,
+  type PersonalSecInstantConceptDto,
+  type PersonalSecInstantFrameDto,
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenMetricDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialScreenRowDto,
   type PersonalFinancialScreenSourceRefDto,
   type PersonalSecAnnualConceptDto,
-  type PersonalSecAnnualFinancialSnapshotDto,
+  type PersonalSecFinancialSnapshotDto,
   type PersonalSecAnnualFrameDto,
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
@@ -29,9 +33,14 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.3.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.4.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
+  currentRatio: Object.freeze({
+    formulaId: "current_assets_to_current_liabilities",
+    formulaVersion: "1.0.0",
+    expression: "current_assets / current_liabilities",
+  }),
   netMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.netMargin,
   operatingMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.operatingMargin,
   operatingCashFlowMargin:
@@ -62,6 +71,9 @@ const METRICS = [
   "operatingCashFlowLessPpePurchases",
   "grossMargin",
   "operatingCashFlowToNetIncome",
+  "currentAssets",
+  "currentLiabilities",
+  "currentRatio",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
 const REVENUE_CONCEPTS = [
@@ -77,6 +89,10 @@ const CONCEPTS = [
   "GrossProfit",
   "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const satisfies readonly PersonalSecAnnualConceptDto[];
+const INSTANT_CONCEPTS = [
+  "AssetsCurrent",
+  "LiabilitiesCurrent",
+] as const satisfies readonly PersonalSecInstantConceptDto[];
 const FAILED_SOURCE_STATUSES = new Set([
   "rate_limited",
   "upstream_unavailable",
@@ -95,7 +111,7 @@ const ScreenDecimal = Decimal.clone({
 });
 
 type UnavailableReason = Extract<
-  PersonalFinancialScreenCellDto,
+  PersonalFinancialScreenAnnualCellDto,
   { status: "unavailable" }
 >["reason"];
 type FrameIndex = ReadonlyMap<
@@ -109,6 +125,22 @@ type FrameIndex = ReadonlyMap<
     readonly unknownCiks: ReadonlySet<string>;
   }
 >;
+
+type InstantFrameIndex = ReadonlyMap<
+  PersonalSecInstantConceptDto,
+  {
+    readonly status: PersonalSecInstantFrameDto["status"];
+    readonly facts: ReadonlyMap<
+      string,
+      readonly PersonalFinancialScreenInstantSourceRefDto[]
+    >;
+    readonly unknownCiks: ReadonlySet<string>;
+  }
+>;
+type InstantUnavailableReason = Extract<
+  PersonalFinancialScreenInstantCellDto,
+  { status: "unavailable" }
+>["reason"];
 
 /** The saved-definition and HTTP boundaries share this closed criteria grammar. */
 export function validatePersonalFinancialScreenCriteria(
@@ -160,10 +192,10 @@ export function validatePersonalFinancialScreenCriteria(
   }
 }
 
-/** Evaluates one current SEC calendar frame; the frame year is not a fiscal-year label. */
+/** Evaluates annual flows and fixed-Q4 balances; the selected year is not a fiscal-year label. */
 export function evaluatePersonalFinancialScreen(
   identities: readonly PersonalSecurityMasterScreenRowDto[],
-  snapshot: PersonalSecAnnualFinancialSnapshotDto,
+  snapshot: PersonalSecFinancialSnapshotDto,
   criteria: PersonalFinancialScreenCriteriaDto,
   page: Readonly<{ offset: number; limit: number }>,
   catalogSnapshotSha256: `sha256:${string}`,
@@ -195,6 +227,7 @@ export function evaluatePersonalFinancialScreen(
       fail();
 
     const index = indexFrames(snapshot.frames);
+    const instantIndex = indexInstantFrames(snapshot.instantFrames);
     const tokens = normalizeText(criteria.identityText)
       .split(" ")
       .filter(Boolean);
@@ -220,6 +253,8 @@ export function evaluatePersonalFinancialScreen(
         metrics = buildMetrics(
           identity.cik,
           index,
+          instantIndex,
+          snapshot.calendarYear,
           criteria.revenueBasis ?? "agreement",
         );
         metricsByCik.set(identity.cik, metrics);
@@ -236,7 +271,8 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
+      instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
@@ -245,8 +281,8 @@ export function evaluatePersonalFinancialScreen(
         : { revenueBasis: criteria.revenueBasis }),
       fetchedAt: snapshot.fetchedAt,
       expiresAt: snapshot.expiresAt,
-      sources: CONCEPTS.map((concept) => {
-        const frame = snapshot.frames.find(
+      sources: [...CONCEPTS, ...INSTANT_CONCEPTS].map((concept) => {
+        const frame = [...snapshot.frames, ...snapshot.instantFrames].find(
           (candidate) => candidate.concept === concept,
         )!;
         return { concept, status: frame.status, sourceUrl: frame.sourceUrl };
@@ -271,6 +307,8 @@ export function evaluatePersonalFinancialScreen(
 function buildMetrics(
   cik: string,
   frames: FrameIndex,
+  instantFrames: InstantFrameIndex,
+  calendarYear: number,
   revenueBasis: PersonalFinancialRevenueBasisDto,
 ): PersonalFinancialScreenRowDto["metrics"] {
   const revenue = resolveReported(
@@ -291,6 +329,18 @@ function buildMetrics(
     ["PaymentsToAcquirePropertyPlantAndEquipment"],
     frames,
   );
+  const currentAssets = resolveInstant(
+    cik,
+    "AssetsCurrent",
+    instantFrames,
+    calendarYear,
+  );
+  const currentLiabilities = resolveInstant(
+    cik,
+    "LiabilitiesCurrent",
+    instantFrames,
+    calendarYear,
+  );
   return {
     revenue,
     grossProfit,
@@ -310,13 +360,146 @@ function buildMetrics(
       operatingCashFlow,
       netIncome,
     ),
+    currentAssets,
+    currentLiabilities,
+    currentRatio: currentAssetsToLiabilities(currentAssets, currentLiabilities),
+  };
+}
+
+function indexInstantFrames(
+  frames: readonly PersonalSecInstantFrameDto[],
+): InstantFrameIndex {
+  return new Map(
+    frames.map((frame) => {
+      const facts = new Map<
+        string,
+        PersonalFinancialScreenInstantSourceRefDto[]
+      >();
+      for (const fact of frame.facts) {
+        const refs = facts.get(fact.cik) ?? [];
+        refs.push({
+          concept: frame.concept,
+          accessionNumber: fact.accessionNumber,
+          asOfDate: fact.asOfDate,
+          value: fact.value,
+        });
+        facts.set(fact.cik, refs);
+      }
+      for (const refs of facts.values())
+        refs.sort(
+          (a, b) =>
+            compareText(a.asOfDate, b.asOfDate) ||
+            compareText(a.accessionNumber, b.accessionNumber) ||
+            compareText(a.value, b.value),
+        );
+      return [
+        frame.concept,
+        {
+          status: frame.status,
+          facts,
+          unknownCiks: new Set(frame.unknownCiks),
+        },
+      ] as const;
+    }),
+  );
+}
+
+function instantUnavailable(
+  unit: "USD" | "multiple",
+  reason: InstantUnavailableReason,
+  sources: readonly PersonalFinancialScreenInstantSourceRefDto[],
+): PersonalFinancialScreenInstantCellDto {
+  return { status: "unavailable", unit, reason, sources };
+}
+
+function resolveInstant(
+  cik: string,
+  concept: PersonalSecInstantConceptDto,
+  frames: InstantFrameIndex,
+  calendarYear: number,
+): PersonalFinancialScreenInstantCellDto {
+  const frame = frames.get(concept);
+  const sources =
+    frame?.status === "available" ? (frame.facts.get(cik) ?? []) : [];
+  if (frame === undefined || FAILED_SOURCE_STATUSES.has(frame.status))
+    return instantUnavailable("USD", "source_unavailable", sources);
+  if (frame.unknownCiks.has(cik))
+    return instantUnavailable("USD", "conflicting", sources);
+  if (sources.length === 0)
+    return instantUnavailable("USD", "missing", sources);
+  if (sources.some((ref) => !isDecimal(ref.value)))
+    return instantUnavailable("USD", "invalid_value", sources);
+  const first = sources[0]!;
+  const value = new ScreenDecimal(first.value);
+  if (
+    sources.some(
+      (ref) =>
+        ref.asOfDate !== first.asOfDate ||
+        !new ScreenDecimal(ref.value).eq(value),
+    )
+  )
+    return instantUnavailable("USD", "conflicting", sources);
+  // This conservative application window is not an SEC-published date tolerance.
+  if (
+    sources.some(
+      (ref) =>
+        ref.asOfDate < `${String(calendarYear)}-10-01` ||
+        ref.asOfDate > `${String(calendarYear)}-12-31`,
+    )
+  )
+    return instantUnavailable("USD", "unsupported_balance_date", sources);
+  return {
+    status: "available",
+    unit: "USD",
+    value: canonicalDecimal(value),
+    sources,
+  };
+}
+
+function currentAssetsToLiabilities(
+  assets: PersonalFinancialScreenInstantCellDto,
+  liabilities: PersonalFinancialScreenInstantCellDto,
+): PersonalFinancialScreenInstantCellDto {
+  const sources = [...assets.sources, ...liabilities.sources];
+  if (liabilities.status === "unavailable")
+    return instantUnavailable("multiple", liabilities.reason, sources);
+  if (assets.status === "unavailable")
+    return instantUnavailable("multiple", assets.reason, sources);
+  const first = sources[0]!;
+  // Both operands resolve by the row's CIK; every observation must also agree on date and filing.
+  if (sources.some((ref) => ref.asOfDate !== first.asOfDate))
+    return instantUnavailable("multiple", "balance_date_mismatch", sources);
+  if (sources.some((ref) => ref.accessionNumber !== first.accessionNumber))
+    return instantUnavailable("multiple", "filing_mismatch", sources);
+  const denominator = new ScreenDecimal(liabilities.value);
+  if (!denominator.gt(0))
+    return instantUnavailable(
+      "multiple",
+      "nonpositive_current_liabilities",
+      sources,
+    );
+  if (new ScreenDecimal(assets.value).lt(0))
+    return instantUnavailable("multiple", "unsupported_sign", sources);
+  const rounded = new ScreenDecimal(assets.value)
+    .div(denominator)
+    .toDecimalPlaces(
+      PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces,
+      Decimal.ROUND_HALF_UP,
+    );
+  return {
+    status: "available",
+    unit: "multiple",
+    value: rounded.isZero()
+      ? "0.00"
+      : rounded.toFixed(PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces),
+    sources,
   };
 }
 
 function grossProfitMargin(
-  grossProfit: PersonalFinancialScreenCellDto,
-  revenue: PersonalFinancialScreenCellDto,
-): PersonalFinancialScreenCellDto {
+  grossProfit: PersonalFinancialScreenAnnualCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
   const sources = [...grossProfit.sources, ...revenue.sources];
   if (revenue.status === "unavailable")
     return unavailable("percent", revenue.reason, sources);
@@ -348,9 +531,9 @@ function grossProfitMargin(
 }
 
 function cashFlowToNetIncome(
-  operatingCashFlow: PersonalFinancialScreenCellDto,
-  netIncome: PersonalFinancialScreenCellDto,
-): PersonalFinancialScreenCellDto {
+  operatingCashFlow: PersonalFinancialScreenAnnualCellDto,
+  netIncome: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
   const sources = [...operatingCashFlow.sources, ...netIncome.sources];
   if (netIncome.status === "unavailable")
     return unavailable("percent", netIncome.reason, sources);
@@ -399,9 +582,9 @@ function cashFlowToNetIncome(
 }
 
 function cashFlowLessPpePurchases(
-  operatingCashFlow: PersonalFinancialScreenCellDto,
-  ppePurchases: PersonalFinancialScreenCellDto,
-): PersonalFinancialScreenCellDto {
+  operatingCashFlow: PersonalFinancialScreenAnnualCellDto,
+  ppePurchases: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
   const sources = [...operatingCashFlow.sources, ...ppePurchases.sources];
   if (operatingCashFlow.status === "unavailable")
     return unavailable("USD", operatingCashFlow.reason, sources);
@@ -445,7 +628,7 @@ function resolveReported(
   cik: string,
   concepts: readonly PersonalSecAnnualConceptDto[],
   frames: FrameIndex,
-): PersonalFinancialScreenCellDto {
+): PersonalFinancialScreenAnnualCellDto {
   const sources: PersonalFinancialScreenSourceRefDto[] = [];
   let sourceUnavailable = false;
   let conflicting = false;
@@ -485,9 +668,9 @@ function resolveReported(
 }
 
 function margin(
-  numerator: PersonalFinancialScreenCellDto,
-  revenue: PersonalFinancialScreenCellDto,
-): PersonalFinancialScreenCellDto {
+  numerator: PersonalFinancialScreenAnnualCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
   const sources = [...numerator.sources, ...revenue.sources];
   if (revenue.status === "unavailable")
     return unavailable("percent", revenue.reason, sources);
@@ -606,7 +789,7 @@ function unavailable(
   unit: "USD" | "percent",
   reason: UnavailableReason,
   sources: readonly PersonalFinancialScreenSourceRefDto[],
-): PersonalFinancialScreenCellDto {
+): PersonalFinancialScreenAnnualCellDto {
   return { status: "unavailable", unit, reason, sources };
 }
 
@@ -637,9 +820,7 @@ function normalizeText(value: string): string {
     .trim();
 }
 
-function isSnapshot(
-  value: unknown,
-): value is PersonalSecAnnualFinancialSnapshotDto {
+function isSnapshot(value: unknown): value is PersonalSecFinancialSnapshotDto {
   if (
     !exactRecord(value, [
       "calendarYear",
@@ -647,6 +828,8 @@ function isSnapshot(
       "expiresAt",
       "snapshotSha256",
       "frames",
+      "instantQuarter",
+      "instantFrames",
     ])
   )
     return false;
@@ -658,7 +841,10 @@ function isSnapshot(
     typeof value.snapshotSha256 !== "string" ||
     !DIGEST.test(value.snapshotSha256) ||
     !Array.isArray(value.frames) ||
-    value.frames.length !== CONCEPTS.length
+    value.frames.length !== CONCEPTS.length ||
+    value.instantQuarter !== 4 ||
+    !Array.isArray(value.instantFrames) ||
+    value.instantFrames.length !== INSTANT_CONCEPTS.length
   )
     return false;
   const seenConcepts = new Set<string>();
@@ -708,6 +894,53 @@ function isSnapshot(
         !isDate(fact.startDate) ||
         !isDate(fact.endDate) ||
         fact.startDate > fact.endDate ||
+        typeof fact.value !== "string" ||
+        fact.value.length > 64
+      )
+        return false;
+    }
+  }
+  const seenInstantConcepts = new Set<string>();
+  for (const frame of value.instantFrames as unknown[]) {
+    if (
+      !exactRecord(frame, [
+        "concept",
+        "status",
+        "sourceUrl",
+        "facts",
+        "unknownCiks",
+      ]) ||
+      !INSTANT_CONCEPTS.some((concept) => concept === frame.concept) ||
+      typeof frame.concept !== "string" ||
+      seenInstantConcepts.has(frame.concept) ||
+      typeof frame.status !== "string" ||
+      !["available", "not_covered", ...FAILED_SOURCE_STATUSES].includes(
+        frame.status,
+      ) ||
+      frame.sourceUrl !==
+        `https://data.sec.gov/api/xbrl/frames/us-gaap/${frame.concept}/USD/CY${String(value.calendarYear)}Q4I.json` ||
+      !Array.isArray(frame.facts) ||
+      frame.facts.length > 50_000 ||
+      !Array.isArray(frame.unknownCiks) ||
+      frame.unknownCiks.length > 50_000 ||
+      !frame.unknownCiks.every(
+        (cik: unknown) => typeof cik === "string" && CIK.test(cik),
+      ) ||
+      (frame.status !== "available" &&
+        (frame.facts.length !== 0 || frame.unknownCiks.length !== 0))
+    )
+      return false;
+    seenInstantConcepts.add(frame.concept);
+    for (const fact of frame.facts as unknown[]) {
+      if (
+        !exactRecord(fact, ["cik", "accessionNumber", "asOfDate", "value"]) ||
+        typeof fact.cik !== "string" ||
+        !CIK.test(fact.cik) ||
+        typeof fact.accessionNumber !== "string" ||
+        !ACCESSION.test(fact.accessionNumber) ||
+        !isDate(fact.asOfDate) ||
+        Number(fact.asOfDate.slice(0, 4)) < value.calendarYear - 1 ||
+        Number(fact.asOfDate.slice(0, 4)) > value.calendarYear + 1 ||
         typeof fact.value !== "string" ||
         fact.value.length > 64
       )

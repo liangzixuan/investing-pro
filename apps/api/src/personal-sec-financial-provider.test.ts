@@ -1,6 +1,7 @@
 import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import { evaluatePersonalFinancialScreen } from "@research-cockpit/personal-financial-analytics";
@@ -41,7 +42,9 @@ function fact(
 
 function payload(
   url: string,
-  data: readonly unknown[] = [fact()],
+  data: readonly unknown[] = url.endsWith("Q4I.json")
+    ? [instantFact()]
+    : [fact()],
 ): Record<string, unknown> {
   const path = new URL(url).pathname.split("/");
   return {
@@ -55,6 +58,29 @@ function payload(
     data,
   };
 }
+
+function instantFact(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    cik: 42,
+    accn: "0000000042-26-000001",
+    end: "2025-12-31",
+    val: 1200000,
+    ...overrides,
+  };
+}
+
+const EXPECTED_URLS = [
+  ...PERSONAL_SEC_ANNUAL_CONCEPTS.map(
+    (concept) =>
+      `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025.json`,
+  ),
+  ...PERSONAL_SEC_INSTANT_CONCEPTS.map(
+    (concept) =>
+      `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025Q4I.json`,
+  ),
+];
 
 function mockedFetch(
   transform?: (url: string, index: number) => Response,
@@ -115,7 +141,7 @@ describe("SEC annual financial provider", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("loads only eight fixed USD annual routes, preserves the original seven in order, and spaces requests below five per second", async () => {
+  it("loads eight unchanged annual and two fixed Q4 instant USD routes, with all ten requests paced", async () => {
     const starts: number[] = [];
     const fetch = mockedFetch((url) => {
       starts.push(Date.now());
@@ -128,7 +154,7 @@ describe("SEC annual financial provider", () => {
       now: () => NOW,
     });
     const snapshot = await finish(provider.loadSnapshot(2025));
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
     expect(snapshot.frames.map((frame) => frame.concept)).toEqual(
       PERSONAL_SEC_ANNUAL_CONCEPTS,
     );
@@ -143,9 +169,7 @@ describe("SEC annual financial provider", () => {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
     for (const [index, [url, init]] of fetch.mock.calls.entries()) {
-      expect(url).toBe(
-        `https://data.sec.gov/api/xbrl/frames/us-gaap/${PERSONAL_SEC_ANNUAL_CONCEPTS[index]}/USD/CY2025.json`,
-      );
+      expect(url).toBe(EXPECTED_URLS[index]);
       expect(init).toMatchObject({
         method: "GET",
         redirect: "error",
@@ -176,10 +200,14 @@ describe("SEC annual financial provider", () => {
     ]);
     expect(snapshot).toMatchObject({
       calendarYear: 2025,
+      instantQuarter: 4,
       fetchedAt: NOW.toISOString(),
       expiresAt: "2026-09-09T18:30:00.000Z",
     });
     expect(snapshot.snapshotSha256).toMatch(/^sha256:[a-f0-9]{64}$/u);
+    expect(snapshot.instantFrames.map((frame) => frame.concept)).toEqual(
+      PERSONAL_SEC_INSTANT_CONCEPTS,
+    );
     expect(Object.isFrozen(snapshot.frames[0]?.facts[0])).toBe(true);
     expect(JSON.stringify(snapshot)).not.toContain(USER_AGENT);
   });
@@ -213,6 +241,206 @@ describe("SEC annual financial provider", () => {
       "0000000004",
       "0000000005",
     ]);
+  });
+
+  it("retains actual instant dates and signed precision without inventing annual durations", async () => {
+    const rows = [
+      instantFact({ cik: 1, end: "2025-10-01", val: "-2.000001" }),
+      instantFact({ cik: 2, end: "2025-12-31", val: "-0.000000" }),
+      instantFact({ cik: 3, end: "2026-01-31" }),
+      instantFact({ cik: 4, end: "2025-09-30" }),
+      instantFact({ cik: 5, end: "2024-12-31" }),
+      instantFact({ cik: 6, end: "2027-01-01" }),
+      instantFact({ cik: 7, end: "2025-02-30" }),
+      instantFact({ cik: 8, start: "2025-01-01" }),
+      instantFact({ cik: 9, start: null }),
+      instantFact({ cik: 10, val: "9007199254740993" }),
+      instantFact({ cik: 11, val: "0.0000001" }),
+      instantFact({ cik: 12, accn: "invalid-accession" }),
+      instantFact({ cik: 13 }),
+      instantFact({ cik: 13 }),
+      instantFact({ cik: 14 }),
+      instantFact({ cik: 14, val: 1 }),
+    ];
+    const load = async (data: readonly unknown[]) =>
+      finish(
+        createSecPersonalFinancialProvider(USER_AGENT, {
+          fetch: mockedFetch((url) =>
+            Response.json(
+              url.endsWith("Q4I.json") ? payload(url, data) : payload(url),
+            ),
+          ),
+        }).loadSnapshot(2025),
+      );
+    const first = await load(rows),
+      reversed = await load([...rows].reverse());
+    expect(first.instantFrames).toEqual(reversed.instantFrames);
+    expect(
+      first.instantFrames[0]?.facts.map((row) => [
+        row.cik,
+        row.asOfDate,
+        row.value,
+      ]),
+    ).toEqual([
+      ["0000000001", "2025-10-01", "-2.000001"],
+      ["0000000002", "2025-12-31", "0"],
+      ["0000000003", "2026-01-31", "1200000"],
+      ["0000000004", "2025-09-30", "1200000"],
+      ["0000000005", "2024-12-31", "1200000"],
+    ]);
+    expect(first.instantFrames[0]?.unknownCiks).toEqual(
+      Array.from({ length: 9 }, (_, index) =>
+        String(index + 6).padStart(10, "0"),
+      ),
+    );
+    expect(Object.keys(first.instantFrames[0]!.facts[0]!)).toEqual([
+      "cik",
+      "accessionNumber",
+      "asOfDate",
+      "value",
+    ]);
+    expect(Object.isFrozen(first.instantFrames[0]!.facts[0])).toBe(true);
+    expect(Object.isFrozen(first.instantFrames)).toBe(true);
+  });
+
+  it.each([
+    { taxonomy: "ifrs-full" },
+    { tag: "Assets" },
+    { uom: "shares" },
+    { ccp: "CY2025" },
+    { ccp: "CY2025Q3I" },
+    { ccp: "CY2026Q4I" },
+    { pts: 2 },
+    { data: [{ cik: "invalid" }] },
+  ])(
+    "rejects incorrect instant frame metadata %j without changing annual frames",
+    async (overrides) => {
+      const result = await finish(
+        createSecPersonalFinancialProvider(USER_AGENT, {
+          fetch: mockedFetch((url) =>
+            Response.json(
+              url.includes("/AssetsCurrent/")
+                ? { ...payload(url), ...overrides }
+                : payload(url),
+            ),
+          ),
+        }).loadSnapshot(2025),
+      );
+      expect(result.instantFrames[0]).toMatchObject({
+        status: "invalid_response",
+        facts: [],
+        unknownCiks: [],
+      });
+      expect(result.instantFrames[1]?.status).toBe("available");
+      expect(result.frames.every((frame) => frame.status === "available")).toBe(
+        true,
+      );
+    },
+  );
+
+  it.each([
+    { status: 404, outcome: "not_covered" },
+    { status: 429, outcome: "rate_limited" },
+    { status: 503, outcome: "upstream_unavailable" },
+    { status: 200, outcome: "invalid_response" },
+  ])(
+    "isolates instant source $outcome and caches the complete ten-frame result",
+    async ({ status, outcome }) => {
+      const fetch = mockedFetch((url) =>
+        url.endsWith("Q4I.json")
+          ? new Response("unretained-instant-body", { status })
+          : Response.json(payload(url)),
+      );
+      const provider = createSecPersonalFinancialProvider(USER_AGENT, {
+        fetch,
+      });
+      const snapshot = await finish(provider.loadSnapshot(2025));
+      expect(
+        snapshot.frames.every((frame) => frame.status === "available"),
+      ).toBe(true);
+      expect(
+        snapshot.instantFrames.every(
+          (frame) =>
+            frame.status === outcome &&
+            frame.facts.length === 0 &&
+            frame.unknownCiks.length === 0,
+        ),
+      ).toBe(true);
+      expect(await provider.loadSnapshot(2025)).toBe(snapshot);
+      expect(fetch).toHaveBeenCalledTimes(10);
+      expect(JSON.stringify(snapshot)).not.toContain("unretained-instant-body");
+    },
+  );
+
+  it("binds instant amount, actual date, accession and failure into one cached digest", async () => {
+    let value = "1.25",
+      end = "2025-12-31",
+      accession = "0000000042-26-000001",
+      failed = false;
+    const fetch = mockedFetch((url) =>
+      !url.includes("/AssetsCurrent/")
+        ? Response.json(payload(url))
+        : failed
+          ? new Response(null, { status: 503 })
+          : Response.json(
+              payload(url, [instantFact({ val: value, end, accn: accession })]),
+            ),
+    );
+    const provider = createSecPersonalFinancialProvider(USER_AGENT, { fetch });
+    const first = await finish(provider.loadSnapshot(2025));
+    const same = await finish(provider.loadSnapshot(2025, undefined, true));
+    expect(same.snapshotSha256).toBe(first.snapshotSha256);
+    const hashes = new Set([first.snapshotSha256]);
+    for (const mutate of [
+      () => {
+        value = "-2.000001";
+      },
+      () => {
+        end = "2026-01-31";
+      },
+      () => {
+        accession = "0000000042-26-000099";
+      },
+      () => {
+        failed = true;
+      },
+    ]) {
+      mutate();
+      const next = await finish(provider.loadSnapshot(2025, undefined, true));
+      expect(hashes.has(next.snapshotSha256)).toBe(false);
+      hashes.add(next.snapshotSha256);
+      expect(next.frames).toEqual(first.frames);
+      expect(next.instantFrames[1]).toEqual(first.instantFrames[1]);
+      expect(await provider.loadSnapshot(2025)).toBe(next);
+    }
+    expect(fetch).toHaveBeenCalledTimes(60);
+    expect(hashes.size).toBe(5);
+  });
+
+  it("aborts during instant acquisition without caching an annual-only partial snapshot", async () => {
+    let stall = true;
+    const fetch = vi.fn<typeof globalThis.fetch>((input) => {
+      const url = requestUrl(input);
+      return stall && url.includes("/AssetsCurrent/")
+        ? new Promise<Response>(() => undefined)
+        : Promise.resolve(Response.json(payload(url)));
+    });
+    const provider = createSecPersonalFinancialProvider(USER_AGENT, { fetch });
+    const controller = new AbortController();
+    const pending = provider.loadSnapshot(2025, controller.signal);
+    const rejected = expect(pending).rejects.toMatchObject({ code: "aborted" });
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(fetch).toHaveBeenCalledTimes(9);
+    controller.abort();
+    await rejected;
+    expect(fetch.mock.calls[8]?.[1]?.signal?.aborted).toBe(true);
+    stall = false;
+    const recovered = await finish(provider.loadSnapshot(2025));
+    expect(recovered.frames).toHaveLength(8);
+    expect(
+      recovered.instantFrames.every((frame) => frame.status === "available"),
+    ).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(19);
   });
 
   it("makes both duplicate and conflicting issuer facts unknown independently of input order", async () => {
@@ -300,7 +528,7 @@ describe("SEC annual financial provider", () => {
       cik: "0000000003",
       value: "999",
     });
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
   });
 
   it.each([
@@ -309,7 +537,7 @@ describe("SEC annual financial provider", () => {
     { status: 503, outcome: "upstream_unavailable" },
     { status: 200, outcome: "invalid_response" },
   ])(
-    "retains GrossProfit $outcome independently and caches the complete eight-frame outcome",
+    "retains GrossProfit $outcome independently and caches the complete ten-frame outcome",
     async ({ status, outcome }) => {
       const fetch = mockedFetch((url) =>
         url.includes("/GrossProfit/")
@@ -333,7 +561,7 @@ describe("SEC annual financial provider", () => {
       });
       expect(JSON.stringify(first)).not.toContain("private-provider-canary");
       expect(await provider.loadSnapshot(2025)).toBe(first);
-      expect(fetch).toHaveBeenCalledTimes(8);
+      expect(fetch).toHaveBeenCalledTimes(10);
     },
   );
 
@@ -426,7 +654,7 @@ describe("SEC annual financial provider", () => {
               frame.facts[0]?.value === "999",
           ),
       ).toBe(true);
-      expect(fetch).toHaveBeenCalledTimes(8);
+      expect(fetch).toHaveBeenCalledTimes(10);
     },
   );
 
@@ -460,7 +688,7 @@ describe("SEC annual financial provider", () => {
     expect(
       result.frames.slice(0, 7).every((frame) => frame.status === "available"),
     ).toBe(true);
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
   });
 
   it.each(
@@ -510,7 +738,7 @@ describe("SEC annual financial provider", () => {
         "private-ppe-provider-canary",
       );
       expect(await provider.loadSnapshot(2025)).toBe(result);
-      expect(fetch).toHaveBeenCalledTimes(8);
+      expect(fetch).toHaveBeenCalledTimes(10);
     },
   );
 
@@ -695,7 +923,7 @@ describe("SEC annual financial provider", () => {
     ).toBe(true);
   });
 
-  it("reuses all eight frames for thirty minutes, refreshes explicitly, and includes GrossProfit-only changes in the digest", async () => {
+  it("reuses the eight annual and two instant frames for thirty minutes, refreshes explicitly, and includes GrossProfit-only changes in the digest", async () => {
     let now = NOW;
     let amount = 1;
     const fetch = mockedFetch((url) =>
@@ -711,12 +939,9 @@ describe("SEC annual financial provider", () => {
     });
     const first = await finish(provider.loadSnapshot(2025));
     expect(await provider.loadSnapshot(2025)).toBe(first);
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
     expect(fetch.mock.calls.map(([url]) => requestUrl(url))).toEqual(
-      PERSONAL_SEC_ANNUAL_CONCEPTS.map(
-        (concept) =>
-          `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025.json`,
-      ),
+      EXPECTED_URLS,
     );
     const listing: PersonalSecurityMasterScreenRowDto = {
       cik: "0000000042",
@@ -775,13 +1000,13 @@ describe("SEC annual financial provider", () => {
         known: 1,
         unknown: 0,
       });
-      expect(fetch).toHaveBeenCalledTimes(8);
+      expect(fetch).toHaveBeenCalledTimes(10);
     }
     const refreshed = await finish(
       provider.loadSnapshot(2025, undefined, true),
     );
     expect(refreshed.snapshotSha256).toBe(first.snapshotSha256);
-    expect(fetch).toHaveBeenCalledTimes(16);
+    expect(fetch).toHaveBeenCalledTimes(20);
     now = new Date("2026-09-09T18:30:00.000Z");
     amount = 2;
     const changed = await finish(provider.loadSnapshot(2025));
@@ -789,10 +1014,10 @@ describe("SEC annual financial provider", () => {
     expect(changed.frames.slice(0, 6)).toEqual(first.frames.slice(0, 6));
     expect(changed.frames[6]?.facts[0]?.value).toBe("2");
     expect(changed.frames[7]).toEqual(first.frames[7]);
-    expect(fetch).toHaveBeenCalledTimes(24);
+    expect(fetch).toHaveBeenCalledTimes(30);
     await finish(provider.loadSnapshot(2024));
     await finish(provider.loadSnapshot(2025));
-    expect(fetch).toHaveBeenCalledTimes(40);
+    expect(fetch).toHaveBeenCalledTimes(50);
   });
 
   it("includes PP&E-only amount, accession and failure changes in the digest without extra cache reads", async () => {
@@ -813,12 +1038,12 @@ describe("SEC annual financial provider", () => {
     });
     const initial = await finish(provider.loadSnapshot(2025));
     expect(await provider.loadSnapshot(2025)).toBe(initial);
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
     const identical = await finish(
       provider.loadSnapshot(2025, undefined, true),
     );
     expect(identical.snapshotSha256).toBe(initial.snapshotSha256);
-    expect(fetch).toHaveBeenCalledTimes(16);
+    expect(fetch).toHaveBeenCalledTimes(20);
 
     amount = "-2.000001";
     const changedAmount = await finish(
@@ -826,7 +1051,7 @@ describe("SEC annual financial provider", () => {
     );
     expect(changedAmount.snapshotSha256).not.toBe(initial.snapshotSha256);
     expect(changedAmount.frames[7]?.facts[0]?.value).toBe("-2.000001");
-    expect(fetch).toHaveBeenCalledTimes(24);
+    expect(fetch).toHaveBeenCalledTimes(30);
 
     accession = "0000000042-26-000099";
     const changedAccession = await finish(
@@ -838,7 +1063,7 @@ describe("SEC annual financial provider", () => {
     expect(changedAccession.frames[7]?.facts[0]?.accessionNumber).toBe(
       accession,
     );
-    expect(fetch).toHaveBeenCalledTimes(32);
+    expect(fetch).toHaveBeenCalledTimes(40);
 
     failed = true;
     const unavailable = await finish(
@@ -853,7 +1078,7 @@ describe("SEC annual financial provider", () => {
       unknownCiks: [],
     });
     expect(await provider.loadSnapshot(2025)).toBe(unavailable);
-    expect(fetch).toHaveBeenCalledTimes(40);
+    expect(fetch).toHaveBeenCalledTimes(50);
     expect(JSON.stringify(unavailable)).not.toContain(
       "private-ppe-cache-canary",
     );
@@ -862,7 +1087,7 @@ describe("SEC annual financial provider", () => {
     now = new Date("2026-09-09T18:30:00.000Z");
     const recovered = await finish(provider.loadSnapshot(2025));
     expect(recovered.snapshotSha256).toBe(changedAccession.snapshotSha256);
-    expect(fetch).toHaveBeenCalledTimes(48);
+    expect(fetch).toHaveBeenCalledTimes(60);
     for (const snapshot of [
       identical,
       changedAmount,
@@ -883,7 +1108,7 @@ describe("SEC annual financial provider", () => {
     });
     const snapshots = await finish(Promise.all([first, second]));
     expect(snapshots[0]).toBe(snapshots[1]);
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
   });
 
   it("rejects invalid years and refresh flags before requests", async () => {
@@ -922,7 +1147,7 @@ describe("SEC annual financial provider", () => {
     expect(snapshot.frames.every((frame) => frame.status === "available")).toBe(
       true,
     );
-    expect(fetch).toHaveBeenCalledTimes(8);
+    expect(fetch).toHaveBeenCalledTimes(10);
     expect(
       fetch.mock.calls.every(([, init]) => init?.signal?.aborted === false),
     ).toBe(true);

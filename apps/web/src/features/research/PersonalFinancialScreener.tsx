@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   fetchPersonalFinancialSavedViews,
   isPersonalFinancialScreenCriteria,
+  isPersonalFinancialInstantSource,
   personalFinancialSourceUrl,
   savePersonalFinancialSavedViews,
   screenPersonalFinancials,
@@ -52,6 +53,9 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingCashFlowLessPpePurchases: "Operating cash flow less PP&E purchases",
   grossMargin: "Gross profit / selected revenue (%)",
   operatingCashFlowToNetIncome: "Operating cash flow / net income (%)",
+  currentAssets: "Current assets",
+  currentLiabilities: "Current liabilities",
+  currentRatio: "Current assets / current liabilities (×)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -76,6 +80,12 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported GrossProfit / selected revenue × 100. Requires positive selected revenue and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; negative results and results above 100% are retained.",
   operatingCashFlowToNetIncome:
     "Operating cash flow / net income × 100. Requires positive reported net income and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; zero, negative and above-100% results are retained. Independent of the revenue basis.",
+  currentAssets:
+    "Reported AssetsCurrent in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Negative reported balances remain visible. Independent of the revenue basis.",
+  currentLiabilities:
+    "Reported LiabilitiesCurrent in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Negative reported balances remain visible. Independent of the revenue basis.",
+  currentRatio:
+    "Current assets / current liabilities, in multiples. Requires nonnegative assets, positive liabilities, and every reference to share the same actual balance date within Q4 and filing accession. Rounded half-up to two decimal places; inclusive filters compare the displayed rounded multiple. Independent of the revenue basis.",
 };
 function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
   return basis === "agreement"
@@ -95,6 +105,8 @@ function metricOptionLabel(metric: PersonalFinancialScreenMetricDto): string {
     "grossProfit",
     "ppePurchases",
     "operatingCashFlowLessPpePurchases",
+    "currentAssets",
+    "currentLiabilities",
   ].includes(metric)
     ? `${labels[metric]} (USD)`
     : labels[metric];
@@ -102,6 +114,31 @@ function metricOptionLabel(metric: PersonalFinancialScreenMetricDto): string {
 
 function isPercentageMetric(metric: PersonalFinancialScreenMetricDto): boolean {
   return metric === "operatingCashFlowToNetIncome" || metric.endsWith("Margin");
+}
+
+function metricUnitLabel(metric: PersonalFinancialScreenMetricDto): string {
+  return metric === "currentRatio"
+    ? "×"
+    : isPercentageMetric(metric)
+      ? "%"
+      : "USD";
+}
+
+function currentRatioUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (cell.reason === "unsupported_balance_date")
+    return "A reported balance date falls outside October 1–December 31 of the selected year. This is the app’s Q4 date rule, not an SEC-published date tolerance; retained actual dates remain visible.";
+  if (cell.reason === "balance_date_mismatch")
+    return "The current asset and liability references have different actual balance dates. The Q4 frame label alone does not make them compatible.";
+  if (cell.reason === "filing_mismatch")
+    return "The current asset and liability references come from different filing accessions. The ratio remains unknown to avoid mixing filing versions.";
+  if (cell.reason === "nonpositive_current_liabilities")
+    return "Reported current liabilities are zero or negative. The ratio requires a positive denominator; both reported balances remain visible.";
+  if (cell.reason === "unsupported_sign")
+    return "Reported current assets are negative. Their sign is preserved; this ratio requires nonnegative assets and does not take an absolute value.";
+  return "A current asset or liability input is unresolved. The ratio remains unknown; retained reported references are shown below.";
 }
 
 function cashFlowUnknownExplanation(
@@ -144,8 +181,11 @@ function cashFlowToIncomeUnknownExplanation(
 }
 
 function exactPercentage(value: string): string {
+  return `${exactDecimalDisplay(value)}%`;
+}
+function exactDecimalDisplay(value: string): string {
   const [integer = "", fraction] = value.split(".");
-  return `${integer.replace(/\B(?=(\d{3})+(?!\d))/gu, ",")}${fraction === undefined ? "" : `.${fraction}`}%`;
+  return `${integer.replace(/\B(?=(\d{3})+(?!\d))/gu, ",")}${fraction === undefined ? "" : `.${fraction}`}`;
 }
 const emptySaved: PersonalFinancialSavedViewsPayloadDto = {
   schemaVersion: 1,
@@ -189,7 +229,7 @@ export function PersonalFinancialScreener({
     useState<PersonalFinancialScreenResponseDto | null>(null);
   const [running, setRunning] = useState(false);
   const [message, setMessage] = useState(
-    "Choose annual financial criteria, then run the screen.",
+    "Choose financial criteria, then run the screen.",
   );
   const [savedPayload, setSavedPayload] =
     useState<PersonalFinancialSavedViewsPayloadDto>(emptySaved);
@@ -222,7 +262,7 @@ export function PersonalFinancialScreener({
     setSavedAvailable(false);
     setSelectedId("");
     setSavedName("");
-    setMessage("Choose annual financial criteria, then run the screen.");
+    setMessage("Choose financial criteria, then run the screen.");
     if (enabled) void reloadSaved();
     else {
       setSavedBusy(false);
@@ -290,7 +330,7 @@ export function PersonalFinancialScreener({
     };
     if (!isPersonalFinancialScreenCriteria(normalized)) {
       setMessage(
-        "Use a completed calendar year since 2009, up to seven filters, and plain decimal thresholds (USD or percentage points). Blank thresholds are invalid.",
+        "Use a completed calendar year since 2009, up to seven filters, and plain decimal thresholds (USD, percentage points or multiples). Blank thresholds are invalid.",
       );
       return;
     }
@@ -305,9 +345,7 @@ export function PersonalFinancialScreener({
     setResponse(null);
     setRunning(true);
     setMessage(
-      refresh
-        ? "Refreshing SEC annual data…"
-        : "Screening SEC annual financials…",
+      refresh ? "Refreshing SEC annual data…" : "Screening SEC financials…",
     );
     try {
       const completeActivity = onActivityStart();
@@ -317,7 +355,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "5.0.0",
+          schemaVersion: "6.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -525,18 +563,20 @@ export function PersonalFinancialScreener({
     >
       <div className="discovery-section-heading">
         <div>
-          <p className="eyebrow">SEC annual financials</p>
-          <h2 id="personal-financial-screener-title">
-            Annual financial screen
-          </h2>
+          <p className="eyebrow">SEC financials</p>
+          <h2 id="personal-financial-screener-title">Financial screen</h2>
         </div>
-        <span>Annual · USD and percentages</span>
+        <span>Annual flows · Q4 balances · USD, percentages and multiples</span>
       </div>
       <p className="market-scope-note">
-        Compare calendar-aligned annual SEC facts across the current local
-        catalog. Actual company reporting periods can differ; inspect each value
-        before comparing companies. All numeric filters must pass. Missing or
-        conflicting facts stay unknown.
+        Compare annual SEC flows and Q4 balance-sheet facts across the current
+        local catalog. Actual company reporting periods and balance dates can
+        differ; inspect each value before comparing companies. All numeric
+        filters must pass. Missing or conflicting facts stay unknown.
+      </p>
+      <p className="market-scope-note">
+        {`Balance sheet: CY${String(criteria.calendarYear)} Q4 instant frame; inspect actual balance date.`}{" "}
+        The screen uses balances dated October 1–December 31 of that year.
       </p>
       <form
         className="personal-stock-screener-form"
@@ -689,9 +729,7 @@ export function PersonalFinancialScreener({
                   </select>
                 </label>
                 <label>
-                  <span>
-                    Threshold ({isPercentageMetric(clause.field) ? "%" : "USD"})
-                  </span>
+                  <span>Threshold ({metricUnitLabel(clause.field)})</span>
                   <input
                     aria-label={`Financial threshold ${String(index + 1)}`}
                     inputMode="decimal"
@@ -701,9 +739,11 @@ export function PersonalFinancialScreener({
                       changeClause(index, { value: event.target.value })
                     }
                     placeholder={
-                      isPercentageMetric(clause.field)
-                        ? "15 = 15%"
-                        : "1000000000 = $1 billion"
+                      clause.field === "currentRatio"
+                        ? "1 = 1.00×"
+                        : isPercentageMetric(clause.field)
+                          ? "15 = 15%"
+                          : "1000000000 = $1 billion"
                     }
                   />
                 </label>
@@ -774,12 +814,13 @@ export function PersonalFinancialScreener({
         <div className="discovery-empty-state">
           <strong>
             {running
-              ? "Loading annual financial results…"
+              ? "Loading financial results…"
               : "Run a financial screen to see results."}
           </strong>
           <span>
-            Amounts use USD; a percentage threshold of 15 means 15%. Negative
-            profits and cash flows keep their reported sign.
+            Amounts use USD; a percentage threshold of 15 means 15%, and a
+            current-ratio threshold of 1 means 1.00×. Negative reported amounts
+            keep their sign.
           </span>
         </div>
       ) : (
@@ -887,11 +928,12 @@ export function PersonalFinancialScreener({
         {savedMessage}
       </p>
       <p className="fcff-dcf-caveat">
-        SEC annual frames select facts aligned to a calendar year. These are
-        historical reported annual values, with no prices, trailing-twelve-month
-        estimates, growth forecasts, or historical universe reconstruction.
-        Sources can be amended; the fetch time describes the current SEC
-        snapshot. Result rows remain in this active session.
+        SEC annual frames select facts aligned to a calendar year; the two
+        balance-sheet sources use its Q4 instant frame. These are historical
+        reported values, with no prices, trailing-twelve-month estimates, growth
+        forecasts, or historical universe reconstruction. Sources can be
+        amended; the fetch time describes the current SEC snapshot. Result rows
+        remain in this active session.
       </p>
     </section>
   );
@@ -951,6 +993,13 @@ function FinancialResults({
           version {response.formulaVersion}. Coverage is measured across
           identity matches, before numeric filters.
         </p>
+        <p>
+          {`Balance sheet: CY${String(response.calendarYear)} Q${String(response.instantQuarter)} instant frame; inspect actual balance date.`}{" "}
+          The screen uses balances dated October 1–December 31 inclusive. SEC
+          frame alignment can include other dates; this app rule can exclude
+          otherwise matching balances. These balances need not coincide with the
+          annual flow period or the company’s fiscal year-end.
+        </p>
         <ul>
           {metrics.map((metric) => (
             <li key={metric}>
@@ -1006,9 +1055,9 @@ function FinancialResults({
       <div className="personal-stock-screener-table-wrap">
         <table className="personal-stock-screener-table financial-screen-table">
           <caption>
-            Matching annual financials for calendar-aligned{" "}
-            {response.calendarYear}. Expand a value to inspect its reporting
-            period and sources.
+            Matching financials for calendar-aligned {response.calendarYear}:
+            annual flows and Q4 instant balances. Expand a value to inspect its
+            actual period or balance date and sources.
           </caption>
           <thead>
             <tr>
@@ -1017,12 +1066,11 @@ function FinancialResults({
                 <th scope="col" key={metric}>
                   {labels[metric]}
                   {metric !== "grossMargin" &&
-                    metric !== "operatingCashFlowToNetIncome" && (
+                    metric !== "operatingCashFlowToNetIncome" &&
+                    metric !== "currentRatio" && (
                       <>
                         <br />
-                        <small>
-                          {isPercentageMetric(metric) ? "%" : "USD"}
-                        </small>
+                        <small>{metricUnitLabel(metric)}</small>
                       </>
                     )}
                 </th>
@@ -1148,12 +1196,14 @@ function FinancialCell({
         ? metric === "grossMargin" || metric === "operatingCashFlowToNetIncome"
           ? exactPercentage(cell.value)
           : `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
-        : Number(cell.value).toLocaleString("en-US", {
-            style: "currency",
-            currency: "USD",
-            notation: "compact",
-            maximumFractionDigits: 2,
-          })
+        : cell.unit === "multiple"
+          ? `${exactDecimalDisplay(cell.value)} ×`
+          : Number(cell.value).toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+              notation: "compact",
+              maximumFractionDigits: 2,
+            })
       : "Unknown";
   return (
     <details className="financial-screen-cell">
@@ -1165,10 +1215,30 @@ function FinancialCell({
       <div>
         <p>
           {cell.status === "available"
-            ? `Exact value: ${cell.value} ${cell.unit}`
+            ? `Exact value: ${cell.value} ${cell.unit === "multiple" ? "×" : cell.unit}`
             : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
         </p>
         <p>{formulaFor(metric, revenueBasis)}</p>
+        {["currentAssets", "currentLiabilities", "currentRatio"].includes(
+          metric,
+        ) && (
+          <>
+            <p>
+              The Q4 frame selection is separate from annual flow periods.
+              Inspect each actual balance date. The October–December window is
+              an app rule, not an SEC-published date tolerance.
+            </p>
+            {metric === "currentRatio" && (
+              <p>
+                Calculated by this app from reported current balances. Current
+                classifications and industry differences affect comparability.
+              </p>
+            )}
+            {cell.status === "unavailable" && (
+              <p>{currentRatioUnknownExplanation(cell)}</p>
+            )}
+          </>
+        )}
         {metric === "grossMargin" && (
           <>
             <p>
@@ -1245,9 +1315,19 @@ function FinancialCell({
                 <br />
               </>
             )}
+            {metric === "currentRatio" && (
+              <>
+                {source.concept === "AssetsCurrent"
+                  ? "Current assets numerator"
+                  : "Current liabilities denominator"}
+                <br />
+              </>
+            )}
             {source.concept}
             <br />
-            {source.startDate} through {source.endDate}
+            {isPersonalFinancialInstantSource(source)
+              ? `Actual balance date: ${source.asOfDate}`
+              : `${source.startDate} through ${source.endDate}`}
             <br />
             Reported: {source.value} USD
             <br />
@@ -1284,5 +1364,5 @@ function screenErrorMessage(error: unknown): string {
     if (error.code === "invalid_response")
       return "The financial response failed validation. Results were cleared; run the screen again.";
   }
-  return "SEC annual financial screening is temporarily unavailable. Run the screen again later.";
+  return "SEC financial screening is temporarily unavailable. Run the screen again later.";
 }

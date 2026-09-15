@@ -40,7 +40,9 @@ afterEach(async () => {
 import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
-  type PersonalSecAnnualFinancialSnapshotDto,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
+  PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
+  type PersonalSecFinancialSnapshotDto,
 } from "@research-cockpit/contracts";
 import { PersonalSecFinancialProviderError } from "./personal-sec-financial-provider";
 
@@ -66,7 +68,7 @@ describe("personal annual financial screen routes", () => {
     expect(response.headers["cache-control"]).toBe("private, no-store");
     const body = response.json<PersonalFinancialScreenResponseDto>();
     expect(body).toMatchObject({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       totalUniverse: 2,
       identityMatches: 2,
       totalMatches: 2,
@@ -109,6 +111,9 @@ describe("personal annual financial screen routes", () => {
       "operatingCashFlowLessPpePurchases",
       "grossMargin",
       "operatingCashFlowToNetIncome",
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
     ];
     expect(Object.keys(body.rows[0]!.metrics)).toEqual(metricKeys);
     expect(Object.keys(body.metricCoverage)).toEqual(metricKeys);
@@ -121,9 +126,197 @@ describe("personal annual financial screen routes", () => {
       "NetCashProvidedByUsedInOperatingActivities",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
+      "AssetsCurrent",
+      "LiabilitiesCurrent",
     ]);
   });
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "6.0.0", 1, undefined])(
+  it("exposes the fixed Q4 selection and all three instant metrics with inclusive multiple thresholds", async () => {
+    const f = await readyApp();
+    const request = screenRequest(f.snapshotSha256);
+    const criteria = {
+      ...request.criteria,
+      clauses: [
+        { field: "currentAssets", operator: "gte", value: "200" },
+        { field: "currentLiabilities", operator: "lte", value: "100" },
+        { field: "currentRatio", operator: "gte", value: "2.00" },
+      ],
+      sort: { field: "currentRatio", direction: "desc" },
+    };
+    const response = await screen(f.app, f.cookie, { ...request, criteria });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      schemaVersion: "6.0.0",
+      formulaVersion: "1.4.0",
+      instantQuarter: 4,
+      totalMatches: 2,
+      rows: [
+        {
+          metrics: {
+            currentAssets: {
+              status: "available",
+              value: "200",
+              unit: "USD",
+              sources: [{ concept: "AssetsCurrent", asOfDate: "2025-12-31" }],
+            },
+            currentLiabilities: {
+              status: "available",
+              value: "100",
+              unit: "USD",
+            },
+            currentRatio: {
+              status: "available",
+              value: "2.00",
+              unit: "multiple",
+            },
+          },
+        },
+      ],
+    });
+    const excluded = await screen(f.app, f.cookie, {
+      ...request,
+      criteria: {
+        ...criteria,
+        clauses: [{ field: "currentRatio", operator: "gte", value: "2.01" }],
+      },
+    });
+    expect(excluded.json()).toMatchObject({
+      totalMatches: 0,
+      totalNonMatches: 2,
+      totalUnknown: 0,
+    });
+    for (const invalid of [
+      { ...request, instantQuarter: 4 },
+      { ...request, criteria: { ...request.criteria, instantQuarter: 4 } },
+      { ...request, criteria: { ...request.criteria, quarter: 3 } },
+    ]) {
+      const calls = f.provider.loadSnapshot.mock.calls.length;
+      expect((await screen(f.app, f.cookie, invalid)).statusCode).toBe(400);
+      expect(f.provider.loadSnapshot).toHaveBeenCalledTimes(calls);
+    }
+  });
+
+  it("retains unsupported actual balance dates and isolates instant source failures from all annual metrics", async () => {
+    const f = await readyApp();
+    const request = screenRequest(f.snapshotSha256);
+    const original = (
+      await screen(f.app, f.cookie, request)
+    ).json<PersonalFinancialScreenResponseDto>();
+    const outside = snapshot();
+    f.provider.loadSnapshot.mockResolvedValue({
+      ...outside,
+      instantFrames: outside.instantFrames.map((frame) => ({
+        ...frame,
+        facts: frame.facts.map((fact) => ({ ...fact, asOfDate: "2026-01-31" })),
+      })),
+    });
+    const dated = (
+      await screen(f.app, f.cookie, request)
+    ).json<PersonalFinancialScreenResponseDto>();
+    expect(dated.rows[0]?.metrics.currentAssets).toMatchObject({
+      status: "unavailable",
+      reason: "unsupported_balance_date",
+      sources: [{ asOfDate: "2026-01-31", value: "200" }],
+    });
+    expect(dated.rows[0]?.metrics.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "unsupported_balance_date",
+    });
+    f.provider.loadSnapshot.mockResolvedValue({
+      ...outside,
+      instantFrames: outside.instantFrames.map((frame) => ({
+        ...frame,
+        status: "upstream_unavailable",
+        facts: [],
+        unknownCiks: [],
+      })),
+    });
+    const failed = (
+      await screen(f.app, f.cookie, request)
+    ).json<PersonalFinancialScreenResponseDto>();
+    expect(failed.rows[0]?.metrics.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "source_unavailable",
+    });
+    for (const metric of PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS) {
+      expect(dated.rows[0]?.metrics[metric]).toEqual(
+        original.rows[0]?.metrics[metric],
+      );
+      expect(failed.rows[0]?.metrics[metric]).toEqual(
+        original.rows[0]?.metrics[metric],
+      );
+      expect(failed.metricCoverage[metric]).toEqual(
+        original.metricCoverage[metric],
+      );
+    }
+  });
+
+  it("round-trips all instant criteria through saved-v1 without a quarter field or rewriting legacy definitions", async () => {
+    const f = await readyApp();
+    const legacy = savedViewsPayload(f.snapshotSha256);
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        ...legacy.views,
+        {
+          ...legacy.views[0]!,
+          id: "liquidity",
+          name: "Current liquidity",
+          criteria: {
+            ...legacy.views[0]!.criteria,
+            clauses: [
+              { field: "currentAssets", operator: "gte", value: "0" },
+              { field: "currentLiabilities", operator: "gte", value: "1" },
+              { field: "currentRatio", operator: "gte", value: "1" },
+            ],
+            sort: { field: "currentRatio", direction: "asc" },
+          },
+        },
+      ],
+    };
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          payload,
+          0,
+          "save-current-liquidity-view",
+        )
+      ).statusCode,
+    ).toBe(201);
+    const loaded = await f.app.inject({
+      method: "GET",
+      url: PERSONAL_FINANCIAL_SAVED_VIEWS_PATH,
+      headers: ownerHeaders(f.cookie),
+      remoteAddress: "127.0.0.1",
+    });
+    expect(loaded.json()).toMatchObject({ payload, version: 1 });
+    expect(f.vault.record?.payload).toEqual(payload);
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+    expect(payload.views[1]?.criteria).not.toHaveProperty("instantQuarter");
+    expect(
+      (
+        await screen(f.app, f.cookie, {
+          ...screenRequest(f.snapshotSha256),
+          criteria: payload.views[1]!.criteria,
+        })
+      ).json(),
+    ).toMatchObject({ totalMatches: 2, instantQuarter: 4 });
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          legacy,
+          1,
+          "restore-original-liquidity-view",
+        )
+      ).statusCode,
+    ).toBe(200);
+    expect(f.vault.record?.payload).toEqual(legacy);
+  });
+
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "7.0.0", 1, undefined])(
     "rejects transport version %s before source acquisition",
     async (schemaVersion) => {
       const f = await readyApp();
@@ -158,7 +351,7 @@ describe("personal annual financial screen routes", () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({
         revenueBasis,
-        formulaVersion: "1.3.0",
+        formulaVersion: "1.4.0",
       });
       const cell =
         response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
@@ -237,7 +430,7 @@ describe("personal annual financial screen routes", () => {
     const first = await screen(f.app, f.cookie, request);
     expect(first.statusCode).toBe(200);
     expect(first.json()).toMatchObject({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       totalMatches: 2,
       totalUnknown: 0,
       metricCoverage: {
@@ -676,7 +869,7 @@ describe("personal annual financial screen routes", () => {
     });
     expect(replay.statusCode).toBe(200);
     expect(replay.json()).toMatchObject({
-      schemaVersion: "5.0.0",
+      schemaVersion: "6.0.0",
       totalMatches: 2,
     });
     expect(replay.json()).not.toHaveProperty("revenueBasis");
@@ -777,14 +970,14 @@ describe("personal annual financial screen routes", () => {
           criteria: payload.views[1]!.criteria,
         })
       ).json(),
-    ).toMatchObject({ schemaVersion: "5.0.0", totalMatches: 2 });
+    ).toMatchObject({ schemaVersion: "6.0.0", totalMatches: 2 });
     const cashScreen = await screen(f.app, f.cookie, {
       ...screenRequest(f.snapshotSha256),
       criteria: payload.views[2]!.criteria,
     });
     expect(cashScreen.json()).toMatchObject({
-      schemaVersion: "5.0.0",
-      formulaVersion: "1.3.0",
+      schemaVersion: "6.0.0",
+      formulaVersion: "1.4.0",
       totalMatches: 2,
     });
     const ratioScreen = await screen(f.app, f.cookie, {
@@ -792,8 +985,8 @@ describe("personal annual financial screen routes", () => {
       criteria: payload.views[3]!.criteria,
     });
     expect(ratioScreen.json()).toMatchObject({
-      schemaVersion: "5.0.0",
-      formulaVersion: "1.3.0",
+      schemaVersion: "6.0.0",
+      formulaVersion: "1.4.0",
       totalMatches: 2,
       metricCoverage: { grossMargin: { known: 2, unknown: 0 } },
       rows: [{ metrics: { grossMargin: { value: "10.00", unit: "percent" } } }],
@@ -804,8 +997,8 @@ describe("personal annual financial screen routes", () => {
     });
     expect(incomeRatioScreen.statusCode).toBe(200);
     expect(incomeRatioScreen.json()).toMatchObject({
-      schemaVersion: "5.0.0",
-      formulaVersion: "1.3.0",
+      schemaVersion: "6.0.0",
+      formulaVersion: "1.4.0",
       totalMatches: 2,
       metricCoverage: {
         operatingCashFlowToNetIncome: { known: 2, unknown: 0 },
@@ -1113,7 +1306,7 @@ function screenRequest(
   catalogSnapshotSha256: string,
 ): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     catalogSnapshotSha256: catalogSnapshotSha256 as `sha256:${string}`,
     financialSnapshotSha256: null,
     criteria: {
@@ -1143,9 +1336,10 @@ function savedViewsPayload(
     ],
   };
 }
-function snapshot(): PersonalSecAnnualFinancialSnapshotDto {
+function snapshot(): PersonalSecFinancialSnapshotDto {
   return {
     calendarYear: 2025,
+    instantQuarter: 4,
     fetchedAt: "2026-09-09T00:00:00.000Z",
     expiresAt: "2026-09-09T00:30:00.000Z",
     snapshotSha256: FINANCIAL_DIGEST,
@@ -1165,6 +1359,20 @@ function snapshot(): PersonalSecAnnualFinancialSnapshotDto {
                 value: index === 0 ? "1000" : "100",
               },
             ],
+      unknownCiks: [],
+    })),
+    instantFrames: PERSONAL_SEC_INSTANT_CONCEPTS.map((concept, index) => ({
+      concept,
+      status: "available",
+      sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025Q4I.json`,
+      facts: [
+        {
+          cik: "0000000001",
+          accessionNumber: "0000000001-26-000001",
+          asOfDate: "2025-12-31",
+          value: index === 0 ? "200" : "100",
+        },
+      ],
       unknownCiks: [],
     })),
   };

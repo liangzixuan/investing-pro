@@ -17,16 +17,16 @@ unrelated hardening outside the active personal scope.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                         | Important remaining gap                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                               | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                   | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                    | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                        | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                           | Compatible multi-company coverage and automatic peer metadata |
-| Screen for ideas          | Catalog filters plus twelve SEC annual financial metrics, explicit revenue basis, stable pages and encrypted saved definitions | Growth/value inputs and wider verified metric breadth         |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                   | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                 | Further corporate actions, benchmarks and live coverage       |
+| User job                  | Implemented capability                                                                                                             | Important remaining gap                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                   | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                       | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                        | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                            | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                               | Compatible multi-company coverage and automatic peer metadata |
+| Screen for ideas          | Catalog filters, twelve SEC annual metrics and three Q4 balance fields, explicit revenue basis, stable pages and saved definitions | Current-balance release acceptance, then growth/value inputs  |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                       | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                     | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -34,27 +34,18 @@ entry does not establish financial-data coverage or a source entitlement.
 
 ## Verified baseline and configured runtime
 
-Release `0b271f9` delivers reported gross-profit screening and preserves explicit
-revenue selection. Its clean native gate passed 4,557 tests and all 24 builds;
-five hosted workflows passed, including Windows on its single unchanged-code
-retry. Configured Chrome acceptance covered exact Apple source details, Walmart
-missingness, filtering, page return and revenue-basis independence. These are
-baseline results, not validation of later changes; detailed receipts and limits
-remain in the local release handoff.
+Accepted baseline `beb991c` includes Operating cash flow / net income (%) and
+its completed ACL integration fixes. Native and hosted acceptance, coordinated
+activation and configured Chrome QA are complete. The Q4 current-balance feature
+below is active implementation work; it has not passed release acceptance.
 
-The configured catalog now contains 3,227 listings, including the six repaired
-AAPL, MSFT, AMZN, META, WMT and ORCL entries. Live annual coverage, authenticated
-searches, screening/filtering/paging and a bounded AAPL watchlist filing load
-were verified on 2026-09-11. The user completed owner sign-in. Actual current
-runtime status and acceptance limits remain in the local checkpoint.
-
-The final pinned live comparison completed 21 successful SEC GETs across the
-original five selections and three documents. Report ends resolve for NVDA,
-GOOGL and AVGO and agree with fresh Submissions. NVDA's comparative observation
-retains its older actual period. Numeric summaries and other reporting metadata
-are unchanged; all five numeric results remain unsupported because of dimensions.
-These results describe only that retained sample. Actual acceptance/runtime
-details are in the local checkpoint. Catalog gaps and Tiingo setup remain separate.
+The configured catalog contains **3,227 listings**. Normal account login is
+accepted, and the serving app runs from an isolated release checkout while
+implementation and full-gate verification use separate checkouts. Preserve that
+serving runtime through new-source verification. The workspace `CURRENT.md`
+and local release handoff own the exact active release, process identities,
+selection/rollback details, source observations and retained failure evidence.
+Historical release counts and earlier samples remain in their guides/handoffs.
 
 ## Completed local login and runtime isolation
 
@@ -91,9 +82,43 @@ owns the contract and check/write sequence. Use it for ordinary feature releases
 the local handoff records actual verification and the separately attributed
 historical failures.
 
-## Active delivery: Operating cash flow / net income (%)
+## Active delivery: Q4 current balances and current ratio
 
-Add the twelfth annual metric using the existing eight-frame SEC snapshot.
+Add reported **Current assets**, **Current liabilities**, and
+**Current assets / current liabilities (×)** using two typed instant inputs beside
+the unchanged twelve annual metrics. The existing selected completed year fixes
+the two new sources to its Q4 instant Frame; only actual balance dates from
+October 1–December 31 inclusive qualify. This is an app date rule, not a
+published SEC tolerance or an exact common fiscal year-end. Keep out-of-window
+source references inspectable and distinguish these balances from annual flows
+and other views' latest-fiscal-year selections.
+
+Use nonnegative assets, positive liabilities, and an exact shared balance date
+and accession across every retained reference. Preserve raw signed balances,
+unknown reasons, exact two-decimal multiples, all revenue bases and saved payload
+version 1. Coordinated transport v6/formula-set 1.4 adds fifteen metric keys and
+ten source concepts. Ten fixed initial/refresh reads reuse one cached snapshot;
+paging and basis changes add none.
+
+The bounded two-Frame feasibility found 2,319 eligible listings / 2,303 issuers
+under the Q4 rule, excluding 198 otherwise-compatible January/February listings.
+Those preliminary observations do not establish production acceptance. Complete
+focused checks, the actual boundary guard, generated release closure and isolated
+native/hosted gates, then fresh production coverage, bounded filing comparisons
+and configured Chrome QA. The local checkpoint owns exact source/runtime state;
+the [screening guide](./SEC_ANNUAL_FINANCIAL_SCREENING.md) owns metric semantics.
+
+## Completed delivery: Operating cash flow / net income (%)
+
+The twelfth annual metric and its targeted ACL integration fixes are accepted at
+`beb991c`: 5,086 Vitest plus 10 Node worker passes, nine existing skips, 24 builds
+and 184 healthy samples. Hosted acceptance, unchanged-source Windows retry,
+coordinated activation and configured Chrome acceptance are complete. Live
+eight-Frame and two-filing evidence remains attributed to the unchanged financial
+source at `163abc3`; failure evidence and scope limits remain in the local handoff.
+Do not reopen the completed ACL mitigation without a new concrete failure.
+
+The twelfth annual metric uses the existing eight annual SEC inputs.
 Filter, sort, inspect and save operating cash flow relative to positive reported
 net income. Every operand reference must share actual supported annual dates and
 one filing accession. Preserve signed operating cash flow and both reported
@@ -101,10 +126,9 @@ inputs; zero or negative net income leaves the ratio unknown. Revenue-basis
 selection does not change this calculation. The explicit label identifies an
 app calculation, not a company-reported cash-conversion measure or quality score.
 
-Acceptance covers exact decimal arithmetic and browser verification, source and
-reason integrity, unchanged old metrics/saved definitions, and eight reads with
-cache reuse across basis choices. Deploy the coordinated v5 API/browser after
-native and hosted gates, then verify live coverage and bounded filing samples.
+Its acceptance covered exact decimal arithmetic and browser verification, source
+and reason integrity, unchanged old metrics/saved definitions, and eight reads
+with cache reuse across basis choices on its original coordinated v5 release.
 Actual release and runtime results remain in the local checkpoint; see
 [annual financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md) for semantics.
 
@@ -155,14 +179,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
-| Now              | Screen Operating cash flow / net income (%) from the existing annual snapshot                    | Compare reported cash generation with positive earnings using compatible inputs |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                      |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters      |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                        |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions             |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                     |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Now              | Deliver Q4 current assets, current liabilities and their ratio beside the annual screen          | Typed instant facts, actual-date/filing compatibility and verified joint coverage |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                        |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters        |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                          |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions               |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                       |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

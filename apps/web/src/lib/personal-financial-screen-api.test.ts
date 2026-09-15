@@ -2,10 +2,13 @@ import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
+  type PersonalFinancialScreenInstantCellDto,
+  type PersonalFinancialScreenInstantSourceRefDto,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
-  type PersonalFinancialScreenCellDto,
+  type PersonalFinancialScreenAnnualCellDto,
   type PersonalFinancialScreenSourceRefDto,
   type PersonalFinancialSavedViewsPayloadDto,
 } from "@research-cockpit/contracts";
@@ -30,6 +33,551 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe("current balance and ratio decoding", () => {
+  it.each([
+    ["1", "3", "0.33"],
+    ["0.995", "1", "1.00"],
+    ["1.005", "1", "1.01"],
+    ["0.9949", "1", "0.99"],
+    ["0", "2", "0.00"],
+    ["-0.00", "2", "0.00"],
+    ["250", "100", "2.50"],
+    ["9007199254740993", "1", "9007199254740993.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(62)}.00`,
+    ],
+  ])(
+    "verifies %s / %s as the exact multiple %s",
+    async (assets, liabilities, expected) => {
+      const result = currentResponse(
+        instantOperand("AssetsCurrent", assets),
+        instantOperand("LiabilitiesCurrent", liabilities),
+        expected,
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      if (assets.length === 64) expect(expected).toHaveLength(129);
+      for (const forged of [
+        expected === "0.00" ? "-0.00" : `${expected}0`,
+        "123.45",
+      ]) {
+        fetchMock.mockResolvedValueOnce(
+          json(
+            currentResponse(
+              instantOperand("AssetsCurrent", assets),
+              instantOperand("LiabilitiesCurrent", liabilities),
+              forged,
+            ),
+          ),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+
+  it.each(["2024-10-01", "2024-12-31"])(
+    "admits inclusive Q4 boundary %s",
+    async (date) => {
+      const result = currentResponse(
+        instantOperand("AssetsCurrent", "1", date),
+        instantOperand("LiabilitiesCurrent", "1", date),
+        "1.00",
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+    },
+  );
+
+  it.each(["2024-09-30", "2025-01-01", "2025-01-31"])(
+    "retains %s only as an unsupported balance date",
+    async (date) => {
+      const assets = instantOperand("AssetsCurrent", "100", date);
+      const liabilities = instantOperand("LiabilitiesCurrent", "125", date);
+      const unsupported = (
+        cell: PersonalFinancialScreenInstantCellDto,
+      ): PersonalFinancialScreenInstantCellDto => ({
+        status: "unavailable",
+        unit: "USD",
+        reason: "unsupported_balance_date",
+        sources: cell.sources,
+      });
+      const result = currentResponse(
+        unsupported(assets),
+        unsupported(liabilities),
+        null,
+        "unsupported_balance_date",
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(currentResponse(assets, liabilities, "0.80")),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each([
+    ["0", "0", "nonpositive_current_liabilities"],
+    ["-1", "-1", "nonpositive_current_liabilities"],
+    ["1", "-0.00", "nonpositive_current_liabilities"],
+    ["-1", "2", "unsupported_sign"],
+  ] as const)(
+    "preserves signed operands %s/%s and verifies %s",
+    async (assets, liabilities, reason) => {
+      const result = currentResponse(
+        instantOperand("AssetsCurrent", assets),
+        instantOperand("LiabilitiesCurrent", liabilities),
+        null,
+        reason,
+      );
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+      fetchMock.mockResolvedValueOnce(
+        json(
+          currentResponse(
+            instantOperand("AssetsCurrent", assets),
+            instantOperand("LiabilitiesCurrent", liabilities),
+            "0.50",
+          ),
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("checks every date and accession before signs, including later operand references", async () => {
+    const assets = instantOperand("AssetsCurrent", "-1", "2024-12-30");
+    const liabilities = instantOperand(
+      "LiabilitiesCurrent",
+      "-2",
+      "2024-12-31",
+    );
+    const dateMismatch = currentResponse(
+      assets,
+      liabilities,
+      null,
+      "balance_date_mismatch",
+    );
+    fetchMock.mockResolvedValueOnce(json(dateMismatch));
+    expect(await screenPersonalFinancials(request(), signal())).toEqual(
+      dateMismatch,
+    );
+    const base = instantOperand("AssetsCurrent", "-1");
+    const later = {
+      ...base.sources[0]!,
+      accessionNumber: "0000000001-25-000002",
+    };
+    const multiple = { ...base, sources: [...base.sources, later] };
+    const filingMismatch = currentResponse(
+      multiple,
+      liabilities,
+      null,
+      "filing_mismatch",
+    );
+    fetchMock.mockResolvedValueOnce(json(filingMismatch));
+    expect(await screenPersonalFinancials(request(), signal())).toEqual(
+      filingMismatch,
+    );
+    fetchMock.mockResolvedValueOnce(
+      json(
+        currentResponse(
+          multiple,
+          liabilities,
+          null,
+          "nonpositive_current_liabilities",
+        ),
+      ),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    const forgedAvailable = {
+      ...base,
+      sources: [
+        ...base.sources,
+        { ...base.sources[0]!, asOfDate: "2024-12-30" },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(
+      json(
+        currentResponse(
+          forgedAvailable,
+          liabilities,
+          null,
+          "balance_date_mismatch",
+        ),
+      ),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("preserves unavailable-operand precedence and conflict before the date window", async () => {
+    const assets: PersonalFinancialScreenInstantCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "conflicting",
+      sources: [
+        ...instantOperand("AssetsCurrent", "1", "2025-01-31").sources,
+        ...instantOperand("AssetsCurrent", "2", "2024-12-31").sources,
+      ],
+    };
+    const liabilities: PersonalFinancialScreenInstantCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "missing",
+      sources: [],
+    };
+    for (const result of [
+      currentResponse(assets, liabilities, null, "missing"),
+      currentResponse(
+        assets,
+        instantOperand("LiabilitiesCurrent", "0"),
+        null,
+        "conflicting",
+      ),
+    ]) {
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(await screenPersonalFinancials(request(), signal())).toEqual(
+        result,
+      );
+    }
+    fetchMock.mockResolvedValueOnce(
+      json(
+        currentResponse(
+          { ...assets, reason: "unsupported_balance_date" },
+          liabilities,
+          null,
+          "missing",
+        ),
+      ),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("binds the complete source multiset while allowing reordering", async () => {
+    const source = instantOperand("AssetsCurrent", "100");
+    const result = currentResponse(
+      { ...source, sources: [...source.sources, ...source.sources] },
+      instantOperand("LiabilitiesCurrent", "80"),
+      "1.25",
+    );
+    const row = result.rows[0]!;
+    const changed = (
+      sources: readonly PersonalFinancialScreenInstantSourceRefDto[],
+    ) => ({
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            currentRatio: { ...row.metrics.currentRatio, sources },
+          },
+        },
+      ],
+    });
+    fetchMock.mockResolvedValueOnce(
+      json(changed([...row.metrics.currentRatio.sources].reverse())),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).resolves.toBeDefined();
+    for (const sources of [
+      row.metrics.currentRatio.sources.slice(1),
+      [...row.metrics.currentRatio.sources, source.sources[0]!],
+      row.metrics.currentRatio.sources.map((ref, index) =>
+        index === 0 ? { ...ref, value: "100.0" } : ref,
+      ),
+    ]) {
+      fetchMock.mockResolvedValueOnce(json(changed(sources)));
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it.each([
+    "unit",
+    "ratio unit",
+    "annual shape",
+    "instant shape on annual",
+    "date",
+    "year",
+    "concept",
+    "wrong reason",
+    "forged window",
+    "amount",
+    "overlong ratio",
+    "missing references",
+    "invalid value reason",
+    "padded amount",
+  ])("rejects forged instant cell: %s", async (kind) => {
+    const result = structuredClone(response());
+    const cells = result.rows[0]!.metrics as unknown as Record<
+      string,
+      { [key: string]: unknown; sources: Record<string, unknown>[] }
+    >;
+    if (kind === "unit") cells.currentAssets!.unit = "multiple";
+    if (kind === "ratio unit") cells.currentRatio!.unit = "percent";
+    if (kind === "annual shape")
+      cells.currentAssets!.sources = [
+        { ...source(), concept: "AssetsCurrent" },
+      ];
+    if (kind === "instant shape on annual")
+      cells.grossProfit!.sources = [
+        { ...cells.currentAssets!.sources[0], concept: "GrossProfit" },
+      ];
+    if (kind === "date")
+      cells.currentAssets!.sources[0]!.asOfDate = "2024-02-30";
+    if (kind === "year")
+      cells.currentAssets!.sources[0]!.asOfDate = "2022-12-31";
+    if (kind === "concept")
+      cells.currentAssets!.sources[0]!.concept = "LiabilitiesCurrent";
+    if (kind === "wrong reason")
+      cells.currentAssets = {
+        status: "unavailable",
+        unit: "USD",
+        reason: "nonpositive_current_liabilities",
+        sources: [],
+      };
+    if (kind === "forged window")
+      cells.currentAssets = {
+        status: "unavailable",
+        unit: "USD",
+        reason: "unsupported_balance_date",
+        sources: cells.currentAssets!.sources,
+      };
+    if (kind === "amount") cells.currentAssets!.value = "101";
+    if (kind === "overlong ratio")
+      cells.currentRatio!.value = `${"9".repeat(127)}.00`;
+    if (kind === "missing references") cells.currentAssets!.sources = [];
+    if (kind === "invalid value reason")
+      cells.currentAssets = {
+        status: "unavailable",
+        unit: "USD",
+        reason: "invalid_value",
+        sources: cells.currentAssets!.sources,
+      };
+    if (kind === "padded amount")
+      cells.currentAssets!.value = `100.${"0".repeat(64)}`;
+    fetchMock.mockResolvedValueOnce(json(result));
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    "quarter",
+    "missing quarter",
+    "old version",
+    "old formula",
+    "annual URL",
+    "wrong quarter URL",
+    "missing source",
+    "missing metric",
+  ])("rejects inconsistent fixed-Q4 transport: %s", async (kind) => {
+    const result = structuredClone(response()) as unknown as Record<
+      string,
+      unknown
+    >;
+    if (kind === "quarter") result.instantQuarter = 3;
+    if (kind === "missing quarter") delete result.instantQuarter;
+    if (kind === "old version") result.schemaVersion = "5.0.0";
+    if (kind === "old formula") result.formulaVersion = "1.3.0";
+    const sources = result.sources as { sourceUrl: string }[];
+    if (kind === "annual URL")
+      sources[8]!.sourceUrl = sources[8]!.sourceUrl.replace("Q4I", "");
+    if (kind === "wrong quarter URL")
+      sources[8]!.sourceUrl = sources[8]!.sourceUrl.replace("Q4I", "Q3I");
+    if (kind === "missing source") sources.pop();
+    if (kind === "missing metric")
+      delete (result.rows as { metrics: Record<string, unknown> }[])[0]!.metrics
+        .currentRatio;
+    fetchMock.mockResolvedValueOnce(json(result));
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(["AssetsCurrent", "LiabilitiesCurrent"] as const)(
+    "binds %s reported cells to failed, absent and available source statuses",
+    async (concept) => {
+      const field =
+        concept === "AssetsCurrent" ? "currentAssets" : "currentLiabilities";
+      for (const status of [
+        "not_covered",
+        "rate_limited",
+        "upstream_unavailable",
+        "invalid_response",
+      ] as const) {
+        const result = response();
+        const sources = result.sources.map((source) =>
+          source.concept === concept ? { ...source, status } : source,
+        );
+        fetchMock.mockResolvedValueOnce(json({ ...result, sources }));
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+        const reason =
+          status === "not_covered" ? "missing" : "source_unavailable";
+        const unavailable: PersonalFinancialScreenInstantCellDto = {
+          status: "unavailable",
+          unit: "USD",
+          reason,
+          sources: [],
+        };
+        const valid = currentResponse(
+          field === "currentAssets"
+            ? unavailable
+            : result.rows[0]!.metrics.currentAssets,
+          field === "currentLiabilities"
+            ? unavailable
+            : result.rows[0]!.metrics.currentLiabilities,
+          null,
+          reason,
+        );
+        fetchMock.mockResolvedValueOnce(json({ ...valid, sources }));
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).resolves.toBeDefined();
+        const wrongReason =
+          reason === "missing" ? "source_unavailable" : "missing";
+        const forged: PersonalFinancialScreenInstantCellDto = {
+          ...unavailable,
+          reason: wrongReason,
+        };
+        fetchMock.mockResolvedValueOnce(
+          json({
+            ...currentResponse(
+              field === "currentAssets"
+                ? forged
+                : result.rows[0]!.metrics.currentAssets,
+              field === "currentLiabilities"
+                ? forged
+                : result.rows[0]!.metrics.currentLiabilities,
+              null,
+              wrongReason,
+            ),
+            sources,
+          }),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+      const unavailable: PersonalFinancialScreenInstantCellDto = {
+        status: "unavailable",
+        unit: "USD",
+        reason: "source_unavailable",
+        sources: [],
+      };
+      fetchMock.mockResolvedValueOnce(
+        json(
+          currentResponse(
+            field === "currentAssets"
+              ? unavailable
+              : defaultInstantCells().currentAssets,
+            field === "currentLiabilities"
+              ? unavailable
+              : defaultInstantCells().currentLiabilities,
+            null,
+            "source_unavailable",
+          ),
+        ),
+      );
+      await expect(
+        screenPersonalFinancials(request(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("keeps the annual cells and saved grammar independent of instant acquisition", async () => {
+    const result = response();
+    const unavailable: PersonalFinancialScreenInstantCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "source_unavailable",
+      sources: [],
+    };
+    const failed = currentResponse(
+      unavailable,
+      unavailable,
+      null,
+      "source_unavailable",
+    );
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...failed,
+        sources: failed.sources.map((source) =>
+          source.concept === "AssetsCurrent" ||
+          source.concept === "LiabilitiesCurrent"
+            ? { ...source, status: "upstream_unavailable" }
+            : source,
+        ),
+      }),
+    );
+    const decoded = await screenPersonalFinancials(request(), signal());
+    for (const metric of PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
+      (metric) => !metric.startsWith("current"),
+    ))
+      expect(decoded.rows[0]!.metrics[metric]).toEqual(
+        result.rows[0]!.metrics[metric],
+      );
+    for (const basis of PERSONAL_FINANCIAL_REVENUE_BASES) {
+      const based = responseWithBasis(basis);
+      fetchMock.mockResolvedValueOnce(json(based));
+      const decoded = await screenPersonalFinancials(
+        {
+          ...request(),
+          criteria: { ...request().criteria, revenueBasis: basis },
+        },
+        signal(),
+      );
+      expect(decoded.rows[0]!.metrics.currentRatio).toEqual(
+        result.rows[0]!.metrics.currentRatio,
+      );
+    }
+    for (const field of [
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
+    ] as const)
+      expect(
+        isPersonalFinancialScreenCriteria({
+          ...request().criteria,
+          clauses: [{ field, operator: "gte", value: "1.00" }],
+          sort: { field, direction: "desc" },
+        }),
+      ).toBe(true);
+    expect(
+      isPersonalFinancialScreenCriteria({
+        ...request().criteria,
+        instantQuarter: 4,
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("operating cash flow / net income decoding", () => {
   it.each([
@@ -147,7 +695,7 @@ describe("operating cash flow / net income decoding", () => {
             },
           ],
         };
-        const income: PersonalFinancialScreenCellDto =
+        const income: PersonalFinancialScreenAnnualCellDto =
           unavailable === "operating"
             ? knownIncome
             : {
@@ -156,7 +704,7 @@ describe("operating cash flow / net income decoding", () => {
                 reason,
                 sources: knownIncome.sources,
               };
-        const operating: PersonalFinancialScreenCellDto =
+        const operating: PersonalFinancialScreenAnnualCellDto =
           unavailable === "income"
             ? knownOperating
             : {
@@ -509,7 +1057,7 @@ describe("operating cash flow / net income decoding", () => {
       "30.00",
     );
     const row = result.rows[0]!;
-    const unknown: PersonalFinancialScreenCellDto = {
+    const unknown: PersonalFinancialScreenAnnualCellDto = {
       status: "unavailable",
       unit: "USD",
       reason: "source_unavailable",
@@ -550,7 +1098,7 @@ describe("operating cash flow / net income decoding", () => {
   ] as const)(
     "retains source failure for %s without synthesizing a ratio",
     async (concept) => {
-      const missing: PersonalFinancialScreenCellDto = {
+      const missing: PersonalFinancialScreenAnnualCellDto = {
         status: "unavailable",
         unit: "USD",
         reason: "source_unavailable",
@@ -727,7 +1275,7 @@ describe("gross profit / selected revenue decoding", () => {
   );
 
   it("retains agreement references and does not invent a fallback for conflicting revenue", async () => {
-    const revenue: PersonalFinancialScreenCellDto = {
+    const revenue: PersonalFinancialScreenAnnualCellDto = {
       status: "unavailable",
       unit: "USD",
       reason: "conflicting",
@@ -777,7 +1325,7 @@ describe("gross profit / selected revenue decoding", () => {
       for (const operand of ["revenue", "profit", "both"] as const) {
         const knownRevenue = ratioOperand("Revenues", "0");
         const knownProfit = ratioOperand("GrossProfit", "-1");
-        const revenue: PersonalFinancialScreenCellDto =
+        const revenue: PersonalFinancialScreenAnnualCellDto =
           operand === "profit"
             ? knownRevenue
             : {
@@ -786,7 +1334,7 @@ describe("gross profit / selected revenue decoding", () => {
                 reason,
                 sources: knownRevenue.sources,
               };
-        const profit: PersonalFinancialScreenCellDto =
+        const profit: PersonalFinancialScreenAnnualCellDto =
           operand === "revenue"
             ? knownProfit
             : {
@@ -1114,7 +1662,7 @@ describe("financial screen transport", () => {
     "propagates %s inputs with exact source retention and operating-input precedence",
     async (reason) => {
       for (const missingMetric of ["operating", "purchases", "both"] as const) {
-        const operating: PersonalFinancialScreenCellDto =
+        const operating: PersonalFinancialScreenAnnualCellDto =
           missingMetric === "purchases"
             ? cashCell("NetCashProvidedByUsedInOperatingActivities", "10")
             : {
@@ -1125,7 +1673,7 @@ describe("financial screen transport", () => {
                   cashRef("NetCashProvidedByUsedInOperatingActivities", "10"),
                 ],
               };
-        const purchases: PersonalFinancialScreenCellDto =
+        const purchases: PersonalFinancialScreenAnnualCellDto =
           missingMetric === "operating"
             ? cashCell("PaymentsToAcquirePropertyPlantAndEquipment", "2")
             : {
@@ -1203,7 +1751,7 @@ describe("financial screen transport", () => {
         ? { accessionNumber: "0000000001-25-000002" }
         : {}),
     };
-    const purchases: PersonalFinancialScreenCellDto = {
+    const purchases: PersonalFinancialScreenAnnualCellDto = {
       status: "available",
       unit: "USD",
       value: purchaseSource.value,
@@ -1707,7 +2255,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v5 criteria and retains the complete twelve-metric, eight-source response", async () => {
+  it("sends v6 criteria and retains the complete fifteen-metric, ten-source response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -1719,8 +2267,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("5.0.0");
-    expect(decoded.formulaVersion).toBe("1.3.0");
+    expect(decoded.schemaVersion).toBe("6.0.0");
+    expect(decoded.formulaVersion).toBe("1.4.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -1734,6 +2282,9 @@ describe("financial screen transport", () => {
       "operatingCashFlowLessPpePurchases",
       "grossMargin",
       "operatingCashFlowToNetIncome",
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
       Object.keys(decoded.rows[0]!.metrics),
@@ -1747,11 +2298,13 @@ describe("financial screen transport", () => {
       "NetCashProvidedByUsedInOperatingActivities",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
+      "AssetsCurrent",
+      "LiabilitiesCurrent",
     ]);
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -1774,12 +2327,12 @@ describe("financial screen transport", () => {
     "expanded v2",
     "expanded v3",
     "expanded v4",
-    "historical v1 shape relabeled v5",
-    "historical v2 shape relabeled v5",
+    "historical v1 shape relabeled v6",
+    "historical v2 shape relabeled v6",
     "missing metric",
     "missing coverage",
     "duplicate source",
-    "thirteenth metric",
+    "sixteenth metric",
     "old formula version",
   ])("rejects incompatible response: %s", async (kind) => {
     const result = response();
@@ -1793,17 +2346,17 @@ describe("financial screen transport", () => {
     if (kind === "expanded v2") invalid = { ...result, schemaVersion: "2.0.0" };
     if (kind === "expanded v3") invalid = { ...result, schemaVersion: "3.0.0" };
     if (kind === "expanded v4") invalid = { ...result, schemaVersion: "4.0.0" };
-    if (kind === "historical v1 shape relabeled v5")
+    if (kind === "historical v1 shape relabeled v6")
       invalid = {
         ...historicalResponse(),
-        schemaVersion: "5.0.0",
-        formulaVersion: "1.3.0",
+        schemaVersion: "6.0.0",
+        formulaVersion: "1.4.0",
       };
-    if (kind === "historical v2 shape relabeled v5")
+    if (kind === "historical v2 shape relabeled v6")
       invalid = {
         ...historicalResponse("2.0.0"),
-        schemaVersion: "5.0.0",
-        formulaVersion: "1.3.0",
+        schemaVersion: "6.0.0",
+        formulaVersion: "1.4.0",
       };
     if (kind === "old formula version")
       invalid = { ...result, formulaVersion: "1.0.0" };
@@ -1820,7 +2373,7 @@ describe("financial screen transport", () => {
         ...result,
         sources: [...result.sources.slice(0, 7), result.sources[0]],
       };
-    if (kind === "thirteenth metric")
+    if (kind === "sixteenth metric")
       invalid = {
         ...result,
         rows: [
@@ -2640,7 +3193,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -2666,7 +3219,7 @@ function ratioOperand(
   concept:
     "GrossProfit" | Exclude<PersonalFinancialRevenueBasisDto, "agreement">,
   value: string,
-): PersonalFinancialScreenCellDto {
+): PersonalFinancialScreenAnnualCellDto {
   return {
     status: "available",
     unit: "USD",
@@ -2677,7 +3230,7 @@ function ratioOperand(
 function incomeRatioOperand(
   concept: "NetIncomeLoss" | "NetCashProvidedByUsedInOperatingActivities",
   value: string,
-): PersonalFinancialScreenCellDto {
+): PersonalFinancialScreenAnnualCellDto {
   return {
     status: "available",
     unit: "USD",
@@ -2686,13 +3239,13 @@ function incomeRatioOperand(
   };
 }
 function incomeRatioResponse(
-  operating: PersonalFinancialScreenCellDto,
-  income: PersonalFinancialScreenCellDto,
+  operating: PersonalFinancialScreenAnnualCellDto,
+  income: PersonalFinancialScreenAnnualCellDto,
   expected:
     | string
     | {
         reason: Extract<
-          PersonalFinancialScreenCellDto,
+          PersonalFinancialScreenAnnualCellDto,
           { status: "unavailable" }
         >["reason"];
       },
@@ -2701,7 +3254,7 @@ function incomeRatioResponse(
   const result = basis === undefined ? response() : responseWithBasis(basis);
   const row = result.rows[0]!;
   const sources = [...operating.sources, ...income.sources];
-  const operatingCashFlowToNetIncome: PersonalFinancialScreenCellDto =
+  const operatingCashFlowToNetIncome: PersonalFinancialScreenAnnualCellDto =
     typeof expected === "string"
       ? { status: "available", unit: "percent", value: expected, sources }
       : {
@@ -2711,7 +3264,7 @@ function incomeRatioResponse(
           sources,
         };
   // Keep unrelated subtraction/margins unknown so this fixture only specifies the ratio under test.
-  const missing: PersonalFinancialScreenCellDto = {
+  const missing: PersonalFinancialScreenAnnualCellDto = {
     status: "unavailable",
     unit: "USD",
     reason: "missing",
@@ -2742,13 +3295,13 @@ function incomeRatioResponse(
   };
 }
 function ratioResponse(
-  revenue: PersonalFinancialScreenCellDto,
-  profit: PersonalFinancialScreenCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+  profit: PersonalFinancialScreenAnnualCellDto,
   expected:
     | string
     | {
         reason: Extract<
-          PersonalFinancialScreenCellDto,
+          PersonalFinancialScreenAnnualCellDto,
           { status: "unavailable" }
         >["reason"];
       },
@@ -2757,7 +3310,7 @@ function ratioResponse(
   const result = basis === undefined ? response() : responseWithBasis(basis);
   const row = result.rows[0]!;
   const sources = [...profit.sources, ...revenue.sources];
-  const grossMargin: PersonalFinancialScreenCellDto =
+  const grossMargin: PersonalFinancialScreenAnnualCellDto =
     typeof expected === "string"
       ? { status: "available", unit: "percent", value: expected, sources }
       : {
@@ -2789,7 +3342,7 @@ function cashCell(
     | "NetCashProvidedByUsedInOperatingActivities"
     | "PaymentsToAcquirePropertyPlantAndEquipment",
   value: string,
-): PersonalFinancialScreenCellDto {
+): PersonalFinancialScreenAnnualCellDto {
   return {
     status: "available",
     unit: "USD",
@@ -2798,13 +3351,13 @@ function cashCell(
   };
 }
 function cashResponse(
-  operating: PersonalFinancialScreenCellDto,
-  purchases: PersonalFinancialScreenCellDto,
+  operating: PersonalFinancialScreenAnnualCellDto,
+  purchases: PersonalFinancialScreenAnnualCellDto,
   derived:
     | string
     | {
         reason: Extract<
-          PersonalFinancialScreenCellDto,
+          PersonalFinancialScreenAnnualCellDto,
           { status: "unavailable" }
         >["reason"];
       },
@@ -2812,7 +3365,7 @@ function cashResponse(
   const result = response();
   const row = result.rows[0]!;
   const sources = [...operating.sources, ...purchases.sources];
-  const cell: PersonalFinancialScreenCellDto =
+  const cell: PersonalFinancialScreenAnnualCellDto =
     typeof derived === "string"
       ? { status: "available", unit: "USD", value: derived, sources }
       : { status: "unavailable", unit: "USD", reason: derived.reason, sources };
@@ -2843,15 +3396,75 @@ function cashResponse(
     ],
   };
 }
+function instantOperand(
+  concept: PersonalFinancialScreenInstantSourceRefDto["concept"],
+  value: string,
+  asOfDate = "2024-12-31",
+): PersonalFinancialScreenInstantCellDto {
+  return {
+    status: "available",
+    unit: "USD",
+    value,
+    sources: [
+      { concept, accessionNumber: "0000000001-25-000001", asOfDate, value },
+    ],
+  };
+}
+function defaultInstantCells() {
+  const currentAssets = instantOperand("AssetsCurrent", "100");
+  const currentLiabilities = instantOperand("LiabilitiesCurrent", "80");
+  const currentRatio: PersonalFinancialScreenInstantCellDto = {
+    status: "available",
+    unit: "multiple",
+    value: "1.25",
+    sources: [...currentAssets.sources, ...currentLiabilities.sources],
+  };
+  return { currentAssets, currentLiabilities, currentRatio };
+}
+function currentResponse(
+  currentAssets: PersonalFinancialScreenInstantCellDto,
+  currentLiabilities: PersonalFinancialScreenInstantCellDto,
+  value: string | null,
+  reason: Extract<
+    PersonalFinancialScreenInstantCellDto,
+    { status: "unavailable" }
+  >["reason"] = "missing",
+): PersonalFinancialScreenResponseDto {
+  const result = response();
+  const row = result.rows[0]!;
+  const sources = [...currentAssets.sources, ...currentLiabilities.sources];
+  const currentRatio: PersonalFinancialScreenInstantCellDto =
+    value === null
+      ? { status: "unavailable", unit: "multiple", reason, sources }
+      : { status: "available", unit: "multiple", value, sources };
+  return {
+    ...result,
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          currentAssets,
+          currentLiabilities,
+          currentRatio,
+        },
+      },
+    ],
+  };
+}
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "5.0.0",
+    schemaVersion: "6.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
-    sources: PERSONAL_SEC_ANNUAL_CONCEPTS.map((concept) => ({
+    instantQuarter: 4,
+    sources: [
+      ...PERSONAL_SEC_ANNUAL_CONCEPTS,
+      ...PERSONAL_SEC_INSTANT_CONCEPTS,
+    ].map((concept) => ({
       concept,
       status: "available",
       sourceUrl: personalFinancialSourceUrl(concept, 2024),
@@ -2874,6 +3487,12 @@ function response(): PersonalFinancialScreenResponseDto {
         },
         metrics: Object.fromEntries(
           PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => {
+            if (
+              metric === "currentAssets" ||
+              metric === "currentLiabilities" ||
+              metric === "currentRatio"
+            )
+              return [metric, defaultInstantCells()[metric]];
             if (metric === "operatingCashFlowToNetIncome")
               return [
                 metric,
@@ -2966,7 +3585,7 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.3.0",
+    formulaVersion: "1.4.0",
   };
 }
 function responseWithBasis(

@@ -266,7 +266,7 @@ function isScreenRequest(
       "page",
       "refresh",
     ]) &&
-    value.schemaVersion === "5.0.0" &&
+    value.schemaVersion === "6.0.0" &&
     isSnapshotDigest(value.catalogSnapshotSha256) &&
     (value.financialSnapshotSha256 === null ||
       isSnapshotDigest(value.financialSnapshotSha256)) &&
@@ -354,7 +354,7 @@ function sendFinancialProblem(
   const problem: ProblemDetailsDto & { code: string } = {
     type: `https://research-cockpit.local/problems/${String(status)}`,
     title: "Financial screen unavailable",
-    detail: "The annual SEC financial screen request was not accepted.",
+    detail: "The SEC financial screen request was not accepted.",
     instance: PERSONAL_FINANCIAL_SCREEN_PATH,
     status,
     traceId: request.id,

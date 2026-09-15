@@ -5456,6 +5456,17 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       /"RevenueFromContractWithCustomerExcludingAssessedTax",\s*"Revenues"/u,
       '"Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax"',
     ),
+    secConcepts.replace(/"AssetsCurrent",?\s*/u, ""),
+    secConcepts.replace('"AssetsCurrent"', '"Assets"'),
+    secConcepts.replace('"LiabilitiesCurrent"', '"AssetsCurrent"'),
+    secConcepts.replace(
+      '"LiabilitiesCurrent"',
+      '"LiabilitiesCurrent", "Liabilities"',
+    ),
+    secConcepts.replace(
+      /"AssetsCurrent",\s*"LiabilitiesCurrent"/u,
+      '"LiabilitiesCurrent", "AssetsCurrent"',
+    ),
   ];
   if (
     invalidSecConceptRegistries.some(
@@ -5491,6 +5502,26 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     (source: string) =>
       source.replace("MAX_FRAME_ROWS = 50_000", "MAX_FRAME_ROWS = 500_000"),
     (source: string) => source.replace("if (seen.has(cik))", "if (false)"),
+    (source: string) => source.replace("Q4I.json", "Q3I.json"),
+    (source: string) => source.replace("Q4I.json", ".json"),
+    (source: string) =>
+      source.replace(
+        "for (const concept of PERSONAL_SEC_INSTANT_CONCEPTS)",
+        "for (const concept of PERSONAL_SEC_ANNUAL_CONCEPTS)",
+      ),
+    (source: string) =>
+      source.replace('concept === "AssetsCurrent"', 'concept === "Assets"'),
+    (source: string) =>
+      source.replace('Object.hasOwn(candidate, "start")', "false"),
+    (source: string) =>
+      source.replace("`CY${calendarYear}Q4I`", "`CY${calendarYear}`"),
+    (source: string) =>
+      source.replace(
+        "normalizeInstantFrame(parsed, concept, calendarYear, sourceUrl)",
+        "normalizeFrame(parsed, concept, calendarYear, sourceUrl)",
+      ),
+    (source: string) =>
+      source.replace("instantFrames: normalizedInstant", "instantFrames: []"),
   ];
   if (
     personalSecFinancialProviderViolation(secProvider) !== null ||
@@ -7355,6 +7386,7 @@ function personalSecFinancialProviderViolation(content: string): string | null {
     "constREQUEST_INTERVAL_MS=220;",
     "constCACHE_DURATION_MS=30*60*1000;",
     "for(constconceptofPERSONAL_SEC_ANNUAL_CONCEPTS)",
+    "for(constconceptofPERSONAL_SEC_INSTANT_CONCEPTS)",
     "if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,signal);",
     "setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS)",
     "this.#active?.controller.abort()",
@@ -7368,9 +7400,32 @@ function personalSecFinancialProviderViolation(content: string): string | null {
     "unknownCiks.add(cik)",
     "parseLosslessJson(text)",
     "coefficient>MAX_SAFE_COEFFICIENT",
+    "constnormalizedInstant=Object.freeze(instantFrames);",
+    "normalizeInstantFrame(parsed,concept,calendarYear,sourceUrl)",
+    'returnconcept==="AssetsCurrent"||concept==="LiabilitiesCurrent";',
+    'Object.hasOwn(candidate,"start")',
+    "constasOfDate=normalizeDate(candidate.end);",
+    "Math.abs(Number(asOfDate.slice(0,4))-calendarYear)>1",
+    "value.ccp!==`CY${calendarYear}Q4I`",
   ];
   if (required.some((anchor) => !compact.includes(anchor))) {
     return "SEC financial provider must preserve bounded requests, exact concepts, cancellation, public memory cache, lossless numbers, and unknown conflicting facts";
+  }
+  const repeated = [
+    ["if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,signal);", 2],
+    ["awaitthis.#scheduler.wait(signal)", 2],
+    ["value.data.length>MAX_FRAME_ROWS", 2],
+    ["if(seen.has(cik))", 2],
+    ["facts.delete(cik)", 2],
+    ["instantFrames:normalizedInstant", 2],
+    ["instantQuarter:4", 2],
+  ] as const;
+  if (
+    repeated.some(
+      ([anchor, count]) => compact.split(anchor).length - 1 !== count,
+    )
+  ) {
+    return "SEC financial provider must retain both bounded frame families in acquisition and the combined cache digest";
   }
   let endpointCount = 0;
   let transportCount = 0;
@@ -7378,6 +7433,10 @@ function personalSecFinancialProviderViolation(content: string): string | null {
   const visit = (node: ts.Node): void => {
     if (ts.isTemplateExpression(node) && /https?:\/\//iu.test(node.head.text)) {
       const [concept, year] = node.templateSpans;
+      const selection = ts.isConditionalExpression(node.parent)
+        ? node.parent
+        : undefined;
+      const declaration = selection?.parent;
       if (
         node.head.text !== "https://data.sec.gov/api/xbrl/frames/us-gaap/" ||
         node.templateSpans.length !== 2 ||
@@ -7388,13 +7447,21 @@ function personalSecFinancialProviderViolation(content: string): string | null {
         year === undefined ||
         !ts.isIdentifier(year.expression) ||
         year.expression.text !== "calendarYear" ||
-        year.literal.text !== ".json" ||
-        !ts.isVariableDeclaration(node.parent) ||
-        !ts.isIdentifier(node.parent.name) ||
-        node.parent.name.text !== "sourceUrl"
+        selection === undefined ||
+        selection.condition.getText(source).replace(/\s+/gu, "") !==
+          "isInstantConcept(concept)" ||
+        !(
+          (selection.whenTrue === node && year.literal.text === "Q4I.json") ||
+          (selection.whenFalse === node && year.literal.text === ".json")
+        ) ||
+        declaration === undefined ||
+        !ts.isVariableDeclaration(declaration) ||
+        declaration.initializer !== selection ||
+        !ts.isIdentifier(declaration.name) ||
+        declaration.name.text !== "sourceUrl"
       ) {
         violation =
-          "SEC financial provider may construct only the reviewed fixed USD annual frame URL";
+          "SEC financial provider may construct only the reviewed concept-bound USD annual and Q4 instant frame URLs";
       }
       endpointCount += 1;
     }
@@ -7469,9 +7536,9 @@ function personalSecFinancialProviderViolation(content: string): string | null {
   visit(source);
   return (
     violation ??
-    (endpointCount === 1 && transportCount === 1
+    (endpointCount === 2 && transportCount === 1
       ? null
-      : "SEC financial provider must contain exactly one fixed endpoint template and fetch transport")
+      : "SEC financial provider must contain exactly two fixed endpoint templates and one fetch transport")
   );
 }
 
@@ -7484,20 +7551,28 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
     ts.ScriptKind.TS,
   );
   let concepts: readonly string[] | undefined;
+  let instantConcepts: readonly string[] | undefined;
   for (const statement of source.statements) {
     if (!ts.isVariableStatement(statement)) continue;
     for (const declaration of statement.declarationList.declarations) {
       if (
         !ts.isIdentifier(declaration.name) ||
-        declaration.name.text !== "PERSONAL_SEC_ANNUAL_CONCEPTS" ||
+        ![
+          "PERSONAL_SEC_ANNUAL_CONCEPTS",
+          "PERSONAL_SEC_INSTANT_CONCEPTS",
+        ].includes(declaration.name.text) ||
         declaration.initializer === undefined
       )
         continue;
       const initializer = unwrapBoundaryExpression(declaration.initializer);
-      if (ts.isArrayLiteralExpression(initializer))
-        concepts = initializer.elements.map(
+      if (ts.isArrayLiteralExpression(initializer)) {
+        const entries = initializer.elements.map(
           (item) => staticStringValue(item) ?? "<invalid>",
         );
+        if (declaration.name.text === "PERSONAL_SEC_ANNUAL_CONCEPTS")
+          concepts = entries;
+        else instantConcepts = entries;
+      }
     }
   }
   return JSON.stringify(concepts) ===
@@ -7510,9 +7585,11 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "NetCashProvidedByUsedInOperatingActivities",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
-    ])
+    ]) &&
+    JSON.stringify(instantConcepts) ===
+      JSON.stringify(["AssetsCurrent", "LiabilitiesCurrent"])
     ? null
-    : "SEC annual frames must remain the exact reviewed eight-concept registry";
+    : "SEC financial frames must retain the exact eight annual and two instant concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

@@ -1,6 +1,8 @@
 import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_FINANCIAL_SCREEN_METRICS,
+  PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
+  PERSONAL_SEC_INSTANT_CONCEPTS,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenClauseDto,
@@ -8,7 +10,8 @@ import {
   type PersonalFinancialScreenMetricDto,
   type PersonalSecAnnualConceptDto,
   type PersonalSecAnnualFactDto,
-  type PersonalSecAnnualFinancialSnapshotDto,
+  type PersonalSecInstantFactDto,
+  type PersonalSecFinancialSnapshotDto,
   type PersonalSecAnnualFrameDto,
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
@@ -87,7 +90,7 @@ describe("SEC annual financial screener", () => {
     );
     expect(result).toMatchObject({
       calendarYear: 2025,
-      formulaVersion: "1.3.0",
+      formulaVersion: "1.4.0",
       catalogSnapshotSha256: CATALOG_DIGEST,
       financialSnapshotSha256: FINANCIAL_DIGEST,
     });
@@ -431,6 +434,9 @@ describe("reported gross profit screening", () => {
       "operatingCashFlowLessPpePurchases",
       "grossMargin",
       "operatingCashFlowToNetIncome",
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
     ];
     expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toEqual(metrics);
     expect(Object.keys(result.rows[0]!.metrics)).toEqual(metrics);
@@ -446,8 +452,8 @@ describe("reported gross profit screening", () => {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "5.0.0",
-      formulaVersion: "1.3.0",
+      schemaVersion: "6.0.0",
+      formulaVersion: "1.4.0",
     });
     expect(() =>
       run([], { ...snapshot(), frames: snapshot().frames.slice(0, 7) }),
@@ -552,9 +558,9 @@ describe("reported gross profit screening", () => {
         known: 0,
         unknown: 1,
       });
-      for (const [metric, cell] of Object.entries(result.rows[0]!.metrics))
+      for (const metric of PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS)
         if (metric !== "grossProfit" && metric !== "grossMargin")
-          expect(cell.status).toBe("available");
+          expect(result.rows[0]!.metrics[metric].status).toBe("available");
     },
   );
 
@@ -777,7 +783,7 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
   const derived = "operatingCashFlowLessPpePurchases";
 
   it("versions only the screen formula set and keeps existing ratio metadata", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.3.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[derived]).toEqual({
       formulaId: "operating_cash_flow_less_ppe_purchases",
       formulaVersion: "1.1.0",
@@ -989,7 +995,7 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
         }),
       ],
     });
-    const cell = (data: PersonalSecAnnualFinancialSnapshotDto) =>
+    const cell = (data: PersonalSecFinancialSnapshotDto) =>
       run([identity("ORDER", 1)], data).rows[0]!.metrics[derived];
     expect(cell(base)).toMatchObject({ reason: "period_mismatch" });
     expect(
@@ -1151,7 +1157,7 @@ describe("explicit financial-screen revenue basis", () => {
       const metrics = result.rows[0]!.metrics;
       expect(result).toMatchObject({
         revenueBasis: basis,
-        formulaVersion: "1.3.0",
+        formulaVersion: "1.4.0",
       });
       expect(metrics.revenue).toMatchObject({
         status: "available",
@@ -1177,7 +1183,7 @@ describe("explicit financial-screen revenue basis", () => {
       expect(metrics.netIncome).toMatchObject({ value: "11" });
       expect(metrics.operatingIncome).toMatchObject({ value: "22" });
       expect(metrics.operatingCashFlow).toMatchObject({ value: "33" });
-      expect(result.sources).toHaveLength(8);
+      expect(result.sources).toHaveLength(10);
       expect(JSON.stringify(data)).toBe(before);
       expect(selected.revenueBasis).toBe(basis);
     },
@@ -1381,7 +1387,7 @@ describe("explicit financial-screen revenue basis", () => {
 
 describe("gross profit / selected revenue", () => {
   function cells(
-    input: PersonalSecAnnualFinancialSnapshotDto,
+    input: PersonalSecFinancialSnapshotDto,
     revenueBasis: PersonalFinancialRevenueBasisDto = REVENUE,
   ) {
     return run([identity("GROSS", 1)], input, {
@@ -1399,7 +1405,7 @@ describe("gross profit / selected revenue", () => {
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.grossMargin).toEqual(
       PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
     );
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.3.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
     for (const metric of [
       "netMargin",
       "operatingMargin",
@@ -1912,20 +1918,20 @@ describe("operating cash flow / net income", () => {
   const metric = "operatingCashFlowToNetIncome";
   const ocf = "NetCashProvidedByUsedInOperatingActivities";
   const income = "NetIncomeLoss";
-  function cells(input: PersonalSecAnnualFinancialSnapshotDto) {
+  function cells(input: PersonalSecFinancialSnapshotDto) {
     return run([identity("CASH", 1)], input).rows[0]!.metrics;
   }
 
   it("registers a distinct formula while preserving the eleven metrics and every prior formula version", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.at(-1)).toBe(metric);
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(12);
+    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.at(-1)).toBe(metric);
+    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS).toHaveLength(12);
     expect(PERSONAL_SEC_ANNUAL_CONCEPTS).toHaveLength(8);
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[metric]).toEqual({
       formulaId: "operating_cash_flow_to_net_income_percent",
       formulaVersion: "1.0.0",
       expression: "operating_cash_flow / net_income * 100",
     });
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.3.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
     for (const prior of [
       "grossMargin",
       "netMargin",
@@ -2390,7 +2396,7 @@ describe("operating cash flow / net income", () => {
       ],
     } as const;
     expect(Object.keys(expected)).toEqual(
-      PERSONAL_FINANCIAL_SCREEN_METRICS.slice(0, -1),
+      PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.slice(0, -1),
     );
     for (const oldMetric of Object.keys(
       expected,
@@ -2412,7 +2418,7 @@ describe("operating cash flow / net income", () => {
       reason: "filing_mismatch",
     });
     expect(result.metricCoverage[metric]).toEqual({ known: 0, unknown: 1 });
-    expect(result.schemaVersion).toBe("5.0.0");
+    expect(result.schemaVersion).toBe("6.0.0");
   });
 
   it("uses inclusive rounded thresholds, separates unknowns and orders duplicate listings stably across pages", () => {
@@ -2686,7 +2692,7 @@ describe("financial-screen grammar and boundary validation", () => {
 
 function run(
   identities: readonly PersonalSecurityMasterScreenRowDto[],
-  input: PersonalSecAnnualFinancialSnapshotDto,
+  input: PersonalSecFinancialSnapshotDto,
   filters = criteria(),
   page = { offset: 0, limit: 250 },
 ) {
@@ -2763,12 +2769,20 @@ function snapshot(
   values: Partial<
     Record<PersonalSecAnnualConceptDto, readonly PersonalSecAnnualFactDto[]>
   > = {},
-): PersonalSecAnnualFinancialSnapshotDto {
+): PersonalSecFinancialSnapshotDto {
   return {
     calendarYear: 2025,
     fetchedAt: "2026-09-09T12:00:00Z",
     expiresAt: "2026-09-09T12:30:00Z",
     snapshotSha256: FINANCIAL_DIGEST,
+    instantQuarter: 4,
+    instantFrames: PERSONAL_SEC_INSTANT_CONCEPTS.map((concept) => ({
+      concept,
+      status: "available",
+      sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025Q4I.json`,
+      facts: [],
+      unknownCiks: [],
+    })),
     frames: CONCEPTS.map((concept) => ({
       concept,
       status: "available",
@@ -2780,14 +2794,392 @@ function snapshot(
 }
 
 function replaceFrame(
-  input: PersonalSecAnnualFinancialSnapshotDto,
+  input: PersonalSecFinancialSnapshotDto,
   concept: PersonalSecAnnualConceptDto,
   overrides: Partial<PersonalSecAnnualFrameDto>,
-): PersonalSecAnnualFinancialSnapshotDto {
+): PersonalSecFinancialSnapshotDto {
   return {
     ...input,
     frames: input.frames.map((frame) =>
       frame.concept === concept ? { ...frame, ...overrides } : frame,
     ),
+  };
+}
+
+describe("fixed Q4 current assets / current liabilities", () => {
+  const cells = (input: PersonalSecFinancialSnapshotDto) =>
+    run([identity("LIQUID", 1)], input).rows[0]!.metrics;
+
+  it("registers three instant fields and a distinct multiple formula without changing annual concepts", () => {
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(12)).toEqual([
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
+    ]);
+    expect(PERSONAL_SEC_ANNUAL_CONCEPTS).toEqual(CONCEPTS);
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.currentRatio).toEqual({
+      formulaId: "current_assets_to_current_liabilities",
+      formulaVersion: "1.0.0",
+      expression: "current_assets / current_liabilities",
+    });
+    const result = run(
+      [identity("LIQUID", 1)],
+      balances([instantFact(1, "25")], [instantFact(1, "10")]),
+    );
+    expect(result).toMatchObject({
+      schemaVersion: "6.0.0",
+      instantQuarter: 4,
+      formulaVersion: "1.4.0",
+    });
+    expect(result.sources).toHaveLength(10);
+    expect(result.rows[0]!.metrics.currentRatio).toEqual({
+      status: "available",
+      unit: "multiple",
+      value: "2.50",
+      sources: [
+        {
+          concept: "AssetsCurrent",
+          accessionNumber: "0000000001-26-000001",
+          asOfDate: "2025-12-31",
+          value: "25",
+        },
+        {
+          concept: "LiabilitiesCurrent",
+          accessionNumber: "0000000001-26-000001",
+          asOfDate: "2025-12-31",
+          value: "10",
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ["1", "3", "0.33"],
+    ["2", "3", "0.67"],
+    ["0.995", "1", "1.00"],
+    ["1.005", "1", "1.01"],
+    ["0.004999", "1", "0.00"],
+    ["0.005", "1", "0.01"],
+    ["-0.000", "5", "0.00"],
+    ["0", "5", "0.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(64)}${"0".repeat(62)}.00`,
+    ],
+  ])(
+    "divides %s by %s exactly and rounds the multiple to %s",
+    (assets, liabilities, expected) => {
+      const result = cells(
+        balances([instantFact(1, assets)], [instantFact(1, liabilities)]),
+      );
+      expect(result.currentRatio).toMatchObject({
+        status: "available",
+        unit: "multiple",
+        value: expected,
+      });
+      expect(expected.length).toBeLessThanOrEqual(129);
+    },
+  );
+
+  it.each(["2025-10-01", "2025-12-30", "2025-12-31"])(
+    "admits the actual in-window balance date %s",
+    (asOfDate) => {
+      expect(
+        cells(
+          balances(
+            [instantFact(1, "1", { asOfDate })],
+            [instantFact(1, "1", { asOfDate })],
+          ),
+        ).currentRatio,
+      ).toMatchObject({ status: "available", value: "1.00" });
+    },
+  );
+  it.each(["2024-12-31", "2025-09-30", "2026-01-01", "2026-01-31"])(
+    "retains the actual date %s while rejecting its applicability",
+    (asOfDate) => {
+      const result = cells(
+        balances(
+          [instantFact(1, "1", { asOfDate })],
+          [instantFact(1, "1", { asOfDate })],
+        ),
+      );
+      for (const key of [
+        "currentAssets",
+        "currentLiabilities",
+        "currentRatio",
+      ] as const) {
+        expect(result[key]).toMatchObject({
+          status: "unavailable",
+          reason: "unsupported_balance_date",
+        });
+        expect(
+          result[key].sources.every((ref) => ref.asOfDate === asOfDate),
+        ).toBe(true);
+      }
+    },
+  );
+
+  it.each(["0", "-0", "-10"])(
+    "retains reported liabilities %s but rejects a nonpositive denominator",
+    (value) => {
+      const result = cells(
+        balances([instantFact(1, "-1")], [instantFact(1, value)]),
+      );
+      expect(result.currentLiabilities.status).toBe("available");
+      expect(result.currentAssets).toMatchObject({
+        status: "available",
+        value: "-1",
+      });
+      expect(result.currentRatio).toMatchObject({
+        status: "unavailable",
+        reason: "nonpositive_current_liabilities",
+      });
+    },
+  );
+  it("keeps negative assets visible and does not convert their sign for the ratio", () => {
+    const result = cells(
+      balances([instantFact(1, "-1")], [instantFact(1, "2")]),
+    );
+    expect(result.currentAssets).toMatchObject({
+      status: "available",
+      value: "-1",
+    });
+    expect(result.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "unsupported_sign",
+    });
+  });
+  it("requires the same actual date before filing and sign checks", () => {
+    const result = cells(
+      balances(
+        [instantFact(1, "-1", { asOfDate: "2025-10-01" })],
+        [instantFact(1, "0", { accessionNumber: "0000000001-26-000002" })],
+      ),
+    );
+    expect(result.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "balance_date_mismatch",
+    });
+    expect(result.currentRatio.sources).toHaveLength(2);
+  });
+  it("checks every retained accession before signs, including agreeing duplicate observations", () => {
+    const result = cells(
+      balances(
+        [
+          instantFact(1, "-1"),
+          instantFact(1, "-1", { accessionNumber: "0000000001-26-000002" }),
+        ],
+        [instantFact(1, "0")],
+      ),
+    );
+    expect(result.currentAssets.status).toBe("available");
+    expect(result.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "filing_mismatch",
+    });
+    expect(result.currentRatio.sources).toHaveLength(3);
+  });
+  it.each([
+    ["invalid_value", [instantFact(1, "bad", { asOfDate: "2025-09-30" })]],
+    [
+      "conflicting",
+      [
+        instantFact(1, "1", { asOfDate: "2025-09-30" }),
+        instantFact(1, "2", { asOfDate: "2025-09-30" }),
+      ],
+    ],
+    [
+      "conflicting",
+      [instantFact(1, "1", { asOfDate: "2025-10-01" }), instantFact(1, "1")],
+    ],
+  ] as const)(
+    "resolves %s before the balance-window check",
+    (reason, assets) => {
+      const result = cells(balances(assets, [instantFact(1, "1")]));
+      expect(result.currentAssets).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(result.currentRatio).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+    },
+  );
+  it("resolves liabilities unavailable before assets, preserving every available operand reference", () => {
+    const input = balances([instantFact(1, "bad")], []);
+    expect(cells(input).currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "missing",
+      sources: [{ value: "bad" }],
+    });
+    const conflict = {
+      ...input,
+      instantFrames: input.instantFrames.map((frame) =>
+        frame.concept === "LiabilitiesCurrent"
+          ? { ...frame, unknownCiks: [cik(1)] }
+          : frame,
+      ),
+    };
+    expect(cells(conflict).currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "conflicting",
+    });
+  });
+  it.each([
+    "not_covered",
+    "rate_limited",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "isolates %s instant sources from all twelve annual metrics and revenue bases",
+    (status) => {
+      const base = snapshot(
+        Object.fromEntries(
+          CONCEPTS.map((concept) => [concept, [fact(1, "100")]]),
+        ),
+      );
+      const input = {
+        ...base,
+        instantFrames: base.instantFrames.map((frame) => ({
+          ...frame,
+          status,
+        })),
+      };
+      for (const revenueBasis of PERSONAL_FINANCIAL_REVENUE_BASES) {
+        const filters = { ...criteria(), revenueBasis };
+        const before = run([identity("LIQUID", 1)], base, filters);
+        const after = run([identity("LIQUID", 1)], input, filters);
+        for (const metric of PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS) {
+          expect(after.rows[0]!.metrics[metric]).toEqual(
+            before.rows[0]!.metrics[metric],
+          );
+          expect(after.metricCoverage[metric]).toEqual(
+            before.metricCoverage[metric],
+          );
+        }
+        expect(after.rows[0]!.metrics.currentRatio).toMatchObject({
+          status: "unavailable",
+          reason: status === "not_covered" ? "missing" : "source_unavailable",
+        });
+      }
+    },
+  );
+  it("binds operands by CIK, counts duplicate listings and sorts known values before unknowns across pages", () => {
+    const companies = [
+      identity("BETA", 2),
+      { ...identity("ALPHA.B", 1), listingId: "listing-0000000001-b" },
+      identity("ALPHA", 1),
+      identity("MISSING", 3),
+    ];
+    const input = balances(
+      [instantFact(1, "0.995"), instantFact(2, "2"), instantFact(3, "2")],
+      [instantFact(1, "1"), instantFact(2, "1")],
+    );
+    for (const direction of ["asc", "desc"] as const) {
+      const filters = {
+        ...criteria(),
+        sort: { field: "currentRatio" as const, direction },
+      };
+      const all = run(companies, input, filters);
+      const pages = [0, 2].flatMap((offset) =>
+        run(companies, input, filters, { offset, limit: 2 }).rows.map(
+          (row) => row.identity.symbol,
+        ),
+      );
+      expect(pages).toEqual(all.rows.map((row) => row.identity.symbol));
+      expect(pages.at(-1)).toBe("MISSING");
+      expect(all.metricCoverage.currentRatio).toEqual({ known: 3, unknown: 1 });
+    }
+    const inclusive = run(
+      companies,
+      input,
+      criteria([
+        clause("currentRatio", "gte", "1.00"),
+        clause("currentRatio", "lte", "1.00"),
+      ]),
+    );
+    expect(inclusive.rows.map((row) => row.identity.symbol)).toEqual([
+      "ALPHA",
+      "ALPHA.B",
+    ]);
+    expect(inclusive).toMatchObject({
+      totalMatches: 2,
+      totalNonMatches: 1,
+      totalUnknown: 1,
+    });
+    expect(
+      run(
+        companies,
+        input,
+        criteria([clause("currentRatio", "gte", "1.01")]),
+      ).rows.map((row) => row.identity.symbol),
+    ).toEqual(["BETA"]);
+  });
+  it("rejects quarter injection in saved criteria and corrupted instant selection/shape before evaluation", () => {
+    expect(
+      validatePersonalFinancialScreenCriteria({
+        ...criteria(),
+        instantQuarter: 4,
+      }),
+    ).toBe(false);
+    const good = balances([instantFact(1, "1")], [instantFact(1, "1")]);
+    const mutations: unknown[] = [
+      { ...good, instantQuarter: 3 },
+      { ...good, instantFrames: [] },
+      {
+        ...good,
+        instantFrames: [good.instantFrames[0], good.instantFrames[0]],
+      },
+      {
+        ...good,
+        instantFrames: good.instantFrames.map((frame) => ({
+          ...frame,
+          sourceUrl: frame.sourceUrl.replace("Q4I", "Q3I"),
+        })),
+      },
+      {
+        ...good,
+        instantFrames: good.instantFrames.map((frame) => ({
+          ...frame,
+          facts: [{ ...instantFact(1, "1"), startDate: "2025-01-01" }],
+        })),
+      },
+      ...["2025-02-29", "2023-12-31", "2027-01-01"].map((asOfDate) =>
+        balances([instantFact(1, "1", { asOfDate })], []),
+      ),
+    ];
+    for (const bad of mutations)
+      expect(() => run([], bad as PersonalSecFinancialSnapshotDto)).toThrow(
+        "Personal financial screen request is invalid.",
+      );
+  });
+});
+
+function instantFact(
+  index: number,
+  value: string,
+  overrides: Partial<PersonalSecInstantFactDto> = {},
+): PersonalSecInstantFactDto {
+  return {
+    cik: cik(index),
+    accessionNumber: `${cik(index)}-26-000001`,
+    asOfDate: "2025-12-31",
+    value,
+    ...overrides,
+  };
+}
+function balances(
+  assets: readonly PersonalSecInstantFactDto[],
+  liabilities: readonly PersonalSecInstantFactDto[],
+): PersonalSecFinancialSnapshotDto {
+  const base = snapshot();
+  return {
+    ...base,
+    instantFrames: base.instantFrames.map((frame) => ({
+      ...frame,
+      facts: frame.concept === "AssetsCurrent" ? assets : liabilities,
+    })),
   };
 }

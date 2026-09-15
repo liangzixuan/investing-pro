@@ -44,7 +44,7 @@ function sourceFetch(starts: number[]) {
         Response.json({
           taxonomy: "us-gaap",
           tag: parts[5],
-          ccp: "CY2025",
+          ccp: parts[7]?.replace(".json", ""),
           uom: "USD",
           pts: 0,
           data: [],
@@ -250,15 +250,19 @@ describe("shared SEC request scheduler", () => {
     expect(evidence.sources.companyFacts.status).toBe("available");
     expect(evidence.sources.submissions.status).toBe("available");
     expect(snapshot.frames).toHaveLength(8);
-    expect(starts).toHaveLength(12);
+    expect(snapshot.instantFrames).toHaveLength(2);
+    expect(
+      snapshot.instantFrames.every((frame) => frame.status === "available"),
+    ).toBe(true);
+    expect(starts).toHaveLength(14);
     const refresh = annual.loadSnapshot(2025, undefined, true);
     filings.close();
     const replacement = createSecPersonalFilingsProvider(USER_AGENT, { fetch });
     const third = replacement.loadFilings([CIK], FROM, THROUGH);
     await vi.runAllTimersAsync();
     await Promise.all([refresh, third]);
-    expect(starts).toHaveLength(21);
-    expect(wait).toHaveBeenCalledTimes(21);
+    expect(starts).toHaveLength(25);
+    expect(wait).toHaveBeenCalledTimes(25);
     assertSpaced(starts);
     const count = fetch.mock.calls.length;
     await annual.loadSnapshot(2025);
@@ -300,7 +304,7 @@ describe("shared SEC request scheduler", () => {
       const retry = load();
       await vi.runAllTimersAsync();
       await retry;
-      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 8 : 1);
+      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 10 : 1);
       annual.close();
       filings.close();
     },
