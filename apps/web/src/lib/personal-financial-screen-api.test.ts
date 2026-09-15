@@ -9,6 +9,7 @@ import {
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialScreenAnnualCellDto,
+  type PersonalFinancialScreenGrowthCellDto,
   type PersonalFinancialScreenSourceRefDto,
   type PersonalFinancialSavedViewsPayloadDto,
 } from "@research-cockpit/contracts";
@@ -33,6 +34,560 @@ beforeEach(() => {
   });
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe("selected revenue year-over-year decoding", () => {
+  const missing: PersonalFinancialScreenAnnualCellDto = {
+    status: "unavailable",
+    unit: "USD",
+    reason: "missing",
+    sources: [],
+  };
+  const dates = (
+    cell: PersonalFinancialScreenAnnualCellDto,
+    startDate: string,
+    endDate: string,
+  ): PersonalFinancialScreenAnnualCellDto => ({
+    ...cell,
+    sources: cell.sources.map((source) => ({ ...source, startDate, endDate })),
+  });
+  const current = () => growthOperand(2024, "110");
+  const prior = () => growthOperand(2023, "100");
+  const decode = async (result: PersonalFinancialScreenResponseDto) => {
+    fetchMock.mockResolvedValueOnce(json(result));
+    return screenPersonalFinancials(
+      {
+        ...request(),
+        criteria: {
+          ...request().criteria,
+          calendarYear: result.calendarYear,
+          revenueBasis: result.revenueBasis ?? "agreement",
+        },
+      },
+      signal(),
+    );
+  };
+  const corrupt = (
+    result: PersonalFinancialScreenResponseDto,
+    change: (value: Record<string, unknown>) => void,
+  ) => {
+    const clone = structuredClone(result) as unknown as {
+      rows: { metrics: { revenueGrowth: Record<string, unknown> } }[];
+    };
+    change(clone.rows[0]!.metrics.revenueGrowth);
+    return clone as unknown as PersonalFinancialScreenResponseDto;
+  };
+
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "retains both operands for explicit basis %s",
+    async (basis) => {
+      const selected =
+        basis === "agreement"
+          ? ([
+              "Revenues",
+              "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "SalesRevenueNet",
+            ] as const)
+          : [basis];
+      const result = growthResponse(
+        growthOperand(2024, "110", selected),
+        growthOperand(2023, "100", selected),
+        "10.00",
+        basis,
+      );
+      expect(await decode(result)).toEqual(result);
+      expect(
+        result.rows[0]!.metrics.revenueGrowth.sources.map(
+          (source) => source.role,
+        ),
+      ).toEqual([
+        ...selected.map(() => "current_revenue"),
+        ...selected.map(() => "prior_revenue"),
+      ]);
+      expect(result.sources).toHaveLength(10);
+      expect(result.priorRevenueSources).toHaveLength(3);
+    },
+  );
+
+  it.each([
+    ["101", "100", "1.00"],
+    ["100.005", "100", "0.01"],
+    ["99.995", "100", "-0.01"],
+    ["99.996", "100", "0.00"],
+    ["199.995", "100", "100.00"],
+    ["0", "100", "-100.00"],
+    ["-0.000", "100", "-100.00"],
+    ["-50", "100", "-150.00"],
+    ["1.000000", "1", "0.00"],
+    ["9007199254740993", "1", "900719925474099200.00"],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${((10n ** 64n - 1n) * 10n ** 64n - 100n).toString()}.00`,
+    ],
+    [
+      `-${"9".repeat(63)}`,
+      `0.${"0".repeat(61)}1`,
+      `-${((10n ** 63n - 1n) * 10n ** 64n + 100n).toString()}.00`,
+    ],
+  ])("independently checks %s against %s as %s", async (c, p, expected) => {
+    const result = growthResponse(
+      growthOperand(2024, c),
+      growthOperand(2023, p),
+      expected,
+    );
+    expect(await decode(result)).toEqual(result);
+    // Full-width positive and negative inputs reach 131 characters without overflowing that bound.
+    if (p.length === 64) expect(expected).toHaveLength(131);
+    for (const value of [
+      expected === "0.00" ? "-0.00" : `${expected}0`,
+      "123.45",
+      "1e2",
+    ])
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            cell.value = value;
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    ["2022-12-31", "2023-12-29", "2023-12-30", "2025-01-03"],
+    ["2023-01-01", "2023-12-31", "2024-01-01", "2024-12-31"],
+  ])(
+    "accepts actual adjacent periods %s–%s then %s–%s",
+    async (ps, pe, cs, ce) => {
+      const result = growthResponse(
+        dates(current(), cs, ce),
+        dates(prior(), ps, pe),
+        "10.00",
+      );
+      expect(await decode(result)).toEqual(result);
+    },
+  );
+
+  it.each([
+    ["prior_unavailable", missing, missing],
+    ["current_unavailable", missing, prior()],
+    ["period_mismatch", dates(current(), "2024-10-01", "2024-12-31"), prior()],
+    ["period_mismatch", dates(current(), "2020-01-01", "2020-12-31"), prior()],
+    [
+      "concept_set_changed",
+      growthOperand(2024, "110", ["Revenues", "SalesRevenueNet"]),
+      prior(),
+    ],
+    [
+      "nonadjacent_periods",
+      dates(current(), "2023-12-31", "2024-12-31"),
+      prior(),
+    ],
+    [
+      "nonadjacent_periods",
+      dates(current(), "2024-01-02", "2024-12-31"),
+      prior(),
+    ],
+    ["nonpositive_prior_revenue", current(), growthOperand(2023, "0")],
+    ["nonpositive_prior_revenue", current(), growthOperand(2023, "-1")],
+  ] as const)(
+    "reconstructs %s from the complete operands",
+    async (reason, c, p) => {
+      const result = growthResponse(c, p, reason);
+      expect(await decode(result)).toEqual(result);
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            cell.reason =
+              reason === "prior_unavailable"
+                ? "current_unavailable"
+                : "prior_unavailable";
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            delete cell.reason;
+            cell.status = "available";
+            cell.value = "10.00";
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("retains a one-day prior reference only with the independently verified period mismatch", async () => {
+    const oneDayPrior = dates(prior(), "2023-12-31", "2023-12-31");
+    const result = growthResponse(current(), oneDayPrior, "period_mismatch");
+    expect(await decode(result)).toEqual(result);
+    await expect(
+      decode(growthResponse(current(), oneDayPrior, "10.00")),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("checks later filings within each year, without requiring cross-year accession equality", async () => {
+    const c = {
+      ...current(),
+      sources: [
+        ...current().sources,
+        { ...current().sources[0]!, accessionNumber: "0000000001-25-000002" },
+      ],
+    };
+    const p = {
+      ...prior(),
+      sources: [
+        ...prior().sources,
+        { ...prior().sources[0]!, accessionNumber: "0000000001-24-000002" },
+      ],
+    };
+    for (const [left, right] of [
+      [c, prior()],
+      [current(), p],
+      [c, p],
+    ]) {
+      const result = growthResponse(left!, right!, "filing_mismatch");
+      expect(await decode(result)).toEqual(result);
+      await expect(
+        decode(growthResponse(left!, right!, "10.00")),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+    expect(
+      await decode(growthResponse(current(), prior(), "10.00")),
+    ).toMatchObject({
+      rows: [{ metrics: { revenueGrowth: { status: "available" } } }],
+    });
+  });
+
+  it("preserves unavailable, period, concept, adjacency and prior-sign precedence before filing mismatch", async () => {
+    const mixed = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+      ...cell,
+      sources: [
+        ...cell.sources,
+        { ...cell.sources[0]!, accessionNumber: "0000000001-25-000002" },
+      ],
+    });
+    const changed = growthOperand(2024, "110", ["Revenues", "SalesRevenueNet"]);
+    const cases = [
+      growthResponse(
+        dates(mixed(current()), "2024-10-01", "2024-12-31"),
+        missing,
+        "prior_unavailable",
+      ),
+      growthResponse(missing, mixed(prior()), "current_unavailable"),
+      growthResponse(
+        dates(mixed(changed), "2024-10-01", "2024-12-31"),
+        prior(),
+        "period_mismatch",
+      ),
+      growthResponse(
+        dates(mixed(changed), "2024-01-02", "2024-12-31"),
+        prior(),
+        "concept_set_changed",
+      ),
+      growthResponse(
+        dates(mixed(current()), "2024-01-02", "2024-12-31"),
+        growthOperand(2023, "0"),
+        "nonadjacent_periods",
+      ),
+      growthResponse(
+        mixed(current()),
+        growthOperand(2023, "0"),
+        "nonpositive_prior_revenue",
+      ),
+    ];
+    for (const result of cases) expect(await decode(result)).toEqual(result);
+  });
+
+  it("requires all twelve role-tagged references with exact multiplicity and permits order changes", async () => {
+    const repeated = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+      ...cell,
+      sources: Array.from({ length: 6 }, () => ({ ...cell.sources[0]! })),
+    });
+    const result = growthResponse(
+      repeated(current()),
+      repeated(prior()),
+      "10.00",
+    );
+    expect(
+      await decode(
+        corrupt(result, (cell) => {
+          cell.sources = [...(cell.sources as unknown[])].reverse();
+        }),
+      ),
+    ).toBeDefined();
+    for (const change of [
+      (refs: unknown[]) => refs.slice(1),
+      (refs: unknown[]) => [...refs, refs[0]],
+      (refs: unknown[]) => [...refs.slice(0, 11), refs[0]],
+    ])
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            cell.sources = change(cell.sources as unknown[]);
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    "current role",
+    "prior role",
+    "current year",
+    "prior year",
+    "concept",
+    "accession",
+    "value",
+    "date",
+    "instant date",
+    "extra key",
+  ])("rejects forged tagged source %s", async (kind) => {
+    const result = corrupt(
+      growthResponse(current(), prior(), "10.00"),
+      (cell) => {
+        const refs = cell.sources as Record<string, unknown>[];
+        const ref = kind.startsWith("prior") ? refs[1]! : refs[0]!;
+        if (kind === "current role") ref.role = "prior_revenue";
+        if (kind === "prior role") ref.role = "current_revenue";
+        if (kind.endsWith("year")) ref.calendarYear = 2022;
+        if (kind === "concept") ref.concept = "GrossProfit";
+        if (kind === "accession") ref.accessionNumber = "0000000001-25-000002";
+        if (kind === "value") ref.value = "111";
+        if (kind === "date") ref.endDate = "2024-02-30";
+        if (kind === "instant date") {
+          ref.asOfDate = ref.endDate;
+          delete ref.startDate;
+          delete ref.endDate;
+        }
+        if (kind === "extra key") ref.sourceUrl = "https://example.test";
+      },
+    );
+    await expect(decode(result)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+
+  it.each([
+    "current mismatch",
+    "prior value mismatch",
+    "later date",
+    "later value",
+    "USD unit",
+    "overlong value",
+    "empty available",
+    "invalid_value",
+    "missing with refs",
+    "extra operand key",
+  ])(
+    "rejects forged operand %s even with matching tagged references",
+    async (kind) => {
+      const result = corrupt(
+        growthResponse(current(), prior(), "10.00"),
+        (cell) => {
+          const operand = (
+            kind === "current mismatch"
+              ? cell.currentRevenue
+              : cell.priorRevenue
+          ) as Record<string, unknown>;
+          if (kind === "current mismatch" || kind === "prior value mismatch")
+            operand.value = "101";
+          if (kind === "current mismatch")
+            operand.sources = (
+              operand.sources as Record<string, unknown>[]
+            ).map((ref) => ({ ...ref, value: "101" }));
+          if (kind.startsWith("later")) {
+            const refs = operand.sources as Record<string, unknown>[];
+            refs.push({
+              ...refs[0],
+              ...(kind === "later date"
+                ? { startDate: "2023-01-02" }
+                : { value: "101" }),
+            });
+          }
+          if (kind === "USD unit") operand.unit = "percent";
+          if (kind === "overlong value") operand.value = "9".repeat(65);
+          if (kind === "empty available") operand.sources = [];
+          if (kind === "invalid_value" || kind === "missing with refs") {
+            operand.status = "unavailable";
+            operand.reason =
+              kind === "invalid_value" ? "invalid_value" : "missing";
+            delete operand.value;
+            delete cell.value;
+            cell.status = "unavailable";
+            cell.reason = "prior_unavailable";
+          }
+          if (kind === "extra operand key") operand.calendarYear = 2023;
+          cell.sources = growthSources(
+            cell.currentRevenue as PersonalFinancialScreenAnnualCellDto,
+            cell.priorRevenue as PersonalFinancialScreenAnnualCellDto,
+          );
+        },
+      );
+      await expect(decode(result)).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    },
+  );
+
+  it.each(["current", "prior"] as const)(
+    "binds %s source failure, conflict and404 semantics independently",
+    async (role) => {
+      const sourceKey = role === "current" ? "sources" : "priorRevenueSources";
+      for (const status of [
+        "rate_limited",
+        "upstream_unavailable",
+        "invalid_response",
+      ] as const) {
+        const failed: PersonalFinancialScreenAnnualCellDto = {
+          status: "unavailable",
+          unit: "USD",
+          reason: "source_unavailable",
+          sources: role === "current" ? current().sources : prior().sources,
+        };
+        const result = growthResponse(
+          role === "current" ? failed : current(),
+          role === "prior" ? failed : prior(),
+          role === "current" ? "current_unavailable" : "prior_unavailable",
+        );
+        const payload = {
+          ...result,
+          [sourceKey]: result[sourceKey].map((source) =>
+            source.concept === "SalesRevenueNet"
+              ? { ...source, status }
+              : source,
+          ),
+        };
+        expect(await decode(payload)).toEqual(payload);
+        await expect(decode(result)).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+        const forged = growthResponse(current(), prior(), "10.00");
+        await expect(
+          decode({ ...forged, [sourceKey]: payload[sourceKey] }),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+      const agreement = growthResponse(current(), prior(), "10.00");
+      const sources404 = agreement[sourceKey].map((source) =>
+        source.concept === "SalesRevenueNet"
+          ? { ...source, status: "not_covered" as const }
+          : source,
+      );
+      expect(
+        await decode({ ...agreement, [sourceKey]: sources404 }),
+      ).toBeDefined();
+      const explicit = growthResponse(
+        role === "current"
+          ? missing
+          : growthOperand(2024, "110", ["SalesRevenueNet"]),
+        role === "prior"
+          ? missing
+          : growthOperand(2023, "100", ["SalesRevenueNet"]),
+        role === "current" ? "current_unavailable" : "prior_unavailable",
+        "SalesRevenueNet",
+      );
+      expect(
+        await decode({ ...explicit, [sourceKey]: sources404 }),
+      ).toBeDefined();
+      const conflict: PersonalFinancialScreenAnnualCellDto = {
+        ...missing,
+        reason: "conflicting",
+      };
+      expect(
+        await decode(
+          growthResponse(
+            role === "current" ? conflict : current(),
+            role === "prior" ? conflict : prior(),
+            role === "current" ? "current_unavailable" : "prior_unavailable",
+          ),
+        ),
+      ).toBeDefined();
+    },
+  );
+
+  it.each([
+    "wrong prior year",
+    "missing prior year",
+    "missing prior collection",
+    "extra prior source",
+    "duplicate prior source",
+    "prior instant concept",
+    "wrong prior URL",
+    "current URL swapped",
+    "old version",
+    "old formula",
+    "wrong unit",
+    "extra growth key",
+  ])("rejects malformed growth transport: %s", async (kind) => {
+    const result = structuredClone(
+      growthResponse(current(), prior(), "10.00"),
+    ) as unknown as Record<string, unknown>;
+    const sources = result.priorRevenueSources as Record<string, unknown>[];
+    if (kind === "wrong prior year") result.priorCalendarYear = 2024;
+    if (kind === "missing prior year") delete result.priorCalendarYear;
+    if (kind === "missing prior collection") delete result.priorRevenueSources;
+    if (kind === "extra prior source") sources.push({ ...sources[0] });
+    if (kind === "duplicate prior source") sources[1] = { ...sources[0] };
+    if (kind === "prior instant concept") sources[0]!.concept = "AssetsCurrent";
+    if (kind === "wrong prior URL")
+      sources[0]!.sourceUrl = String(sources[0]!.sourceUrl).replace(
+        "2023",
+        "2024",
+      );
+    if (kind === "current URL swapped")
+      (result.sources as Record<string, unknown>[])[0]!.sourceUrl =
+        personalFinancialSourceUrl(
+          "RevenueFromContractWithCustomerExcludingAssessedTax",
+          2023,
+        );
+    if (kind === "old version") result.schemaVersion = "6.0.0";
+    if (kind === "old formula") result.formulaVersion = "1.4.0";
+    const growth = (
+      result.rows as { metrics: { revenueGrowth: Record<string, unknown> } }[]
+    )[0]!.metrics.revenueGrowth;
+    if (kind === "wrong unit") growth.unit = "USD";
+    if (kind === "extra growth key") growth.debug = "extra";
+    await expect(
+      decode(result as unknown as PersonalFinancialScreenResponseDto),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("keeps saved-v1 year2009 criteria valid and admits the derived CY2008 comparison", async () => {
+    const result = growthResponse(
+      growthOperand(2009, "110"),
+      growthOperand(2008, "100"),
+      "10.00",
+      "agreement",
+      2009,
+    );
+    expect(await decode(result)).toEqual(result);
+    const oldPayload = savedPayload();
+    const payload = {
+      ...oldPayload,
+      views: oldPayload.views.map((view) => ({
+        ...view,
+        criteria: {
+          ...view.criteria,
+          calendarYear: 2009,
+          clauses: [
+            { field: "revenueGrowth", operator: "gte", value: "-100.00" },
+          ],
+          sort: { field: "revenueGrowth", direction: "asc" },
+        },
+      })),
+    } as const;
+    expect(isPersonalFinancialScreenCriteria(payload.views[0]!.criteria)).toBe(
+      true,
+    );
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect(await fetchPersonalFinancialSavedViews(signal())).toEqual({
+      version: 1,
+      payload,
+    });
+    fetchMock.mockResolvedValueOnce(json(record()));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      oldPayload,
+    );
+  });
+});
 
 describe("current balance and ratio decoding", () => {
   it.each([
@@ -1071,6 +1626,7 @@ describe("operating cash flow / net income decoding", () => {
           metrics: {
             ...row.metrics,
             revenue: unknown,
+            revenueGrowth: unavailableGrowth(unknown),
             grossMargin: {
               ...unknown,
               unit: "percent",
@@ -1320,9 +1876,11 @@ describe("gross profit / selected revenue decoding", () => {
     "invalid_value",
     "source_unavailable",
   ] as const)(
-    "propagates %s with revenue before profit and exact source retention",
+    "propagates %s from reported operands with exact source retention",
     async (reason) => {
       for (const operand of ["revenue", "profit", "both"] as const) {
+        // The growth operand cannot substantiate invalid_value from decimal-valid references.
+        if (reason === "invalid_value" && operand !== "profit") continue;
         const knownRevenue = ratioOperand("Revenues", "0");
         const knownProfit = ratioOperand("GrossProfit", "-1");
         const revenue: PersonalFinancialScreenAnnualCellDto =
@@ -1332,7 +1890,7 @@ describe("gross profit / selected revenue decoding", () => {
                 status: "unavailable",
                 unit: "USD",
                 reason,
-                sources: knownRevenue.sources,
+                sources: reason === "missing" ? [] : knownRevenue.sources,
               };
         const profit: PersonalFinancialScreenAnnualCellDto =
           operand === "revenue"
@@ -1343,7 +1901,18 @@ describe("gross profit / selected revenue decoding", () => {
                 reason: operand === "both" ? "source_unavailable" : reason,
                 sources: knownProfit.sources,
               };
-        const result = ratioResponse(revenue, profit, { reason });
+        const baseResult = ratioResponse(revenue, profit, { reason });
+        const result =
+          reason === "source_unavailable" && operand !== "profit"
+            ? {
+                ...baseResult,
+                sources: baseResult.sources.map((source) =>
+                  source.concept === "SalesRevenueNet"
+                    ? { ...source, status: "upstream_unavailable" as const }
+                    : source,
+                ),
+              }
+            : baseResult;
         fetchMock.mockResolvedValueOnce(json(result));
         expect(await screenPersonalFinancials(request(), signal())).toEqual(
           result,
@@ -2033,6 +2602,12 @@ describe("financial screen transport", () => {
               reason: "missing",
               sources: [],
             },
+            revenueGrowth: unavailableGrowth({
+              status: "unavailable",
+              unit: "USD",
+              reason: "missing",
+              sources: [],
+            }),
             grossMargin: {
               status: "unavailable",
               unit: "percent",
@@ -2267,8 +2842,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("6.0.0");
-    expect(decoded.formulaVersion).toBe("1.4.0");
+    expect(decoded.schemaVersion).toBe("7.0.0");
+    expect(decoded.formulaVersion).toBe("1.5.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -2285,6 +2860,7 @@ describe("financial screen transport", () => {
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
+      "revenueGrowth",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
       Object.keys(decoded.rows[0]!.metrics),
@@ -2304,7 +2880,7 @@ describe("financial screen transport", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0"])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -2629,6 +3205,7 @@ describe("financial screen transport", () => {
       };
       coverage[metric] = { known: 0, unknown: 1 };
     }
+    metrics.revenueGrowth = unavailableGrowth(metrics.revenue);
     const missing = {
       ...result,
       rows: [{ ...row, metrics }],
@@ -3193,7 +3770,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "6.0.0",
+    schemaVersion: "7.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -3225,6 +3802,153 @@ function ratioOperand(
     unit: "USD",
     value,
     sources: [{ ...source(), concept, value }],
+  };
+}
+function growthSources(
+  current: PersonalFinancialScreenAnnualCellDto,
+  prior: PersonalFinancialScreenAnnualCellDto,
+  year = 2024,
+): PersonalFinancialScreenGrowthCellDto["sources"] {
+  return [
+    ...current.sources.map((ref) => ({
+      ...ref,
+      role: "current_revenue" as const,
+      calendarYear: year,
+    })),
+    ...prior.sources.map((ref) => ({
+      ...ref,
+      role: "prior_revenue" as const,
+      calendarYear: year - 1,
+    })),
+  ] as PersonalFinancialScreenGrowthCellDto["sources"];
+}
+function unavailableGrowth(
+  current: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenGrowthCellDto {
+  const prior: PersonalFinancialScreenAnnualCellDto = {
+    status: "unavailable",
+    unit: "USD",
+    reason: "missing",
+    sources: [],
+  };
+  return {
+    status: "unavailable",
+    unit: "percent",
+    reason: "prior_unavailable",
+    currentRevenue: current,
+    priorRevenue: prior,
+    sources: growthSources(current, prior),
+  };
+}
+function growthOperand(
+  year: number,
+  value: string,
+  concepts: readonly Exclude<
+    PersonalFinancialRevenueBasisDto,
+    "agreement"
+  >[] = ["Revenues"],
+): PersonalFinancialScreenAnnualCellDto {
+  return {
+    status: "available",
+    unit: "USD",
+    value,
+    sources: concepts.map((concept) => ({
+      concept,
+      accessionNumber: `0000000001-${String(year + 1).slice(-2)}-000001`,
+      startDate: `${String(year)}-01-01`,
+      endDate: `${String(year)}-12-31`,
+      value,
+    })),
+  };
+}
+function growthResponse(
+  current: PersonalFinancialScreenAnnualCellDto,
+  prior: PersonalFinancialScreenAnnualCellDto,
+  expected: string,
+  basis: PersonalFinancialRevenueBasisDto = "agreement",
+  year = 2024,
+): PersonalFinancialScreenResponseDto {
+  const missing: PersonalFinancialScreenAnnualCellDto = {
+    status: "unavailable",
+    unit: "USD",
+    reason: "missing",
+    sources: [],
+  };
+  const result = ratioResponse(
+    current,
+    missing,
+    { reason: current.status === "unavailable" ? current.reason : "missing" },
+    basis,
+  );
+  const row = result.rows[0]!;
+  const common = {
+    unit: "percent" as const,
+    currentRevenue: current,
+    priorRevenue: prior,
+    sources: growthSources(current, prior, year),
+  };
+  const revenueGrowth: PersonalFinancialScreenGrowthCellDto = /^-?\d/u.test(
+    expected,
+  )
+    ? { ...common, status: "available", value: expected }
+    : {
+        ...common,
+        status: "unavailable",
+        reason: expected as Extract<
+          PersonalFinancialScreenGrowthCellDto,
+          { status: "unavailable" }
+        >["reason"],
+      };
+  const instant = Object.fromEntries(
+    ["currentAssets", "currentLiabilities", "currentRatio"].map((metric) => {
+      const cell =
+        row.metrics[
+          metric as "currentAssets" | "currentLiabilities" | "currentRatio"
+        ];
+      return [
+        metric,
+        {
+          ...cell,
+          sources: cell.sources.map((ref) => ({
+            ...ref,
+            asOfDate: `${String(year)}-12-31`,
+          })),
+        },
+      ];
+    }),
+  );
+  return {
+    ...result,
+    calendarYear: year,
+    priorCalendarYear: year - 1,
+    sources: result.sources.map((s) => ({
+      ...s,
+      sourceUrl: personalFinancialSourceUrl(s.concept, year),
+    })),
+    priorRevenueSources: result.priorRevenueSources.map((s) => ({
+      ...s,
+      sourceUrl: personalFinancialSourceUrl(s.concept, year - 1),
+    })),
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          ...instant,
+          revenueGrowth,
+          netMargin: { ...missing, unit: "percent" },
+          operatingMargin: { ...missing, unit: "percent" },
+          operatingCashFlowMargin: { ...missing, unit: "percent" },
+        },
+      },
+    ],
+    metricCoverage: {
+      ...result.metricCoverage,
+      revenueGrowth: {
+        known: revenueGrowth.status === "available" ? 1 : 0,
+        unknown: revenueGrowth.status === "unavailable" ? 1 : 0,
+      },
+    },
   };
 }
 function incomeRatioOperand(
@@ -3324,7 +4048,13 @@ function ratioResponse(
     rows: [
       {
         ...row,
-        metrics: { ...row.metrics, revenue, grossProfit: profit, grossMargin },
+        metrics: {
+          ...row.metrics,
+          revenue,
+          revenueGrowth: unavailableGrowth(revenue),
+          grossProfit: profit,
+          grossMargin,
+        },
       },
     ],
   };
@@ -3454,10 +4184,11 @@ function currentResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "6.0.0",
+    schemaVersion: "7.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
+    priorCalendarYear: 2023,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
     instantQuarter: 4,
@@ -3468,6 +4199,13 @@ function response(): PersonalFinancialScreenResponseDto {
       concept,
       status: "available",
       sourceUrl: personalFinancialSourceUrl(concept, 2024),
+    })),
+    priorRevenueSources: PERSONAL_FINANCIAL_REVENUE_BASES.filter(
+      (basis) => basis !== "agreement",
+    ).map((concept) => ({
+      concept,
+      status: "available",
+      sourceUrl: personalFinancialSourceUrl(concept, 2023),
     })),
     rows: [
       {
@@ -3487,6 +4225,11 @@ function response(): PersonalFinancialScreenResponseDto {
         },
         metrics: Object.fromEntries(
           PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => {
+            if (metric === "revenueGrowth")
+              return [
+                metric,
+                unavailableGrowth(ratioOperand("Revenues", "2000000000")),
+              ];
             if (
               metric === "currentAssets" ||
               metric === "currentLiabilities" ||
@@ -3579,13 +4322,15 @@ function response(): PersonalFinancialScreenResponseDto {
     metricCoverage: Object.fromEntries(
       PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
         metric,
-        { known: 1, unknown: 0 },
+        metric === "revenueGrowth"
+          ? { known: 0, unknown: 1 }
+          : { known: 1, unknown: 0 },
       ]),
     ) as PersonalFinancialScreenResponseDto["metricCoverage"],
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.4.0",
+    formulaVersion: "1.5.0",
   };
 }
 function responseWithBasis(
@@ -3605,6 +4350,10 @@ function responseWithBasis(
       metrics: {
         ...row.metrics,
         revenue: { ...row.metrics.revenue, sources: [ref(basis)] },
+        revenueGrowth: unavailableGrowth({
+          ...row.metrics.revenue,
+          sources: [ref(basis)],
+        }),
         grossProfit: row.metrics.grossProfit,
         grossMargin: {
           ...row.metrics.grossMargin,

@@ -22,6 +22,9 @@ Q4 instant Frame. Operating cash flow / net income (%)
 is independent of Revenue basis and requires positive reported net income.
 Open or watchlist a result using its exact catalog listing identity. Save a
 named definition to reuse criteria, then explicitly rerun it when loaded.
+**Selected revenue YoY change (%)** compares the selected revenue measure with
+the prior year. Find it in All metrics or Choose columns; the other presets
+keep their existing columns. Its source inspector shows both annual operands.
 Refresh requests a new source read. Page navigation remains bound to both
 catalog and financial content digests; changed content requires a rerun.
 
@@ -56,7 +59,10 @@ The eight annual concepts use the public endpoint template
 Two balance-sheet concepts use
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}Q4I.json`.
 Concept, unit and Q4 are fixed in code; the only period selection is a completed year
-from 2009 onward. No API key or commercial subscription is needed for these
+from 2009 onward. Three additional annual Frames use the prior year and the
+same three fixed revenue concepts. For selected 2009, the comparison uses 2008;
+missing history makes revenue change unknown without rejecting old saved criteria.
+No API key or commercial subscription is needed for these
 public SEC APIs. SEC documents cross-company Frames, calendar alignment,
 differing reporting dates and nightly bulk alternatives in its
 [EDGAR API guide](https://www.sec.gov/search-filings/edgar-application-programming-interfaces).
@@ -67,23 +73,58 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 
 ## Metrics and comparability
 
-| Metric                                   | Input or formula                                                                | Unit     |
-| ---------------------------------------- | ------------------------------------------------------------------------------- | -------- |
-| Revenue                                  | Selected revenue basis; the default requires agreement among available concepts | USD      |
-| Gross profit                             | `GrossProfit`, as reported; no calculation from revenue and costs               | USD      |
-| Net income                               | `NetIncomeLoss`                                                                 | USD      |
-| Operating income                         | `OperatingIncomeLoss`                                                           | USD      |
-| Operating cash flow                      | `NetCashProvidedByUsedInOperatingActivities`                                    | USD      |
-| Net margin                               | Net income / revenue × 100                                                      | percent  |
-| Operating margin                         | Operating income / revenue × 100                                                | percent  |
-| Operating cash flow margin               | Operating cash flow / revenue × 100                                             | percent  |
-| PP&E purchases                           | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                       | USD      |
-| Operating cash flow less PP&E purchases  | Operating cash flow − PP&E purchases                                            | USD      |
-| Gross profit / selected revenue (%)      | Reported gross profit / selected revenue × 100                                  | percent  |
-| Operating cash flow / net income (%)     | Reported operating cash flow / positive reported net income × 100               | percent  |
-| Current assets                           | `AssetsCurrent`, actual instant balance date                                    | USD      |
-| Current liabilities                      | `LiabilitiesCurrent`, actual instant balance date                               | USD      |
-| Current assets / current liabilities (×) | Current assets / positive current liabilities                                   | multiple |
+| Metric                                   | Input or formula                                                                   | Unit     |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
+| Revenue                                  | Selected revenue basis; the default requires agreement among available concepts    | USD      |
+| Gross profit                             | `GrossProfit`, as reported; no calculation from revenue and costs                  | USD      |
+| Net income                               | `NetIncomeLoss`                                                                    | USD      |
+| Operating income                         | `OperatingIncomeLoss`                                                              | USD      |
+| Operating cash flow                      | `NetCashProvidedByUsedInOperatingActivities`                                       | USD      |
+| Net margin                               | Net income / revenue × 100                                                         | percent  |
+| Operating margin                         | Operating income / revenue × 100                                                   | percent  |
+| Operating cash flow margin               | Operating cash flow / revenue × 100                                                | percent  |
+| PP&E purchases                           | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                          | USD      |
+| Operating cash flow less PP&E purchases  | Operating cash flow − PP&E purchases                                               | USD      |
+| Gross profit / selected revenue (%)      | Reported gross profit / selected revenue × 100                                     | percent  |
+| Operating cash flow / net income (%)     | Reported operating cash flow / positive reported net income × 100                  | percent  |
+| Current assets                           | `AssetsCurrent`, actual instant balance date                                       | USD      |
+| Current liabilities                      | `LiabilitiesCurrent`, actual instant balance date                                  | USD      |
+| Current assets / current liabilities (×) | Current assets / positive current liabilities                                      | multiple |
+| Selected revenue YoY change (%)          | (Current selected revenue − prior selected revenue) / positive prior revenue × 100 | percent  |
+
+### Selected revenue year-over-year change
+
+Each year resolves the same selected revenue basis independently. Missing or
+failed facts never become zero or trigger substitution of another concept.
+Current and prior operands retain exact reported values, reasons, actual dates,
+concepts and filing accessions. Every source is labeled with its current/prior
+role and calendar selection, including sources retained for an unknown result.
+
+The new metric requires all references within each year to agree on the exact
+value and supported annual dates (335–395 inclusive days), identical retained
+concept sets across years, and current start exactly one day after prior end.
+Adjacent 52/53-week years qualify; equal durations are not required. Prior revenue
+must be positive. Each year must have one filing accession; the accessions across
+the two years may differ. These conservative app rules leave all existing fifteen
+metrics unchanged, including their treatment of agreeing revenue references.
+
+Unknown precedence is prior unresolved, current unresolved, unsupported/inconsistent
+annual periods, changed concept set, nonadjacent periods, nonpositive prior revenue,
+then mixed filings within a year. An unresolved operand retains its own missing,
+conflicting or failed-source reason. Failed prior sources affect this growth
+metric without hiding current-year metrics.
+
+Compute `(current - prior) / prior * 100` using exact decimal inputs, rounding
+once half-up to two decimals. Current zero gives `-100.00`; negative current
+revenue can give less than `-100.00`. Rounded negative zero becomes `0.00`.
+Inclusive signed filters compare that displayed rounded percentage. The browser
+independently checks integer arithmetic, role/year source multisets, each operand
+and the complete unknown precedence; percentage results remain strings.
+
+This is reported change from currently extracted filings. Matching concepts,
+adjacent dates and filing coherence do not establish organic growth, unchanged
+business/accounting scope, restatement comparability or point-in-time history.
+Historical source feasibility is not production acceptance of this feature.
 
 ### Q4 current balances and current ratio
 
@@ -286,27 +327,31 @@ Existing four-field saved criteria remain valid and retain the agreement rule.
 The optional `revenueBasis` stores an explicit choice. Omitted-basis requests omit
 the corresponding response property; explicit requests echo the basis, which the
 strict browser client checks against the request. Unedited saved definitions are
-not rewritten. Choosing a revenue basis adds no source reads to the ten-Frame
+not rewritten. Choosing a revenue basis adds no source reads to the thirteen-Frame
 load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "6.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly fifteen metric
-and coverage keys, and ten distinct source concepts. Deploy the API and browser together: old browser
+Financial-screen requests and responses use `schemaVersion: "7.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly sixteen metric
+and coverage keys, the existing ten current sources, and three separately typed
+`priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
+retain typed current/prior operands and source roles without changing old cell
+reference shapes. Deploy the API and browser together: old browser
 requests are rejected before SEC acquisition, and the new browser rejects old or
 partially expanded responses. Reload an older open browser after deployment.
 
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v6 request only when explicitly run. Fixed Q4 adds no criteria property or
+fresh v7 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
-The seven-clause limit is unchanged; the three current-balance fields are additional
+The seven-clause limit is unchanged; revenue change is an additional
 filter/sort choices. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.4.0 adds
-`current_assets_to_current_liabilities` version 1.0.0, expression
+than drop a filter. Screen formula-set version 1.5.0 adds the revenue comparison
+policy and `(current - prior) / prior * 100` calculation. Current ratio retains
+`current_assets_to_current_liabilities` version 1.0.0 and expression
 `current_assets / current_liabilities`. Operating cash flow / net income and
 all four revenue-based margin formulas retain
 version 1.0.0 and their rounding; PP&E subtraction retains version 1.1.0 and exact
@@ -317,7 +362,7 @@ common fiscal year across issuers. Annual durations are checked within the
 SEC's documented approximate annual window. Historical frame years may
 include subsequently filed or restated values. This is current extracted
 annual evidence alongside separately dated instant balances, not point-in-time
-data, TTM, valuation or growth screening.
+data, TTM, valuation or forecast growth.
 USD and US-GAAP coverage excludes facts reported only in other currencies,
 IFRS concepts or unsupported custom extensions.
 
@@ -333,14 +378,15 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches ten fixed cross-company Frames sequentially: eight
-  unchanged annual requests followed by the two Q4 instant requests, at
+- One operation fetches thirteen fixed cross-company Frames sequentially: eight
+  unchanged annual requests followed by two Q4 instant requests and three prior
+  revenue requests, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
   are rejected. Same-year concurrent requests share an operation; another
   year returns busy until it completes.
 - One normalized public snapshot is cached in API memory for 30 minutes.
-  Its digest binds the year, fixed quarter, separate annual/instant frame
+  Its digest binds both years, fixed quarter, separate current annual/instant and prior revenue frame
   contents and source statuses. Cached paging and revenue-basis choices add no reads.
   Explicit refresh bypasses it. Cache data is cleared when the API closes.
   Browser results are discarded on owner-session loss. There is no raw SEC
@@ -405,8 +451,8 @@ period/filing eligibility, deterministic unknown reasons, signed and extreme
 decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
 stable pages and saved-definition compatibility. Browser cases reject forged
 values, references and reasons, including maximum-length results. Cache tests
-verify ten initial reads, no additional reads when changing revenue basis, and
-ten reads on explicit refresh. Actual live ratio coverage and bounded primary
+verify thirteen initial reads, no additional reads when changing revenue basis, and
+thirteen reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
 
@@ -428,5 +474,5 @@ not establish coverage for every explicit basis or a later source observation.
 Actual release and live acceptance results belong in the local handoff. Synthetic
 fixtures establish behavior, not real-market completeness. Full Cycle 3k-a2
 remains open until the roadmap's 30-core-metric, 500-security, coverage,
-independent validation and performance requirements are met. Growth, price,
-valuation, ranked presets and historical replay remain later work.
+independent validation and performance requirements are met. Further growth,
+price, valuation, ranked presets and historical replay remain later work.

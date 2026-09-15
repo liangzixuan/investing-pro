@@ -6,6 +6,7 @@ import {
   PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenAnnualCellDto,
+  type PersonalFinancialScreenGrowthCellDto,
   type PersonalFinancialScreenInstantCellDto,
   type PersonalFinancialScreenInstantMetricDto,
   type PersonalFinancialScreenInstantSourceRefDto,
@@ -129,7 +130,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "6.0.0" ||
+    input.schemaVersion !== "7.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -316,10 +317,12 @@ function isResponse(
       "catalogSnapshotSha256",
       "financialSnapshotSha256",
       "calendarYear",
+      "priorCalendarYear",
       "instantQuarter",
       "fetchedAt",
       "expiresAt",
       "sources",
+      "priorRevenueSources",
       "rows",
       "totalUniverse",
       "identityMatches",
@@ -332,12 +335,13 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "6.0.0" ||
-    value.formulaVersion !== "1.4.0" ||
+    value.schemaVersion !== "7.0.0" ||
+    value.formulaVersion !== "1.5.0" ||
     value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
     !integer(value.calendarYear, 2009, new Date().getUTCFullYear() - 1) ||
+    value.priorCalendarYear !== value.calendarYear - 1 ||
     !instant(value.fetchedAt) ||
     !instant(value.expiresAt) ||
     value.expiresAt <= value.fetchedAt ||
@@ -353,6 +357,8 @@ function isResponse(
     typeof value.hasMore !== "boolean" ||
     !Array.isArray(value.sources) ||
     value.sources.length !== allConcepts.length ||
+    !Array.isArray(value.priorRevenueSources) ||
+    value.priorRevenueSources.length !== revenueConcepts.length ||
     !keys(value.metricCoverage, metrics) ||
     !Array.isArray(value.rows)
   )
@@ -374,6 +380,19 @@ function isResponse(
         (source) => source.concept,
       ),
     ).size !== allConcepts.length ||
+    !value.priorRevenueSources.every(
+      (source) =>
+        keys(source, ["concept", "status", "sourceUrl"]) &&
+        member(revenueConcepts, source.concept) &&
+        member(frameStatuses, source.status) &&
+        source.sourceUrl ===
+          personalFinancialSourceUrl(source.concept, year - 1),
+    ) ||
+    new Set(
+      (
+        value.priorRevenueSources as PersonalFinancialScreenResponseDto["priorRevenueSources"]
+      ).map((source) => source.concept),
+    ).size !== revenueConcepts.length ||
     !Object.values(value.metricCoverage).every(
       (coverage) =>
         keys(coverage, ["known", "unknown"]) &&
@@ -392,13 +411,22 @@ function isResponse(
         keys(row, ["identity", "metrics"]) &&
         identity(row.identity) &&
         keys(row.metrics, metrics) &&
-        metrics.every((metric) =>
-          cell(
-            (row.metrics as Record<string, unknown>)[metric],
-            metric,
-            year,
-            value.sources as PersonalFinancialScreenResponseDto["sources"],
-          ),
+        metrics.every(
+          (metric) =>
+            metric === "revenueGrowth" ||
+            cell(
+              (row.metrics as Record<string, unknown>)[metric],
+              metric,
+              year,
+              value.sources as PersonalFinancialScreenResponseDto["sources"],
+            ),
+        ) &&
+        revenueGrowth(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+          year,
+          revenueBasis,
+          value.sources as PersonalFinancialScreenResponseDto["sources"],
+          value.priorRevenueSources as PersonalFinancialScreenResponseDto["priorRevenueSources"],
         ) &&
         currentAssetsToLiabilities(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
@@ -468,6 +496,269 @@ function selectedRevenueSources(
           cell.sources.some((source) => source.concept === numerator)))
     );
   });
+}
+
+function revenueReference(
+  value: unknown,
+): value is PersonalFinancialScreenSourceRefDto {
+  return (
+    keys(value, [
+      "concept",
+      "accessionNumber",
+      "startDate",
+      "endDate",
+      "value",
+    ]) &&
+    member(revenueConcepts, value.concept) &&
+    matches(value.accessionNumber, /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u) &&
+    date(value.startDate) &&
+    date(value.endDate) &&
+    value.endDate >= value.startDate &&
+    decimal(value.value)
+  );
+}
+
+/** Reconstruct a reported revenue operand from its references and the selected source statuses. */
+function revenueOperand(
+  value: unknown,
+  basis: PersonalFinancialRevenueBasisDto,
+  statuses: PersonalFinancialScreenResponseDto["sources"],
+): value is PersonalFinancialScreenAnnualCellDto {
+  if (
+    (!keys(value, ["status", "value", "unit", "sources"]) &&
+      !keys(value, ["status", "reason", "unit", "sources"])) ||
+    value.unit !== "USD" ||
+    !Array.isArray(value.sources) ||
+    value.sources.length > 6 ||
+    !value.sources.every(revenueReference)
+  )
+    return false;
+  const selected = basis === "agreement" ? revenueConcepts : [basis];
+  const refs = value.sources;
+  if (
+    !refs.every(
+      (ref) =>
+        member(selected, ref.concept) &&
+        statuses.some(
+          (source) =>
+            source.concept === ref.concept && source.status === "available",
+        ),
+    )
+  )
+    return false;
+  const failed = selected.some((concept) => {
+    const status = statuses.find(
+      (source) => source.concept === concept,
+    )?.status;
+    return status !== "available" && status !== "not_covered";
+  });
+  if (failed)
+    return (
+      value.status === "unavailable" &&
+      "reason" in value &&
+      value.reason === "source_unavailable"
+    );
+  if (value.status === "available") {
+    if (!("value" in value) || !decimal(value.value) || refs.length === 0)
+      return false;
+    const reportedValue = value.value;
+    return refs.every(
+      (ref) =>
+        normalizedDecimal(ref.value) === normalizedDecimal(reportedValue) &&
+        ref.startDate === refs[0]!.startDate &&
+        ref.endDate === refs[0]!.endDate,
+    );
+  }
+  if (value.status !== "unavailable" || !("reason" in value)) return false;
+  if (value.reason === "missing") return refs.length === 0;
+  // Quarantined CIKs may have no retained references, or agreeing retained references.
+  // An invalid decimal cannot be justified by references admitted through this strict boundary.
+  return (
+    value.reason === "conflicting" &&
+    selected.some((concept) =>
+      statuses.some(
+        (source) => source.concept === concept && source.status === "available",
+      ),
+    )
+  );
+}
+
+function annualSourceKey(source: PersonalFinancialScreenSourceRefDto): string {
+  return JSON.stringify([
+    source.concept,
+    source.accessionNumber,
+    source.startDate,
+    source.endDate,
+    source.value,
+  ]);
+}
+
+function sameSourceMultiset<T>(
+  left: readonly T[],
+  right: readonly T[],
+  key: (value: T) => string,
+): boolean {
+  const expected = left.map(key).sort(),
+    actual = right.map(key).sort();
+  return (
+    expected.length === actual.length &&
+    expected.every((entry, index) => entry === actual[index])
+  );
+}
+
+/** Bind both years and source roles before independently computing the selected-revenue change. */
+function revenueGrowth(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+  year: number,
+  basis: PersonalFinancialRevenueBasisDto,
+  currentStatuses: PersonalFinancialScreenResponseDto["sources"],
+  priorStatuses: PersonalFinancialScreenResponseDto["priorRevenueSources"],
+): boolean {
+  const value: unknown = cells.revenueGrowth;
+  const common = ["unit", "currentRevenue", "priorRevenue", "sources"];
+  if (
+    (!keys(value, [...common, "status", "value"]) &&
+      !keys(value, [...common, "status", "reason"])) ||
+    value.unit !== "percent" ||
+    !revenueOperand(value.currentRevenue, basis, currentStatuses) ||
+    !revenueOperand(value.priorRevenue, basis, priorStatuses) ||
+    !Array.isArray(value.sources) ||
+    value.sources.length > 12 ||
+    !value.sources.every((source) => {
+      if (
+        !keys(source, [
+          "concept",
+          "accessionNumber",
+          "startDate",
+          "endDate",
+          "value",
+          "role",
+          "calendarYear",
+        ]) ||
+        !member(["current_revenue", "prior_revenue"], source.role) ||
+        source.calendarYear !==
+          (source.role === "current_revenue" ? year : year - 1)
+      )
+        return false;
+      return revenueReference({
+        concept: source.concept,
+        accessionNumber: source.accessionNumber,
+        startDate: source.startDate,
+        endDate: source.endDate,
+        value: source.value,
+      });
+    }) ||
+    !(
+      (value.status === "available" &&
+        "value" in value &&
+        decimal(value.value, 131)) ||
+      (value.status === "unavailable" &&
+        "reason" in value &&
+        member(
+          [
+            "prior_unavailable",
+            "current_unavailable",
+            "period_mismatch",
+            "concept_set_changed",
+            "nonadjacent_periods",
+            "nonpositive_prior_revenue",
+            "filing_mismatch",
+          ],
+          value.reason,
+        ))
+    )
+  )
+    return false;
+  const growth = value as unknown as PersonalFinancialScreenGrowthCellDto;
+  const current = growth.currentRevenue,
+    prior = growth.priorRevenue,
+    reported = cells.revenue;
+  if (
+    current.status !== reported.status ||
+    current.unit !== reported.unit ||
+    (current.status === "available" &&
+      (reported.status !== "available" || current.value !== reported.value)) ||
+    (current.status === "unavailable" &&
+      (reported.status !== "unavailable" ||
+        current.reason !== reported.reason)) ||
+    !sameSourceMultiset(current.sources, reported.sources, annualSourceKey)
+  )
+    return false;
+  const tagged = (
+    operand: PersonalFinancialScreenAnnualCellDto,
+    role: "current_revenue" | "prior_revenue",
+    calendarYear: number,
+  ) => operand.sources.map((source) => ({ ...source, role, calendarYear }));
+  const expected = [
+    ...tagged(current, "current_revenue", year),
+    ...tagged(prior, "prior_revenue", year - 1),
+  ];
+  const roleKey = (
+    source: PersonalFinancialScreenSourceRefDto & {
+      role: string;
+      calendarYear: number;
+    },
+  ) =>
+    JSON.stringify([source.role, source.calendarYear, annualSourceKey(source)]);
+  if (!sameSourceMultiset(expected, growth.sources, roleKey)) return false;
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenGrowthCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ) => growth.status === "unavailable" && growth.reason === reason;
+  if (prior.status === "unavailable") return unknown("prior_unavailable");
+  if (current.status === "unavailable") return unknown("current_unavailable");
+  if (
+    expected.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        days < 335 ||
+        days > 395 ||
+        Math.abs(Number(source.endDate.slice(0, 4)) - source.calendarYear) > 1
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  const conceptSet = (operand: PersonalFinancialScreenAnnualCellDto) =>
+    [...new Set(operand.sources.map((source) => source.concept))]
+      .sort()
+      .join("|");
+  if (conceptSet(current) !== conceptSet(prior))
+    return unknown("concept_set_changed");
+  if (
+    current.sources.some((c) =>
+      prior.sources.some(
+        (p) => Date.parse(c.startDate) - Date.parse(p.endDate) !== 86_400_000,
+      ),
+    )
+  )
+    return unknown("nonadjacent_periods");
+  const c = scaledDecimal(current.value),
+    p = scaledDecimal(prior.value);
+  if (p.coefficient <= 0n) return unknown("nonpositive_prior_revenue");
+  if (
+    [current, prior].some((operand) =>
+      operand.sources.some(
+        (source) =>
+          source.accessionNumber !== operand.sources[0]!.accessionNumber,
+      ),
+    )
+  )
+    return unknown("filing_mismatch");
+  const scale = Math.max(c.scale, p.scale);
+  const denominator = p.coefficient * 10n ** BigInt(scale - p.scale);
+  const numerator =
+    (c.coefficient * 10n ** BigInt(scale - c.scale) - denominator) * 10_000n;
+  const magnitude = numerator < 0n ? -numerator : numerator;
+  const rounded =
+    magnitude / denominator +
+    (2n * (magnitude % denominator) >= denominator ? 1n : 0n);
+  const expectedValue = `${numerator < 0n && rounded !== 0n ? "-" : ""}${String(rounded / 100n)}.${String(rounded % 100n).padStart(2, "0")}`;
+  return growth.status === "available" && growth.value === expectedValue;
 }
 
 function identity(value: unknown): boolean {

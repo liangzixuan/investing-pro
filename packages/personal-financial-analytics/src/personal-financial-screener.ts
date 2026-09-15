@@ -4,6 +4,8 @@ import {
   type PersonalFinancialScreenAnnualCellDto,
   type PersonalFinancialScreenInstantCellDto,
   type PersonalFinancialScreenInstantSourceRefDto,
+  type PersonalFinancialScreenGrowthCellDto,
+  type PersonalFinancialScreenGrowthSourceRefDto,
   type PersonalSecInstantConceptDto,
   type PersonalSecInstantFrameDto,
   type PersonalFinancialScreenCriteriaDto,
@@ -33,7 +35,7 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.4.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.5.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   currentRatio: Object.freeze({
@@ -56,6 +58,7 @@ export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
     formulaVersion: "1.0.0",
     expression: "operating_cash_flow / net_income * 100",
   }),
+  revenueGrowth: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.revenueGrowth,
 });
 
 const METRICS = [
@@ -74,6 +77,7 @@ const METRICS = [
   "currentAssets",
   "currentLiabilities",
   "currentRatio",
+  "revenueGrowth",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
 const REVENUE_CONCEPTS = [
@@ -227,6 +231,7 @@ export function evaluatePersonalFinancialScreen(
       fail();
 
     const index = indexFrames(snapshot.frames);
+    const priorIndex = indexFrames(snapshot.priorRevenueFrames);
     const instantIndex = indexInstantFrames(snapshot.instantFrames);
     const tokens = normalizeText(criteria.identityText)
       .split(" ")
@@ -254,6 +259,7 @@ export function evaluatePersonalFinancialScreen(
           identity.cik,
           index,
           instantIndex,
+          priorIndex,
           snapshot.calendarYear,
           criteria.revenueBasis ?? "agreement",
         );
@@ -271,11 +277,12 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "6.0.0",
+      schemaVersion: "7.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
       calendarYear: snapshot.calendarYear,
+      priorCalendarYear: snapshot.priorCalendarYear,
       ...(criteria.revenueBasis === undefined
         ? {}
         : { revenueBasis: criteria.revenueBasis }),
@@ -283,6 +290,12 @@ export function evaluatePersonalFinancialScreen(
       expiresAt: snapshot.expiresAt,
       sources: [...CONCEPTS, ...INSTANT_CONCEPTS].map((concept) => {
         const frame = [...snapshot.frames, ...snapshot.instantFrames].find(
+          (candidate) => candidate.concept === concept,
+        )!;
+        return { concept, status: frame.status, sourceUrl: frame.sourceUrl };
+      }),
+      priorRevenueSources: REVENUE_CONCEPTS.map((concept) => {
+        const frame = snapshot.priorRevenueFrames.find(
           (candidate) => candidate.concept === concept,
         )!;
         return { concept, status: frame.status, sourceUrl: frame.sourceUrl };
@@ -308,6 +321,7 @@ function buildMetrics(
   cik: string,
   frames: FrameIndex,
   instantFrames: InstantFrameIndex,
+  priorFrames: FrameIndex,
   calendarYear: number,
   revenueBasis: PersonalFinancialRevenueBasisDto,
 ): PersonalFinancialScreenRowDto["metrics"] {
@@ -317,6 +331,11 @@ function buildMetrics(
     frames,
   );
   const netIncome = resolveReported(cik, ["NetIncomeLoss"], frames);
+  const priorRevenue = resolveReported(
+    cik,
+    revenueBasis === "agreement" ? REVENUE_CONCEPTS : [revenueBasis],
+    priorFrames,
+  );
   const grossProfit = resolveReported(cik, ["GrossProfit"], frames);
   const operatingIncome = resolveReported(cik, ["OperatingIncomeLoss"], frames);
   const operatingCashFlow = resolveReported(
@@ -363,6 +382,107 @@ function buildMetrics(
     currentAssets,
     currentLiabilities,
     currentRatio: currentAssetsToLiabilities(currentAssets, currentLiabilities),
+    revenueGrowth: revenueYearOverYear(revenue, priorRevenue, calendarYear),
+  };
+}
+
+function revenueYearOverYear(
+  currentRevenue: PersonalFinancialScreenAnnualCellDto,
+  priorRevenue: PersonalFinancialScreenAnnualCellDto,
+  calendarYear: number,
+): PersonalFinancialScreenGrowthCellDto {
+  const roleSources = (
+    cell: PersonalFinancialScreenAnnualCellDto,
+    role: PersonalFinancialScreenGrowthSourceRefDto["role"],
+    year: number,
+  ): PersonalFinancialScreenGrowthSourceRefDto[] =>
+    cell.sources.map((source) => {
+      const concept = REVENUE_CONCEPTS.find((item) => item === source.concept);
+      if (concept === undefined) fail();
+      return { ...source, concept, role, calendarYear: year };
+    });
+  const common = {
+    unit: "percent" as const,
+    currentRevenue,
+    priorRevenue,
+    sources: [
+      ...roleSources(currentRevenue, "current_revenue", calendarYear),
+      ...roleSources(priorRevenue, "prior_revenue", calendarYear - 1),
+    ],
+  };
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenGrowthCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ): PersonalFinancialScreenGrowthCellDto => ({
+    ...common,
+    status: "unavailable",
+    reason,
+  });
+  if (priorRevenue.status === "unavailable")
+    return unknown("prior_unavailable");
+  if (currentRevenue.status === "unavailable")
+    return unknown("current_unavailable");
+  // Both operands resolve from the same CIK. Every reference must describe
+  // one supported annual period within its own requested Frame year.
+  const annual = (cell: typeof currentRevenue, year: number) => {
+    const first = cell.sources[0];
+    return (
+      first !== undefined &&
+      cell.sources.every((source) => {
+        const days =
+          (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+            86_400_000 +
+          1;
+        return (
+          source.startDate === first.startDate &&
+          source.endDate === first.endDate &&
+          new ScreenDecimal(source.value).eq(cell.value) &&
+          days >= 335 &&
+          days <= 395 &&
+          Math.abs(Number(source.endDate.slice(0, 4)) - year) <= 1
+        );
+      })
+    );
+  };
+  if (
+    !annual(currentRevenue, calendarYear) ||
+    !annual(priorRevenue, calendarYear - 1)
+  )
+    return unknown("period_mismatch");
+  const conceptSet = (cell: PersonalFinancialScreenAnnualCellDto) =>
+    [...new Set(cell.sources.map((source) => source.concept))].sort().join("|");
+  if (conceptSet(currentRevenue) !== conceptSet(priorRevenue))
+    return unknown("concept_set_changed");
+  // The all-reference check above established one exact period per operand.
+  if (
+    Date.parse(currentRevenue.sources[0]!.startDate) -
+      Date.parse(priorRevenue.sources[0]!.endDate) !==
+    86_400_000
+  )
+    return unknown("nonadjacent_periods");
+  const denominator = new ScreenDecimal(priorRevenue.value);
+  if (!denominator.gt(0)) return unknown("nonpositive_prior_revenue");
+  // Different filings across years are expected; require agreement only
+  // within each year's retained observations, after the other pair checks.
+  if (
+    [currentRevenue, priorRevenue].some(
+      (cell) =>
+        new Set(cell.sources.map((source) => source.accessionNumber)).size !==
+        1,
+    )
+  )
+    return unknown("filing_mismatch");
+  const rounded = new ScreenDecimal(currentRevenue.value)
+    .minus(denominator)
+    .times(100)
+    .div(denominator)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
+  return {
+    ...common,
+    status: "available",
+    value: rounded.isZero() ? "0.00" : rounded.toFixed(2),
   };
 }
 
@@ -830,6 +950,8 @@ function isSnapshot(value: unknown): value is PersonalSecFinancialSnapshotDto {
       "frames",
       "instantQuarter",
       "instantFrames",
+      "priorCalendarYear",
+      "priorRevenueFrames",
     ])
   )
     return false;
@@ -844,60 +966,72 @@ function isSnapshot(value: unknown): value is PersonalSecFinancialSnapshotDto {
     value.frames.length !== CONCEPTS.length ||
     value.instantQuarter !== 4 ||
     !Array.isArray(value.instantFrames) ||
-    value.instantFrames.length !== INSTANT_CONCEPTS.length
+    value.instantFrames.length !== INSTANT_CONCEPTS.length ||
+    value.priorCalendarYear !== value.calendarYear - 1 ||
+    !Array.isArray(value.priorRevenueFrames) ||
+    value.priorRevenueFrames.length !== REVENUE_CONCEPTS.length
   )
     return false;
-  const seenConcepts = new Set<string>();
-  for (const frame of value.frames as unknown[]) {
-    if (
-      !exactRecord(frame, [
-        "concept",
-        "status",
-        "sourceUrl",
-        "facts",
-        "unknownCiks",
-      ]) ||
-      !CONCEPTS.some((concept) => concept === frame.concept) ||
-      typeof frame.concept !== "string" ||
-      seenConcepts.has(frame.concept) ||
-      typeof frame.status !== "string" ||
-      !["available", "not_covered", ...FAILED_SOURCE_STATUSES].includes(
-        frame.status,
-      ) ||
-      frame.sourceUrl !==
-        `https://data.sec.gov/api/xbrl/frames/us-gaap/${frame.concept}/USD/CY${String(value.calendarYear)}.json` ||
-      !Array.isArray(frame.facts) ||
-      frame.facts.length > 50_000 ||
-      !Array.isArray(frame.unknownCiks) ||
-      frame.unknownCiks.length > 50_000 ||
-      !frame.unknownCiks.every(
-        (cik: unknown) => typeof cik === "string" && CIK.test(cik),
-      ) ||
-      (frame.status !== "available" &&
-        (frame.facts.length !== 0 || frame.unknownCiks.length !== 0))
-    )
-      return false;
-    seenConcepts.add(frame.concept);
-    for (const fact of frame.facts as unknown[]) {
+  for (const collection of [
+    { frames: value.frames, concepts: CONCEPTS, year: value.calendarYear },
+    {
+      frames: value.priorRevenueFrames,
+      concepts: REVENUE_CONCEPTS,
+      year: value.priorCalendarYear,
+    },
+  ]) {
+    const seenConcepts = new Set<string>();
+    for (const frame of collection.frames as unknown[]) {
       if (
-        !exactRecord(fact, [
-          "cik",
-          "accessionNumber",
-          "startDate",
-          "endDate",
-          "value",
+        !exactRecord(frame, [
+          "concept",
+          "status",
+          "sourceUrl",
+          "facts",
+          "unknownCiks",
         ]) ||
-        typeof fact.cik !== "string" ||
-        !CIK.test(fact.cik) ||
-        typeof fact.accessionNumber !== "string" ||
-        !ACCESSION.test(fact.accessionNumber) ||
-        !isDate(fact.startDate) ||
-        !isDate(fact.endDate) ||
-        fact.startDate > fact.endDate ||
-        typeof fact.value !== "string" ||
-        fact.value.length > 64
+        !collection.concepts.some((concept) => concept === frame.concept) ||
+        typeof frame.concept !== "string" ||
+        seenConcepts.has(frame.concept) ||
+        typeof frame.status !== "string" ||
+        !["available", "not_covered", ...FAILED_SOURCE_STATUSES].includes(
+          frame.status,
+        ) ||
+        frame.sourceUrl !==
+          `https://data.sec.gov/api/xbrl/frames/us-gaap/${frame.concept}/USD/CY${String(collection.year)}.json` ||
+        !Array.isArray(frame.facts) ||
+        frame.facts.length > 50_000 ||
+        !Array.isArray(frame.unknownCiks) ||
+        frame.unknownCiks.length > 50_000 ||
+        !frame.unknownCiks.every(
+          (cik: unknown) => typeof cik === "string" && CIK.test(cik),
+        ) ||
+        (frame.status !== "available" &&
+          (frame.facts.length !== 0 || frame.unknownCiks.length !== 0))
       )
         return false;
+      seenConcepts.add(frame.concept);
+      for (const fact of frame.facts as unknown[]) {
+        if (
+          !exactRecord(fact, [
+            "cik",
+            "accessionNumber",
+            "startDate",
+            "endDate",
+            "value",
+          ]) ||
+          typeof fact.cik !== "string" ||
+          !CIK.test(fact.cik) ||
+          typeof fact.accessionNumber !== "string" ||
+          !ACCESSION.test(fact.accessionNumber) ||
+          !isDate(fact.startDate) ||
+          !isDate(fact.endDate) ||
+          fact.startDate > fact.endDate ||
+          typeof fact.value !== "string" ||
+          fact.value.length > 64
+        )
+          return false;
+      }
     }
   }
   const seenInstantConcepts = new Set<string>();

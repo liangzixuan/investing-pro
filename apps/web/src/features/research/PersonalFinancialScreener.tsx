@@ -5,6 +5,7 @@ import {
   PERSONAL_FINANCIAL_REVENUE_BASES,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenCellDto,
+  type PersonalFinancialScreenGrowthCellDto,
   type PersonalFinancialScreenClauseDto,
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenMetricDto,
@@ -106,6 +107,7 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   currentAssets: "Current assets",
   currentLiabilities: "Current liabilities",
   currentRatio: "Current assets / current liabilities (×)",
+  revenueGrowth: "Selected revenue YoY change (%)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -136,6 +138,8 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported LiabilitiesCurrent in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Negative reported balances remain visible. Independent of the revenue basis.",
   currentRatio:
     "Current assets / current liabilities, in multiples. Requires nonnegative assets, positive liabilities, and every reference to share the same actual balance date within Q4 and filing accession. Rounded half-up to two decimal places; inclusive filters compare the displayed rounded multiple. Independent of the revenue basis.",
+  revenueGrowth:
+    "(Current selected revenue − prior selected revenue) / prior selected revenue × 100. Requires positive prior revenue, adjacent supported annual periods, unchanged revenue concepts and agreeing facts from one filing within each year. The two years may use different filings. Rounded half-up once to two decimal places; zero and negative current revenue are retained.",
 };
 function revenueExplanation(basis: PersonalFinancialRevenueBasisDto): string {
   return basis === "agreement"
@@ -163,7 +167,34 @@ function metricOptionLabel(metric: PersonalFinancialScreenMetricDto): string {
 }
 
 function isPercentageMetric(metric: PersonalFinancialScreenMetricDto): boolean {
-  return metric === "operatingCashFlowToNetIncome" || metric.endsWith("Margin");
+  return (
+    metric === "revenueGrowth" ||
+    metric === "operatingCashFlowToNetIncome" ||
+    metric.endsWith("Margin")
+  );
+}
+
+function revenueGrowthUnknownExplanation(
+  cell: PersonalFinancialScreenGrowthCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (
+    cell.reason === "prior_unavailable" ||
+    cell.reason === "current_unavailable"
+  ) {
+    const prior = cell.reason === "prior_unavailable";
+    const operand = prior ? cell.priorRevenue : cell.currentRevenue;
+    return `${prior ? "Prior" : "Current"} selected revenue is unresolved${operand.status === "unavailable" ? ` (${operand.reason.replaceAll("_", " ")})` : ""}. Missing or failed revenue is never treated as zero; retained references remain visible.`;
+  }
+  if (cell.reason === "concept_set_changed")
+    return "The retained revenue concepts changed between years. The comparison remains unknown to avoid silently switching the revenue measure.";
+  if (cell.reason === "nonadjacent_periods")
+    return "The actual annual periods overlap or leave a gap. The current period must begin the day after the prior period ends; their durations can differ.";
+  if (cell.reason === "nonpositive_prior_revenue")
+    return "Prior selected revenue is zero or negative. A positive prior amount is required; both reported amounts retain their signs.";
+  if (cell.reason === "filing_mismatch")
+    return "Agreeing revenue references within one year come from different filings. Each year must use one filing; different filings across the two years are allowed.";
+  return "The retained references do not establish consistent supported annual periods (335–395 inclusive days). Compare the actual source dates below.";
 }
 
 function metricUnitLabel(metric: PersonalFinancialScreenMetricDto): string {
@@ -473,7 +504,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "6.0.0",
+          schemaVersion: "7.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -1170,6 +1201,7 @@ function FinancialResults({
   readonly onCloseInspection: () => void;
 }) {
   const revenueBasis = response.revenueBasis ?? "agreement";
+  const sourceStatuses = [...response.sources, ...response.priorRevenueSources];
   const selectedRow =
     inspection?.response === response &&
     visibleMetrics.includes(inspection.metric)
@@ -1266,6 +1298,29 @@ function FinancialResults({
           ))}
         </ul>
         <p>
+          Revenue comparison: CY{response.calendarYear} and CY
+          {response.priorCalendarYear}. Inspect both actual annual periods; the
+          calendar labels alone do not establish comparability.
+        </p>
+        <ul>
+          {response.priorRevenueSources.map((source) => (
+            <li key={source.concept}>
+              <a
+                href={personalFinancialSourceUrl(
+                  source.concept,
+                  response.priorCalendarYear,
+                )}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                Prior revenue · CY{response.priorCalendarYear} · SEC{" "}
+                {source.concept}
+              </a>
+              : {source.status.replaceAll("_", " ")}
+            </li>
+          ))}
+        </ul>
+        <p>
           {revenueBasis === "agreement"
             ? "Revenue considers customer-contract revenue excluding tax, Revenues, and SalesRevenueNet. All available concepts must agree on value and period; a failed concept request leaves agreement unresolved."
             : `Revenue uses only ${revenueBasis}. Other concept statuses remain visible here; they do not replace missing or unresolved selected facts.`}{" "}
@@ -1279,9 +1334,9 @@ function FinancialResults({
           Financial data: {response.financialSnapshotSha256}
         </p>
       </details>
-      {response.sources.some((source) => source.status !== "available") && (
+      {sourceStatuses.some((source) => source.status !== "available") && (
         <p className="market-scope-note" role="status">
-          {response.sources.every(
+          {sourceStatuses.every(
             (source) =>
               source.status !== "available" && source.status !== "not_covered",
           )
@@ -1355,6 +1410,7 @@ function FinancialResults({
                   {labels[metric]}
                   {metric !== "grossMargin" &&
                     metric !== "operatingCashFlowToNetIncome" &&
+                    metric !== "revenueGrowth" &&
                     metric !== "currentRatio" && (
                       <>
                         <br />
@@ -1498,7 +1554,9 @@ function FinancialCell({
   const display =
     cell.status === "available"
       ? cell.unit === "percent"
-        ? metric === "grossMargin" || metric === "operatingCashFlowToNetIncome"
+        ? metric === "grossMargin" ||
+          metric === "operatingCashFlowToNetIncome" ||
+          metric === "revenueGrowth"
           ? exactPercentage(cell.value)
           : `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
         : cell.unit === "multiple"
@@ -1546,6 +1604,31 @@ function FinancialCellDetails({
           : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
       </p>
       <p>{formulaFor(metric, revenueBasis)}</p>
+      {metric === "revenueGrowth" && "currentRevenue" in cell && (
+        <>
+          <p>
+            Revenue basis: {revenueBasisLabels[revenueBasis]}. This is reported
+            change from currently extracted filings. It does not measure organic
+            growth or establish unchanged business scope, accounting policies or
+            restatement history. Adjacent 52- and 53-week years can differ in
+            length.
+          </p>
+          <p>
+            Current selected revenue:{" "}
+            {cell.currentRevenue.status === "available"
+              ? `${cell.currentRevenue.value} USD`
+              : `Unknown (${cell.currentRevenue.reason.replaceAll("_", " ")})`}
+            . Prior selected revenue:{" "}
+            {cell.priorRevenue.status === "available"
+              ? `${cell.priorRevenue.value} USD`
+              : `Unknown (${cell.priorRevenue.reason.replaceAll("_", " ")})`}
+            .
+          </p>
+          {cell.status === "unavailable" && (
+            <p>{revenueGrowthUnknownExplanation(cell)}</p>
+          )}
+        </>
+      )}
       {["currentAssets", "currentLiabilities", "currentRatio"].includes(
         metric,
       ) && (
@@ -1625,6 +1708,15 @@ function FinancialCellDetails({
             className="financial-screen-source-card"
             key={`${source.concept}-${String(index)}`}
           >
+            {"role" in source && (
+              <>
+                {source.role === "current_revenue"
+                  ? "Current selected revenue"
+                  : "Prior selected revenue"}{" "}
+                · CY{source.calendarYear}
+                <br />
+              </>
+            )}
             {metric === "operatingCashFlowLessPpePurchases" && (
               <>
                 {source.concept === "NetCashProvidedByUsedInOperatingActivities"

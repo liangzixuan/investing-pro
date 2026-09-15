@@ -4,6 +4,8 @@ import {
   PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
   PERSONAL_SEC_INSTANT_CONCEPTS,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
+  PERSONAL_SEC_REVENUE_CONCEPTS,
+  PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenClauseDto,
   type PersonalFinancialScreenCriteriaDto,
@@ -13,6 +15,8 @@ import {
   type PersonalSecInstantFactDto,
   type PersonalSecFinancialSnapshotDto,
   type PersonalSecAnnualFrameDto,
+  type PersonalSecRevenueConceptDto,
+  type PersonalSecRevenueFrameDto,
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
@@ -90,7 +94,7 @@ describe("SEC annual financial screener", () => {
     );
     expect(result).toMatchObject({
       calendarYear: 2025,
-      formulaVersion: "1.4.0",
+      formulaVersion: "1.5.0",
       catalogSnapshotSha256: CATALOG_DIGEST,
       financialSnapshotSha256: FINANCIAL_DIGEST,
     });
@@ -437,6 +441,7 @@ describe("reported gross profit screening", () => {
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
+      "revenueGrowth",
     ];
     expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toEqual(metrics);
     expect(Object.keys(result.rows[0]!.metrics)).toEqual(metrics);
@@ -452,8 +457,8 @@ describe("reported gross profit screening", () => {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "6.0.0",
-      formulaVersion: "1.4.0",
+      schemaVersion: "7.0.0",
+      formulaVersion: "1.5.0",
     });
     expect(() =>
       run([], { ...snapshot(), frames: snapshot().frames.slice(0, 7) }),
@@ -783,7 +788,7 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
   const derived = "operatingCashFlowLessPpePurchases";
 
   it("versions only the screen formula set and keeps existing ratio metadata", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.5.0");
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[derived]).toEqual({
       formulaId: "operating_cash_flow_less_ppe_purchases",
       formulaVersion: "1.1.0",
@@ -1157,7 +1162,7 @@ describe("explicit financial-screen revenue basis", () => {
       const metrics = result.rows[0]!.metrics;
       expect(result).toMatchObject({
         revenueBasis: basis,
-        formulaVersion: "1.4.0",
+        formulaVersion: "1.5.0",
       });
       expect(metrics.revenue).toMatchObject({
         status: "available",
@@ -1405,7 +1410,7 @@ describe("gross profit / selected revenue", () => {
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.grossMargin).toEqual(
       PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
     );
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.5.0");
     for (const metric of [
       "netMargin",
       "operatingMargin",
@@ -1931,7 +1936,7 @@ describe("operating cash flow / net income", () => {
       formulaVersion: "1.0.0",
       expression: "operating_cash_flow / net_income * 100",
     });
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.4.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.5.0");
     for (const prior of [
       "grossMargin",
       "netMargin",
@@ -2418,7 +2423,7 @@ describe("operating cash flow / net income", () => {
       reason: "filing_mismatch",
     });
     expect(result.metricCoverage[metric]).toEqual({ known: 0, unknown: 1 });
-    expect(result.schemaVersion).toBe("6.0.0");
+    expect(result.schemaVersion).toBe("7.0.0");
   });
 
   it("uses inclusive rounded thresholds, separates unknowns and orders duplicate listings stably across pages", () => {
@@ -2775,6 +2780,14 @@ function snapshot(
     fetchedAt: "2026-09-09T12:00:00Z",
     expiresAt: "2026-09-09T12:30:00Z",
     snapshotSha256: FINANCIAL_DIGEST,
+    priorCalendarYear: 2024,
+    priorRevenueFrames: PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => ({
+      concept,
+      status: "available",
+      sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2024.json`,
+      facts: [],
+      unknownCiks: [],
+    })),
     instantQuarter: 4,
     instantFrames: PERSONAL_SEC_INSTANT_CONCEPTS.map((concept) => ({
       concept,
@@ -2811,7 +2824,7 @@ describe("fixed Q4 current assets / current liabilities", () => {
     run([identity("LIQUID", 1)], input).rows[0]!.metrics;
 
   it("registers three instant fields and a distinct multiple formula without changing annual concepts", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(12)).toEqual([
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(12, 15)).toEqual([
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
@@ -2827,9 +2840,9 @@ describe("fixed Q4 current assets / current liabilities", () => {
       balances([instantFact(1, "25")], [instantFact(1, "10")]),
     );
     expect(result).toMatchObject({
-      schemaVersion: "6.0.0",
+      schemaVersion: "7.0.0",
       instantQuarter: 4,
-      formulaVersion: "1.4.0",
+      formulaVersion: "1.5.0",
     });
     expect(result.sources).toHaveLength(10);
     expect(result.rows[0]!.metrics.currentRatio).toEqual({
@@ -3183,3 +3196,677 @@ function balances(
     })),
   };
 }
+
+function priorFact(
+  index: number,
+  value: string,
+  overrides: Partial<PersonalSecAnnualFactDto> = {},
+): PersonalSecAnnualFactDto {
+  return fact(index, value, {
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    accessionNumber: `${cik(index)}-25-000001`,
+    ...overrides,
+  });
+}
+function withPriorRevenue(
+  input: PersonalSecFinancialSnapshotDto,
+  values: Partial<
+    Record<PersonalSecRevenueConceptDto, readonly PersonalSecAnnualFactDto[]>
+  >,
+): PersonalSecFinancialSnapshotDto {
+  return {
+    ...input,
+    priorRevenueFrames: input.priorRevenueFrames.map((frame) => ({
+      ...frame,
+      facts: values[frame.concept] ?? [],
+    })),
+  };
+}
+function replacePriorFrame(
+  input: PersonalSecFinancialSnapshotDto,
+  concept: PersonalSecRevenueConceptDto,
+  overrides: Partial<PersonalSecRevenueFrameDto>,
+): PersonalSecFinancialSnapshotDto {
+  return {
+    ...input,
+    priorRevenueFrames: input.priorRevenueFrames.map((frame) =>
+      frame.concept === concept ? { ...frame, ...overrides } : frame,
+    ),
+  };
+}
+
+describe("selected revenue year-over-year growth", () => {
+  const input = (current = "110", prior = "100") =>
+    withPriorRevenue(snapshot({ [REVENUE]: [fact(1, current)] }), {
+      [REVENUE]: [priorFact(1, prior)],
+    });
+  const growth = (
+    source: PersonalSecFinancialSnapshotDto,
+    revenueBasis?: PersonalFinancialRevenueBasisDto,
+  ) =>
+    run([identity("GROWTH", 1)], source, {
+      ...criteria(),
+      ...(revenueBasis === undefined ? {} : { revenueBasis }),
+    }).rows[0]!.metrics.revenueGrowth;
+
+  it("appends one typed percentage field and retains both source roles with different filings across years", () => {
+    expect(PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS).toEqual(["revenueGrowth"]);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(16);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS[15]).toBe("revenueGrowth");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.revenueGrowth).toEqual(
+      PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.revenueGrowth,
+    );
+    const result = run([identity("GROWTH", 1)], input());
+    const cell = result.rows[0]!.metrics.revenueGrowth;
+    expect(result).toMatchObject({
+      schemaVersion: "7.0.0",
+      formulaVersion: "1.5.0",
+      calendarYear: 2025,
+      priorCalendarYear: 2024,
+    });
+    expect(result.sources).toHaveLength(10);
+    expect(result.priorRevenueSources).toEqual(
+      PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => ({
+        concept,
+        status: "available",
+        sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2024.json`,
+      })),
+    );
+    expect(cell).toEqual({
+      status: "available",
+      unit: "percent",
+      value: "10.00",
+      currentRevenue: result.rows[0]!.metrics.revenue,
+      priorRevenue: {
+        status: "available",
+        unit: "USD",
+        value: "100",
+        sources: [
+          {
+            concept: REVENUE,
+            accessionNumber: "0000000001-25-000001",
+            startDate: "2024-01-01",
+            endDate: "2024-12-31",
+            value: "100",
+          },
+        ],
+      },
+      sources: [
+        {
+          ...result.rows[0]!.metrics.revenue.sources[0]!,
+          role: "current_revenue",
+          calendarYear: 2025,
+        },
+        {
+          concept: REVENUE,
+          accessionNumber: "0000000001-25-000001",
+          startDate: "2024-01-01",
+          endDate: "2024-12-31",
+          value: "100",
+          role: "prior_revenue",
+          calendarYear: 2024,
+        },
+      ],
+    });
+  });
+
+  it.each([
+    ["101", "100", "1.00"],
+    ["100.005", "100", "0.01"],
+    ["99.995", "100", "-0.01"],
+    ["99.996", "100", "0.00"],
+    ["0", "100", "-100.00"],
+    ["-0.00", "100", "-100.00"],
+    ["-50", "100", "-150.00"],
+    ["-0.005", "100", "-100.01"],
+    ["1000", "100", "900.00"],
+    ["1.000000", "1", "0.00"],
+    ["9007199254740991", "0.000001", "900719925474099099999900.00"],
+  ])(
+    "rounds %s against %s once to %s, retaining signed current amounts",
+    (current, prior, expected) => {
+      expect(growth(input(current, prior))).toMatchObject({
+        status: "available",
+        unit: "percent",
+        value: expected,
+      });
+    },
+  );
+
+  it.each([false, true])(
+    "keeps the full 131-character result for negative=%s",
+    (negative) => {
+      const current = `${negative ? "-" : ""}${"9".repeat(negative ? 63 : 64)}`;
+      const prior = `0.${"0".repeat(61)}1`;
+      const expected = `${BigInt(current) * 10n ** 64n - 100n}.00`;
+      expect(expected).toHaveLength(131);
+      expect(growth(input(current, prior))).toMatchObject({
+        status: "available",
+        value: expected,
+      });
+      expect(growth(input(prior, "9".repeat(64)))).toMatchObject({
+        value: "-100.00",
+      });
+    },
+  );
+
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "uses only the chosen %s basis in both years",
+    (basis) => {
+      const source = withPriorRevenue(
+        snapshot({
+          [REVENUE]: [fact(1, "110")],
+          Revenues: [fact(1, "110")],
+          SalesRevenueNet: [fact(1, "110")],
+        }),
+        {
+          [REVENUE]: [priorFact(1, "100")],
+          Revenues: [priorFact(1, "100")],
+          SalesRevenueNet: [priorFact(1, "100")],
+        },
+      );
+      const cell = growth(source, basis);
+      expect(cell).toMatchObject({ status: "available", value: "10.00" });
+      expect(cell.currentRevenue.sources).toHaveLength(
+        basis === "agreement" ? 3 : 1,
+      );
+      expect(cell.sources.map((ref) => ref.role)).toEqual([
+        ...Array<string>(basis === "agreement" ? 3 : 1).fill("current_revenue"),
+        ...Array<string>(basis === "agreement" ? 3 : 1).fill("prior_revenue"),
+      ]);
+      if (basis !== "agreement")
+        expect(cell.sources.every((ref) => ref.concept === basis)).toBe(true);
+    },
+  );
+
+  it("does not compare changed agreement concept sets or fall back from an explicit missing concept", () => {
+    const source = withPriorRevenue(input(), {
+      [REVENUE]: [priorFact(1, "100")],
+      Revenues: [priorFact(1, "100")],
+    });
+    expect(growth(source)).toMatchObject({ reason: "concept_set_changed" });
+    expect(growth(source, REVENUE)).toMatchObject({ value: "10.00" });
+    expect(growth(source, "Revenues")).toMatchObject({
+      reason: "current_unavailable",
+      currentRevenue: { reason: "missing" },
+    });
+    expect(growth(source, "SalesRevenueNet")).toMatchObject({
+      reason: "prior_unavailable",
+      priorRevenue: { reason: "missing" },
+    });
+  });
+
+  it.each([
+    "not_covered",
+    "rate_limited",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "preserves the selected and agreement semantics of prior source %s",
+    (status) => {
+      const source = replacePriorFrame(input(), "SalesRevenueNet", { status });
+      expect(growth(source)).toMatchObject(
+        status === "not_covered"
+          ? { value: "10.00" }
+          : {
+              reason: "prior_unavailable",
+              priorRevenue: { reason: "source_unavailable" },
+            },
+      );
+      expect(growth(source, REVENUE)).toMatchObject({ value: "10.00" });
+      expect(growth(source, "SalesRevenueNet")).toMatchObject({
+        reason: "prior_unavailable",
+        priorRevenue: {
+          reason: status === "not_covered" ? "missing" : "source_unavailable",
+        },
+      });
+    },
+  );
+
+  it("keeps prior-first unavailable reasons and retained evidence, including invalid and quarantined values", () => {
+    const failedBoth = replaceFrame(
+      replacePriorFrame(input(), REVENUE, {
+        status: "upstream_unavailable",
+        facts: [],
+      }),
+      REVENUE,
+      { status: "rate_limited", facts: [] },
+    );
+    expect(growth(failedBoth)).toMatchObject({
+      reason: "prior_unavailable",
+      priorRevenue: { reason: "source_unavailable" },
+      currentRevenue: { reason: "source_unavailable" },
+      sources: [],
+    });
+    expect(growth(replaceFrame(input(), REVENUE, { facts: [] }))).toMatchObject(
+      {
+        reason: "current_unavailable",
+        currentRevenue: { reason: "missing" },
+        priorRevenue: { value: "100" },
+        sources: [{ role: "prior_revenue" }],
+      },
+    );
+    expect(growth(input("110", "NaN"))).toMatchObject({
+      reason: "prior_unavailable",
+      priorRevenue: { reason: "invalid_value", sources: [{ value: "NaN" }] },
+    });
+    expect(
+      growth(replacePriorFrame(input(), "Revenues", { unknownCiks: [cik(1)] })),
+    ).toMatchObject({
+      reason: "prior_unavailable",
+      priorRevenue: {
+        reason: "conflicting",
+        sources: [{ concept: REVENUE, value: "100" }],
+      },
+    });
+    expect(
+      growth(withPriorRevenue(input(), { [REVENUE]: [priorFact(2, "100")] })),
+    ).toMatchObject({
+      reason: "prior_unavailable",
+      priorRevenue: { reason: "missing" },
+    });
+  });
+
+  it.each(["current", "prior"] as const)(
+    "checks every %s reference before accepting agreement",
+    (period) => {
+      const altered =
+        period === "current"
+          ? replaceFrame(input(), "Revenues", {
+              facts: [fact(1, "110", { startDate: "2025-01-02" })],
+            })
+          : replacePriorFrame(input(), "Revenues", {
+              facts: [priorFact(1, "101")],
+            });
+      expect(growth(altered)).toMatchObject({
+        reason:
+          period === "current" ? "current_unavailable" : "prior_unavailable",
+        [period === "current" ? "currentRevenue" : "priorRevenue"]: {
+          reason: "conflicting",
+        },
+      });
+    },
+  );
+
+  it.each([
+    ["2025-11-30", "period_mismatch"],
+    ["2025-12-01", "available"],
+    ["2026-01-30", "available"],
+    ["2026-01-31", "period_mismatch"],
+  ])(
+    "applies the inclusive annual duration rule for current end %s",
+    (endDate, expected) => {
+      const cell = growth(
+        replaceFrame(input(), REVENUE, {
+          facts: [fact(1, "110", { endDate })],
+        }),
+      );
+      expect(cell.status === "available" ? cell.status : cell.reason).toBe(
+        expected,
+      );
+    },
+  );
+
+  it("accepts adjacent 52/53-week periods while retaining their different lengths", () => {
+    const source = withPriorRevenue(
+      snapshot({
+        [REVENUE]: [
+          fact(1, "110", { startDate: "2024-12-29", endDate: "2026-01-03" }),
+        ],
+      }),
+      {
+        [REVENUE]: [
+          priorFact(1, "100", {
+            startDate: "2023-12-31",
+            endDate: "2024-12-28",
+          }),
+        ],
+      },
+    );
+    expect(growth(source)).toMatchObject({
+      value: "10.00",
+      currentRevenue: {
+        sources: [{ startDate: "2024-12-29", endDate: "2026-01-03" }],
+      },
+      priorRevenue: {
+        sources: [{ startDate: "2023-12-31", endDate: "2024-12-28" }],
+      },
+    });
+  });
+
+  it("retains a structurally valid one-day prior fact as a period mismatch", () => {
+    const source = withPriorRevenue(input(), {
+      [REVENUE]: [priorFact(1, "100", { startDate: "2024-12-31" })],
+    });
+    expect(growth(source)).toMatchObject({
+      status: "unavailable",
+      reason: "period_mismatch",
+      currentRevenue: { status: "available", value: "110" },
+      priorRevenue: {
+        status: "available",
+        value: "100",
+        sources: [{ startDate: "2024-12-31", endDate: "2024-12-31" }],
+      },
+    });
+  });
+
+  it.each(["2024-12-31", "2025-01-02"])(
+    "keeps overlaps/gaps unknown at current start %s",
+    (startDate) => {
+      expect(
+        growth(
+          replaceFrame(input(), REVENUE, {
+            facts: [fact(1, "110", { startDate })],
+          }),
+        ),
+      ).toMatchObject({ reason: "nonadjacent_periods" });
+    },
+  );
+
+  it("checks each requested Frame year independently of adjacency", () => {
+    const source = withPriorRevenue(
+      snapshot({
+        [REVENUE]: [
+          fact(1, "110", { startDate: "2022-01-01", endDate: "2022-12-31" }),
+        ],
+      }),
+      {
+        [REVENUE]: [
+          priorFact(1, "100", {
+            startDate: "2021-01-01",
+            endDate: "2021-12-31",
+          }),
+        ],
+      },
+    );
+    expect(growth(source)).toMatchObject({ reason: "period_mismatch" });
+  });
+
+  it.each(["0", "-100"])(
+    "requires positive prior revenue without hiding its reported %s amount",
+    (value) => {
+      expect(growth(input("110", value))).toMatchObject({
+        reason: "nonpositive_prior_revenue",
+        priorRevenue: { status: "available", value },
+      });
+    },
+  );
+
+  it.each(["current", "prior"] as const)(
+    "requires one filing within the %s year but keeps the reported operand available",
+    (period) => {
+      const source =
+        period === "current"
+          ? replaceFrame(input(), REVENUE, {
+              facts: [
+                fact(1, "110"),
+                fact(1, "110.00", { accessionNumber: "0000000001-26-000002" }),
+              ],
+            })
+          : replacePriorFrame(input(), REVENUE, {
+              facts: [
+                priorFact(1, "100"),
+                priorFact(1, "100.00", {
+                  accessionNumber: "0000000001-25-000002",
+                }),
+              ],
+            });
+      expect(growth(source)).toMatchObject({
+        reason: "filing_mismatch",
+        currentRevenue: { status: "available" },
+        priorRevenue: { status: "available" },
+      });
+      expect(growth(source).sources).toHaveLength(3);
+    },
+  );
+
+  it("keeps duration, concept continuity, adjacency and positive-base precedence ahead of filing mismatch", () => {
+    const mixed = replacePriorFrame(input("110", "0"), REVENUE, {
+      facts: [
+        priorFact(1, "0"),
+        priorFact(1, "0", { accessionNumber: "0000000001-25-000002" }),
+      ],
+    });
+    expect(growth(mixed)).toMatchObject({
+      reason: "nonpositive_prior_revenue",
+    });
+    const gap = replaceFrame(mixed, REVENUE, {
+      facts: [fact(1, "110", { startDate: "2025-01-02" })],
+    });
+    expect(growth(gap)).toMatchObject({ reason: "nonadjacent_periods" });
+    const scope = replacePriorFrame(gap, "Revenues", {
+      facts: [priorFact(1, "0")],
+    });
+    expect(growth(scope)).toMatchObject({ reason: "concept_set_changed" });
+    const short = replaceFrame(scope, REVENUE, {
+      facts: [fact(1, "110", { startDate: "2025-11-01" })],
+    });
+    expect(growth(short)).toMatchObject({ reason: "period_mismatch" });
+  });
+
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "leaves every existing metric and current source unchanged when prior sources fail under %s",
+    (revenueBasis) => {
+      const base = {
+        ...input(),
+        instantFrames: balances([instantFact(1, "25")], [instantFact(1, "10")])
+          .instantFrames,
+      };
+      const baseline = run([identity("GROWTH", 1)], base, {
+        ...criteria(),
+        revenueBasis,
+      });
+      const failed = {
+        ...base,
+        priorRevenueFrames: base.priorRevenueFrames.map((frame) => ({
+          ...frame,
+          status: "upstream_unavailable" as const,
+          facts: [],
+          unknownCiks: [],
+        })),
+      };
+      const result = run([identity("GROWTH", 1)], failed, {
+        ...criteria(),
+        revenueBasis,
+      });
+      for (const metric of PERSONAL_FINANCIAL_SCREEN_METRICS.slice(0, 15)) {
+        expect(result.rows[0]!.metrics[metric]).toEqual(
+          baseline.rows[0]!.metrics[metric],
+        );
+        expect(result.metricCoverage[metric]).toEqual(
+          baseline.metricCoverage[metric],
+        );
+      }
+      expect(result.sources).toEqual(baseline.sources);
+      expect(result.rows[0]!.metrics.revenueGrowth).toMatchObject({
+        reason: "prior_unavailable",
+      });
+    },
+  );
+
+  it("uses rounded signed inclusive thresholds and stable alias-weighted pages with unknowns last", () => {
+    const companies = [
+      identity("UP", 1),
+      { ...identity("UP.B", 1), listingId: "listing-alias" },
+      identity("ZERO", 2),
+      identity("DOWN", 3),
+      identity("MISSING", 4),
+      identity("NOBASE", 5),
+    ];
+    const source = withPriorRevenue(
+      snapshot({
+        [REVENUE]: [
+          fact(1, "100.005"),
+          fact(2, "99.996"),
+          fact(3, "-50"),
+          fact(4, "110"),
+          fact(5, "110"),
+        ],
+      }),
+      {
+        [REVENUE]: [
+          priorFact(1, "100"),
+          priorFact(2, "100"),
+          priorFact(3, "100"),
+          priorFact(5, "0"),
+        ],
+      },
+    );
+    const exact = run(
+      companies,
+      source,
+      criteria([
+        clause("revenueGrowth", "gte", "0.01"),
+        clause("revenueGrowth", "lte", "0.01"),
+      ]),
+    );
+    expect(exact.rows.map((row) => row.identity.symbol)).toEqual([
+      "UP",
+      "UP.B",
+    ]);
+    expect(exact).toMatchObject({
+      totalMatches: 2,
+      totalNonMatches: 2,
+      totalUnknown: 2,
+    });
+    expect(exact.metricCoverage.revenueGrowth).toEqual({
+      known: 4,
+      unknown: 2,
+    });
+    expect(
+      run(
+        companies,
+        source,
+        criteria([clause("revenueGrowth", "lte", "-150")]),
+      ).rows.map((row) => row.identity.symbol),
+    ).toEqual(["DOWN"]);
+    expect(
+      run(
+        companies,
+        source,
+        criteria([clause("revenueGrowth", "gte", "0.010001")]),
+      ),
+    ).toMatchObject({ totalMatches: 0, totalNonMatches: 4, totalUnknown: 2 });
+    for (const direction of ["asc", "desc"] as const) {
+      const sorted = {
+        ...criteria(),
+        sort: { field: "revenueGrowth" as const, direction },
+      };
+      const full = run(companies, source, sorted);
+      const pages = [0, 2, 4].map((offset) =>
+        run([...companies].reverse(), source, sorted, { offset, limit: 2 }),
+      );
+      expect(pages.flatMap((page) => page.rows)).toEqual(full.rows);
+      expect(full.rows.map((row) => row.identity.symbol)).toEqual(
+        direction === "asc"
+          ? ["DOWN", "ZERO", "UP", "UP.B", "MISSING", "NOBASE"]
+          : ["UP", "UP.B", "ZERO", "DOWN", "MISSING", "NOBASE"],
+      );
+      expect(pages.map((page) => page.hasMore)).toEqual([true, true, false]);
+      for (const page of pages)
+        expect(page.metricCoverage.revenueGrowth).toEqual({
+          known: 4,
+          unknown: 2,
+        });
+    }
+    expect(
+      run(
+        companies,
+        source,
+        criteria([
+          clause("revenueGrowth", "gte", "0"),
+          clause("revenue", "lte", "0"),
+        ]),
+      ),
+    ).toMatchObject({ totalMatches: 0, totalNonMatches: 6, totalUnknown: 0 });
+  });
+
+  it("keeps the four/five-key criteria grammar and the 2009 selected year with its 2008 comparison", () => {
+    const old = { ...criteria(), calendarYear: 2009 };
+    const newest = {
+      ...old,
+      revenueBasis: REVENUE,
+      clauses: [clause("revenueGrowth", "gte", "-1")],
+      sort: { field: "revenueGrowth", direction: "desc" },
+    };
+    expect(validatePersonalFinancialScreenCriteria(old)).toBe(true);
+    expect(validatePersonalFinancialScreenCriteria(newest)).toBe(true);
+    expect(
+      validatePersonalFinancialScreenCriteria({
+        ...old,
+        priorCalendarYear: 2008,
+      }),
+    ).toBe(false);
+    const base = snapshot();
+    const source = {
+      ...base,
+      calendarYear: 2009,
+      priorCalendarYear: 2008,
+      frames: base.frames.map((frame) => ({
+        ...frame,
+        sourceUrl: frame.sourceUrl.replace("CY2025", "CY2009"),
+      })),
+      instantFrames: base.instantFrames.map((frame) => ({
+        ...frame,
+        sourceUrl: frame.sourceUrl.replace("CY2025", "CY2009"),
+      })),
+      priorRevenueFrames: base.priorRevenueFrames.map((frame) => ({
+        ...frame,
+        status: "not_covered" as const,
+        sourceUrl: frame.sourceUrl.replace("CY2024", "CY2008"),
+      })),
+    };
+    expect(run([identity("OLDEST", 1)], source, old)).toMatchObject({
+      calendarYear: 2009,
+      priorCalendarYear: 2008,
+      rows: [
+        {
+          metrics: {
+            revenueGrowth: {
+              reason: "prior_unavailable",
+              priorRevenue: { reason: "missing" },
+            },
+          },
+        },
+      ],
+    });
+  });
+
+  it("rejects missing, swapped, duplicated, wrong-year and non-revenue prior collections without emitting input", () => {
+    const good = input();
+    const bad: unknown[] = [
+      { ...good, priorCalendarYear: 2023 },
+      { ...good, priorCalendarYear: "2024" },
+      { ...good, priorRevenueFrames: [] },
+      { ...good, priorRevenueFrames: undefined },
+      {
+        ...good,
+        priorRevenueFrames: [
+          good.priorRevenueFrames[0],
+          good.priorRevenueFrames[0],
+          good.priorRevenueFrames[2],
+        ],
+      },
+      { ...good, priorRevenueFrames: good.frames.slice(3, 6) },
+      {
+        ...good,
+        priorRevenueFrames: good.priorRevenueFrames.map((frame) => ({
+          ...frame,
+          sourceUrl: frame.sourceUrl.replace("CY2024", "CY2025"),
+        })),
+      },
+      replacePriorFrame(good, REVENUE, { status: "not_covered" }),
+      replacePriorFrame(good, REVENUE, {
+        facts: [priorFact(1, "1", { endDate: "2024-02-30" })],
+      }),
+      replacePriorFrame(good, REVENUE, {
+        facts: [priorFact(1, "1".repeat(65))],
+      }),
+    ];
+    for (const source of bad)
+      expect(() => run([], source as PersonalSecFinancialSnapshotDto)).toThrow(
+        "Personal financial screen request is invalid.",
+      );
+  });
+});

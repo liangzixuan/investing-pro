@@ -5467,6 +5467,14 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       /"AssetsCurrent",\s*"LiabilitiesCurrent"/u,
       '"LiabilitiesCurrent", "AssetsCurrent"',
     ),
+    secConcepts.replace(
+      "PERSONAL_SEC_REVENUE_CONCEPTS =",
+      "UNREVIEWED_REVENUE_CONCEPTS =",
+    ),
+    secConcepts.replace(
+      /(PERSONAL_SEC_REVENUE_CONCEPTS\s*=\s*\[)[\s\S]*?\] as const/u,
+      '$1"Revenues"] as const',
+    ),
   ];
   if (
     invalidSecConceptRegistries.some(
@@ -5522,6 +5530,26 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       ),
     (source: string) =>
       source.replace("instantFrames: normalizedInstant", "instantFrames: []"),
+    (source: string) =>
+      source.replace(
+        "priorRevenueFrames: normalizedPriorRevenue",
+        "priorRevenueFrames: []",
+      ),
+    (source: string) =>
+      source.replace(
+        "const priorCalendarYear = calendarYear - 1;",
+        "const priorCalendarYear = calendarYear;",
+      ),
+    (source: string) =>
+      source.replace(
+        "for (const concept of PERSONAL_SEC_REVENUE_CONCEPTS)",
+        "for (const concept of PERSONAL_SEC_ANNUAL_CONCEPTS)",
+      ),
+    (source: string) =>
+      source.replace(
+        "this.#loadFrame(concept, priorCalendarYear, signal)",
+        "this.#loadFrame(concept, calendarYear, signal)",
+      ),
   ];
   if (
     personalSecFinancialProviderViolation(secProvider) !== null ||
@@ -7387,6 +7415,10 @@ function personalSecFinancialProviderViolation(content: string): string | null {
     "constCACHE_DURATION_MS=30*60*1000;",
     "for(constconceptofPERSONAL_SEC_ANNUAL_CONCEPTS)",
     "for(constconceptofPERSONAL_SEC_INSTANT_CONCEPTS)",
+    "for(constconceptofPERSONAL_SEC_REVENUE_CONCEPTS)",
+    "constpriorCalendarYear=calendarYear-1;",
+    "constnormalizedPriorRevenue=Object.freeze(priorRevenueFrames);",
+    "this.#loadFrame(concept,priorCalendarYear,signal)",
     "if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,signal);",
     "setTimeout(()=>controller.abort(),REQUEST_TIMEOUT_MS)",
     "this.#active?.controller.abort()",
@@ -7412,20 +7444,22 @@ function personalSecFinancialProviderViolation(content: string): string | null {
     return "SEC financial provider must preserve bounded requests, exact concepts, cancellation, public memory cache, lossless numbers, and unknown conflicting facts";
   }
   const repeated = [
-    ["if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,signal);", 2],
-    ["awaitthis.#scheduler.wait(signal)", 2],
+    ["if(this.#requestHasRun)awaitdelay(REQUEST_INTERVAL_MS,signal);", 3],
+    ["awaitthis.#scheduler.wait(signal)", 3],
     ["value.data.length>MAX_FRAME_ROWS", 2],
     ["if(seen.has(cik))", 2],
     ["facts.delete(cik)", 2],
     ["instantFrames:normalizedInstant", 2],
     ["instantQuarter:4", 2],
+    ["priorRevenueFrames:normalizedPriorRevenue", 2],
+    ["calendarYear,priorCalendarYear,instantQuarter:4", 2],
   ] as const;
   if (
     repeated.some(
       ([anchor, count]) => compact.split(anchor).length - 1 !== count,
     )
   ) {
-    return "SEC financial provider must retain both bounded frame families in acquisition and the combined cache digest";
+    return "SEC financial provider must retain bounded current annual, instant and prior revenue collections in acquisition and the combined cache digest";
   }
   let endpointCount = 0;
   let transportCount = 0;
@@ -7552,6 +7586,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
   );
   let concepts: readonly string[] | undefined;
   let instantConcepts: readonly string[] | undefined;
+  let revenueConcepts: readonly string[] | undefined;
   for (const statement of source.statements) {
     if (!ts.isVariableStatement(statement)) continue;
     for (const declaration of statement.declarationList.declarations) {
@@ -7560,6 +7595,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         ![
           "PERSONAL_SEC_ANNUAL_CONCEPTS",
           "PERSONAL_SEC_INSTANT_CONCEPTS",
+          "PERSONAL_SEC_REVENUE_CONCEPTS",
         ].includes(declaration.name.text) ||
         declaration.initializer === undefined
       )
@@ -7571,7 +7607,9 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         );
         if (declaration.name.text === "PERSONAL_SEC_ANNUAL_CONCEPTS")
           concepts = entries;
-        else instantConcepts = entries;
+        else if (declaration.name.text === "PERSONAL_SEC_INSTANT_CONCEPTS")
+          instantConcepts = entries;
+        else revenueConcepts = entries;
       }
     }
   }
@@ -7587,9 +7625,15 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]) &&
     JSON.stringify(instantConcepts) ===
-      JSON.stringify(["AssetsCurrent", "LiabilitiesCurrent"])
+      JSON.stringify(["AssetsCurrent", "LiabilitiesCurrent"]) &&
+    JSON.stringify(revenueConcepts) ===
+      JSON.stringify([
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "Revenues",
+        "SalesRevenueNet",
+      ])
     ? null
-    : "SEC financial frames must retain the exact eight annual and two instant concept registries";
+    : "SEC financial frames must retain the exact eight current annual, two instant and three prior revenue concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

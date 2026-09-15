@@ -254,15 +254,22 @@ describe("shared SEC request scheduler", () => {
     expect(
       snapshot.instantFrames.every((frame) => frame.status === "available"),
     ).toBe(true);
-    expect(starts).toHaveLength(14);
+    expect(snapshot.priorCalendarYear).toBe(2024);
+    expect(snapshot.priorRevenueFrames).toHaveLength(3);
+    expect(
+      snapshot.priorRevenueFrames.every(
+        (frame) => frame.status === "available",
+      ),
+    ).toBe(true);
+    expect(starts).toHaveLength(17);
     const refresh = annual.loadSnapshot(2025, undefined, true);
     filings.close();
     const replacement = createSecPersonalFilingsProvider(USER_AGENT, { fetch });
     const third = replacement.loadFilings([CIK], FROM, THROUGH);
     await vi.runAllTimersAsync();
     await Promise.all([refresh, third]);
-    expect(starts).toHaveLength(25);
-    expect(wait).toHaveBeenCalledTimes(25);
+    expect(starts).toHaveLength(31);
+    expect(wait).toHaveBeenCalledTimes(31);
     assertSpaced(starts);
     const count = fetch.mock.calls.length;
     await annual.loadSnapshot(2025);
@@ -304,7 +311,7 @@ describe("shared SEC request scheduler", () => {
       const retry = load();
       await vi.runAllTimersAsync();
       await retry;
-      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 10 : 1);
+      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 13 : 1);
       annual.close();
       filings.close();
     },

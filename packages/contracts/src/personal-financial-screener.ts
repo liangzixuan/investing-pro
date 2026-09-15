@@ -23,9 +23,15 @@ export const PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS = [
 ] as const;
 export type PersonalFinancialScreenInstantMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS)[number];
+export const PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS = [
+  "revenueGrowth",
+] as const;
+export type PersonalFinancialScreenGrowthMetricDto =
+  (typeof PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS)[number];
 export const PERSONAL_FINANCIAL_SCREEN_METRICS = [
   ...PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
   ...PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
+  ...PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS,
 ] as const;
 export type PersonalFinancialScreenMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_METRICS)[number];
@@ -41,6 +47,13 @@ export const PERSONAL_SEC_ANNUAL_CONCEPTS = [
 ] as const;
 export type PersonalSecAnnualConceptDto =
   (typeof PERSONAL_SEC_ANNUAL_CONCEPTS)[number];
+export const PERSONAL_SEC_REVENUE_CONCEPTS = [
+  "RevenueFromContractWithCustomerExcludingAssessedTax",
+  "Revenues",
+  "SalesRevenueNet",
+] as const;
+export type PersonalSecRevenueConceptDto =
+  (typeof PERSONAL_SEC_REVENUE_CONCEPTS)[number];
 export const PERSONAL_FINANCIAL_REVENUE_BASES = [
   "agreement",
   "Revenues",
@@ -73,6 +86,8 @@ export interface PersonalSecInstantFrameDto {
 export interface PersonalSecFinancialSnapshotDto extends PersonalSecAnnualFinancialSnapshotDto {
   readonly instantQuarter: 4;
   readonly instantFrames: readonly PersonalSecInstantFrameDto[];
+  readonly priorCalendarYear: number;
+  readonly priorRevenueFrames: readonly PersonalSecRevenueFrameDto[];
 }
 export interface PersonalFinancialScreenInstantSourceRefDto {
   readonly concept: PersonalSecInstantConceptDto;
@@ -98,6 +113,9 @@ export interface PersonalSecAnnualFrameDto {
   readonly sourceUrl: string;
   readonly facts: readonly PersonalSecAnnualFactDto[];
   readonly unknownCiks: readonly string[];
+}
+export interface PersonalSecRevenueFrameDto extends PersonalSecAnnualFrameDto {
+  readonly concept: PersonalSecRevenueConceptDto;
 }
 export interface PersonalSecAnnualFinancialSnapshotDto {
   readonly calendarYear: number;
@@ -157,8 +175,34 @@ export type PersonalFinancialScreenInstantCellDto =
       readonly unit: "USD" | "multiple";
       readonly sources: readonly PersonalFinancialScreenInstantSourceRefDto[];
     };
+export interface PersonalFinancialScreenGrowthSourceRefDto extends PersonalFinancialScreenSourceRefDto {
+  readonly concept: PersonalSecRevenueConceptDto;
+  readonly role: "current_revenue" | "prior_revenue";
+  readonly calendarYear: number;
+}
+export type PersonalFinancialScreenGrowthCellDto = {
+  readonly unit: "percent";
+  readonly currentRevenue: PersonalFinancialScreenAnnualCellDto;
+  readonly priorRevenue: PersonalFinancialScreenAnnualCellDto;
+  readonly sources: readonly PersonalFinancialScreenGrowthSourceRefDto[];
+} & (
+  | { readonly status: "available"; readonly value: string }
+  | {
+      readonly status: "unavailable";
+      readonly reason:
+        | "prior_unavailable"
+        | "current_unavailable"
+        | "period_mismatch"
+        | "concept_set_changed"
+        | "nonadjacent_periods"
+        | "nonpositive_prior_revenue"
+        | "filing_mismatch";
+    }
+);
 export type PersonalFinancialScreenCellDto =
-  PersonalFinancialScreenAnnualCellDto | PersonalFinancialScreenInstantCellDto;
+  | PersonalFinancialScreenAnnualCellDto
+  | PersonalFinancialScreenInstantCellDto
+  | PersonalFinancialScreenGrowthCellDto;
 export interface PersonalFinancialScreenClauseDto {
   readonly field: PersonalFinancialScreenMetricDto;
   readonly operator: "gte" | "lte";
@@ -176,7 +220,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "6.0.0";
+  readonly schemaVersion: "7.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -193,21 +237,31 @@ export interface PersonalFinancialScreenRowDto {
       Record<
         PersonalFinancialScreenInstantMetricDto,
         PersonalFinancialScreenInstantCellDto
+      > &
+      Record<
+        PersonalFinancialScreenGrowthMetricDto,
+        PersonalFinancialScreenGrowthCellDto
       >
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "6.0.0";
+  readonly schemaVersion: "7.0.0";
   readonly instantQuarter: 4;
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
   readonly calendarYear: number;
+  readonly priorCalendarYear: number;
   /** Present exactly when the request explicitly supplies a revenue basis. */
   readonly revenueBasis?: PersonalFinancialRevenueBasisDto;
   readonly fetchedAt: string;
   readonly expiresAt: string;
   readonly sources: readonly {
     readonly concept: PersonalSecFinancialConceptDto;
+    readonly status: PersonalSecAnnualFrameDto["status"];
+    readonly sourceUrl: string;
+  }[];
+  readonly priorRevenueSources: readonly {
+    readonly concept: PersonalSecRevenueConceptDto;
     readonly status: PersonalSecAnnualFrameDto["status"];
     readonly sourceUrl: string;
   }[];
@@ -226,7 +280,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.4.0";
+  readonly formulaVersion: "1.5.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

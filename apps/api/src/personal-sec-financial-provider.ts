@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   PERSONAL_SEC_INSTANT_CONCEPTS,
+  PERSONAL_SEC_REVENUE_CONCEPTS,
   type PersonalSecAnnualConceptDto,
   type PersonalSecAnnualFactDto,
   type PersonalSecAnnualFrameDto,
@@ -11,6 +12,8 @@ import {
   type PersonalSecInstantConceptDto,
   type PersonalSecInstantFactDto,
   type PersonalSecInstantFrameDto,
+  type PersonalSecRevenueConceptDto,
+  type PersonalSecRevenueFrameDto,
 } from "@research-cockpit/contracts";
 
 import {
@@ -210,13 +213,32 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
       this.#requestHasRun = true;
       instantFrames.push(await this.#loadFrame(concept, calendarYear, signal));
     }
+    const priorCalendarYear = calendarYear - 1;
+    const priorRevenueFrames: PersonalSecRevenueFrameDto[] = [];
+    for (const concept of PERSONAL_SEC_REVENUE_CONCEPTS) {
+      if (signal.aborted) fail("aborted");
+      if (this.#requestHasRun) await delay(REQUEST_INTERVAL_MS, signal);
+      try {
+        await this.#scheduler.wait(signal);
+      } catch {
+        if (this.#closed || signal.aborted) fail("aborted");
+        fail("busy");
+      }
+      if (this.#closed || signal.aborted) fail("aborted");
+      this.#requestHasRun = true;
+      priorRevenueFrames.push(
+        await this.#loadFrame(concept, priorCalendarYear, signal),
+      );
+    }
     if (this.#closed || signal.aborted) fail("aborted");
     const fetchedAt = this.#now();
     if (!validClock(fetchedAt)) fail("invalid_request");
     const normalized = Object.freeze(frames);
     const normalizedInstant = Object.freeze(instantFrames);
+    const normalizedPriorRevenue = Object.freeze(priorRevenueFrames);
     const snapshot: PersonalSecFinancialSnapshotDto = Object.freeze({
       calendarYear,
+      priorCalendarYear,
       instantQuarter: 4,
       fetchedAt: fetchedAt.toISOString(),
       expiresAt: new Date(
@@ -228,19 +250,27 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
         .update(
           JSON.stringify({
             calendarYear,
+            priorCalendarYear,
             instantQuarter: 4,
             frames: normalized,
             instantFrames: normalizedInstant,
+            priorRevenueFrames: normalizedPriorRevenue,
           }),
         )
         .digest("hex")}`,
       frames: normalized,
       instantFrames: normalizedInstant,
+      priorRevenueFrames: normalizedPriorRevenue,
     });
     this.#cache = snapshot;
     return snapshot;
   }
 
+  async #loadFrame(
+    concept: PersonalSecRevenueConceptDto,
+    calendarYear: number,
+    signal: AbortSignal,
+  ): Promise<PersonalSecRevenueFrameDto>;
   async #loadFrame(
     concept: PersonalSecAnnualConceptDto,
     calendarYear: number,
