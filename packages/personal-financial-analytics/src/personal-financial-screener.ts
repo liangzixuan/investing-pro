@@ -35,7 +35,7 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.6.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.7.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   currentRatio: Object.freeze({
@@ -63,6 +63,12 @@ export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
     formulaVersion: "1.0.0",
     expression: "operating_cash_flow / net_income * 100",
   }),
+  operatingCashFlowLessPpePurchasesMargin: Object.freeze({
+    formulaId: "operating_cash_flow_less_ppe_purchases_to_revenue_percent",
+    formulaVersion: "1.0.0",
+    expression:
+      "(operating_cash_flow - ppe_purchases) / selected_revenue * 100",
+  }),
   revenueGrowth: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.revenueGrowth,
 });
 
@@ -79,6 +85,7 @@ const METRICS = [
   "operatingCashFlowLessPpePurchases",
   "grossMargin",
   "operatingCashFlowToNetIncome",
+  "operatingCashFlowLessPpePurchasesMargin",
   "currentAssets",
   "currentLiabilities",
   "currentRatio",
@@ -283,7 +290,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "8.0.0",
+      schemaVersion: "9.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
@@ -384,6 +391,11 @@ function buildMetrics(
     operatingCashFlowToNetIncome: cashFlowToNetIncome(
       operatingCashFlow,
       netIncome,
+    ),
+    operatingCashFlowLessPpePurchasesMargin: cashFlowLessPpePurchasesMargin(
+      operatingCashFlow,
+      ppePurchases,
+      revenue,
     ),
     currentAssets,
     currentLiabilities,
@@ -777,6 +789,68 @@ function cashFlowLessPpePurchases(
     value: canonicalDecimal(
       new ScreenDecimal(operatingCashFlow.value).minus(ppePurchases.value),
     ),
+    sources,
+  };
+}
+
+function cashFlowLessPpePurchasesMargin(
+  operatingCashFlow: PersonalFinancialScreenAnnualCellDto,
+  ppePurchases: PersonalFinancialScreenAnnualCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
+  const sources = [
+    ...operatingCashFlow.sources,
+    ...ppePurchases.sources,
+    ...revenue.sources,
+  ];
+  if (revenue.status === "unavailable")
+    return unavailable("percent", revenue.reason, sources);
+  if (operatingCashFlow.status === "unavailable")
+    return unavailable("percent", operatingCashFlow.reason, sources);
+  if (ppePurchases.status === "unavailable")
+    return unavailable("percent", ppePurchases.reason, sources);
+  const first = sources[0]!;
+  // Validate the original three operands, including every agreeing reference;
+  // the displayed cash difference is never reused as an intermediate input.
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unavailable("percent", "period_mismatch", sources);
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unavailable("percent", "filing_mismatch", sources);
+  const purchases = new ScreenDecimal(ppePurchases.value);
+  if (purchases.lt(0))
+    return unavailable("percent", "unsupported_sign", sources);
+  const denominator = new ScreenDecimal(revenue.value);
+  if (!denominator.gt(0))
+    return unavailable("percent", "nonpositive_revenue", sources);
+  const rounded = new ScreenDecimal(operatingCashFlow.value)
+    .minus(purchases)
+    .div(denominator)
+    .times(100)
+    .toDecimalPlaces(
+      PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces,
+      Decimal.ROUND_HALF_UP,
+    );
+  return {
+    status: "available",
+    unit: "percent",
+    value: rounded.isZero()
+      ? "0.00"
+      : rounded.toFixed(PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces),
     sources,
   };
 }

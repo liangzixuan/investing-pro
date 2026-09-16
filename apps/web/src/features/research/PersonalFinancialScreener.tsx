@@ -65,6 +65,7 @@ const columnViews = {
       "operatingCashFlowLessPpePurchases",
       "operatingCashFlowMargin",
       "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
     ],
   },
   q4Balances: {
@@ -147,6 +148,7 @@ function comparisonKey(
   criteria: PersonalFinancialScreenCriteriaDto,
 ): string {
   return JSON.stringify([
+    response.schemaVersion,
     response.catalogSnapshotSha256,
     response.financialSnapshotSha256,
     response.calendarYear,
@@ -198,6 +200,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingCashFlowLessPpePurchases: "Operating cash flow less PP&E purchases",
   grossMargin: "Gross profit / selected revenue (%)",
   operatingCashFlowToNetIncome: "Operating cash flow / net income (%)",
+  operatingCashFlowLessPpePurchasesMargin:
+    "Operating cash flow less PP&E purchases / selected revenue (%)",
   currentAssets: "Current assets",
   currentLiabilities: "Current liabilities",
   currentRatio: "Current assets / current liabilities (×)",
@@ -228,6 +232,8 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported GrossProfit / selected revenue × 100. Requires positive selected revenue and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; negative results and results above 100% are retained.",
   operatingCashFlowToNetIncome:
     "Operating cash flow / net income × 100. Requires positive reported net income and every input reference to share the same supported annual period (335–395 inclusive days) and filing accession. Rounded half-up to two decimal places; zero, negative and above-100% results are retained. Independent of the revenue basis.",
+  operatingCashFlowLessPpePurchasesMargin:
+    "(Operating cash flow − PP&E purchases) / selected revenue × 100. Requires nonnegative PP&E purchases, positive selected revenue, and every retained reference from all three inputs to share the same supported annual period (335–395 inclusive days) and filing accession. Subtracted and divided exactly, then rounded half-up once to two decimal places; zero, negative and above-100% results are retained. Filters compare the displayed rounded percentage.",
   currentAssets:
     "Reported AssetsCurrent in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Negative reported balances remain visible. Independent of the revenue basis.",
   currentLiabilities:
@@ -346,6 +352,35 @@ function cashFlowUnknownExplanation(
   if (cell.reason === "unsupported_sign")
     return "Reported PP&E purchases are negative. The reported sign is preserved; the subtraction remains unknown instead of reversing the sign.";
   return "An operating cash flow or PP&E purchase input is unresolved. The subtraction remains unknown; retained source references are shown below.";
+}
+
+type CashMarginInputs = Pick<
+  PersonalFinancialScreenRowDto["metrics"],
+  "revenue" | "operatingCashFlow" | "ppePurchases"
+>;
+
+function cashMarginUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+  inputs: CashMarginInputs,
+): string | null {
+  if (cell.status === "available") return null;
+  for (const [label, operand] of [
+    ["Selected revenue", inputs.revenue],
+    ["Operating cash flow", inputs.operatingCashFlow],
+    ["PP&E purchases", inputs.ppePurchases],
+  ] as const) {
+    if (operand.status === "unavailable")
+      return `${label} ${label === "PP&E purchases" ? "are" : "is"} unresolved (${operand.reason.replaceAll("_", " ")}). The ratio remains unknown; missing or failed inputs are never treated as zero, and retained references remain visible.`;
+  }
+  if (cell.reason === "period_mismatch")
+    return "The three inputs do not share the same supported annual period (335–395 inclusive days). Compare every retained source date below; one calendar frame alone does not make them compatible.";
+  if (cell.reason === "filing_mismatch")
+    return "The three inputs come from different filing accessions. The ratio remains unknown to avoid mixing filing versions, even when reported amounts agree.";
+  if (cell.reason === "unsupported_sign")
+    return "Reported PP&E purchases are negative. Their sign is preserved; this ratio requires nonnegative purchases and does not reverse the sign or take an absolute value.";
+  if (cell.reason === "nonpositive_revenue")
+    return "Selected revenue is zero or negative. The ratio requires a positive denominator; all reported operands remain visible below.";
+  return "The ratio remains unknown; inspect all three reported inputs and their retained references below.";
 }
 
 function grossMarginUnknownExplanation(
@@ -778,7 +813,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "8.0.0",
+          schemaVersion: "9.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -1806,6 +1841,7 @@ function FinancialResults({
             revenueUnresolved={
               selectedRow.metrics.revenue.status === "unavailable"
             }
+            cashMarginInputs={selectedRow.metrics}
           />
         </section>
       )}
@@ -1947,6 +1983,7 @@ function FinancialResults({
                   {labels[metric]}
                   {metric !== "grossMargin" &&
                     metric !== "operatingCashFlowToNetIncome" &&
+                    metric !== "operatingCashFlowLessPpePurchasesMargin" &&
                     metric !== "revenueGrowth" &&
                     metric !== "currentRatio" &&
                     metric !== "currentAssetsLessCurrentLiabilities" && (
@@ -2145,6 +2182,7 @@ function FinancialCell({
       ? cell.unit === "percent"
         ? metric === "grossMargin" ||
           metric === "operatingCashFlowToNetIncome" ||
+          metric === "operatingCashFlowLessPpePurchasesMargin" ||
           metric === "revenueGrowth"
           ? exactPercentage(cell.value)
           : `${Number(cell.value).toLocaleString("en-US", { maximumFractionDigits: 2 })}%`
@@ -2209,12 +2247,14 @@ function FinancialCellDetails({
   cik,
   revenueBasis,
   revenueUnresolved,
+  cashMarginInputs,
 }: {
   readonly cell: PersonalFinancialScreenCellDto;
   readonly metric: PersonalFinancialScreenMetricDto;
   readonly cik: string;
   readonly revenueBasis: PersonalFinancialRevenueBasisDto;
   readonly revenueUnresolved: boolean;
+  readonly cashMarginInputs: CashMarginInputs;
 }) {
   const currentAssets = cell.sources.find(
     (source) => source.concept === "AssetsCurrent",
@@ -2323,6 +2363,47 @@ function FinancialCellDetails({
         cell.status === "unavailable" && (
           <p>{cashFlowUnknownExplanation(cell)}</p>
         )}
+      {metric === "operatingCashFlowLessPpePurchasesMargin" && (
+        <>
+          <p>
+            This app-defined historical cash measure subtracts only reported
+            PP&E purchases. It excludes other investing cash flows and does not
+            establish cash available to shareholders, comparable accounting or
+            business scope, investment quality, or a buy/sell rule.
+          </p>
+          <p>
+            {(
+              [
+                ["Operating cash flow", cashMarginInputs.operatingCashFlow],
+                ["PP&E purchases", cashMarginInputs.ppePurchases],
+                ["Selected revenue", cashMarginInputs.revenue],
+              ] as const
+            ).map(([label, operand]) => (
+              <span key={label}>
+                {label}:{" "}
+                {operand.status === "available"
+                  ? `${operand.value} USD`
+                  : `Unknown (${operand.reason.replaceAll("_", " ")})`}
+                .{" "}
+              </span>
+            ))}
+          </p>
+          {cell.status === "available" &&
+            cashMarginInputs.operatingCashFlow.status === "available" &&
+            cashMarginInputs.ppePurchases.status === "available" &&
+            cashMarginInputs.revenue.status === "available" && (
+              <p>
+                Exact operands: ({cashMarginInputs.operatingCashFlow.value} USD
+                − {cashMarginInputs.ppePurchases.value} USD) /{" "}
+                {cashMarginInputs.revenue.value} USD × 100. Rounded once:{" "}
+                {cell.value}%.
+              </p>
+            )}
+          {cell.status === "unavailable" && (
+            <p>{cashMarginUnknownExplanation(cell, cashMarginInputs)}</p>
+          )}
+        </>
+      )}
       {metric === "revenue" &&
         cell.status === "unavailable" &&
         cell.reason === "conflicting" && (
@@ -2365,6 +2446,17 @@ function FinancialCellDetails({
                 {source.concept === "NetCashProvidedByUsedInOperatingActivities"
                   ? "Operating cash flow input"
                   : "PP&E purchases input (subtracted)"}
+                <br />
+              </>
+            )}
+            {metric === "operatingCashFlowLessPpePurchasesMargin" && (
+              <>
+                {source.concept === "NetCashProvidedByUsedInOperatingActivities"
+                  ? "Operating cash flow input"
+                  : source.concept ===
+                      "PaymentsToAcquirePropertyPlantAndEquipment"
+                    ? "PP&E purchases input (subtracted)"
+                    : "Selected revenue denominator"}
                 <br />
               </>
             )}

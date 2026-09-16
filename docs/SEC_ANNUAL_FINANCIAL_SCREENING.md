@@ -16,7 +16,7 @@ Open Discover, start the owner session, and use **Financial screen**.
 The configured temporary local-access mode opens the workspace without sign-in.
 Choose a completed calendar year, add numerical thresholds, and explicitly run
 the screen. Choose a **Revenue basis** when you want one reported concept to
-drive revenue and the four ratio denominators. Amount thresholds use USD;
+drive revenue and the five revenue-based ratio denominators. Amount thresholds use USD;
 percentage thresholds use percent points; current-ratio thresholds use multiples
 (1 means 1.00×). The selected year also fixes the balance-sheet selection to its
 Q4 instant Frame. Operating cash flow / net income (%)
@@ -148,25 +148,26 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 
 ## Metrics and comparability
 
-| Metric                                   | Input or formula                                                                   | Unit     |
-| ---------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
-| Revenue                                  | Selected revenue basis; the default requires agreement among available concepts    | USD      |
-| Gross profit                             | `GrossProfit`, as reported; no calculation from revenue and costs                  | USD      |
-| Net income                               | `NetIncomeLoss`                                                                    | USD      |
-| Operating income                         | `OperatingIncomeLoss`                                                              | USD      |
-| Operating cash flow                      | `NetCashProvidedByUsedInOperatingActivities`                                       | USD      |
-| Net margin                               | Net income / revenue × 100                                                         | percent  |
-| Operating margin                         | Operating income / revenue × 100                                                   | percent  |
-| Operating cash flow margin               | Operating cash flow / revenue × 100                                                | percent  |
-| PP&E purchases                           | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                          | USD      |
-| Operating cash flow less PP&E purchases  | Operating cash flow − PP&E purchases                                               | USD      |
-| Gross profit / selected revenue (%)      | Reported gross profit / selected revenue × 100                                     | percent  |
-| Operating cash flow / net income (%)     | Reported operating cash flow / positive reported net income × 100                  | percent  |
-| Current assets                           | `AssetsCurrent`, actual instant balance date                                       | USD      |
-| Current liabilities                      | `LiabilitiesCurrent`, actual instant balance date                                  | USD      |
-| Current assets / current liabilities (×) | Current assets / positive current liabilities                                      | multiple |
-| Selected revenue YoY change (%)          | (Current selected revenue − prior selected revenue) / positive prior revenue × 100 | percent  |
-| Current assets less current liabilities  | Current assets − current liabilities, on the same actual Q4 date and filing        | USD      |
+| Metric                                                         | Input or formula                                                                   | Unit     |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------- |
+| Revenue                                                        | Selected revenue basis; the default requires agreement among available concepts    | USD      |
+| Gross profit                                                   | `GrossProfit`, as reported; no calculation from revenue and costs                  | USD      |
+| Net income                                                     | `NetIncomeLoss`                                                                    | USD      |
+| Operating income                                               | `OperatingIncomeLoss`                                                              | USD      |
+| Operating cash flow                                            | `NetCashProvidedByUsedInOperatingActivities`                                       | USD      |
+| Net margin                                                     | Net income / revenue × 100                                                         | percent  |
+| Operating margin                                               | Operating income / revenue × 100                                                   | percent  |
+| Operating cash flow margin                                     | Operating cash flow / revenue × 100                                                | percent  |
+| PP&E purchases                                                 | `PaymentsToAcquirePropertyPlantAndEquipment`, as reported                          | USD      |
+| Operating cash flow less PP&E purchases                        | Operating cash flow − PP&E purchases                                               | USD      |
+| Gross profit / selected revenue (%)                            | Reported gross profit / selected revenue × 100                                     | percent  |
+| Operating cash flow / net income (%)                           | Reported operating cash flow / positive reported net income × 100                  | percent  |
+| Operating cash flow less PP&E purchases / selected revenue (%) | (Operating cash flow − PP&E purchases) / positive selected revenue × 100           | percent  |
+| Current assets                                                 | `AssetsCurrent`, actual instant balance date                                       | USD      |
+| Current liabilities                                            | `LiabilitiesCurrent`, actual instant balance date                                  | USD      |
+| Current assets / current liabilities (×)                       | Current assets / positive current liabilities                                      | multiple |
+| Selected revenue YoY change (%)                                | (Current selected revenue − prior selected revenue) / positive prior revenue × 100 | percent  |
+| Current assets less current liabilities                        | Current assets − current liabilities, on the same actual Q4 date and filing        | USD      |
 
 ### Current assets less current liabilities
 
@@ -270,8 +271,8 @@ Inclusive filters compare the displayed rounded multiple: `0.995` displays
 `1.00` and qualifies for `≥ 1.00`. The browser independently verifies exact
 integer arithmetic, every source reference including multiplicity, and unknown
 precedence; it preserves the supported 129-character extreme result as a string.
-All three balance-sheet fields are independent of revenue basis, and a failed
-instant source leaves the twelve annual metrics unchanged. Current classifications
+All four balance-sheet fields are independent of revenue basis, and a failed
+instant source leaves the thirteen annual metrics unchanged. Current classifications
 and industry differences affect comparability.
 
 ### PP&E purchases and cash generation
@@ -309,6 +310,42 @@ not a reported subtotal or a uniform company-defined free-cash-flow measure.
 Other cash commitments and companies' alternative definitions are outside this
 calculation. [SEC staff guidance, Question 102.07](https://www.sec.gov/rules-regulations/staff-guidance/corporation-finance-interpretations/non-gaap-financial-measures)
 explains why free-cash-flow labels can describe different calculations.
+
+### Operating cash flow less PP&E purchases / selected revenue (%)
+
+This percentage relates the existing exact cash difference to selected reported
+revenue. It appears in Cash flow, All metrics and individual column choices,
+with signed inclusive filters, sorting, coverage, saved criteria and shortlist
+comparison. The three editable starters and other presets keep their existing
+memberships and thresholds. Selecting a revenue basis changes this denominator;
+it does not change the separate dollar subtraction.
+
+Resolve selected revenue, operating cash flow and PP&E purchases for the same
+issuer. Every retained reference across all three operands must share one actual
+annual start/end pair within the inclusive 335–395-day window and one filing
+accession. This includes every agreeing revenue reference. The shared calendar
+Frame alone does not establish compatible periods or filing vintage.
+
+Compute `(operating cash flow - PP&E purchases) / selected revenue * 100` using
+the exact original decimals; do not round the intermediate difference or reuse
+a rounded percentage. Round once half-up to two decimals and canonicalize
+rounded negative zero to `0.00`. PP&E purchases must be nonnegative, and revenue
+strictly positive. Zero or negative operating cash flow and negative results
+remain valid. Thresholds compare the displayed rounded percentage.
+
+Unknown precedence is unresolved selected revenue, unresolved operating cash
+flow, unresolved PP&E purchases, `period_mismatch`, `filing_mismatch`,
+`unsupported_sign` for negative PP&E, then `nonpositive_revenue`. Preserve an
+unresolved operand's reason and every retained source. Source details identify
+all three operands in operating-cash-flow, purchase, revenue order, with actual
+dates and filings. The browser independently recomputes exact integer arithmetic,
+the source multiset and the complete unknown reason.
+
+This is an app-defined historical cash measure. Other investing flows and cash
+commitments are excluded; it is not a uniform free-cash-flow margin, cash
+available to shareholders, or an investment-quality score. No new concept,
+Frame or per-company provider request is introduced. Older dated filing samples
+remain dated evidence rather than a fresh acquisition or broad coverage claim.
 
 ### Reported gross profit
 
@@ -434,8 +471,8 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "8.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly seventeen metric
+Financial-screen requests and responses use `schemaVersion: "9.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly eighteen metric
 and coverage keys, the existing ten current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
@@ -446,18 +483,20 @@ partially expanded responses. Reload an older open browser after deployment.
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v8 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v9 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
-The seven-clause limit is unchanged; revenue change and the current-balance
-difference are additional filter/sort choices. Older application versions
+The seven-clause limit is unchanged; the cash-difference percentage is an
+additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.6.0 adds
-`current_assets_less_current_liabilities` version 1.0.0 with the exact expression
+than drop a filter. Screen formula-set version 1.7.0 adds
+`operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
+expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
+Current-balance subtraction retains version 1.0.0 and its exact expression
 `current_assets - current_liabilities`. The revenue comparison policy and
 `(current - prior) / prior * 100` calculation are unchanged. Current ratio retains
 `current_assets_to_current_liabilities` version 1.0.0 and expression
 `current_assets / current_liabilities`. Operating cash flow / net income and
-all four revenue-based margin formulas retain
+the four older revenue-based margin formulas retain
 version 1.0.0 and their rounding; PP&E subtraction retains version 1.1.0 and exact
 decimal precision. Other selected-company analytics versions are unchanged.
 
@@ -523,6 +562,16 @@ No polling, automatic source refresh, extra request or credential storage is add
 
 ### Financial acceptance
 
+Cash-difference percentage acceptance covers all three original operands,
+fractional inputs, signed and zero results, half-up ties, negative zero and the
+maximum bounded result. It checks all retained dates and filing references,
+unknown precedence, source multiplicity, signed filters and stable sorting,
+saved-v1 round trips, and preservation of the previous seventeen cells and
+coverage across revenue bases. The independent browser rejects forged amounts,
+operands, references and reasons. Dated same-accession Apple and Walmart samples
+can be combined offline only while retaining each receipt's acquisition time;
+this assembled replay is not a complete historical snapshot or fresh acquisition.
+
 Current-balance subtraction acceptance covers exact positive, zero, negative,
 fractional and extreme differences, including zero liabilities; every-reference
 date/filing checks; unavailable-input and sign precedence; signed filters,
@@ -537,7 +586,7 @@ boundaries and excluded September/January dates with retained references,
 conflict/window precedence, later-reference mismatches, nonpositive liabilities,
 negative assets, zero and half-up ties, the maximum exact multiple, wrong units,
 period shapes and reconstructed Q4 URLs. Combined snapshot tests must preserve
-all twelve annual cells under instant-source failure and verify saved-v1 round
+all thirteen annual cells under instant-source failure and verify saved-v1 round
 trips and source-free cached paging. Production ten-Frame coverage, exact
 listing/issuer denominators, bounded primary-filing checks and configured browser
 acceptance remain release-specific evidence in the local handoff. Preliminary

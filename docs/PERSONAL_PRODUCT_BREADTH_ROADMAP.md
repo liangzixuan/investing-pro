@@ -1405,26 +1405,37 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-16)
 
-The SEC cross-company screen now has seventeen annual/Q4 fields, including
+The SEC cross-company screen now has eighteen annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
 thirteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
 shared 30-core-metric/500-security gate. Three editable, explicitly sparse starter
 screens are delivered. The accepted balance slice adds current assets less current
 liabilities in USD, with exact subtraction and matching Q4 date/filing rules.
-It reuses the existing balances and thirteen-Frame cache; transport v8 and
-formula-set1.6 coordinate strict client/server validation. Dated source operands
+It reuses the existing balances and thirteen-Frame cache. Dated source operands
 retain their original acquisition dates; actual release acceptance belongs in
 the workspace checkpoint and handoff.
 
-The next slice compares two or three distinct issuers selected from financial
+The delivered comparison selects two or three distinct issuers from financial
 screen results, including across pages of one query and snapshot. It reuses the
-seventeen decoded fields, existing display groups and exact source inspector.
+decoded fields, existing display groups and exact source inspector.
 Selection is bounded, temporary and cleared when the query, snapshot or session
 changes. Actual reporting periods remain explicit; no automatic peer relevance,
 ranking or common fiscal period is inferred. This adds a discovery-to-comparison
 workflow without another formula or provider dependency, and does not complete
 the shared metric registry or coverage gate.
+
+The next metric slice adds operating cash flow less PP&E purchases / selected
+revenue (%) using three already-loaded annual inputs. It preserves exact
+subtraction before one final percentage rounding, nonnegative purchases,
+positive selected revenue, and every input's matching actual dates and filing.
+Cash flow, All metrics, source inspection, filters, sorting, saved criteria and
+comparison admit the field without changing the three starter definitions.
+Transport v9/formula-set1.7 coordinates strict client/server validation, with
+independent integer arithmetic in the browser. It adds no provider concept or
+request to the thirteen-Frame cache and does not establish uniform cash-flow
+definitions, fiscal comparability or broad verified coverage.
+
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.
 

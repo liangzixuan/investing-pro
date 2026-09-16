@@ -15,10 +15,35 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare a financial-screen shortlist
+## Immediate delivery: compare cash after PP&E relative to revenue
+
+Add **Operating cash flow less PP&E purchases / selected revenue (%)** as the
+eighteenth SEC-screen metric. It uses the three existing annual operands and
+thirteen-Frame snapshot. Subtract exactly, divide by positive selected revenue,
+and round once half-up to two percentage decimals. Preserve signed and zero
+results; require nonnegative PP&E purchases and matching actual annual dates
+and filing accession across every retained reference. Unresolved inputs remain
+unknown with their evidence, rather than becoming zero.
+
+Expose the percentage in Cash flow, All metrics and individual column choices,
+ordinary signed filters and sorting, saved-v1 criteria, coverage and shortlist
+comparison. Source details show all three original operands and their exact
+dates and filings. Keep starter thresholds and their existing columns unchanged.
+Transport v9/formula-set1.7 coordinates client and API validation; the browser
+independently recomputes the ratio using integer arithmetic. This narrow app
+calculation is not a reported subtotal or a generic free-cash-flow measure.
+
+Verify exact arithmetic, one-time rounding, every unknown-precedence branch,
+source multiplicity, old-metric stability, saved definitions, provider request
+count and the browser comparison. Retained filing operands can support dated
+offline replay only with their original acquisition dates and scope; they do
+not establish fresh source coverage. The workspace checkpoint owns actual
+release verification and activation.
+
+## Delivered: compare a financial-screen shortlist
 
 Select two or three distinct issuers from SEC financial-screen results and
-compare their existing seventeen metrics side by side, including selections
+compare their decoded metrics side by side, including selections
 from different pages of the same query and snapshot. Reuse the source inspector
 for exact values, unknown reasons, actual periods and filing references. The
 existing display groups control the comparison's metrics. A shared calendar year
@@ -33,11 +58,12 @@ changes may retain selection. Reject duplicate share classes of a selected
 issuer and prevent stale callbacks or responses from reviving prior selections.
 
 Selection, comparison and source inspection use already decoded results and make
-no data request or write. Existing explicit pagination remains unchanged. No
-new formula, provider concept, transport version, saved-v1 field or selected-company
-peer behavior is introduced. Verify selection limits, cross-page behavior,
-invalidation, exact source rendering and keyboard/mobile focus before release.
-The workspace checkpoint owns actual release verification and activation.
+no data request or write. Existing explicit pagination remains unchanged. The
+accepted comparison release `1b445e7` passed 5,543 native checks, 24 builds,
+Brave desktop/390px QA and all five hosted jobs, with one unchanged Windows retry
+after a historical custody test timed out. The original failure remains recorded;
+the passing retry does not identify its cause. The workspace checkpoint owns
+the active runtime and full evidence.
 
 ## Accepted predecessor and historical verification
 
@@ -89,16 +115,16 @@ registry or its coverage gate.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                        | Important remaining gap                                       |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                              | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                  | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                   | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                       | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | SEC-screen shortlist of two or three issuers with source inspection; twelve financial checks and up to three manual peers                     | Broader compatible multi-company coverage and automatic peers |
-| Screen for ideas          | Seventeen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Broader verified metric coverage and compatible source inputs |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                  | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                                | Further corporate actions, benchmarks and live coverage       |
+| User job                  | Implemented capability                                                                                                                       | Important remaining gap                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                             | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                 | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                  | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                      | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | SEC-screen shortlist of two or three issuers with source inspection; twelve financial checks and up to three manual peers                    | Broader compatible multi-company coverage and automatic peers |
+| Screen for ideas          | Eighteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Broader verified metric coverage and compatible source inputs |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                 | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                               | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog

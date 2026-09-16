@@ -40,6 +40,7 @@ const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
   "operatingCashFlowMargin",
   "grossMargin",
   "operatingCashFlowToNetIncome",
+  "operatingCashFlowLessPpePurchasesMargin",
 ];
 const frameStatuses = [
   "available",
@@ -130,7 +131,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "8.0.0" ||
+    input.schemaVersion !== "9.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -335,8 +336,8 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "8.0.0" ||
-    value.formulaVersion !== "1.6.0" ||
+    value.schemaVersion !== "9.0.0" ||
+    value.formulaVersion !== "1.7.0" ||
     value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
@@ -435,6 +436,9 @@ function isResponse(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         cashFlowLessPpe(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+        ) &&
+        cashFlowLessPpeMargin(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         grossProfitRatio(
@@ -810,8 +814,11 @@ function cell(
   if (member(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS, metric))
     return instantCell(value, metric, year, sourceStatuses);
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
+  const cashMargin = metric === "operatingCashFlowLessPpePurchasesMargin";
   const exactRatio =
-    metric === "grossMargin" || metric === "operatingCashFlowToNetIncome";
+    metric === "grossMargin" ||
+    metric === "operatingCashFlowToNetIncome" ||
+    cashMargin;
   if (
     !keys(value, ["status", "value", "unit", "sources"]) &&
     !keys(value, ["status", "reason", "unit", "sources"])
@@ -820,7 +827,7 @@ function cell(
   if (
     value.unit !== unit ||
     !Array.isArray(value.sources) ||
-    value.sources.length > (exactRatio ? 12 : 6) ||
+    value.sources.length > (cashMargin ? 18 : exactRatio ? 12 : 6) ||
     !value.sources.every(
       (source) =>
         keys(source, [
@@ -843,7 +850,7 @@ function cell(
   const valid =
     (value.status === "available" &&
       "value" in value &&
-      decimal(value.value, exactRatio ? 131 : 130) &&
+      decimal(value.value, cashMargin ? 133 : exactRatio ? 131 : 130) &&
       value.sources.length >= 1) ||
     (value.status === "unavailable" &&
       "reason" in value &&
@@ -851,6 +858,7 @@ function cell(
       (value.reason !== "nonpositive_net_income" ||
         metric === "operatingCashFlowToNetIncome") &&
       (metric === "operatingCashFlowLessPpePurchases" ||
+        cashMargin ||
         (exactRatio && value.reason === "filing_mismatch") ||
         !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
   if (
@@ -1115,6 +1123,12 @@ function admittedSource(
       concept === "NetCashProvidedByUsedInOperatingActivities" ||
       concept === "PaymentsToAcquirePropertyPlantAndEquipment"
     );
+  if (metric === "operatingCashFlowLessPpePurchasesMargin")
+    return (
+      concept === "NetCashProvidedByUsedInOperatingActivities" ||
+      concept === "PaymentsToAcquirePropertyPlantAndEquipment" ||
+      member(revenueConcepts, concept)
+    );
   return (
     concept !== "GrossProfit" &&
     concept !== "PaymentsToAcquirePropertyPlantAndEquipment"
@@ -1181,6 +1195,64 @@ function cashFlowLessPpe(
     (operand) => operand.coefficient * 10n ** BigInt(scale - operand.scale),
   );
   return left! - right! === result;
+}
+
+/** Recompute all three original operands; never divide a rounded intermediate. */
+function cashFlowLessPpeMargin(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const revenue = cells.revenue;
+  const operating = cells.operatingCashFlow;
+  const purchases = cells.ppePurchases;
+  const ratio = cells.operatingCashFlowLessPpePurchasesMargin;
+  const sources = [
+    ...operating.sources,
+    ...purchases.sources,
+    ...revenue.sources,
+  ];
+  if (!sameSourceMultiset(sources, ratio.sources, annualSourceKey))
+    return false;
+  const unknown = (reason: string) =>
+    ratio.status === "unavailable" && ratio.reason === reason;
+  if (revenue.status === "unavailable") return unknown(revenue.reason);
+  if (operating.status === "unavailable") return unknown(operating.reason);
+  if (purchases.status === "unavailable") return unknown(purchases.reason);
+  const first = sources[0]!;
+  if (
+    sources.some((source) => {
+      const days =
+        (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+          86_400_000 +
+        1;
+      return (
+        source.startDate !== first.startDate ||
+        source.endDate !== first.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unknown("filing_mismatch");
+  const left = scaledDecimal(operating.value);
+  const right = scaledDecimal(purchases.value);
+  if (right.coefficient < 0n) return unknown("unsupported_sign");
+  const denominator = scaledDecimal(revenue.value);
+  if (denominator.coefficient <= 0n) return unknown("nonpositive_revenue");
+  const scale = Math.max(left.scale, right.scale);
+  const difference = {
+    coefficient:
+      left.coefficient * 10n ** BigInt(scale - left.scale) -
+      right.coefficient * 10n ** BigInt(scale - right.scale),
+    scale,
+  };
+  return (
+    ratio.status === "available" &&
+    ratio.value === scaledPercentageValue(difference, denominator)
+  );
 }
 
 /** Check the qualified ratio against both complete operands without floating-point arithmetic. */
@@ -1333,7 +1405,13 @@ function percentageValue(
   numeratorValue: string,
   denominator: ReturnType<typeof scaledDecimal>,
 ): string {
-  const numerator = scaledDecimal(numeratorValue);
+  return scaledPercentageValue(scaledDecimal(numeratorValue), denominator);
+}
+
+function scaledPercentageValue(
+  numerator: ReturnType<typeof scaledDecimal>,
+  denominator: ReturnType<typeof scaledDecimal>,
+): string {
   const negative = numerator.coefficient < 0n;
   const magnitude = negative ? -numerator.coefficient : numerator.coefficient;
   // Percentage hundredths = numerator / denominator * 10,000. Round ties away from zero.

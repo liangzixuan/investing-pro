@@ -1867,6 +1867,11 @@ describe("operating cash flow / net income decoding", () => {
             ...row.metrics,
             revenue: unknown,
             revenueGrowth: unavailableGrowth(unknown),
+            operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+              row.metrics.operatingCashFlow,
+              row.metrics.ppePurchases,
+              unknown,
+            ),
             grossMargin: {
               ...unknown,
               unit: "percent",
@@ -2419,6 +2424,516 @@ describe("gross profit / selected revenue decoding", () => {
   });
 });
 
+describe("operating cash flow less PP&E purchases / selected revenue decoding", () => {
+  const operating = (value = "10") =>
+    cashCell("NetCashProvidedByUsedInOperatingActivities", value);
+  const purchases = (value = "2") =>
+    cashCell("PaymentsToAcquirePropertyPlantAndEquipment", value);
+  const revenue = (value = "20") => ratioOperand("Revenues", value);
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenAnnualCellDto,
+      { status: "unavailable" }
+    >["reason"],
+    sources: PersonalFinancialScreenAnnualCellDto["sources"] = [],
+  ): PersonalFinancialScreenAnnualCellDto => ({
+    status: "unavailable",
+    unit: "USD",
+    reason,
+    sources,
+  });
+  const make = (
+    op = operating(),
+    ppe = purchases(),
+    rev = revenue(),
+    expected:
+      | string
+      | {
+          reason: Extract<
+            PersonalFinancialScreenAnnualCellDto,
+            { status: "unavailable" }
+          >["reason"];
+        } = "40.00",
+    difference:
+      | string
+      | {
+          reason: Extract<
+            PersonalFinancialScreenAnnualCellDto,
+            { status: "unavailable" }
+          >["reason"];
+        } = "8",
+    basis: PersonalFinancialRevenueBasisDto = "agreement",
+  ): PersonalFinancialScreenResponseDto => {
+    const result = cashResponse(op, ppe, difference);
+    const row = result.rows[0]!;
+    const sources = [...op.sources, ...ppe.sources, ...rev.sources];
+    return {
+      ...result,
+      revenueBasis: basis,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            revenue: rev,
+            revenueGrowth: unavailableGrowth(rev),
+            grossProfit: unknown("missing"),
+            grossMargin: {
+              ...unknown(
+                rev.status === "unavailable" ? rev.reason : "missing",
+                rev.sources,
+              ),
+              unit: "percent",
+            },
+            operatingCashFlowMargin: { ...unknown("missing"), unit: "percent" },
+            netMargin: { ...unknown("missing"), unit: "percent" },
+            operatingMargin: { ...unknown("missing"), unit: "percent" },
+            operatingCashFlowLessPpePurchasesMargin:
+              typeof expected === "string"
+                ? {
+                    status: "available",
+                    unit: "percent",
+                    value: expected,
+                    sources,
+                  }
+                : {
+                    status: "unavailable",
+                    unit: "percent",
+                    reason: expected.reason,
+                    sources,
+                  },
+          },
+        },
+      ],
+    };
+  };
+  const decode = (result: PersonalFinancialScreenResponseDto) => {
+    fetchMock.mockResolvedValueOnce(json(result));
+    return screenPersonalFinancials(
+      {
+        ...request(),
+        criteria: {
+          ...request().criteria,
+          revenueBasis: result.revenueBasis ?? "agreement",
+        },
+      },
+      signal(),
+    );
+  };
+  const corrupt = (
+    result: PersonalFinancialScreenResponseDto,
+    change: (cell: Record<string, unknown>) => void,
+  ) => {
+    const copy = structuredClone(result);
+    change(copy.rows[0]!.metrics.operatingCashFlowLessPpePurchasesMargin);
+    return copy;
+  };
+
+  it.each([
+    ["10", "2", "20", "8", "40.00"],
+    ["1.005", "0.004", "100", "1.001", "1.00"],
+    ["1.004", "0.006", "100", "0.998", "1.00"],
+    ["12.125", "2.00001", "20", "10.12499", "50.62"],
+    ["1", "0", "3", "1", "33.33"],
+    ["1.005", "0", "100", "1.005", "1.01"],
+    ["0", "1.005", "100", "-1.005", "-1.01"],
+    ["-12.125", "2.00001", "20", "-14.12501", "-70.63"],
+    ["2", "2.0000", "100", "0", "0.00"],
+    ["0", "0.0049", "100", "-0.0049", "0.00"],
+    ["-0.000", "0", "100", "0", "0.00"],
+    ["250", "0", "100", "250", "250.00"],
+    [
+      "9007199254740993.1",
+      "0.1",
+      "100",
+      "9007199254740993",
+      "9007199254740993.00",
+    ],
+    ["9007199254740993.0001", "9007199254740993", "0.01", "0.0001", "1.00"],
+  ])(
+    "checks (%s − %s) / %s from original decimals once as %s USD and %s%%",
+    async (op, ppe, rev, difference, expected) => {
+      const result = make(
+        operating(op),
+        purchases(ppe),
+        revenue(rev),
+        expected,
+        difference,
+      );
+      expect(await decode(result)).toEqual(result);
+      for (const value of [
+        `${expected.slice(0, -1)}${expected.endsWith("1") ? "2" : "1"}`,
+        expected === "0.00" ? "-0.00" : `${expected}0`,
+      ]) {
+        await expect(
+          decode(
+            corrupt(result, (cell) => {
+              cell.value = value;
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+
+  it("admits the exact 133-character signed boundary without losing a subtraction digit", async () => {
+    const difference = `-${10n ** 63n - 1n + 10n ** 64n - 1n}`;
+    const expected = `-${(10n ** 63n - 1n + 10n ** 64n - 1n) * 10n ** 64n}.00`;
+    expect(expected).toHaveLength(133);
+    const result = make(
+      operating(`-${"9".repeat(63)}`),
+      purchases("9".repeat(64)),
+      revenue(`0.${"0".repeat(61)}1`),
+      expected,
+      difference,
+    );
+    expect(await decode(result)).toEqual(result);
+    await expect(
+      decode(
+        corrupt(result, (cell) => {
+          cell.value = `${expected}0`;
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+    "retains all three operands under %s and sends signed criteria",
+    async (basis) => {
+      const rev = {
+        ...revenue(),
+        sources: (basis === "agreement"
+          ? ([
+              "Revenues",
+              "SalesRevenueNet",
+              "RevenueFromContractWithCustomerExcludingAssessedTax",
+            ] as const)
+          : [basis]
+        ).map((concept) => ({ ...source(), concept, value: "20" })),
+      };
+      const result = make(operating(), purchases(), rev, "40.00", "8", basis);
+      expect(await decode(result)).toEqual(result);
+      fetchMock.mockResolvedValueOnce(json(result));
+      const input: PersonalFinancialScreenRequestDto = {
+        ...request(),
+        criteria: {
+          ...request().criteria,
+          revenueBasis: basis,
+          clauses: [
+            {
+              field: "operatingCashFlowLessPpePurchasesMargin",
+              operator: "gte",
+              value: "-0.005",
+            },
+          ],
+          sort: {
+            field: "operatingCashFlowLessPpePurchasesMargin",
+            direction: "desc",
+          },
+        },
+      };
+      await screenPersonalFinancials(input, signal());
+      expect(fetchMock.mock.calls.at(-1)?.[1]?.body).toBe(
+        JSON.stringify(input),
+      );
+    },
+  );
+
+  it("preserves twelve references including exact duplicates while allowing source reorder", async () => {
+    const repeat = (
+      cell: PersonalFinancialScreenAnnualCellDto,
+      length: number,
+    ) => ({
+      ...cell,
+      sources: Array.from({ length }, () => ({ ...cell.sources[0]! })),
+    });
+    const result = make(
+      repeat(operating(), 3),
+      repeat(purchases(), 3),
+      repeat(revenue(), 6),
+    );
+    expect(
+      result.rows[0]!.metrics.operatingCashFlowLessPpePurchasesMargin.sources,
+    ).toHaveLength(12);
+    expect(await decode(result)).toEqual(result);
+    const reversed = corrupt(result, (cell) => {
+      (cell.sources as unknown[]).reverse();
+    });
+    expect(await decode(reversed)).toEqual(reversed);
+    for (const delta of [-1, 1]) {
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            const refs = cell.sources as unknown[];
+            if (delta < 0) refs.pop();
+            else refs.push(refs[0]);
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it.each([
+    "value",
+    "concept",
+    "accessionNumber",
+    "startDate",
+    "endDate",
+    "missing",
+    "duplicate",
+  ])("rejects a changed retained source: %s", async (kind) => {
+    await expect(
+      decode(
+        corrupt(make(), (cell) => {
+          const refs = cell.sources as Record<string, unknown>[];
+          if (kind === "missing") refs.pop();
+          else if (kind === "duplicate") refs.push({ ...refs[0] });
+          else
+            refs[2] = {
+              ...refs[2],
+              [kind]: (
+                {
+                  value: "21",
+                  concept: "SalesRevenueNet",
+                  accessionNumber: "0000000001-25-000002",
+                  startDate: "2024-01-02",
+                  endDate: "2024-12-30",
+                } as Record<string, string>
+              )[kind],
+            };
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(["revenue", "operatingCashFlow", "ppePurchases"] as const)(
+    "rejects an operand-only tamper of %s",
+    async (operand) => {
+      const copy = structuredClone(make());
+      const cell = copy.rows[0]!.metrics[operand];
+      (cell as { value: string }).value = "123";
+      await expect(decode(copy)).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    },
+  );
+
+  it.each([334, 335, 395, 396])(
+    "requires inclusive annual span %s for every original operand",
+    async (days) => {
+      const dates = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+        ...cell,
+        sources: cell.sources.map((ref) => ({
+          ...ref,
+          startDate: "2023-12-15",
+          endDate: new Date(Date.parse("2023-12-15") + (days - 1) * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+        })),
+      });
+      const expected =
+        days >= 335 && days <= 395
+          ? "40.00"
+          : { reason: "period_mismatch" as const };
+      const difference = typeof expected === "string" ? "8" : expected;
+      const result = make(
+        dates(operating()),
+        dates(purchases()),
+        dates(revenue()),
+        expected,
+        difference,
+      );
+      expect(await decode(result)).toEqual(result);
+      if (typeof expected !== "string")
+        await expect(
+          decode(
+            corrupt(result, (cell) => {
+              delete cell.reason;
+              cell.status = "available";
+              cell.value = "40.00";
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["operating", "purchases", "revenue"] as const)(
+    "checks every agreeing retained %s filing",
+    async (operand) => {
+      const append = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+        ...cell,
+        sources: [
+          ...cell.sources,
+          { ...cell.sources[0]!, accessionNumber: "0000000001-25-000002" },
+        ],
+      });
+      const op = operand === "operating" ? append(operating()) : operating();
+      const ppe = operand === "purchases" ? append(purchases()) : purchases();
+      const rev = operand === "revenue" ? append(revenue()) : revenue();
+      const result = make(
+        op,
+        ppe,
+        rev,
+        { reason: "filing_mismatch" },
+        operand === "revenue" ? "8" : { reason: "filing_mismatch" },
+      );
+      expect(await decode(result)).toEqual(result);
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            delete cell.reason;
+            cell.status = "available";
+            cell.value = "40.00";
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  const earlierPeriod = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+    ...cell,
+    sources: cell.sources.map((ref) => ({ ...ref, startDate: "2024-01-02" })),
+  });
+  const laterFiling = (cell: PersonalFinancialScreenAnnualCellDto) => ({
+    ...cell,
+    sources: cell.sources.map((ref) => ({
+      ...ref,
+      accessionNumber: "0000000001-25-000002",
+    })),
+  });
+  it.each([
+    [
+      "revenue missing before both cash operands",
+      unknown("conflicting"),
+      unknown("missing"),
+      unknown("missing"),
+      "missing",
+      { reason: "conflicting" },
+    ],
+    [
+      "revenue conflict before missing operating cash flow",
+      unknown("missing"),
+      unknown("conflicting"),
+      unknown("conflicting", revenue().sources),
+      "conflicting",
+      { reason: "missing" },
+    ],
+    [
+      "operating cash flow before purchases",
+      unknown("conflicting"),
+      unknown("missing"),
+      revenue(),
+      "conflicting",
+      { reason: "conflicting" },
+    ],
+    [
+      "purchases unavailable",
+      operating(),
+      unknown("conflicting", purchases().sources),
+      revenue(),
+      "conflicting",
+      { reason: "conflicting" },
+    ],
+    [
+      "period before filing, sign and denominator",
+      operating(),
+      laterFiling(purchases("-2")),
+      earlierPeriod(revenue("0")),
+      "period_mismatch",
+      { reason: "filing_mismatch" },
+    ],
+    [
+      "filing before sign and denominator",
+      operating(),
+      laterFiling(purchases("-2")),
+      revenue("0"),
+      "filing_mismatch",
+      { reason: "filing_mismatch" },
+    ],
+    [
+      "purchase sign before denominator",
+      operating(),
+      purchases("-2"),
+      revenue("0"),
+      "unsupported_sign",
+      { reason: "unsupported_sign" },
+    ],
+    [
+      "zero selected revenue",
+      operating(),
+      purchases(),
+      revenue("0"),
+      "nonpositive_revenue",
+      "8",
+    ],
+    [
+      "negative zero selected revenue",
+      operating(),
+      purchases(),
+      revenue("-0.00"),
+      "nonpositive_revenue",
+      "8",
+    ],
+    [
+      "negative selected revenue",
+      operating(),
+      purchases(),
+      revenue("-20"),
+      "nonpositive_revenue",
+      "8",
+    ],
+  ] as const)(
+    "keeps explicit unknown precedence: %s",
+    async (_label, op, ppe, rev, reason, difference) => {
+      const result = make(op, ppe, rev, { reason }, difference);
+      expect(await decode(result)).toEqual(result);
+      for (const wrong of [
+        "missing",
+        "conflicting",
+        "period_mismatch",
+        "filing_mismatch",
+        "unsupported_sign",
+        "nonpositive_revenue",
+        "nonpositive_net_income",
+      ].filter((value) => value !== reason)) {
+        await expect(
+          decode(
+            corrupt(result, (cell) => {
+              cell.reason = wrong;
+            }),
+          ),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+      await expect(
+        decode(
+          corrupt(result, (cell) => {
+            delete cell.reason;
+            cell.status = "available";
+            cell.value = "0.00";
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each(["unit", "status", "extra", "reason", "noncanonical"])(
+    "rejects malformed available result %s",
+    async (kind) => {
+      await expect(
+        decode(
+          corrupt(make(), (cell) => {
+            if (kind === "unit") cell.unit = "USD";
+            if (kind === "status") cell.status = "estimated";
+            if (kind === "extra") cell.providerHint = "trusted";
+            if (kind === "reason") cell.reason = "missing";
+            if (kind === "noncanonical") cell.value = "40";
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+});
+
 describe("financial screen transport", () => {
   it.each([
     ["12.125", "2.00001", "10.12499"],
@@ -2854,6 +3369,15 @@ describe("financial screen transport", () => {
               reason: "missing",
               sources: row.metrics.grossProfit.sources,
             },
+            operatingCashFlowLessPpePurchasesMargin: {
+              status: "unavailable",
+              unit: "percent",
+              reason: "missing",
+              sources: [
+                ...row.metrics.operatingCashFlow.sources,
+                ...row.metrics.ppePurchases.sources,
+              ],
+            },
             ...Object.fromEntries(
               ["netMargin", "operatingMargin", "operatingCashFlowMargin"].map(
                 (metric) => [
@@ -3070,7 +3594,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v8 criteria and retains the complete seventeen-metric, thirteen-Frame response", async () => {
+  it("sends v9 criteria and retains the complete eighteen-metric, thirteen-Frame response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -3082,8 +3606,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("8.0.0");
-    expect(decoded.formulaVersion).toBe("1.6.0");
+    expect(decoded.schemaVersion).toBe("9.0.0");
+    expect(decoded.formulaVersion).toBe("1.7.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -3097,6 +3621,7 @@ describe("financial screen transport", () => {
       "operatingCashFlowLessPpePurchases",
       "grossMargin",
       "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
@@ -3121,7 +3646,16 @@ describe("financial screen transport", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0", "7.0.0"])(
+  it.each([
+    "1.0.0",
+    "2.0.0",
+    "3.0.0",
+    "4.0.0",
+    "5.0.0",
+    "6.0.0",
+    "7.0.0",
+    "8.0.0",
+  ])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -3432,6 +3966,7 @@ describe("financial screen transport", () => {
       "netMargin",
       "operatingMargin",
       "operatingCashFlowMargin",
+      "operatingCashFlowLessPpePurchasesMargin",
     ] as const;
     const metrics = { ...row.metrics };
     const coverage = { ...result.metricCoverage };
@@ -4003,6 +4538,71 @@ describe("saved financial criteria", () => {
   });
 });
 
+// Keep older, unrelated fixtures internally consistent when their original operands change.
+// New cash-margin arithmetic tests below supply literal expected values independently.
+function cashMarginFixture(
+  operating: PersonalFinancialScreenAnnualCellDto,
+  purchases: PersonalFinancialScreenAnnualCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
+  const sources = [
+    ...operating.sources,
+    ...purchases.sources,
+    ...revenue.sources,
+  ];
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenAnnualCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ): PersonalFinancialScreenAnnualCellDto => ({
+    status: "unavailable",
+    unit: "percent",
+    reason,
+    sources,
+  });
+  if (revenue.status === "unavailable") return unknown(revenue.reason);
+  if (operating.status === "unavailable") return unknown(operating.reason);
+  if (purchases.status === "unavailable") return unknown(purchases.reason);
+  if (
+    sources.some((ref) => {
+      const days =
+        (Date.parse(ref.endDate) - Date.parse(ref.startDate)) / 86_400_000 + 1;
+      return (
+        ref.startDate !== sources[0]!.startDate ||
+        ref.endDate !== sources[0]!.endDate ||
+        days < 335 ||
+        days > 395
+      );
+    })
+  )
+    return unknown("period_mismatch");
+  if (new Set(sources.map((ref) => ref.accessionNumber)).size > 1)
+    return unknown("filing_mismatch");
+  if (Number(purchases.value) < 0) return unknown("unsupported_sign");
+  if (Number(revenue.value) <= 0) return unknown("nonpositive_revenue");
+  const precision = Math.max(
+    ...[operating.value, purchases.value, revenue.value].map(
+      (value) => value.split(".")[1]?.length ?? 0,
+    ),
+  );
+  const integer = (value: string) => {
+    const [whole, fraction = ""] = value.split(".");
+    return BigInt(`${whole}${fraction.padEnd(precision, "0")}`);
+  };
+  const numerator =
+    (integer(operating.value) - integer(purchases.value)) * 10_000n;
+  const denominator = integer(revenue.value);
+  const magnitude = numerator < 0n ? -numerator : numerator;
+  const rounded = (magnitude * 2n + denominator) / (2n * denominator);
+  return {
+    status: "available",
+    unit: "percent",
+    sources,
+    value: `${numerator < 0n && rounded !== 0n ? "-" : ""}${rounded / 100n}.${(rounded % 100n).toString().padStart(2, "0")}`,
+  };
+}
+
 function json(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), {
     status,
@@ -4011,7 +4611,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "8.0.0",
+    schemaVersion: "9.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -4242,6 +4842,11 @@ function incomeRatioResponse(
           operatingCashFlow: operating,
           netIncome: income,
           operatingCashFlowToNetIncome,
+          operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+            operating,
+            missing,
+            row.metrics.revenue,
+          ),
           ppePurchases: missing,
           operatingCashFlowLessPpePurchases: {
             ...missing,
@@ -4290,6 +4895,11 @@ function ratioResponse(
           ...row.metrics,
           revenue,
           revenueGrowth: unavailableGrowth(revenue),
+          operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+            row.metrics.operatingCashFlow,
+            row.metrics.ppePurchases,
+            revenue,
+          ),
           grossProfit: profit,
           grossMargin,
         },
@@ -4347,6 +4957,11 @@ function cashResponse(
           operatingCashFlow: operating,
           ppePurchases: purchases,
           operatingCashFlowLessPpePurchases: cell,
+          operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+            operating,
+            purchases,
+            row.metrics.revenue,
+          ),
           netIncome: {
             status: "unavailable",
             unit: "USD",
@@ -4488,7 +5103,7 @@ function currentResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "8.0.0",
+    schemaVersion: "9.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -4541,6 +5156,21 @@ function response(): PersonalFinancialScreenResponseDto {
               metric === "currentAssetsLessCurrentLiabilities"
             )
               return [metric, defaultInstantCells()[metric]];
+            if (metric === "operatingCashFlowLessPpePurchasesMargin")
+              return [
+                metric,
+                cashMarginFixture(
+                  cashCell(
+                    "NetCashProvidedByUsedInOperatingActivities",
+                    "2000000000",
+                  ),
+                  cashCell(
+                    "PaymentsToAcquirePropertyPlantAndEquipment",
+                    "400000000.1",
+                  ),
+                  ratioOperand("Revenues", "2000000000"),
+                ),
+              ];
             if (metric === "operatingCashFlowToNetIncome")
               return [
                 metric,
@@ -4635,7 +5265,7 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.6.0",
+    formulaVersion: "1.7.0",
   };
 }
 function responseWithBasis(
@@ -4655,6 +5285,11 @@ function responseWithBasis(
       metrics: {
         ...row.metrics,
         revenue: { ...row.metrics.revenue, sources: [ref(basis)] },
+        operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+          row.metrics.operatingCashFlow,
+          row.metrics.ppePurchases,
+          { ...row.metrics.revenue, sources: [ref(basis)] },
+        ),
         revenueGrowth: unavailableGrowth({
           ...row.metrics.revenue,
           sources: [ref(basis)],
