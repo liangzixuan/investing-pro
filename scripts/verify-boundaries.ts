@@ -13325,7 +13325,14 @@ function localResearchVaultExpectedModulesByPath(): ReadonlyMap<
     ],
     [
       `${localResearchVaultPackagePrefix}src/windows-owner-only-acl-executor.test.ts`,
-      ["node:path", "vitest", "./errors", "./windows-owner-only-acl"],
+      [
+        "node:path",
+        "node:url",
+        "vitest",
+        "vitest/reporters",
+        "./errors",
+        "./windows-owner-only-acl",
+      ],
     ],
     [
       `${localResearchVaultPackagePrefix}src/windows-owner-only-acl.test.ts`,

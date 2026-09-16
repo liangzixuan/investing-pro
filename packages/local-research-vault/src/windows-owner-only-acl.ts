@@ -153,6 +153,7 @@ function nativeWindowsAclExecutor(): WindowsAclCommandExecutor {
         "powershell.exe",
       );
       return new Promise<string>((resolve, reject) => {
+        const startedAt = performance.now();
         execFile(
           executable,
           [
@@ -178,21 +179,34 @@ function nativeWindowsAclExecutor(): WindowsAclCommandExecutor {
                 /^acl:(?:script_started|request_decoded|identity_resolved|target_started|target_verified)\r?$/gmu,
               );
               reject(
-                vaultError("VAULT_SECURITY_BOUNDARY_REJECTED", {
-                  stage: stages?.at(-1)?.trim().slice(4) ?? "process_start",
-                  code:
-                    typeof error.code === "number" ||
-                    (typeof error.code === "string" &&
-                      /^[A-Z][A-Z0-9_]{0,63}$/u.test(error.code))
-                      ? error.code
-                      : null,
-                  killed: error.killed === true,
-                  signal:
-                    typeof error.signal === "string" &&
-                    /^SIG[A-Z0-9]{1,16}$/u.test(error.signal)
-                      ? error.signal
-                      : null,
-                }),
+                vaultError(
+                  "VAULT_SECURITY_BOUNDARY_REJECTED",
+                  // Vitest suppresses anonymous object causes. A named Error
+                  // keeps these safe diagnostics visible in CI failure logs.
+                  Object.assign(
+                    new Error("The native Windows ACL command failed."),
+                    {
+                      name: "NativeWindowsAclCommandError",
+                      stage: stages?.at(-1)?.trim().slice(4) ?? "process_start",
+                      code:
+                        typeof error.code === "number" ||
+                        (typeof error.code === "string" &&
+                          /^[A-Z][A-Z0-9_]{0,63}$/u.test(error.code))
+                          ? error.code
+                          : null,
+                      killed: error.killed === true,
+                      signal:
+                        typeof error.signal === "string" &&
+                        /^SIG[A-Z0-9]{1,16}$/u.test(error.signal)
+                          ? error.signal
+                          : null,
+                      elapsedMs: Math.max(
+                        0,
+                        Math.round(performance.now() - startedAt),
+                      ),
+                    },
+                  ),
+                ),
               );
               return;
             }

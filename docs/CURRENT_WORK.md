@@ -15,33 +15,48 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: temporary local access
+## Immediate delivery: actionable Windows failure diagnostics
 
-The owner requested disabling login to remove repeated browser sign-in blockers.
-Add an explicit, reversible local-access mode to the combined workspace: the
-API verifies existing loopback and request boundaries without requiring a
-session, and the web page probes that mode before loading private views. Keep
-account mode unchanged, the saved account intact and the existing vault encrypted.
-The configured launcher selects this mode across restarts and can restore normal
-account login. See [local owner login](./LOCAL_OWNER_LOGIN.md).
+Local access is implemented and temporarily serving at `7c4fdf1`: the app opens
+without login while retaining its loopback/request boundaries, encrypted vault
+and saved account. Native verification and Brave desktop/mobile acceptance passed,
+including all three editable financial starters. See [local owner login](./LOCAL_OWNER_LOGIN.md).
+The workspace checkpoint owns current runtime and restoration details.
 
-Starter-screen release `a6990c3` passed its native and applicable hosted gates and
-is serving. Its desktop/mobile browser acceptance remains pending; complete that
-acceptance after activating local access. Local-access implementation and release
-verification are in progress; the workspace checkpoint records actual outcomes.
+Hosted acceptance for that release remains incomplete. The first Windows run
+timed out in an unchanged historical database-review test. Its single unchanged
+retry failed in the native vault ACL child process; the backup case took 15.246
+seconds, but its cause was omitted from both the displayed log and annotation.
+This timing alone does not prove a timeout or identify an ACL defect. Preserve
+both failures; do not retry them or weaken their assertions/deadlines.
+
+The pinned test reporter omits plain-object error causes, hiding the sanitized
+stage, exit code, killed flag and signal already captured by the ACL adapter.
+Represent that diagnostic as a named Error cause and include elapsed time, with
+tests proving reporter visibility and exclusion of private paths, identities,
+requests and arbitrary process output. Keep the public vault error, fixed native
+command, 15-second deadline and ACL checks unchanged. This repairs reporting;
+it does not retroactively resolve the earlier process failure.
+
+The next product slice is **Current assets less current liabilities (USD)**:
+reuse the existing Q4 balance inputs to screen dollar surpluses/shortfalls,
+including negative differences and zero liabilities. Require matching actual
+dates and filings with nonnegative operands, preserve source inspection, and
+support signed filters, sorting and saved criteria. No new SEC source is needed.
+This slice remains planned, not implemented or evidence of full metric coverage.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                      | Important remaining gap                                               |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                            | Catalog refresh and broader discovery data                            |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                | Wider reconciliation and benchmark-relative analysis                  |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                 | Verified TTM and the shared 30-core-metric screening registry         |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                     | Direct normalized FCFF inputs and further justified models            |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                        | Compatible multi-company coverage and automatic peer metadata         |
-| Screen for ideas          | Sixteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Validate starter-screen interaction; broader verified metric coverage |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                | Broader live samples, upcoming events, alerts and exports             |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                              | Further corporate actions, benchmarks and live coverage               |
+| User job                  | Implemented capability                                                                                                                      | Important remaining gap                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                            | Catalog refresh and broader discovery data                         |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                | Wider reconciliation and benchmark-relative analysis               |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                 | Verified TTM and the shared 30-core-metric screening registry      |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                     | Direct normalized FCFF inputs and further justified models         |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                        | Compatible multi-company coverage and automatic peer metadata      |
+| Screen for ideas          | Sixteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Dollar balance surplus/shortfall; broader verified metric coverage |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                | Broader live samples, upcoming events, alerts and exports          |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                              | Further corporate actions, benchmarks and live coverage            |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -101,9 +116,9 @@ owns the contract and check/write sequence. Use it for ordinary feature releases
 the local handoff records actual verification and the separately attributed
 historical failures.
 
-## Active delivery: three editable financial starter screens
+## Completed delivery: three editable financial starter screens
 
-The next partial Cycle 3k-c delivery turns existing fields into three sparse,
+This partial Cycle 3k-c delivery turns existing fields into three sparse,
 illustrative starting points. Applying a starter replaces numeric filters, sort
 and visible financial columns, while preserving the selected calendar year,
 revenue basis and company identity filter. The user edits ordinary criteria and
@@ -137,6 +152,11 @@ interaction. Financial engine, provider, decoder, contracts and formula versions
 stay unchanged. Keep prior source observations attributed to their original
 release rather than rerunning acquisition for this presentation change. The
 workspace checkpoint owns actual release verification and configured Brave QA.
+Brave desktop and 390px keyboard/layout checks passed with local access at
+`7c4fdf1`, including an edited AAPL run and source inspection. The empty real
+saved-view list did not exercise detachment interactively; automated tests cover
+that path. Local product acceptance remains separate from the hosted failures
+described above.
 
 ## Completed delivery: selected revenue YoY change
 

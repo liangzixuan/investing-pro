@@ -1,6 +1,8 @@
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { GithubActionsReporter } from "vitest/reporters";
 
 import { LocalResearchVaultError } from "./errors";
 import { createNativeWindowsOwnerOnlyAclPort } from "./windows-owner-only-acl";
@@ -52,6 +54,7 @@ const target = {
 
 beforeEach(() => {
   execFileMock.mockReset();
+  vi.spyOn(performance, "now").mockReturnValue(1_000);
   vi.stubGlobal("process", {
     ...process,
     platform: "win32",
@@ -61,6 +64,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   execFileMock.mockReset();
 });
 
@@ -72,6 +76,17 @@ async function rejectedVerification() {
   const error = result as LocalResearchVaultError;
   expect(error.code).toBe("VAULT_SECURITY_BOUNDARY_REJECTED");
   expect(execFileMock).toHaveBeenCalledTimes(1);
+  if (error.cause !== undefined) {
+    expect(error.cause).toBeInstanceOf(Error);
+    expect(Object.keys(error.cause as Error).sort()).toEqual([
+      "code",
+      "elapsedMs",
+      "killed",
+      "name",
+      "signal",
+      "stage",
+    ]);
+  }
   return error;
 }
 
@@ -102,11 +117,14 @@ describe("native Windows ACL child transport", () => {
     );
 
     const error = await rejectedVerification();
-    expect(error.cause).toEqual({
+    expect(error.cause).toBeInstanceOf(Error);
+    expect(error.cause).toMatchObject({
+      name: "NativeWindowsAclCommandError",
       stage: "target_started",
       code: failure.code,
       killed: failure.killed,
       signal: failure.signal,
+      elapsedMs: 0,
     });
     expect(error).not.toHaveProperty("verifiedPaths");
     expect(execFileMock.mock.calls[0]![2]).toMatchObject({
@@ -146,13 +164,15 @@ describe("native Windows ACL child transport", () => {
     });
 
     const error = await rejectedVerification();
-    expect(error.cause).toEqual({
+    expect(error.cause).toMatchObject({
       stage: "target_verified",
       code: 1,
       killed: false,
       signal: null,
+      elapsedMs: 0,
     });
-    const retained = `${error.message}\n${error.stack}\n${JSON.stringify(error.cause)}`;
+    const cause = error.cause as Error;
+    const retained = `${error.message}\n${error.stack}\n${cause.message}\n${cause.stack}\n${JSON.stringify(cause)}`;
     for (const canary of [
       privatePathCanary,
       ownerSid,
@@ -180,11 +200,12 @@ describe("native Windows ACL child transport", () => {
     );
 
     const error = await rejectedVerification();
-    expect(error.cause).toEqual({
+    expect(error.cause).toMatchObject({
       stage: "process_start",
       code: null,
       killed: true,
       signal: "SIGTERM",
+      elapsedMs: 0,
     });
   });
 
@@ -201,12 +222,56 @@ describe("native Windows ACL child transport", () => {
       );
     });
     const error = await rejectedVerification();
-    expect(error.cause).toEqual({
+    expect(error.cause).toMatchObject({
       stage: "script_started",
       code: null,
       killed: false,
       signal: null,
+      elapsedMs: 0,
     });
+  });
+
+  it("prints safe child diagnostics in the pinned CI reporter without disclosing native output", async () => {
+    vi.spyOn(performance, "now")
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(16_246.4);
+    let requestCanary = "";
+    execFileMock.mockImplementation((_executable, _args, options, callback) => {
+      requestCanary = options.env[requestKey]!;
+      callback(
+        Object.assign(new Error(privatePathCanary), {
+          code: null,
+          killed: true,
+          signal: "SIGTERM",
+          cmd: requestCanary,
+        }),
+        ownerSid,
+        `private stderr ${privatePathCanary}\nacl:identity_resolved\n`,
+      );
+    });
+
+    const error = await rejectedVerification();
+    expect(error.message).toBe(
+      "The local research vault operation was rejected.",
+    );
+    expect(error.cause).toMatchObject({ elapsedMs: 15_246 });
+    const output = renderCiFailure(error);
+    expect(output).toContain("::error");
+    expect(output).toContain("VAULT_SECURITY_BOUNDARY_REJECTED");
+    expect(output).toContain("Caused by: NativeWindowsAclCommandError");
+    expect(output).toContain("stage: 'identity_resolved'");
+    expect(output).toContain("code: null");
+    expect(output).toContain("killed: true");
+    expect(output).toContain("signal: 'SIGTERM'");
+    expect(output).toContain("elapsedMs: 15246");
+    for (const canary of [
+      privatePathCanary,
+      ownerSid,
+      requestCanary,
+      "private stderr",
+    ]) {
+      expect(output).not.toContain(canary);
+    }
   });
 
   it("uses one fixed hidden command while transferring each request only in the environment", async () => {
@@ -286,3 +351,45 @@ describe("native Windows ACL child transport", () => {
     expect(error.cause).toBeUndefined();
   });
 });
+
+function renderCiFailure(error: LocalResearchVaultError): string {
+  const output: string[] = [];
+  const file = fileURLToPath(import.meta.url);
+  // Supply only the reporter's transformed-source lookup and output sink.
+  // This exercises its actual nested-cause formatting without starting Vite
+  // or a second test runner, and never executes a native child.
+  const project = {
+    config: { root: process.cwd() },
+    _vite: {
+      environments: {
+        test: {
+          moduleGraph: {
+            getModulesByFile: () => new Set([{ transformResult: {} }]),
+          },
+        },
+      },
+    },
+  };
+  const reporter = new GithubActionsReporter({
+    jobSummary: { enabled: false },
+  });
+  reporter.onInit({
+    getRootProject: () => project,
+    logger: {
+      highlight: (_path: string, source: string) => source,
+      log: (message: string) => output.push(message),
+    },
+  } as unknown as Parameters<GithubActionsReporter["onInit"]>[0]);
+  const reported = Object.assign(error, {
+    stacks: [{ file, line: 1, column: 1, method: "syntheticAclFailure" }],
+  });
+  reporter.onTestRunEnd(
+    [],
+    [
+      reported as unknown as Parameters<
+        GithubActionsReporter["onTestRunEnd"]
+      >[1][number],
+    ],
+  );
+  return output.join("\n");
+}
