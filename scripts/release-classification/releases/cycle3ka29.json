@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "caseNumber": 29,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "7c4fdf1194c11afdd63720d9424bd8898894f84e",
+  "featureRevision": "eb73d5f3a46523393ee7cf3b794120e0b2090e79",
+  "featureCount": 159,
+  "closureCount": 160,
+  "featureChanges": [
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    {
+      "path": "packages/local-research-vault/src/windows-owner-only-acl-executor.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/local-research-vault/src/windows-owner-only-acl.ts",
+      "status": "M"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka29.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka29.json",
+  "presentation": {
+    "featureDescription": "Windows ACL failure diagnostics",
+    "closureDescription": "Windows ACL failure diagnostics",
+    "inventoryDescription": "Windows ACL failure diagnostics",
+    "testBinding": "windowsAclDiagnostics",
+    "routingDescription": "Windows ACL failure diagnostics",
+    "summaryDescription": "Windows ACL failure diagnostics"
+  }
+}
