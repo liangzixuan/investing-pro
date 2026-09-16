@@ -83,6 +83,13 @@ owner-session activity or modify provider cache expiry.
 
 ### Compare a shortlist
 
+Use **Research SYMBOL** in a comparison column to open that exact company in
+the [company research workspace](./PERSONAL_COMPANY_RESEARCH.md), including a
+selection retained from another result page. Navigation preserves the current
+criteria, selected listings, results and comparison. **Back to financial results**
+returns focus to the originating control or the screen heading if it is gone.
+Opening research makes no additional financial request or saved-data write.
+
 Select up to three distinct issuers from results, then compare two or three
 companies side by side. Selections can span pages of the same query and financial
 snapshot. A second share class of a selected issuer cannot duplicate that

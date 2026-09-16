@@ -15,7 +15,26 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: financials for My Watchlist
+## Immediate delivery: company research workspace
+
+Group the existing company panels into Price, Financials, Valuation, Peers and
+SEC evidence. Keep the selected identity visible and provide a direct return
+to the originating results, watchlist, filings or holdings. Section changes and
+return navigation preserve loaded company data, editable DCF assumptions and
+the original screening criteria/results/comparison without additional requests.
+Inactive sections remain mounted but are excluded from keyboard navigation.
+
+Opening another admitted identity or clearing the company retains existing
+request cancellation and data-reset behavior. Old callbacks and delayed source
+focus cannot attach to a different company or workspace. Existing DCF source
+links reveal the corresponding section before focusing its heading. Research
+actions in comparison headers support retained companies from other pages.
+
+Use existing inputs and explicit Load actions; no new provider, API, storage,
+calculation or authentication change is needed. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md) for behavior and acceptance.
+
+## Delivered: financials for My Watchlist
 
 Let the owner choose **My Watchlist** in Financial screen, select up to twenty
 saved listings, and explicitly run the existing eighteen metrics for that cohort.
@@ -35,11 +54,11 @@ definitions still contain filters only; loading them does not load membership
 or make a request. Formula-set1.7, all eighteen calculations and the thirteen
 Frames are unchanged. Selection itself performs no fetch or persistence.
 
-Verify selected-cohort counts, exact unchanged metrics, membership/version
-conflicts before and during requests, selection limits, source-cache reuse,
-scope isolation and comparison. Use isolated synthetic watchlists for populated
-browser scenarios; preserve the owner's real list. The workspace checkpoint
-owns actual release verification and activation.
+Release `cf1add8` passed 5,771 native checks, 24 builds and all six hosted jobs on
+attempt1, plus isolated populated-watchlist and live Brave desktop/mobile checks.
+Selected-cohort counts, unchanged metrics, membership/version conflicts, limits,
+source-cache reuse and scope isolation were verified. The owner's list remains
+unchanged. The workspace checkpoint owns actual release activation and evidence.
 
 ## Delivered: compare cash after PP&E relative to revenue
 
@@ -406,14 +425,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Run existing financial screening and comparison for selected My Watchlist companies              | Reuse saved identities and eighteen metrics without new provider inputs    |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Now              | Navigate a selected company's existing research and return to preserved screening results        | Connect existing panels into a repeatable workflow without new provider inputs |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps                |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters     |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                       |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions            |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                    |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

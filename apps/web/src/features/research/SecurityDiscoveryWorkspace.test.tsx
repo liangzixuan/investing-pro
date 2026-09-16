@@ -12,7 +12,7 @@ import type {
   PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   PersonalWorkspaceApiError,
@@ -21,6 +21,7 @@ import {
   type SavedPersonalWatchlist,
 } from "@/lib/personal-workspace-api";
 
+import type { PersonalCompanyResearchWorkspaceProps } from "./PersonalCompanyResearchWorkspace";
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { OwnerSessionPanelProps } from "./OwnerSessionPanel";
 import type { LocalWorkspaceAccessPanelProps } from "./LocalWorkspaceAccessPanel";
@@ -137,6 +138,7 @@ const apiMocks = vi.hoisted(() => ({
     >(),
 }));
 const componentMocks = vi.hoisted(() => ({
+  CompanyResearch: () => null,
   AnnualFinancials: () => null,
   FcffDcfValuation: () => null,
   FinancialQualityScorecard: () => null,
@@ -194,6 +196,9 @@ vi.mock("@/lib/personal-workspace-api", () => ({
 vi.mock("./OwnerSessionPanel", () => ({
   OwnerSessionPanel: componentMocks.OwnerSession,
 }));
+vi.mock("./PersonalCompanyResearchWorkspace", () => ({
+  PersonalCompanyResearchWorkspace: componentMocks.CompanyResearch,
+}));
 vi.mock("./PersonalAnnualFinancials", () => ({
   PersonalAnnualFinancials: componentMocks.AnnualFinancials,
 }));
@@ -242,6 +247,8 @@ vi.mock("./LocalWorkspaceAccessPanel", () => ({
   LocalWorkspaceAccessPanel: componentMocks.LocalAccess,
 }));
 
+afterEach(() => vi.unstubAllGlobals());
+
 beforeEach(() => {
   hookHarness.reset();
   for (const mock of Object.values(apiMocks)) mock.mockReset();
@@ -270,6 +277,395 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("groups all nine company panels into five stable sections without fetching on navigation or return", async () => {
+    await activateWorkspace();
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    financial.props.onOpenResearch(screenRow());
+    let view = renderWorkspace();
+    const company = requireCompanyResearch(view);
+    expect(company.props.activeSection).toBe("financials");
+    expect(company.props.backLabel).toBe("Back to financial results");
+    expect(
+      findElement(company.props.sections.price, componentMocks.MarketOverview),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.financials,
+        componentMocks.AnnualFinancials,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.financials,
+        componentMocks.QuarterlyFinancials,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.financials,
+        componentMocks.FinancialQualityScorecard,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.valuation,
+        componentMocks.ValuationHistory,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.valuation,
+        componentMocks.HistoricalMultipleValuation,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.valuation,
+        componentMocks.FcffDcfValuation,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.peers,
+        componentMocks.ManualPeerComparison,
+      ),
+    ).toBeDefined();
+    expect(
+      findElement(
+        company.props.sections.sec,
+        componentMocks.SecQuarterlyEvidence,
+      ),
+    ).toBeDefined();
+    const dcfKey = requireFcffDcfValuation(view).key;
+    const screenKey = financial.key;
+    for (const section of [
+      "price",
+      "financials",
+      "valuation",
+      "peers",
+      "sec",
+    ] as const) {
+      requireCompanyResearch(view).props.onSectionChange(section);
+      view = renderWorkspace();
+      expect(requireCompanyResearch(view).props.activeSection).toBe(section);
+      expect(requireCompanyResearch(view).key).toBe(company.key);
+      expect(requireFcffDcfValuation(view).key).toBe(dcfKey);
+      expect(findElement(view, componentMocks.FinancialScreener)?.key).toBe(
+        screenKey,
+      );
+      expect(findElement(view, componentMocks.StockScreener)).toBeDefined();
+      expect(findElement(view, componentMocks.WatchlistFilings)).toBeDefined();
+      expect(findElement(view, componentMocks.Portfolio)).toBeDefined();
+    }
+    requireCompanyResearch(view).props.onBack();
+    await flushPromises();
+    expect(requireCompanyResearch(renderWorkspace()).props.selection).toEqual(
+      company.props.selection,
+    );
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("retains admitted data, model identity and section through Back and an exact same-company reopen", async () => {
+    await activateWorkspace();
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireMarketOverview(view).props.onLoad("1y");
+    requireAnnualFinancials(view).props.onLoad();
+    requireQuarterlyFinancials(view).props.onLoad();
+    requireValuationHistory(view).props.onLoad();
+    await flushPromises();
+    view = renderWorkspace();
+    const companyKey = requireCompanyResearch(view).key;
+    const dcfKey = requireFcffDcfValuation(view).key;
+    const overview = requireMarketOverview(view).props.overview;
+    const annual = requireAnnualFinancials(view).props.financials;
+    const quarterly = requireQuarterlyFinancials(view).props.financials;
+    const history = requireValuationHistory(view).props.history;
+    expect(overview).not.toBeNull();
+    expect(annual).not.toBeNull();
+    expect(quarterly).not.toBeNull();
+    expect(history).not.toBeNull();
+    requireCompanyResearch(view).props.onSectionChange("valuation");
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    findElement<PersonalPortfolioProps>(
+      renderWorkspace(),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).key).toBe(companyKey);
+    expect(requireCompanyResearch(view).props.activeSection).toBe("valuation");
+    expect(requireCompanyResearch(view).props.backLabel).toBe(
+      "Back to My Portfolio",
+    );
+    expect(requireFcffDcfValuation(view).key).toBe(dcfKey);
+    expect(requireMarketOverview(view).props.overview).toBe(overview);
+    expect(requireAnnualFinancials(view).props.financials).toBe(annual);
+    expect(requireQuarterlyFinancials(view).props.financials).toBe(quarterly);
+    expect(requireValuationHistory(view).props.history).toBe(history);
+    expect(apiMocks.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cancel an in-flight company load when navigating or reopening its exact identity", async () => {
+    await activateWorkspace();
+    const loading = deferred<PersonalAnnualFinancialsDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(loading.promise);
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireAnnualFinancials(view).props.onLoad();
+    const signal = apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]![1];
+    requireCompanyResearch(view).props.onSectionChange("valuation");
+    view = renderWorkspace();
+    requireCompanyResearch(view).props.onBack();
+    findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
+      .onOpenResearch!(searchResult("ZERO", "lst-zero"));
+    expect(signal.aborted).toBe(false);
+    loading.resolve(annualFinancials());
+    await flushPromises();
+    expect(
+      requireAnnualFinancials(renderWorkspace()).props.financials,
+    ).not.toBeNull();
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears and cancels the previous company's data and model for a changed shared identity even with the same listing ID", async () => {
+    await activateWorkspace();
+    const loading = deferred<PersonalAnnualFinancialsDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(loading.promise);
+    const view = await searchAndSelectMarket("ZERO");
+    const oldCompany = requireCompanyResearch(view);
+    const oldAnnual = requireAnnualFinancials(view);
+    oldAnnual.props.onLoad();
+    const signal = apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]![1];
+    findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
+      .onOpenResearch!({
+      ...searchResult("ZERO", "lst-zero"),
+      shareClassId: "changed-share-class",
+    });
+    let current = renderWorkspace();
+    expect(requireCompanyResearch(current).key).not.toBe(oldCompany.key);
+    expect(requireFcffDcfValuation(current).key).not.toBe(
+      requireFcffDcfValuation(view).key,
+    );
+    expect(signal.aborted).toBe(true);
+    oldCompany.props.onSectionChange("sec");
+    oldCompany.props.onClear();
+    oldAnnual.props.onLoad();
+    expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+    loading.resolve(annualFinancials());
+    await flushPromises();
+    current = renderWorkspace();
+    expect(requireCompanyResearch(current).props.activeSection).toBe("price");
+    expect(requireCompanyResearch(current).props.selection?.listingId).toBe(
+      "lst-zero",
+    );
+    expect(requireAnnualFinancials(current).props.financials).toBeNull();
+  });
+
+  it("rejects a retired company's callbacks after the same identity is selected again", async () => {
+    await activateWorkspace();
+    const view = await searchAndSelectMarket("ZERO");
+    const oldCompany = requireCompanyResearch(view);
+    const oldAnnual = requireAnnualFinancials(view);
+    const oldEvidence = findElement<PersonalSecQuarterlyEvidenceProps>(
+      view,
+      componentMocks.SecQuarterlyEvidence,
+    )!;
+    oldCompany.props.onClear();
+    findElement<PersonalPortfolioProps>(
+      renderWorkspace(),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
+    oldAnnual.props.onLoad();
+    oldCompany.props.onSectionChange("sec");
+    oldCompany.props.onClear();
+    oldEvidence.props.onSessionUnavailable();
+    const current = requireCompanyResearch(renderWorkspace());
+    expect(current.props.selection?.listingId).toBe("lst-zero");
+    expect(current.props.activeSection).toBe("price");
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    await flushPromises();
+  });
+
+  it.each([
+    ["catalog", "Back to catalog results", "price"],
+    ["financials", "Back to financial results", "financials"],
+    ["portfolio", "Back to My Portfolio", "price"],
+    ["filings", "Back to recent filings", "sec"],
+  ] as const)(
+    "records the explicit %s origin",
+    async (origin, label, section) => {
+      await activateWorkspace();
+      const view = renderWorkspace();
+      const identity = searchResult("ZERO", "lst-zero");
+      if (origin === "catalog")
+        requireStockScreener(view).props.onOpenResearch(screenRow());
+      if (origin === "financials")
+        findElement<PersonalFinancialScreenerProps>(
+          view,
+          componentMocks.FinancialScreener,
+        )!.props.onOpenResearch(screenRow());
+      if (origin === "portfolio")
+        findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!
+          .props.onOpenResearch!(identity);
+      if (origin === "filings")
+        findElement<PersonalWatchlistFilingsProps>(
+          view,
+          componentMocks.WatchlistFilings,
+        )!.props.onOpenResearch({ ...identity, note: "" });
+      const company = requireCompanyResearch(renderWorkspace());
+      expect(company.props.backLabel).toBe(label);
+      expect(company.props.activeSection).toBe(section);
+      expect(company.props.selection).not.toBeNull();
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    },
+  );
+
+  it("opens a saved company with a My Watchlist return target and preserves its unsaved note", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
+      id: "main",
+      version: 1,
+      createdAt: "2030-01-15T01:00:00.000Z",
+      updatedAt: "2030-01-15T01:00:00.000Z",
+      payload: {
+        schemaVersion: 1,
+        name: "My Watchlist",
+        snapshotSha256: snapshot().snapshotSha256,
+        memberships: [membership("ZERO", "lst-zero")],
+      },
+    });
+    await activateWorkspace();
+    const dom = companyFocusDocument("watchlist-title");
+    const view = renderWorkspace();
+    requireElementByProps<{
+      onChange: (event: { target: { value: string } }) => void;
+    }>(view, { id: "note-lst-zero" }).props.onChange({
+      target: { value: "Keep this unsaved research note" },
+    });
+    requireElementByProps<{ onClick: () => void }>(view, {
+      "aria-label": "View market for ZERO",
+    }).props.onClick();
+    await flushPromises();
+    const company = requireCompanyResearch(renderWorkspace());
+    expect(company.props.backLabel).toBe("Back to My Watchlist");
+    expect(company.props.selection?.listingId).toBe("lst-zero");
+    company.props.onBack();
+    await flushPromises();
+    expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
+    expect(
+      requireElementByProps<{ value: string }>(renderWorkspace(), {
+        id: "note-lst-zero",
+      }).props.value,
+    ).toBe("Keep this unsaved research note");
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("returns focus to the live search trigger, then falls back to its heading if that trigger disappears", async () => {
+    await activateWorkspace();
+    const dom = companyFocusDocument("search-title");
+    await searchAndSelectMarket("ZERO");
+    await flushPromises();
+    expect(dom.company.focus).toHaveBeenCalledTimes(1);
+    expect(requireCompanyResearch(renderWorkspace()).props.backLabel).toBe(
+      "Back to search results",
+    );
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
+    expect(dom.trigger.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    dom.trigger.isConnected = false;
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    expect(dom.origin.focus).toHaveBeenCalledTimes(1);
+    expect(dom.origin.tabIndex).toBe(-1);
+  });
+
+  it.each(["hidden", "disabled", "unrelated"] as const)(
+    "uses the financial heading when the captured trigger is %s",
+    async (state) => {
+      await activateWorkspace();
+      const dom = companyFocusDocument(
+        state === "unrelated"
+          ? "search-title"
+          : "personal-financial-screener-title",
+      );
+      findElement<PersonalFinancialScreenerProps>(
+        renderWorkspace(),
+        componentMocks.FinancialScreener,
+      )!.props.onOpenResearch(screenRow());
+      await flushPromises();
+      if (state === "hidden") dom.trigger.visible = false;
+      if (state === "disabled") dom.trigger.disabled = true;
+      requireCompanyResearch(renderWorkspace()).props.onBack();
+      await flushPromises();
+      expect(dom.trigger.focus).not.toHaveBeenCalled();
+      expect(dom.origin.focus).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("keeps the return trigger and fallback bound to the most recent same-company origin", async () => {
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-financial-screener-title");
+    findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!.props.onOpenResearch(screenRow());
+    await flushPromises();
+    const oldBack = requireCompanyResearch(renderWorkspace()).props.onBack;
+    findElement<PersonalPortfolioProps>(
+      renderWorkspace(),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!(screenRow());
+    await flushPromises();
+    dom.getElementById.mockClear();
+    oldBack();
+    await flushPromises();
+    expect(dom.getElementById).toHaveBeenCalledWith("personal-portfolio-title");
+    expect(dom.getElementById).not.toHaveBeenCalledWith(
+      "personal-financial-screener-title",
+    );
+  });
+
+  it("discards pending open and return focus when selection or workspace is cleared", async () => {
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-financial-screener-title");
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    financial.props.onOpenResearch(screenRow());
+    requireCompanyResearch(renderWorkspace()).props.onClear();
+    await flushPromises();
+    expect(dom.company.focus).not.toHaveBeenCalled();
+    expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
+    dom.trigger.focus.mockClear();
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    financial.props.onOpenResearch(screenRow());
+    await flushPromises();
+    const staleCompany = requireCompanyResearch(renderWorkspace());
+    staleCompany.props.onBack();
+    financial.props.onSessionUnavailable();
+    await flushPromises();
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(dom.origin.focus).not.toHaveBeenCalled();
+    await activateWorkspace();
+    financial.props.onOpenResearch(screenRow());
+    staleCompany.props.onSectionChange("sec");
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+  });
+
   it("passes saved membership and version to financials and updates them after a watchlist save", async () => {
     await activateWorkspace();
     let financial = findElement<PersonalFinancialScreenerProps>(
@@ -2042,6 +2438,52 @@ function renderWorkspace(
   );
 }
 
+function requireCompanyResearch(value: unknown) {
+  const company = findElement<PersonalCompanyResearchWorkspaceProps>(
+    value,
+    componentMocks.CompanyResearch,
+  );
+  if (company === undefined)
+    throw new Error("Expected company research workspace.");
+  return company;
+}
+
+function companyFocusDocument(triggerHeadingId: string) {
+  class FocusTarget {
+    isConnected = true;
+    visible = true;
+    disabled = false;
+    tabIndex = 0;
+    focus = vi.fn();
+    scrollIntoView = vi.fn();
+    constructor(readonly headingId = "") {}
+    closest(selector: string) {
+      if (selector === "[hidden], [inert]") return this.visible ? null : this;
+      return selector === `[aria-labelledby~="${this.headingId}"]`
+        ? this
+        : null;
+    }
+    matches(selector: string) {
+      return selector === ":disabled" && this.disabled;
+    }
+    hasAttribute() {
+      return false;
+    }
+    getClientRects() {
+      return this.visible ? [{}] : [];
+    }
+  }
+  const trigger = new FocusTarget(triggerHeadingId);
+  const origin = new FocusTarget();
+  const company = new FocusTarget();
+  vi.stubGlobal("HTMLElement", FocusTarget);
+  const getElementById = vi.fn((id: string) =>
+    id === "personal-company-research-title" ? company : origin,
+  );
+  vi.stubGlobal("document", { activeElement: trigger, getElementById });
+  return { trigger, origin, company, getElementById };
+}
+
 function findOwnerSession(value: unknown) {
   return findElement<OwnerSessionPanelProps>(
     value,
@@ -2239,6 +2681,11 @@ function findAllElements(
   return [
     ...own,
     ...findAllElements((value.props as { children?: unknown }).children, type),
+    ...(value.type === componentMocks.CompanyResearch
+      ? Object.values(
+          (value.props as PersonalCompanyResearchWorkspaceProps).sections,
+        ).flatMap((section) => findAllElements(section, type))
+      : []),
   ];
 }
 

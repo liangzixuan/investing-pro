@@ -38,6 +38,10 @@ import {
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
 import { LocalWorkspaceAccessPanel } from "./LocalWorkspaceAccessPanel";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
+import {
+  PersonalCompanyResearchWorkspace,
+  type PersonalCompanyResearchSection,
+} from "./PersonalCompanyResearchWorkspace";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
@@ -82,6 +86,32 @@ interface ManualPeerRequest {
   readonly priorAnnualFinancials: PersonalAnnualFinancialsDto | null;
 }
 
+type CompanyResearchOrigin =
+  "search" | "catalog" | "financials" | "portfolio" | "filings" | "watchlist";
+
+const COMPANY_RESEARCH_ORIGINS: Readonly<
+  Record<CompanyResearchOrigin, Readonly<{ label: string; headingId: string }>>
+> = {
+  search: { label: "Back to search results", headingId: "search-title" },
+  catalog: {
+    label: "Back to catalog results",
+    headingId: "personal-stock-screener-title",
+  },
+  financials: {
+    label: "Back to financial results",
+    headingId: "personal-financial-screener-title",
+  },
+  portfolio: {
+    label: "Back to My Portfolio",
+    headingId: "personal-portfolio-title",
+  },
+  filings: {
+    label: "Back to recent filings",
+    headingId: "watchlist-filings-title",
+  },
+  watchlist: { label: "Back to My Watchlist", headingId: "watchlist-title" },
+};
+
 type RequestState = "idle" | "loading" | "saving";
 
 const SESSION_REVALIDATION_MESSAGE =
@@ -115,6 +145,20 @@ export function SecurityDiscoveryWorkspace({
     useState<PersonalMarketDataStatusDto | null>(null);
   const [marketSelection, setMarketSelection] =
     useState<PersonalMarketSelection | null>(null);
+  const [companySection, setCompanySection] =
+    useState<PersonalCompanyResearchSection>("price");
+  const [companyIdentityKey, setCompanyIdentityKey] = useState<string | null>(
+    null,
+  );
+  const [companyOrigin, setCompanyOrigin] =
+    useState<CompanyResearchOrigin>("search");
+  const companyIdentity = useRef<string | null>(null);
+  const companyOriginTarget = useRef<{
+    readonly headingId: string;
+    readonly trigger: HTMLElement | null;
+  } | null>(null);
+  const companyNavigationEpoch = useRef(0);
+  const companySelectionEpoch = useRef(0);
   const [marketOverview, setMarketOverview] =
     useState<PersonalMarketOverviewDto | null>(null);
   const [marketRange, setMarketRange] =
@@ -164,6 +208,8 @@ export function SecurityDiscoveryWorkspace({
   const manualPeerControllers = useRef(new Map<string, ManualPeerRequest>());
   const ownerActivityStart = useRef<OwnerSessionActivityStart | null>(null);
   const workspaceActivityReady = useRef(false);
+  const renderedWorkspaceEpoch = workspaceEpoch.current;
+  const renderedCompanyEpoch = companySelectionEpoch.current;
 
   const handleOwnerActivityChange = useCallback(
     (start: OwnerSessionActivityStart | null) => {
@@ -300,6 +346,7 @@ export function SecurityDiscoveryWorkspace({
   }
 
   function clearMarketState() {
+    clearCompanyNavigation();
     setPortfolioSelection(null);
     marketController.current?.abort();
     marketController.current = null;
@@ -402,14 +449,104 @@ export function SecurityDiscoveryWorkspace({
     }
   }
 
+  function clearCompanyNavigation() {
+    companySelectionEpoch.current += 1;
+    companyIdentity.current = null;
+    companyOriginTarget.current = null;
+    companyNavigationEpoch.current += 1;
+    setCompanyIdentityKey(null);
+    setCompanySection("price");
+    setCompanyOrigin("search");
+  }
+
+  function withCurrentCompany(action: () => void) {
+    if (
+      companyIdentityKey === null ||
+      companyIdentityKey !== companyIdentity.current ||
+      renderedCompanyEpoch !== companySelectionEpoch.current ||
+      renderedWorkspaceEpoch !== workspaceEpoch.current ||
+      !workspaceActivityReady.current
+    )
+      return;
+    action();
+  }
+
+  function returnFromCompany() {
+    withCurrentCompany(() => {
+      const navigation = ++companyNavigationEpoch.current;
+      const origin = companyOriginTarget.current;
+      if (origin === null) return;
+      const identity = companyIdentity.current;
+      queueMicrotask(() => {
+        if (
+          typeof document === "undefined" ||
+          navigation !== companyNavigationEpoch.current ||
+          identity !== companyIdentity.current ||
+          origin !== companyOriginTarget.current ||
+          renderedWorkspaceEpoch !== workspaceEpoch.current ||
+          !workspaceActivityReady.current
+        )
+          return;
+        focusCompanyOrigin(origin);
+      });
+    });
+  }
+
   function selectMarketSecurity(
     membership:
       | PersonalSecurityMasterSearchResultDto
       | PersonalSecurityMasterScreenRowDto
       | PersonalWatchlistMembership
       | PersonalPortfolioIdentity,
+    origin: CompanyResearchOrigin,
   ) {
-    setPortfolioSelection(portfolioIdentity(membership));
+    if (
+      workspace === null ||
+      renderedWorkspaceEpoch !== workspaceEpoch.current ||
+      !workspaceActivityReady.current
+    )
+      return;
+    const identity = portfolioIdentity(membership);
+    const identityKey = companyResearchIdentityKey(identity);
+    const navigation = ++companyNavigationEpoch.current;
+    setPortfolioSelection(identity);
+    setCompanyOrigin(origin);
+    const headingId = COMPANY_RESEARCH_ORIGINS[origin].headingId;
+    const active =
+      typeof document === "undefined" ? null : document.activeElement;
+    companyOriginTarget.current = {
+      headingId,
+      trigger:
+        active !== null &&
+        active instanceof HTMLElement &&
+        active.closest(`[aria-labelledby~="${headingId}"]`) !== null
+          ? active
+          : null,
+    };
+    queueMicrotask(() => {
+      if (
+        typeof document === "undefined" ||
+        navigation !== companyNavigationEpoch.current ||
+        identityKey !== companyIdentity.current ||
+        renderedWorkspaceEpoch !== workspaceEpoch.current ||
+        !workspaceActivityReady.current
+      )
+        return;
+      focusCompanyTarget(
+        document.getElementById("personal-company-research-title"),
+      );
+    });
+    if (identityKey === companyIdentity.current) return;
+    companySelectionEpoch.current += 1;
+    companyIdentity.current = identityKey;
+    setCompanyIdentityKey(identityKey);
+    setCompanySection(
+      origin === "financials"
+        ? "financials"
+        : origin === "filings"
+          ? "sec"
+          : "price",
+    );
     marketController.current?.abort();
     marketController.current = null;
     marketEpoch.current += 1;
@@ -445,14 +582,30 @@ export function SecurityDiscoveryWorkspace({
     setQuarterlyFinancialsErrorCode(null);
     clearManualPeerState();
     clearValuationHistoryState();
-    if (typeof document !== "undefined") {
-      queueMicrotask(() =>
-        document.getElementById("personal-market-overview")?.focus(),
-      );
-    }
+  }
+
+  function clearSelectedCompany() {
+    withCurrentCompany(() => {
+      const origin = companyOriginTarget.current;
+      closeMarketView();
+      const navigation = companyNavigationEpoch.current;
+      queueMicrotask(() => {
+        if (
+          typeof document === "undefined" ||
+          origin === null ||
+          navigation !== companyNavigationEpoch.current ||
+          companyIdentity.current !== null ||
+          renderedWorkspaceEpoch !== workspaceEpoch.current ||
+          !workspaceActivityReady.current
+        )
+          return;
+        focusCompanyOrigin(origin);
+      });
+    });
   }
 
   function closeMarketView() {
+    clearCompanyNavigation();
     marketController.current?.abort();
     marketController.current = null;
     marketEpoch.current += 1;
@@ -1435,7 +1588,9 @@ export function SecurityDiscoveryWorkspace({
                         <div className="security-result-actions">
                           <button
                             className="secondary-action compact-action"
-                            onClick={() => selectMarketSecurity(result)}
+                            onClick={() =>
+                              selectMarketSecurity(result, "search")
+                            }
                             type="button"
                           >
                             View market
@@ -1486,7 +1641,9 @@ export function SecurityDiscoveryWorkspace({
                 !snapshotChanged
               }
               onAddToWatchlist={addResult}
-              onOpenResearch={selectMarketSecurity}
+              onOpenResearch={(selection) =>
+                selectMarketSecurity(selection, "catalog")
+              }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
               snapshot={workspace.snapshot}
@@ -1510,7 +1667,9 @@ export function SecurityDiscoveryWorkspace({
                 !snapshotChanged
               }
               onAddToWatchlist={addResult}
-              onOpenResearch={selectMarketSecurity}
+              onOpenResearch={(selection) =>
+                selectMarketSecurity(selection, "financials")
+              }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
               snapshot={workspace.snapshot}
@@ -1520,92 +1679,150 @@ export function SecurityDiscoveryWorkspace({
               catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
               enabled
               selectedListing={portfolioSelection}
-              onOpenResearch={selectMarketSecurity}
+              onOpenResearch={(selection) =>
+                selectMarketSecurity(selection, "portfolio")
+              }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
             />
 
-            <PersonalMarketOverview
-              adjustmentMode={marketAdjustmentMode}
-              errorCode={marketErrorCode}
-              onAdjustmentModeChange={setMarketAdjustmentMode}
-              onClear={closeMarketView}
-              onLoad={(range) => void loadMarketData(range)}
-              overview={marketOverview}
-              providerStatus={marketDataStatus}
-              range={marketRange}
-              requestState={marketRequestState}
+            <PersonalCompanyResearchWorkspace
+              key={companyIdentityKey ?? "no-selection"}
               selection={marketSelection}
-            />
-
-            <PersonalValuationHistory
-              errorCode={valuationHistoryErrorCode}
-              history={valuationHistory}
-              metric={valuationHistoryMetric}
-              onLoad={() => void loadValuationHistory()}
-              onMetricChange={setValuationHistoryMetric}
-              providerStatus={marketDataStatus}
-              range={marketRange}
-              requestState={valuationHistoryRequestState}
-              selection={marketSelection}
-            />
-
-            <PersonalHistoricalMultipleValuation
-              marketOverview={marketOverview}
-              metric={historicalMultipleMetric}
-              onMetricChange={setHistoricalMultipleMetric}
-              selection={marketSelection}
-              valuationHistory={valuationHistory}
-            />
-
-            <PersonalAnnualFinancials
-              errorCode={annualFinancialsErrorCode}
-              financials={annualFinancials}
-              onLoad={() => void loadAnnualFinancials()}
-              providerStatus={marketDataStatus}
-              requestState={annualFinancialsRequestState}
-              selection={marketSelection}
-            />
-
-            <PersonalFinancialQualityScorecard
-              financials={annualFinancials}
-              selection={marketSelection}
-            />
-
-            <PersonalManualPeerComparison
-              annualFinancials={annualFinancials}
-              candidates={manualPeerCandidates}
-              onAddPeer={addManualPeer}
-              onLoadPeerData={(listingId) => void loadManualPeerData(listingId)}
-              onRemovePeer={removeManualPeer}
-              peers={manualPeers}
-              providerStatus={marketDataStatus}
-              range={marketRange}
-              selection={marketSelection}
-              valuationHistory={valuationHistory}
-            />
-
-            <PersonalFcffDcfValuation
-              key={marketSelection?.listingId ?? "no-selection"}
-              annualFinancials={annualFinancials}
-              marketOverview={marketOverview}
-              selection={marketSelection}
-              valuationHistory={valuationHistory}
-            />
-
-            <PersonalQuarterlyFinancials
-              errorCode={quarterlyFinancialsErrorCode}
-              financials={quarterlyFinancials}
-              onLoad={() => void loadQuarterlyFinancials()}
-              providerStatus={marketDataStatus}
-              requestState={quarterlyFinancialsRequestState}
-              selection={marketSelection}
-            />
-
-            <PersonalSecQuarterlyEvidence
-              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
-              selection={marketSelection}
-              enabled
-              onSessionUnavailable={clearWorkspaceForSessionLoss}
+              activeSection={companySection}
+              onSectionChange={(section) =>
+                withCurrentCompany(() => {
+                  companyNavigationEpoch.current += 1;
+                  setCompanySection(section);
+                })
+              }
+              backLabel={COMPANY_RESEARCH_ORIGINS[companyOrigin].label}
+              onBack={returnFromCompany}
+              onClear={clearSelectedCompany}
+              sections={{
+                price: (
+                  <>
+                    <PersonalMarketOverview
+                      adjustmentMode={marketAdjustmentMode}
+                      errorCode={marketErrorCode}
+                      onAdjustmentModeChange={(mode) =>
+                        withCurrentCompany(() => setMarketAdjustmentMode(mode))
+                      }
+                      onClear={clearSelectedCompany}
+                      onLoad={(range) =>
+                        withCurrentCompany(() => void loadMarketData(range))
+                      }
+                      overview={marketOverview}
+                      providerStatus={marketDataStatus}
+                      range={marketRange}
+                      requestState={marketRequestState}
+                      selection={marketSelection}
+                    />
+                  </>
+                ),
+                financials: (
+                  <>
+                    <PersonalAnnualFinancials
+                      errorCode={annualFinancialsErrorCode}
+                      financials={annualFinancials}
+                      onLoad={() =>
+                        withCurrentCompany(() => void loadAnnualFinancials())
+                      }
+                      providerStatus={marketDataStatus}
+                      requestState={annualFinancialsRequestState}
+                      selection={marketSelection}
+                    />
+                    <PersonalQuarterlyFinancials
+                      errorCode={quarterlyFinancialsErrorCode}
+                      financials={quarterlyFinancials}
+                      onLoad={() =>
+                        withCurrentCompany(() => void loadQuarterlyFinancials())
+                      }
+                      providerStatus={marketDataStatus}
+                      requestState={quarterlyFinancialsRequestState}
+                      selection={marketSelection}
+                    />
+                    <PersonalFinancialQualityScorecard
+                      financials={annualFinancials}
+                      selection={marketSelection}
+                    />
+                  </>
+                ),
+                valuation: (
+                  <>
+                    <PersonalValuationHistory
+                      errorCode={valuationHistoryErrorCode}
+                      history={valuationHistory}
+                      metric={valuationHistoryMetric}
+                      onLoad={() =>
+                        withCurrentCompany(() => void loadValuationHistory())
+                      }
+                      onMetricChange={(metric) =>
+                        withCurrentCompany(() =>
+                          setValuationHistoryMetric(metric),
+                        )
+                      }
+                      providerStatus={marketDataStatus}
+                      range={marketRange}
+                      requestState={valuationHistoryRequestState}
+                      selection={marketSelection}
+                    />
+                    <PersonalHistoricalMultipleValuation
+                      marketOverview={marketOverview}
+                      metric={historicalMultipleMetric}
+                      onMetricChange={(metric) =>
+                        withCurrentCompany(() =>
+                          setHistoricalMultipleMetric(metric),
+                        )
+                      }
+                      selection={marketSelection}
+                      valuationHistory={valuationHistory}
+                    />
+                    <PersonalFcffDcfValuation
+                      key={companyIdentityKey ?? "no-selection"}
+                      annualFinancials={annualFinancials}
+                      marketOverview={marketOverview}
+                      selection={marketSelection}
+                      valuationHistory={valuationHistory}
+                    />
+                  </>
+                ),
+                peers: (
+                  <>
+                    <PersonalManualPeerComparison
+                      annualFinancials={annualFinancials}
+                      candidates={manualPeerCandidates}
+                      onAddPeer={(peer) =>
+                        withCurrentCompany(() => addManualPeer(peer))
+                      }
+                      onLoadPeerData={(listingId) =>
+                        withCurrentCompany(
+                          () => void loadManualPeerData(listingId),
+                        )
+                      }
+                      onRemovePeer={(listingId) =>
+                        withCurrentCompany(() => removeManualPeer(listingId))
+                      }
+                      peers={manualPeers}
+                      providerStatus={marketDataStatus}
+                      range={marketRange}
+                      selection={marketSelection}
+                      valuationHistory={valuationHistory}
+                    />
+                  </>
+                ),
+                sec: (
+                  <>
+                    <PersonalSecQuarterlyEvidence
+                      catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+                      selection={marketSelection}
+                      enabled
+                      onSessionUnavailable={() =>
+                        withCurrentCompany(clearWorkspaceForSessionLoss)
+                      }
+                    />
+                  </>
+                ),
+              }}
             />
 
             <PersonalWatchlistFilings
@@ -1619,7 +1836,9 @@ export function SecurityDiscoveryWorkspace({
                 watchlistState !== "saving" &&
                 !reconciling
               }
-              onOpenResearch={selectMarketSecurity}
+              onOpenResearch={(selection) =>
+                selectMarketSecurity(selection, "filings")
+              }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
             />
 
@@ -1747,7 +1966,9 @@ export function SecurityDiscoveryWorkspace({
                               watchlistState === "saving" ||
                               reconciling
                             }
-                            onClick={() => selectMarketSecurity(membership)}
+                            onClick={() =>
+                              selectMarketSecurity(membership, "watchlist")
+                            }
                             type="button"
                           >
                             View market
@@ -1858,6 +2079,57 @@ export function SecurityDiscoveryWorkspace({
       </footer>
     </>
   );
+}
+
+function companyResearchIdentityKey(
+  identity: PersonalPortfolioIdentity,
+): string {
+  return JSON.stringify([
+    identity.country,
+    identity.exchangeMic,
+    identity.instrumentType,
+    identity.issuerId,
+    identity.issuerName,
+    identity.listingId,
+    identity.securityId,
+    identity.securityName,
+    identity.shareClassId,
+    identity.shareClassName,
+    identity.symbol,
+  ]);
+}
+
+function isVisibleFocusTarget(
+  target: HTMLElement | null,
+): target is HTMLElement {
+  return (
+    target !== null &&
+    target.isConnected &&
+    target.closest("[hidden], [inert]") === null &&
+    !target.matches(":disabled") &&
+    target.getClientRects().length > 0
+  );
+}
+
+function focusCompanyOrigin(
+  origin: Readonly<{ headingId: string; trigger: HTMLElement | null }>,
+) {
+  const target = isVisibleFocusTarget(origin.trigger)
+    ? origin.trigger
+    : document.getElementById(origin.headingId);
+  focusCompanyTarget(target);
+}
+
+function focusCompanyTarget(target: HTMLElement | null) {
+  if (!isVisibleFocusTarget(target)) return;
+  if (
+    !target.hasAttribute("tabindex") &&
+    !target.matches("button, input, select, textarea, a[href]")
+  ) {
+    target.tabIndex = -1;
+  }
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: "start" });
 }
 
 function collectManualPeerCandidates(

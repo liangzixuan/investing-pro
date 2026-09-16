@@ -4284,6 +4284,189 @@ describe("PersonalFinancialScreener", () => {
     expect(props.onOpenResearch).not.toHaveBeenCalled();
   });
 
+  it("opens the exact decoded compared company even when its result is on another page without changing financial state", async () => {
+    const first = comparisonResponse(0, 26);
+    const next = comparisonResponse(25, 26);
+    api.screenPersonalFinancials.mockResolvedValueOnce(first);
+    await mount();
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    api.screenPersonalFinancials.mockResolvedValueOnce(next);
+    click(render(), "Next financial page");
+    await flush();
+    click(render(), "Select CMP25 for comparison");
+    click(render(), "Compare companies");
+    change(render(), "Financial column view", "cashFlow");
+    const before = render();
+    const beforeText = text(before);
+    expect(text(before)).not.toContain("Open CMP0");
+    click(comparisonPanel(before), "Research CMP0");
+    click(comparisonPanel(render()), "Research CMP25");
+    expect(props.onOpenResearch).toHaveBeenNthCalledWith(
+      1,
+      first.rows[0]!.identity,
+    );
+    expect(props.onOpenResearch).toHaveBeenNthCalledWith(
+      2,
+      next.rows[0]!.identity,
+    );
+    expect(vi.mocked(props.onOpenResearch).mock.calls[0]![0]).toBe(
+      first.rows[0]!.identity,
+    );
+    expect(vi.mocked(props.onOpenResearch).mock.calls[1]![0]).toBe(
+      next.rows[0]!.identity,
+    );
+    expect(text(render())).toBe(beforeText);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("preserves watchlist selection, criteria, columns and comparison when researching a selected company", async () => {
+    configureWatchlist(3);
+    api.screenPersonalFinancials.mockImplementation(
+      (request: PersonalFinancialScreenRequestDto) =>
+        Promise.resolve(watchlistResponse(request)),
+    );
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    click(render(), "Add financial filter");
+    change(render(), "Financial threshold 1", "0");
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Compare companies");
+    change(render(), "Financial column view", "q4Balances");
+    const before = render();
+    const beforeText = text(before);
+    click(comparisonPanel(before), "Research CMP1");
+    expect(props.onOpenResearch).toHaveBeenCalledExactlyOnceWith(
+      comparisonResponse(1, 2).rows[0]!.identity,
+    );
+    const after = render();
+    expect(text(after)).toBe(beforeText);
+    expect(input(after, "Financial threshold 1").props.value).toBe("0");
+    expect(input(after, "Financial column view").props.value).toBe(
+      "q4Balances",
+    );
+    expect(input(after, "Financial screen scope").props.value).toBe(
+      "watchlist",
+    );
+    expect(financialListing(after, "CMP0").props.checked).toBe(true);
+    expect(financialListing(after, "CMP1").props.checked).toBe(true);
+    expect(financialListing(after, "CMP2").props.checked).toBe(true);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("rejects old page research callbacks during and after a pinned page load while preserving current off-page research", async () => {
+    await mountComparison(26);
+    const staleResearch = button(comparisonPanel(render()), "Research CMP0");
+    const staleOpen = button(render(), "Open CMP0");
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    click(render(), "Next financial page");
+    staleResearch.props.onClick?.();
+    staleOpen.props.onClick?.();
+    expect(props.onOpenResearch).not.toHaveBeenCalled();
+    pending.resolve(comparisonResponse(25, 26));
+    await flush();
+    staleResearch.props.onClick?.();
+    staleOpen.props.onClick?.();
+    expect(props.onOpenResearch).not.toHaveBeenCalled();
+    click(comparisonPanel(render()), "Research CMP0");
+    expect(props.onOpenResearch).toHaveBeenCalledExactlyOnceWith(
+      comparisonResponse(0, 26).rows[0]!.identity,
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "Remove CMP0 from comparison",
+    "Clear comparison",
+    "Close comparison",
+  ] as const)(
+    "rejects a retained company research action after %s",
+    async (action) => {
+      await mountComparison();
+      const staleResearch = button(comparisonPanel(render()), "Research CMP0");
+      click(render(), action);
+      staleResearch.props.onClick?.();
+      render();
+      staleResearch.props.onClick?.();
+      expect(props.onOpenResearch).not.toHaveBeenCalled();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "scope",
+    "selection",
+    "version",
+    "membership",
+    "availability",
+    "catalog",
+    "disabled",
+    "workspace",
+  ] as const)(
+    "rejects completed watchlist research callbacks immediately after a %s change",
+    async (boundary) => {
+      configureWatchlist(3);
+      api.screenPersonalFinancials.mockImplementation(
+        (request: PersonalFinancialScreenRequestDto) =>
+          Promise.resolve(watchlistResponse(request)),
+      );
+      await mount();
+      change(render(), "Financial screen scope", "watchlist");
+      click(render(), "Select all for financials");
+      submit(render());
+      await flush();
+      click(render(), "Select CMP0 for comparison");
+      click(render(), "Select CMP1 for comparison");
+      click(render(), "Compare companies");
+      const staleResearch = button(comparisonPanel(render()), "Research CMP0");
+      const staleOpen = button(render(), "Open CMP0");
+      if (boundary === "scope")
+        change(render(), "Financial screen scope", "catalog");
+      else if (boundary === "selection")
+        selectFinancialListing(render(), "CMP2", false);
+      else if (boundary === "version")
+        props = { ...props, watchlistVersion: 8 };
+      else if (boundary === "membership")
+        props = {
+          ...props,
+          watchlistMemberships: props.watchlistMemberships!.slice(1),
+        };
+      else if (boundary === "availability")
+        props = { ...props, watchlistAvailable: false };
+      else if (boundary === "catalog")
+        props = {
+          ...props,
+          snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+        };
+      else if (boundary === "disabled") props = { ...props, disabled: true };
+      else props = { ...props, workspaceReady: false };
+      render(() => {
+        staleResearch.props.onClick?.();
+        staleOpen.props.onClick?.();
+        expect(props.onOpenResearch).not.toHaveBeenCalled();
+      });
+      staleResearch.props.onClick?.();
+      staleOpen.props.onClick?.();
+      expect(props.onOpenResearch).not.toHaveBeenCalled();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
   it("preserves every decoded metric and source reference, signed balances, unknown operands and actual dates in comparison", async () => {
     const result = comparisonResponse(0, 3);
     const negative = currentBalanceDifferenceResponse(
@@ -4396,17 +4579,24 @@ describe("PersonalFinancialScreener", () => {
       await mountComparison();
       const staleSelect = button(render(), "Select CMP2 for comparison");
       const staleCompare = button(render(), "Compare companies");
+      const staleResearch = button(comparisonPanel(render()), "Research CMP0");
+      const staleOpen = button(render(), "Open CMP0");
       const pending = deferred<PersonalFinancialScreenResponseDto>();
       api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
       if (action === "run") submit(render());
       else click(render(), "Refresh SEC data");
       staleSelect.props.onClick?.();
       staleCompare.props.onClick?.();
+      staleResearch.props.onClick?.();
+      staleOpen.props.onClick?.();
       expect(comparisonPanel(render())).toBeUndefined();
       pending.resolve(comparisonResponse(0, 4));
       await flush();
       staleSelect.props.onClick?.();
       staleCompare.props.onClick?.();
+      staleResearch.props.onClick?.();
+      staleOpen.props.onClick?.();
+      expect(props.onOpenResearch).not.toHaveBeenCalled();
       expect(text(render())).toContain("0 of 3 companies selected");
       expect(comparisonPanel(render())).toBeUndefined();
       expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
@@ -4435,6 +4625,8 @@ describe("PersonalFinancialScreener", () => {
       }
       const staleSelect = button(render(), "Select CMP2 for comparison");
       const staleCompare = button(render(), "Compare companies");
+      const staleResearch = button(comparisonPanel(render()), "Research CMP0");
+      const staleOpen = button(render(), "Open CMP0");
       const beforeWrites =
         api.savePersonalFinancialSavedViews.mock.calls.length;
       if (action === "year")
@@ -4457,6 +4649,8 @@ describe("PersonalFinancialScreener", () => {
       else click(render(), "Load financial criteria");
       staleSelect.props.onClick?.();
       staleCompare.props.onClick?.();
+      staleResearch.props.onClick?.();
+      staleOpen.props.onClick?.();
       expect(comparisonPanel(render())).toBeUndefined();
       expect(text(render())).not.toContain("2 of 3 companies selected");
       api.screenPersonalFinancials.mockImplementationOnce(
@@ -4472,6 +4666,9 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       staleSelect.props.onClick?.();
       staleCompare.props.onClick?.();
+      staleResearch.props.onClick?.();
+      staleOpen.props.onClick?.();
+      expect(props.onOpenResearch).not.toHaveBeenCalled();
       expect(text(render())).toContain("0 of 3 companies selected");
       expect(comparisonPanel(render())).toBeUndefined();
       expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledTimes(

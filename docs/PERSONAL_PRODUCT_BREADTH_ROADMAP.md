@@ -1436,7 +1436,7 @@ independent integer arithmetic in the browser. It adds no provider concept or
 request to the thirteen-Frame cache and does not establish uniform cash-flow
 definitions, fiscal comparability or broad verified coverage.
 
-The active product slice is **Financials for My Watchlist**: choose up to twenty
+The delivered **Financials for My Watchlist** slice lets the owner choose up to twenty
 saved listings and run the existing eighteen metrics, filters and comparison
 against that cohort. Exact saved membership and catalog identity are checked
 before acquisition, with watchlist version rechecked afterward. Scope and
@@ -1444,6 +1444,13 @@ selection remain transient; saved-v1 definitions retain criteria only. Counts
 clearly distinguish selected listings from the full watchlist and catalog.
 This connects a saved research list to the existing financial workflow without
 new formulas, provider concepts, background work or a wider coverage claim.
+
+The next product slice organizes existing company research into five sections
+with explicit return navigation to preserved screen results or My Watchlist.
+Loaded data and editable valuation drafts survive section changes; source links
+reveal the relevant panel. It uses existing inputs and explicit Load actions,
+without new formulas, providers or durable layouts. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
 
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.

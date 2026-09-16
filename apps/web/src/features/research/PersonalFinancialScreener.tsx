@@ -670,6 +670,26 @@ export function PersonalFinancialScreener({
     });
   }
 
+  function openResearch(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    listingId: string,
+    selectedComparison: FinancialComparisonSelection | null = null,
+  ) {
+    if (
+      !enabled ||
+      screenContext !== activeScreenContext.current ||
+      selectedResponse !== currentResponse.current ||
+      (selectedComparison !== null &&
+        (!comparisonIsCurrent(selectedResponse, selectedComparison) ||
+          !selectedComparison.open))
+    )
+      return;
+    const row = (selectedComparison?.rows ?? selectedResponse.rows).find(
+      (item) => item.identity.listingId === listingId,
+    );
+    if (row !== undefined) onOpenResearch(row.identity);
+  }
+
   function changeComparison(
     selectedResponse: PersonalFinancialScreenResponseDto,
     selectedComparison: FinancialComparisonSelection | null,
@@ -1723,7 +1743,7 @@ export function PersonalFinancialScreener({
           running={running}
           canAddToWatchlist={canAddToWatchlist && enabled}
           onAddToWatchlist={onAddToWatchlist}
-          onOpenResearch={onOpenResearch}
+          onOpenResearch={(listingId) => openResearch(response, listingId)}
           savedListingIds={savedListingIds}
           onPage={(offset) => void runScreen(offset, false, true)}
           criteria={criteria}
@@ -1747,6 +1767,9 @@ export function PersonalFinancialScreener({
           }
           onInspectComparison={(listingId, metric, trigger) =>
             openInspection(response, listingId, metric, trigger, comparison)
+          }
+          onOpenComparisonResearch={(listingId) =>
+            openResearch(response, listingId, comparison)
           }
         />
       )}
@@ -1878,15 +1901,15 @@ function FinancialResults({
   onSelectForComparison,
   onChangeComparison,
   onInspectComparison,
+  onOpenComparisonResearch,
 }: Pick<
   PersonalFinancialScreenerProps,
-  | "canAddToWatchlist"
-  | "onAddToWatchlist"
-  | "onOpenResearch"
-  | "savedListingIds"
+  "canAddToWatchlist" | "onAddToWatchlist" | "savedListingIds"
 > & {
   readonly response: PersonalFinancialScreenResponseDto;
   readonly running: boolean;
+  readonly onOpenResearch: (listingId: string) => void;
+  readonly onOpenComparisonResearch: (listingId: string) => void;
   readonly onPage: (offset: number) => void;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
   readonly visibleMetrics: readonly PersonalFinancialScreenMetricDto[];
@@ -2262,6 +2285,17 @@ function FinancialResults({
                         {row.identity.securityName} ·{" "}
                         {row.identity.shareClassName}
                       </small>
+                      <br />
+                      <button
+                        className="secondary-action compact-action"
+                        type="button"
+                        disabled={running}
+                        onClick={() =>
+                          onOpenComparisonResearch(row.identity.listingId)
+                        }
+                      >
+                        Research {row.identity.symbol}
+                      </button>
                     </th>
                   ))}
                 </tr>
@@ -2405,7 +2439,7 @@ function FinancialResults({
                       className="secondary-action compact-action"
                       type="button"
                       disabled={running}
-                      onClick={() => onOpenResearch(row.identity)}
+                      onClick={() => onOpenResearch(row.identity.listingId)}
                     >
                       Open {row.identity.symbol}
                     </button>
