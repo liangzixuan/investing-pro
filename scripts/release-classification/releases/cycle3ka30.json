@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "caseNumber": 30,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "b5ea94ee7c7de8f58de1633daf26eca502798071",
+  "featureRevision": "621a6503268dab89367ebdbd7b1785ba20cc9b12",
+  "featureCount": 161,
+  "closureCount": 162,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.ts",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "status": "M" },
+    { "path": "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.ts",
+      "status": "M"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka30.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka30.json",
+  "presentation": {
+    "featureDescription": "current assets less current liabilities screening",
+    "closureDescription": "current assets less current liabilities screening",
+    "inventoryDescription": "current assets less current liabilities screening",
+    "testBinding": "currentBalanceDifference",
+    "routingDescription": "current assets less current liabilities screening",
+    "summaryDescription": "current assets less current liabilities screening"
+  }
+}
