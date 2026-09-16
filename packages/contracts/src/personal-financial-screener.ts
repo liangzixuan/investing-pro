@@ -304,7 +304,20 @@ export interface PersonalFinancialSavedViewDto {
   readonly createdAgainstCatalogSnapshotSha256: `sha256:${string}`;
   readonly createdAgainstFinancialSnapshotSha256: `sha256:${string}`;
 }
-export interface PersonalFinancialSavedViewsPayloadDto {
-  readonly schemaVersion: 1;
-  readonly views: readonly PersonalFinancialSavedViewDto[];
+export interface PersonalFinancialSavedViewDisplayDto {
+  /** Nonempty unique selection in PERSONAL_FINANCIAL_SCREEN_METRICS order. */
+  readonly visibleMetrics: readonly PersonalFinancialScreenMetricDto[];
 }
+export interface PersonalFinancialSavedViewWithDisplayDto extends PersonalFinancialSavedViewDto {
+  /** Null preserves an existing criteria-only view without inventing columns. */
+  readonly display: PersonalFinancialSavedViewDisplayDto | null;
+}
+export type PersonalFinancialSavedViewsPayloadDto =
+  | {
+      readonly schemaVersion: 1;
+      readonly views: readonly PersonalFinancialSavedViewDto[];
+    }
+  | {
+      readonly schemaVersion: 2;
+      readonly views: readonly PersonalFinancialSavedViewWithDisplayDto[];
+    };

@@ -1091,7 +1091,8 @@ PP&E purchases, operating cash flow relative to positive income, and Q4 current
 asset/liability cover. Each displays literal criteria, applies ordinary editable
 filters/sort/columns, preserves the selected year/revenue basis/company scope,
 and requires an explicit Run. Applying does not fetch or save data and detaches
-any selected saved view; saving later uses existing criteria payload v1. These
+any selected saved view. The later reusable-view slice saves the resulting
+criteria and columns through its version2 payload. These
 three examples do not complete the 24-screen target, establish joint input
 coverage, or imply universal industry applicability. The financial-screen guide
 owns exact thresholds and source eligibility; the current-work guide and local
@@ -1445,12 +1446,20 @@ clearly distinguish selected listings from the full watchlist and catalog.
 This connects a saved research list to the existing financial workflow without
 new formulas, provider concepts, background work or a wider coverage claim.
 
-The next product slice organizes existing company research into five sections
+The delivered company workspace organizes existing research into five sections
 with explicit return navigation to preserved screen results or My Watchlist.
 Loaded data and editable valuation drafts survive section changes; source links
 reveal the relevant panel. It uses existing inputs and explicit Load actions,
 without new formulas, providers or durable layouts. See
 [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+The next slice makes financial views reusable across sessions by saving chosen
+columns with criteria. Existing version1 definitions remain readable and keep
+their criteria-only loading behavior; explicit saves add a version2 display
+definition without losing other views. Scope and saved-listing selection remain
+temporary, and loading requires an explicit Run. See
+[Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md). This is a bounded part of
+the saved-layout target, with no new metrics, provider coverage or export format.
 
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.

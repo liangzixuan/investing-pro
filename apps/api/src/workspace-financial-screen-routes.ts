@@ -1,5 +1,7 @@
 import {
+  PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT,
+  type PersonalFinancialSavedViewDisplayDto,
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenWatchlistScopeDto,
   type PersonalFinancialSavedViewsPayloadDto,
@@ -443,7 +445,7 @@ function isSavedViewsPayload(
 ): value is PersonalFinancialSavedViewsPayloadDto & JsonValue {
   if (
     !hasExactKeys(value, ["schemaVersion", "views"]) ||
-    value.schemaVersion !== 1 ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
     !Array.isArray(value.views) ||
     value.views.length > 20
   )
@@ -458,7 +460,11 @@ function isSavedViewsPayload(
         "criteria",
         "createdAgainstCatalogSnapshotSha256",
         "createdAgainstFinancialSnapshotSha256",
+        ...(value.schemaVersion === 2 ? ["display"] : []),
       ]) ||
+      (value.schemaVersion === 2 &&
+        view.display !== null &&
+        !isSavedViewDisplay(view.display)) ||
       typeof view.id !== "string" ||
       !/^[a-z0-9][a-z0-9._:-]{2,127}$/u.test(view.id) ||
       typeof view.name !== "string" ||
@@ -475,6 +481,26 @@ function isSavedViewsPayload(
     if (ids.has(view.id) || names.has(name)) return false;
     ids.add(view.id);
     names.add(name);
+  }
+  return true;
+}
+function isSavedViewDisplay(
+  value: unknown,
+): value is PersonalFinancialSavedViewDisplayDto {
+  if (
+    !hasExactKeys(value, ["visibleMetrics"]) ||
+    !Array.isArray(value.visibleMetrics) ||
+    value.visibleMetrics.length < 1 ||
+    value.visibleMetrics.length > PERSONAL_FINANCIAL_SCREEN_METRICS.length
+  )
+    return false;
+  let previousIndex = -1;
+  for (const metric of value.visibleMetrics) {
+    const index = PERSONAL_FINANCIAL_SCREEN_METRICS.findIndex(
+      (candidate) => candidate === metric,
+    );
+    if (index <= previousIndex) return false;
+    previousIndex = index;
   }
   return true;
 }

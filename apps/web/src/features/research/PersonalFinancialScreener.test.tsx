@@ -9,6 +9,8 @@ import {
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialSavedViewsPayloadDto,
+  type PersonalFinancialSavedViewDto,
+  type PersonalFinancialSavedViewWithDisplayDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
 } from "@research-cockpit/contracts";
 import React from "react";
@@ -169,6 +171,547 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it("restores saved criteria and custom columns after remount for results and comparison without automatic requests", async () => {
+    api.screenPersonalFinancials.mockResolvedValue(comparisonResponse(0, 3));
+    await mount();
+    change(render(), "Financial calendar year", "2024");
+    change(render(), "Revenue basis", "Revenues");
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "netIncome");
+    change(render(), "Financial threshold 1", "-12.5");
+    change(render(), "Financial column view", "cashFlow");
+    toggleColumn(render(), "Selected revenue YoY change (%)", true);
+    toggleColumn(render(), "Operating cash flow margin", false);
+    submit(render());
+    await flush();
+    const headers = columnHeaders(render());
+    change(render(), "Financial view name", "Cash discipline");
+    click(render(), "Save financial view");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.schemaVersion).toBe(2);
+    const admitted = payload
+      .views[0] as PersonalFinancialSavedViewWithDisplayDto;
+    expect(admitted.display?.visibleMetrics).toEqual([
+      "operatingCashFlow",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
+      "revenueGrowth",
+    ]);
+    expect(admitted.criteria.clauses).toEqual([
+      { field: "netIncome", operator: "gte", value: "-12.5" },
+    ]);
+    expect(admitted.createdAgainstCatalogSnapshotSha256).toBe(sha("a"));
+    expect(admitted.createdAgainstFinancialSnapshotSha256).toBe(sha("b"));
+    harness.unmount();
+    harness.reset();
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 1,
+      payload: structuredClone(payload),
+    });
+    await mount();
+    expect(input(render(), "Financial column view").props.value).toBe(
+      "overview",
+    );
+    change(render(), "Saved financial view", admitted.id);
+    click(render(), "Load financial view");
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(input(render(), "Financial calendar year").props.value).toBe(2024);
+    expect(input(render(), "Revenue basis").props.value).toBe("Revenues");
+    expect(input(render(), "Financial threshold 1").props.value).toBe("-12.5");
+    expect(columnHeaders(render())).toEqual([]);
+    expect(text(render())).toContain("Results require an explicit run");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    submit(render());
+    await flush();
+    expect(columnHeaders(render())).toEqual(headers);
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Compare companies");
+    const comparisonRows = comparisonMetricRows(comparisonPanel(render()));
+    expect(comparisonRows).toHaveLength(
+      admitted.display!.visibleMetrics.length,
+    );
+    expect(text(comparisonPanel(render()))).toContain(
+      "Selected revenue YoY change",
+    );
+    expect(text(comparisonPanel(render()))).not.toContain(
+      "Operating cash flow margin",
+    );
+    change(render(), "Financial column view", "q4Balances");
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(4);
+    expect(text(render())).toContain("2 of 3 companies selected");
+    click(render(), "Load financial view");
+    expect(columnHeaders(render())).toEqual([]);
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+  });
+
+  it.each([1, 2] as const)(
+    "loads legacy schema %s criteria without changing columns or writing, and upgrades only after explicit save",
+    async (schemaVersion) => {
+      const legacy = savedViewFixture("legacy");
+      const untouched = savedViewFixture("untouched");
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 4,
+        payload:
+          schemaVersion === 1
+            ? { schemaVersion, views: [legacy, untouched] }
+            : {
+                schemaVersion,
+                views: [legacy, untouched].map((view) => ({
+                  ...view,
+                  display: null,
+                })),
+              },
+      });
+      await mount();
+      change(render(), "Financial column view", "q4Balances");
+      change(render(), "Saved financial view", legacy.id);
+      expect(text(render())).toContain("Legacy criteria-only view");
+      click(render(), "Load financial view");
+      expect(input(render(), "Financial column view").props.value).toBe(
+        "q4Balances",
+      );
+      expect(input(render(), "Financial company filter").props.value).toBe(
+        "legacy",
+      );
+      expect(text(render())).toContain("current columns were kept");
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      submit(render());
+      await flush();
+      click(render(), "Save financial view");
+      await flush();
+      const [version, payload] = api.savePersonalFinancialSavedViews.mock
+        .calls[0] as [number, PersonalFinancialSavedViewsPayloadDto];
+      expect(version).toBe(4);
+      expect(payload).toMatchObject({
+        schemaVersion: 2,
+        views: [
+          {
+            id: legacy.id,
+            display: {
+              visibleMetrics: [
+                "currentAssets",
+                "currentLiabilities",
+                "currentRatio",
+                "currentAssetsLessCurrentLiabilities",
+              ],
+            },
+          },
+          { ...untouched, display: null },
+        ],
+      });
+      expect(text(render())).not.toContain("Legacy criteria-only view");
+    },
+  );
+
+  it("preserves unrelated mixed views through save-as, replacement, and deletion", async () => {
+    const legacy = { ...savedViewFixture("legacy"), display: null };
+    const modern = {
+      ...savedViewFixture("modern"),
+      display: { visibleMetrics: ["netIncome"] as const },
+    };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 7,
+      payload: { schemaVersion: 2, views: [legacy, modern] },
+    });
+    await mount();
+    change(render(), "Saved financial view", modern.id);
+    click(render(), "Load financial view");
+    submit(render());
+    await flush();
+    change(render(), "Financial column view", "cashFlow");
+    change(render(), "Financial view name", "New cash view");
+    click(render(), "Save financial view as new");
+    await flush();
+    const copied = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(copied.views.slice(0, 2)).toEqual([legacy, modern]);
+    expect(copied.views[2]?.id).not.toBe(modern.id);
+    change(render(), "Financial column view", "q4Balances");
+    change(render(), "Financial view name", "Renamed balances");
+    click(render(), "Save financial view");
+    await flush();
+    const replaced = api.savePersonalFinancialSavedViews.mock
+      .calls[1]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(replaced.views.slice(0, 2)).toEqual([legacy, modern]);
+    expect(replaced.views).toHaveLength(3);
+    expect(replaced.views[2]).toMatchObject({
+      id: copied.views[2]?.id,
+      name: "Renamed balances",
+      display: {
+        visibleMetrics: [
+          "currentAssets",
+          "currentLiabilities",
+          "currentRatio",
+          "currentAssetsLessCurrentLiabilities",
+        ],
+      },
+    });
+    click(render(), "Delete financial view");
+    await flush();
+    expect(
+      api.savePersonalFinancialSavedViews.mock.calls[2]?.slice(0, 2),
+    ).toEqual([9, { schemaVersion: 2, views: [legacy, modern] }]);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("deletes a legacy view without upgrading the remaining payload", async () => {
+    const first = savedViewFixture("first");
+    const second = savedViewFixture("second");
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 5,
+      payload: { schemaVersion: 1, views: [first, second] },
+    });
+    await mount();
+    change(render(), "Saved financial view", first.id);
+    click(render(), "Delete financial view");
+    await flush();
+    expect(
+      api.savePersonalFinancialSavedViews.mock.calls[0]?.slice(0, 2),
+    ).toEqual([5, { schemaVersion: 1, views: [second] }]);
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+  });
+
+  it.each(["catalog", "watchlist"] as const)(
+    "loads stored columns and criteria while preserving the current %s cohort",
+    async (scope) => {
+      configureWatchlist(3);
+      const memberships = props.watchlistMemberships;
+      const modern = {
+        ...savedViewFixture("balances"),
+        display: { visibleMetrics: ["currentRatio"] },
+      };
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 2,
+        payload: { schemaVersion: 2, views: [modern] },
+      });
+      await mount();
+      if (scope === "watchlist") {
+        change(render(), "Financial screen scope", scope);
+        selectFinancialListing(render(), "CMP1", true);
+      }
+      change(render(), "Saved financial view", modern.id);
+      click(render(), "Load financial view");
+      expect(input(render(), "Financial screen scope").props.value).toBe(scope);
+      expect(props.watchlistMemberships).toBe(memberships);
+      if (scope === "watchlist")
+        expect(text(render())).toContain("1 of 3 saved listings selected");
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      api.screenPersonalFinancials.mockImplementationOnce(
+        (request: PersonalFinancialScreenRequestDto) =>
+          Promise.resolve(
+            scope === "watchlist" ? watchlistResponse(request) : response(),
+          ),
+      );
+      submit(render());
+      await flush();
+      expect(columnHeaders(render())).toEqual([
+        "Company",
+        "Current assets / current liabilities (×)",
+        "Actions",
+      ]);
+      if (scope === "watchlist")
+        expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
+          scope: { listingIds: ["listing-1"] },
+        });
+    },
+  );
+
+  it.each(["save", "delete"] as const)(
+    "reloads mixed definitions after a %s conflict without losing unrelated layouts",
+    async (action) => {
+      const legacy = { ...savedViewFixture("legacy"), display: null };
+      const original = {
+        ...savedViewFixture("modern"),
+        display: { visibleMetrics: ["revenue"] },
+      };
+      const changed = {
+        ...original,
+        display: { visibleMetrics: ["netIncome", "currentRatio"] },
+      };
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 3,
+        payload: { schemaVersion: 2, views: [legacy, original] },
+      });
+      await mount();
+      change(render(), "Saved financial view", original.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      const stale = render();
+      api.savePersonalFinancialSavedViews.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError("conflict"),
+      );
+      click(
+        render(),
+        action === "save" ? "Save financial view" : "Delete financial view",
+      );
+      await flush();
+      expect(text(render())).toContain("changed elsewhere");
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 4,
+        payload: { schemaVersion: 2, views: [legacy, changed] },
+      });
+      click(render(), "Reload saved views");
+      await flush();
+      click(stale, "Load financial view");
+      expect(input(render(), "Financial column view").props.value).toBe(
+        "custom",
+      );
+      change(render(), "Saved financial view", changed.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      click(render(), "Save financial view");
+      await flush();
+      expect(
+        api.savePersonalFinancialSavedViews.mock.calls[1]?.slice(0, 2),
+      ).toEqual([
+        4,
+        {
+          schemaVersion: 2,
+          views: [
+            legacy,
+            { ...changed, createdAgainstFinancialSnapshotSha256: sha("b") },
+          ],
+        },
+      ]);
+    },
+  );
+
+  it.each([
+    "selection",
+    "name",
+    "criteria",
+    "columns",
+    "response",
+    "payload",
+    "scope",
+    "catalog",
+    "workspace",
+    "disabled",
+  ] as const)(
+    "ignores retained saved-view callbacks after a newer %s",
+    async (changeKind) => {
+      const first = {
+        ...savedViewFixture("first"),
+        display: { visibleMetrics: ["revenue"] },
+      };
+      const second = {
+        ...savedViewFixture("second"),
+        display: { visibleMetrics: ["netIncome"] },
+      };
+      const record = {
+        version: 3,
+        payload: { schemaVersion: 2, views: [first, second] },
+      };
+      api.fetchPersonalFinancialSavedViews.mockResolvedValue(record);
+      await mount();
+      change(render(), "Saved financial view", first.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      const stale = render();
+      if (changeKind === "selection")
+        change(render(), "Saved financial view", second.id);
+      else if (changeKind === "name")
+        change(render(), "Financial view name", "New draft");
+      else if (changeKind === "criteria")
+        change(render(), "Financial company filter", "New criteria");
+      else if (changeKind === "columns")
+        change(render(), "Financial column view", "cashFlow");
+      else if (changeKind === "response") {
+        submit(render());
+        await flush();
+      } else if (changeKind === "payload") {
+        api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+          version: 4,
+          payload: { schemaVersion: 2, views: [second] },
+        });
+        click(render(), "Reload saved views");
+        await flush();
+      } else if (changeKind === "scope")
+        change(render(), "Financial screen scope", "watchlist");
+      else {
+        props =
+          changeKind === "catalog"
+            ? {
+                ...props,
+                snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+              }
+            : {
+                ...props,
+                ...(changeKind === "workspace"
+                  ? { workspaceReady: false }
+                  : { disabled: true }),
+              };
+        render();
+        await flush();
+      }
+      const before = text(render());
+      const readCount = api.fetchPersonalFinancialSavedViews.mock.calls.length;
+      click(stale, "Load financial view");
+      click(stale, "Save financial view");
+      click(stale, "Save financial view as new");
+      click(stale, "Delete financial view");
+      click(stale, "Reload saved views");
+      change(stale, "Saved financial view", first.id);
+      change(stale, "Financial view name", "Stale draft");
+      await flush();
+      expect(text(render())).toBe(before);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(
+        readCount,
+      );
+    },
+  );
+
+  it.each(["save", "saveAs", "delete"] as const)(
+    "does not reselect or overwrite a newer view when pending %s completes",
+    async (action) => {
+      const first = {
+        ...savedViewFixture("first"),
+        display: { visibleMetrics: ["revenue"] },
+      };
+      const second = {
+        ...savedViewFixture("second"),
+        display: { visibleMetrics: ["netIncome"] },
+      };
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 3,
+        payload: { schemaVersion: 2, views: [first, second] },
+      });
+      await mount();
+      change(render(), "Saved financial view", first.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      if (action === "saveAs")
+        change(render(), "Financial view name", "Copy first");
+      const pending = deferred<{
+        version: number;
+        payload: PersonalFinancialSavedViewsPayloadDto;
+      }>();
+      api.savePersonalFinancialSavedViews.mockReturnValueOnce(pending.promise);
+      const stale = render();
+      click(
+        stale,
+        action === "delete"
+          ? "Delete financial view"
+          : action === "saveAs"
+            ? "Save financial view as new"
+            : "Save financial view",
+      );
+      click(stale, "Save financial view");
+      click(stale, "Load financial view");
+      click(stale, "Reload saved views");
+      expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+      change(render(), "Saved financial view", second.id);
+      change(render(), "Financial view name", "Newer draft");
+      pending.resolve({
+        version: 4,
+        payload: api.savePersonalFinancialSavedViews.mock
+          .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto,
+      });
+      await flush();
+      expect(input(render(), "Saved financial view").props.value).toBe(
+        second.id,
+      );
+      expect(input(render(), "Financial view name").props.value).toBe(
+        "Newer draft",
+      );
+      click(render(), "Load financial view");
+      expect(input(render(), "Financial company filter").props.value).toBe(
+        "second",
+      );
+      expect(input(render(), "Financial view name").props.value).toBe(
+        second.name,
+      );
+      submit(render());
+      await flush();
+      expect(columnHeaders(render())).toEqual([
+        "Company",
+        "Net income USD",
+        "Actions",
+      ]);
+    },
+  );
+
+  it.each(["catalog", "workspace"] as const)(
+    "rejects saved callbacks from a new %s render before its boundary effect",
+    async (boundary) => {
+      const legacy = savedViewFixture("legacy");
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 3,
+        payload: { schemaVersion: 1, views: [legacy] },
+      });
+      await mount();
+      change(render(), "Saved financial view", legacy.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      props =
+        boundary === "catalog"
+          ? {
+              ...props,
+              snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+            }
+          : { ...props, workspaceReady: false };
+      render((newBoundary) => {
+        click(newBoundary, "Load financial view");
+        click(newBoundary, "Save financial view");
+        click(newBoundary, "Delete financial view");
+        click(newBoundary, "Reload saved views");
+        expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+        expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+      });
+      await flush();
+      expect(input(render(), "Financial view name").props.value).toBe("");
+    },
+  );
+
+  it.each(["selection", "name"] as const)(
+    "does not revive retained callbacks after a %s changes away and back",
+    async (field) => {
+      const legacy = savedViewFixture("legacy");
+      api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+        version: 3,
+        payload: { schemaVersion: 1, views: [legacy] },
+      });
+      await mount();
+      change(render(), "Saved financial view", legacy.id);
+      click(render(), "Load financial view");
+      submit(render());
+      await flush();
+      const stale = render();
+      const label =
+        field === "selection" ? "Saved financial view" : "Financial view name";
+      change(render(), label, "");
+      change(render(), label, field === "selection" ? legacy.id : legacy.name);
+      click(stale, "Load financial view");
+      click(stale, "Save financial view");
+      click(stale, "Delete financial view");
+      click(stale, "Reload saved views");
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledOnce();
+      expect(text(render())).toContain("Open ONE");
+      click(render(), "Save financial view");
+      await flush();
+      expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    },
+  );
+
   it("keeps catalog requests unchanged and watchlist selection explicit", async () => {
     configureWatchlist(3);
     await mount();
@@ -261,17 +804,17 @@ describe("PersonalFinancialScreener", () => {
     );
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Watchlist filters");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Watchlist filters");
+    click(render(), "Save financial view");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(JSON.stringify(payload)).not.toContain("listingIds");
     expect(JSON.stringify(payload)).not.toContain("watchlistVersion");
     expect(JSON.stringify(payload)).not.toContain('"scope"');
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial threshold 1").props.value).toBe("10");
     expect(text(render())).toContain("3 of 3 saved listings selected");
     click(render(), "Apply Q4 liquidity cover");
@@ -689,7 +1232,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("detaches a starter from the selected saved screen and round-trips edited criteria using saved v1", async () => {
+  it("detaches a starter from the selected saved screen and round-trips edited criteria and columns using saved v2", async () => {
     const legacy = {
       id: "financial-screen-original",
       name: "Original financial screen",
@@ -707,38 +1250,35 @@ describe("PersonalFinancialScreener", () => {
       payload: { schemaVersion: 1, views: [structuredClone(legacy)] },
     });
     await mount();
-    change(render(), "Saved financial screen", legacy.id);
-    click(render(), "Load financial criteria");
-    change(render(), "Financial screen name", "Unsaved rename");
+    change(render(), "Saved financial view", legacy.id);
+    click(render(), "Load financial view");
+    change(render(), "Financial view name", "Unsaved rename");
     click(render(), "Apply Growth with cash after PP&E");
-    expect(input(render(), "Saved financial screen").props.value).toBe("");
-    expect(input(render(), "Financial screen name").props.value).toBe("");
-    expect(button(render(), "Load financial criteria").props.disabled).toBe(
-      true,
-    );
-    expect(button(render(), "Delete financial screen").props.disabled).toBe(
-      true,
-    );
-    click(render(), "Save financial screen");
+    expect(input(render(), "Saved financial view").props.value).toBe("");
+    expect(input(render(), "Financial view name").props.value).toBe("");
+    expect(button(render(), "Load financial view").props.disabled).toBe(true);
+    expect(button(render(), "Delete financial view").props.disabled).toBe(true);
+    click(render(), "Save financial view");
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
     change(render(), "Financial threshold 1", "7.5");
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Edited growth starter");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Edited growth starter");
+    click(render(), "Save financial view");
     await flush();
     const [version, payload] = api.savePersonalFinancialSavedViews.mock
       .calls[0] as [number, PersonalFinancialSavedViewsPayloadDto];
     expect(version).toBe(3);
     expect(Object.keys(payload).sort()).toEqual(["schemaVersion", "views"]);
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(payload.views).toHaveLength(2);
-    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[0]).toEqual({ ...legacy, display: null });
     expect(payload.views[1]?.id).not.toBe(legacy.id);
     expect(Object.keys(payload.views[1]!).sort()).toEqual([
       "createdAgainstCatalogSnapshotSha256",
       "createdAgainstFinancialSnapshotSha256",
       "criteria",
+      "display",
       "id",
       "name",
     ]);
@@ -756,17 +1296,17 @@ describe("PersonalFinancialScreener", () => {
       sort: { field: "revenueGrowth", direction: "desc" },
     });
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial threshold 1").props.value).toBe("7.5");
     expect(input(render(), "Financial calendar year").props.value).toBe(2009);
     expect(input(render(), "Financial company filter").props.value).toBe(
       "Retained company",
     );
     expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
-    change(render(), "Saved financial screen", legacy.id);
-    click(render(), "Load financial criteria");
+    change(render(), "Saved financial view", legacy.id);
+    click(render(), "Load financial view");
     expect(input(render(), "Financial sort field").props.value).toBe("symbol");
-    expect(input(render(), "Financial screen name").props.value).toBe(
+    expect(input(render(), "Financial view name").props.value).toBe(
       legacy.name,
     );
     expect(
@@ -801,13 +1341,13 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "In-flight saved screen");
+    change(render(), "Financial view name", "In-flight saved screen");
     const saving = deferred<{
       version: number;
       payload: PersonalFinancialSavedViewsPayloadDto;
     }>();
     api.savePersonalFinancialSavedViews.mockReturnValueOnce(saving.promise);
-    click(render(), "Save financial screen");
+    click(render(), "Save financial view");
     const pendingPayload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
     expect(
@@ -815,17 +1355,17 @@ describe("PersonalFinancialScreener", () => {
     ).toBe(true);
     click(render(), "Apply Cash flow relative to income");
     expect(input(render(), "Financial sort field").props.value).toBe("symbol");
-    expect(input(render(), "Financial screen name").props.value).toBe(
+    expect(input(render(), "Financial view name").props.value).toBe(
       "In-flight saved screen",
     );
     saving.resolve({ version: 1, payload: pendingPayload });
     await flush();
-    expect(input(render(), "Saved financial screen").props.value).toBe(
+    expect(input(render(), "Saved financial view").props.value).toBe(
       pendingPayload.views[0]?.id,
     );
     click(render(), "Apply Cash flow relative to income");
-    expect(input(render(), "Saved financial screen").props.value).toBe("");
-    expect(input(render(), "Financial screen name").props.value).toBe("");
+    expect(input(render(), "Saved financial view").props.value).toBe("");
+    expect(input(render(), "Financial view name").props.value).toBe("");
     expect(input(render(), "Financial metric 1").props.value).toBe(
       "operatingCashFlowToNetIncome",
     );
@@ -879,12 +1419,12 @@ describe("PersonalFinancialScreener", () => {
       "https://www.sec.gov/Archives/edgar/data/1/000000000125000001/0000000001-25-000001-index.html",
       "https://www.sec.gov/Archives/edgar/data/1/000000000124000002/0000000001-24-000002-index.html",
     ]);
-    change(render(), "Financial screen name", "Revenue change");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Revenue change");
+    click(render(), "Save financial view");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(payload.views[0]?.criteria).toEqual(
       (
         api.screenPersonalFinancials.mock
@@ -892,7 +1432,7 @@ describe("PersonalFinancialScreener", () => {
       ).criteria,
     );
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial metric 1").props.value).toBe(
       "revenueGrowth",
     );
@@ -1104,7 +1644,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("keeps hidden filters and sorting explicit while custom columns stay outside requests and saved v1", async () => {
+  it("keeps hidden filters and sorting explicit while custom columns stay outside requests and persist in saved v2", async () => {
     await mount();
     click(render(), "Add financial filter");
     change(render(), "Financial metric 1", "operatingCashFlowLessPpePurchases");
@@ -1153,17 +1693,18 @@ describe("PersonalFinancialScreener", () => {
       "identityText",
       "sort",
     ]);
-    change(render(), "Financial screen name", "Hidden financial filters");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Hidden financial filters");
+    click(render(), "Save financial view");
     await flush();
     const saved = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(saved.schemaVersion).toBe(1);
+    expect(saved.schemaVersion).toBe(2);
     expect(saved.views[0]?.criteria).toEqual(firstRequest.criteria);
     expect(Object.keys(saved.views[0]!).sort()).toEqual([
       "createdAgainstCatalogSnapshotSha256",
       "createdAgainstFinancialSnapshotSha256",
       "criteria",
+      "display",
       "id",
       "name",
     ]);
@@ -1178,7 +1719,7 @@ describe("PersonalFinancialScreener", () => {
     });
     click(render(), "Reset financial criteria");
     expect(input(render(), "Financial column view").props.value).toBe("custom");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial column view").props.value).toBe("custom");
     expect(input(render(), "Financial metric 1").props.value).toBe(
       "operatingCashFlowLessPpePurchases",
@@ -1605,8 +2146,8 @@ describe("PersonalFinancialScreener", () => {
       await mount();
       submit(render());
       await flush();
-      change(render(), "Financial screen name", "Inspection criteria");
-      click(render(), "Save financial screen");
+      change(render(), "Financial view name", "Inspection criteria");
+      click(render(), "Save financial view");
       await flush();
       const triggerFocus = vi.fn();
       const trigger = {
@@ -1620,7 +2161,7 @@ describe("PersonalFinancialScreener", () => {
       else if (action === "sort")
         change(render(), "Financial sort field", "currentRatio");
       else if (action === "reset") click(render(), "Reset financial criteria");
-      else if (action === "load") click(render(), "Load financial criteria");
+      else if (action === "load") click(render(), "Load financial view");
       else if (action === "view")
         change(render(), "Financial column view", "q4Balances");
       else toggleColumn(render(), "Revenue", false);
@@ -1658,7 +2199,7 @@ describe("PersonalFinancialScreener", () => {
         api.fetchPersonalFinancialSavedViews.mockRejectedValueOnce(
           new PersonalWorkspaceApiError("session_unavailable"),
         );
-        click(render(), "Reload saved screens");
+        click(render(), "Reload saved views");
         await flush();
       }
       render();
@@ -1845,7 +2386,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("saves and reloads signed current-balance criteria in saved v1 with independently selected columns", async () => {
+  it("saves and reloads signed current-balance criteria and selected columns in saved v2", async () => {
     const legacy = {
       id: "legacy-screen",
       name: "Annual screen",
@@ -1906,17 +2447,17 @@ describe("PersonalFinancialScreener", () => {
     expect(text(applied)).toContain(
       "Current assets less current liabilities (USD) ≤ -0.00001 USD",
     );
-    change(render(), "Financial screen name", "Current-balance shortfall");
-    click(render(), "Save financial screen as new");
+    change(render(), "Financial view name", "Current-balance shortfall");
+    click(render(), "Save financial view as new");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.schemaVersion).toBe(1);
-    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.schemaVersion).toBe(2);
+    expect(payload.views[0]).toEqual({ ...legacy, display: null });
     expect(payload.views[1]?.criteria).toEqual(request.criteria);
     expect(payload.views[1]?.criteria).not.toHaveProperty("visibleMetrics");
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial metric 1").props.value).toBe(
       "currentAssetsLessCurrentLiabilities",
     );
@@ -2087,13 +2628,13 @@ describe("PersonalFinancialScreener", () => {
     change(render(), "Financial sort field", "currentRatio");
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Q4 liquidity");
-    click(render(), "Save financial screen as new");
+    change(render(), "Financial view name", "Q4 liquidity");
+    click(render(), "Save financial view as new");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.schemaVersion).toBe(1);
-    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.schemaVersion).toBe(2);
+    expect(payload.views[0]).toEqual({ ...legacy, display: null });
     expect(
       payload.views[1]!.criteria.clauses.map((clause) => clause.field),
     ).toEqual(["currentAssets", "currentLiabilities", "currentRatio"]);
@@ -2102,7 +2643,7 @@ describe("PersonalFinancialScreener", () => {
     expect(
       ratioCell(render(), "Current assets / current liabilities (×)"),
     ).toBeUndefined();
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Financial sort field").props.value).toBe(
       "currentRatio",
     );
@@ -2462,8 +3003,8 @@ describe("PersonalFinancialScreener", () => {
         payload: { schemaVersion: 1, views: [legacy] },
       });
       await mount();
-      change(render(), "Saved financial screen", legacy.id);
-      click(render(), "Load financial criteria");
+      change(render(), "Saved financial view", legacy.id);
+      click(render(), "Load financial view");
       expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
       submit(render());
       await flush();
@@ -2500,17 +3041,17 @@ describe("PersonalFinancialScreener", () => {
           page: { offset: 25, limit: 25 },
         }),
       );
-      change(render(), "Financial screen name", `Screen ${metric}`);
-      click(render(), "Save financial screen as new");
+      change(render(), "Financial view name", `Screen ${metric}`);
+      click(render(), "Save financial view as new");
       await flush();
       const payload = api.savePersonalFinancialSavedViews.mock
         .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
       expect(api.savePersonalFinancialSavedViews.mock.calls[0]?.[0]).toBe(4);
-      expect(payload.schemaVersion).toBe(1);
-      expect(payload.views[0]).toEqual(legacy);
+      expect(payload.schemaVersion).toBe(2);
+      expect(payload.views[0]).toEqual({ ...legacy, display: null });
       expect(payload.views[1]?.criteria).toEqual(grossRequest.criteria);
       click(render(), "Reset financial criteria");
-      click(render(), "Load financial criteria");
+      click(render(), "Load financial view");
       expect(input(render(), "Financial metric 1").props.value).toBe(metric);
       expect(input(render(), "Financial sort field").props.value).toBe(metric);
       expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(3);
@@ -2625,12 +3166,8 @@ describe("PersonalFinancialScreener", () => {
     expect(
       elements(cell).filter((element) => element.type === "a"),
     ).toHaveLength(2);
-    change(
-      render(),
-      "Financial screen name",
-      "Gross profit over broad revenue",
-    );
-    click(render(), "Save financial screen as new");
+    change(render(), "Financial view name", "Gross profit over broad revenue");
+    click(render(), "Save financial view as new");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
@@ -2640,7 +3177,7 @@ describe("PersonalFinancialScreener", () => {
       sort: { field: "grossMargin", direction: "desc" },
     });
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Revenue basis").props.value).toBe("Revenues");
     expect(input(render(), "Financial metric 1").props.value).toBe(
       "grossMargin",
@@ -3540,8 +4077,8 @@ describe("PersonalFinancialScreener", () => {
       payload: { schemaVersion: 1, views: [legacy] },
     });
     await mount();
-    change(render(), "Saved financial screen", legacy.id);
-    click(render(), "Load financial criteria");
+    change(render(), "Saved financial view", legacy.id);
+    click(render(), "Load financial view");
     expect(input(render(), "Revenue basis").props.value).toBe("agreement");
     change(render(), "Revenue basis", "Revenues");
     api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -3550,21 +4087,21 @@ describe("PersonalFinancialScreener", () => {
     });
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Broad revenue");
-    click(render(), "Save financial screen as new");
+    change(render(), "Financial view name", "Broad revenue");
+    click(render(), "Save financial view as new");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[0]).toEqual({ ...legacy, display: null });
     expect(payload.views[0]?.criteria).not.toHaveProperty("revenueBasis");
     expect(payload.views[1]?.criteria.revenueBasis).toBe("Revenues");
     click(render(), "Reset financial criteria");
     expect(input(render(), "Revenue basis").props.value).toBe("agreement");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     expect(input(render(), "Revenue basis").props.value).toBe("Revenues");
     expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
-    change(render(), "Saved financial screen", legacy.id);
-    click(render(), "Load financial criteria");
+    change(render(), "Saved financial view", legacy.id);
+    click(render(), "Load financial view");
     expect(input(render(), "Revenue basis").props.value).toBe("agreement");
     submit(render());
     await flush();
@@ -3814,8 +4351,8 @@ describe("PersonalFinancialScreener", () => {
     change(view, "Financial sort field", "revenue");
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Large revenue");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Large revenue");
+    click(render(), "Save financial view");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
@@ -3824,6 +4361,7 @@ describe("PersonalFinancialScreener", () => {
       "createdAgainstCatalogSnapshotSha256",
       "createdAgainstFinancialSnapshotSha256",
       "criteria",
+      "display",
       "id",
       "name",
     ]);
@@ -3839,7 +4377,7 @@ describe("PersonalFinancialScreener", () => {
     });
     expect(payload.views[0]?.criteria).not.toHaveProperty("revenueBasis");
     click(render(), "Reset financial criteria");
-    click(render(), "Load financial criteria");
+    click(render(), "Load financial view");
     view = render();
     expect(input(view, "Financial threshold 1").props.value).toBe(
       "1000000000.0001",
@@ -3849,8 +4387,8 @@ describe("PersonalFinancialScreener", () => {
     expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
     submit(view);
     await flush();
-    change(render(), "Financial screen name", "Renamed revenue");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Renamed revenue");
+    click(render(), "Save financial view");
     await flush();
     expect(api.savePersonalFinancialSavedViews.mock.calls.at(-1)?.[0]).toBe(1);
     expect(
@@ -3860,10 +4398,10 @@ describe("PersonalFinancialScreener", () => {
         )?.[1] as PersonalFinancialSavedViewsPayloadDto
       ).views,
     ).toHaveLength(1);
-    click(render(), "Delete financial screen");
+    click(render(), "Delete financial view");
     await flush();
     expect(api.savePersonalFinancialSavedViews.mock.calls.at(-1)?.[1]).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       views: [],
     });
   });
@@ -3926,37 +4464,35 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
-    expect(
-      button(render(), "Save financial screen as new").props.disabled,
-    ).toBe(true);
-    change(render(), "Financial screen name", "New screen");
-    click(render(), "Save financial screen");
+    expect(button(render(), "Save financial view as new").props.disabled).toBe(
+      true,
+    );
+    change(render(), "Financial view name", "New screen");
+    click(render(), "Save financial view");
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
-    expect(text(render())).toContain("Up to 20 financial screens");
-    change(render(), "Saved financial screen", "screen-1");
-    change(render(), "Financial screen name", "SCREEN 0");
-    click(render(), "Save financial screen");
+    expect(text(render())).toContain("Up to 20 financial views");
+    change(render(), "Saved financial view", "screen-1");
+    change(render(), "Financial view name", "SCREEN 0");
+    click(render(), "Save financial view");
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
-    expect(text(render())).toContain("Use a unique screen name");
+    expect(text(render())).toContain("Use a unique view name");
   });
 
   it("requires saved-view reconciliation after a conflicting write", async () => {
     await mount();
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Profitable");
+    change(render(), "Financial view name", "Profitable");
     api.savePersonalFinancialSavedViews.mockRejectedValueOnce(
       new PersonalWorkspaceApiError("conflict"),
     );
-    click(render(), "Save financial screen");
+    click(render(), "Save financial view");
     await flush();
     expect(text(render())).toContain("changed elsewhere");
-    expect(button(render(), "Save financial screen").props.disabled).toBe(true);
-    click(render(), "Reload saved screens");
+    expect(button(render(), "Save financial view").props.disabled).toBe(true);
+    click(render(), "Reload saved views");
     await flush();
-    expect(button(render(), "Save financial screen").props.disabled).toBe(
-      false,
-    );
+    expect(button(render(), "Save financial view").props.disabled).toBe(false);
   });
 
   it("clears private data on session expiry and aborts other pending work", async () => {
@@ -3995,7 +4531,7 @@ describe("PersonalFinancialScreener", () => {
     api.fetchPersonalFinancialSavedViews.mockRejectedValueOnce(
       new PersonalWorkspaceApiError("session_unavailable"),
     );
-    click(render(), "Reload saved screens");
+    click(render(), "Reload saved views");
     await flush();
     expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
     expect(screenSignal.aborted).toBe(true);
@@ -4004,7 +4540,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(render())).not.toContain("Private saved criteria");
     expect(cashIncomeCell(render())).toBeUndefined();
     expect(text(render())).not.toContain("Open ONE");
-    expect(input(render(), "Financial screen name").props.value).toBe("");
+    expect(input(render(), "Financial view name").props.value).toBe("");
     expect(activityCompletion).toHaveBeenCalledOnce();
   });
 
@@ -4033,13 +4569,13 @@ describe("PersonalFinancialScreener", () => {
     await mount();
     submit(render());
     await flush();
-    change(render(), "Financial screen name", "Pending");
+    change(render(), "Financial view name", "Pending");
     const pending = deferred<{
       version: number;
       payload: PersonalFinancialSavedViewsPayloadDto;
     }>();
     api.savePersonalFinancialSavedViews.mockReturnValueOnce(pending.promise);
-    click(render(), "Save financial screen");
+    click(render(), "Save financial view");
     const signal = api.savePersonalFinancialSavedViews.mock.calls.at(
       -1,
     )?.[2] as AbortSignal;
@@ -4047,7 +4583,9 @@ describe("PersonalFinancialScreener", () => {
     expect(signal.aborted).toBe(true);
     pending.resolve({ version: 1, payload: { schemaVersion: 1, views: [] } });
     await flush();
-    expect(text(render())).not.toContain("Financial screen criteria saved");
+    expect(text(render())).not.toContain(
+      "Financial view criteria and columns saved",
+    );
   });
 
   it("makes no requests when the workspace is unavailable and clears an active screen when disabled", async () => {
@@ -4619,8 +5157,8 @@ describe("PersonalFinancialScreener", () => {
     async (action) => {
       await mountComparison();
       if (action === "load") {
-        change(render(), "Financial screen name", "Comparison criteria");
-        click(render(), "Save financial screen");
+        change(render(), "Financial view name", "Comparison criteria");
+        click(render(), "Save financial view");
         await flush();
       }
       const staleSelect = button(render(), "Select CMP2 for comparison");
@@ -4646,7 +5184,7 @@ describe("PersonalFinancialScreener", () => {
         click(render(), "Reset financial criteria");
       else if (action === "starter")
         click(render(), "Apply Q4 liquidity cover");
-      else click(render(), "Load financial criteria");
+      else click(render(), "Load financial view");
       staleSelect.props.onClick?.();
       staleCompare.props.onClick?.();
       staleResearch.props.onClick?.();
@@ -4865,7 +5403,7 @@ describe("PersonalFinancialScreener", () => {
         api.fetchPersonalFinancialSavedViews.mockRejectedValueOnce(
           new PersonalWorkspaceApiError("session_unavailable"),
         );
-        click(render(), "Reload saved screens");
+        click(render(), "Reload saved views");
         await flush();
       } else harness.unmount();
       if (boundary !== "unmount") render();
@@ -5046,12 +5584,12 @@ describe("PersonalFinancialScreener", () => {
     expect(props.onAddToWatchlist).toHaveBeenCalledWith(
       expect.objectContaining({ symbol: "CMP1" }),
     );
-    change(render(), "Financial screen name", "Same ordinary saved criteria");
-    click(render(), "Save financial screen");
+    change(render(), "Financial view name", "Same ordinary saved criteria");
+    click(render(), "Save financial view");
     await flush();
     const payload = api.savePersonalFinancialSavedViews.mock
       .calls[0]![1] as PersonalFinancialSavedViewsPayloadDto;
-    expect(payload.schemaVersion).toBe(1);
+    expect(payload.schemaVersion).toBe(2);
     expect(Object.keys(payload.views[0]!.criteria).sort()).toEqual([
       "calendarYear",
       "clauses",
@@ -5174,6 +5712,21 @@ function comparisonResponse(
         },
       };
     }),
+  };
+}
+
+function savedViewFixture(name: string): PersonalFinancialSavedViewDto {
+  return {
+    id: `financial-screen-${name}`,
+    name,
+    criteria: {
+      calendarYear: 2024,
+      identityText: name,
+      clauses: [],
+      sort: { field: "symbol", direction: "asc" },
+    },
+    createdAgainstCatalogSnapshotSha256: sha("a"),
+    createdAgainstFinancialSnapshotSha256: sha("c"),
   };
 }
 

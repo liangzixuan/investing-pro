@@ -233,6 +233,7 @@ export async function savePersonalFinancialSavedViews(
     !isSavedPayload(payload)
   )
     throw new PersonalWorkspaceApiError("invalid_request");
+  const submittedPayload = structuredClone(payload);
   let idempotencyKey: string;
   try {
     idempotencyKey = `financial-screen-${globalThis.crypto.randomUUID()}`;
@@ -245,7 +246,7 @@ export async function savePersonalFinancialSavedViews(
     {
       method: "POST",
       signal,
-      body: JSON.stringify({ payload }),
+      body: JSON.stringify({ payload: submittedPayload }),
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -284,7 +285,7 @@ export async function savePersonalFinancialSavedViews(
   ) {
     throw new PersonalWorkspaceApiError("invalid_response");
   }
-  return { version: value.version, payload: structuredClone(payload) };
+  return { version: value.version, payload: submittedPayload };
 }
 
 function isSavedPayload(
@@ -292,7 +293,7 @@ function isSavedPayload(
 ): value is PersonalFinancialSavedViewsPayloadDto {
   if (
     !keys(value, ["schemaVersion", "views"]) ||
-    value.schemaVersion !== 1 ||
+    (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
     !Array.isArray(value.views) ||
     value.views.length > 20 ||
     !value.views.every(
@@ -303,12 +304,14 @@ function isSavedPayload(
           "criteria",
           "createdAgainstCatalogSnapshotSha256",
           "createdAgainstFinancialSnapshotSha256",
+          ...(value.schemaVersion === 2 ? ["display"] : []),
         ]) &&
         matches(view.id, identifier) &&
         displayText(view.name, 80) &&
         sha(view.createdAgainstCatalogSnapshotSha256) &&
         sha(view.createdAgainstFinancialSnapshotSha256) &&
-        isPersonalFinancialScreenCriteria(view.criteria),
+        isPersonalFinancialScreenCriteria(view.criteria) &&
+        (value.schemaVersion === 1 || isSavedDisplay(view.display)),
     )
   )
     return false;
@@ -317,6 +320,23 @@ function isSavedPayload(
     new Set(views.map((view) => view.id)).size === views.length &&
     new Set(views.map((view) => view.name.toLocaleLowerCase("en-US"))).size ===
       views.length
+  );
+}
+
+function isSavedDisplay(value: unknown): boolean {
+  if (value === null) return true;
+  if (
+    !keys(value, ["visibleMetrics"]) ||
+    !Array.isArray(value.visibleMetrics) ||
+    value.visibleMetrics.length < 1 ||
+    value.visibleMetrics.length > metrics.length
+  )
+    return false;
+  const columns = value.visibleMetrics;
+  const canonical = metrics.filter((metric) => columns.includes(metric));
+  return (
+    canonical.length === columns.length &&
+    canonical.every((metric, index) => metric === columns[index])
   );
 }
 

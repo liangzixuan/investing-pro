@@ -4806,6 +4806,177 @@ describe("saved financial criteria", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it.each([0, 3])(
+    "round-trips mixed legacy and display views with record version %s",
+    async (version) => {
+      const legacy = savedPayload().views[0]!;
+      const payload: PersonalFinancialSavedViewsPayloadDto = {
+        schemaVersion: 2,
+        views: [
+          { ...legacy, display: null },
+          {
+            ...legacy,
+            id: "screen-cash",
+            name: "Cash discipline",
+            display: {
+              visibleMetrics: ["operatingCashFlow", "revenueGrowth"],
+            },
+          },
+        ],
+      };
+      fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+      expect(
+        (await fetchPersonalFinancialSavedViews(signal()))?.payload,
+      ).toEqual(payload);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("GET");
+      fetchMock.mockResolvedValueOnce(
+        json(receipt(version + 1), version === 0 ? 201 : 200),
+      );
+      const saved = await savePersonalFinancialSavedViews(
+        version,
+        payload,
+        signal(),
+      );
+      expect(saved).toEqual({ version: version + 1, payload });
+      expect(saved.payload).not.toBe(payload);
+      expect(saved.payload.views[1]).not.toBe(payload.views[1]);
+      const options = fetchMock.mock.calls[1]?.[1];
+      expect(options?.body).toBe(JSON.stringify({ payload }));
+      expect(options?.headers).toMatchObject(
+        version === 0 ? { "If-None-Match": "*" } : { "If-Match": '"v3"' },
+      );
+      expect(saved.payload.views[0]).toEqual({ ...legacy, display: null });
+    },
+  );
+
+  it("admits every existing metric in canonical order without creating source data", async () => {
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 2,
+      views: [
+        {
+          ...savedPayload().views[0]!,
+          display: { visibleMetrics: [...PERSONAL_FINANCIAL_SCREEN_METRICS] },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(
+      new URL(
+        "http://127.0.0.1:3100/v1/personal-filing/workspace/financial-screen/saved-views",
+      ),
+    );
+  });
+
+  it.each([
+    ["missing display", undefined],
+    ["empty object", {}],
+    ["empty columns", { visibleMetrics: [] }],
+    ["unknown column", { visibleMetrics: ["price"] }],
+    ["duplicate columns", { visibleMetrics: ["revenue", "revenue"] }],
+    ["noncanonical order", { visibleMetrics: ["netIncome", "revenue"] }],
+    [
+      "too many columns",
+      { visibleMetrics: Array.from({ length: 19 }, () => "revenue") },
+    ],
+    ["non-array columns", { visibleMetrics: "revenue" }],
+    ["null columns", { visibleMetrics: null }],
+    ["non-string column", { visibleMetrics: [1] }],
+    ["sparse columns", { visibleMetrics: new Array<string>(1) }],
+    ["extra display key", { visibleMetrics: ["revenue"], sort: "desc" }],
+    ["stored results", { visibleMetrics: ["revenue"], rows: [] }],
+    ["array display", ["revenue"]],
+    ["primitive display", false],
+  ])("rejects v2 %s on both read and write", async (_label, display) => {
+    const payload = {
+      schemaVersion: 2,
+      views: [
+        {
+          ...savedPayload().views[0]!,
+          ...(display === undefined ? {} : { display }),
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    await expect(
+      fetchPersonalFinancialSavedViews(signal()),
+    ).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    fetchMock.mockClear();
+    await expect(
+      savePersonalFinancialSavedViews(
+        1,
+        payload as PersonalFinancialSavedViewsPayloadDto,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      schemaVersion: 1,
+      views: [{ ...savedPayload().views[0]!, display: null }],
+    },
+    { schemaVersion: 3, views: [] },
+    {
+      schemaVersion: 2,
+      views: [
+        { ...savedPayload().views[0]!, display: null, scope: "watchlist" },
+      ],
+    },
+    {
+      schemaVersion: 2,
+      views: [{ ...savedPayload().views[0]!, display: null }],
+      listingIds: ["listing-one"],
+    },
+  ])("rejects schema mixing and transient fields: %j", async (payload) => {
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    await expect(
+      fetchPersonalFinancialSavedViews(signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    fetchMock.mockClear();
+    await expect(
+      savePersonalFinancialSavedViews(
+        1,
+        payload as PersonalFinancialSavedViewsPayloadDto,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns the submitted layout snapshot even if the caller changes its draft while saving", async () => {
+    const payload = {
+      schemaVersion: 2 as const,
+      views: [
+        {
+          ...savedPayload().views[0]!,
+          display: { visibleMetrics: ["revenue" as const] },
+        },
+      ],
+    };
+    const submitted = structuredClone(payload);
+    let resolveResponse!: (value: Response) => void;
+    const pending = new Promise<Response>((resolve) => {
+      resolveResponse = resolve;
+    });
+    fetchMock.mockReturnValueOnce(pending);
+    const saving = savePersonalFinancialSavedViews(1, payload, signal());
+    payload.views[0]!.name = "Changed while saving";
+    payload.views[0]!.display.visibleMetrics.splice(0);
+    resolveResponse(json(receipt(2)));
+    expect(await saving).toEqual({ version: 2, payload: submitted });
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ payload: submitted }),
+    );
+  });
+
   it("loads only the admitted settings record and treats missing records as empty", async () => {
     fetchMock
       .mockResolvedValueOnce(json({}, 404))
@@ -5744,7 +5915,10 @@ function historicalResponse(version: "1.0.0" | "2.0.0" = "1.0.0") {
     },
   };
 }
-function savedPayload(): PersonalFinancialSavedViewsPayloadDto {
+function savedPayload(): Extract<
+  PersonalFinancialSavedViewsPayloadDto,
+  { schemaVersion: 1 }
+> {
   return {
     schemaVersion: 1,
     views: [

@@ -47,6 +47,7 @@ import {
   PERSONAL_SEC_INSTANT_CONCEPTS,
   PERSONAL_SEC_REVENUE_CONCEPTS,
   PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
+  PERSONAL_FINANCIAL_SCREEN_METRICS,
   type PersonalSecFinancialSnapshotDto,
 } from "@research-cockpit/contracts";
 import {
@@ -1958,6 +1959,277 @@ describe("cash after PP&E / selected revenue route integration", () => {
   });
 });
 
+describe("personal financial reusable saved views", () => {
+  it("reads v1 unchanged and upgrades only an explicit save while preserving legacy criteria and creation digests", async () => {
+    const f = await readyApp();
+    const original = savedViewsPayload(f.snapshotSha256);
+    const legacy = {
+      ...original,
+      views: [
+        {
+          ...original.views[0]!,
+          criteria: { ...original.views[0]!.criteria, calendarYear: 2009 },
+          createdAgainstCatalogSnapshotSha256: `sha256:${"d".repeat(64)}`,
+          createdAgainstFinancialSnapshotSha256: `sha256:${"e".repeat(64)}`,
+        },
+        { ...original.views[0]!, id: "second-view", name: "Second view" },
+      ],
+    } as const;
+    const created = await putSavedViews(
+      f.app,
+      f.cookie,
+      legacy,
+      0,
+      "reusable-legacy-create",
+    );
+    expect(created.statusCode).toBe(201);
+    const legacyRecord = f.vault.record;
+    const mutation = vi.spyOn(f.vault, "putRecord");
+    const loaded = await getSavedViews(f.app, f.cookie);
+    expect(loaded.statusCode).toBe(200);
+    const loadedPayload = loaded.json<{
+      payload: PersonalFinancialSavedViewsPayloadDto;
+    }>().payload;
+    expect(loadedPayload).toEqual(legacy);
+    expect(loaded.headers.etag).toBe('"v1"');
+    expect(f.vault.record).toBe(legacyRecord);
+    expect(mutation).not.toHaveBeenCalled();
+    expect(loadedPayload.views[0]).not.toHaveProperty("display");
+    expect(loadedPayload.views[0]!.criteria).not.toHaveProperty("revenueBasis");
+
+    const upgraded: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 2,
+      views: [
+        { ...legacy.views[0], display: null },
+        {
+          ...legacy.views[1],
+          display: { visibleMetrics: ["netIncome", "currentRatio"] },
+        },
+      ],
+    };
+    const saved = await putSavedViews(
+      f.app,
+      f.cookie,
+      upgraded,
+      1,
+      "reusable-explicit-upgrade",
+    );
+    expect(saved.statusCode).toBe(200);
+    expect(saved.headers.etag).toBe('"v2"');
+    expect(mutation).toHaveBeenCalledTimes(1);
+    const upgradedRecord = f.vault.record;
+    const reloaded = await getSavedViews(f.app, f.cookie);
+    expect(reloaded.statusCode).toBe(200);
+    expect(reloaded.json<LocalResearchRecord>().payload).toEqual(upgraded);
+    expect(reloaded.headers.etag).toBe('"v2"');
+    expect(f.vault.record).toBe(upgradedRecord);
+    expect(mutation).toHaveBeenCalledTimes(1);
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+
+    const stale = await putSavedViews(
+      f.app,
+      f.cookie,
+      { ...upgraded, views: [] },
+      1,
+      "reusable-stale-upgrade",
+    );
+    expect(stale.statusCode).toBe(409);
+    expect(f.vault.record).toBe(upgradedRecord);
+  });
+
+  it("round-trips one through all eighteen columns without source reads or changing screen results", async () => {
+    const f = await readyApp();
+    const request = screenRequest(f.snapshotSha256);
+    const before = await screen(f.app, f.cookie, request);
+    expect(before.statusCode).toBe(200);
+    const base = savedViewsPayload(f.snapshotSha256).views[0]!;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 2,
+      views: [
+        { ...base, display: { visibleMetrics: ["revenueGrowth"] } },
+        {
+          ...base,
+          id: "all-financial-columns",
+          name: "All financial columns",
+          display: { visibleMetrics: [...PERSONAL_FINANCIAL_SCREEN_METRICS] },
+        },
+      ],
+    };
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(18);
+    const saved = await putSavedViews(
+      f.app,
+      f.cookie,
+      payload,
+      0,
+      "reusable-v2-columns-create",
+    );
+    expect(saved.statusCode).toBe(201);
+    const record = f.vault.record;
+    expect(
+      (await getSavedViews(f.app, f.cookie)).json<LocalResearchRecord>()
+        .payload,
+    ).toEqual(payload);
+    expect(f.provider.loadSnapshot).toHaveBeenCalledTimes(1);
+    const after = await screen(f.app, f.cookie, request);
+    expect(after.statusCode).toBe(200);
+    expect(after.json()).toEqual(before.json());
+    const body = after.json<PersonalFinancialScreenResponseDto>();
+    expect(body.sources.length + body.priorRevenueSources.length).toBe(13);
+    expect(body.schemaVersion).toBe("9.0.0");
+    expect(body.formulaVersion).toBe("1.7.0");
+    expect(f.provider.loadSnapshot).toHaveBeenCalledTimes(2);
+    expect(f.vault.record).toBe(record);
+  });
+
+  it("rejects malformed displays and version shapes on both write and read without mutating the record", async () => {
+    const f = await readyApp();
+    const original = savedViewsPayload(f.snapshotSha256);
+    const base = original.views[0]!;
+    const valid = {
+      schemaVersion: 2,
+      views: [{ ...base, display: { visibleMetrics: ["revenue"] } }],
+    } as const;
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          valid,
+          0,
+          "reusable-validation-create",
+        )
+      ).statusCode,
+    ).toBe(201);
+    const record = f.vault.record!;
+    const mutation = vi.spyOn(f.vault, "putRecord");
+    const invalidDisplays = [
+      [],
+      false,
+      "private-display-canary",
+      {},
+      { visibleMetrics: null },
+      { visibleMetrics: "revenue" },
+      { visibleMetrics: [] },
+      { visibleMetrics: ["revenue", "revenue"] },
+      { visibleMetrics: ["private-display-canary"] },
+      { visibleMetrics: ["symbol"] },
+      { visibleMetrics: [null] },
+      { visibleMetrics: ["currentRatio", "revenue"] },
+      {
+        visibleMetrics: [...PERSONAL_FINANCIAL_SCREEN_METRICS, "revenue"],
+      },
+      { visibleMetrics: ["revenue"], preset: "private-display-canary" },
+    ];
+    const invalidPayloads = [
+      ...invalidDisplays.map((display) => ({
+        schemaVersion: 2,
+        views: [{ ...base, display }],
+      })),
+      { schemaVersion: 2, views: [base] },
+      { schemaVersion: 1, views: [{ ...base, display: null }] },
+      { schemaVersion: 1, views: valid.views },
+      { schemaVersion: 3, views: valid.views },
+      { ...valid, unexpected: "private-display-canary" },
+      { ...valid, views: [{ ...valid.views[0], unexpected: true }] },
+      {
+        ...valid,
+        views: [{ ...valid.views[0], scope: watchlistScope() }],
+      },
+      {
+        ...valid,
+        views: [
+          {
+            ...valid.views[0],
+            criteria: { ...base.criteria, display: valid.views[0].display },
+          },
+        ],
+      },
+    ];
+    for (const [index, payload] of invalidPayloads.entries()) {
+      const written = await putSavedViews(
+        f.app,
+        f.cookie,
+        payload,
+        1,
+        `reusable-invalid-${index}`,
+      );
+      expect(written.statusCode, JSON.stringify(payload)).toBe(400);
+      expect(written.payload).not.toContain("private-display-canary");
+      expect(f.vault.record).toBe(record);
+      const malformedRecord = {
+        ...record,
+        payload: payload as unknown as JsonValue,
+      };
+      f.vault.record = malformedRecord;
+      const read = await getSavedViews(f.app, f.cookie);
+      expect(read.statusCode, JSON.stringify(payload)).toBe(409);
+      expect(read.headers.etag).toBe('"v1"');
+      expect(read.payload).not.toContain("private-display-canary");
+      expect(f.vault.record).toBe(malformedRecord);
+      f.vault.record = record;
+    }
+    expect(mutation).not.toHaveBeenCalled();
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("retains the twenty-view bound, normalized unique names, ids, criteria and digests in v2", async () => {
+    const f = await readyApp();
+    const base = savedViewsPayload(f.snapshotSha256).views[0]!;
+    const views = Array.from({ length: 20 }, (_, index) => ({
+      ...base,
+      id: `saved-view-${index}`,
+      name: `Saved view ${index}`,
+      display: null,
+    }));
+    const payload = { schemaVersion: 2, views };
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          payload,
+          0,
+          "reusable-twenty-views",
+        )
+      ).statusCode,
+    ).toBe(201);
+    const record = f.vault.record!;
+    for (const invalid of [
+      [...views, { ...views[0], id: "another-id", name: "Another name" }],
+      [views[0], { ...views[1], id: views[0]!.id }],
+      [views[0], { ...views[1], name: views[0]!.name.toUpperCase() }],
+      [{ ...views[0], name: " Leading space" }],
+      [{ ...views[0], name: "e\u0301" }],
+      [{ ...views[0], name: "x".repeat(81) }],
+      [{ ...views[0], name: "" }],
+      [{ ...views[0], id: "INVALID-ID" }],
+      [{ ...views[0], createdAgainstCatalogSnapshotSha256: "bad" }],
+      [{ ...views[0], createdAgainstFinancialSnapshotSha256: "bad" }],
+      [{ ...views[0], criteria: { ...base.criteria, calendarYear: 2008 } }],
+    ]) {
+      const invalidPayload = { ...payload, views: invalid };
+      expect(
+        (
+          await putSavedViews(
+            f.app,
+            f.cookie,
+            invalidPayload,
+            1,
+            "reusable-invalid-view-bound",
+          )
+        ).statusCode,
+      ).toBe(400);
+      f.vault.record = {
+        ...record,
+        payload: invalidPayload as unknown as JsonValue,
+      };
+      expect((await getSavedViews(f.app, f.cookie)).statusCode).toBe(409);
+      f.vault.record = record;
+    }
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+});
+
 describe("personal financial screen saved-watchlist scope", () => {
   it("rejects malformed or unbounded scopes before reading the vault or acquiring frames", async () => {
     const f = await readyApp();
@@ -2496,7 +2768,7 @@ function screenRequest(
 }
 function savedViewsPayload(
   catalogSnapshotSha256: string,
-): PersonalFinancialSavedViewsPayloadDto {
+): Extract<PersonalFinancialSavedViewsPayloadDto, { schemaVersion: 1 }> {
   return {
     schemaVersion: 1,
     views: [
@@ -2577,6 +2849,15 @@ function testProvider() {
     close: vi.fn(),
     loadSnapshot: vi.fn(() => Promise.resolve(snapshot())),
   };
+}
+
+function getSavedViews(app: FastifyInstance, cookie: string) {
+  return app.inject({
+    headers: ownerHeaders(cookie),
+    method: "GET",
+    remoteAddress: "127.0.0.1",
+    url: PERSONAL_FINANCIAL_SAVED_VIEWS_PATH,
+  });
 }
 
 function putSavedViews(

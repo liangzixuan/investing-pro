@@ -15,7 +15,23 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: company research workspace
+## Immediate delivery: reusable financial views
+
+Save a financial view's chosen columns with its criteria, then restore both
+when loading it. The results and comparison use the restored columns. Loading
+keeps the current Catalog/My Watchlist scope and selected listings, clears old
+results, and requires an explicit Run. It makes no SEC request or automatic write.
+
+Retain strict reads of existing version1 definitions. Loading a criteria-only
+view leaves current columns unchanged and explains this legacy behavior. An
+explicit Save or Save as stores version2 with the current columns; unrelated
+legacy views retain their identities, criteria and provenance with a null display.
+Deletion preserves the existing payload version. Keep the twenty-view limit,
+name rules, optimistic conflicts and source-digest provenance. No new metric,
+provider, formula or account behavior is part of this slice. See
+[Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md).
+
+## Delivered: company research workspace
 
 Group the existing company panels into Price, Financials, Valuation, Peers and
 SEC evidence. Keep the selected identity visible and provide a direct return
@@ -33,6 +49,11 @@ actions in comparison headers support retained companies from other pages.
 Use existing inputs and explicit Load actions; no new provider, API, storage,
 calculation or authentication change is needed. See
 [Company research](./PERSONAL_COMPANY_RESEARCH.md) for behavior and acceptance.
+
+Release `53d1315` passed 5,818 native checks, 24 builds and all five hosted jobs
+on attempt1, plus synthetic and configured Brave desktop/mobile checks. Draft
+retention, identity changes, exact return focus and source links were verified.
+The workspace checkpoint retains actual activation and verification evidence.
 
 ## Delivered: financials for My Watchlist
 

@@ -22,7 +22,9 @@ percentage thresholds use percent points; current-ratio thresholds use multiples
 Q4 instant Frame. Operating cash flow / net income (%)
 is independent of Revenue basis and requires positive reported net income.
 Open or watchlist a result using its exact catalog listing identity. Save a
-named definition to reuse criteria, then explicitly rerun it when loaded.
+named financial view to reuse criteria and chosen columns, then explicitly rerun
+it when loaded. See [Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md) for
+legacy definitions, replacement and conflict behavior.
 **Selected revenue YoY change (%)** compares the selected revenue measure with
 the prior year. Find it in All metrics or Choose columns; the other presets
 keep their existing columns. Its source inspector shows both annual operands.
@@ -50,9 +52,10 @@ an arbitrary catalog listing that is not saved.
 The active selection is temporary. Scope, selection, membership or watchlist
 version changes invalidate dependent requests, results, source inspection and
 comparison; a stale response cannot restore them. Catalog results remain
-independent of ordinary watchlist edits. Saved-v1 definitions retain criteria
-only, with no scope or membership; loading criteria keeps the current scope
-and still requires an explicit Run. No new formula or SEC concept is added.
+independent of ordinary watchlist edits. Saved views contain no scope or
+membership; loading keeps the current scope and selection and still requires an
+explicit Run. Legacy version1 definitions retain criteria only; version2 also
+stores the display columns. No new formula or SEC concept is added.
 
 ### Read and inspect results
 
@@ -65,10 +68,11 @@ for horizontal scrolling.
 
 These choices change only the displayed columns. All filters and the selected
 sort still apply, including fields outside the chosen view; their applied summary
-remains visible above the results. Column choices survive paging, reruns and
-loading saved criteria in the current owner/catalog context. They are not saved
-in criteria payload v1 and return to Overview when that context changes. Changing
-columns does not request or refresh SEC data.
+remains visible above the results. Column choices survive paging and reruns.
+Loading a version2 financial view restores its saved columns; loading a legacy
+criteria-only view leaves current columns unchanged. An explicit Save stores
+criteria and columns together. Unsaved columns return to Overview when the
+owner/catalog context changes. Changing columns does not request or refresh SEC data.
 
 Activate a value or **Unknown** to open its source inspector above the table.
 The inspector identifies the company and metric, preserves the exact value or
@@ -155,11 +159,12 @@ their meanings. A failing criterion excludes a listing even when another input
 is unknown, so neither zero query-unknown results nor marginal coverage proves
 all required fields are known throughout the cohort.
 
-Applying a starter selects **New financial screen** and clears the draft name,
-preserving any existing saved record. Applying is unavailable while saved-screen
-I/O is pending. After running, name and save the ordinary criteria through the
-existing saved-definition flow. Saved payload v1 stores no starter identifier
-or column preference. The financial source set and formulas are unchanged.
+Applying a starter selects **New financial view** and clears the draft name,
+preserving any existing saved record. Applying is unavailable while saved-view
+I/O is pending. After running, name and save its criteria and chosen columns
+through the existing saved-definition flow. New saves use payload v2 with no
+starter identifier; legacy v1 definitions remain readable and contain no column
+preference. The financial source set and formulas are unchanged.
 
 The eight annual concepts use the public endpoint template
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
@@ -512,9 +517,11 @@ reference shapes. Deploy the API and browser together: old browser
 requests are rejected before SEC acquisition, and the new browser rejects old or
 partially expanded responses. Reload an older open browser after deployment.
 
-Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
+Encrypted saved-definition payloads admit numeric `schemaVersion: 1` for legacy
+criteria-only records and `schemaVersion: 2` for reusable column selections.
+An explicit new save writes v2; existing v1 records do not change on read. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
-are unchanged. Existing criteria load with their original meanings and make a
+are preserved. Existing criteria load with their original meanings and make a
 fresh v9 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
 The seven-clause limit is unchanged; the cash-difference percentage is an

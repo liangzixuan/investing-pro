@@ -538,7 +538,7 @@ export function PersonalFinancialScreener({
   const [savedBusy, setSavedBusy] = useState(false);
   const [savedAvailable, setSavedAvailable] = useState(false);
   const [savedMessage, setSavedMessage] = useState(
-    "Loading saved financial screens…",
+    "Loading saved financial views…",
   );
   const [selectedId, setSelectedId] = useState("");
   const [savedName, setSavedName] = useState("");
@@ -549,6 +549,32 @@ export function PersonalFinancialScreener({
   const sessionCallback = useRef(onSessionUnavailable);
   sessionCallback.current = onSessionUnavailable;
   const enabled = !disabled && workspaceReady;
+  const savedWorkspaceContext = JSON.stringify([
+    snapshot.snapshotSha256,
+    enabled,
+  ]);
+  const loadedSavedWorkspace = useRef(savedWorkspaceContext);
+  const savedDraftRevision = useRef(0);
+  const renderedSavedDraftRevision = savedDraftRevision.current;
+  const currentSavedState = useRef({
+    workspace: savedWorkspaceContext,
+    payload: savedPayload,
+    version: savedVersion,
+    selectedId,
+    name: savedName,
+    criteria,
+    available: savedAvailable,
+  });
+  currentSavedState.current = {
+    workspace: savedWorkspaceContext,
+    payload: savedPayload,
+    version: savedVersion,
+    selectedId,
+    name: savedName,
+    criteria,
+    available: savedAvailable,
+  };
+  const savedRenderEpoch = epoch.current;
   const watchlistReady =
     watchlistAvailable &&
     watchlistVersion > 0 &&
@@ -570,6 +596,7 @@ export function PersonalFinancialScreener({
 
   useEffect(() => {
     epoch.current += 1;
+    loadedSavedWorkspace.current = savedWorkspaceContext;
     screenEpoch.current += 1;
     screenController.current?.abort();
     savedController.current?.abort();
@@ -590,11 +617,11 @@ export function PersonalFinancialScreener({
     setSelectedId("");
     setSavedName("");
     setMessage("Choose financial criteria, then run the screen.");
-    if (enabled) void reloadSaved();
+    if (enabled) void reloadSaved(true);
     else {
       setSavedBusy(false);
       setSavedMessage(
-        "Validate the owner session to load saved financial screens.",
+        "Validate the owner session to load saved financial views.",
       );
     }
     return () => {
@@ -824,7 +851,7 @@ export function PersonalFinancialScreener({
     setMessage(
       "The owner session expired. Revalidate it to run another screen.",
     );
-    setSavedMessage("Saved financial screens were cleared from this session.");
+    setSavedMessage("Saved financial views were cleared from this session.");
     sessionCallback.current();
   }
 
@@ -844,6 +871,7 @@ export function PersonalFinancialScreener({
     invalidateScreen(
       "Criteria changed. Run screen to load matching annual data.",
     );
+    currentSavedState.current.criteria = next;
     setCriteria(next);
   }
 
@@ -905,7 +933,7 @@ export function PersonalFinancialScreener({
       `${starter.name} applied. Edit the criteria, then Run financial screen.`,
     );
     setSavedMessage(
-      "New financial screen selected; draft name cleared. Existing saved screens are unchanged. Name and save after running.",
+      "New financial view selected; draft name cleared. Existing saved views are unchanged. Name and save after running.",
     );
   }
 
@@ -1045,25 +1073,78 @@ export function PersonalFinancialScreener({
     }
   }
 
-  async function reloadSaved() {
-    if (!enabled) return;
+  function savedDraftIsCurrent() {
+    const current = currentSavedState.current;
+    return (
+      enabled &&
+      savedRenderEpoch === epoch.current &&
+      renderedSavedDraftRevision === savedDraftRevision.current &&
+      savedWorkspaceContext === current.workspace &&
+      savedWorkspaceContext === loadedSavedWorkspace.current &&
+      screenContext === activeScreenContext.current &&
+      savedPayload === current.payload &&
+      savedVersion === current.version &&
+      savedAvailable === current.available &&
+      selectedId === current.selectedId &&
+      savedName === current.name &&
+      criteria === current.criteria &&
+      visibleMetrics === currentVisibleMetrics.current &&
+      response === currentResponse.current
+    );
+  }
+
+  function changeSavedSelection(next: string) {
+    if (!savedDraftIsCurrent()) return;
+    savedDraftRevision.current += 1;
+    currentSavedState.current.selectedId = next;
+    setSelectedId(next);
+  }
+
+  function changeSavedName(next: string) {
+    if (!savedDraftIsCurrent()) return;
+    savedDraftRevision.current += 1;
+    currentSavedState.current.name = next;
+    setSavedName(next);
+  }
+
+  async function reloadSaved(boundaryReset = false) {
+    if (
+      !enabled ||
+      (!boundaryReset &&
+        (!savedDraftIsCurrent() || savedController.current !== null))
+    )
+      return;
     savedController.current?.abort();
     const controller = new AbortController();
     savedController.current = controller;
     const session = epoch.current;
     setSavedBusy(true);
+    currentSavedState.current.available = false;
     setSavedAvailable(false);
     try {
       const record = await fetchPersonalFinancialSavedViews(controller.signal);
-      if (controller.signal.aborted || session !== epoch.current) return;
-      setSavedPayload(record?.payload ?? emptySaved);
-      setSavedVersion(record?.version ?? 0);
+      if (
+        controller.signal.aborted ||
+        session !== epoch.current ||
+        savedWorkspaceContext !== currentSavedState.current.workspace
+      )
+        return;
+      currentSavedState.current.payload = record?.payload ?? emptySaved;
+      currentSavedState.current.version = record?.version ?? 0;
+      currentSavedState.current.available = true;
+      setSavedPayload(currentSavedState.current.payload);
+      setSavedVersion(currentSavedState.current.version);
       setSavedAvailable(true);
       setSavedMessage(
-        `${String(record?.payload.views.length ?? 0)} saved financial screens. Save criteria after running a screen.`,
+        `${String(record?.payload.views.length ?? 0)} saved financial views. Save criteria and columns after running a screen.`,
       );
     } catch (error) {
-      if (controller.signal.aborted || session !== epoch.current) return;
+      if (
+        controller.signal.aborted ||
+        session !== epoch.current ||
+        savedWorkspaceContext !== currentSavedState.current.workspace
+      )
+        return;
       if (isSessionError(error)) {
         clearSession();
         return;
@@ -1071,7 +1152,7 @@ export function PersonalFinancialScreener({
       setSavedPayload(emptySaved);
       setSavedVersion(0);
       setSavedMessage(
-        "Saved financial screens are unavailable. Reload them to save changes.",
+        "Saved financial views are unavailable. Reload them to save changes.",
       );
     } finally {
       if (session === epoch.current && !controller.signal.aborted) {
@@ -1082,32 +1163,64 @@ export function PersonalFinancialScreener({
   }
 
   function loadSaved() {
+    if (
+      !savedAvailable ||
+      savedBusy ||
+      savedController.current !== null ||
+      !savedDraftIsCurrent()
+    )
+      return;
     const view = savedPayload.views.find((item) => item.id === selectedId);
     if (view === undefined) return;
     changeCriteria(structuredClone(view.criteria));
+    const display =
+      savedPayload.schemaVersion === 2
+        ? (savedPayload.views.find((item) => item.id === selectedId)?.display ??
+          null)
+        : null;
+    if (display !== null) changeVisibleMetrics(display.visibleMetrics);
+    currentSavedState.current.name = view.name;
     setSavedName(view.name);
     setMessage(
-      "Saved criteria loaded. Run screen against the selected companies and current SEC data.",
+      display === null
+        ? "Legacy criteria-only view loaded; current columns were kept. Run financial screen against the selected companies and current SEC data. Save this view after running to include columns."
+        : "Financial view loaded with its criteria and columns. Run financial screen against the selected companies and current SEC data.",
     );
   }
 
   async function mutateSaved(action: "save" | "saveAs" | "delete") {
-    if (!enabled || !savedAvailable || savedBusy) return;
+    if (
+      !savedAvailable ||
+      savedBusy ||
+      savedController.current !== null ||
+      !savedDraftIsCurrent()
+    )
+      return;
     const selected = savedPayload.views.find((view) => view.id === selectedId);
     let next: PersonalFinancialSavedViewsPayloadDto;
     let nextId: string;
     if (action === "delete") {
       if (selected === undefined) return;
-      next = {
-        schemaVersion: 1,
-        views: savedPayload.views.filter((view) => view.id !== selected.id),
-      };
+      next =
+        savedPayload.schemaVersion === 1
+          ? {
+              schemaVersion: 1,
+              views: savedPayload.views.filter(
+                (view) => view.id !== selected.id,
+              ),
+            }
+          : {
+              schemaVersion: 2,
+              views: savedPayload.views.filter(
+                (view) => view.id !== selected.id,
+              ),
+            };
       nextId = "";
     } else {
       if (response === null || running) return;
       const name = normalizePersonalScreenerSavedViewName(savedName);
       if (name === null) {
-        setSavedMessage("Give the financial screen a name of 1–80 characters.");
+        setSavedMessage("Give the financial view a name of 1–80 characters.");
         return;
       }
       const replacing = action === "save" && selected !== undefined;
@@ -1121,7 +1234,7 @@ export function PersonalFinancialScreener({
         )
       ) {
         setSavedMessage(
-          "Use a unique screen name. Up to 20 financial screens can be saved.",
+          "Use a unique view name. Up to 20 financial views can be saved.",
         );
         return;
       }
@@ -1130,26 +1243,28 @@ export function PersonalFinancialScreener({
           ? selected.id
           : `financial-screen-${globalThis.crypto.randomUUID()}`;
       } catch {
-        setSavedMessage("The saved-screen change could not be prepared.");
+        setSavedMessage("The saved-view change could not be prepared.");
         return;
       }
       const view = {
         id: nextId,
         name,
         criteria: structuredClone(criteria),
+        display: { visibleMetrics: [...visibleMetrics] },
         createdAgainstCatalogSnapshotSha256: response.catalogSnapshotSha256,
         createdAgainstFinancialSnapshotSha256: response.financialSnapshotSha256,
       };
+      const retainedViews =
+        savedPayload.schemaVersion === 1
+          ? savedPayload.views.map((item) => ({ ...item, display: null }))
+          : savedPayload.views;
       next = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         views: replacing
-          ? savedPayload.views.map((item) =>
-              item.id === selected.id ? view : item,
-            )
-          : [...savedPayload.views, view],
+          ? retainedViews.map((item) => (item.id === selected.id ? view : item))
+          : [...retainedViews, view],
       };
     }
-    savedController.current?.abort();
     const controller = new AbortController();
     savedController.current = controller;
     const session = epoch.current;
@@ -1160,18 +1275,37 @@ export function PersonalFinancialScreener({
         next,
         controller.signal,
       );
-      if (controller.signal.aborted || session !== epoch.current) return;
+      if (
+        controller.signal.aborted ||
+        session !== epoch.current ||
+        savedWorkspaceContext !== currentSavedState.current.workspace
+      )
+        return;
+      const draftUnchanged = savedDraftIsCurrent();
+      currentSavedState.current.payload = saved.payload;
+      currentSavedState.current.version = saved.version;
       setSavedPayload(saved.payload);
       setSavedVersion(saved.version);
-      setSelectedId(nextId);
-      if (action === "delete") setSavedName("");
+      if (draftUnchanged) {
+        currentSavedState.current.selectedId = nextId;
+        setSelectedId(nextId);
+        if (action === "delete") {
+          currentSavedState.current.name = "";
+          setSavedName("");
+        }
+      }
       setSavedMessage(
         action === "delete"
-          ? "Financial screen deleted."
-          : "Financial screen criteria saved. Result rows are not stored in saved views.",
+          ? "Financial view deleted."
+          : "Financial view criteria and columns saved. Result rows are not stored in saved views.",
       );
     } catch (error) {
-      if (controller.signal.aborted || session !== epoch.current) return;
+      if (
+        controller.signal.aborted ||
+        session !== epoch.current ||
+        savedWorkspaceContext !== currentSavedState.current.workspace
+      )
+        return;
       if (isSessionError(error)) {
         clearSession();
         return;
@@ -1180,14 +1314,19 @@ export function PersonalFinancialScreener({
         error instanceof PersonalWorkspaceApiError &&
         error.code === "conflict"
       ) {
+        const draftUnchanged = savedDraftIsCurrent();
+        currentSavedState.current.available = false;
         setSavedAvailable(false);
-        setSelectedId("");
+        if (draftUnchanged) {
+          currentSavedState.current.selectedId = "";
+          setSelectedId("");
+        }
         setSavedMessage(
-          "Saved financial screens changed elsewhere. Reload saved screens, review the latest definitions, then save again.",
+          "Saved financial views changed elsewhere. Reload saved views, review the latest definitions, then save again.",
         );
       } else
         setSavedMessage(
-          "The financial screen could not be saved. Reload saved screens before retrying.",
+          "The financial view could not be saved. Reload saved views before retrying.",
         );
     } finally {
       if (session === epoch.current && !controller.signal.aborted) {
@@ -1198,6 +1337,11 @@ export function PersonalFinancialScreener({
   }
 
   const selected = savedPayload.views.find((view) => view.id === selectedId);
+  const selectedDisplay =
+    savedPayload.schemaVersion === 2
+      ? (savedPayload.views.find((view) => view.id === selectedId)?.display ??
+        null)
+      : null;
   const normalizedWatchlistQuery = watchlistQuery
     .trim()
     .normalize("NFC")
@@ -1433,8 +1577,8 @@ export function PersonalFinancialScreener({
         <p className="market-scope-note">
           Applying replaces numeric filters, sort and visible columns, while
           keeping the year, revenue basis and company filter. It selects New
-          financial screen and clears the draft name to protect saved screens.
-          No data is fetched or saved until you explicitly run or save.
+          financial view and clears the draft name to protect saved views. No
+          data is fetched or saved until you explicitly run or save.
         </p>
       </fieldset>
       <form
@@ -1777,21 +1921,21 @@ export function PersonalFinancialScreener({
         className="financial-screen-saved"
         disabled={!enabled || savedBusy}
       >
-        <legend>Saved financial screens</legend>
+        <legend>Saved financial views</legend>
         <p className="market-scope-note">
-          Store up to 20 named criteria definitions. Loading one requires an
-          explicit run against current data. Company scope and saved-listing
-          selection are temporary and are not stored in a saved screen.
+          Store up to 20 named views with criteria and columns. Loading a view
+          keeps the current company scope and selected listings. Results require
+          an explicit run against current data.
         </p>
         <div className="personal-stock-screener-filters">
           <label>
-            <span>Choose a financial screen</span>
+            <span>Choose a financial view</span>
             <select
-              aria-label="Saved financial screen"
+              aria-label="Saved financial view"
               value={selectedId}
-              onChange={(event) => setSelectedId(event.target.value)}
+              onChange={(event) => changeSavedSelection(event.target.value)}
             >
-              <option value="">New financial screen</option>
+              <option value="">New financial view</option>
               {savedPayload.views.map((view) => (
                 <option key={view.id} value={view.id}>
                   {view.name}
@@ -1800,12 +1944,12 @@ export function PersonalFinancialScreener({
             </select>
           </label>
           <label>
-            <span>Financial screen name</span>
+            <span>Financial view name</span>
             <input
-              aria-label="Financial screen name"
+              aria-label="Financial view name"
               maxLength={80}
               value={savedName}
-              onChange={(event) => setSavedName(event.target.value)}
+              onChange={(event) => changeSavedName(event.target.value)}
             />
           </label>
         </div>
@@ -1816,7 +1960,7 @@ export function PersonalFinancialScreener({
             disabled={!selected || !savedAvailable}
             onClick={loadSaved}
           >
-            Load financial criteria
+            Load financial view
           </button>
           <button
             className="secondary-action compact-action"
@@ -1824,7 +1968,7 @@ export function PersonalFinancialScreener({
             disabled={!savedAvailable || response === null || running}
             onClick={() => void mutateSaved("save")}
           >
-            Save financial screen
+            Save financial view
           </button>
           <button
             className="secondary-action compact-action"
@@ -1837,7 +1981,7 @@ export function PersonalFinancialScreener({
             }
             onClick={() => void mutateSaved("saveAs")}
           >
-            Save financial screen as new
+            Save financial view as new
           </button>
           <button
             className="secondary-action compact-action"
@@ -1845,16 +1989,22 @@ export function PersonalFinancialScreener({
             disabled={!selected || !savedAvailable}
             onClick={() => void mutateSaved("delete")}
           >
-            Delete financial screen
+            Delete financial view
           </button>
           <button
             className="secondary-action compact-action"
             type="button"
             onClick={() => void reloadSaved()}
           >
-            Reload saved screens
+            Reload saved views
           </button>
         </div>
+        {selected && selectedDisplay === null && (
+          <p className="market-scope-note">
+            Legacy criteria-only view: loading keeps your current columns. Save
+            this view after running to include columns.
+          </p>
+        )}
         {selected &&
           selected.createdAgainstCatalogSnapshotSha256 !==
             snapshot.snapshotSha256 && (
