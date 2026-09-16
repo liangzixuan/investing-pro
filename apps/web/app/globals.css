@@ -2291,6 +2291,15 @@ h4,
   background: var(--mint-soft);
 }
 
+.personal-financial-screener
+  :is(
+    h3[tabindex="-1"],
+    .financial-screen-value-button,
+    button[aria-expanded]
+  ) {
+  scroll-margin-block: 90px;
+}
+
 .financial-screen-view-controls {
   display: grid;
   min-width: 0;

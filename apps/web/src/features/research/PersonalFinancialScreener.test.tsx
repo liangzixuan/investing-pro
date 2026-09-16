@@ -913,6 +913,7 @@ describe("PersonalFinancialScreener", () => {
         }) => void
       )({ currentTarget: { scrollIntoView, closest } });
       expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        behavior: "instant",
         block: "nearest",
         inline: "nearest",
       });
@@ -964,6 +965,7 @@ describe("PersonalFinancialScreener", () => {
         currentTarget: { closest, scrollIntoView, getBoundingClientRect },
       });
       expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        behavior: "instant",
         block: "nearest",
         inline: "nearest",
       });
@@ -998,9 +1000,17 @@ describe("PersonalFinancialScreener", () => {
       focus: triggerFocus,
     } as unknown as HTMLButtonElement;
     const headingFocus = vi.fn();
-    const heading = { focus: headingFocus } as unknown as HTMLHeadingElement;
+    const headingScroll = vi.fn();
+    const heading = {
+      focus: headingFocus,
+      scrollIntoView: headingScroll,
+    } as unknown as HTMLHeadingElement;
     const fallbackFocus = vi.fn();
-    const fallback = { focus: fallbackFocus } as unknown as HTMLHeadingElement;
+    const fallbackScroll = vi.fn();
+    const fallback = {
+      focus: fallbackFocus,
+      scrollIntoView: fallbackScroll,
+    } as unknown as HTMLHeadingElement;
     const source = ratioCell(
       render(),
       "Current assets / current liabilities (×)",
@@ -1024,7 +1034,17 @@ describe("PersonalFinancialScreener", () => {
         resultsTitle.props.ref as React.RefObject<HTMLHeadingElement | null>
       ).current = fallback;
     });
-    expect(headingFocus).toHaveBeenCalledOnce();
+    expect(headingFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(headingScroll).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "nearest",
+      inline: "nearest",
+    });
+    expect(headingFocus.mock.invocationCallOrder[0]).toBeLessThan(
+      headingScroll.mock.invocationCallOrder[0]!,
+    );
     const opened = inspector(render())!;
     expect(opened.props).toMatchObject({
       "aria-labelledby": "financial-screen-inspector-title",
@@ -1057,7 +1077,9 @@ describe("PersonalFinancialScreener", () => {
     });
     expect(preventDefault).toHaveBeenCalledOnce();
     expect(stopPropagation).toHaveBeenCalledOnce();
-    expect(triggerFocus).toHaveBeenCalledOnce();
+    expect(triggerFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
     expect(inspector(render())).toBeUndefined();
     inspectCell(render(), "Net income", "ONE", trigger);
     expect(text(inspector(render()))).not.toContain("Current assets numerator");
@@ -1068,7 +1090,14 @@ describe("PersonalFinancialScreener", () => {
       focus: vi.fn(),
     } as unknown as HTMLButtonElement);
     click(render(), "Close details");
-    expect(fallbackFocus).toHaveBeenCalledOnce();
+    expect(fallbackFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(fallbackScroll).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "nearest",
+      inline: "nearest",
+    });
     expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
     expect(activityStart).toHaveBeenCalledOnce();
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
@@ -1086,9 +1115,12 @@ describe("PersonalFinancialScreener", () => {
       const scrollIntoView = vi.fn(() => {
         expect(inspector(committedView)).toBeUndefined();
       });
-      const triggerFocus = vi.fn(() => {
+      const triggerFocus = vi.fn((options: FocusOptions) => {
         // Do not render here: a queued state change is not a DOM commit.
         expect(inspector(committedView)).toBeUndefined();
+        // Prevent the browser's default focus scroll from competing with the
+        // value's explicit instant scroll when the document uses smooth CSS.
+        expect(options).toEqual({ preventScroll: true });
         const value = ratioCell(committedView, label)!;
         (value.props.onFocus as (event: unknown) => void)({
           currentTarget: trigger,
@@ -1123,11 +1155,17 @@ describe("PersonalFinancialScreener", () => {
         expect(stopPropagation).toHaveBeenCalledOnce();
       }
       expect(inspector(committedView)).toBeUndefined();
-      expect(triggerFocus).toHaveBeenCalledOnce();
+      expect(triggerFocus).toHaveBeenCalledExactlyOnceWith({
+        preventScroll: true,
+      });
       expect(scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        behavior: "instant",
         block: "nearest",
         inline: "nearest",
       });
+      expect(triggerFocus.mock.invocationCallOrder[0]).toBeLessThan(
+        scrollIntoView.mock.invocationCallOrder[0]!,
+      );
       expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(requestCount);
       expect(activityStart).toHaveBeenCalledTimes(activityCount);
       expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
@@ -1158,6 +1196,7 @@ describe("PersonalFinancialScreener", () => {
       });
       const fallback = {
         focus: fallbackFocus,
+        scrollIntoView: vi.fn(),
       } as unknown as HTMLHeadingElement;
       const resultsRef = elements(render()).find(
         (item) => item.type === "h3" && text(item) === "Financial results",
@@ -3939,7 +3978,11 @@ describe("PersonalFinancialScreener", () => {
       click(render(), "Select CMP1 for comparison");
       let committedView: unknown;
       const headingFocus = vi.fn();
+      const headingScroll = vi.fn();
       const triggerFocus = vi.fn(() => {
+        expect(comparisonPanel(committedView)).toBeUndefined();
+      });
+      const triggerScroll = vi.fn(() => {
         expect(comparisonPanel(committedView)).toBeUndefined();
       });
       const compareButton = elements(render()).find(
@@ -3950,14 +3993,38 @@ describe("PersonalFinancialScreener", () => {
       ).current = {
         isConnected: true,
         focus: triggerFocus,
+        scrollIntoView: triggerScroll,
       } as unknown as HTMLButtonElement;
       click(render(), "Compare companies");
       committedView = render((view) => {
         attachHeading(view, "financial-screen-comparison-title", {
           focus: headingFocus,
+          scrollIntoView: headingScroll,
         } as unknown as HTMLHeadingElement);
       });
-      expect(headingFocus).toHaveBeenCalledOnce();
+      expect(headingFocus).toHaveBeenCalledExactlyOnceWith({
+        preventScroll: true,
+      });
+      expect(headingScroll).toHaveBeenCalledExactlyOnceWith({
+        behavior: "instant",
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(headingFocus.mock.invocationCallOrder[0]).toBeLessThan(
+        headingScroll.mock.invocationCallOrder[0]!,
+      );
+      // Reopening an already open comparison must still move focus into it,
+      // without relying on a changed open-state effect or CSS smooth scrolling.
+      click(render(), "Compare companies");
+      committedView = render();
+      expect(headingFocus).toHaveBeenCalledTimes(2);
+      expect(headingFocus).toHaveBeenLastCalledWith({ preventScroll: true });
+      expect(headingScroll).toHaveBeenCalledTimes(2);
+      expect(headingScroll).toHaveBeenLastCalledWith({
+        behavior: "instant",
+        block: "nearest",
+        inline: "nearest",
+      });
       const panel = comparisonPanel(committedView)!;
       expect(panel.props["aria-labelledby"]).toBe(
         "financial-screen-comparison-title",
@@ -3985,7 +4052,17 @@ describe("PersonalFinancialScreener", () => {
         expect(stopPropagation).toHaveBeenCalledOnce();
       }
       expect(comparisonPanel(committedView)).toBeUndefined();
-      expect(triggerFocus).toHaveBeenCalledOnce();
+      expect(triggerFocus).toHaveBeenCalledExactlyOnceWith({
+        preventScroll: true,
+      });
+      expect(triggerScroll).toHaveBeenCalledExactlyOnceWith({
+        behavior: "instant",
+        block: "nearest",
+        inline: "nearest",
+      });
+      expect(triggerFocus.mock.invocationCallOrder[0]).toBeLessThan(
+        triggerScroll.mock.invocationCallOrder[0]!,
+      );
       expect(text(render())).toContain("2 of 3 companies selected");
       expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
       expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
@@ -4004,16 +4081,31 @@ describe("PersonalFinancialScreener", () => {
       expect(text(comparisonPanel(committedView))).not.toContain("CMP0");
       expect(inspector(committedView)).toBeUndefined();
     });
+    const headingScroll = vi.fn(() => {
+      expect(text(comparisonPanel(committedView))).not.toContain("CMP0");
+      expect(inspector(committedView)).toBeUndefined();
+    });
     render((view) =>
       attachHeading(view, "financial-screen-shortlist-title", {
         focus: headingFocus,
+        scrollIntoView: headingScroll,
       } as unknown as HTMLHeadingElement),
     );
     harness.onCommit(() => {
       committedView = render();
     });
     click(render(), "Remove CMP0 from comparison");
-    expect(headingFocus).toHaveBeenCalledOnce();
+    expect(headingFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(headingScroll).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "nearest",
+      inline: "nearest",
+    });
+    expect(headingFocus.mock.invocationCallOrder[0]).toBeLessThan(
+      headingScroll.mock.invocationCallOrder[0]!,
+    );
     expect(text(render())).toContain("2 of 3 companies selected");
     expect(comparisonPanel(render())).toBeDefined();
     (source.props.onClick as (event: unknown) => void)({ currentTarget: null });

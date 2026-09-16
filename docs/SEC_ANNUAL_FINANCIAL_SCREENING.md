@@ -71,6 +71,13 @@ as the results table, including unknown reasons and every retained filing
 reference. The shared calendar selection is not a claim of identical periods,
 accounting, business scope or peer relevance.
 
+Opening comparison or source details moves keyboard focus to its heading.
+Closing details returns focus to the exact value; closing comparison returns it
+to Compare companies. Removing or clearing selections focuses the shortlist
+heading. These focus changes keep the destination visible after the panel has
+opened or closed, with clearance for the sticky header and focus outline,
+including within a horizontally scrolled mobile comparison.
+
 The shortlist lives only in component memory. It is bound to the applied criteria,
 catalog and financial digests, selected/prior years, revenue basis and formula
 version. Successful paging within that context preserves selection. Changing

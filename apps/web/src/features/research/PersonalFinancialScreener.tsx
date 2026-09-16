@@ -505,11 +505,11 @@ export function PersonalFinancialScreener({
 
   useEffect(() => {
     if (inspection !== null && inspection.response === currentResponse.current)
-      inspectionHeading.current?.focus();
+      focusFinancialControl(inspectionHeading.current);
   }, [inspection]);
 
   useEffect(() => {
-    if (comparison?.open) comparisonHeading.current?.focus();
+    if (comparison?.open) focusFinancialControl(comparisonHeading.current);
   }, [comparison?.open]);
 
   function updateComparison(next: FinancialComparisonSelection | null) {
@@ -601,9 +601,11 @@ export function PersonalFinancialScreener({
             (action === "remove" && selectedComparison.open)),
       });
     });
-    if (action === "close") comparisonButton.current?.focus();
+    if (action === "close") focusFinancialControl(comparisonButton.current);
     else if (action === "remove" || action === "clear")
-      shortlistHeading.current?.focus();
+      focusFinancialControl(shortlistHeading.current);
+    else if (action === "open" && selectedComparison.open)
+      focusFinancialControl(comparisonHeading.current);
   }
 
   function clearInspection() {
@@ -666,8 +668,8 @@ export function PersonalFinancialScreener({
     flushSync(() => clearInspection());
     const restoreTrigger =
       selectedResponse === currentResponse.current && trigger?.isConnected;
-    if (restoreTrigger) trigger.focus();
-    else resultsHeading.current?.focus();
+    if (restoreTrigger) trigger.focus({ preventScroll: true });
+    else focusFinancialControl(resultsHeading.current);
   }
 
   function clearSession() {
@@ -2091,8 +2093,24 @@ function FinancialResults({
   );
 }
 
+function focusFinancialControl(control: HTMLElement | null) {
+  if (control === null) return;
+  control.focus({ preventScroll: true });
+  control.scrollIntoView({
+    behavior: "instant",
+    block: "nearest",
+    inline: "nearest",
+  });
+}
+
 function scrollFinancialValueIntoView(button: HTMLButtonElement) {
-  button.scrollIntoView({ block: "nearest", inline: "nearest" });
+  // Root smooth scrolling must not leave a restored value moving out of view
+  // after a panel changes the document's height. Measure the final position.
+  button.scrollIntoView({
+    behavior: "instant",
+    block: "nearest",
+    inline: "nearest",
+  });
   const company = button
     .closest("tr")
     ?.querySelector<HTMLElement>('th[scope="row"]');
