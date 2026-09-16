@@ -120,7 +120,10 @@ vi.mock(
   "@/lib/personal-workspace-api",
   () => import("../../lib/personal-workspace-api"),
 );
-import { PersonalWorkspaceApiError } from "@/lib/personal-workspace-api";
+import {
+  PersonalWorkspaceApiError,
+  type PersonalWatchlistMembership,
+} from "@/lib/personal-workspace-api";
 import {
   PersonalFinancialScreener,
   type PersonalFinancialScreenerProps,
@@ -166,6 +169,331 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it("keeps catalog requests unchanged and watchlist selection explicit", async () => {
+    configureWatchlist(3);
+    await mount();
+    expect(input(render(), "Financial screen scope").props.value).toBe(
+      "catalog",
+    );
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).not.toHaveProperty(
+      "scope",
+    );
+    change(render(), "Financial screen scope", "watchlist");
+    expect(text(render())).toContain("0 of 3 saved listings selected");
+    expect(button(render(), "Run financial screen").props.disabled).toBe(true);
+    submit(render());
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    selectFinancialListing(render(), "CMP1", true);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    api.screenPersonalFinancials.mockImplementationOnce(
+      (request: PersonalFinancialScreenRequestDto) =>
+        Promise.resolve(watchlistResponse(request)),
+    );
+    submit(render());
+    await flush();
+    expect(api.screenPersonalFinancials.mock.calls[1]?.[0]).toMatchObject({
+      scope: {
+        kind: "watchlist",
+        watchlistVersion: 7,
+        listingIds: ["listing-1"],
+      },
+    });
+    expect(text(render())).toContain("1 selected saved listings");
+    expect(text(render())).toContain("My Watchlist contains 3 saved listings");
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it("makes empty and unavailable watchlists actionable without source requests", async () => {
+    configureWatchlist(0);
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    expect(text(render())).toContain(
+      "My Watchlist is empty. Add companies from Security search or catalog financial results",
+    );
+    expect(button(render(), "Run financial screen").props.disabled).toBe(true);
+    expect(button(render(), "Refresh SEC data").props.disabled).toBe(true);
+    props = { ...props, watchlistAvailable: false };
+    render();
+    expect(text(render())).toContain(
+      "My Watchlist is unavailable or needs reconciliation",
+    );
+    submit(render());
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+  });
+
+  it("limits explicit selection to20 across searchable pages without changing membership", async () => {
+    configureWatchlist(55);
+    const originalMembers = props.watchlistMemberships;
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    expect(text(render())).toContain("1 – 50 of 55 matching saved listings");
+    click(render(), "Select first 20 for financials");
+    expect(text(render())).toContain("20 of 55 saved listings selected");
+    expect(financialListing(render(), "CMP20").props.disabled).toBe(true);
+    selectFinancialListing(render(), "CMP20", true);
+    expect(text(render())).toContain("20 of 55 saved listings selected");
+    click(render(), "Next financial selections");
+    expect(text(render())).toContain("51 – 55 of 55 matching saved listings");
+    change(render(), "Find a saved financial listing", "CMP54");
+    expect(text(render())).toContain("1 – 1 of 1 matching saved listings");
+    click(render(), "Clear financial selection");
+    selectFinancialListing(render(), "CMP54", true);
+    expect(text(render())).toContain("1 of 55 saved listings selected");
+    expect(props.watchlistMemberships).toBe(originalMembers);
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+  });
+
+  it("retains explicit filters and year through scope changes, starters and saved criteria while never saving scope", async () => {
+    configureWatchlist(3);
+    await mount();
+    change(render(), "Financial calendar year", "2023");
+    click(render(), "Add financial filter");
+    change(render(), "Financial threshold 1", "10");
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    expect(input(render(), "Financial calendar year").props.value).toBe(2023);
+    expect(input(render(), "Financial threshold 1").props.value).toBe("10");
+    api.screenPersonalFinancials.mockImplementation(
+      (request: PersonalFinancialScreenRequestDto) =>
+        Promise.resolve(watchlistResponse(request)),
+    );
+    submit(render());
+    await flush();
+    change(render(), "Financial screen name", "Watchlist filters");
+    click(render(), "Save financial screen");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.schemaVersion).toBe(1);
+    expect(JSON.stringify(payload)).not.toContain("listingIds");
+    expect(JSON.stringify(payload)).not.toContain("watchlistVersion");
+    expect(JSON.stringify(payload)).not.toContain('"scope"');
+    click(render(), "Reset financial criteria");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial threshold 1").props.value).toBe("10");
+    expect(text(render())).toContain("3 of 3 saved listings selected");
+    click(render(), "Apply Q4 liquidity cover");
+    expect(text(render())).toContain("3 of 3 saved listings selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("reuses all18 columns, comparison and source inspection for selected saved companies", async () => {
+    configureWatchlist(3);
+    api.screenPersonalFinancials.mockImplementation(
+      (request: PersonalFinancialScreenRequestDto) =>
+        Promise.resolve(watchlistResponse(request)),
+    );
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Compare companies");
+    change(render(), "Financial column view", "all");
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(18);
+    const comparison = comparisonPanel(render());
+    expect(text(comparison)).toContain(cashPpeMarginLabel);
+    const cell = ratioCell(comparisonPanel(render()), "Revenue", "CMP0")!;
+    (cell.props.onClick as (event: unknown) => void)({ currentTarget: null });
+    expect(text(inspector(render()))).toContain("Exact value");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    selectFinancialListing(render(), "CMP2", false);
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(inspector(render())).toBeUndefined();
+    expect(text(render())).not.toContain("Financial results");
+  });
+
+  it.each([
+    "scope",
+    "selection",
+    "version",
+    "identity",
+    "availability",
+    "snapshot",
+    "session",
+  ] as const)(
+    "discards pending watchlist data and stale callbacks after %s changes",
+    async (changeKind) => {
+      configureWatchlist(3);
+      const pending = deferred<PersonalFinancialScreenResponseDto>();
+      api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+      await mount();
+      change(render(), "Financial screen scope", "watchlist");
+      click(render(), "Select all for financials");
+      const oldView = render();
+      submit(oldView);
+      const request = api.screenPersonalFinancials.mock
+        .calls[0]?.[0] as PersonalFinancialScreenRequestDto;
+      const signal = api.screenPersonalFinancials.mock
+        .calls[0]?.[1] as AbortSignal;
+      const result = watchlistResponse(request);
+      if (changeKind === "scope")
+        change(render(), "Financial screen scope", "catalog");
+      if (changeKind === "selection")
+        selectFinancialListing(render(), "CMP2", false);
+      if (changeKind === "version") props = { ...props, watchlistVersion: 8 };
+      if (changeKind === "identity")
+        props = {
+          ...props,
+          watchlistMemberships: props.watchlistMemberships!.map(
+            (member, index) =>
+              index === 0
+                ? { ...member, issuerName: "Changed issuer" }
+                : member,
+          ),
+        };
+      if (changeKind === "availability")
+        props = { ...props, watchlistAvailable: false };
+      if (changeKind === "snapshot")
+        props = {
+          ...props,
+          snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+        };
+      if (changeKind === "session") props = { ...props, disabled: true };
+      render(() => submit(oldView));
+      pending.resolve(result);
+      await flush();
+      expect(signal.aborted).toBe(true);
+      expect(text(render())).not.toContain("Financial results");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(activityCompletion).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves catalog results and comparison when the saved watchlist version changes", async () => {
+    configureWatchlist(3);
+    api.screenPersonalFinancials.mockResolvedValueOnce(
+      comparisonResponse(0, 3),
+    );
+    await mount();
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    props = {
+      ...props,
+      watchlistVersion: 8,
+      watchlistMemberships: props.watchlistMemberships!.slice(1),
+    };
+    render();
+    expect(text(render())).toContain("Financial results");
+    expect(text(render())).toContain("1 of 3 companies selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("clears completed watchlist comparison and source details before a version change can reuse callbacks", async () => {
+    configureWatchlist(3);
+    api.screenPersonalFinancials.mockImplementation(
+      (request: PersonalFinancialScreenRequestDto) =>
+        Promise.resolve(watchlistResponse(request)),
+    );
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Compare companies");
+    const staleSelection = button(render(), "Select CMP2 for comparison");
+    const staleCell = ratioCell(comparisonPanel(render()), "Revenue", "CMP0")!;
+    (staleCell.props.onClick as (event: unknown) => void)({
+      currentTarget: null,
+    });
+    expect(inspector(render())).toBeDefined();
+    props = { ...props, watchlistVersion: 8 };
+    render((view) => {
+      expect(comparisonPanel(view)).toBeUndefined();
+      expect(inspector(view)).toBeUndefined();
+      staleSelection.props.onClick?.();
+      (staleCell.props.onClick as (event: unknown) => void)({
+        currentTarget: null,
+      });
+    });
+    expect(text(render())).toContain("0 of 3 saved listings selected");
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(inspector(render())).toBeUndefined();
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("clears selected listings on a server watchlist conflict and explains recovery", async () => {
+    configureWatchlist(3);
+    api.screenPersonalFinancials.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    submit(render());
+    await flush();
+    expect(text(render())).toContain(
+      "My Watchlist, the catalog or SEC data changed",
+    );
+    expect(text(render())).toContain("0 of 3 saved listings selected");
+    expect(button(render(), "Run financial screen").props.disabled).toBe(true);
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "listingId",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)(
+    "rejects a returned watchlist identity with changed %s",
+    async (field) => {
+      configureWatchlist(1);
+      api.screenPersonalFinancials.mockImplementationOnce(
+        (request: PersonalFinancialScreenRequestDto) => {
+          const result = watchlistResponse(request);
+          return Promise.resolve({
+            ...result,
+            rows: result.rows.map((row) => ({
+              ...row,
+              identity: { ...row.identity, [field]: "changed" },
+            })),
+          });
+        },
+      );
+      await mount();
+      change(render(), "Financial screen scope", "watchlist");
+      click(render(), "Select all for financials");
+      submit(render());
+      await flush();
+      expect(text(render())).toContain("financial response failed validation");
+      expect(text(render())).not.toContain("Financial results");
+    },
+  );
+
+  it("rejects a response describing another total saved-watchlist count", async () => {
+    configureWatchlist(1);
+    api.screenPersonalFinancials.mockImplementationOnce(
+      (request: PersonalFinancialScreenRequestDto) => {
+        const result = watchlistResponse(request);
+        return Promise.resolve({
+          ...result,
+          scope: { ...result.scope!, totalWatchlistListings: 2 },
+        });
+      },
+    );
+    await mount();
+    change(render(), "Financial screen scope", "watchlist");
+    click(render(), "Select all for financials");
+    submit(render());
+    await flush();
+    expect(text(render())).toContain("financial response failed validation");
+  });
+
   it.each([
     {
       name: "Growth with cash after PP&E",
@@ -4540,6 +4868,67 @@ describe("PersonalFinancialScreener", () => {
     expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
   });
 });
+
+function configureWatchlist(count: number) {
+  const members: PersonalWatchlistMembership[] = Array.from(
+    { length: count },
+    (_, index) => {
+      const { cik, ...identity } = comparisonResponse(index, index + 1).rows[0]!
+        .identity;
+      void cik;
+      return { ...identity, note: "" };
+    },
+  );
+  props = {
+    ...props,
+    watchlistVersion: 7,
+    watchlistMemberships: members,
+    watchlistAvailable: true,
+  };
+}
+
+function watchlistResponse(
+  request: PersonalFinancialScreenRequestDto,
+): PersonalFinancialScreenResponseDto {
+  const scope = request.scope!;
+  const result = response(0, scope.listingIds.length);
+  return {
+    ...result,
+    calendarYear: request.criteria.calendarYear,
+    priorCalendarYear: request.criteria.calendarYear - 1,
+    totalUniverse: scope.listingIds.length,
+    scope: {
+      ...scope,
+      totalWatchlistListings: props.watchlistMemberships!.length,
+    },
+    rows: scope.listingIds.map((listingId) => {
+      const index = props.watchlistMemberships!.findIndex(
+        (member) => member.listingId === listingId,
+      );
+      return comparisonResponse(index, index + 1).rows[0]!;
+    }),
+  };
+}
+
+function financialListing(value: unknown, symbol: string) {
+  const checkbox = elements(value).find(
+    (item) => item.props["aria-label"] === `Screen financials for ${symbol}`,
+  );
+  if (!checkbox) throw new Error(`Missing saved listing ${symbol}`);
+  return checkbox;
+}
+
+function selectFinancialListing(
+  value: unknown,
+  symbol: string,
+  checked: boolean,
+) {
+  (
+    financialListing(value, symbol).props.onChange as (event: {
+      target: { checked: boolean };
+    }) => void
+  )({ target: { checked } });
+}
 
 function comparisonPanel(value: unknown) {
   return elements(value).find(

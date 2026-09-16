@@ -1494,6 +1494,14 @@ export function SecurityDiscoveryWorkspace({
 
             <PersonalFinancialScreener
               key={`financial-${workspace.snapshot.snapshotSha256}`}
+              watchlistVersion={workspace.version}
+              watchlistMemberships={workspace.watchlist.memberships}
+              watchlistAvailable={
+                workspace.watchlistAvailable &&
+                !snapshotChanged &&
+                watchlistState !== "saving" &&
+                !reconciling
+              }
               onActivityStart={handleFinancialActivityStart}
               canAddToWatchlist={
                 workspace.watchlistAvailable &&

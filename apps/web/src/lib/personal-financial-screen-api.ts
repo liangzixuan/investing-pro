@@ -4,6 +4,7 @@ import {
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   PERSONAL_SEC_INSTANT_CONCEPTS,
   PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
+  PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenAnnualCellDto,
   type PersonalFinancialScreenGrowthCellDto,
@@ -16,6 +17,8 @@ import {
   type PersonalFinancialScreenRequestDto,
   type PersonalFinancialScreenResponseDto,
   type PersonalFinancialScreenSourceRefDto,
+  type PersonalFinancialScreenWatchlistScopeDto,
+  type PersonalFinancialScreenWatchlistResponseScopeDto,
   type PersonalFinancialSavedViewsPayloadDto,
 } from "@research-cockpit/contracts";
 
@@ -63,6 +66,7 @@ const unavailableReasons = [
 const digest = /^sha256:[a-f0-9]{64}$/u;
 const bareDigest = /^[a-f0-9]{64}$/u;
 const identifier = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
+const listingIdentifier = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const forbiddenText = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 
 export interface PersonalFinancialSavedViews {
@@ -123,7 +127,7 @@ export async function screenPersonalFinancials(
   signal: AbortSignal,
 ): Promise<PersonalFinancialScreenResponseDto> {
   if (
-    !keys(input, [
+    !keysWithOptionalScope(input, [
       "schemaVersion",
       "catalogSnapshotSha256",
       "financialSnapshotSha256",
@@ -132,6 +136,7 @@ export async function screenPersonalFinancials(
       "refresh",
     ]) ||
     input.schemaVersion !== "9.0.0" ||
+    (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -146,6 +151,11 @@ export async function screenPersonalFinancials(
   ) {
     throw new PersonalWorkspaceApiError("invalid_request");
   }
+  // Bind the response to the selection sent, even if its caller later edits an array.
+  const requestedScope = input.scope && {
+    ...input.scope,
+    listingIds: [...input.scope.listingIds],
+  };
   const response = await requestPersonalWorkspace(
     PERSONAL_FINANCIAL_SCREEN_PATH,
     {
@@ -162,6 +172,7 @@ export async function screenPersonalFinancials(
   const value = await readJson(response);
   if (
     !isResponse(value) ||
+    !sameWatchlistScope(value.scope, requestedScope) ||
     value.catalogSnapshotSha256 !== input.catalogSnapshotSha256 ||
     value.calendarYear !== input.criteria.calendarYear ||
     (value.revenueBasis ?? "agreement") !==
@@ -309,34 +320,96 @@ function isSavedPayload(
   );
 }
 
+function watchlistScopeFields(value: Record<string, unknown>): boolean {
+  return (
+    value.kind === "watchlist" &&
+    integer(value.watchlistVersion, 1) &&
+    Array.isArray(value.listingIds) &&
+    value.listingIds.length >= 1 &&
+    value.listingIds.length <= PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT &&
+    Array.from(value.listingIds).every((id) =>
+      matches(id, listingIdentifier),
+    ) &&
+    new Set(value.listingIds).size === value.listingIds.length
+  );
+}
+
+function watchlistScope(
+  value: unknown,
+): value is PersonalFinancialScreenWatchlistScopeDto {
+  return (
+    keys(value, ["kind", "watchlistVersion", "listingIds"]) &&
+    watchlistScopeFields(value)
+  );
+}
+
+function watchlistResponseScope(
+  value: unknown,
+): value is PersonalFinancialScreenWatchlistResponseScopeDto {
+  return (
+    keys(value, [
+      "kind",
+      "watchlistVersion",
+      "listingIds",
+      "totalWatchlistListings",
+    ]) &&
+    watchlistScopeFields(value) &&
+    integer(
+      value.totalWatchlistListings,
+      (value.listingIds as readonly string[]).length,
+      10_000,
+    )
+  );
+}
+
+function sameWatchlistScope(
+  response: PersonalFinancialScreenWatchlistResponseScopeDto | undefined,
+  request: PersonalFinancialScreenWatchlistScopeDto | undefined,
+): boolean {
+  if (!request) return response === undefined;
+  return (
+    response !== undefined &&
+    response.watchlistVersion === request.watchlistVersion &&
+    response.listingIds.length === request.listingIds.length &&
+    response.listingIds.every((id, index) => id === request.listingIds[index])
+  );
+}
+
 function isResponse(
   value: unknown,
 ): value is PersonalFinancialScreenResponseDto {
   if (
-    !keysWithRevenueBasis(value, [
-      "schemaVersion",
-      "catalogSnapshotSha256",
-      "financialSnapshotSha256",
-      "calendarYear",
-      "priorCalendarYear",
-      "instantQuarter",
-      "fetchedAt",
-      "expiresAt",
-      "sources",
-      "priorRevenueSources",
-      "rows",
-      "totalUniverse",
-      "identityMatches",
-      "totalMatches",
-      "totalNonMatches",
-      "totalUnknown",
-      "metricCoverage",
-      "offset",
-      "limitApplied",
-      "hasMore",
-      "formulaVersion",
-    ]) ||
+    !keysWithRevenueBasis(
+      value,
+      [
+        "schemaVersion",
+        "catalogSnapshotSha256",
+        "financialSnapshotSha256",
+        "calendarYear",
+        "priorCalendarYear",
+        "instantQuarter",
+        "fetchedAt",
+        "expiresAt",
+        "sources",
+        "priorRevenueSources",
+        "rows",
+        "totalUniverse",
+        "identityMatches",
+        "totalMatches",
+        "totalNonMatches",
+        "totalUnknown",
+        "metricCoverage",
+        "offset",
+        "limitApplied",
+        "hasMore",
+        "formulaVersion",
+      ],
+      true,
+    ) ||
     value.schemaVersion !== "9.0.0" ||
+    (Object.hasOwn(value, "scope") &&
+      (!watchlistResponseScope(value.scope) ||
+        value.totalUniverse !== value.scope.listingIds.length)) ||
     value.formulaVersion !== "1.7.0" ||
     value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
@@ -411,6 +484,12 @@ function isResponse(
       (row) =>
         keys(row, ["identity", "metrics"]) &&
         identity(row.identity) &&
+        (!value.scope ||
+          (
+            value.scope as PersonalFinancialScreenWatchlistResponseScopeDto
+          ).listingIds.includes(
+            (row.identity as { listingId: string }).listingId,
+          )) &&
         keys(row.metrics, metrics) &&
         metrics.every(
           (metric) =>
@@ -465,12 +544,22 @@ function isResponse(
 function keysWithRevenueBasis(
   value: unknown,
   required: readonly string[],
+  allowScope = false,
 ): value is Record<string, unknown> {
+  const admittedKeys = allowScope ? keysWithOptionalScope : keys;
   return (
-    (keys(value, required) || keys(value, [...required, "revenueBasis"])) &&
+    (admittedKeys(value, required) ||
+      admittedKeys(value, [...required, "revenueBasis"])) &&
     (!Object.hasOwn(value, "revenueBasis") ||
       member(revenueBases, value.revenueBasis))
   );
+}
+
+function keysWithOptionalScope(
+  value: unknown,
+  required: readonly string[],
+): value is Record<string, unknown> {
+  return keys(value, required) || keys(value, [...required, "scope"]);
 }
 
 function selectedRevenueSources(

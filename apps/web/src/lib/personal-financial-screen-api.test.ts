@@ -36,6 +36,370 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("financial-screen watchlist scope", () => {
+  const selectedIds = ["listing-one", "listing-two"];
+  const scopedRequest = (
+    listingIds = selectedIds,
+  ): PersonalFinancialScreenRequestDto => ({
+    ...request(),
+    criteria: { ...request().criteria, identityText: "ONE" },
+    scope: { kind: "watchlist", watchlistVersion: 7, listingIds },
+  });
+  const scopedResponse = (
+    listingIds = selectedIds,
+  ): PersonalFinancialScreenResponseDto => ({
+    ...response(),
+    scope: {
+      kind: "watchlist",
+      watchlistVersion: 7,
+      listingIds,
+      totalWatchlistListings: 30,
+    },
+    totalUniverse: listingIds.length,
+    rows: response().rows.map((row) => ({
+      ...row,
+      identity: { ...row.identity, listingId: listingIds[0]! },
+    })),
+  });
+
+  it("binds an explicitly selected cohort while allowing identity text to narrow its coverage", async () => {
+    const result = scopedResponse();
+    fetchMock.mockResolvedValueOnce(json(result));
+    expect(await screenPersonalFinancials(scopedRequest(), signal())).toEqual(
+      result,
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify(scopedRequest()),
+    );
+    expect(result.totalUniverse).toBe(2);
+    expect(result.identityMatches).toBe(1);
+    expect(result.scope?.totalWatchlistListings).toBe(30);
+  });
+
+  it.each([
+    ["A"],
+    ["A", "a"],
+    ["A".repeat(128)],
+    Array.from({ length: 20 }, (_, index) => `Listing-${index}`),
+  ])(
+    "preserves exact catalog IDs at admitted boundaries: %j",
+    async (...listingIds) => {
+      const result = scopedResponse(listingIds);
+      fetchMock.mockResolvedValueOnce(json(result));
+      expect(
+        await screenPersonalFinancials(scopedRequest(listingIds), signal()),
+      ).toEqual(result);
+    },
+  );
+
+  it.each([1, Number.MAX_SAFE_INTEGER])(
+    "preserves safe watchlist version %s",
+    async (watchlistVersion) => {
+      const input = scopedRequest();
+      const result = scopedResponse();
+      fetchMock.mockResolvedValueOnce(
+        json({
+          ...result,
+          scope: {
+            ...result.scope,
+            watchlistVersion,
+            totalWatchlistListings: 10_000,
+          },
+        }),
+      );
+      expect(
+        (
+          await screenPersonalFinancials(
+            {
+              ...input,
+              scope: { ...input.scope!, watchlistVersion },
+            },
+            signal(),
+          )
+        ).scope,
+      ).toMatchObject({ watchlistVersion, totalWatchlistListings: 10_000 });
+    },
+  );
+
+  const invalidScopes = [
+    undefined,
+    null,
+    [],
+    { kind: "catalog", watchlistVersion: 7, listingIds: selectedIds },
+    { kind: "watchlist", listingIds: selectedIds },
+    { kind: "watchlist", watchlistVersion: 7 },
+    ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "7"].map(
+      (watchlistVersion) => ({
+        kind: "watchlist",
+        watchlistVersion,
+        listingIds: selectedIds,
+      }),
+    ),
+    ...[
+      [],
+      new Array<string>(1),
+      ["listing-one", "listing-one"],
+      Array.from({ length: 21 }, (_, index) => `listing-${index}`),
+      [""],
+      ["x".repeat(129)],
+      ["../listing-one"],
+      ["https://example.invalid"],
+      [" listing-one"],
+      ["listing-one\u0000"],
+      ["lísting-one"],
+      [1],
+      "listing-one",
+    ].map((listingIds) => ({
+      kind: "watchlist",
+      watchlistVersion: 7,
+      listingIds,
+    })),
+    {
+      kind: "watchlist",
+      watchlistVersion: 7,
+      listingIds: selectedIds,
+      totalWatchlistListings: 30,
+    },
+  ];
+  it.each(invalidScopes.map((scope, index) => [index, scope] as const))(
+    "rejects malformed request scope %s before HTTP",
+    async (_index, scope) => {
+      await expect(
+        screenPersonalFinancials(
+          { ...request(), scope } as PersonalFinancialScreenRequestDto,
+          signal(),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a silently broadened catalog response and unexpected scope on a catalog request", async () => {
+    fetchMock.mockResolvedValueOnce(json(response()));
+    await expect(
+      screenPersonalFinancials(scopedRequest(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    fetchMock.mockResolvedValueOnce(json(scopedResponse()));
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each([
+    undefined,
+    null,
+    { kind: "catalog" },
+    { watchlistVersion: 8 },
+    { watchlistVersion: 0 },
+    { watchlistVersion: Number.MAX_SAFE_INTEGER + 1 },
+    { listingIds: undefined },
+    { listingIds: ["listing-two", "listing-one"] },
+    { listingIds: ["listing-one", "listing-three"] },
+    { listingIds: ["listing-one", "listing-one"] },
+    { listingIds: ["listing-one"] },
+    { listingIds: [...selectedIds, "listing-three"] },
+    { totalWatchlistListings: undefined },
+    { totalWatchlistListings: 1 },
+    { totalWatchlistListings: 0 },
+    { totalWatchlistListings: 10_001 },
+    { totalWatchlistListings: 2.5 },
+    { totalWatchlistListings: "30" },
+    { note: "not a scope field" },
+  ])(
+    "rejects an omitted, forged or malformed response scope %#",
+    async (change) => {
+      const result = scopedResponse();
+      fetchMock.mockResolvedValueOnce(
+        json({
+          ...result,
+          scope:
+            change === undefined || change === null
+              ? change
+              : { ...result.scope, ...change },
+        }),
+      );
+      await expect(
+        screenPersonalFinancials(scopedRequest(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it.each([0, 1, 3, 30])(
+    "rejects selected-universe count %s independent of identity matches",
+    async (totalUniverse) => {
+      fetchMock.mockResolvedValueOnce(
+        json({ ...scopedResponse(), totalUniverse }),
+      );
+      await expect(
+        screenPersonalFinancials(scopedRequest(), signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+
+  it("rejects a row outside the selected IDs even when it is a valid catalog identity", async () => {
+    const result = scopedResponse();
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: result.rows.map((row) => ({
+          ...row,
+          identity: { ...row.identity, listingId: "listing-three" },
+        })),
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(scopedRequest(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("retains all metric and coverage validation within the selected cohort", async () => {
+    const result = scopedResponse();
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        metricCoverage: {
+          ...result.metricCoverage,
+          revenue: { known: 30, unknown: 0 },
+        },
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(scopedRequest(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...result,
+        rows: result.rows.map((row) => ({
+          ...row,
+          metrics: {
+            ...row.metrics,
+            operatingCashFlowLessPpePurchasesMargin: {
+              ...row.metrics.operatingCashFlowLessPpePurchasesMargin,
+              value: "1.00",
+            },
+          },
+        })),
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(scopedRequest(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("pins the selection sent before awaiting the response", async () => {
+    const listingIds = [...selectedIds];
+    const input = scopedRequest(listingIds);
+    const result = scopedResponse();
+    fetchMock.mockImplementationOnce(() => {
+      listingIds[1] = "listing-three";
+      return Promise.resolve(
+        json({ ...result, scope: { ...result.scope, listingIds } }),
+      );
+    });
+    await expect(
+      screenPersonalFinancials(input, signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    expect(
+      JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string),
+    ).toMatchObject({ scope: { listingIds: selectedIds } });
+  });
+
+  it("accepts a filtered empty cohort result without broadening its selected universe", async () => {
+    const result = scopedResponse();
+    const empty = {
+      ...result,
+      rows: [],
+      identityMatches: 0,
+      totalMatches: 0,
+      metricCoverage: Object.fromEntries(
+        PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
+          metric,
+          { known: 0, unknown: 0 },
+        ]),
+      ),
+    };
+    fetchMock.mockResolvedValueOnce(json(empty));
+    expect(await screenPersonalFinancials(scopedRequest(), signal())).toEqual(
+      empty,
+    );
+  });
+
+  it("keeps selection and snapshot bound when paging a watchlist cohort", async () => {
+    const input = {
+      ...scopedRequest(),
+      financialSnapshotSha256: sha("b"),
+      page: { offset: 1, limit: 1 },
+    };
+    const result = scopedResponse();
+    const nextPage = {
+      ...result,
+      rows: result.rows.map((row) => ({
+        ...row,
+        identity: { ...row.identity, listingId: selectedIds[1]! },
+      })),
+      identityMatches: 2,
+      totalMatches: 2,
+      metricCoverage: Object.fromEntries(
+        PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
+          metric,
+          metric === "revenueGrowth"
+            ? { known: 0, unknown: 2 }
+            : { known: 2, unknown: 0 },
+        ]),
+      ),
+      offset: 1,
+      limitApplied: 1,
+    };
+    fetchMock.mockResolvedValueOnce(json(nextPage));
+    expect(await screenPersonalFinancials(input, signal())).toEqual(nextPage);
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...nextPage,
+        scope: { ...nextPage.scope, watchlistVersion: 8 },
+      }),
+    );
+    await expect(
+      screenPersonalFinancials(input, signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    fetchMock.mockResolvedValueOnce(
+      json({ ...nextPage, financialSnapshotSha256: sha("c") }),
+    );
+    await expect(
+      screenPersonalFinancials(input, signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it.each(["payload", "view", "criteria"] as const)(
+    "never stores selection membership in saved-v1 %s",
+    async (location) => {
+      const payload = savedPayload();
+      const scope = scopedRequest().scope;
+      const changed =
+        location === "payload"
+          ? { ...payload, scope }
+          : {
+              ...payload,
+              views: payload.views.map((view) =>
+                location === "view"
+                  ? { ...view, scope }
+                  : {
+                      ...view,
+                      criteria: { ...view.criteria, scope },
+                    },
+              ),
+            };
+      await expect(
+        savePersonalFinancialSavedViews(1, changed, signal()),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(fetchMock).not.toHaveBeenCalled();
+      fetchMock.mockResolvedValueOnce(json({ ...record(), payload: changed }));
+      await expect(
+        fetchPersonalFinancialSavedViews(signal()),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    },
+  );
+});
+
 describe("selected revenue year-over-year decoding", () => {
   const missing: PersonalFinancialScreenAnnualCellDto = {
     status: "unavailable",

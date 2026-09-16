@@ -221,6 +221,15 @@ export interface PersonalFinancialScreenCriteriaDto {
     readonly direction: "asc" | "desc";
   };
 }
+export const PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT = 20;
+export interface PersonalFinancialScreenWatchlistScopeDto {
+  readonly kind: "watchlist";
+  readonly watchlistVersion: number;
+  readonly listingIds: readonly string[];
+}
+export interface PersonalFinancialScreenWatchlistResponseScopeDto extends PersonalFinancialScreenWatchlistScopeDto {
+  readonly totalWatchlistListings: number;
+}
 export interface PersonalFinancialScreenRequestDto {
   readonly schemaVersion: "9.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
@@ -228,6 +237,8 @@ export interface PersonalFinancialScreenRequestDto {
   readonly criteria: PersonalFinancialScreenCriteriaDto;
   readonly page: { readonly offset: number; readonly limit: number };
   readonly refresh: boolean;
+  /** Omission screens the catalog. Scope is never part of saved criteria. */
+  readonly scope?: PersonalFinancialScreenWatchlistScopeDto;
 }
 export interface PersonalFinancialScreenRowDto {
   readonly identity: PersonalSecurityMasterScreenRowDto;
@@ -248,6 +259,8 @@ export interface PersonalFinancialScreenRowDto {
 }
 export interface PersonalFinancialScreenResponseDto {
   readonly schemaVersion: "9.0.0";
+  /** Present exactly for a watchlist-scoped request; counts cover its selection. */
+  readonly scope?: PersonalFinancialScreenWatchlistResponseScopeDto;
   readonly instantQuarter: 4;
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;

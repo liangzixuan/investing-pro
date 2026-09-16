@@ -15,9 +15,35 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare cash after PP&E relative to revenue
+## Immediate delivery: financials for My Watchlist
 
-Add **Operating cash flow less PP&E purchases / selected revenue (%)** as the
+Let the owner choose **My Watchlist** in Financial screen, select up to twenty
+saved listings, and explicitly run the existing eighteen metrics for that cohort.
+Reuse the filters, source inspector and two/three-issuer comparison. Display
+counts and coverage for selected listings, with the full saved-list count shown
+separately. An empty watchlist explains how to add companies through discovery.
+
+Resolve every selected listing against the current saved watchlist and catalog
+before a provider load, and recheck the watchlist version afterward. Reject
+changed, removed or substituted identities. Scope, selection or watchlist changes
+clear dependent results and comparison; ordinary catalog screening remains
+independent of watchlist edits. Requests, late responses and callbacks remain
+bound to the active scope, identities, watchlist version and source snapshots.
+
+The optional watchlist scope extends transport v9 outside criteria. Saved-v1
+definitions still contain filters only; loading them does not load membership
+or make a request. Formula-set1.7, all eighteen calculations and the thirteen
+Frames are unchanged. Selection itself performs no fetch or persistence.
+
+Verify selected-cohort counts, exact unchanged metrics, membership/version
+conflicts before and during requests, selection limits, source-cache reuse,
+scope isolation and comparison. Use isolated synthetic watchlists for populated
+browser scenarios; preserve the owner's real list. The workspace checkpoint
+owns actual release verification and activation.
+
+## Delivered: compare cash after PP&E relative to revenue
+
+The accepted slice adds **Operating cash flow less PP&E purchases / selected revenue (%)** as the
 eighteenth SEC-screen metric. It uses the three existing annual operands and
 thirteen-Frame snapshot. Subtract exactly, divide by positive selected revenue,
 and round once half-up to two percentage decimals. Preserve signed and zero
@@ -25,7 +51,7 @@ results; require nonnegative PP&E purchases and matching actual annual dates
 and filing accession across every retained reference. Unresolved inputs remain
 unknown with their evidence, rather than becoming zero.
 
-Expose the percentage in Cash flow, All metrics and individual column choices,
+The percentage is available in Cash flow, All metrics and individual column choices,
 ordinary signed filters and sorting, saved-v1 criteria, coverage and shortlist
 comparison. Source details show all three original operands and their exact
 dates and filings. Keep starter thresholds and their existing columns unchanged.
@@ -33,9 +59,12 @@ Transport v9/formula-set1.7 coordinates client and API validation; the browser
 independently recomputes the ratio using integer arithmetic. This narrow app
 calculation is not a reported subtotal or a generic free-cash-flow measure.
 
-Verify exact arithmetic, one-time rounding, every unknown-precedence branch,
-source multiplicity, old-metric stability, saved definitions, provider request
-count and the browser comparison. Retained filing operands can support dated
+Release `769b3fa` passed 5,664 native checks, 24 builds, all five hosted jobs on
+attempt1 and focused Brave desktop/mobile checks. The actual agreement snapshot
+reported 1,562 known and 1,665 unknown listings out of 3,227. Exact arithmetic,
+one-time rounding, unknown precedence, source multiplicity, prior-metric
+stability, saved definitions and provider request counts were checked.
+Retained filing operands support dated
 offline replay only with their original acquisition dates and scope; they do
 not establish fresh source coverage. The workspace checkpoint owns actual
 release verification and activation.
@@ -379,8 +408,8 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Deliver current assets less current liabilities with exact Q4 source inspection                  | Reuse existing balances, preserve signed results and saved-v1 semantics    |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
+| Now              | Run existing financial screening and comparison for selected My Watchlist companies              | Reuse saved identities and eighteen metrics without new provider inputs    |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
 | As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |

@@ -8443,7 +8443,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-financial-screen-routes.test.ts",
-      ["admitPersonalSecurityMasterSnapshot"],
+      ["admitPersonalSecurityMasterSnapshot", "screenPersonalSecurityMaster"],
     ],
     [
       "apps/api/src/workspace-watchlist-filings-routes.test.ts",
@@ -8532,7 +8532,12 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-financial-screen-routes.ts",
-      ["screenPersonalSecurityMaster", "type PersonalSecurityMasterCatalog"],
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "screenPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
     ],
     [
       "apps/api/src/workspace-watchlist-filings-routes.ts",
@@ -13649,6 +13654,7 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       [
         "LOCAL_RESEARCH_VAULT_PROFILE",
         "LocalResearchVaultError",
+        "type JsonValue",
         "type LocalResearchRecord",
         "type LocalResearchVault",
         "type PutLocalResearchRecordCommand",

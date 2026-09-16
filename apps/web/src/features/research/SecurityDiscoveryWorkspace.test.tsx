@@ -270,6 +270,72 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("passes saved membership and version to financials and updates them after a watchlist save", async () => {
+    await activateWorkspace();
+    let financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    expect(financial.props.watchlistVersion).toBe(0);
+    expect(financial.props.watchlistMemberships).toEqual([]);
+    expect(financial.props.watchlistAvailable).toBe(true);
+    const saving = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(saving.promise);
+    financial.props.onAddToWatchlist(screenRow());
+    financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    expect(financial.props.watchlistAvailable).toBe(false);
+    const payload = apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1];
+    saving.resolve({ version: 1, payload });
+    await flushPromises();
+    financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    expect(financial.props.watchlistVersion).toBe(1);
+    expect(financial.props.watchlistAvailable).toBe(true);
+    expect(financial.props.watchlistMemberships).toEqual(payload.memberships);
+  });
+
+  it("keeps catalog financials mounted when the saved watchlist cannot be loaded", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("unavailable"),
+    );
+    await activateWorkspace();
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    expect(financial.props.watchlistAvailable).toBe(false);
+    expect(financial.props.watchlistMemberships).toEqual([]);
+    expect(financial.props.disabled).not.toBe(true);
+  });
+
+  it("marks saved-company financials unavailable when watchlist catalog reconciliation is required", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
+      id: "main",
+      version: 4,
+      createdAt: "2030-01-15T01:00:00.000Z",
+      updatedAt: "2030-01-15T02:00:00.000Z",
+      payload: {
+        schemaVersion: 1,
+        name: "My Watchlist",
+        snapshotSha256: `sha256:${"f".repeat(64)}`,
+        memberships: [membership("ONE", "lst-one")],
+      },
+    });
+    await activateWorkspace();
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      renderWorkspace(),
+      componentMocks.FinancialScreener,
+    )!;
+    expect(financial.props.watchlistVersion).toBe(4);
+    expect(financial.props.watchlistMemberships).toHaveLength(1);
+    expect(financial.props.watchlistAvailable).toBe(false);
+  });
+
   it("selects only the explicit local panel and reconnects after an active operation loses access", async () => {
     let view = renderWorkspace("local");
     expect(findOwnerSession(view)).toBeUndefined();

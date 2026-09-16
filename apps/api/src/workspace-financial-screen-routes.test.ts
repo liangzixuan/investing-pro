@@ -8,11 +8,15 @@ import type {
 import {
   LOCAL_RESEARCH_VAULT_PROFILE,
   LocalResearchVaultError,
+  type JsonValue,
   type LocalResearchRecord,
   type LocalResearchVault,
   type PutLocalResearchRecordCommand,
 } from "@research-cockpit/local-research-vault";
-import { admitPersonalSecurityMasterSnapshot } from "@research-cockpit/personal-security-master";
+import {
+  admitPersonalSecurityMasterSnapshot,
+  screenPersonalSecurityMaster,
+} from "@research-cockpit/personal-security-master";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -45,7 +49,10 @@ import {
   PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS,
   type PersonalSecFinancialSnapshotDto,
 } from "@research-cockpit/contracts";
-import { PersonalSecFinancialProviderError } from "./personal-sec-financial-provider";
+import {
+  createSecPersonalFinancialProvider,
+  PersonalSecFinancialProviderError,
+} from "./personal-sec-financial-provider";
 
 describe("personal annual financial screen routes", () => {
   it("authenticates before parsing and returns issuer financial metrics for both share-class listings", async () => {
@@ -1951,6 +1958,482 @@ describe("cash after PP&E / selected revenue route integration", () => {
   });
 });
 
+describe("personal financial screen saved-watchlist scope", () => {
+  it("rejects malformed or unbounded scopes before reading the vault or acquiring frames", async () => {
+    const f = await readyApp();
+    const getRecord = vi.spyOn(f.vault, "getRecord");
+    const scope = watchlistScope();
+    for (const invalidScope of [
+      null,
+      [],
+      {},
+      { ...scope, kind: "catalog" },
+      { ...scope, extra: "private-scope-canary" },
+      { kind: "watchlist", listingIds: scope.listingIds },
+      { ...scope, watchlistVersion: 0 },
+      { ...scope, watchlistVersion: -1 },
+      { ...scope, watchlistVersion: 1.5 },
+      { ...scope, watchlistVersion: Number.MAX_SAFE_INTEGER + 1 },
+      { ...scope, listingIds: [] },
+      { ...scope, listingIds: ["lst-00000", "lst-00000"] },
+      { ...scope, listingIds: ["https://untrusted.invalid"] },
+      { ...scope, listingIds: [" lst-00000"] },
+      { ...scope, listingIds: [true] },
+      { ...scope, listingIds: ["x".repeat(129)] },
+      {
+        ...scope,
+        listingIds: Array.from({ length: 21 }, (_, index) => `lst-${index}`),
+      },
+    ]) {
+      const response = await screen(f.app, f.cookie, {
+        ...screenRequest(f.snapshotSha256),
+        scope: invalidScope,
+      });
+      expect(response.statusCode, JSON.stringify(invalidScope)).toBe(400);
+      expect(response.payload).not.toContain("private-scope-canary");
+    }
+    const staleCatalog = await screen(f.app, f.cookie, {
+      ...screenRequest(`sha256:${"f".repeat(64)}`),
+      scope,
+    });
+    expect(staleCatalog.statusCode).toBe(409);
+    expect(getRecord).not.toHaveBeenCalled();
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("authenticates scoped reads and rejects foreign origins before vault or provider work", async () => {
+    const f = await readyApp();
+    const getRecord = vi.spyOn(f.vault, "getRecord");
+    for (const headers of [
+      ownerHeaders(),
+      { ...ownerHeaders(f.cookie), origin: "https://untrusted.invalid" },
+    ]) {
+      const response = await f.app.inject({
+        method: "POST",
+        url: PERSONAL_FINANCIAL_SCREEN_PATH,
+        headers: { ...headers, "content-type": "application/json" },
+        payload: {
+          ...screenRequest(f.snapshotSha256),
+          scope: watchlistScope(),
+        },
+        remoteAddress: "127.0.0.1",
+      });
+      expect(response.statusCode).toBe(403);
+    }
+    expect(getRecord).not.toHaveBeenCalled();
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("rejects missing, deleted, stale, malformed, unsaved and mismatched saved identities before loading", async () => {
+    const f = await readyApp();
+    const original = seedWatchlist(f);
+    const request = {
+      ...screenRequest(f.snapshotSha256),
+      scope: watchlistScope(),
+    };
+    const getRecord = vi.spyOn(f.vault, "getRecord");
+    for (const code of ["VAULT_NOT_FOUND", "VAULT_DELETED"] as const) {
+      getRecord.mockImplementationOnce(() => {
+        throw new LocalResearchVaultError(code);
+      });
+      expect((await screen(f.app, f.cookie, request)).statusCode).toBe(404);
+    }
+    f.vault.watchlistRecord = { ...original, version: 2 };
+    expect((await screen(f.app, f.cookie, request)).statusCode).toBe(409);
+    const payload = original.payload as Record<string, unknown>;
+    for (const changedPayload of [
+      { ...payload, snapshotSha256: `sha256:${"f".repeat(64)}` },
+      { ...payload, unexpected: "private-note-canary" },
+      {
+        ...payload,
+        memberships: (payload.memberships as Record<string, unknown>[]).map(
+          (membership) => ({ ...membership, issuerName: "Wrong issuer" }),
+        ),
+      },
+      {
+        ...payload,
+        memberships: (payload.memberships as Record<string, unknown>[]).map(
+          (membership) => ({ ...membership, symbol: "UNKNOWN" }),
+        ),
+      },
+    ]) {
+      f.vault.watchlistRecord = {
+        ...original,
+        payload: changedPayload as LocalResearchRecord["payload"],
+      };
+      const response = await screen(f.app, f.cookie, request);
+      expect(response.statusCode).toBe(409);
+      expect(response.payload).not.toContain("private-note-canary");
+    }
+    f.vault.watchlistRecord = original;
+    expect(
+      (
+        await screen(f.app, f.cookie, {
+          ...request,
+          scope: watchlistScope(["lst-99999"]),
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("preserves all eighteen catalog metric cells for selected listings, both share classes and unknown issuers", async () => {
+    const f = await readyApp(testProvider(), 6);
+    const original = seedWatchlist(f);
+    const putRecord = vi.spyOn(f.vault, "putRecord");
+    const getRecord = vi.spyOn(f.vault, "getRecord");
+    const request = {
+      ...screenRequest(f.snapshotSha256),
+      page: { offset: 0, limit: 20 },
+    };
+    const catalogResponse = await screen(f.app, f.cookie, request);
+    expect(catalogResponse.statusCode).toBe(200);
+    const catalog = catalogResponse.json<PersonalFinancialScreenResponseDto>();
+    expect(catalog).not.toHaveProperty("scope");
+    expect(getRecord).not.toHaveBeenCalled();
+    const selectedIds = ["lst-00002", "lst-00001", "lst-00000"];
+    const response = await screen(f.app, f.cookie, {
+      ...request,
+      financialSnapshotSha256: catalog.financialSnapshotSha256,
+      scope: watchlistScope(selectedIds),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    const body = response.json<PersonalFinancialScreenResponseDto>();
+    expect(body.scope).toEqual({
+      ...watchlistScope(selectedIds),
+      totalWatchlistListings: 6,
+    });
+    expect(body).toMatchObject({
+      schemaVersion: "9.0.0",
+      formulaVersion: "1.7.0",
+      totalUniverse: 3,
+      identityMatches: 3,
+      totalMatches: 3,
+      totalUnknown: 0,
+      hasMore: false,
+    });
+    expect(body.rows).toEqual(
+      catalog.rows.filter((row) =>
+        selectedIds.includes(row.identity.listingId),
+      ),
+    );
+    expect(Object.keys(body.rows[0]!.metrics)).toHaveLength(18);
+    expect(body.rows[0]!.metrics).toEqual(body.rows[1]!.metrics);
+    expect(body.rows[2]!.metrics.revenue.status).toBe("unavailable");
+    for (const coverage of Object.values(body.metricCoverage)) {
+      expect(coverage).toEqual({ known: 2, unknown: 1 });
+    }
+    expect(body.sources).toEqual(catalog.sources);
+    expect(body.priorRevenueSources).toEqual(catalog.priorRevenueSources);
+    expect(body.sources.length + body.priorRevenueSources.length).toBe(13);
+    expect(f.provider.loadSnapshot).toHaveBeenCalledTimes(2);
+    for (const call of f.provider.loadSnapshot.mock.calls) {
+      expect(call).toEqual([2025, expect.any(AbortSignal), false]);
+    }
+    expect(getRecord).toHaveBeenCalledTimes(2);
+    expect(getRecord).toHaveBeenNthCalledWith(1, "watchlist", "main");
+    expect(getRecord).toHaveBeenNthCalledWith(2, "watchlist", "main");
+    expect(putRecord).not.toHaveBeenCalled();
+    expect(f.vault.watchlistRecord).toBe(original);
+    expect(f.vault.record).toBeUndefined();
+    expect(response.payload).not.toContain("private-note-canary");
+    expect(body.rows[0]!.identity).not.toHaveProperty("note");
+    expect(body.rows[0]!.identity).not.toHaveProperty("matchKind");
+  });
+
+  it("limits filtering, coverage and pagination to the selected universe and requires a stable snapshot", async () => {
+    const f = await readyApp(testProvider(), 6);
+    seedWatchlist(f);
+    const request = {
+      ...screenRequest(f.snapshotSha256),
+      scope: watchlistScope(["lst-00000", "lst-00002"]),
+    };
+    const first = (
+      await screen(f.app, f.cookie, request)
+    ).json<PersonalFinancialScreenResponseDto>();
+    expect(first).toMatchObject({
+      totalUniverse: 2,
+      totalMatches: 2,
+      hasMore: true,
+      rows: [{ identity: { listingId: "lst-00000" } }],
+    });
+    const next = await screen(f.app, f.cookie, {
+      ...request,
+      financialSnapshotSha256: first.financialSnapshotSha256,
+      page: { offset: 1, limit: 1 },
+    });
+    expect(next.json()).toMatchObject({
+      scope: first.scope,
+      totalUniverse: 2,
+      totalMatches: 2,
+      hasMore: false,
+      rows: [{ identity: { listingId: "lst-00002" } }],
+    });
+    const filtered = await screen(f.app, f.cookie, {
+      ...request,
+      criteria: {
+        ...request.criteria,
+        clauses: [{ field: "revenue", operator: "gte", value: "2000" }],
+      },
+    });
+    expect(filtered.json()).toMatchObject({
+      totalUniverse: 2,
+      identityMatches: 2,
+      totalMatches: 0,
+      totalNonMatches: 1,
+      totalUnknown: 1,
+      rows: [],
+    });
+    const identityFiltered = await screen(f.app, f.cookie, {
+      ...request,
+      criteria: { ...request.criteria, identityText: "S00001" },
+    });
+    expect(identityFiltered.json()).toMatchObject({
+      totalUniverse: 2,
+      identityMatches: 0,
+      totalMatches: 0,
+      rows: [],
+    });
+    const stale = await screen(f.app, f.cookie, {
+      ...request,
+      financialSnapshotSha256: `sha256:${"e".repeat(64)}`,
+    });
+    expect(stale.statusCode).toBe(409);
+  });
+
+  it("accepts exactly twenty selected listings from a larger saved watchlist", async () => {
+    const f = await readyApp(testProvider(), 24);
+    seedWatchlist(f);
+    const ids = Array.from(
+      { length: 20 },
+      (_, index) => `lst-${String(index).padStart(5, "0")}`,
+    );
+    const response = await screen(f.app, f.cookie, {
+      ...screenRequest(f.snapshotSha256),
+      page: { offset: 0, limit: 20 },
+      scope: watchlistScope(ids),
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      totalUniverse: 20,
+      totalMatches: 20,
+      hasMore: false,
+      scope: { ...watchlistScope(ids), totalWatchlistListings: 24 },
+    });
+    expect(
+      response.json<PersonalFinancialScreenResponseDto>().rows,
+    ).toHaveLength(20);
+    expect(f.provider.loadSnapshot).toHaveBeenCalledOnce();
+  });
+
+  it("reuses the existing thirteen-Frame cache across catalog and watchlist reads", async () => {
+    const fetchFrames = vi.fn<typeof fetch>((input) => {
+      const url = input instanceof Request ? input.url : input.toString();
+      const path = new URL(url).pathname.split("/");
+      return Promise.resolve(
+        Response.json({
+          taxonomy: "us-gaap",
+          tag: path[5],
+          ccp: path[7]?.replace(".json", ""),
+          uom: "USD",
+          label: "Synthetic fixture",
+          description: "Synthetic fixture only",
+          pts: 0,
+          data: [],
+        }),
+      );
+    });
+    const source = createSecPersonalFinancialProvider(
+      "PersonalResearch/1.0 owner@example.test",
+      {
+        fetch: fetchFrames,
+        now: () => new Date("2026-09-16T00:00:00.000Z"),
+        scheduler: { wait: () => Promise.resolve() },
+      },
+    );
+    const f = await readyApp();
+    f.provider.loadSnapshot.mockImplementation(() => source.loadSnapshot(2025));
+    f.provider.close.mockImplementation(() => source.close());
+    seedWatchlist(f);
+    const request = screenRequest(f.snapshotSha256);
+    const catalog = (
+      await screen(f.app, f.cookie, request)
+    ).json<PersonalFinancialScreenResponseDto>();
+    expect(fetchFrames).toHaveBeenCalledTimes(13);
+    expect(catalog.sources.every((frame) => frame.status === "available")).toBe(
+      true,
+    );
+    for (const ids of [["lst-00000"], ["lst-00001", "lst-00000"]]) {
+      const response = await screen(f.app, f.cookie, {
+        ...request,
+        financialSnapshotSha256: catalog.financialSnapshotSha256,
+        scope: watchlistScope(ids),
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({
+        financialSnapshotSha256: catalog.financialSnapshotSha256,
+        totalUniverse: ids.length,
+      });
+      expect(fetchFrames).toHaveBeenCalledTimes(13);
+    }
+    expect(
+      new Set(
+        fetchFrames.mock.calls.map(([input]) =>
+          input instanceof Request ? input.url : input.toString(),
+        ),
+      ).size,
+    ).toBe(13);
+  });
+
+  it.each(["version", "deleted", "malformed", "catalog"] as const)(
+    "rejects an in-flight %s change rather than returning stale selected rows",
+    async (change) => {
+      const f = await readyApp();
+      const original = seedWatchlist(f);
+      let releaseSnapshot:
+        ((value: PersonalSecFinancialSnapshotDto) => void) | undefined;
+      f.provider.loadSnapshot.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            releaseSnapshot = resolve;
+          }),
+      );
+      const pending = screen(f.app, f.cookie, {
+        ...screenRequest(f.snapshotSha256),
+        scope: watchlistScope(),
+      });
+      await vi.waitFor(() =>
+        expect(f.provider.loadSnapshot).toHaveBeenCalledOnce(),
+      );
+      if (change === "deleted") f.vault.watchlistRecord = undefined;
+      else if (change === "version")
+        f.vault.watchlistRecord = { ...original, version: 2 };
+      else
+        f.vault.watchlistRecord = {
+          ...original,
+          payload:
+            change === "malformed"
+              ? { privateNote: "private-note-canary" }
+              : {
+                  ...(original.payload as Record<string, JsonValue>),
+                  snapshotSha256: `sha256:${"e".repeat(64)}`,
+                },
+        };
+      releaseSnapshot!(snapshot());
+      const response = await pending;
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ code: "conflict" });
+      expect(response.payload).not.toContain("private-note-canary");
+      expect(response.json()).not.toHaveProperty("rows");
+    },
+  );
+
+  it("keeps scope out of saved-v1 definitions and preserves them during a scoped read", async () => {
+    const f = await readyApp();
+    seedWatchlist(f);
+    const saved = savedViewsPayload(f.snapshotSha256);
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          saved,
+          0,
+          "watchlist-financial-saved-v1",
+        )
+      ).statusCode,
+    ).toBe(201);
+    const savedRecord = f.vault.record;
+    expect(
+      (
+        await screen(f.app, f.cookie, {
+          ...screenRequest(f.snapshotSha256),
+          scope: watchlistScope(),
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(f.vault.record).toBe(savedRecord);
+    const invalid = {
+      ...saved,
+      views: saved.views.map((view) => ({
+        ...view,
+        criteria: { ...view.criteria, scope: watchlistScope() },
+      })),
+    };
+    expect(
+      (
+        await putSavedViews(
+          f.app,
+          f.cookie,
+          invalid,
+          1,
+          "watchlist-financial-saved-bad",
+        )
+      ).statusCode,
+    ).toBe(400);
+    expect(f.vault.record).toBe(savedRecord);
+  });
+
+  it("sanitizes an unexpected watchlist read failure without acquiring source data", async () => {
+    const f = await readyApp();
+    vi.spyOn(f.vault, "getRecord").mockImplementationOnce(() => {
+      throw new Error("private-vault-canary");
+    });
+    const response = await screen(f.app, f.cookie, {
+      ...screenRequest(f.snapshotSha256),
+      scope: watchlistScope(),
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.payload).not.toContain("private-vault-canary");
+    expect(f.provider.loadSnapshot).not.toHaveBeenCalled();
+  });
+});
+
+function watchlistScope(listingIds: readonly string[] = ["lst-00000"]) {
+  return { kind: "watchlist" as const, watchlistVersion: 1, listingIds };
+}
+
+function seedWatchlist(f: Awaited<ReturnType<typeof readyApp>>) {
+  const rows = screenPersonalSecurityMaster(f.catalog, {
+    schemaVersion: "1.0.0",
+    snapshotSha256: f.catalog.snapshotSha256,
+    query: { operator: "and", clauses: [] },
+    sort: { field: "symbol", direction: "asc" },
+    page: { offset: 0, limit: 100 },
+  }).rows;
+  const record: LocalResearchRecord = {
+    id: "main",
+    kind: "watchlist",
+    createdAt: "2026-09-09T00:00:00.000Z",
+    updatedAt: "2026-09-09T00:00:00.000Z",
+    version: 1,
+    profile: LOCAL_RESEARCH_VAULT_PROFILE,
+    payloadSha256: "a".repeat(64),
+    payload: {
+      schemaVersion: 1,
+      name: "My Watchlist",
+      snapshotSha256: f.snapshotSha256,
+      memberships: rows.map((identity) => ({
+        country: identity.country,
+        exchangeMic: identity.exchangeMic,
+        instrumentType: identity.instrumentType,
+        issuerId: identity.issuerId,
+        issuerName: identity.issuerName,
+        listingId: identity.listingId,
+        securityId: identity.securityId,
+        securityName: identity.securityName,
+        shareClassId: identity.shareClassId,
+        shareClassName: identity.shareClassName,
+        symbol: identity.symbol,
+        note: "private-note-canary",
+      })),
+    },
+  };
+  f.vault.watchlistRecord = record;
+  return record;
+}
+
 async function readyApp(provider = testProvider(), recordCount = 2) {
   const admission = buildTestSecurityMasterAdmission(recordCount);
   const catalog = admitPersonalSecurityMasterSnapshot({
@@ -1972,6 +2455,7 @@ async function readyApp(provider = testProvider(), recordCount = 2) {
   const cookie = await bootstrapTestPersonalOwnerSession(app, secret);
   return {
     app,
+    catalog,
     cookie,
     snapshotSha256: admission.expectedSha256,
     vault,
@@ -2134,10 +2618,18 @@ function ownerHeaders(cookie?: string): Record<string, string> {
 class TestVault {
   readonly profile = LOCAL_RESEARCH_VAULT_PROFILE;
   record: LocalResearchRecord | undefined;
+  watchlistRecord: LocalResearchRecord | undefined;
 
   close(): void {}
 
-  getRecord(kind: "settings", id: string): LocalResearchRecord {
+  getRecord(kind: "settings" | "watchlist", id: string): LocalResearchRecord {
+    if (
+      kind === "watchlist" &&
+      id === "main" &&
+      this.watchlistRecord !== undefined
+    ) {
+      return this.watchlistRecord;
+    }
     if (
       kind !== "settings" ||
       id !== PERSONAL_FINANCIAL_SAVED_VIEWS_RECORD_ID ||

@@ -29,6 +29,31 @@ keep their existing columns. Its source inspector shows both annual operands.
 Refresh requests a new source read. Page navigation remains bound to both
 catalog and financial content digests; changed content requires a rerun.
 
+### Screen companies from My Watchlist
+
+The **Financial screen scope** control switches between the admitted catalog and
+**My Watchlist**. In watchlist scope, choose one to twenty saved listings before
+running. Search and selection paging help with larger lists; selection does not
+request data. An empty or unavailable watchlist cannot run a scoped query.
+Use discovery to save companies first. Filters, sorting, source details and
+comparison then operate on the selected cohort. Coverage counts describe
+identity matches within that cohort, not the entire catalog or saved watchlist.
+
+The request's optional `scope` contains `kind: "watchlist"`, `watchlistVersion`
+and exact unique `listingIds`. The response echoes it and adds
+`totalWatchlistListings`. Catalog requests and responses omit scope. The API
+checks saved membership, full catalog identity and watchlist version before
+loading the existing financial snapshot, then checks the version again after
+the load. Changes during a request return a conflict. Scope cannot authorize
+an arbitrary catalog listing that is not saved.
+
+The active selection is temporary. Scope, selection, membership or watchlist
+version changes invalidate dependent requests, results, source inspection and
+comparison; a stale response cannot restore them. Catalog results remain
+independent of ordinary watchlist edits. Saved-v1 definitions retain criteria
+only, with no scope or membership; loading criteria keeps the current scope
+and still requires an explicit Run. No new formula or SEC concept is added.
+
 ### Read and inspect results
 
 The default **Overview** shows revenue, net income, operating cash flow, net

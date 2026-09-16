@@ -1425,7 +1425,7 @@ ranking or common fiscal period is inferred. This adds a discovery-to-comparison
 workflow without another formula or provider dependency, and does not complete
 the shared metric registry or coverage gate.
 
-The next metric slice adds operating cash flow less PP&E purchases / selected
+The accepted eighteenth metric adds operating cash flow less PP&E purchases / selected
 revenue (%) using three already-loaded annual inputs. It preserves exact
 subtraction before one final percentage rounding, nonnegative purchases,
 positive selected revenue, and every input's matching actual dates and filing.
@@ -1435,6 +1435,15 @@ Transport v9/formula-set1.7 coordinates strict client/server validation, with
 independent integer arithmetic in the browser. It adds no provider concept or
 request to the thirteen-Frame cache and does not establish uniform cash-flow
 definitions, fiscal comparability or broad verified coverage.
+
+The active product slice is **Financials for My Watchlist**: choose up to twenty
+saved listings and run the existing eighteen metrics, filters and comparison
+against that cohort. Exact saved membership and catalog identity are checked
+before acquisition, with watchlist version rechecked afterward. Scope and
+selection remain transient; saved-v1 definitions retain criteria only. Counts
+clearly distinguish selected listings from the full watchlist and catalog.
+This connects a saved research list to the existing financial workflow without
+new formulas, provider concepts, background work or a wider coverage claim.
 
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.

@@ -1,8 +1,10 @@
-import type {
-  PersonalFinancialScreenRequestDto,
-  PersonalFinancialSavedViewsPayloadDto,
-  PersonalSecurityMasterScreenRowDto,
-  ProblemDetailsDto,
+import {
+  PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT,
+  type PersonalFinancialScreenRequestDto,
+  type PersonalFinancialScreenWatchlistScopeDto,
+  type PersonalFinancialSavedViewsPayloadDto,
+  type PersonalSecurityMasterScreenRowDto,
+  type ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
   evaluatePersonalFinancialScreen,
@@ -14,6 +16,8 @@ import {
   type LocalResearchVault,
 } from "@research-cockpit/local-research-vault";
 import {
+  PERSONAL_SECURITY_MASTER_LIMITS,
+  searchPersonalSecurityMaster,
   screenPersonalSecurityMaster,
   type PersonalSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
@@ -32,6 +36,11 @@ import {
   PersonalSecFinancialProviderError,
   type PersonalSecFinancialProvider,
 } from "./personal-sec-financial-provider";
+import {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
+} from "./workspace-watchlist-routes";
 
 export const PERSONAL_FINANCIAL_SCREEN_PATH =
   "/v1/personal-filing/workspace/financial-screen" as const;
@@ -42,8 +51,22 @@ export const PERSONAL_FINANCIAL_SAVED_VIEWS_RECORD_ID =
 const SAVED_VIEWS_KIND = "settings" as const;
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
+const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const SCREEN_REQUEST_KEYS = [
+  "schemaVersion",
+  "catalogSnapshotSha256",
+  "financialSnapshotSha256",
+  "criteria",
+  "page",
+  "refresh",
+] as const;
 interface PutBody {
   readonly payload: JsonValue;
+}
+class WatchlistFinancialSelectionError extends Error {
+  constructor(readonly status: 400 | 404 | 409) {
+    super("The saved watchlist selection is unavailable.");
+  }
 }
 
 export function registerPersonalWorkspaceFinancialScreenRoutes(
@@ -83,19 +106,43 @@ export function registerPersonalWorkspaceFinancialScreenRoutes(
       request.raw.once("aborted", abort);
       reply.raw.once("close", abort);
       try {
+        const watchlist =
+          body.scope === undefined
+            ? undefined
+            : readBoundWatchlist(vault, catalog, body.scope);
+        const selectedIdentities =
+          watchlist === undefined || body.scope === undefined
+            ? undefined
+            : resolveSelectedListings(catalog, watchlist, body.scope);
         const snapshot = await provider.loadSnapshot(
           body.criteria.calendarYear,
           controller.signal,
           body.refresh,
         );
         if (controller.signal.aborted) return;
+        if (body.scope !== undefined) {
+          try {
+            readBoundWatchlist(vault, catalog, body.scope);
+          } catch (error) {
+            // A deletion or mutation while loading cannot revive an old selection.
+            if (error instanceof WatchlistFinancialSelectionError) {
+              throw new WatchlistFinancialSelectionError(409);
+            }
+            throw error;
+          }
+        }
         if (
           body.financialSnapshotSha256 !== null &&
           body.financialSnapshotSha256 !== snapshot.snapshotSha256
         )
           return sendScreenerProblem(reply, request, 409);
-        const identities: PersonalSecurityMasterScreenRowDto[] = [];
-        for (let offset = 0; offset < 10_000; offset += 100) {
+        const identities: PersonalSecurityMasterScreenRowDto[] =
+          selectedIdentities ?? [];
+        for (
+          let offset = 0;
+          selectedIdentities === undefined && offset < 10_000;
+          offset += 100
+        ) {
           const batch = screenPersonalSecurityMaster(catalog, {
             schemaVersion: "1.0.0",
             snapshotSha256: catalog.snapshotSha256,
@@ -120,8 +167,31 @@ export function registerPersonalWorkspaceFinancialScreenRoutes(
           body.page,
           catalog.snapshotSha256,
         );
-        return reply.type("application/json; charset=utf-8").send(result);
+        return reply.type("application/json; charset=utf-8").send(
+          watchlist === undefined || body.scope === undefined
+            ? result
+            : {
+                ...result,
+                scope: {
+                  ...body.scope,
+                  listingIds: [...body.scope.listingIds],
+                  totalWatchlistListings: watchlist.memberships.length,
+                },
+              },
+        );
       } catch (error) {
+        if (error instanceof WatchlistFinancialSelectionError) {
+          return sendFinancialProblem(
+            reply,
+            request,
+            error.status,
+            error.status === 409
+              ? "conflict"
+              : error.status === 404
+                ? "not_covered"
+                : "invalid_request",
+          );
+        }
         if (error instanceof PersonalSecFinancialProviderError) {
           if (error.code === "not_configured")
             return sendFinancialProblem(reply, request, 503, "not_configured");
@@ -258,14 +328,9 @@ function isScreenRequest(
   value: unknown,
 ): value is PersonalFinancialScreenRequestDto {
   return (
-    hasExactKeys(value, [
-      "schemaVersion",
-      "catalogSnapshotSha256",
-      "financialSnapshotSha256",
-      "criteria",
-      "page",
-      "refresh",
-    ]) &&
+    (hasExactKeys(value, SCREEN_REQUEST_KEYS) ||
+      (hasExactKeys(value, [...SCREEN_REQUEST_KEYS, "scope"]) &&
+        isWatchlistScope(value.scope))) &&
     value.schemaVersion === "9.0.0" &&
     isSnapshotDigest(value.catalogSnapshotSha256) &&
     (value.financialSnapshotSha256 === null ||
@@ -285,6 +350,90 @@ function isScreenRequest(
     (value.page.limit as number) >= 1 &&
     (value.page.limit as number) <= 250
   );
+}
+function isWatchlistScope(
+  value: unknown,
+): value is PersonalFinancialScreenWatchlistScopeDto {
+  return (
+    hasExactKeys(value, ["kind", "watchlistVersion", "listingIds"]) &&
+    value.kind === "watchlist" &&
+    Number.isSafeInteger(value.watchlistVersion) &&
+    (value.watchlistVersion as number) > 0 &&
+    Array.isArray(value.listingIds) &&
+    value.listingIds.length > 0 &&
+    value.listingIds.length <= PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT &&
+    value.listingIds.every(
+      (id: unknown) => typeof id === "string" && IDENTIFIER.test(id),
+    ) &&
+    new Set(value.listingIds).size === value.listingIds.length
+  );
+}
+function readBoundWatchlist(
+  vault: LocalResearchVault,
+  catalog: PersonalSecurityMasterCatalog,
+  scope: PersonalFinancialScreenWatchlistScopeDto,
+): MainWatchlistPayload {
+  let record;
+  try {
+    record = vault.getRecord("watchlist", "main");
+  } catch (error) {
+    if (
+      error instanceof LocalResearchVaultError &&
+      (error.code === "VAULT_NOT_FOUND" || error.code === "VAULT_DELETED")
+    ) {
+      throw new WatchlistFinancialSelectionError(404);
+    }
+    throw error;
+  }
+  if (
+    record.version !== scope.watchlistVersion ||
+    !isMainWatchlistPayload(record.payload) ||
+    record.payload.snapshotSha256 !== catalog.snapshotSha256
+  ) {
+    throw new WatchlistFinancialSelectionError(409);
+  }
+  return record.payload;
+}
+function resolveSelectedListings(
+  catalog: PersonalSecurityMasterCatalog,
+  watchlist: MainWatchlistPayload,
+  scope: PersonalFinancialScreenWatchlistScopeDto,
+): PersonalSecurityMasterScreenRowDto[] {
+  const memberships = new Map(
+    watchlist.memberships.map((membership) => [
+      membership.listingId,
+      membership,
+    ]),
+  );
+  return scope.listingIds.map((listingId) => {
+    const membership = memberships.get(listingId);
+    if (membership === undefined)
+      throw new WatchlistFinancialSelectionError(400);
+    const admitted = searchPersonalSecurityMaster(catalog, {
+      limit: PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap,
+      query: membership.symbol,
+    }).results.find((listing) => listing.listingId === listingId);
+    if (
+      admitted === undefined ||
+      !membershipMatchesResult(membership, admitted)
+    ) {
+      throw new WatchlistFinancialSelectionError(409);
+    }
+    return {
+      cik: admitted.cik,
+      country: admitted.country,
+      exchangeMic: admitted.exchangeMic,
+      instrumentType: admitted.instrumentType,
+      issuerId: admitted.issuerId,
+      issuerName: admitted.issuerName,
+      listingId: admitted.listingId,
+      securityId: admitted.securityId,
+      securityName: admitted.securityName,
+      shareClassId: admitted.shareClassId,
+      shareClassName: admitted.shareClassName,
+      symbol: admitted.symbol,
+    };
+  });
 }
 function isPutBody(value: unknown): value is PutBody {
   return hasExactKeys(value, ["payload"]);
@@ -348,7 +497,7 @@ function hasExactKeys<const Keys extends readonly string[]>(
 function sendFinancialProblem(
   reply: FastifyReply,
   request: FastifyRequest,
-  status: 400 | 429 | 502 | 503,
+  status: 400 | 404 | 409 | 429 | 502 | 503,
   code: string,
 ) {
   const problem: ProblemDetailsDto & { code: string } = {

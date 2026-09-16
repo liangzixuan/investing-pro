@@ -3,6 +3,7 @@
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_FINANCIAL_REVENUE_BASES,
+  PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT,
   type PersonalFinancialRevenueBasisDto,
   type PersonalFinancialScreenCellDto,
   type PersonalFinancialScreenGrowthCellDto,
@@ -14,6 +15,7 @@ import {
   type PersonalFinancialSavedViewsPayloadDto,
   type PersonalSecurityMasterScreenRowDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
+  type PersonalFinancialScreenWatchlistScopeDto,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
@@ -29,6 +31,7 @@ import {
 import {
   normalizePersonalScreenerSavedViewName,
   PersonalWorkspaceApiError,
+  type PersonalWatchlistMembership,
 } from "@/lib/personal-workspace-api";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 
@@ -156,6 +159,7 @@ function comparisonKey(
     response.instantQuarter,
     response.revenueBasis ?? "agreement",
     response.formulaVersion,
+    response.scope ?? null,
     response.fetchedAt,
     response.expiresAt,
     criteria.calendarYear,
@@ -439,7 +443,25 @@ export interface PersonalFinancialScreenerProps {
   readonly savedListingIds: ReadonlySet<string>;
   readonly disabled?: boolean;
   readonly workspaceReady?: boolean;
+  readonly watchlistVersion?: number;
+  readonly watchlistMemberships?: readonly PersonalWatchlistMembership[];
+  readonly watchlistAvailable?: boolean;
 }
+
+const emptyWatchlist: readonly PersonalWatchlistMembership[] = [];
+const watchlistIdentityFields = [
+  "country",
+  "exchangeMic",
+  "instrumentType",
+  "issuerId",
+  "issuerName",
+  "listingId",
+  "securityId",
+  "securityName",
+  "shareClassId",
+  "shareClassName",
+  "symbol",
+] as const satisfies readonly (keyof PersonalWatchlistMembership)[];
 
 export function PersonalFinancialScreener({
   snapshot,
@@ -451,7 +473,35 @@ export function PersonalFinancialScreener({
   savedListingIds,
   disabled = false,
   workspaceReady = true,
+  watchlistVersion = 0,
+  watchlistMemberships = emptyWatchlist,
+  watchlistAvailable = false,
 }: PersonalFinancialScreenerProps) {
+  const [scope, setScope] = useState<"catalog" | "watchlist">("catalog");
+  const [watchlistSelection, setWatchlistSelection] = useState<
+    readonly string[]
+  >([]);
+  const [watchlistQuery, setWatchlistQuery] = useState("");
+  const [watchlistPage, setWatchlistPage] = useState(0);
+  const watchlistContext = JSON.stringify([
+    snapshot.snapshotSha256,
+    watchlistVersion,
+    watchlistAvailable,
+    watchlistMemberships.map((member) =>
+      watchlistIdentityFields.map((field) => member[field]),
+    ),
+  ]);
+  const [loadedWatchlistContext, setLoadedWatchlistContext] =
+    useState(watchlistContext);
+  const screenContext = JSON.stringify([
+    scope,
+    snapshot.snapshotSha256,
+    disabled,
+    workspaceReady,
+    scope === "watchlist" ? [watchlistContext, watchlistSelection] : null,
+  ]);
+  const activeScreenContext = useRef(screenContext);
+  activeScreenContext.current = screenContext;
   const [criteria, setCriteria] =
     useState<PersonalFinancialScreenCriteriaDto>(defaultCriteria());
   const [response, setResponse] =
@@ -499,6 +549,24 @@ export function PersonalFinancialScreener({
   const sessionCallback = useRef(onSessionUnavailable);
   sessionCallback.current = onSessionUnavailable;
   const enabled = !disabled && workspaceReady;
+  const watchlistReady =
+    watchlistAvailable &&
+    watchlistVersion > 0 &&
+    loadedWatchlistContext === watchlistContext;
+  const canRun =
+    enabled &&
+    (scope === "catalog" || (watchlistReady && watchlistSelection.length > 0));
+
+  useEffect(() => {
+    setWatchlistSelection([]);
+    setWatchlistQuery("");
+    setWatchlistPage(0);
+    setLoadedWatchlistContext(watchlistContext);
+    if (scope === "watchlist")
+      invalidateScreen(
+        "My Watchlist changed. Select saved listings, then run the screen again.",
+      );
+  }, [watchlistContext]);
 
   useEffect(() => {
     epoch.current += 1;
@@ -506,6 +574,10 @@ export function PersonalFinancialScreener({
     screenController.current?.abort();
     savedController.current?.abort();
     setCriteria(defaultCriteria());
+    setScope("catalog");
+    setWatchlistSelection([]);
+    setWatchlistQuery("");
+    setWatchlistPage(0);
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
     clearComparison();
@@ -562,6 +634,7 @@ export function PersonalFinancialScreener({
   ) {
     return (
       enabled &&
+      screenContext === activeScreenContext.current &&
       selectedResponse === currentResponse.current &&
       selectedComparison === currentComparison.current &&
       (selectedComparison === null ||
@@ -676,6 +749,7 @@ export function PersonalFinancialScreener({
           );
     if (
       !enabled ||
+      screenContext !== activeScreenContext.current ||
       selectedResponse !== currentResponse.current ||
       !currentVisibleMetrics.current.includes(metric) ||
       row === undefined ||
@@ -718,6 +792,8 @@ export function PersonalFinancialScreener({
     currentResponse.current = null;
     setResponse(null);
     setCriteria(defaultCriteria());
+    setScope("catalog");
+    setWatchlistSelection([]);
     setSavedPayload(emptySaved);
     setSavedAvailable(false);
     setSavedVersion(0);
@@ -732,7 +808,7 @@ export function PersonalFinancialScreener({
     sessionCallback.current();
   }
 
-  function changeCriteria(next: PersonalFinancialScreenCriteriaDto) {
+  function invalidateScreen(nextMessage: string) {
     screenEpoch.current += 1;
     screenController.current?.abort();
     screenController.current = null;
@@ -741,8 +817,46 @@ export function PersonalFinancialScreener({
     clearComparison();
     currentResponse.current = null;
     setResponse(null);
+    setMessage(nextMessage);
+  }
+
+  function changeCriteria(next: PersonalFinancialScreenCriteriaDto) {
+    invalidateScreen(
+      "Criteria changed. Run screen to load matching annual data.",
+    );
     setCriteria(next);
-    setMessage("Criteria changed. Run screen to load matching annual data.");
+  }
+
+  function changeScope(next: "catalog" | "watchlist") {
+    if (!enabled || screenContext !== activeScreenContext.current) return;
+    invalidateScreen(
+      "Scope changed. Choose listings and criteria, then run the financial screen.",
+    );
+    activeScreenContext.current = "changing";
+    setScope(next);
+    setWatchlistSelection([]);
+    setWatchlistQuery("");
+    setWatchlistPage(0);
+  }
+
+  function changeWatchlistSelection(ids: readonly string[]) {
+    if (
+      !enabled ||
+      !watchlistReady ||
+      scope !== "watchlist" ||
+      screenContext !== activeScreenContext.current ||
+      ids.length > PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT ||
+      new Set(ids).size !== ids.length ||
+      ids.some(
+        (id) => !watchlistMemberships.some((member) => member.listingId === id),
+      )
+    )
+      return;
+    invalidateScreen(
+      "Saved listing selection changed. Run financial screen to load these companies.",
+    );
+    activeScreenContext.current = "changing";
+    setWatchlistSelection(ids);
   }
 
   function changeClause(
@@ -776,7 +890,7 @@ export function PersonalFinancialScreener({
   }
 
   async function runScreen(offset = 0, refresh = false, paginate = false) {
-    if (!enabled) return;
+    if (!canRun || screenContext !== activeScreenContext.current) return;
     if (!paginate || refresh) clearComparison();
     const normalized = {
       ...criteria,
@@ -798,6 +912,14 @@ export function PersonalFinancialScreener({
     const financialSnapshotSha256 =
       paginate && !refresh ? (response?.financialSnapshotSha256 ?? null) : null;
     const retainedComparison = paginate ? currentComparison.current : null;
+    const requestedScope: PersonalFinancialScreenWatchlistScopeDto | undefined =
+      scope === "watchlist"
+        ? {
+            kind: "watchlist",
+            watchlistVersion,
+            listingIds: [...watchlistSelection],
+          }
+        : undefined;
     clearInspection();
     currentResponse.current = null;
     setResponse(null);
@@ -819,19 +941,38 @@ export function PersonalFinancialScreener({
           criteria: normalized,
           page: { offset, limit: PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE },
           refresh,
+          ...(requestedScope === undefined ? {} : { scope: requestedScope }),
         },
         controller.signal,
       );
       if (
         controller.signal.aborted ||
         session !== epoch.current ||
-        operation !== screenEpoch.current
+        operation !== screenEpoch.current ||
+        screenContext !== activeScreenContext.current
       )
         return;
       if (!completeActivity()) {
         clearSession();
         return;
       }
+      if (
+        requestedScope !== undefined &&
+        (result.scope?.totalWatchlistListings !== watchlistMemberships.length ||
+          result.rows.some((row) => {
+            const member = watchlistMemberships.find(
+              (candidate) => candidate.listingId === row.identity.listingId,
+            );
+            return (
+              member === undefined ||
+              !requestedScope.listingIds.includes(member.listingId) ||
+              watchlistIdentityFields.some(
+                (field) => member[field] !== row.identity[field],
+              )
+            );
+          }))
+      )
+        throw new PersonalWorkspaceApiError("invalid_response");
       if (
         retainedComparison !== null &&
         retainedComparison.key !== comparisonKey(result, normalized)
@@ -849,7 +990,8 @@ export function PersonalFinancialScreener({
       if (
         controller.signal.aborted ||
         session !== epoch.current ||
-        operation !== screenEpoch.current
+        operation !== screenEpoch.current ||
+        screenContext !== activeScreenContext.current
       )
         return;
       if (isSessionError(error)) {
@@ -860,7 +1002,21 @@ export function PersonalFinancialScreener({
       clearComparison();
       currentResponse.current = null;
       setResponse(null);
-      setMessage(screenErrorMessage(error));
+      if (
+        error instanceof PersonalWorkspaceApiError &&
+        error.code === "conflict" &&
+        scope === "watchlist"
+      ) {
+        activeScreenContext.current = "changing";
+        setWatchlistSelection([]);
+      }
+      setMessage(
+        error instanceof PersonalWorkspaceApiError &&
+          error.code === "conflict" &&
+          scope === "watchlist"
+          ? "My Watchlist, the catalog or SEC data changed. Results were cleared. Reload My Watchlist through the workspace, select listings and run again."
+          : screenErrorMessage(error),
+      );
     } finally {
       if (session === epoch.current && operation === screenEpoch.current) {
         screenController.current = null;
@@ -911,7 +1067,7 @@ export function PersonalFinancialScreener({
     changeCriteria(structuredClone(view.criteria));
     setSavedName(view.name);
     setMessage(
-      "Saved criteria loaded. Run screen against the current catalog and SEC data.",
+      "Saved criteria loaded. Run screen against the selected companies and current SEC data.",
     );
   }
 
@@ -1022,6 +1178,19 @@ export function PersonalFinancialScreener({
   }
 
   const selected = savedPayload.views.find((view) => view.id === selectedId);
+  const normalizedWatchlistQuery = watchlistQuery
+    .trim()
+    .normalize("NFC")
+    .toLocaleLowerCase("en-US");
+  const matchingWatchlistMembers = watchlistMemberships.filter((member) =>
+    `${member.symbol} ${member.issuerName}`
+      .toLocaleLowerCase("en-US")
+      .includes(normalizedWatchlistQuery),
+  );
+  const visibleWatchlistMembers = matchingWatchlistMembers.slice(
+    watchlistPage * 50,
+    (watchlistPage + 1) * 50,
+  );
   const columnView =
     Object.entries(columnViews).find(([, view]) => {
       const ordered = orderedMetrics(view.metrics);
@@ -1053,6 +1222,163 @@ export function PersonalFinancialScreener({
         {`Balance sheet: CY${String(criteria.calendarYear)} Q4 instant frame; inspect actual balance date.`}{" "}
         The screen uses balances dated October 1–December 31 of that year.
       </p>
+      <fieldset className="financial-screen-controls" disabled={!enabled}>
+        <legend>Choose companies</legend>
+        <label>
+          <span>Financial screen scope</span>
+          <select
+            aria-label="Financial screen scope"
+            value={scope}
+            onChange={(event) =>
+              changeScope(event.target.value as "catalog" | "watchlist")
+            }
+          >
+            <option value="catalog">Current catalog</option>
+            <option value="watchlist">My Watchlist</option>
+          </select>
+        </label>
+        {scope === "watchlist" && (
+          <>
+            <p className="market-scope-note">
+              Select up to {PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT} saved
+              listings. Financial filters apply to this selection. Choosing
+              companies does not request SEC data or change My Watchlist.
+            </p>
+            {!watchlistAvailable ? (
+              <p className="discovery-warning">
+                My Watchlist is unavailable or needs reconciliation. Reload or
+                reconcile it in the My Watchlist section before screening saved
+                companies.
+              </p>
+            ) : watchlistMemberships.length === 0 ? (
+              <p className="discovery-empty-state">
+                My Watchlist is empty. Add companies from Security search or
+                catalog financial results, then return here to select them.
+              </p>
+            ) : (
+              <>
+                <p className="discovery-status" aria-live="polite">
+                  {watchlistSelection.length} of {watchlistMemberships.length}{" "}
+                  saved listings selected.{" "}
+                  {watchlistMemberships.length - watchlistSelection.length}{" "}
+                  {watchlistMemberships.length - watchlistSelection.length === 1
+                    ? "saved listing is"
+                    : "saved listings are"}{" "}
+                  outside this screen.
+                </p>
+                <div className="personal-stock-screener-run-actions">
+                  <button
+                    type="button"
+                    className="secondary-action compact-action"
+                    disabled={!watchlistReady}
+                    onClick={() =>
+                      changeWatchlistSelection(
+                        watchlistMemberships
+                          .slice(0, PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT)
+                          .map((member) => member.listingId),
+                      )
+                    }
+                  >
+                    {watchlistMemberships.length >
+                    PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT
+                      ? "Select first 20 for financials"
+                      : "Select all for financials"}
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={
+                      !watchlistReady || watchlistSelection.length === 0
+                    }
+                    onClick={() => changeWatchlistSelection([])}
+                  >
+                    Clear financial selection
+                  </button>
+                </div>
+                <label className="watchlist-filings-filter">
+                  Find a saved company
+                  <input
+                    type="search"
+                    aria-label="Find a saved financial listing"
+                    value={watchlistQuery}
+                    maxLength={120}
+                    onChange={(event) => {
+                      setWatchlistQuery(event.target.value);
+                      setWatchlistPage(0);
+                    }}
+                  />
+                </label>
+                <div className="watchlist-filings-choices">
+                  {visibleWatchlistMembers.map((member) => (
+                    <label key={member.listingId}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Screen financials for ${member.symbol}`}
+                        checked={watchlistSelection.includes(member.listingId)}
+                        disabled={
+                          !watchlistReady ||
+                          (!watchlistSelection.includes(member.listingId) &&
+                            watchlistSelection.length >=
+                              PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT)
+                        }
+                        onChange={(event) =>
+                          changeWatchlistSelection(
+                            event.target.checked
+                              ? [...watchlistSelection, member.listingId]
+                              : watchlistSelection.filter(
+                                  (id) => id !== member.listingId,
+                                ),
+                          )
+                        }
+                      />
+                      <span>
+                        <strong>{member.symbol}</strong> · {member.issuerName}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <nav
+                  className="personal-stock-screener-pagination"
+                  aria-label="Saved financial selection pages"
+                >
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={watchlistPage === 0}
+                    onClick={() =>
+                      setWatchlistPage(Math.max(0, watchlistPage - 1))
+                    }
+                  >
+                    Previous financial selections
+                  </button>
+                  <span>
+                    {matchingWatchlistMembers.length === 0
+                      ? 0
+                      : watchlistPage * 50 + 1}
+                    –
+                    {Math.min(
+                      (watchlistPage + 1) * 50,
+                      matchingWatchlistMembers.length,
+                    )}{" "}
+                    of {matchingWatchlistMembers.length} matching saved listings
+                  </span>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={
+                      (watchlistPage + 1) * 50 >=
+                      matchingWatchlistMembers.length
+                    }
+                    onClick={() => setWatchlistPage(watchlistPage + 1)}
+                  >
+                    Next financial selections
+                  </button>
+                </nav>
+              </>
+            )}
+          </>
+        )}
+      </fieldset>
       <fieldset
         className="financial-screen-controls"
         disabled={!enabled || savedBusy}
@@ -1298,14 +1624,14 @@ export function PersonalFinancialScreener({
             <button
               className="primary-action compact-action"
               type="submit"
-              disabled={running}
+              disabled={running || !canRun}
             >
               {running ? "Running financial screen…" : "Run financial screen"}
             </button>
             <button
               className="secondary-action compact-action"
               type="button"
-              disabled={running}
+              disabled={running || !canRun}
               onClick={() => void runScreen(0, true)}
             >
               Refresh SEC data
@@ -1378,7 +1704,7 @@ export function PersonalFinancialScreener({
           metric.
         </p>
       </fieldset>
-      {response === null ? (
+      {response === null || (scope === "watchlist" && !watchlistReady) ? (
         <div className="discovery-empty-state">
           <strong>
             {running
@@ -1431,7 +1757,8 @@ export function PersonalFinancialScreener({
         <legend>Saved financial screens</legend>
         <p className="market-scope-note">
           Store up to 20 named criteria definitions. Loading one requires an
-          explicit run against current data.
+          explicit run against current data. Company scope and saved-listing
+          selection are temporary and are not stored in a saved screen.
         </p>
         <div className="personal-stock-screener-filters">
           <label>
@@ -1637,9 +1964,22 @@ function FinancialResults({
       </dl>
       <p className="market-scope-note">
         {response.identityMatches.toLocaleString("en-US")} identity matches of{" "}
-        {response.totalUniverse.toLocaleString("en-US")} current listed
-        identities. With no numeric filters, all identity matches pass. A known
-        failing filter excludes a listing even if another fact is unknown.
+        {response.totalUniverse.toLocaleString("en-US")}{" "}
+        {response.scope
+          ? "selected saved listings"
+          : "current listed identities"}
+        .
+        {response.scope && (
+          <>
+            {" "}
+            My Watchlist contains{" "}
+            {response.scope.totalWatchlistListings.toLocaleString("en-US")}{" "}
+            saved listings; only the {response.scope.listingIds.length} selected
+            listings are screened.
+          </>
+        )}{" "}
+        With no numeric filters, all identity matches pass. A known failing
+        filter excludes a listing even if another fact is unknown.
       </p>
       <details className="financial-screen-source-details">
         <summary>Coverage, sources, and calculation details</summary>
