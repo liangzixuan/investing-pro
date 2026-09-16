@@ -2291,6 +2291,11 @@ h4,
   background: var(--mint-soft);
 }
 
+/* Native Tab/link focus must not keep scrolling after a financial panel closes. */
+html:has(.personal-financial-screener:focus-within) {
+  scroll-behavior: auto;
+}
+
 .personal-financial-screener
   :is(
     h3[tabindex="-1"],

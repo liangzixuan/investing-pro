@@ -77,6 +77,9 @@ to Compare companies. Removing or clearing selections focuses the shortlist
 heading. These focus changes keep the destination visible after the panel has
 opened or closed, with clearance for the sticky header and focus outline,
 including within a horizontally scrolled mobile comparison.
+While the financial screen has keyboard focus, page scrolling is immediate,
+including Tab navigation to filing links. Closing details with Escape therefore
+does not leave a prior focus scroll moving the restored value out of view.
 
 The shortlist lives only in component memory. It is bound to the applied criteria,
 catalog and financial digests, selected/prior years, revenue basis and formula
