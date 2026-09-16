@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "caseNumber": 38,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "2e581d4c12bcba6b2f005cef56816a469640e4c0",
+  "featureRevision": "48d1ae4cffcb94ecabb3d989537337fc0ee121c0",
+  "featureCount": 177,
+  "closureCount": 178,
+  "featureChanges": [
+    { "path": ".github/workflows/ci.yml", "status": "M" },
+    { "path": "apps/api/src/personal-vault-routes.test.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka38.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka38.json",
+  "presentation": {
+    "featureDescription": "reusable financial views CI repair",
+    "closureDescription": "reusable financial views CI repair",
+    "inventoryDescription": "reusable financial views CI repair",
+    "testBinding": "reusableFinancialViewsCiRepair",
+    "routingDescription": "reusable financial views CI repair",
+    "summaryDescription": "reusable financial views CI repair"
+  }
+}
