@@ -1403,19 +1403,28 @@ This program does not imply that every benchmark feature is obtainable:
 
 ## Release order and stopping rules
 
-### Active delivery priority (2026-09-15)
+### Active delivery priority (2026-09-16)
 
 The SEC cross-company screen now has seventeen annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
 thirteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
 shared 30-core-metric/500-security gate. Three editable, explicitly sparse starter
-screens are delivered. The current slice adds current assets less current
+screens are delivered. The accepted balance slice adds current assets less current
 liabilities in USD, with exact subtraction and matching Q4 date/filing rules.
 It reuses the existing balances and thirteen-Frame cache; transport v8 and
 formula-set1.6 coordinate strict client/server validation. Dated source operands
 retain their original acquisition dates; actual release acceptance belongs in
 the workspace checkpoint and handoff.
+
+The next slice compares two or three distinct issuers selected from financial
+screen results, including across pages of one query and snapshot. It reuses the
+seventeen decoded fields, existing display groups and exact source inspector.
+Selection is bounded, temporary and cleared when the query, snapshot or session
+changes. Actual reporting periods remain explicit; no automatic peer relevance,
+ranking or common fiscal period is inferred. This adds a discovery-to-comparison
+workflow without another formula or provider dependency, and does not complete
+the shared metric registry or coverage gate.
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.
 
@@ -1432,7 +1441,7 @@ slice inspects one primary filing context. Validate supported source coverage,
 fiscal calendars, standalone flow basis and revision selection against independent
 filing evidence before calculating trailing-period financials. Further screening
 metrics depend on their own compatible inputs and measured coverage; this does
-not block the independent current-balance subtraction slice. Broader return methods remain
+not block the independent screener-comparison slice. Broader return methods remain
 in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need
 their own methodology and evidence.

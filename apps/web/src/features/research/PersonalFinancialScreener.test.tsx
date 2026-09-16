@@ -3397,7 +3397,719 @@ describe("PersonalFinancialScreener", () => {
     expect(ratioCell(render())).toBeUndefined();
     expect(cashIncomeCell(render())).toBeUndefined();
   });
+  it("bounds the comparison shortlist to three distinct issuers and keeps selection read-only", async () => {
+    const result = comparisonResponse(0, 4);
+    const alternate = {
+      ...result.rows[0]!,
+      identity: {
+        ...result.rows[0]!.identity,
+        listingId: "listing-alternate",
+        securityId: "security-alternate",
+        shareClassId: "class-alternate",
+        symbol: "ALT",
+      },
+    };
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...result,
+      rows: [...result.rows, alternate],
+    });
+    await mount();
+    submit(render());
+    await flush();
+    const requests = api.screenPersonalFinancials.mock.calls.length;
+    const savedReads = api.fetchPersonalFinancialSavedViews.mock.calls.length;
+    const activity = activityStart.mock.calls.length;
+    const staleFirst = button(render(), "Select CMP0 for comparison");
+    const staleAlternate = button(render(), "Select ALT for comparison");
+    const staleFourth = button(render(), "Select CMP3 for comparison");
+    click(render(), "Select CMP0 for comparison");
+    staleFirst.props.onClick?.();
+    staleAlternate.props.onClick?.();
+    expect(text(render())).toContain("1 of 3 companies selected");
+    expect(button(render(), "Compare companies").props.disabled).toBe(true);
+    expect(button(render(), "Select ALT for comparison").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Select ALT for comparison");
+    expect(text(render())).toContain("1 of 3 companies selected");
+    expect(text(render())).toContain(
+      "Another listing of this issuer is selected.",
+    );
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Select CMP2 for comparison");
+    staleFourth.props.onClick?.();
+    expect(text(render())).toContain("3 of 3 companies selected");
+    expect(button(render(), "Select CMP3 for comparison").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Select CMP3 for comparison");
+    expect(text(render())).toContain("3 of 3 companies selected");
+    expect(button(render(), "Compare companies").props.disabled).toBe(false);
+    click(render(), "Compare companies");
+    expect(text(comparisonPanel(render()))).toContain("CMP0");
+    expect(text(comparisonPanel(render()))).toContain("CMP1");
+    expect(text(comparisonPanel(render()))).toContain("CMP2");
+    expect(text(comparisonPanel(render()))).not.toContain("CMP3");
+    click(render(), "Remove CMP1 from comparison");
+    expect(text(render())).toContain("2 of 3 companies selected");
+    click(render(), "Select CMP3 for comparison");
+    expect(text(render())).toContain("3 of 3 companies selected");
+    click(render(), "Clear comparison");
+    expect(text(render())).toContain("0 of 3 companies selected");
+    expect(comparisonPanel(render())).toBeUndefined();
+    click(render(), "Select ALT for comparison");
+    expect(text(render())).toContain("1 of 3 companies selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(requests);
+    expect(api.fetchPersonalFinancialSavedViews).toHaveBeenCalledTimes(
+      savedReads,
+    );
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(activityStart).toHaveBeenCalledTimes(activity);
+    expect(props.onOpenResearch).not.toHaveBeenCalled();
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("compares retained rows across pinned pages and rejects stale page actions while preserving display-only changes", async () => {
+    const first = comparisonResponse(0, 26);
+    api.screenPersonalFinancials.mockResolvedValueOnce(first);
+    await mount();
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    const staleSelection = button(render(), "Select CMP2 for comparison");
+    const staleCompare = button(render(), "Compare companies");
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    click(render(), "Next financial page");
+    staleSelection.props.onClick?.();
+    staleCompare.props.onClick?.();
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(
+      elements(render()).some(
+        (item) =>
+          item.type === "button" && text(item) === "Select CMP2 for comparison",
+      ),
+    ).toBe(false);
+    pending.resolve(comparisonResponse(25, 26));
+    await flush();
+    staleSelection.props.onClick?.();
+    staleCompare.props.onClick?.();
+    expect(text(render())).toContain("2 of 3 companies selected");
+    expect(comparisonPanel(render())).toBeUndefined();
+    click(render(), "Select CMP25 for comparison");
+    click(render(), "Compare companies");
+    let panel = comparisonPanel(render());
+    for (const symbol of ["CMP0", "CMP1", "CMP25"])
+      expect(text(panel)).toContain(symbol);
+    expect(text(panel)).not.toContain("CMP2 ");
+    expect(comparisonMetricRows(panel)).toHaveLength(5);
+    change(render(), "Financial column view", "q4Balances");
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(4);
+    change(render(), "Financial column view", "all");
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(17);
+    toggleColumn(render(), "Revenue", false);
+    panel = comparisonPanel(render());
+    expect(comparisonMetricRows(panel)).toHaveLength(16);
+    expect(text(render())).toContain("3 of 3 companies selected");
+    const balance = ratioCell(
+      panel,
+      "Current assets less current liabilities (USD)",
+      "CMP0",
+    )!;
+    (balance.props.onClick as (event: unknown) => void)({
+      currentTarget: null,
+    });
+    expect(text(inspector(render()))).toContain("CMP0");
+    expect(text(inspector(render()))).toContain("Exact value: 20 USD");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(api.screenPersonalFinancials.mock.calls.at(-1)?.[0]).toMatchObject({
+      financialSnapshotSha256: first.financialSnapshotSha256,
+      page: { offset: 25, limit: 25 },
+    });
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+    expect(props.onOpenResearch).not.toHaveBeenCalled();
+  });
+
+  it("preserves every decoded metric and source reference, signed balances, unknown operands and actual dates in comparison", async () => {
+    const result = comparisonResponse(0, 3);
+    const negative = currentBalanceDifferenceResponse(
+      "158104000000",
+      "162367000000",
+      "-4263000000",
+    ).rows[0]!;
+    const zero = currentBalanceDifferenceResponse("100", "0", "100").rows[0]!;
+    const unknown = result.rows[2]!;
+    const unknownSources =
+      unknown.metrics.currentAssetsLessCurrentLiabilities.sources.map(
+        (source) => ({
+          ...source,
+          asOfDate:
+            source.concept === "AssetsCurrent" ? "2025-12-31" : "2026-01-31",
+        }),
+      );
+    const rows = [
+      { ...result.rows[0]!, metrics: negative.metrics },
+      { ...result.rows[1]!, metrics: zero.metrics },
+      {
+        ...unknown,
+        metrics: {
+          ...unknown.metrics,
+          currentAssetsLessCurrentLiabilities: {
+            status: "unavailable" as const,
+            unit: "USD" as const,
+            reason: "balance_date_mismatch" as const,
+            sources: unknownSources,
+          },
+        },
+      },
+    ];
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...result,
+      revenueBasis: "Revenues",
+      rows,
+    });
+    await mount();
+    change(render(), "Revenue basis", "Revenues");
+    change(render(), "Financial column view", "all");
+    submit(render());
+    await flush();
+    for (const symbol of ["CMP0", "CMP1", "CMP2"])
+      click(render(), `Select ${symbol} for comparison`);
+    click(render(), "Compare companies");
+    const panel = comparisonPanel(render());
+    const rendered = text(panel);
+    expect(rendered).toContain("-$4.26B");
+    expect(rendered).toContain("Revenues");
+    expect(rendered).toContain(result.fetchedAt);
+    expect(rendered).toContain(result.expiresAt);
+    expect(rendered).toContain(result.catalogSnapshotSha256);
+    expect(rendered).toContain(result.financialSnapshotSha256);
+    expect(rendered).toContain(result.formulaVersion);
+    expect(comparisonMetricRows(panel)).toHaveLength(17);
+    const cells = elements(panel).filter(
+      (item) =>
+        typeof item.type === "function" && item.type.name === "FinancialCell",
+    );
+    expect(cells).toHaveLength(51);
+    for (const row of rows) {
+      const companyCells = cells.filter(
+        (item) => item.props.symbol === row.identity.symbol,
+      );
+      expect(companyCells.map((item) => item.props.metric)).toEqual(
+        PERSONAL_FINANCIAL_SCREEN_METRICS,
+      );
+      for (const cell of companyCells) {
+        const metric = cell.props.metric as keyof typeof row.metrics;
+        expect(cell.props.cell).toBe(row.metrics[metric]);
+      }
+    }
+    for (const [symbol, label, expected] of [
+      [
+        "CMP0",
+        "Current assets less current liabilities (USD)",
+        ["-4263000000", "158104000000", "162367000000"],
+      ],
+      [
+        "CMP1",
+        "Current assets / current liabilities (×)",
+        ["Unavailable: nonpositive current liabilities", "Reported: 0 USD"],
+      ],
+      [
+        "CMP2",
+        "Current assets less current liabilities (USD)",
+        ["Unavailable: balance date mismatch", "2025-12-31", "2026-01-31"],
+      ],
+      ["CMP0", "Revenue", ["Unavailable: conflicting"]],
+      [
+        "CMP2",
+        "Net income",
+        ["2024-01-01", "2024-12-31", "0000000001-25-000001"],
+      ],
+    ] as const) {
+      const cell = ratioCell(comparisonPanel(render()), label, symbol)!;
+      (cell.props.onClick as (event: unknown) => void)({ currentTarget: null });
+      for (const value of expected)
+        expect(text(inspector(render()))).toContain(value);
+      click(render(), "Close details");
+    }
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it.each(["run", "refresh"] as const)(
+    "clears comparison before a new %s even when the completed response reuses the same snapshot",
+    async (action) => {
+      await mountComparison();
+      const staleSelect = button(render(), "Select CMP2 for comparison");
+      const staleCompare = button(render(), "Compare companies");
+      const pending = deferred<PersonalFinancialScreenResponseDto>();
+      api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+      if (action === "run") submit(render());
+      else click(render(), "Refresh SEC data");
+      staleSelect.props.onClick?.();
+      staleCompare.props.onClick?.();
+      expect(comparisonPanel(render())).toBeUndefined();
+      pending.resolve(comparisonResponse(0, 4));
+      await flush();
+      staleSelect.props.onClick?.();
+      staleCompare.props.onClick?.();
+      expect(text(render())).toContain("0 of 3 companies selected");
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "year",
+    "basis",
+    "company",
+    "sort",
+    "direction",
+    "clause",
+    "reset",
+    "starter",
+    "load",
+  ] as const)(
+    "invalidates the comparison on %s criteria changes and ignores retained controls",
+    async (action) => {
+      await mountComparison();
+      if (action === "load") {
+        change(render(), "Financial screen name", "Comparison criteria");
+        click(render(), "Save financial screen");
+        await flush();
+      }
+      const staleSelect = button(render(), "Select CMP2 for comparison");
+      const staleCompare = button(render(), "Compare companies");
+      const beforeWrites =
+        api.savePersonalFinancialSavedViews.mock.calls.length;
+      if (action === "year")
+        change(render(), "Financial calendar year", "2024");
+      else if (action === "basis")
+        change(render(), "Revenue basis", "Revenues");
+      else if (action === "company")
+        change(render(), "Financial company filter", "Different");
+      else if (action === "sort")
+        change(render(), "Financial sort field", "currentRatio");
+      else if (action === "direction")
+        change(render(), "Financial sort direction", "desc");
+      else if (action === "clause") {
+        click(render(), "Add financial filter");
+        change(render(), "Financial threshold 1", "0");
+      } else if (action === "reset")
+        click(render(), "Reset financial criteria");
+      else if (action === "starter")
+        click(render(), "Apply Q4 liquidity cover");
+      else click(render(), "Load financial criteria");
+      staleSelect.props.onClick?.();
+      staleCompare.props.onClick?.();
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(text(render())).not.toContain("2 of 3 companies selected");
+      api.screenPersonalFinancials.mockImplementationOnce(
+        (request: PersonalFinancialScreenRequestDto) =>
+          Promise.resolve({
+            ...comparisonResponse(0, 4),
+            calendarYear: request.criteria.calendarYear,
+            priorCalendarYear: request.criteria.calendarYear - 1,
+            revenueBasis: request.criteria.revenueBasis ?? "agreement",
+          }),
+      );
+      submit(render());
+      await flush();
+      staleSelect.props.onClick?.();
+      staleCompare.props.onClick?.();
+      expect(text(render())).toContain("0 of 3 companies selected");
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledTimes(
+        beforeWrites,
+      );
+    },
+  );
+
+  it.each([
+    "catalog",
+    "financial",
+    "year",
+    "priorYear",
+    "basis",
+    "formula",
+    "fetched",
+    "expires",
+  ] as const)(
+    "clears retained companies when pagination returns different %s snapshot context",
+    async (boundary) => {
+      await mountComparison(26);
+      const next = comparisonResponse(25, 26);
+      const update =
+        boundary === "catalog"
+          ? { catalogSnapshotSha256: sha("c") }
+          : boundary === "financial"
+            ? { financialSnapshotSha256: sha("d") }
+            : boundary === "year"
+              ? { calendarYear: next.calendarYear - 1 }
+              : boundary === "priorYear"
+                ? { priorCalendarYear: next.priorCalendarYear - 1 }
+                : boundary === "basis"
+                  ? { revenueBasis: "Revenues" as const }
+                  : boundary === "formula"
+                    ? { formulaVersion: "different-formula" }
+                    : boundary === "fetched"
+                      ? { fetchedAt: "2026-09-01T00:01:00.000Z" }
+                      : { expiresAt: "2026-09-01T00:31:00.000Z" };
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...next,
+        ...update,
+      });
+      click(render(), "Next financial page");
+      await flush();
+      expect(text(render())).toContain("0 of 3 companies selected");
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("ignores superseded page controls without dispatching or aborting the newer query", async () => {
+    await mountComparison(26);
+    const oldNext = button(render(), "Next financial page");
+    change(render(), "Financial company filter", "Replacement query");
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    submit(render());
+    const signal = api.screenPersonalFinancials.mock.calls.at(
+      -1,
+    )?.[1] as AbortSignal;
+    oldNext.props.onClick?.();
+    expect(signal.aborted).toBe(false);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    pending.resolve(comparisonResponse(0, 26));
+    await flush();
+    oldNext.props.onClick?.();
+    expect(signal.aborted).toBe(false);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(text(render())).toContain("0 of 3 companies selected");
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(activityStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores an old page completion and clear action after a newer screen has its own shortlist", async () => {
+    await mountComparison(26);
+    const oldClear = button(render(), "Clear comparison");
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    click(render(), "Next financial page");
+    const oldSignal = api.screenPersonalFinancials.mock.calls.at(
+      -1,
+    )?.[1] as AbortSignal;
+    const fresh = {
+      ...comparisonResponse(0, 4),
+      financialSnapshotSha256: sha("e"),
+    };
+    api.screenPersonalFinancials.mockResolvedValueOnce(fresh);
+    submit(render());
+    await flush();
+    expect(oldSignal.aborted).toBe(true);
+    click(render(), "Select CMP2 for comparison");
+    click(render(), "Select CMP3 for comparison");
+    click(render(), "Compare companies");
+    pending.resolve(comparisonResponse(25, 26));
+    await flush();
+    oldClear.props.onClick?.();
+    const panel = comparisonPanel(render());
+    expect(text(panel)).toContain("CMP2");
+    expect(text(panel)).toContain("CMP3");
+    expect(text(panel)).toContain(fresh.financialSnapshotSha256);
+    expect(text(panel)).not.toContain("CMP25");
+    expect(text(render())).toContain("2 of 3 companies selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(3);
+    expect(activityCompletion).toHaveBeenCalledTimes(2);
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it("rejects hidden-metric and obsolete detail-close callbacks without closing the current comparison inspector", async () => {
+    await mountComparison();
+    const hiddenMetric = ratioCell(
+      comparisonPanel(render()),
+      "Net income",
+      "CMP0",
+    )!;
+    const retainedVisibleMetric = ratioCell(
+      comparisonPanel(render()),
+      "Current assets / current liabilities (×)",
+      "CMP0",
+    )!;
+    change(render(), "Financial column view", "q4Balances");
+    (hiddenMetric.props.onClick as (event: unknown) => void)({
+      currentTarget: null,
+    });
+    expect(inspector(render())).toBeUndefined();
+    (retainedVisibleMetric.props.onClick as (event: unknown) => void)({
+      currentTarget: null,
+    });
+    const oldClose = button(render(), "Close details");
+    const freshMetric = ratioCell(
+      comparisonPanel(render()),
+      "Current assets",
+      "CMP1",
+    )!;
+    (freshMetric.props.onClick as (event: unknown) => void)({
+      currentTarget: null,
+    });
+    expect(text(inspector(render()))).toContain("CMP1 · Current assets");
+    oldClose.props.onClick?.();
+    expect(text(inspector(render()))).toContain("CMP1 · Current assets");
+    expect(text(render())).toContain("2 of 3 companies selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(activityStart).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it.each(["request_failed", "conflict", "session_unavailable"] as const)(
+    "discards comparison on a %s page failure and cannot restore it with retained callbacks",
+    async (failure) => {
+      await mountComparison(26);
+      const staleSelect = button(render(), "Select CMP2 for comparison");
+      const staleCompare = button(render(), "Compare companies");
+      api.screenPersonalFinancials.mockRejectedValueOnce(
+        failure === "request_failed"
+          ? new Error("Unavailable")
+          : new PersonalWorkspaceApiError(failure),
+      );
+      click(render(), "Next financial page");
+      await flush();
+      staleSelect.props.onClick?.();
+      staleCompare.props.onClick?.();
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(text(render())).not.toContain("2 of 3 companies selected");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(props.onSessionUnavailable).toHaveBeenCalledTimes(
+        failure === "session_unavailable" ? 1 : 0,
+      );
+    },
+  );
+
+  it.each(["catalog", "disabled", "workspace", "session", "unmount"] as const)(
+    "aborts pending pagination and prevents comparison resurrection across the %s lifetime boundary",
+    async (boundary) => {
+      await mountComparison(26);
+      const staleCompare = button(render(), "Compare companies");
+      const pending = deferred<PersonalFinancialScreenResponseDto>();
+      api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+      click(render(), "Next financial page");
+      const signal = api.screenPersonalFinancials.mock.calls.at(
+        -1,
+      )?.[1] as AbortSignal;
+      if (boundary === "catalog")
+        props = {
+          ...props,
+          snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+        };
+      else if (boundary === "disabled") props = { ...props, disabled: true };
+      else if (boundary === "workspace")
+        props = { ...props, workspaceReady: false };
+      else if (boundary === "session") {
+        api.fetchPersonalFinancialSavedViews.mockRejectedValueOnce(
+          new PersonalWorkspaceApiError("session_unavailable"),
+        );
+        click(render(), "Reload saved screens");
+        await flush();
+      } else harness.unmount();
+      if (boundary !== "unmount") render();
+      expect(signal.aborted).toBe(true);
+      pending.resolve(comparisonResponse(25, 26));
+      await flush();
+      staleCompare.props.onClick?.();
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(text(render())).not.toContain("2 of 3 companies selected");
+      expect(activityCompletion).toHaveBeenCalledTimes(1);
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["Close comparison", "Escape"] as const)(
+    "focuses the named comparison, permits links and commits dismissal before %s restores focus",
+    async (action) => {
+      api.screenPersonalFinancials.mockResolvedValueOnce(comparisonResponse());
+      await mount();
+      submit(render());
+      await flush();
+      click(render(), "Select CMP0 for comparison");
+      click(render(), "Select CMP1 for comparison");
+      let committedView: unknown;
+      const headingFocus = vi.fn();
+      const triggerFocus = vi.fn(() => {
+        expect(comparisonPanel(committedView)).toBeUndefined();
+      });
+      const compareButton = elements(render()).find(
+        (item) => item.type === "button" && text(item) === "Compare companies",
+      )!;
+      (
+        compareButton.props.ref as React.RefObject<HTMLButtonElement | null>
+      ).current = {
+        isConnected: true,
+        focus: triggerFocus,
+      } as unknown as HTMLButtonElement;
+      click(render(), "Compare companies");
+      committedView = render((view) => {
+        attachHeading(view, "financial-screen-comparison-title", {
+          focus: headingFocus,
+        } as unknown as HTMLHeadingElement);
+      });
+      expect(headingFocus).toHaveBeenCalledOnce();
+      const panel = comparisonPanel(committedView)!;
+      expect(panel.props["aria-labelledby"]).toBe(
+        "financial-screen-comparison-title",
+      );
+      expect(panel.props["aria-modal"]).toBeUndefined();
+      const preventDefault = vi.fn();
+      const stopPropagation = vi.fn();
+      (panel.props.onKeyDown as (event: unknown) => void)({
+        key: "Tab",
+        preventDefault,
+        stopPropagation,
+      });
+      expect(preventDefault).not.toHaveBeenCalled();
+      harness.onCommit(() => {
+        committedView = render();
+      });
+      if (action === "Close comparison") click(committedView, action);
+      else {
+        (panel.props.onKeyDown as (event: unknown) => void)({
+          key: "Escape",
+          preventDefault,
+          stopPropagation,
+        });
+        expect(preventDefault).toHaveBeenCalledOnce();
+        expect(stopPropagation).toHaveBeenCalledOnce();
+      }
+      expect(comparisonPanel(committedView)).toBeUndefined();
+      expect(triggerFocus).toHaveBeenCalledOnce();
+      expect(text(render())).toContain("2 of 3 companies selected");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    },
+  );
+
+  it("commits removal before focusing the shortlist and prevents removed sources or stale controls from reviving it", async () => {
+    await mountComparison();
+    click(render(), "Select CMP2 for comparison");
+    const oldRemove = button(render(), "Remove CMP0 from comparison");
+    const source = ratioCell(comparisonPanel(render()), "Net income", "CMP0")!;
+    (source.props.onClick as (event: unknown) => void)({ currentTarget: null });
+    expect(inspector(render())).toBeDefined();
+    let committedView: unknown = render();
+    const headingFocus = vi.fn(() => {
+      expect(text(comparisonPanel(committedView))).not.toContain("CMP0");
+      expect(inspector(committedView)).toBeUndefined();
+    });
+    render((view) =>
+      attachHeading(view, "financial-screen-shortlist-title", {
+        focus: headingFocus,
+      } as unknown as HTMLHeadingElement),
+    );
+    harness.onCommit(() => {
+      committedView = render();
+    });
+    click(render(), "Remove CMP0 from comparison");
+    expect(headingFocus).toHaveBeenCalledOnce();
+    expect(text(render())).toContain("2 of 3 companies selected");
+    expect(comparisonPanel(render())).toBeDefined();
+    (source.props.onClick as (event: unknown) => void)({ currentTarget: null });
+    expect(inspector(render())).toBeUndefined();
+    click(render(), "Select CMP0 for comparison");
+    oldRemove.props.onClick?.();
+    expect(text(render())).toContain("3 of 3 companies selected");
+    click(render(), "Remove CMP0 from comparison");
+    click(render(), "Remove CMP1 from comparison");
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(text(render())).toContain("1 of 3 companies selected");
+    expect(button(render(), "Compare companies").props.disabled).toBe(true);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+  });
+
+  it("keeps selected rows out of saved criteria and preserves ordinary company and watchlist actions", async () => {
+    await mountComparison();
+    const view = render();
+    click(view, "Open CMP0");
+    click(view, "Add CMP1");
+    expect(props.onOpenResearch).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: "CMP0" }),
+    );
+    expect(props.onAddToWatchlist).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: "CMP1" }),
+    );
+    change(render(), "Financial screen name", "Same ordinary saved criteria");
+    click(render(), "Save financial screen");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]![1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.schemaVersion).toBe(1);
+    expect(Object.keys(payload.views[0]!.criteria).sort()).toEqual([
+      "calendarYear",
+      "clauses",
+      "identityText",
+      "sort",
+    ]);
+    expect(JSON.stringify(payload)).not.toContain("CMP");
+    expect(JSON.stringify(payload)).not.toContain("listing-");
+    expect(JSON.stringify(payload)).not.toContain("comparison");
+    expect(text(render())).toContain("2 of 3 companies selected");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
 });
+
+function comparisonPanel(value: unknown) {
+  return elements(value).find(
+    (item) =>
+      item.type === "section" &&
+      item.props.id === "financial-screen-comparison",
+  );
+}
+function comparisonMetricRows(value: unknown) {
+  return elements(value).filter(
+    (item) => item.type === "th" && item.props.scope === "row",
+  );
+}
+async function mountComparison(count = 4) {
+  api.screenPersonalFinancials.mockResolvedValueOnce(
+    comparisonResponse(0, count),
+  );
+  await mount();
+  submit(render());
+  await flush();
+  click(render(), "Select CMP0 for comparison");
+  click(render(), "Select CMP1 for comparison");
+  click(render(), "Compare companies");
+  expect(comparisonPanel(render())).toBeDefined();
+}
+function comparisonResponse(
+  offset = 0,
+  count = 4,
+): PersonalFinancialScreenResponseDto {
+  const result = response(offset, count);
+  return {
+    ...result,
+    rows: result.rows.map((row, index) => {
+      const id = offset + index;
+      return {
+        ...row,
+        identity: {
+          ...row.identity,
+          cik: String(id + 1).padStart(10, "0"),
+          issuerId: `issuer-${String(id)}`,
+          issuerName: `Comparison company ${String(id)}`,
+          securityId: `security-${String(id)}`,
+          securityName: `Comparison company ${String(id)} common`,
+          shareClassId: `class-${String(id)}`,
+          symbol: `CMP${String(id)}`,
+        },
+      };
+    }),
+  };
+}
 
 function render(beforeEffects?: (view: unknown) => void) {
   harness.begin();

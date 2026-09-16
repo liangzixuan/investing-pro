@@ -56,6 +56,34 @@ keyboard accessible. Changing columns, criteria or results closes old inspection
 owner/session loss clears private results. Display preferences do not count as
 owner-session activity or modify provider cache expiry.
 
+### Compare a shortlist
+
+Select up to three distinct issuers from results, then compare two or three
+companies side by side. Selections can span pages of the same query and financial
+snapshot. A second share class of a selected issuer cannot duplicate that
+issuer's financials. Remove an individual company or clear the shortlist to
+choose another set.
+
+The comparison uses the existing display columns and groups, including All
+metrics. Each company's exact listing identity remains visible. Values retain
+their actual annual periods or balance dates and open the same source inspector
+as the results table, including unknown reasons and every retained filing
+reference. The shared calendar selection is not a claim of identical periods,
+accounting, business scope or peer relevance.
+
+The shortlist lives only in component memory. It is bound to the applied criteria,
+catalog and financial digests, selected/prior years, revenue basis and formula
+version. Successful paging within that context preserves selection. Changing
+criteria, applying a starter or saved definition, running or refreshing, a failed
+request, changed snapshot, or session/workspace loss clears it. Display-only
+column changes retain the shortlist. Comparison actions are unavailable while a
+page is loading, and stale actions cannot restore a superseded selection.
+
+Selecting, removing, comparing and inspecting use already decoded rows without
+requests or writes. The shortlist is not saved in definitions, browser storage,
+the vault, a URL or an export. Ordinary pagination still makes its existing
+snapshot-bound request. The separate selected-company peer workspace is unchanged.
+
 ### Start from editable examples
 
 **Editable starter screens** offers three sparse starting points using the

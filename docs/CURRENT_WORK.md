@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-15 following the handover from **Investing Pro+** to
+Updated 2026-09-16 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -15,9 +15,41 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: current balance surplus or shortfall
+## Immediate delivery: compare a financial-screen shortlist
 
-Local access is implemented and temporarily serving at `7c4fdf1`: the app opens
+Select two or three distinct issuers from SEC financial-screen results and
+compare their existing seventeen metrics side by side, including selections
+from different pages of the same query and snapshot. Reuse the source inspector
+for exact values, unknown reasons, actual periods and filing references. The
+existing display groups control the comparison's metrics. A shared calendar year
+does not establish identical fiscal periods or comparable businesses.
+
+Keep at most three selected rows in component memory. Bind them to applied
+criteria, catalog and financial digests, years, revenue basis and formula version.
+Preserve selection only through successful pages of that exact context; clear it
+on changed criteria, a starter or saved-view application, new Run/Refresh, failed
+requests, changed snapshots and session/workspace loss. Display-only column
+changes may retain selection. Reject duplicate share classes of a selected
+issuer and prevent stale callbacks or responses from reviving prior selections.
+
+Selection, comparison and source inspection use already decoded results and make
+no data request or write. Existing explicit pagination remains unchanged. No
+new formula, provider concept, transport version, saved-v1 field or selected-company
+peer behavior is introduced. Verify selection limits, cross-page behavior,
+invalidation, exact source rendering and keyboard/mobile focus before release.
+The workspace checkpoint owns actual release verification and activation.
+
+## Accepted predecessor and historical verification
+
+Release `fb8ec7d` adds **Current assets less current liabilities (USD)** as the
+seventeenth field. Its native gate passed 5,506 checks with nine existing skips
+and 24 builds; all five applicable hosted jobs passed on attempt 1. Independent
+receipt audits and Brave desktop/390px QA passed. Exact subtraction accepts
+negative differences and zero liabilities but requires nonnegative operands,
+matching actual Q4 dates and filings. Transport v8/formula-set 1.6 and the
+thirteen-Frame source set remain the comparison baseline.
+
+Local access was implemented at `7c4fdf1`: the app opens
 without login while retaining its loopback/request boundaries, encrypted vault
 and saved account. Native verification and Brave desktop/mobile acceptance passed,
 including all three editable financial starters. See [local owner login](./LOCAL_OWNER_LOGIN.md).
@@ -38,7 +70,7 @@ deadline and ACL checks are unchanged. This repairs reporting; it does not
 retroactively resolve the earlier process failure. Preserve the running app
 until the next verified product release is ready to activate.
 
-The current product slice adds **Current assets less current liabilities (USD)**
+The accepted balance slice adds **Current assets less current liabilities (USD)**
 as the seventeenth field. It reuses existing Q4 balances to screen dollar
 surpluses/shortfalls, including negative differences and zero liabilities.
 Every retained reference must have the same admitted actual date and filing;
@@ -63,7 +95,7 @@ registry or its coverage gate.
 | Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                  | Wider reconciliation and benchmark-relative analysis          |
 | Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                   | Verified TTM and the shared 30-core-metric screening registry |
 | Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                       | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                          | Compatible multi-company coverage and automatic peer metadata |
+| Compare businesses        | SEC-screen shortlist of two or three issuers with source inspection; twelve financial checks and up to three manual peers                     | Broader compatible multi-company coverage and automatic peers |
 | Screen for ideas          | Seventeen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Broader verified metric coverage and compatible source inputs |
 | Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                  | Broader live samples, upcoming events, alerts and exports     |
 | Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                                | Further corporate actions, benchmarks and live coverage       |

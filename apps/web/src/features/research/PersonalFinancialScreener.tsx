@@ -10,6 +10,7 @@ import {
   type PersonalFinancialScreenCriteriaDto,
   type PersonalFinancialScreenMetricDto,
   type PersonalFinancialScreenResponseDto,
+  type PersonalFinancialScreenRowDto,
   type PersonalFinancialSavedViewsPayloadDto,
   type PersonalSecurityMasterScreenRowDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
@@ -132,8 +133,48 @@ const starterScreens = [
 }[];
 interface FinancialSourceSelection {
   readonly response: PersonalFinancialScreenResponseDto;
-  readonly listingId: string;
+  readonly row: PersonalFinancialScreenRowDto;
   readonly metric: PersonalFinancialScreenMetricDto;
+  readonly comparison: FinancialComparisonSelection | null;
+}
+interface FinancialComparisonSelection {
+  readonly key: string;
+  readonly rows: readonly PersonalFinancialScreenRowDto[];
+  readonly open: boolean;
+}
+function comparisonKey(
+  response: PersonalFinancialScreenResponseDto,
+  criteria: PersonalFinancialScreenCriteriaDto,
+): string {
+  return JSON.stringify([
+    response.catalogSnapshotSha256,
+    response.financialSnapshotSha256,
+    response.calendarYear,
+    response.priorCalendarYear,
+    response.instantQuarter,
+    response.revenueBasis ?? "agreement",
+    response.formulaVersion,
+    response.fetchedAt,
+    response.expiresAt,
+    criteria.calendarYear,
+    criteria.revenueBasis ?? "agreement",
+    criteria.identityText.trim().normalize("NFC"),
+    criteria.clauses.map(({ field, operator, value }) => [
+      field,
+      operator,
+      value,
+    ]),
+    [criteria.sort.field, criteria.sort.direction],
+  ]);
+}
+function sameComparisonIssuer(
+  first: PersonalFinancialScreenRowDto,
+  second: PersonalFinancialScreenRowDto,
+): boolean {
+  return (
+    first.identity.issuerId === second.identity.issuerId ||
+    first.identity.cik === second.identity.cik
+  );
 }
 const revenueBasisLabels: Readonly<
   Record<PersonalFinancialRevenueBasisDto, string>
@@ -383,12 +424,23 @@ export function PersonalFinancialScreener({
   const [visibleMetrics, setVisibleMetrics] = useState<
     readonly PersonalFinancialScreenMetricDto[]
   >(orderedMetrics(columnViews.overview.metrics));
+  const currentVisibleMetrics = useRef(visibleMetrics);
+  currentVisibleMetrics.current = visibleMetrics;
   const [inspection, setInspection] = useState<FinancialSourceSelection | null>(
     null,
   );
+  const currentInspection = useRef(inspection);
+  currentInspection.current = inspection;
   const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
   const inspectionHeading = useRef<HTMLHeadingElement | null>(null);
   const resultsHeading = useRef<HTMLHeadingElement | null>(null);
+  const [comparison, setComparison] =
+    useState<FinancialComparisonSelection | null>(null);
+  const currentComparison = useRef(comparison);
+  currentComparison.current = comparison;
+  const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
+  const shortlistHeading = useRef<HTMLHeadingElement | null>(null);
+  const comparisonButton = useRef<HTMLButtonElement | null>(null);
   const currentResponse = useRef(response);
   currentResponse.current = response;
   const [running, setRunning] = useState(false);
@@ -421,6 +473,7 @@ export function PersonalFinancialScreener({
     setCriteria(defaultCriteria());
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
+    clearComparison();
     currentResponse.current = null;
     setResponse(null);
     setRunning(false);
@@ -443,7 +496,9 @@ export function PersonalFinancialScreener({
       screenController.current?.abort();
       savedController.current?.abort();
       inspectionTrigger.current = null;
+      currentInspection.current = null;
       currentResponse.current = null;
+      currentComparison.current = null;
     };
     // The snapshot/session boundary owns all in-memory results and pending operations.
   }, [snapshot.snapshotSha256, enabled]);
@@ -453,7 +508,106 @@ export function PersonalFinancialScreener({
       inspectionHeading.current?.focus();
   }, [inspection]);
 
+  useEffect(() => {
+    if (comparison?.open) comparisonHeading.current?.focus();
+  }, [comparison?.open]);
+
+  function updateComparison(next: FinancialComparisonSelection | null) {
+    currentComparison.current = next;
+    setComparison(next);
+  }
+
+  function clearComparison() {
+    updateComparison(null);
+  }
+
+  function comparisonIsCurrent(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    selectedComparison: FinancialComparisonSelection | null,
+  ) {
+    return (
+      enabled &&
+      selectedResponse === currentResponse.current &&
+      selectedComparison === currentComparison.current &&
+      (selectedComparison === null ||
+        selectedComparison.key === comparisonKey(selectedResponse, criteria))
+    );
+  }
+
+  function selectForComparison(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    selectedComparison: FinancialComparisonSelection | null,
+    listingId: string,
+  ) {
+    if (!comparisonIsCurrent(selectedResponse, selectedComparison)) return;
+    const row = selectedResponse.rows.find(
+      (item) => item.identity.listingId === listingId,
+    );
+    const rows = selectedComparison?.rows ?? [];
+    if (
+      row === undefined ||
+      rows.length >= 3 ||
+      rows.some(
+        (item) =>
+          item.identity.listingId === listingId ||
+          sameComparisonIssuer(item, row),
+      )
+    )
+      return;
+    clearInspection();
+    updateComparison({
+      key: comparisonKey(selectedResponse, criteria),
+      rows: [...rows, row],
+      open: selectedComparison?.open ?? false,
+    });
+  }
+
+  function changeComparison(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    selectedComparison: FinancialComparisonSelection | null,
+    action: "open" | "close" | "clear" | "remove",
+    listingId?: string,
+  ) {
+    if (
+      !comparisonIsCurrent(selectedResponse, selectedComparison) ||
+      selectedComparison === null
+    )
+      return;
+    if (action === "open" && selectedComparison.rows.length < 2) return;
+    if (
+      action === "remove" &&
+      !selectedComparison.rows.some(
+        (row) => row.identity.listingId === listingId,
+      )
+    )
+      return;
+    const rows =
+      action === "clear"
+        ? []
+        : action === "remove"
+          ? selectedComparison.rows.filter(
+              (row) => row.identity.listingId !== listingId,
+            )
+          : selectedComparison.rows;
+    // Commit removals before restoring focus into the resulting layout.
+    flushSync(() => {
+      clearInspection();
+      updateComparison({
+        ...selectedComparison,
+        rows,
+        open:
+          rows.length >= 2 &&
+          (action === "open" ||
+            (action === "remove" && selectedComparison.open)),
+      });
+    });
+    if (action === "close") comparisonButton.current?.focus();
+    else if (action === "remove" || action === "clear")
+      shortlistHeading.current?.focus();
+  }
+
   function clearInspection() {
+    currentInspection.current = null;
     setInspection(null);
     inspectionTrigger.current = null;
   }
@@ -464,6 +618,7 @@ export function PersonalFinancialScreener({
     const ordered = orderedMetrics(next);
     if (ordered.length === 0) return;
     clearInspection();
+    currentVisibleMetrics.current = ordered;
     setVisibleMetrics(ordered);
   }
 
@@ -472,19 +627,39 @@ export function PersonalFinancialScreener({
     listingId: string,
     metric: PersonalFinancialScreenMetricDto,
     trigger: HTMLButtonElement | null,
+    selectedComparison: FinancialComparisonSelection | null = null,
   ) {
+    const row =
+      selectedComparison === null
+        ? selectedResponse.rows.find(
+            (item) => item.identity.listingId === listingId,
+          )
+        : selectedComparison.rows.find(
+            (item) => item.identity.listingId === listingId,
+          );
     if (
       !enabled ||
       selectedResponse !== currentResponse.current ||
-      !visibleMetrics.includes(metric) ||
-      !selectedResponse.rows.some((row) => row.identity.listingId === listingId)
+      !currentVisibleMetrics.current.includes(metric) ||
+      row === undefined ||
+      (selectedComparison !== null &&
+        (!comparisonIsCurrent(selectedResponse, selectedComparison) ||
+          !selectedComparison.open))
     )
       return;
     inspectionTrigger.current = trigger;
-    setInspection({ response: selectedResponse, listingId, metric });
+    const nextInspection = {
+      response: selectedResponse,
+      row,
+      metric,
+      comparison: selectedComparison,
+    };
+    currentInspection.current = nextInspection;
+    setInspection(nextInspection);
   }
 
   function closeInspection() {
+    if (inspection === null || inspection !== currentInspection.current) return;
     const trigger = inspectionTrigger.current;
     const selectedResponse = inspection?.response;
     // Remove the panel before focus scrolls the value into its final position.
@@ -502,6 +677,7 @@ export function PersonalFinancialScreener({
     savedController.current?.abort();
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
+    clearComparison();
     currentResponse.current = null;
     setResponse(null);
     setCriteria(defaultCriteria());
@@ -525,6 +701,7 @@ export function PersonalFinancialScreener({
     screenController.current = null;
     setRunning(false);
     clearInspection();
+    clearComparison();
     currentResponse.current = null;
     setResponse(null);
     setCriteria(next);
@@ -563,6 +740,7 @@ export function PersonalFinancialScreener({
 
   async function runScreen(offset = 0, refresh = false, paginate = false) {
     if (!enabled) return;
+    if (!paginate || refresh) clearComparison();
     const normalized = {
       ...criteria,
       identityText: criteria.identityText.trim().normalize("NFC"),
@@ -573,7 +751,8 @@ export function PersonalFinancialScreener({
       );
       return;
     }
-    if (paginate && response === null) return;
+    if (paginate && (response === null || response !== currentResponse.current))
+      return;
     screenController.current?.abort();
     const controller = new AbortController();
     screenController.current = controller;
@@ -581,6 +760,7 @@ export function PersonalFinancialScreener({
     const session = epoch.current;
     const financialSnapshotSha256 =
       paginate && !refresh ? (response?.financialSnapshotSha256 ?? null) : null;
+    const retainedComparison = paginate ? currentComparison.current : null;
     clearInspection();
     currentResponse.current = null;
     setResponse(null);
@@ -615,6 +795,11 @@ export function PersonalFinancialScreener({
         clearSession();
         return;
       }
+      if (
+        retainedComparison !== null &&
+        retainedComparison.key !== comparisonKey(result, normalized)
+      )
+        clearComparison();
       setCriteria(normalized);
       currentResponse.current = result;
       setResponse(result);
@@ -635,6 +820,7 @@ export function PersonalFinancialScreener({
         return;
       }
       clearInspection();
+      clearComparison();
       currentResponse.current = null;
       setResponse(null);
       setMessage(screenErrorMessage(error));
@@ -1186,6 +1372,19 @@ export function PersonalFinancialScreener({
             openInspection(response, listingId, metric, trigger)
           }
           onCloseInspection={closeInspection}
+          comparison={comparison}
+          comparisonHeading={comparisonHeading}
+          shortlistHeading={shortlistHeading}
+          comparisonButton={comparisonButton}
+          onSelectForComparison={(listingId) =>
+            selectForComparison(response, comparison, listingId)
+          }
+          onChangeComparison={(action, listingId) =>
+            changeComparison(response, comparison, action, listingId)
+          }
+          onInspectComparison={(listingId, metric, trigger) =>
+            openInspection(response, listingId, metric, trigger, comparison)
+          }
         />
       )}
       <fieldset
@@ -1308,6 +1507,13 @@ function FinancialResults({
   resultsHeading,
   onInspect,
   onCloseInspection,
+  comparison,
+  comparisonHeading,
+  shortlistHeading,
+  comparisonButton,
+  onSelectForComparison,
+  onChangeComparison,
+  onInspectComparison,
 }: Pick<
   PersonalFinancialScreenerProps,
   | "canAddToWatchlist"
@@ -1329,16 +1535,30 @@ function FinancialResults({
     trigger: HTMLButtonElement | null,
   ) => void;
   readonly onCloseInspection: () => void;
+  readonly comparison: FinancialComparisonSelection | null;
+  readonly comparisonHeading: RefObject<HTMLHeadingElement | null>;
+  readonly shortlistHeading: RefObject<HTMLHeadingElement | null>;
+  readonly comparisonButton: RefObject<HTMLButtonElement | null>;
+  readonly onSelectForComparison: (listingId: string) => void;
+  readonly onChangeComparison: (
+    action: "open" | "close" | "clear" | "remove",
+    listingId?: string,
+  ) => void;
+  readonly onInspectComparison: (
+    listingId: string,
+    metric: PersonalFinancialScreenMetricDto,
+    trigger: HTMLButtonElement | null,
+  ) => void;
 }) {
   const revenueBasis = response.revenueBasis ?? "agreement";
   const sourceStatuses = [...response.sources, ...response.priorRevenueSources];
   const selectedRow =
     inspection?.response === response &&
-    visibleMetrics.includes(inspection.metric)
-      ? response.rows.find(
-          (row) => row.identity.listingId === inspection.listingId,
-        )
+    visibleMetrics.includes(inspection.metric) &&
+    (inspection.comparison === null || inspection.comparison === comparison)
+      ? inspection.row
       : undefined;
+  const comparedRows = comparison?.rows ?? [];
   return (
     <div className="financial-screen-results">
       <h3 ref={resultsHeading} tabIndex={-1}>
@@ -1474,6 +1694,73 @@ function FinancialResults({
             : "SEC source coverage is partial. Some concepts were unavailable; inspect source statuses and unknown counts before using these results."}
         </p>
       )}
+      <section
+        className="financial-screen-shortlist"
+        aria-labelledby="financial-screen-shortlist-title"
+      >
+        <h3
+          id="financial-screen-shortlist-title"
+          ref={shortlistHeading}
+          tabIndex={-1}
+        >
+          Comparison shortlist
+        </h3>
+        <p aria-live="polite">{comparedRows.length} of 3 companies selected</p>
+        <p className="market-scope-note">
+          Select two or three distinct issuers from these results. Selections
+          follow this query across pages and clear when criteria or data
+          changes.
+        </p>
+        {comparedRows.length > 0 && (
+          <ul className="financial-screen-shortlist-items">
+            {comparedRows.map((row) => (
+              <li key={row.identity.listingId}>
+                <span>
+                  <strong>{row.identity.symbol}</strong> ·{" "}
+                  {row.identity.issuerName}
+                </span>
+                <button
+                  className="secondary-action compact-action"
+                  type="button"
+                  onClick={() =>
+                    onChangeComparison("remove", row.identity.listingId)
+                  }
+                >
+                  Remove {row.identity.symbol} from comparison
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="personal-stock-screener-run-actions">
+          <button
+            ref={comparisonButton}
+            className="primary-action compact-action"
+            type="button"
+            disabled={comparedRows.length < 2}
+            aria-expanded={comparison?.open ?? false}
+            aria-controls={
+              comparison?.open ? "financial-screen-comparison" : undefined
+            }
+            onClick={() => onChangeComparison("open")}
+          >
+            Compare companies
+          </button>
+          <button
+            className="secondary-action compact-action"
+            type="button"
+            disabled={comparedRows.length === 0}
+            onClick={() => onChangeComparison("clear")}
+          >
+            Clear comparison
+          </button>
+        </div>
+        {comparedRows.length === 3 && (
+          <p className="market-scope-note">
+            Compare up to three companies. Remove one to add another.
+          </p>
+        )}
+      </section>
       {selectedRow !== undefined && inspection !== null && (
         <section
           id="financial-screen-source-inspector"
@@ -1518,6 +1805,124 @@ function FinancialResults({
               selectedRow.metrics.revenue.status === "unavailable"
             }
           />
+        </section>
+      )}
+      {comparison?.open && comparedRows.length >= 2 && (
+        <section
+          id="financial-screen-comparison"
+          className="financial-screen-comparison"
+          aria-labelledby="financial-screen-comparison-title"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              onChangeComparison("close");
+            }
+          }}
+        >
+          <header className="financial-screen-inspector-header">
+            <h3
+              id="financial-screen-comparison-title"
+              ref={comparisonHeading}
+              tabIndex={-1}
+            >
+              Company comparison
+            </h3>
+            <button
+              className="secondary-action compact-action"
+              type="button"
+              onClick={() => onChangeComparison("close")}
+            >
+              Close comparison
+            </button>
+          </header>
+          <p className="market-scope-note">
+            Calendar selection {response.calendarYear}; prior revenue{" "}
+            {response.priorCalendarYear}. Revenue basis:{" "}
+            {revenueBasisLabels[revenueBasis]}. Fetched {response.fetchedAt};
+            cache expires {response.expiresAt}. Display columns also control
+            these comparison rows.
+          </p>
+          <p className="market-scope-note">
+            Each value retains its actual source dates below. A common calendar
+            selection or date does not establish comparable businesses,
+            accounting or investment quality. Select any value or Unknown for
+            the exact inputs, reasons and filings.
+          </p>
+          <details className="financial-screen-source-details">
+            <summary>Shared comparison snapshot</summary>
+            <p>Formula version {response.formulaVersion}.</p>
+            <p className="financial-screen-digests">
+              Catalog: {response.catalogSnapshotSha256}
+              <br />
+              Financial data: {response.financialSnapshotSha256}
+            </p>
+          </details>
+          <div
+            className="personal-stock-screener-table-wrap financial-screen-comparison-scroll"
+            role="region"
+            aria-label="Company comparison table"
+            tabIndex={0}
+          >
+            <table className="financial-screen-table financial-screen-comparison-table">
+              <caption>
+                Selected companies · {visibleMetrics.length} financial metrics.
+                Scroll sideways to compare all selected companies.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Metric</th>
+                  {comparedRows.map((row) => (
+                    <th scope="col" key={row.identity.listingId}>
+                      <strong>{row.identity.symbol}</strong>
+                      <br />
+                      {row.identity.issuerName}
+                      <br />
+                      <small>
+                        {row.identity.exchangeMic} · {row.identity.cik}
+                        <br />
+                        {row.identity.securityName} ·{" "}
+                        {row.identity.shareClassName}
+                      </small>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleMetrics.map((metric) => (
+                  <tr key={metric}>
+                    <th scope="row">
+                      {labels[metric]}
+                      <br />
+                      <small>{metricUnitLabel(metric)}</small>
+                    </th>
+                    {comparedRows.map((row) => (
+                      <td key={row.identity.listingId}>
+                        <FinancialCell
+                          cell={row.metrics[metric]}
+                          metric={metric}
+                          symbol={row.identity.symbol}
+                          expanded={
+                            selectedRow === row &&
+                            inspection?.metric === metric &&
+                            inspection.comparison !== null
+                          }
+                          onInspect={(trigger) =>
+                            onInspectComparison(
+                              row.identity.listingId,
+                              metric,
+                              trigger,
+                            )
+                          }
+                        />
+                        <FinancialCellDates cell={row.metrics[metric]} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
       <div
@@ -1572,7 +1977,9 @@ function FinancialResults({
                       metric={metric}
                       symbol={row.identity.symbol}
                       expanded={
-                        selectedRow === row && inspection?.metric === metric
+                        selectedRow === row &&
+                        inspection?.metric === metric &&
+                        inspection.comparison === null
                       }
                       onInspect={(trigger) =>
                         onInspect(row.identity.listingId, metric, trigger)
@@ -1582,6 +1989,39 @@ function FinancialResults({
                 ))}
                 <td>
                   <div className="financial-screen-row-actions">
+                    <button
+                      className="secondary-action compact-action"
+                      type="button"
+                      disabled={
+                        running ||
+                        comparedRows.length >= 3 ||
+                        comparedRows.some(
+                          (selected) =>
+                            selected.identity.listingId ===
+                              row.identity.listingId ||
+                            sameComparisonIssuer(selected, row),
+                        )
+                      }
+                      onClick={() =>
+                        onSelectForComparison(row.identity.listingId)
+                      }
+                    >
+                      {comparedRows.some(
+                        (selected) =>
+                          selected.identity.listingId ===
+                          row.identity.listingId,
+                      )
+                        ? `Selected ${row.identity.symbol} for comparison`
+                        : `Select ${row.identity.symbol} for comparison`}
+                    </button>
+                    {comparedRows.some(
+                      (selected) =>
+                        selected.identity.listingId !==
+                          row.identity.listingId &&
+                        sameComparisonIssuer(selected, row),
+                    ) && (
+                      <small>Another listing of this issuer is selected.</small>
+                    )}
                     <button
                       className="secondary-action compact-action"
                       type="button"
@@ -1711,6 +2151,37 @@ function FinancialCell({
     >
       {display}
     </button>
+  );
+}
+
+function FinancialCellDates({
+  cell,
+}: {
+  readonly cell: PersonalFinancialScreenCellDto;
+}) {
+  const dates = [
+    ...new Set(
+      cell.sources.map((source) => {
+        if (isPersonalFinancialInstantSource(source))
+          return `Balance date: ${source.asOfDate}`;
+        const role =
+          "role" in source
+            ? source.role === "prior_revenue"
+              ? "Prior revenue: "
+              : "Current revenue: "
+            : "Annual period: ";
+        return `${role}${source.startDate} – ${source.endDate}`;
+      }),
+    ),
+  ];
+  return (
+    <div className="financial-screen-comparison-dates">
+      {dates.length === 0 ? (
+        <span>No source dates retained.</span>
+      ) : (
+        dates.map((date) => <span key={date}>{date}</span>)
+      )}
+    </div>
   );
 }
 
