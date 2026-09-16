@@ -130,7 +130,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "7.0.0" ||
+    input.schemaVersion !== "8.0.0" ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
       !sha(input.financialSnapshotSha256)) ||
@@ -335,8 +335,8 @@ function isResponse(
       "hasMore",
       "formulaVersion",
     ]) ||
-    value.schemaVersion !== "7.0.0" ||
-    value.formulaVersion !== "1.5.0" ||
+    value.schemaVersion !== "8.0.0" ||
+    value.formulaVersion !== "1.6.0" ||
     value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
@@ -429,6 +429,9 @@ function isResponse(
           value.priorRevenueSources as PersonalFinancialScreenResponseDto["priorRevenueSources"],
         ) &&
         currentAssetsToLiabilities(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+        ) &&
+        currentAssetsLessLiabilities(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
         cashFlowLessPpe(
@@ -879,17 +882,19 @@ function instantCell(
   sourceStatuses: PersonalFinancialScreenResponseDto["sources"],
 ): boolean {
   const ratio = metric === "currentRatio";
+  const difference = metric === "currentAssetsLessCurrentLiabilities";
+  const derived = ratio || difference;
   if (
     (!keys(value, ["status", "value", "unit", "sources"]) &&
       !keys(value, ["status", "reason", "unit", "sources"])) ||
     value.unit !== (ratio ? "multiple" : "USD") ||
     !Array.isArray(value.sources) ||
-    value.sources.length > (ratio ? 12 : 6) ||
+    value.sources.length > (derived ? 12 : 6) ||
     !value.sources.every(
       (source) =>
         keys(source, ["concept", "accessionNumber", "asOfDate", "value"]) &&
         member(instantConcepts, source.concept) &&
-        (ratio ||
+        (derived ||
           source.concept ===
             (metric === "currentAssets"
               ? "AssetsCurrent"
@@ -901,7 +906,7 @@ function instantCell(
     )
   )
     return false;
-  if (!ratio) {
+  if (!derived) {
     const concept =
       metric === "currentAssets" ? "AssetsCurrent" : "LiabilitiesCurrent";
     const frameStatus = sourceStatuses.find(
@@ -925,12 +930,12 @@ function instantCell(
   if (value.status === "available") {
     if (
       !("value" in value) ||
-      !decimal(value.value, ratio ? 129 : 64) ||
+      !decimal(value.value, ratio ? 129 : difference ? 128 : 64) ||
       value.sources.length === 0
     )
       return false;
     const reportedValue = value.value;
-    if (ratio) return true; // Independently bound to both reported operands below.
+    if (derived) return true; // Independently bound to both reported operands below.
     const sources =
       value.sources as unknown as readonly PersonalFinancialScreenInstantSourceRefDto[];
     return sources.every(
@@ -950,12 +955,12 @@ function instantCell(
         "source_unavailable",
         "invalid_value",
         "unsupported_balance_date",
-        ...(ratio
+        ...(derived
           ? [
               "balance_date_mismatch",
               "filing_mismatch",
-              "nonpositive_current_liabilities",
               "unsupported_sign",
+              ...(ratio ? ["nonpositive_current_liabilities"] : []),
             ]
           : []),
       ],
@@ -963,7 +968,7 @@ function instantCell(
     )
   )
     return false;
-  if (ratio) return true;
+  if (derived) return true;
   // Invalid reported decimal references cannot cross this decoder's strict source boundary.
   if (value.reason === "invalid_value") return false;
   const sources =
@@ -1042,6 +1047,51 @@ function currentAssetsToLiabilities(
     dividend / divisor + (2n * (dividend % divisor) >= divisor ? 1n : 0n);
   const expectedValue = `${String(rounded / 100n)}.${String(rounded % 100n).padStart(2, "0")}`;
   return ratio.status === "available" && ratio.value === expectedValue;
+}
+
+/** Recompute the signed balance difference from complete operands using integer scales. */
+function currentAssetsLessLiabilities(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  const assets = cells.currentAssets;
+  const liabilities = cells.currentLiabilities;
+  const difference = cells.currentAssetsLessCurrentLiabilities;
+  const sources = [...assets.sources, ...liabilities.sources];
+  const sourceKey = (source: PersonalFinancialScreenInstantSourceRefDto) =>
+    JSON.stringify([
+      source.concept,
+      source.asOfDate,
+      source.accessionNumber,
+      source.value,
+    ]);
+  if (!sameSourceMultiset(sources, difference.sources, sourceKey)) return false;
+  const unknown = (reason: string) =>
+    difference.status === "unavailable" && difference.reason === reason;
+  if (assets.status === "unavailable") return unknown(assets.reason);
+  if (liabilities.status === "unavailable") return unknown(liabilities.reason);
+  const first = sources[0]!;
+  if (sources.some((source) => source.asOfDate !== first.asOfDate))
+    return unknown("balance_date_mismatch");
+  if (
+    sources.some((source) => source.accessionNumber !== first.accessionNumber)
+  )
+    return unknown("filing_mismatch");
+  const left = scaledDecimal(assets.value);
+  const right = scaledDecimal(liabilities.value);
+  if (left.coefficient < 0n || right.coefficient < 0n)
+    return unknown("unsupported_sign");
+  if (
+    difference.status !== "available" ||
+    normalizedDecimal(difference.value) !== difference.value
+  )
+    return false;
+  const result = scaledDecimal(difference.value);
+  const scale = Math.max(left.scale, right.scale, result.scale);
+  return (
+    left.coefficient * 10n ** BigInt(scale - left.scale) -
+      right.coefficient * 10n ** BigInt(scale - right.scale) ===
+    result.coefficient * 10n ** BigInt(scale - result.scale)
+  );
 }
 
 function admittedSource(

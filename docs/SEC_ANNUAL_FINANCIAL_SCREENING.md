@@ -13,6 +13,7 @@ does not affect catalog discovery or Tiingo company views. If it is missing or
 invalid, the screen gives an actionable configuration error.
 
 Open Discover, start the owner session, and use **Financial screen**.
+The configured temporary local-access mode opens the workspace without sign-in.
 Choose a completed calendar year, add numerical thresholds, and explicitly run
 the screen. Choose a **Revenue basis** when you want one reported concept to
 drive revenue and the four ratio denominators. Amount thresholds use USD;
@@ -127,6 +128,33 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Current liabilities                      | `LiabilitiesCurrent`, actual instant balance date                                  | USD      |
 | Current assets / current liabilities (×) | Current assets / positive current liabilities                                      | multiple |
 | Selected revenue YoY change (%)          | (Current selected revenue − prior selected revenue) / positive prior revenue × 100 | percent  |
+| Current assets less current liabilities  | Current assets − current liabilities, on the same actual Q4 date and filing        | USD      |
+
+### Current assets less current liabilities
+
+**Current assets less current liabilities (USD)** shows the exact dollar
+surplus or shortfall using the existing Q4 balance inputs. It appears in
+Q4 balances, All metrics and individual column choices. Other column presets
+and all three starter screens keep their existing memberships and criteria.
+Signed inclusive filters, ascending/descending sorting, coverage and saved
+criteria are available through the ordinary screen controls.
+
+Both operands must be available and nonnegative, with every retained reference
+sharing the same admitted actual balance date and filing accession. The existing
+October 1–December 31 rule applies. Zero liabilities are valid for subtraction
+even though the current ratio is unknown; negative differences are valid.
+Subtract exact decimal values without rounding, and preserve both operands and
+all references in source details. Revenue basis does not affect this field.
+
+Unknown precedence is unavailable assets, unavailable liabilities,
+`balance_date_mismatch`, `filing_mismatch`, then `unsupported_sign` for either
+negative operand. Missing, conflicting and failed balances never become zero.
+The browser independently verifies the exact subtraction, source multiplicity
+and unknown reason. No extra SEC source or cache read is introduced.
+
+This is an app calculation from reported balances, not cash available to spend
+or a uniform liquidity test across industries. Dated filing examples retain
+their original acquisition dates; reuse does not establish fresh market coverage.
 
 ### Selected revenue year-over-year change
 
@@ -368,8 +396,8 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "7.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly sixteen metric
+Financial-screen requests and responses use `schemaVersion: "8.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly seventeen metric
 and coverage keys, the existing ten current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
@@ -380,13 +408,15 @@ partially expanded responses. Reload an older open browser after deployment.
 Encrypted saved-definition payloads retain numeric `schemaVersion: 1`. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are unchanged. Existing criteria load with their original meanings and make a
-fresh v7 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v8 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
-The seven-clause limit is unchanged; revenue change is an additional
-filter/sort choices. Older application versions
+The seven-clause limit is unchanged; revenue change and the current-balance
+difference are additional filter/sort choices. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.5.0 adds the revenue comparison
-policy and `(current - prior) / prior * 100` calculation. Current ratio retains
+than drop a filter. Screen formula-set version 1.6.0 adds
+`current_assets_less_current_liabilities` version 1.0.0 with the exact expression
+`current_assets - current_liabilities`. The revenue comparison policy and
+`(current - prior) / prior * 100` calculation are unchanged. Current ratio retains
 `current_assets_to_current_liabilities` version 1.0.0 and expression
 `current_assets / current_liabilities`. Operating cash flow / net income and
 all four revenue-based margin formulas retain
@@ -454,6 +484,15 @@ tabs, session replacement and session loss continue to clear private results.
 No polling, automatic source refresh, extra request or credential storage is added.
 
 ### Financial acceptance
+
+Current-balance subtraction acceptance covers exact positive, zero, negative,
+fractional and extreme differences, including zero liabilities; every-reference
+date/filing checks; unavailable-input and sign precedence; signed filters,
+ordering, saved-v1 round trips and unchanged prior sixteen metrics across revenue
+bases. The decoder rejects forged values, reasons and reference multisets. Reuse
+the dated corroborated AAPL operands to verify a USD -4,263,000,000 difference;
+WMT's retained out-of-window balances must remain unknown. Actual verification
+and configured browser observations belong in the local release handoff.
 
 Current-balance acceptance additionally covers the inclusive October/December
 boundaries and excluded September/January dates with retained references,

@@ -20,6 +20,7 @@ export const PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS = [
   "currentAssets",
   "currentLiabilities",
   "currentRatio",
+  "currentAssetsLessCurrentLiabilities",
 ] as const;
 export type PersonalFinancialScreenInstantMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS)[number];
@@ -220,7 +221,7 @@ export interface PersonalFinancialScreenCriteriaDto {
   };
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "7.0.0";
+  readonly schemaVersion: "8.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -245,7 +246,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "7.0.0";
+  readonly schemaVersion: "8.0.0";
   readonly instantQuarter: 4;
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}`;
@@ -280,7 +281,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.5.0";
+  readonly formulaVersion: "1.6.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

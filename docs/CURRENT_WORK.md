@@ -15,7 +15,7 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: actionable Windows failure diagnostics
+## Immediate delivery: current balance surplus or shortfall
 
 Local access is implemented and temporarily serving at `7c4fdf1`: the app opens
 without login while retaining its loopback/request boundaries, encrypted vault
@@ -23,40 +23,50 @@ and saved account. Native verification and Brave desktop/mobile acceptance passe
 including all three editable financial starters. See [local owner login](./LOCAL_OWNER_LOGIN.md).
 The workspace checkpoint owns current runtime and restoration details.
 
-Hosted acceptance for that release remains incomplete. The first Windows run
+Hosted acceptance for that historical local-access release remains incomplete. The first Windows run
 timed out in an unchanged historical database-review test. Its single unchanged
 retry failed in the native vault ACL child process; the backup case took 15.246
 seconds, but its cause was omitted from both the displayed log and annotation.
 This timing alone does not prove a timeout or identify an ACL defect. Preserve
 both failures; do not retry them or weaken their assertions/deadlines.
 
-The pinned test reporter omits plain-object error causes, hiding the sanitized
-stage, exit code, killed flag and signal already captured by the ACL adapter.
-Represent that diagnostic as a named Error cause and include elapsed time, with
-tests proving reporter visibility and exclusion of private paths, identities,
-requests and arbitrary process output. Keep the public vault error, fixed native
-command, 15-second deadline and ACL checks unchanged. This repairs reporting;
-it does not retroactively resolve the earlier process failure.
+The subsequent diagnostic release `b5ea94e` passed 5,440 native checks and all
+six applicable hosted jobs on its first attempt. A named Error cause now exposes
+the sanitized stage, exit code, killed flag, signal and elapsed time in the
+pinned reporter. The public vault error, fixed native command, 15-second
+deadline and ACL checks are unchanged. This repairs reporting; it does not
+retroactively resolve the earlier process failure. Preserve the running app
+until the next verified product release is ready to activate.
 
-The next product slice is **Current assets less current liabilities (USD)**:
-reuse the existing Q4 balance inputs to screen dollar surpluses/shortfalls,
-including negative differences and zero liabilities. Require matching actual
-dates and filings with nonnegative operands, preserve source inspection, and
-support signed filters, sorting and saved criteria. No new SEC source is needed.
-This slice remains planned, not implemented or evidence of full metric coverage.
+The current product slice adds **Current assets less current liabilities (USD)**
+as the seventeenth field. It reuses existing Q4 balances to screen dollar
+surpluses/shortfalls, including negative differences and zero liabilities.
+Every retained reference must have the same admitted actual date and filing;
+both operands must be nonnegative. Exact subtraction, source inspection, signed
+filters, sorting, coverage and saved-v1 criteria retain the existing screen flow.
+Q4 balances and All metrics include the field; other presets and all three
+starter screens retain their existing criteria and columns.
+
+Transport v8/formula-set1.6 coordinates API and browser validation without adding
+SEC inputs or reads to the thirteen-Frame cache. The browser independently checks
+values, reasons and source multiplicity. Dated corroborated filing operands can
+be replayed without fresh acquisition; keep their original source dates and
+coverage limits. The workspace checkpoint owns the release's actual local,
+hosted and Brave verification results. This does not complete the shared metric
+registry or its coverage gate.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                      | Important remaining gap                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                            | Catalog refresh and broader discovery data                         |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                | Wider reconciliation and benchmark-relative analysis               |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                 | Verified TTM and the shared 30-core-metric screening registry      |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                     | Direct normalized FCFF inputs and further justified models         |
-| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                        | Compatible multi-company coverage and automatic peer metadata      |
-| Screen for ideas          | Sixteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Dollar balance surplus/shortfall; broader verified metric coverage |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                | Broader live samples, upcoming events, alerts and exports          |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                              | Further corporate actions, benchmarks and live coverage            |
+| User job                  | Implemented capability                                                                                                                        | Important remaining gap                                       |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                              | Catalog refresh and broader discovery data                    |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                  | Wider reconciliation and benchmark-relative analysis          |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                   | Verified TTM and the shared 30-core-metric screening registry |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                       | Direct normalized FCFF inputs and further justified models    |
+| Compare businesses        | Twelve financial checks and up to three manual peers                                                                                          | Compatible multi-company coverage and automatic peer metadata |
+| Screen for ideas          | Seventeen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Broader verified metric coverage and compatible source inputs |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                  | Broader live samples, upcoming events, alerts and exports     |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                                | Further corporate actions, benchmarks and live coverage       |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
@@ -309,14 +319,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Now              | Deliver three editable starter screens using existing financial fields                           | Reuse verified metrics, explicit Run and saved-v1 semantics; label sparse coverage |
-| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                         |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters         |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                           |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions                |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                        |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Deliver current assets less current liabilities with exact Q4 source inspection                  | Reuse existing balances, preserve signed results and saved-v1 semantics    |
+| Next independent | Add further financial metrics as verified sources and compatible periods allow                   | Build on measured coverage and retain explicit source gaps                 |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

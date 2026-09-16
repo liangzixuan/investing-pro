@@ -1,5 +1,6 @@
 import {
   PERSONAL_FINANCIAL_SCREEN_METRICS,
+  PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS,
   PERSONAL_FINANCIAL_REVENUE_BASES,
   PERSONAL_SEC_ANNUAL_CONCEPTS,
   PERSONAL_SEC_INSTANT_CONCEPTS,
@@ -586,6 +587,245 @@ describe("selected revenue year-over-year decoding", () => {
     expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
       oldPayload,
     );
+  });
+});
+
+describe("current assets less current liabilities decoding", () => {
+  const decode = async (value: unknown) => {
+    fetchMock.mockResolvedValueOnce(json(value));
+    return screenPersonalFinancials(request(), signal());
+  };
+  const change = (
+    result: PersonalFinancialScreenResponseDto,
+    patch: Record<string, unknown>,
+  ) => {
+    const copy = structuredClone(result);
+    Object.assign(
+      copy.rows[0]!.metrics.currentAssetsLessCurrentLiabilities,
+      patch,
+    );
+    return copy;
+  };
+
+  it.each([
+    ["200", "100", "100", "2.00"],
+    ["100", "125", "-25", "0.80"],
+    ["100.00", "100", "0", "1.00"],
+    ["1.2", "0.02", "1.18", "60.00"],
+    ["9007199254740993", "9007199254740992", "1", "1.00"],
+    ["7", "0", "7", null],
+    ["-0.00", "0", "0", null],
+    [
+      "9".repeat(64),
+      `0.${"0".repeat(61)}1`,
+      `${"9".repeat(63)}8.${"9".repeat(62)}`,
+      `${"9".repeat(64)}${"0".repeat(62)}.00`,
+    ],
+    [
+      `0.${"0".repeat(61)}1`,
+      "9".repeat(64),
+      `-${"9".repeat(63)}8.${"9".repeat(62)}`,
+      "0.00",
+    ],
+  ])(
+    "independently checks %s less %s as %s",
+    async (assets, liabilities, expected, ratio) => {
+      const result = currentResponse(
+        instantOperand("AssetsCurrent", assets),
+        instantOperand("LiabilitiesCurrent", liabilities),
+        ratio ?? null,
+        "nonpositive_current_liabilities",
+      );
+      expect(
+        result.rows[0]!.metrics.currentAssetsLessCurrentLiabilities,
+      ).toMatchObject({ status: "available", value: expected, unit: "USD" });
+      expect(await decode(result)).toEqual(result);
+      for (const value of [
+        "123.45",
+        `${expected}.0`,
+        expected === "0" ? "-0" : "0",
+      ]) {
+        await expect(decode(change(result, { value }))).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+      }
+    },
+  );
+
+  it("uses asset-first unavailability, then date, filing and either operand sign", async () => {
+    const missing: PersonalFinancialScreenInstantCellDto = {
+      status: "unavailable",
+      unit: "USD",
+      reason: "missing",
+      sources: [],
+    };
+    const conflict = { ...missing, reason: "conflicting" as const };
+    const assets = instantOperand("AssetsCurrent", "-1");
+    const liabilities = instantOperand("LiabilitiesCurrent", "-2");
+    const laterFiling = {
+      ...assets,
+      sources: [
+        ...assets.sources,
+        { ...assets.sources[0]!, accessionNumber: "0000000001-25-000002" },
+      ],
+    };
+    const cases = [
+      [currentResponse(conflict, missing, null, "missing"), "conflicting"],
+      [
+        currentResponse(
+          instantOperand("AssetsCurrent", "1"),
+          missing,
+          null,
+          "missing",
+        ),
+        "missing",
+      ],
+      [
+        currentResponse(
+          instantOperand("AssetsCurrent", "-1", "2024-12-30"),
+          liabilities,
+          null,
+          "balance_date_mismatch",
+        ),
+        "balance_date_mismatch",
+      ],
+      [
+        currentResponse(laterFiling, liabilities, null, "filing_mismatch"),
+        "filing_mismatch",
+      ],
+      [
+        currentResponse(
+          assets,
+          instantOperand("LiabilitiesCurrent", "1"),
+          null,
+          "unsupported_sign",
+        ),
+        "unsupported_sign",
+      ],
+      [
+        currentResponse(
+          instantOperand("AssetsCurrent", "1"),
+          liabilities,
+          null,
+          "nonpositive_current_liabilities",
+        ),
+        "unsupported_sign",
+      ],
+    ] as const;
+    for (const [result, reason] of cases) {
+      expect(
+        result.rows[0]!.metrics.currentAssetsLessCurrentLiabilities,
+      ).toMatchObject({ status: "unavailable", reason });
+      expect(await decode(result)).toEqual(result);
+      await expect(
+        decode(
+          change(result, {
+            reason: reason === "missing" ? "conflicting" : "missing",
+          }),
+        ),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+      await expect(
+        decode(change(result, { reason: "nonpositive_current_liabilities" })),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("requires the exact complete source multiset and USD unit without depending on source order", async () => {
+    const assets = instantOperand("AssetsCurrent", "100");
+    const liabilities = instantOperand("LiabilitiesCurrent", "80");
+    const repeat = (cell: PersonalFinancialScreenInstantCellDto) => ({
+      ...cell,
+      sources: Array.from({ length: 6 }, () => ({ ...cell.sources[0]! })),
+    });
+    const result = currentResponse(repeat(assets), repeat(liabilities), "1.25");
+    const refs =
+      result.rows[0]!.metrics.currentAssetsLessCurrentLiabilities.sources;
+    expect(
+      await decode(change(result, { sources: [...refs].reverse() })),
+    ).toBeDefined();
+    for (const sources of [
+      refs.slice(1),
+      [...refs, refs[0]],
+      [...refs.slice(0, 11), refs[0]],
+      refs.map((ref, index) =>
+        index === 0 ? { ...ref, value: "100.0" } : ref,
+      ),
+      refs.map((ref, index) =>
+        index === 11 ? { ...ref, asOfDate: "2024-12-30" } : ref,
+      ),
+    ]) {
+      await expect(decode(change(result, { sources }))).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    }
+    for (const unit of ["multiple", "percent"])
+      await expect(decode(change(result, { unit }))).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+  });
+
+  it("rejects v7 transport/formula and omitted new metric or coverage", async () => {
+    for (const field of [
+      "schemaVersion",
+      "formulaVersion",
+      "metric",
+      "coverage",
+    ]) {
+      const result = structuredClone(response()) as unknown as Record<
+        string,
+        unknown
+      >;
+      if (field === "schemaVersion") result.schemaVersion = "7.0.0";
+      if (field === "formulaVersion") result.formulaVersion = "1.5.0";
+      if (field === "metric")
+        delete (result.rows as { metrics: Record<string, unknown> }[])[0]!
+          .metrics.currentAssetsLessCurrentLiabilities;
+      if (field === "coverage")
+        delete (result.metricCoverage as Record<string, unknown>)
+          .currentAssetsLessCurrentLiabilities;
+      await expect(decode(result)).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    }
+  });
+
+  it("round-trips signed balance criteria under saved payload v1 while preserving legacy criteria", async () => {
+    const legacy = savedPayload().views[0]!;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 1,
+      views: [
+        legacy,
+        {
+          ...legacy,
+          id: "balance-shortfall",
+          name: "Balance shortfall",
+          criteria: {
+            ...legacy.criteria,
+            clauses: [
+              {
+                field: "currentAssetsLessCurrentLiabilities",
+                operator: "lte",
+                value: "-0.01",
+              },
+            ],
+            sort: {
+              field: "currentAssetsLessCurrentLiabilities",
+              direction: "asc",
+            },
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    expect(
+      (await savePersonalFinancialSavedViews(1, payload, signal())).payload,
+    ).toEqual(payload);
+    expect(payload.views[0]).toEqual(legacy);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -2830,7 +3070,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v6 criteria and retains the complete fifteen-metric, ten-source response", async () => {
+  it("sends v8 criteria and retains the complete seventeen-metric, thirteen-Frame response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -2842,8 +3082,8 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("7.0.0");
-    expect(decoded.formulaVersion).toBe("1.5.0");
+    expect(decoded.schemaVersion).toBe("8.0.0");
+    expect(decoded.formulaVersion).toBe("1.6.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -2860,6 +3100,7 @@ describe("financial screen transport", () => {
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
+      "currentAssetsLessCurrentLiabilities",
       "revenueGrowth",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
@@ -2880,7 +3121,7 @@ describe("financial screen transport", () => {
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
 
-  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0"])(
+  it.each(["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0", "6.0.0", "7.0.0"])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
       await expect(
@@ -3770,7 +4011,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "7.0.0",
+    schemaVersion: "8.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -3900,11 +4141,8 @@ function growthResponse(
         >["reason"],
       };
   const instant = Object.fromEntries(
-    ["currentAssets", "currentLiabilities", "currentRatio"].map((metric) => {
-      const cell =
-        row.metrics[
-          metric as "currentAssets" | "currentLiabilities" | "currentRatio"
-        ];
+    PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS.map((metric) => {
+      const cell = row.metrics[metric];
       return [
         metric,
         {
@@ -4149,7 +4387,69 @@ function defaultInstantCells() {
     value: "1.25",
     sources: [...currentAssets.sources, ...currentLiabilities.sources],
   };
-  return { currentAssets, currentLiabilities, currentRatio };
+  return {
+    currentAssets,
+    currentLiabilities,
+    currentRatio,
+    currentAssetsLessCurrentLiabilities: {
+      status: "available",
+      unit: "USD",
+      value: "20",
+      sources: [...currentAssets.sources, ...currentLiabilities.sources],
+    } as PersonalFinancialScreenInstantCellDto,
+  };
+}
+
+function balanceDifferenceFixture(
+  assets: PersonalFinancialScreenInstantCellDto,
+  liabilities: PersonalFinancialScreenInstantCellDto,
+): PersonalFinancialScreenInstantCellDto {
+  const sources = [...assets.sources, ...liabilities.sources];
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenInstantCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ): PersonalFinancialScreenInstantCellDto => ({
+    status: "unavailable",
+    unit: "USD",
+    reason,
+    sources,
+  });
+  if (assets.status === "unavailable") return unknown(assets.reason);
+  if (liabilities.status === "unavailable") return unknown(liabilities.reason);
+  if (new Set(sources.map((source) => source.asOfDate)).size > 1)
+    return unknown("balance_date_mismatch");
+  if (new Set(sources.map((source) => source.accessionNumber)).size > 1)
+    return unknown("filing_mismatch");
+  if (Number(assets.value) < 0 || Number(liabilities.value) < 0)
+    return unknown("unsupported_sign");
+  const precision = Math.max(
+    ...[assets.value, liabilities.value].map(
+      (value) => value.split(".")[1]?.length ?? 0,
+    ),
+  );
+  const integer = (value: string) => {
+    const [whole, fraction = ""] = value.split(".");
+    return BigInt(`${whole}${fraction.padEnd(precision, "0")}`);
+  };
+  const amount = integer(assets.value) - integer(liabilities.value);
+  const digits = (amount < 0n ? -amount : amount)
+    .toString()
+    .padStart(precision + 1, "0");
+  const magnitude =
+    precision === 0
+      ? digits
+      : `${digits.slice(0, -precision)}.${digits.slice(-precision)}`.replace(
+          /\.?0+$/u,
+          "",
+        );
+  return {
+    status: "available",
+    unit: "USD",
+    value: `${amount < 0n ? "-" : ""}${magnitude}`,
+    sources,
+  };
 }
 function currentResponse(
   currentAssets: PersonalFinancialScreenInstantCellDto,
@@ -4177,6 +4477,10 @@ function currentResponse(
           currentAssets,
           currentLiabilities,
           currentRatio,
+          currentAssetsLessCurrentLiabilities: balanceDifferenceFixture(
+            currentAssets,
+            currentLiabilities,
+          ),
         },
       },
     ],
@@ -4184,7 +4488,7 @@ function currentResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "7.0.0",
+    schemaVersion: "8.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -4233,7 +4537,8 @@ function response(): PersonalFinancialScreenResponseDto {
             if (
               metric === "currentAssets" ||
               metric === "currentLiabilities" ||
-              metric === "currentRatio"
+              metric === "currentRatio" ||
+              metric === "currentAssetsLessCurrentLiabilities"
             )
               return [metric, defaultInstantCells()[metric]];
             if (metric === "operatingCashFlowToNetIncome")
@@ -4330,7 +4635,7 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.5.0",
+    formulaVersion: "1.6.0",
   };
 }
 function responseWithBasis(

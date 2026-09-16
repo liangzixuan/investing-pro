@@ -265,7 +265,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual({
-        schemaVersion: "7.0.0",
+        schemaVersion: "8.0.0",
         catalogSnapshotSha256: sha("a"),
         financialSnapshotSha256: null,
         criteria: {
@@ -522,7 +522,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-      schemaVersion: "7.0.0",
+      schemaVersion: "8.0.0",
       criteria: {
         clauses: [{ field: "revenueGrowth", operator: "gte", value: "-10.5" }],
         sort: { field: "revenueGrowth", direction: "desc" },
@@ -717,6 +717,7 @@ describe("PersonalFinancialScreener", () => {
         "Current assets USD",
         "Current liabilities USD",
         "Current assets / current liabilities (×)",
+        "Current assets less current liabilities (USD)",
       ],
     ],
     [
@@ -737,6 +738,7 @@ describe("PersonalFinancialScreener", () => {
         "Current assets USD",
         "Current liabilities USD",
         "Current assets / current liabilities (×)",
+        "Current assets less current liabilities (USD)",
         "Selected revenue YoY change (%)",
       ],
     ],
@@ -806,6 +808,7 @@ describe("PersonalFinancialScreener", () => {
       "Current assets USD",
       "Current liabilities USD",
       "Current assets / current liabilities (×)",
+      "Current assets less current liabilities (USD)",
       "Actions",
     ]);
     expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(1);
@@ -897,7 +900,7 @@ describe("PersonalFinancialScreener", () => {
         item.type === "button" &&
         item.props.className === "financial-screen-value-button",
     );
-    expect(values).toHaveLength(16);
+    expect(values).toHaveLength(17);
     for (const value of values) {
       const scrollIntoView = vi.fn();
       const closest = vi.fn().mockReturnValue(null);
@@ -1312,6 +1315,12 @@ describe("PersonalFinancialScreener", () => {
       "×",
       "1 = 1.00×",
     ],
+    [
+      "currentAssetsLessCurrentLiabilities",
+      "Current assets less current liabilities (USD)",
+      "USD",
+      "1000000000 = $1 billion",
+    ],
   ])(
     "filters and sorts %s with the explicit unit and fixed-Q4 selection",
     async (field, label, unit, placeholder) => {
@@ -1333,7 +1342,7 @@ describe("PersonalFinancialScreener", () => {
       submit(render());
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-        schemaVersion: "7.0.0",
+        schemaVersion: "8.0.0",
         criteria: {
           clauses: [{ field, operator: "gte", value: "1.000" }],
           sort: { field, direction: "desc" },
@@ -1347,6 +1356,208 @@ describe("PersonalFinancialScreener", () => {
       ).not.toHaveProperty("instantQuarter");
     },
   );
+
+  it.each([
+    ["100.25", "120.5", "-20.25", "-$20.25"],
+    ["100", "0", "100", "$100"],
+    ["100", "100", "0", "$0"],
+  ])(
+    "shows the exact current-balance subtraction %s minus %s, signed result and retained inputs",
+    async (assets, liabilities, difference, display) => {
+      const result = currentBalanceDifferenceResponse(
+        assets,
+        liabilities,
+        difference,
+      );
+      api.screenPersonalFinancials.mockResolvedValueOnce(result);
+      await mount();
+      change(render(), "Financial column view", "q4Balances");
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+      submit(render());
+      await flush();
+      expect(text(render())).toContain(
+        "Current assets less current liabilities (USD) : 1 known / 0 unknown",
+      );
+      const cell = inspectCell(
+        render(),
+        "Current assets less current liabilities (USD)",
+      );
+      expect(
+        ratioCell(render(), "Current assets less current liabilities (USD)")
+          ?.props["aria-label"],
+      ).toBe(
+        `ONE Current assets less current liabilities (USD): ${display}. Show source details`,
+      );
+      expect(text(cell)).toContain(`Exact value: ${difference} USD`);
+      expect(text(cell)).toContain(
+        `Exact subtraction: ${assets} USD − ${liabilities} USD = ${difference} USD.`,
+      );
+      expect(text(cell)).toContain("Current assets input AssetsCurrent");
+      expect(text(cell)).toContain(
+        "Current liabilities input (subtracted) LiabilitiesCurrent",
+      );
+      expect(text(cell)).toContain(`Reported: ${assets} USD`);
+      expect(text(cell)).toContain(`Reported: ${liabilities} USD`);
+      expect(text(cell)).toContain(
+        `Actual balance date: ${String(new Date().getUTCFullYear() - 1)}-12-27`,
+      );
+      expect(text(cell)).toContain(
+        "Zero liabilities and a negative difference are valid",
+      );
+      expect(text(cell)).toContain("not cash available to spend");
+      expect(text(cell)).not.toContain("Revenue denominator:");
+      const filingLinks = elements(inspector(render())).filter(
+        (element) => element.type === "a",
+      );
+      expect(filingLinks).toHaveLength(2);
+      expect(filingLinks.map((link) => link.props.href)).toEqual([
+        "https://www.sec.gov/Archives/edgar/data/1/000000000125000001/0000000001-25-000001-index.html",
+        "https://www.sec.gov/Archives/edgar/data/1/000000000125000001/0000000001-25-000001-index.html",
+      ]);
+      if (liabilities === "0") {
+        expect(
+          text(ratioCell(render(), "Current assets / current liabilities (×)")),
+        ).toBe("Unknown");
+        expect(text(render())).toContain(
+          "Current assets / current liabilities (×) : 0 known / 1 unknown",
+        );
+      }
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    ["unsupported_balance_date", "falls outside October 1–December 31"],
+    ["balance_date_mismatch", "different actual balance dates"],
+    ["filing_mismatch", "different filing accessions"],
+    ["unsupported_sign", "current assets or current liabilities are negative"],
+    ["missing", "missing or failed inputs are never treated as zero"],
+    [
+      "source_unavailable",
+      "missing or failed inputs are never treated as zero",
+    ],
+    ["conflicting", "missing or failed inputs are never treated as zero"],
+  ] as const)(
+    "explains unknown current-balance subtraction %s while retaining every input reference",
+    async (reason, explanation) => {
+      const result = response();
+      const row = result.rows[0]!;
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...result,
+        rows: [
+          {
+            ...row,
+            metrics: {
+              ...row.metrics,
+              currentAssetsLessCurrentLiabilities: {
+                status: "unavailable",
+                unit: "USD",
+                reason,
+                sources:
+                  row.metrics.currentAssetsLessCurrentLiabilities.sources,
+              },
+            },
+          },
+        ],
+      });
+      await mount();
+      submit(render());
+      await flush();
+      const cell = inspectCell(
+        render(),
+        "Current assets less current liabilities (USD)",
+      );
+      expect(text(cell)).toContain(explanation);
+      expect(text(cell)).toContain("Reported: 100 USD");
+      expect(text(cell)).toContain("Reported: 80 USD");
+      expect(text(cell)).not.toContain("Exact subtraction:");
+    },
+  );
+
+  it("saves and reloads signed current-balance criteria in saved v1 with independently selected columns", async () => {
+    const legacy = {
+      id: "legacy-screen",
+      name: "Annual screen",
+      criteria: {
+        calendarYear: new Date().getUTCFullYear() - 1,
+        identityText: "",
+        clauses: [],
+        sort: { field: "symbol" as const, direction: "asc" as const },
+      },
+      createdAgainstCatalogSnapshotSha256: sha("a"),
+      createdAgainstFinancialSnapshotSha256: sha("b"),
+    };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 1,
+      payload: { schemaVersion: 1, views: [legacy] },
+    });
+    await mount();
+    click(render(), "Add financial filter");
+    change(
+      render(),
+      "Financial metric 1",
+      "currentAssetsLessCurrentLiabilities",
+    );
+    change(render(), "Financial comparison 1", "lte");
+    change(render(), "Financial threshold 1", "-0.00001");
+    change(
+      render(),
+      "Financial sort field",
+      "currentAssetsLessCurrentLiabilities",
+    );
+    change(render(), "Financial sort direction", "asc");
+    toggleColumn(
+      render(),
+      "Current assets less current liabilities (USD)",
+      true,
+    );
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    submit(render());
+    await flush();
+    const request = api.screenPersonalFinancials.mock
+      .calls[0]?.[0] as PersonalFinancialScreenRequestDto;
+    expect(request.criteria).toMatchObject({
+      clauses: [
+        {
+          field: "currentAssetsLessCurrentLiabilities",
+          operator: "lte",
+          value: "-0.00001",
+        },
+      ],
+      sort: { field: "currentAssetsLessCurrentLiabilities", direction: "asc" },
+    });
+    expect(columnHeaders(render())).toContain(
+      "Current assets less current liabilities (USD)",
+    );
+    const applied = elements(render()).find(
+      (item) => item.props.className === "financial-screen-applied-criteria",
+    );
+    expect(text(applied)).toContain(
+      "Current assets less current liabilities (USD) ≤ -0.00001 USD",
+    );
+    change(render(), "Financial screen name", "Current-balance shortfall");
+    click(render(), "Save financial screen as new");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]?.[1] as PersonalFinancialSavedViewsPayloadDto;
+    expect(payload.schemaVersion).toBe(1);
+    expect(payload.views[0]).toEqual(legacy);
+    expect(payload.views[1]?.criteria).toEqual(request.criteria);
+    expect(payload.views[1]?.criteria).not.toHaveProperty("visibleMetrics");
+    click(render(), "Reset financial criteria");
+    click(render(), "Load financial criteria");
+    expect(input(render(), "Financial metric 1").props.value).toBe(
+      "currentAssetsLessCurrentLiabilities",
+    );
+    expect(input(render(), "Financial threshold 1").props.value).toBe(
+      "-0.00001",
+    );
+    expect(input(render(), "Financial sort field").props.value).toBe(
+      "currentAssetsLessCurrentLiabilities",
+    );
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
 
   it("shows exact multiples, actual dates, input roles and only the fixed instant source links", async () => {
     await mount();
@@ -1626,7 +1837,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(view)).toContain("Operating cash flow input");
     expect(text(view)).toContain("PP&E purchases input (subtracted)");
     expect(text(view)).toContain("Reported: 23.00002 USD");
-    expect(text(view)).toContain("Formula version 1.5.0");
+    expect(text(view)).toContain("Formula version 1.6.0");
     expect(
       elements(view).some(
         (element) =>
@@ -1747,7 +1958,8 @@ describe("PersonalFinancialScreener", () => {
             metric,
             metric === "currentAssets" ||
             metric === "currentLiabilities" ||
-            metric === "currentRatio"
+            metric === "currentRatio" ||
+            metric === "currentAssetsLessCurrentLiabilities"
               ? defaultInstantCells()[metric]
               : {
                   status: "unavailable",
@@ -1885,7 +2097,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "7.0.0",
+          schemaVersion: "8.0.0",
           financialSnapshotSha256: null,
           criteria: legacy.criteria,
         }),
@@ -1910,7 +2122,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "7.0.0",
+          schemaVersion: "8.0.0",
           criteria: grossRequest.criteria,
           financialSnapshotSha256: sha("b"),
           page: { offset: 25, limit: 25 },
@@ -1934,7 +2146,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[3]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "7.0.0",
+          schemaVersion: "8.0.0",
           financialSnapshotSha256: null,
           page: { offset: 0, limit: 25 },
           criteria: grossRequest.criteria,
@@ -2182,7 +2394,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("shows missing gross profit as unknown and spans all fifteen metrics when no rows match", async () => {
+  it("shows missing gross profit as unknown and spans all seventeen metrics when no rows match", async () => {
     const result = response();
     const row = result.rows[0]!;
     api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -2222,7 +2434,7 @@ describe("PersonalFinancialScreener", () => {
           element.type === "td" &&
           text(element) === "No matching financial results.",
       )?.props.colSpan,
-    ).toBe(18);
+    ).toBe(19);
   });
 
   it("uses percent controls and explains both cash-flow-to-income operands independently of revenue", async () => {
@@ -2264,7 +2476,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-      schemaVersion: "7.0.0",
+      schemaVersion: "8.0.0",
       criteria: {
         revenueBasis: "SalesRevenueNet",
         clauses: [
@@ -3475,7 +3687,93 @@ function defaultInstantCells() {
     value: "1.25",
     sources: [...currentAssets.sources, ...currentLiabilities.sources],
   };
-  return { currentAssets, currentLiabilities, currentRatio };
+  const currentAssetsLessCurrentLiabilities: PersonalFinancialScreenInstantCellDto =
+    {
+      status: "available",
+      unit: "USD",
+      value: "20",
+      sources: [...currentAssets.sources, ...currentLiabilities.sources],
+    };
+  return {
+    currentAssets,
+    currentLiabilities,
+    currentRatio,
+    currentAssetsLessCurrentLiabilities,
+  };
+}
+function currentBalanceDifferenceResponse(
+  assets: string,
+  liabilities: string,
+  difference: string,
+): PersonalFinancialScreenResponseDto {
+  const result = response();
+  const row = result.rows[0]!;
+  const assetSource = {
+    ...row.metrics.currentAssets.sources[0]!,
+    value: assets,
+  };
+  const liabilitySource = {
+    ...row.metrics.currentLiabilities.sources[0]!,
+    value: liabilities,
+  };
+  const sources = [assetSource, liabilitySource];
+  return {
+    ...result,
+    rows: [
+      {
+        ...row,
+        metrics: {
+          ...row.metrics,
+          revenue: {
+            status: "unavailable",
+            unit: "USD",
+            reason: "conflicting",
+            sources: [],
+          },
+          currentAssets: {
+            status: "available",
+            unit: "USD",
+            value: assets,
+            sources: [assetSource],
+          },
+          currentLiabilities: {
+            status: "available",
+            unit: "USD",
+            value: liabilities,
+            sources: [liabilitySource],
+          },
+          currentRatio:
+            liabilities === "0"
+              ? {
+                  status: "unavailable",
+                  unit: "multiple",
+                  reason: "nonpositive_current_liabilities",
+                  sources,
+                }
+              : {
+                  status: "available",
+                  unit: "multiple",
+                  value: (Number(assets) / Number(liabilities)).toFixed(2),
+                  sources,
+                },
+          currentAssetsLessCurrentLiabilities: {
+            status: "available",
+            unit: "USD",
+            value: difference,
+            sources,
+          },
+        },
+      },
+    ],
+    metricCoverage: {
+      ...result.metricCoverage,
+      revenue: { known: 0, unknown: 1 },
+      currentRatio:
+        liabilities === "0"
+          ? { known: 0, unknown: 1 }
+          : { known: 1, unknown: 0 },
+    },
+  };
 }
 function defaultGrowthCell(
   value = "25.00",
@@ -3542,14 +3840,14 @@ function growthResponse(
 
 function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "7.0.0",
+    schemaVersion: "8.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: new Date().getUTCFullYear() - 1,
     priorCalendarYear: new Date().getUTCFullYear() - 2,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
-    formulaVersion: "1.5.0",
+    formulaVersion: "1.6.0",
     instantQuarter: 4,
     priorRevenueSources: PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => ({
       concept,
@@ -3588,7 +3886,8 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
               ? defaultGrowthCell()
               : metric === "currentAssets" ||
                   metric === "currentLiabilities" ||
-                  metric === "currentRatio"
+                  metric === "currentRatio" ||
+                  metric === "currentAssetsLessCurrentLiabilities"
                 ? defaultInstantCells()[metric]
                 : {
                     status: "available",

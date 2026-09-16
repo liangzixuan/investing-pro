@@ -1405,13 +1405,17 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-15)
 
-The SEC cross-company screen now has sixteen annual/Q4 fields, including
+The SEC cross-company screen now has seventeen annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
 thirteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
-shared 30-core-metric/500-security gate. The active delivery is three editable,
-explicitly sparse starter screens using those existing fields in one release;
-no additional financial source, formula or schema is needed for that UI work.
+shared 30-core-metric/500-security gate. Three editable, explicitly sparse starter
+screens are delivered. The current slice adds current assets less current
+liabilities in USD, with exact subtraction and matching Q4 date/filing rules.
+It reuses the existing balances and thirteen-Frame cache; transport v8 and
+formula-set1.6 coordinate strict client/server validation. Dated source operands
+retain their original acquisition dates; actual release acceptance belongs in
+the workspace checkpoint and handoff.
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.
 
@@ -1428,7 +1432,7 @@ slice inspects one primary filing context. Validate supported source coverage,
 fiscal calendars, standalone flow basis and revision selection against independent
 filing evidence before calculating trailing-period financials. Further screening
 metrics depend on their own compatible inputs and measured coverage; this does
-not block the independent starter-screen UI slice. Broader return methods remain
+not block the independent current-balance subtraction slice. Broader return methods remain
 in the backlog.
 XIRR, benchmark comparisons, dividend accruals and other corporate actions need
 their own methodology and evidence.

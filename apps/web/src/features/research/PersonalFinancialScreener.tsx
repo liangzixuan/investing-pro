@@ -68,7 +68,12 @@ const columnViews = {
   },
   q4Balances: {
     label: "Q4 balances",
-    metrics: ["currentAssets", "currentLiabilities", "currentRatio"],
+    metrics: [
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
+      "currentAssetsLessCurrentLiabilities",
+    ],
   },
   all: { label: "All metrics", metrics },
 } as const satisfies Record<
@@ -155,6 +160,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   currentAssets: "Current assets",
   currentLiabilities: "Current liabilities",
   currentRatio: "Current assets / current liabilities (×)",
+  currentAssetsLessCurrentLiabilities:
+    "Current assets less current liabilities (USD)",
   revenueGrowth: "Selected revenue YoY change (%)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
@@ -186,6 +193,8 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported LiabilitiesCurrent in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Negative reported balances remain visible. Independent of the revenue basis.",
   currentRatio:
     "Current assets / current liabilities, in multiples. Requires nonnegative assets, positive liabilities, and every reference to share the same actual balance date within Q4 and filing accession. Rounded half-up to two decimal places; inclusive filters compare the displayed rounded multiple. Independent of the revenue basis.",
+  currentAssetsLessCurrentLiabilities:
+    "Current assets − current liabilities, in USD. Exact subtraction requires nonnegative reported balances and every reference to share the same actual balance date within Q4 and filing accession. Zero liabilities and a negative difference are valid. Independent of the revenue basis; this measure is not cash available to spend.",
   revenueGrowth:
     "(Current selected revenue − prior selected revenue) / prior selected revenue × 100. Requires positive prior revenue, adjacent supported annual periods, unchanged revenue concepts and agreeing facts from one filing within each year. The two years may use different filings. Rounded half-up once to two decimal places; zero and negative current revenue are retained.",
 };
@@ -268,6 +277,21 @@ function currentRatioUnknownExplanation(
   if (cell.reason === "unsupported_sign")
     return "Reported current assets are negative. Their sign is preserved; this ratio requires nonnegative assets and does not take an absolute value.";
   return "A current asset or liability input is unresolved. The ratio remains unknown; retained reported references are shown below.";
+}
+
+function currentBalanceDifferenceUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string | null {
+  if (cell.status === "available") return null;
+  if (cell.reason === "unsupported_balance_date")
+    return "A reported balance date falls outside October 1–December 31 of the selected year. The subtraction remains unknown; retained actual dates remain visible.";
+  if (cell.reason === "balance_date_mismatch")
+    return "The current asset and liability references have different actual balance dates. The Q4 frame label alone does not make them compatible.";
+  if (cell.reason === "filing_mismatch")
+    return "The current asset and liability references come from different filing accessions. The subtraction remains unknown to avoid mixing filing versions.";
+  if (cell.reason === "unsupported_sign")
+    return "Reported current assets or current liabilities are negative. Their signs are preserved; this subtraction requires nonnegative operands and does not take an absolute value. A negative difference between nonnegative balances is valid.";
+  return "A current asset or liability input is unresolved. The subtraction remains unknown; missing or failed inputs are never treated as zero, and retained reported references are shown below.";
 }
 
 function cashFlowUnknownExplanation(
@@ -572,7 +596,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "7.0.0",
+          schemaVersion: "8.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -1517,7 +1541,8 @@ function FinancialResults({
                   {metric !== "grossMargin" &&
                     metric !== "operatingCashFlowToNetIncome" &&
                     metric !== "revenueGrowth" &&
-                    metric !== "currentRatio" && (
+                    metric !== "currentRatio" &&
+                    metric !== "currentAssetsLessCurrentLiabilities" && (
                       <>
                         <br />
                         <small>{metricUnitLabel(metric)}</small>
@@ -1702,6 +1727,12 @@ function FinancialCellDetails({
   readonly revenueBasis: PersonalFinancialRevenueBasisDto;
   readonly revenueUnresolved: boolean;
 }) {
+  const currentAssets = cell.sources.find(
+    (source) => source.concept === "AssetsCurrent",
+  );
+  const currentLiabilities = cell.sources.find(
+    (source) => source.concept === "LiabilitiesCurrent",
+  );
   return (
     <div>
       <p className="financial-screen-inspector-value">
@@ -1735,26 +1766,43 @@ function FinancialCellDetails({
           )}
         </>
       )}
-      {["currentAssets", "currentLiabilities", "currentRatio"].includes(
-        metric,
-      ) && (
+      {[
+        "currentAssets",
+        "currentLiabilities",
+        "currentRatio",
+        "currentAssetsLessCurrentLiabilities",
+      ].includes(metric) && (
         <>
           <p>
             The Q4 frame selection is separate from annual flow periods. Inspect
             each actual balance date. The October–December window is an app
             rule, not an SEC-published date tolerance.
           </p>
-          {metric === "currentRatio" && (
+          {(metric === "currentRatio" ||
+            metric === "currentAssetsLessCurrentLiabilities") && (
             <p>
               Calculated by this app from reported current balances. Current
               classifications and industry differences affect comparability.
             </p>
           )}
           {cell.status === "unavailable" && (
-            <p>{currentRatioUnknownExplanation(cell)}</p>
+            <p>
+              {metric === "currentAssetsLessCurrentLiabilities"
+                ? currentBalanceDifferenceUnknownExplanation(cell)
+                : currentRatioUnknownExplanation(cell)}
+            </p>
           )}
         </>
       )}
+      {metric === "currentAssetsLessCurrentLiabilities" &&
+        cell.status === "available" &&
+        currentAssets !== undefined &&
+        currentLiabilities !== undefined && (
+          <p>
+            Exact subtraction: {currentAssets.value} USD −{" "}
+            {currentLiabilities.value} USD = {cell.value} USD.
+          </p>
+        )}
       {metric === "grossMargin" && (
         <>
           <p>
@@ -1852,6 +1900,14 @@ function FinancialCellDetails({
                 {source.concept === "AssetsCurrent"
                   ? "Current assets numerator"
                   : "Current liabilities denominator"}
+                <br />
+              </>
+            )}
+            {metric === "currentAssetsLessCurrentLiabilities" && (
+              <>
+                {source.concept === "AssetsCurrent"
+                  ? "Current assets input"
+                  : "Current liabilities input (subtracted)"}
                 <br />
               </>
             )}

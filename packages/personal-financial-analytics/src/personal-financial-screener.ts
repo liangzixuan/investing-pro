@@ -35,13 +35,18 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.5.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.6.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   currentRatio: Object.freeze({
     formulaId: "current_assets_to_current_liabilities",
     formulaVersion: "1.0.0",
     expression: "current_assets / current_liabilities",
+  }),
+  currentAssetsLessCurrentLiabilities: Object.freeze({
+    formulaId: "current_assets_less_current_liabilities",
+    formulaVersion: "1.0.0",
+    expression: "current_assets - current_liabilities",
   }),
   netMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.netMargin,
   operatingMargin: PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.operatingMargin,
@@ -77,6 +82,7 @@ const METRICS = [
   "currentAssets",
   "currentLiabilities",
   "currentRatio",
+  "currentAssetsLessCurrentLiabilities",
   "revenueGrowth",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
@@ -277,7 +283,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "7.0.0",
+      schemaVersion: "8.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
@@ -382,6 +388,10 @@ function buildMetrics(
     currentAssets,
     currentLiabilities,
     currentRatio: currentAssetsToLiabilities(currentAssets, currentLiabilities),
+    currentAssetsLessCurrentLiabilities: currentAssetsLessCurrentLiabilities(
+      currentAssets,
+      currentLiabilities,
+    ),
     revenueGrowth: revenueYearOverYear(revenue, priorRevenue, calendarYear),
   };
 }
@@ -612,6 +622,33 @@ function currentAssetsToLiabilities(
     value: rounded.isZero()
       ? "0.00"
       : rounded.toFixed(PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces),
+    sources,
+  };
+}
+
+function currentAssetsLessCurrentLiabilities(
+  assets: PersonalFinancialScreenInstantCellDto,
+  liabilities: PersonalFinancialScreenInstantCellDto,
+): PersonalFinancialScreenInstantCellDto {
+  const sources = [...assets.sources, ...liabilities.sources];
+  if (assets.status === "unavailable")
+    return instantUnavailable("USD", assets.reason, sources);
+  if (liabilities.status === "unavailable")
+    return instantUnavailable("USD", liabilities.reason, sources);
+  const first = sources[0]!;
+  // Resolved inputs already satisfy the Q4 window; every reference must share date and filing.
+  if (sources.some((ref) => ref.asOfDate !== first.asOfDate))
+    return instantUnavailable("USD", "balance_date_mismatch", sources);
+  if (sources.some((ref) => ref.accessionNumber !== first.accessionNumber))
+    return instantUnavailable("USD", "filing_mismatch", sources);
+  const assetValue = new ScreenDecimal(assets.value);
+  const liabilityValue = new ScreenDecimal(liabilities.value);
+  if (assetValue.lt(0) || liabilityValue.lt(0))
+    return instantUnavailable("USD", "unsupported_sign", sources);
+  return {
+    status: "available",
+    unit: "USD",
+    value: canonicalDecimal(assetValue.minus(liabilityValue)),
     sources,
   };
 }
