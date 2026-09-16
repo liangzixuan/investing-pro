@@ -34,6 +34,8 @@ afterEach(async () => {
 });
 
 describe("personal vault routes", () => {
+  // These integrations include real SQLite/fsync work and app startup; the
+  // default five-second unit-test limit is too short on hosted Windows.
   it("authenticates before JSON parsing and never composes demo routes", async () => {
     const fixture = await vaultApp("initialize");
     const unauthorized = await fixture.app.inject({
@@ -60,7 +62,7 @@ describe("personal vault routes", () => {
       headers: { ...ownerHeaders(fixture.cookie), "x-demo-persona": "analyst" },
     });
     expect(demo.statusCode).toBe(404);
-  });
+  }, 30_000);
 
   it("creates, replays, updates, lists, and deletes with strong preconditions", async () => {
     const fixture = await vaultApp("initialize");
@@ -172,7 +174,7 @@ describe("personal vault routes", () => {
       headers: ownerHeaders(fixture.cookie),
     });
     expect(unavailable.statusCode).toBe(404);
-  });
+  }, 30_000);
 
   it("survives API restart without retaining the owner session", async () => {
     const first = await vaultApp("initialize");
@@ -210,7 +212,7 @@ describe("personal vault routes", () => {
     });
     expect(durable.statusCode).toBe(200);
     expect(durable.json()).toMatchObject({ payload: { color: "dark" } });
-  });
+  }, 30_000);
 });
 
 async function vaultApp(

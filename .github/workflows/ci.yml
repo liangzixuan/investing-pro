@@ -55,5 +55,33 @@ jobs:
       - name: Check peer dependencies
         run: pnpm peers check
 
+      - name: Initialize Windows PowerShell runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 2
+        run: |
+          # Prepare the native runtime before the gate. Actual ACL operations
+          # retain their own 15-second deadline and all permission checks.
+          $executable = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          $info = [Diagnostics.ProcessStartInfo]::new($executable)
+          $info.UseShellExecute = $false
+          $info.CreateNoWindow = $true
+          $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+          foreach ($argument in @('-NoLogo', '-NoProfile', '-NonInteractive', '-Command', '[Console]::WriteLine("Windows PowerShell runtime ready")')) {
+            $info.ArgumentList.Add($argument)
+          }
+          $process = [Diagnostics.Process]::Start($info)
+          try {
+            if (-not $process.WaitForExit(60000)) {
+              $process.Kill($true)
+              if (-not $process.WaitForExit(10000)) { throw 'Windows PowerShell startup process did not stop.' }
+              throw 'Windows PowerShell startup exceeded 60 seconds.'
+            }
+            if ($process.ExitCode -ne 0) { throw 'Windows PowerShell startup failed.' }
+            Write-Output 'Windows PowerShell runtime initialized.'
+          } finally {
+            $process.Dispose()
+          }
+
       - name: Run the release gate
         run: pnpm verify
