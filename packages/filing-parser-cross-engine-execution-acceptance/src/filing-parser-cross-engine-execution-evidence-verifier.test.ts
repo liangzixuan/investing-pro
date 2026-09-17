@@ -58,6 +58,10 @@ import {
 } from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const temporaryDirectories: string[] = [];
+const V3_FIXTURE_DRIFT_PATH =
+  "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-direct-execution.ts";
+const V3_FIXTURE_EXTRA_PATH =
+  "fixtures/synthetic/filing-parser-cross-engine-execution/v3/offline-review-extra-source.txt";
 
 afterEach(async () => {
   await Promise.all(
@@ -95,12 +99,43 @@ describe("offline cross-engine evidence verifier hardening", () => {
 
   it("reviews a canonical v3 direct-child artifact end to end", async () => {
     const fixture = await v3RepositoryFixture();
+    const requiredPaths = filingParserCrossEngineExecutionV3RequiredSourcePaths(
+      [],
+    );
+    expect(requiredPaths).toHaveLength(66);
+    expect(requiredPaths).not.toContain(V3_FIXTURE_DRIFT_PATH);
+    expect(requiredPaths).not.toContain(V3_FIXTURE_EXTRA_PATH);
+    const expectedPaths = [
+      ...requiredPaths,
+      V3_FIXTURE_DRIFT_PATH,
+      V3_FIXTURE_EXTRA_PATH,
+    ].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+    expect(fixture.evidence.sourceHashes.map(({ path }) => path)).toEqual(
+      expectedPaths,
+    );
+    expect(fixture.evidence.transition.entries).toEqual(
+      expect.arrayContaining([
+        { path: V3_FIXTURE_DRIFT_PATH, status: "A" },
+        { path: V3_FIXTURE_EXTRA_PATH, status: "A" },
+        {
+          path: "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence.ts",
+          status: "M",
+        },
+      ]),
+    );
+    expect(
+      fixture.evidence.transition.entries.every(({ path }) =>
+        expectedPaths.includes(path),
+      ),
+    ).toBe(true);
     await expect(
       verifyFilingParserCrossEngineExecutionEvidenceOffline(fixture.options),
     ).resolves.toMatchObject({
       baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
       evidenceVersion: 3,
       historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+      sourceCount: 68,
+      transitionPathCount: fixture.evidence.transition.entries.length,
       verdict: "offline_consistent",
     });
   }, 30_000);
@@ -108,14 +143,76 @@ describe("offline cross-engine evidence verifier hardening", () => {
   it("rejects local source drift for a canonical v3 direct-child artifact", async () => {
     const fixture = await v3RepositoryFixture();
     await writeFile(
-      join(
-        fixture.repository,
-        "packages/filing-parser-cross-engine-execution/src/filing-parser-cross-engine-direct-execution.ts",
-      ),
+      join(fixture.repository, V3_FIXTURE_DRIFT_PATH),
       "source mutation\n",
     );
     await expect(
       verifyFilingParserCrossEngineExecutionEvidenceOffline(fixture.options),
+    ).rejects.toThrow(
+      "Offline filing parser cross-engine execution evidence review failed.",
+    );
+  }, 30_000);
+
+  it("rejects missing, undeclared, and mismatched hashes for a v3 extra source", async () => {
+    const fixture = await v3RepositoryFixture();
+    expect(() =>
+      createFilingParserCrossEngineExecutionEvidenceV3({
+        ...fixture.evidence,
+        sourceHashes: fixture.evidence.sourceHashes.filter(
+          ({ path }) => path !== V3_FIXTURE_EXTRA_PATH,
+        ),
+      }),
+    ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+    expect(() =>
+      createFilingParserCrossEngineExecutionEvidenceV3({
+        ...fixture.evidence,
+        sourceHashes: [
+          ...fixture.evidence.sourceHashes,
+          {
+            path: "fixtures/synthetic/filing-parser-cross-engine-execution/v3/undeclared-source.txt",
+            sha256: sha256(new TextEncoder().encode("undeclared source\n")),
+          },
+        ].sort((left, right) =>
+          left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+        ),
+      }),
+    ).toThrow("Filing parser cross-engine execution evidence is invalid.");
+
+    const incorrectHash = sha256(
+      new TextEncoder().encode("different synthetic source bytes\n"),
+    );
+    expect(
+      fixture.evidence.sourceHashes.find(
+        ({ path }) => path === V3_FIXTURE_EXTRA_PATH,
+      )?.sha256,
+    ).not.toBe(incorrectHash);
+    const evidence = createFilingParserCrossEngineExecutionEvidenceV3({
+      ...fixture.evidence,
+      sourceHashes: fixture.evidence.sourceHashes.map((source) =>
+        source.path === V3_FIXTURE_EXTRA_PATH
+          ? { ...source, sha256: incorrectHash }
+          : source,
+      ),
+    });
+    // The evidence lives outside the clean repository. Rebind its outer digest
+    // so only the extra source's committed-byte hash is inconsistent.
+    await writeFile(
+      fixture.options.evidencePath,
+      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence),
+    );
+    expect(
+      runGit(trustedGitPath(), fixture.repository, [
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+      ]),
+    ).toBe("");
+    await expect(
+      verifyFilingParserCrossEngineExecutionEvidenceOffline({
+        ...fixture.options,
+        expectedEvidenceSha256:
+          filingParserCrossEngineExecutionEvidenceV3Sha256(evidence),
+      }),
     ).rejects.toThrow(
       "Offline filing parser cross-engine execution evidence review failed.",
     );
@@ -504,12 +601,24 @@ async function v3RepositoryFixture() {
     "--detach",
     FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
   ]);
-  for (const path of candidateOverlayPaths(git, sourceRepository)) {
+  // Keep this historical compatibility fixture independent of unrelated
+  // product growth while retaining the complete v3 source contract and an
+  // additional real transition path. The verifier still reviews every source.
+  const overlayPaths = [
+    ...filingParserCrossEngineExecutionV3RequiredSourcePaths([]),
+    V3_FIXTURE_DRIFT_PATH,
+  ];
+  for (const path of overlayPaths) {
     const source = join(sourceRepository, ...path.split("/"));
     const destination = join(repository, ...path.split("/"));
     await mkdir(join(destination, ".."), { recursive: true });
     await cp(source, destination, { force: true, recursive: true });
   }
+  await writeFile(
+    join(repository, V3_FIXTURE_EXTRA_PATH),
+    "Synthetic source outside the mandatory v3 inventory.\n",
+    { flag: "wx" },
+  );
   runGit(git, repository, ["add", "--all"]);
   runGit(git, repository, [
     "-c",
@@ -627,6 +736,7 @@ async function v3RepositoryFixture() {
     serializeCanonicalFilingParserCrossEngineExecutionEvidenceV3(evidence),
   );
   return {
+    evidence,
     options: {
       evidencePath,
       expectedArtifactName: artifactName,
@@ -640,44 +750,6 @@ async function v3RepositoryFixture() {
     },
     repository,
   };
-}
-
-function candidateOverlayPaths(
-  git: string,
-  sourceRepository: string,
-): string[] {
-  const diff = runAnchoredGit(git, sourceRepository, [
-    "diff",
-    "--name-status",
-    "--no-renames",
-    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_BASELINE,
-    "--",
-  ])
-    .trimEnd()
-    .split("\n")
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const match = /^(A|D|M)\t([^\t\r\n]+)$/u.exec(line);
-      if (match?.[1] === undefined || match[2] === undefined)
-        throw new Error("fixture setup failed");
-      // The legacy V3 evidence transition admits only source files that exist
-      // at its synthetic revision. Later unrelated deletions are intentionally
-      // absent from this compatibility overlay rather than misreported as A/M.
-      return match[1] === "D" ? undefined : match[2].replaceAll("\\", "/");
-    })
-    .filter((path): path is string => path !== undefined);
-  const untracked = runAnchoredGit(git, sourceRepository, [
-    "ls-files",
-    "--others",
-    "--exclude-standard",
-  ])
-    .trimEnd()
-    .split("\n")
-    .filter((line) => line.length > 0)
-    .map((path) => path.replaceAll("\\", "/"));
-  return [...new Set([...diff, ...untracked])].sort((left, right) =>
-    left < right ? -1 : left > right ? 1 : 0,
-  );
 }
 
 function rebindV3Invocation(
@@ -959,31 +1031,6 @@ function runGit(
   return execFileSync(
     git,
     ["-c", "advice.graftFileDeprecated=false", "-C", repository, ...args],
-    {
-      encoding: "utf8",
-      env: cleanFilingParserCrossEngineExecutionGitEnvironment(process.env),
-    },
-  );
-}
-
-function runAnchoredGit(
-  git: string,
-  repository: string,
-  args: readonly string[],
-): string {
-  return execFileSync(
-    git,
-    [
-      "--no-replace-objects",
-      "--no-lazy-fetch",
-      "-c",
-      "advice.graftFileDeprecated=false",
-      "-C",
-      repository,
-      `--git-dir=${join(repository, ".git")}`,
-      `--work-tree=${repository}`,
-      ...args,
-    ],
     {
       encoding: "utf8",
       env: cleanFilingParserCrossEngineExecutionGitEnvironment(process.env),
