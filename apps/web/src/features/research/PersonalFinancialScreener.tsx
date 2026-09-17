@@ -73,6 +73,10 @@ const columnViews = {
       "operatingCashFlowLessPpePurchasesMargin",
     ],
   },
+  commonStockPayments: {
+    label: "Common stock payments",
+    metrics: ["commonDividendsPaid", "commonStockRepurchases"],
+  },
   q4Balances: {
     label: "Q4 balances",
     metrics: [
@@ -205,6 +209,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingCashFlow: "Operating cash flow",
   investingCashFlow: "Reported investing cash flow (USD)",
   financingCashFlow: "Reported financing cash flow (USD)",
+  commonDividendsPaid: "Reported common dividends paid (USD)",
+  commonStockRepurchases: "Reported common stock repurchase payments (USD)",
   netMargin: "Net margin",
   operatingMargin: "Operating margin",
   operatingCashFlowMargin: "Operating cash flow margin",
@@ -238,6 +244,10 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported NetCashProvidedByUsedInInvestingActivities in USD, including discontinued operations. This net category covers loans and transactions in investments and productive assets. Retains the reported sign and actual annual period. Independent of the revenue basis and PP&E purchases; no continuing-operations variant or reconstructed amount fills missing values. Inspect this amount’s actual dates and filing.",
   financingCashFlow:
     "Reported NetCashProvidedByUsedInFinancingActivities in USD, including discontinued operations. This net category covers funding from owners and creditors and returns or repayments to them. Retains the reported sign and actual annual period. Independent of the revenue basis; this net category is not debt issuance, shareholder distributions or a change in stockholders’ equity. No continuing-operations variant or reconstructed amount fills missing values. Inspect this amount’s actual dates and filing.",
+  commonDividendsPaid:
+    "Reported PaymentsOfDividendsCommonStock in USD: ordinary cash dividends paid to the parent’s common stockholders. Broader distributions, preferred dividends and payments to noncontrolling interests are not substituted. This is a reported payment amount, not dividends per share, a dividend yield, payout ratio or dividend calendar. Independent of the revenue basis; inspect this amount’s actual annual dates and filing.",
+  commonStockRepurchases:
+    "Reported PaymentsForRepurchaseOfCommonStock in USD: cash paid to reacquire common stock during the period. Broader equity repurchases and preferred-stock repurchases are not substituted. This is a reported payment amount, not net buybacks, shareholder yield or investor return. Independent of the revenue basis; inspect this amount’s actual annual dates and filing.",
   netMargin:
     "Net income / revenue × 100. Requires positive revenue and identical source periods.",
   operatingMargin:
@@ -1033,7 +1043,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "12.0.0",
+          schemaVersion: "13.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -2508,6 +2518,8 @@ function FinancialResults({
                       {metric !== "totalAssets" &&
                         metric !== "investingCashFlow" &&
                         metric !== "financingCashFlow" &&
+                        metric !== "commonDividendsPaid" &&
+                        metric !== "commonStockRepurchases" &&
                         metric !== "totalLiabilities" &&
                         metric !== "cashAndCashEquivalents" &&
                         metric !== "stockholdersEquity" && (
@@ -2567,6 +2579,8 @@ function FinancialResults({
                   {metric !== "grossMargin" &&
                     metric !== "investingCashFlow" &&
                     metric !== "financingCashFlow" &&
+                    metric !== "commonDividendsPaid" &&
+                    metric !== "commonStockRepurchases" &&
                     metric !== "operatingCashFlowToNetIncome" &&
                     metric !== "operatingCashFlowLessPpePurchasesMargin" &&
                     metric !== "revenueGrowth" &&
@@ -2859,6 +2873,18 @@ function FinancialCellDetails({
           : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
       </p>
       <p>{formulaFor(metric, revenueBasis)}</p>
+      {(metric === "commonDividendsPaid" ||
+        metric === "commonStockRepurchases") && (
+        <p>
+          A positive payment amount represents cash paid, not a cash inflow.
+          Reported zero and negative amounts retain their signs. The two
+          payments do not sum to net financing cash flow, and larger payments
+          are not inherently better. Missing or unresolved exact reported
+          amounts stay unknown; they do not establish that no payment occurred
+          or that the filing lacks the tag. No component sum or equity change
+          fills a missing value.
+        </p>
+      )}
       {(metric === "investingCashFlow" || metric === "financingCashFlow") && (
         <p>
           Positive, negative and reported zero amounts are shown without

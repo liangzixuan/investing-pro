@@ -34,11 +34,11 @@ remain bound to their workspace, catalog, selected view and submitted draft.
 ## Stored representation
 
 The saved-view payload has its own version, independent of financial-screen
-transport v12 and formula-set1.7. Both API and browser continue to admit the exact
+transport v13 and formula-set1.7. Both API and browser continue to admit the exact
 version1 payload. Version2 requires every view to have a `display` field:
 
 - `null` retains a legacy criteria-only definition.
-- `{ visibleMetrics: [...] }` records one to twenty-four distinct existing metric
+- `{ visibleMetrics: [...] }` records one to twenty-six distinct existing metric
   identifiers in canonical `PERSONAL_FINANCIAL_SCREEN_METRICS` order.
 
 Unknown, repeated, empty, oversized or unordered column lists and extra fields
@@ -49,12 +49,18 @@ Deleting a view preserves the current payload version and other definitions.
 The existing vault record ID, mutation intent, version and idempotency protocol
 remain unchanged. Saving a view itself adds no provider request or financial calculation.
 
-The reported investing/financing cash flows, total-assets, total-liabilities,
+The reported common-dividend and common-stock repurchase payments,
+investing/financing cash flows, total-assets, total-liabilities,
 cash and parent-equity fields are available for an
 explicit column edit and save. Previously saved column lists keep their exact
 contents and relative order; opening or loading an older view does not append
 new fields. Old criteria retain their meaning. These fields do not require
 another saved-payload version or a migration.
+
+The **Common stock payments** preset selects only the two payment fields.
+The existing eight-column **Cash flow** preset stays unchanged. Loading a literal
+older twenty-four-column layout retains exactly those columns and their order;
+only an explicit column edit and save adds either payment field.
 
 ## Acceptance
 

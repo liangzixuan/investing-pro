@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-16 following the handover from **Investing Pro+** to
+Updated 2026-09-17 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -15,7 +15,26 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reported investing and financing cash flows
+## Immediate delivery: common-stock payments
+
+Add **Reported common dividends paid (USD)** and **Reported common stock
+repurchase payments (USD)** using only `PaymentsOfDividendsCommonStock` and
+`PaymentsForRepurchaseOfCommonStock`. The dividend concept covers ordinary cash
+dividends to common shareholders of the parent. Broader, preferred and
+noncontrolling-interest distributions do not substitute for either field.
+Preserve reported signs, zero and each amount's own annual dates and filing.
+A positive payment amount means cash paid, not cash received. Missing is unknown.
+
+Expand twenty-four fields to twenty-six and nineteen Frames to twenty-one.
+A separate **Common stock payments** column preset contains the two amounts;
+the eight-column Cash flow preset, Overview, Q4 balances, starters and literal
+saved layouts remain unchanged. Coordinate transport v13 without changing
+formula-set1.7 or saved payload versions. Measure actual coverage and reconcile
+bounded primary filings, including zero and non-calendar periods. These amounts
+do not establish dividend yield, payout ratios or net buybacks. The thirty-metric
+breadth target and broad joint coverage remain open.
+
+## Delivered: reported investing and financing cash flows
 
 Add **Reported investing cash flow (USD)** and **Reported financing cash flow
 (USD)** using only the exact annual SEC
@@ -31,6 +50,12 @@ criteria and literal saved layouts keep their existing meanings. Coordinate
 transport v12 without changing formula-set1.7 or saved payload versions.
 Measure actual coverage and reconcile positive, negative, zero and non-calendar
 annual filing samples. The thirty-metric breadth target remains open.
+
+Release `bd564855` passed 6,241 native checks, 24 builds, all six hosted jobs on
+attempt1 and configured Brave checks. Production evaluation covered 3,227
+listings; investing cash flow was known for 2,760 and financing cash flow for
+2,854. Six primary filings were reconciled. The release checkpoint retains
+issuer counts, missing/conflicting values and dated source evidence.
 
 ## Delivered: reported cash and stockholders' equity
 

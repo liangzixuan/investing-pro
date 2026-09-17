@@ -36,6 +36,276 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+describe("reported common stock payment decoding", () => {
+  const payments = [
+    ["commonDividendsPaid", "PaymentsOfDividendsCommonStock"],
+    ["commonStockRepurchases", "PaymentsForRepurchaseOfCommonStock"],
+  ] as const;
+  type Field = (typeof payments)[number][0];
+  const withCell = (
+    field: Field,
+    cell: PersonalFinancialScreenAnnualCellDto,
+  ) => {
+    const result = response();
+    return {
+      ...result,
+      rows: result.rows.map((row) => ({
+        ...row,
+        metrics: { ...row.metrics, [field]: cell },
+      })),
+    };
+  };
+  it.each(payments)(
+    "preserves %s exact signed amounts, own annual dates and accession without altering other metrics",
+    async (field, concept) => {
+      for (const value of ["0", "-0.00001", "9007199254740993.00001"]) {
+        const cell = cashCell(concept, value);
+        const changed = {
+          ...cell,
+          sources: cell.sources.map((ref) => ({
+            ...ref,
+            startDate: "2023-10-01",
+            endDate: "2024-09-28",
+            accessionNumber: "0000000001-25-000099",
+          })),
+        };
+        const result = withCell(field, changed);
+        fetchMock.mockResolvedValueOnce(json(result));
+        const input = {
+          ...request(),
+          criteria: {
+            ...request().criteria,
+            clauses: [{ field, operator: "gte" as const, value }],
+            sort: { field, direction: "asc" as const },
+          },
+        };
+        expect(await screenPersonalFinancials(input, signal())).toEqual(result);
+        expect(fetchMock.mock.calls.at(-1)![1]!.body).toBe(
+          JSON.stringify(input),
+        );
+        expect(personalFinancialSourceUrl(concept, 2024)).toBe(
+          `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2024.json`,
+        );
+      }
+    },
+  );
+  it.each(payments)(
+    "admits inclusive annual boundaries, 52/53 week periods and year sanity edges for %s",
+    async (field, concept) => {
+      for (const [startDate, endDate] of [
+        ["2024-01-01", "2024-11-30"],
+        ["2024-01-01", "2025-01-29"],
+        ["2023-10-01", "2024-09-28"],
+        ["2023-09-24", "2024-09-28"],
+        ["2023-01-01", "2023-12-31"],
+        ["2025-01-01", "2025-12-31"],
+      ]) {
+        const cell = cashCell(concept, "-12.50");
+        const changed = {
+          ...cell,
+          sources: cell.sources.map((ref) => ({
+            ...ref,
+            startDate: startDate!,
+            endDate: endDate!,
+          })),
+        };
+        fetchMock.mockResolvedValueOnce(json(withCell(field, changed)));
+        expect(
+          (await screenPersonalFinancials(request(), signal())).rows[0]!
+            .metrics[field],
+        ).toEqual(changed);
+      }
+    },
+  );
+  it.each(payments)(
+    "rejects malformed, substituted and unsupported annual %s cells",
+    async (field, concept) => {
+      for (const kind of [
+        "short",
+        "long",
+        "old year",
+        "future year",
+        "invalid date",
+        "reversed period",
+        "mismatched amount",
+        "mismatched periods",
+        "no source",
+        "instant shape",
+        "broader variant",
+        "preferred variant",
+        "net financing substitute",
+        "other payment",
+        "bad accession",
+        "padded value",
+        "wrong unit",
+        "missing refs",
+        "invalid reason",
+        "unsupported sign",
+        "claimed source unavailable",
+      ]) {
+        const result = structuredClone(
+          withCell(field, cashCell(concept, "-12.5")),
+        ) as unknown as {
+          rows: { metrics: Record<string, Record<string, unknown>> }[];
+        };
+        const cell = result.rows[0]!.metrics[field]!;
+        const refs = cell.sources as Record<string, unknown>[];
+        if (kind === "short") {
+          refs[0]!.startDate = "2024-01-01";
+          refs[0]!.endDate = "2024-11-29";
+        }
+        if (kind === "long") {
+          refs[0]!.startDate = "2024-01-01";
+          refs[0]!.endDate = "2025-01-30";
+        }
+        if (kind === "old year" || kind === "future year") {
+          const year = kind === "old year" ? 2022 : 2026;
+          refs[0]!.startDate = `${year}-01-01`;
+          refs[0]!.endDate = `${year}-12-31`;
+        }
+        if (kind === "invalid date") refs[0]!.startDate = "2024-02-30";
+        if (kind === "reversed period") refs[0]!.startDate = "2025-01-01";
+        if (kind === "mismatched amount") cell.value = "12.5";
+        if (kind === "mismatched periods")
+          refs.push({ ...refs[0], startDate: "2023-12-31" });
+        if (kind === "no source") cell.sources = [];
+        if (kind === "instant shape") {
+          delete refs[0]!.startDate;
+          delete refs[0]!.endDate;
+          refs[0]!.asOfDate = "2024-12-31";
+        }
+        if (kind === "broader variant")
+          refs[0]!.concept =
+            field === "commonDividendsPaid"
+              ? "PaymentsOfDividends"
+              : "PaymentsForRepurchaseOfEquity";
+        if (kind === "preferred variant")
+          refs[0]!.concept =
+            field === "commonDividendsPaid"
+              ? "PaymentsOfDividendsPreferredStockAndPreferenceStock"
+              : "PaymentsForRepurchaseOfPreferredStockAndPreferenceStock";
+        if (kind === "net financing substitute")
+          refs[0]!.concept = "NetCashProvidedByUsedInFinancingActivities";
+        if (kind === "other payment")
+          refs[0]!.concept =
+            field === "commonDividendsPaid"
+              ? "PaymentsForRepurchaseOfCommonStock"
+              : "PaymentsOfDividendsCommonStock";
+        if (kind === "bad accession") refs[0]!.accessionNumber = "not-a-filing";
+        if (kind === "padded value") refs[0]!.value = `1.${"0".repeat(64)}`;
+        if (kind === "wrong unit") cell.unit = "percent";
+        if (
+          [
+            "missing refs",
+            "invalid reason",
+            "unsupported sign",
+            "claimed source unavailable",
+          ].includes(kind)
+        ) {
+          cell.status = "unavailable";
+          delete cell.value;
+          cell.reason =
+            kind === "missing refs"
+              ? "missing"
+              : kind === "invalid reason"
+                ? "invalid_value"
+                : kind === "unsupported sign"
+                  ? "unsupported_sign"
+                  : "source_unavailable";
+        }
+        fetchMock.mockResolvedValueOnce(json(result));
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+          kind,
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+  it.each(payments)(
+    "binds %s unknowns to exact source status and preserves conflicts",
+    async (field, concept) => {
+      for (const status of [
+        "available",
+        "not_covered",
+        "rate_limited",
+        "upstream_unavailable",
+        "invalid_response",
+      ] as const) {
+        const cell: PersonalFinancialScreenAnnualCellDto = {
+          status: "unavailable",
+          unit: "USD",
+          reason:
+            status === "available" || status === "not_covered"
+              ? "missing"
+              : "source_unavailable",
+          sources: [],
+        };
+        const result = withCell(field, cell);
+        const changed = {
+          ...result,
+          sources: result.sources.map((source) =>
+            source.concept === concept ? { ...source, status } : source,
+          ),
+        };
+        fetchMock.mockResolvedValueOnce(json(changed));
+        expect(await screenPersonalFinancials(request(), signal())).toEqual(
+          changed,
+        );
+        if (status !== "available") {
+          const available = withCell(field, cashCell(concept, "0"));
+          fetchMock.mockResolvedValueOnce(
+            json({ ...available, sources: changed.sources }),
+          );
+          await expect(
+            screenPersonalFinancials(request(), signal()),
+          ).rejects.toMatchObject({ code: "invalid_response" });
+        }
+      }
+      const refs = [cashRef(concept, "1"), cashRef(concept, "-1")];
+      const conflict = {
+        status: "unavailable" as const,
+        unit: "USD" as const,
+        reason: "conflicting" as const,
+        sources: refs,
+      };
+      fetchMock.mockResolvedValueOnce(json(withCell(field, conflict)));
+      expect(
+        (await screenPersonalFinancials(request(), signal())).rows[0]!.metrics[
+          field
+        ],
+      ).toEqual(conflict);
+    },
+  );
+  it.each(payments)(
+    "never admits %s references in any old metric",
+    async (_field, concept) => {
+      for (const metric of PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
+        (metric) =>
+          metric !== "commonDividendsPaid" &&
+          metric !== "commonStockRepurchases",
+      )) {
+        const result = structuredClone(response());
+        const cell = result.rows[0]!.metrics[metric];
+        const changed = {
+          ...result,
+          rows: result.rows.map((row) => ({
+            ...row,
+            metrics: {
+              ...row.metrics,
+              [metric]: { ...cell, sources: [{ ...cell.sources[0], concept }] },
+            },
+          })),
+        };
+        fetchMock.mockResolvedValueOnce(json(changed));
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+          metric,
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+});
+
 describe("reported activity cash flow decoding", () => {
   const activities = [
     ["investingCashFlow", "NetCashProvidedByUsedInInvestingActivities"],
@@ -556,6 +826,77 @@ describe("reported balance decoding", () => {
     },
   );
 
+  it("round-trips literal old twenty-four-column layouts unchanged beside new common stock payment criteria and columns", async () => {
+    const legacy = savedPayload().views[0]!;
+    const oldMetrics = [
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "operatingCashFlow",
+      "investingCashFlow",
+      "financingCashFlow",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "grossMargin",
+      "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
+      "currentAssetsLessCurrentLiabilities",
+      "totalAssets",
+      "totalLiabilities",
+      "cashAndCashEquivalents",
+      "stockholdersEquity",
+      "revenueGrowth",
+    ] as const;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 2,
+      views: [
+        { ...legacy, display: null },
+        {
+          ...legacy,
+          id: "old-twenty-four",
+          name: "Old twenty-four",
+          display: { visibleMetrics: oldMetrics },
+        },
+        {
+          ...legacy,
+          id: "common-payments",
+          name: "Common stock payments",
+          criteria: {
+            ...legacy.criteria,
+            clauses: [
+              {
+                field: "commonStockRepurchases",
+                operator: "lte",
+                value: "-12.5",
+              },
+            ],
+            sort: { field: "commonDividendsPaid", direction: "asc" },
+          },
+          display: {
+            visibleMetrics: ["commonDividendsPaid", "commonStockRepurchases"],
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    expect(
+      (await savePersonalFinancialSavedViews(1, payload, signal())).payload,
+    ).toEqual(payload);
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({ payload }),
+    );
+  });
   it("round-trips literal old twenty-two-column layouts unchanged beside new activity cash-flow criteria and columns", async () => {
     const legacy = savedPayload().views[0]!;
     const oldMetrics = [
@@ -1199,7 +1540,7 @@ describe("selected revenue year-over-year decoding", () => {
         ...selected.map(() => "current_revenue"),
         ...selected.map(() => "prior_revenue"),
       ]);
-      expect(result.sources).toHaveLength(16);
+      expect(result.sources).toHaveLength(18);
       expect(result.priorRevenueSources).toHaveLength(3);
     },
   );
@@ -2297,9 +2638,13 @@ describe("current balance and ratio decoding", () => {
     if (kind === "old formula") result.formulaVersion = "1.3.0";
     const sources = result.sources as { sourceUrl: string }[];
     if (kind === "annual URL")
-      sources[10]!.sourceUrl = sources[10]!.sourceUrl.replace("Q4I", "");
+      sources[PERSONAL_SEC_ANNUAL_CONCEPTS.length]!.sourceUrl = sources[
+        PERSONAL_SEC_ANNUAL_CONCEPTS.length
+      ]!.sourceUrl.replace("Q4I", "");
     if (kind === "wrong quarter URL")
-      sources[10]!.sourceUrl = sources[10]!.sourceUrl.replace("Q4I", "Q3I");
+      sources[PERSONAL_SEC_ANNUAL_CONCEPTS.length]!.sourceUrl = sources[
+        PERSONAL_SEC_ANNUAL_CONCEPTS.length
+      ]!.sourceUrl.replace("Q4I", "Q3I");
     if (kind === "missing source") sources.pop();
     if (kind === "missing metric")
       delete (result.rows as { metrics: Record<string, unknown> }[])[0]!.metrics
@@ -4689,7 +5034,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v12 criteria and retains the complete twenty-four-metric, nineteen-Frame response", async () => {
+  it("sends v13 criteria and retains the complete twenty-six-metric, twenty-one-Frame response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -4701,7 +5046,7 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("12.0.0");
+    expect(decoded.schemaVersion).toBe("13.0.0");
     expect(decoded.formulaVersion).toBe("1.7.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
@@ -4711,6 +5056,8 @@ describe("financial screen transport", () => {
       "operatingCashFlow",
       "investingCashFlow",
       "financingCashFlow",
+      "commonDividendsPaid",
+      "commonStockRepurchases",
       "netMargin",
       "operatingMargin",
       "operatingCashFlowMargin",
@@ -4741,6 +5088,8 @@ describe("financial screen transport", () => {
       "NetCashProvidedByUsedInOperatingActivities",
       "NetCashProvidedByUsedInInvestingActivities",
       "NetCashProvidedByUsedInFinancingActivities",
+      "PaymentsOfDividendsCommonStock",
+      "PaymentsForRepurchaseOfCommonStock",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
       "AssetsCurrent",
@@ -4765,6 +5114,7 @@ describe("financial screen transport", () => {
     "9.0.0",
     "10.0.0",
     "11.0.0",
+    "12.0.0",
   ])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
@@ -4788,6 +5138,7 @@ describe("financial screen transport", () => {
     "expanded v2",
     "expanded v3",
     "expanded v4",
+    "expanded v12",
     "historical v1 shape relabeled v6",
     "historical v2 shape relabeled v6",
     "missing metric",
@@ -4807,6 +5158,8 @@ describe("financial screen transport", () => {
     if (kind === "expanded v2") invalid = { ...result, schemaVersion: "2.0.0" };
     if (kind === "expanded v3") invalid = { ...result, schemaVersion: "3.0.0" };
     if (kind === "expanded v4") invalid = { ...result, schemaVersion: "4.0.0" };
+    if (kind === "expanded v12")
+      invalid = { ...result, schemaVersion: "12.0.0" };
     if (kind === "historical v1 shape relabeled v6")
       invalid = {
         ...historicalResponse(),
@@ -5892,7 +6245,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "12.0.0",
+    schemaVersion: "13.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -6055,6 +6408,8 @@ function growthResponse(
           ...row.metrics,
           investingCashFlow: missing,
           financingCashFlow: missing,
+          commonDividendsPaid: missing,
+          commonStockRepurchases: missing,
           ...instant,
           revenueGrowth,
           netMargin: { ...missing, unit: "percent" },
@@ -6195,6 +6550,8 @@ function cashRef(
     | "NetCashProvidedByUsedInOperatingActivities"
     | "NetCashProvidedByUsedInInvestingActivities"
     | "NetCashProvidedByUsedInFinancingActivities"
+    | "PaymentsOfDividendsCommonStock"
+    | "PaymentsForRepurchaseOfCommonStock"
     | "PaymentsToAcquirePropertyPlantAndEquipment",
   value: string,
 ): PersonalFinancialScreenSourceRefDto {
@@ -6205,6 +6562,8 @@ function cashCell(
     | "NetCashProvidedByUsedInOperatingActivities"
     | "NetCashProvidedByUsedInInvestingActivities"
     | "NetCashProvidedByUsedInFinancingActivities"
+    | "PaymentsOfDividendsCommonStock"
+    | "PaymentsForRepurchaseOfCommonStock"
     | "PaymentsToAcquirePropertyPlantAndEquipment",
   value: string,
 ): PersonalFinancialScreenAnnualCellDto {
@@ -6397,7 +6756,7 @@ function currentResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "12.0.0",
+    schemaVersion: "13.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -6449,6 +6808,19 @@ function response(): PersonalFinancialScreenResponseDto {
                     ? "NetCashProvidedByUsedInInvestingActivities"
                     : "NetCashProvidedByUsedInFinancingActivities",
                   metric === "investingCashFlow" ? "-125.5" : "0",
+                ),
+              ];
+            if (
+              metric === "commonDividendsPaid" ||
+              metric === "commonStockRepurchases"
+            )
+              return [
+                metric,
+                cashCell(
+                  metric === "commonDividendsPaid"
+                    ? "PaymentsOfDividendsCommonStock"
+                    : "PaymentsForRepurchaseOfCommonStock",
+                  metric === "commonDividendsPaid" ? "-125.5" : "0",
                 ),
               ];
             if (metric === "revenueGrowth")

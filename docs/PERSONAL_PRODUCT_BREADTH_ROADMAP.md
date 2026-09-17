@@ -1404,11 +1404,11 @@ This program does not imply that every benchmark feature is obtainable:
 
 ## Release order and stopping rules
 
-### Active delivery priority (2026-09-16)
+### Active delivery priority (2026-09-17)
 
-The SEC cross-company screen now has twenty-two annual/Q4 fields, including
+The accepted SEC cross-company screen now has twenty-four annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
-thirteen-Frame coverage, sampled filing operands and configured browser checks
+nineteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
 shared 30-core-metric/500-security gate. Three editable, explicitly sparse starter
 screens are delivered. The accepted balance slice adds current assets less current
@@ -1478,7 +1478,7 @@ noncontrolling interests; cash does not substitute broader restricted-cash
 variants. Signed deficits, per-field filing/date references and unknown reasons
 remain visible. Coverage and varied primary-filing reconciliation are required.
 
-The next increment adds reported investing and financing cash flows from their
+The delivered increment adds reported investing and financing cash flows from their
 exact annual USD concepts, including discontinued operations. It expands
 twenty-two fields to twenty-four and seventeen Frames to nineteen. Preserve
 signs, actual periods, independent filings, all old calculations and saved
@@ -1486,6 +1486,19 @@ layouts. Continuing-operation variants and component sums do not fill missing
 totals. These activity categories do not establish the change in cash or a
 universal quality ranking. Verify actual coverage and varied primary filings,
 including zero and 52/53-week observations when available.
+
+The next increment adds reported common dividends paid and common-stock
+repurchase payments from exact annual USD concepts. It expands twenty-four
+fields to twenty-six and nineteen Frames to twenty-one. Ordinary dividends to
+common shareholders of the parent stay distinct from total/preferred dividends;
+common-stock repurchases stay distinct from broader equity repurchases. Preserve
+signs, zero, actual periods and independent filings. Positive payment amounts mean
+cash paid. Missing exact tags remain unknown, with no component substitution,
+yield, payout-ratio or net-buyback inference. A separate two-column Common stock
+payments preset leaves the existing Cash flow preset and saved layouts intact.
+Measure actual coverage and bounded primary evidence; neither the thirty-metric
+target nor broad joint eligibility is complete.
+
 Deliver both related fields together, run independent evidence work alongside
 the release gates, and reuse established verification helpers. Preserve the
 existing acceptance gates and avoid unrelated infrastructure work.

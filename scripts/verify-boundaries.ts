@@ -5455,6 +5455,32 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       /"NetCashProvidedByUsedInInvestingActivities",\s*"NetCashProvidedByUsedInFinancingActivities"/u,
       '"NetCashProvidedByUsedInFinancingActivities", "NetCashProvidedByUsedInInvestingActivities"',
     ),
+    ...[
+      [
+        "PaymentsOfDividendsCommonStock",
+        "PaymentsOfDividends",
+        "PaymentsOfDividendsPreferredStockAndPreferenceStock",
+      ],
+      [
+        "PaymentsForRepurchaseOfCommonStock",
+        "PaymentsForRepurchaseOfEquity",
+        "PaymentsForRepurchaseOfPreferredStockAndPreferenceStock",
+      ],
+    ].flatMap(([concept, broad, preferred]) => [
+      secConcepts.replace(`"${concept}",`, ""),
+      secConcepts.replace(`"${concept}"`, `"${broad}"`),
+      secConcepts.replace(`"${concept}"`, `"${preferred}"`),
+      secConcepts.replace(
+        `"${concept}"`,
+        '"NetCashProvidedByUsedInFinancingActivities"',
+      ),
+      secConcepts.replace(`"${concept}"`, `"${concept}", "${broad}"`),
+      secConcepts.replace('"GrossProfit"', `"${concept}"`),
+    ]),
+    secConcepts.replace(
+      /"PaymentsOfDividendsCommonStock",\s*"PaymentsForRepurchaseOfCommonStock"/u,
+      '"PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividendsCommonStock"',
+    ),
     secConcepts.replace('"GrossProfit",', ""),
     secConcepts.replace('"GrossProfit"', '"NetIncomeLoss"'),
     secConcepts.replace('"GrossProfit"', '"GrossProfit", "Assets"'),
@@ -7702,6 +7728,8 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "NetCashProvidedByUsedInOperatingActivities",
       "NetCashProvidedByUsedInInvestingActivities",
       "NetCashProvidedByUsedInFinancingActivities",
+      "PaymentsOfDividendsCommonStock",
+      "PaymentsForRepurchaseOfCommonStock",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]) &&
@@ -7721,7 +7749,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         "SalesRevenueNet",
       ])
     ? null
-    : "SEC financial frames must retain the exact ten current annual, six instant and three prior revenue concept registries";
+    : "SEC financial frames must retain the exact twelve current annual, six instant and three prior revenue concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

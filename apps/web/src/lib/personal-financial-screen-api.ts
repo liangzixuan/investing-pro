@@ -36,9 +36,11 @@ const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
 const instantConcepts = PERSONAL_SEC_INSTANT_CONCEPTS;
-const reportedActivityConcepts = {
+const reportedAnnualConcepts = {
   investingCashFlow: "NetCashProvidedByUsedInInvestingActivities",
   financingCashFlow: "NetCashProvidedByUsedInFinancingActivities",
+  commonDividendsPaid: "PaymentsOfDividendsCommonStock",
+  commonStockRepurchases: "PaymentsForRepurchaseOfCommonStock",
 } as const;
 const reportedInstantConcepts = {
   currentAssets: "AssetsCurrent",
@@ -147,7 +149,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "12.0.0" ||
+    input.schemaVersion !== "13.0.0" ||
     (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
@@ -438,7 +440,7 @@ function isResponse(
       ],
       true,
     ) ||
-    value.schemaVersion !== "12.0.0" ||
+    value.schemaVersion !== "13.0.0" ||
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
@@ -934,9 +936,12 @@ function cell(
 ): boolean {
   if (member(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS, metric))
     return instantCell(value, metric, year, sourceStatuses);
-  const activityConcept =
-    metric === "investingCashFlow" || metric === "financingCashFlow"
-      ? reportedActivityConcepts[metric]
+  const reportedConcept =
+    metric === "investingCashFlow" ||
+    metric === "financingCashFlow" ||
+    metric === "commonDividendsPaid" ||
+    metric === "commonStockRepurchases"
+      ? reportedAnnualConcepts[metric]
       : null;
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
   const cashMargin = metric === "operatingCashFlowLessPpePurchasesMargin";
@@ -968,7 +973,7 @@ function cell(
         date(source.startDate) &&
         date(source.endDate) &&
         source.endDate > source.startDate &&
-        (activityConcept === null ||
+        (reportedConcept === null ||
           (Math.abs(Number(source.endDate.slice(0, 4)) - year) <= 1 &&
             (Date.parse(source.endDate) - Date.parse(source.startDate)) /
               86_400_000 +
@@ -996,9 +1001,9 @@ function cell(
         cashMargin ||
         (exactRatio && value.reason === "filing_mismatch") ||
         !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
-  if (activityConcept !== null) {
+  if (reportedConcept !== null) {
     const frameStatus = sourceStatuses.find(
-      (source) => source.concept === activityConcept,
+      (source) => source.concept === reportedConcept,
     )?.status;
     if (frameStatus !== "available")
       return (
@@ -1025,6 +1030,8 @@ function cell(
       "operatingCashFlow",
       "investingCashFlow",
       "financingCashFlow",
+      "commonDividendsPaid",
+      "commonStockRepurchases",
     ].includes(metric)
   )
     return valid;
@@ -1278,8 +1285,13 @@ function admittedSource(
     return concept === "PaymentsToAcquirePropertyPlantAndEquipment";
   if (metric === "operatingCashFlow")
     return concept === "NetCashProvidedByUsedInOperatingActivities";
-  if (metric === "investingCashFlow" || metric === "financingCashFlow")
-    return concept === reportedActivityConcepts[metric];
+  if (
+    metric === "investingCashFlow" ||
+    metric === "financingCashFlow" ||
+    metric === "commonDividendsPaid" ||
+    metric === "commonStockRepurchases"
+  )
+    return concept === reportedAnnualConcepts[metric];
   if (metric === "operatingCashFlowLessPpePurchases")
     return (
       concept === "NetCashProvidedByUsedInOperatingActivities" ||
@@ -1295,7 +1307,9 @@ function admittedSource(
     concept !== "GrossProfit" &&
     concept !== "PaymentsToAcquirePropertyPlantAndEquipment" &&
     concept !== "NetCashProvidedByUsedInInvestingActivities" &&
-    concept !== "NetCashProvidedByUsedInFinancingActivities"
+    concept !== "NetCashProvidedByUsedInFinancingActivities" &&
+    concept !== "PaymentsOfDividendsCommonStock" &&
+    concept !== "PaymentsForRepurchaseOfCommonStock"
   );
 }
 

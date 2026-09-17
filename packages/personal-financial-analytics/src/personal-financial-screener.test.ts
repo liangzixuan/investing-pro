@@ -43,6 +43,8 @@ const CONCEPTS: readonly PersonalSecAnnualConceptDto[] = [
   "NetCashProvidedByUsedInOperatingActivities",
   "NetCashProvidedByUsedInInvestingActivities",
   "NetCashProvidedByUsedInFinancingActivities",
+  "PaymentsOfDividendsCommonStock",
+  "PaymentsForRepurchaseOfCommonStock",
   "GrossProfit",
   "PaymentsToAcquirePropertyPlantAndEquipment",
 ];
@@ -437,6 +439,8 @@ describe("reported gross profit screening", () => {
       "operatingCashFlow",
       "investingCashFlow",
       "financingCashFlow",
+      "commonDividendsPaid",
+      "commonStockRepurchases",
       "netMargin",
       "operatingMargin",
       "operatingCashFlowMargin",
@@ -467,11 +471,13 @@ describe("reported gross profit screening", () => {
       "NetCashProvidedByUsedInOperatingActivities",
       "NetCashProvidedByUsedInInvestingActivities",
       "NetCashProvidedByUsedInFinancingActivities",
+      "PaymentsOfDividendsCommonStock",
+      "PaymentsForRepurchaseOfCommonStock",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
     });
     expect(() =>
@@ -564,6 +570,8 @@ describe("reported gross profit screening", () => {
             NetCashProvidedByUsedInOperatingActivities: [fact(1, "30")],
             NetCashProvidedByUsedInInvestingActivities: [fact(1, "-15")],
             NetCashProvidedByUsedInFinancingActivities: [fact(1, "-5")],
+            PaymentsOfDividendsCommonStock: [fact(1, "2")],
+            PaymentsForRepurchaseOfCommonStock: [fact(1, "3")],
             PaymentsToAcquirePropertyPlantAndEquipment: [fact(1, "5")],
           }),
           "GrossProfit",
@@ -1204,7 +1212,7 @@ describe("explicit financial-screen revenue basis", () => {
       expect(metrics.netIncome).toMatchObject({ value: "11" });
       expect(metrics.operatingIncome).toMatchObject({ value: "22" });
       expect(metrics.operatingCashFlow).toMatchObject({ value: "33" });
-      expect(result.sources).toHaveLength(16);
+      expect(result.sources).toHaveLength(18);
       expect(JSON.stringify(data)).toBe(before);
       expect(selected.revenueBasis).toBe(basis);
     },
@@ -1944,9 +1952,9 @@ describe("operating cash flow / net income", () => {
   }
 
   it("registers a distinct formula while preserving the eleven metrics and every prior formula version", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.at(13)).toBe(metric);
-    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS).toHaveLength(15);
-    expect(PERSONAL_SEC_ANNUAL_CONCEPTS).toHaveLength(10);
+    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.at(15)).toBe(metric);
+    expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS).toHaveLength(17);
+    expect(PERSONAL_SEC_ANNUAL_CONCEPTS).toHaveLength(12);
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[metric]).toEqual({
       formulaId: "operating_cash_flow_to_net_income_percent",
       formulaVersion: "1.0.0",
@@ -2419,7 +2427,10 @@ describe("operating cash flow / net income", () => {
     expect(Object.keys(expected)).toEqual(
       PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.filter(
         (field) =>
-          field !== "investingCashFlow" && field !== "financingCashFlow",
+          field !== "investingCashFlow" &&
+          field !== "financingCashFlow" &&
+          field !== "commonDividendsPaid" &&
+          field !== "commonStockRepurchases",
       ).slice(0, 11),
     );
     for (const oldMetric of Object.keys(
@@ -2442,7 +2453,7 @@ describe("operating cash flow / net income", () => {
       reason: "filing_mismatch",
     });
     expect(result.metricCoverage[metric]).toEqual({ known: 0, unknown: 1 });
-    expect(result.schemaVersion).toBe("12.0.0");
+    expect(result.schemaVersion).toBe("13.0.0");
   });
 
   it("uses inclusive rounded thresholds, separates unknowns and orders duplicate listings stably across pages", () => {
@@ -2730,9 +2741,9 @@ describe("operating cash flow less PP&E purchases / selected revenue", () => {
     return run([identity("CASH", 1)], source).rows[0]!.metrics;
   }
 
-  it("retains the annual formula in the expanded nineteen-Frame transport and saved criteria grammar", () => {
+  it("retains the annual formula in the expanded twenty-one-Frame transport and saved criteria grammar", () => {
     expect(PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS.at(-1)).toBe(metric);
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(24);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(26);
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[metric]).toEqual({
       formulaId: "operating_cash_flow_less_ppe_purchases_to_revenue_percent",
       formulaVersion: "1.0.0",
@@ -2744,7 +2755,7 @@ describe("operating cash flow less PP&E purchases / selected revenue", () => {
       source.frames.length +
         source.instantFrames.length +
         source.priorRevenueFrames.length,
-    ).toBe(19);
+    ).toBe(21);
     const filters = {
       ...criteria([clause(metric, "gte", "-1.25")]),
       sort: { field: metric, direction: "desc" },
@@ -3227,7 +3238,10 @@ describe("reported investing and financing cash flows", () => {
     expect(
       PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
         (metric) =>
-          metric !== "investingCashFlow" && metric !== "financingCashFlow",
+          metric !== "investingCashFlow" &&
+          metric !== "financingCashFlow" &&
+          metric !== "commonDividendsPaid" &&
+          metric !== "commonStockRepurchases",
       ),
     ).toEqual(oldMetrics);
     expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(4, 7)).toEqual([
@@ -3237,10 +3251,10 @@ describe("reported investing and financing cash flows", () => {
     ]);
     const result = run([identity("ACTIVITIES", 1)], snapshot());
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
     });
-    expect(result.sources.length + result.priorRevenueSources.length).toBe(19);
+    expect(result.sources.length + result.priorRevenueSources.length).toBe(21);
     for (const [metric, concept] of reported) {
       expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS).not.toHaveProperty(metric);
       expect(result.sources).toContainEqual({
@@ -3522,6 +3536,343 @@ describe("reported investing and financing cash flows", () => {
   });
 });
 
+describe("reported common dividends and common share repurchases", () => {
+  const reported = [
+    ["commonDividendsPaid", "PaymentsOfDividendsCommonStock"],
+    ["commonStockRepurchases", "PaymentsForRepurchaseOfCommonStock"],
+  ] as const;
+  const oldMetrics = [
+    "revenue",
+    "grossProfit",
+    "netIncome",
+    "operatingIncome",
+    "operatingCashFlow",
+    "investingCashFlow",
+    "financingCashFlow",
+    "netMargin",
+    "operatingMargin",
+    "operatingCashFlowMargin",
+    "ppePurchases",
+    "operatingCashFlowLessPpePurchases",
+    "grossMargin",
+    "operatingCashFlowToNetIncome",
+    "operatingCashFlowLessPpePurchasesMargin",
+    "currentAssets",
+    "currentLiabilities",
+    "currentRatio",
+    "currentAssetsLessCurrentLiabilities",
+    "totalAssets",
+    "totalLiabilities",
+    "cashAndCashEquivalents",
+    "stockholdersEquity",
+    "revenueGrowth",
+  ] as const;
+
+  it("adds two exact annual fields while retaining the old twenty-four order and formula set", () => {
+    expect(
+      PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
+        (metric) =>
+          metric !== "commonDividendsPaid" &&
+          metric !== "commonStockRepurchases",
+      ),
+    ).toEqual(oldMetrics);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(6, 9)).toEqual([
+      "financingCashFlow",
+      "commonDividendsPaid",
+      "commonStockRepurchases",
+    ]);
+    const result = run([identity("PAYMENTS", 1)], snapshot());
+    expect(result).toMatchObject({
+      schemaVersion: "13.0.0",
+      formulaVersion: "1.7.0",
+    });
+    expect(result.sources.length + result.priorRevenueSources.length).toBe(21);
+    for (const [metric, concept] of reported) {
+      expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS).not.toHaveProperty(metric);
+      expect(result.sources).toContainEqual({
+        concept,
+        status: "available",
+        sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025.json`,
+      });
+    }
+  });
+
+  describe.each(reported)("%s from %s only", (metric, concept) => {
+    const otherMetric =
+      metric === "commonDividendsPaid"
+        ? "commonStockRepurchases"
+        : "commonDividendsPaid";
+    const otherConcept =
+      concept === "PaymentsOfDividendsCommonStock"
+        ? "PaymentsForRepurchaseOfCommonStock"
+        : "PaymentsOfDividendsCommonStock";
+    const input = (patch: Partial<PersonalSecAnnualFrameDto>) =>
+      replaceFrame(
+        snapshot({
+          [concept]: [fact(1, "100")],
+          [otherConcept]: [
+            fact(1, "-50", {
+              startDate: "2024-10-01",
+              endDate: "2025-09-30",
+              accessionNumber: "0000000001-26-000009",
+            }),
+          ],
+          NetCashProvidedByUsedInOperatingActivities: [fact(1, "30")],
+          NetCashProvidedByUsedInFinancingActivities: [fact(1, "-15")],
+          PaymentsToAcquirePropertyPlantAndEquipment: [fact(1, "5")],
+        }),
+        concept,
+        patch,
+      );
+
+    it.each([
+      [
+        "123456789012345678901234567890123456789012345678901234567890.345",
+        "123456789012345678901234567890123456789012345678901234567890.345",
+      ],
+      [
+        "-9007199254740993.00000000000000001",
+        "-9007199254740993.00000000000000001",
+      ],
+      ["0", "0"],
+      ["-0.00", "0"],
+      ["125.5000", "125.5"],
+    ])(
+      "preserves exact reported signed amount %s and its own source text",
+      (value, canonical) => {
+        const source = fact(1, value, {
+          startDate: "2024-12-29",
+          endDate: "2025-12-27",
+        });
+        const cells = run([identity("PAYMENT", 1)], input({ facts: [source] }))
+          .rows[0]!.metrics;
+        expect(cells[metric]).toEqual({
+          status: "available",
+          unit: "USD",
+          value: canonical,
+          sources: [
+            {
+              concept,
+              accessionNumber: source.accessionNumber,
+              startDate: source.startDate,
+              endDate: source.endDate,
+              value,
+            },
+          ],
+        });
+        expect(cells[otherMetric]).toMatchObject({
+          status: "available",
+          value: "-50",
+          sources: [
+            {
+              concept: otherConcept,
+              startDate: "2024-10-01",
+              endDate: "2025-09-30",
+              accessionNumber: "0000000001-26-000009",
+            },
+          ],
+        });
+        expect(cells.operatingCashFlow).toMatchObject({ value: "30" });
+        expect(cells.financingCashFlow).toMatchObject({ value: "-15" });
+        expect(cells.operatingCashFlowLessPpePurchases).toMatchObject({
+          value: "25",
+        });
+      },
+    );
+
+    it.each([
+      [{ facts: [] }, "missing"],
+      [{ status: "not_covered", facts: [] }, "missing"],
+      [{ status: "upstream_unavailable", facts: [] }, "source_unavailable"],
+      [{ status: "rate_limited", facts: [] }, "source_unavailable"],
+      [{ status: "invalid_response", facts: [] }, "source_unavailable"],
+      [{ unknownCiks: [cik(1)] }, "conflicting"],
+      [{ facts: [fact(1, "100"), fact(1, "101")] }, "conflicting"],
+      [
+        { facts: [fact(1, "100"), fact(1, "100", { endDate: "2025-12-30" })] },
+        "conflicting",
+      ],
+      [
+        {
+          facts: [fact(1, "100"), fact(1, "100", { startDate: "2025-01-02" })],
+        },
+        "conflicting",
+      ],
+      [{ facts: [fact(1, "NaN")] }, "invalid_value"],
+    ] satisfies readonly (readonly [
+      Partial<PersonalSecAnnualFrameDto>,
+      string,
+    ])[])("isolates unavailable source %j as %s", (patch, reason) => {
+      const source = input(patch);
+      const result = run([identity("PAYMENT", 1)], source);
+      expect(result.rows[0]!.metrics[metric]).toMatchObject({
+        status: "unavailable",
+        unit: "USD",
+        reason,
+      });
+      expect(result.rows[0]!.metrics[otherMetric]).toMatchObject({
+        status: "available",
+        value: "-50",
+      });
+      expect(
+        result.rows[0]!.metrics.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ value: "25" });
+      expect(
+        run(
+          [identity("PAYMENT", 1)],
+          source,
+          criteria([clause(metric, "gte", "0")]),
+        ),
+      ).toMatchObject({ totalMatches: 0, totalUnknown: 1 });
+    });
+
+    it("retains agreeing duplicate facts and their independent accessions", () => {
+      const cells = run(
+        [identity("PAYMENT", 1)],
+        input({
+          facts: [
+            fact(1, "-125.50"),
+            fact(1, "-125.5", { accessionNumber: "0000000001-26-000002" }),
+          ],
+        }),
+      ).rows[0]!.metrics;
+      expect(cells[metric]).toMatchObject({
+        status: "available",
+        value: "-125.5",
+      });
+      expect(cells[metric].sources).toHaveLength(2);
+    });
+
+    it.each([
+      {
+        sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/EUR/CY2025.json`,
+      },
+      {
+        sourceUrl: `https://data.sec.gov/api/xbrl/frames/us-gaap/${concept}/USD/CY2025Q4I.json`,
+      },
+      { concept: "PaymentsOfDividends" },
+      { concept: "PaymentsOfDividendsPreferredStockAndPreferenceStock" },
+      { concept: "PaymentsForRepurchaseOfEquity" },
+      { concept: "PaymentsForRepurchaseOfPreferredStockAndPreferenceStock" },
+      { concept: otherConcept },
+      { concept: "NetCashProvidedByUsedInOperatingActivities" },
+      { concept: "PaymentsToAcquirePropertyPlantAndEquipment" },
+      { facts: [fact(1, "1", { startDate: "2025-02-30" })] },
+      { facts: [fact(1, "1", { startDate: "2026-01-01" })] },
+    ])(
+      "rejects a substituted or structurally invalid direct source %j",
+      (patch) => {
+        expect(() =>
+          run([], input(patch as Partial<PersonalSecAnnualFrameDto>)),
+        ).toThrow("Personal financial screen request is invalid.");
+      },
+    );
+
+    it("filters exact signed amounts, retains zero and duplicate listings, and sorts unknowns last", () => {
+      const first = identity("NEGATIVE", 1);
+      const companies = [
+        first,
+        { ...first, symbol: "NEGATIVE.B", listingId: "class-b" },
+        identity("ZERO", 2),
+        identity("POSITIVE", 3),
+        identity("MISSING", 4),
+      ];
+      const source = input({
+        facts: [
+          fact(1, "-9007199254740993.0001"),
+          fact(2, "0"),
+          fact(3, "9007199254740993.0002"),
+        ],
+      });
+      const selected = {
+        ...criteria([clause(metric, "gte", "-9007199254740993.0000")]),
+        sort: { field: metric, direction: "asc" as const },
+      };
+      expect(validatePersonalFinancialScreenCriteria(selected)).toBe(true);
+      const result = run(companies, source, selected);
+      expect(result.rows.map((row) => row.identity.symbol)).toEqual([
+        "ZERO",
+        "POSITIVE",
+      ]);
+      expect(result).toMatchObject({
+        totalMatches: 2,
+        totalNonMatches: 2,
+        totalUnknown: 1,
+      });
+      expect(result.metricCoverage[metric]).toEqual({ known: 4, unknown: 1 });
+      expect(
+        run(
+          companies,
+          source,
+          criteria([clause(metric, "lte", "-9007199254740993.0001")]),
+        ).rows.map((row) => row.identity.symbol),
+      ).toEqual(["NEGATIVE", "NEGATIVE.B"]);
+      for (const direction of ["asc", "desc"] as const) {
+        const sorted = run(companies, source, {
+          ...criteria(),
+          sort: { field: metric, direction },
+        });
+        expect(sorted.rows.at(-1)!.identity.symbol).toBe("MISSING");
+        expect(sorted.rows[0]!.identity.symbol).toBe(
+          direction === "asc" ? "NEGATIVE" : "POSITIVE",
+        );
+      }
+    });
+  });
+
+  it("preserves all twenty-four old cells and coverage under independent new source states across every revenue basis", () => {
+    let source = withPriorRevenue(
+      snapshot(
+        Object.fromEntries(
+          CONCEPTS.map((concept) => [concept, [fact(1, "100")]]),
+        ),
+      ),
+      Object.fromEntries(
+        PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => [
+          concept,
+          [priorFact(1, "80")],
+        ]),
+      ),
+    );
+    source = {
+      ...source,
+      instantFrames: source.instantFrames.map((frame) => ({
+        ...frame,
+        facts: [instantFact(1, "50")],
+      })),
+    };
+    const companies = [identity("OLD", 1), identity("ABSENT", 2)];
+    for (const revenueBasis of PERSONAL_FINANCIAL_REVENUE_BASES) {
+      const selected = { ...criteria(), revenueBasis };
+      const before = run(companies, source, selected);
+      for (const [newMetric, concept] of reported)
+        for (const patch of [
+          { facts: [fact(1, "-999.125")] },
+          { facts: [] },
+          { facts: [], status: "upstream_unavailable" },
+          { unknownCiks: [cik(1)] },
+        ] satisfies Partial<PersonalSecAnnualFrameDto>[]) {
+          const after = run(
+            companies,
+            replaceFrame(source, concept, patch),
+            selected,
+          );
+          for (let row = 0; row < before.rows.length; row++)
+            for (const metric of PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
+              (metric) => metric !== newMetric,
+            ))
+              expect(after.rows[row]!.metrics[metric]).toEqual(
+                before.rows[row]!.metrics[metric],
+              );
+          for (const metric of oldMetrics)
+            expect(after.metricCoverage[metric]).toEqual(
+              before.metricCoverage[metric],
+            );
+        }
+    }
+  });
+});
+
 describe("reported total assets and total liabilities", () => {
   const totals = [
     ["totalAssets", "Assets"],
@@ -3570,7 +3921,9 @@ describe("reported total assets and total liabilities", () => {
           metric !== "cashAndCashEquivalents" &&
           metric !== "stockholdersEquity" &&
           metric !== "investingCashFlow" &&
-          metric !== "financingCashFlow",
+          metric !== "financingCashFlow" &&
+          metric !== "commonDividendsPaid" &&
+          metric !== "commonStockRepurchases",
       ),
     ).toEqual(oldMetrics);
     expect(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS.slice(-4, -2)).toEqual([
@@ -3578,10 +3931,10 @@ describe("reported total assets and total liabilities", () => {
       "totalLiabilities",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
     });
-    expect(result.sources.length + result.priorRevenueSources.length).toBe(19);
+    expect(result.sources.length + result.priorRevenueSources.length).toBe(21);
     for (const [metric, concept] of totals) {
       expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS).not.toHaveProperty(metric);
       expect(result.sources).toContainEqual({
@@ -3933,7 +4286,9 @@ describe("reported cash and stockholders equity", () => {
           metric !== "cashAndCashEquivalents" &&
           metric !== "stockholdersEquity" &&
           metric !== "investingCashFlow" &&
-          metric !== "financingCashFlow",
+          metric !== "financingCashFlow" &&
+          metric !== "commonDividendsPaid" &&
+          metric !== "commonStockRepurchases",
       ),
     ).toEqual(oldMetrics);
     expect(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS.slice(-2)).toEqual([
@@ -3941,10 +4296,10 @@ describe("reported cash and stockholders equity", () => {
       "stockholdersEquity",
     ]);
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
     });
-    expect(result.sources.length + result.priorRevenueSources.length).toBe(19);
+    expect(result.sources.length + result.priorRevenueSources.length).toBe(21);
     for (const [metric, concept] of reported) {
       expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS).not.toHaveProperty(metric);
       expect(result.sources).toContainEqual({
@@ -4303,7 +4658,7 @@ describe("fixed Q4 current assets / current liabilities", () => {
     run([identity("LIQUID", 1)], input).rows[0]!.metrics;
 
   it("registers three instant fields and a distinct multiple formula without changing annual concepts", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(15, 18)).toEqual([
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS.slice(17, 20)).toEqual([
       "currentAssets",
       "currentLiabilities",
       "currentRatio",
@@ -4319,11 +4674,11 @@ describe("fixed Q4 current assets / current liabilities", () => {
       balances([instantFact(1, "25")], [instantFact(1, "10")]),
     );
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       instantQuarter: 4,
       formulaVersion: "1.7.0",
     });
-    expect(result.sources).toHaveLength(16);
+    expect(result.sources).toHaveLength(18);
     expect(result.rows[0]!.metrics.currentRatio).toEqual({
       status: "available",
       unit: "multiple",
@@ -4665,7 +5020,7 @@ describe("fixed Q4 current assets less current liabilities", () => {
       "cashAndCashEquivalents",
       "stockholdersEquity",
     ]);
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(24);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(26);
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[metric]).toEqual({
       formulaId: "current_assets_less_current_liabilities",
       formulaVersion: "1.0.0",
@@ -4682,11 +5037,11 @@ describe("fixed Q4 current assets less current liabilities", () => {
     const input = balances([instantFact(1, "25")], [instantFact(1, "10")]);
     const result = run([identity("BALANCE", 1)], input);
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
       instantQuarter: 4,
     });
-    expect(result.sources).toHaveLength(16);
+    expect(result.sources).toHaveLength(18);
     expect(result.priorRevenueSources).toHaveLength(3);
     expect(result.rows[0]!.metrics[metric]).toEqual({
       status: "available",
@@ -5178,20 +5533,20 @@ describe("selected revenue year-over-year growth", () => {
 
   it("appends one typed percentage field and retains both source roles with different filings across years", () => {
     expect(PERSONAL_FINANCIAL_SCREEN_GROWTH_METRICS).toEqual(["revenueGrowth"]);
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(24);
-    expect(PERSONAL_FINANCIAL_SCREEN_METRICS[23]).toBe("revenueGrowth");
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS).toHaveLength(26);
+    expect(PERSONAL_FINANCIAL_SCREEN_METRICS[25]).toBe("revenueGrowth");
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.revenueGrowth).toEqual(
       PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.revenueGrowth,
     );
     const result = run([identity("GROWTH", 1)], input());
     const cell = result.rows[0]!.metrics.revenueGrowth;
     expect(result).toMatchObject({
-      schemaVersion: "12.0.0",
+      schemaVersion: "13.0.0",
       formulaVersion: "1.7.0",
       calendarYear: 2025,
       priorCalendarYear: 2024,
     });
-    expect(result.sources).toHaveLength(16);
+    expect(result.sources).toHaveLength(18);
     expect(result.priorRevenueSources).toEqual(
       PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => ({
         concept,
