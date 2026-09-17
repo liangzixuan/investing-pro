@@ -333,7 +333,7 @@ function isScreenRequest(
     (hasExactKeys(value, SCREEN_REQUEST_KEYS) ||
       (hasExactKeys(value, [...SCREEN_REQUEST_KEYS, "scope"]) &&
         isWatchlistScope(value.scope))) &&
-    value.schemaVersion === "11.0.0" &&
+    value.schemaVersion === "12.0.0" &&
     isSnapshotDigest(value.catalogSnapshotSha256) &&
     (value.financialSnapshotSha256 === null ||
       isSnapshotDigest(value.financialSnapshotSha256)) &&

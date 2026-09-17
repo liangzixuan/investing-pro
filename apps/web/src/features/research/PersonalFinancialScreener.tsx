@@ -64,6 +64,8 @@ const columnViews = {
     label: "Cash flow",
     metrics: [
       "operatingCashFlow",
+      "investingCashFlow",
+      "financingCashFlow",
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
       "operatingCashFlowMargin",
@@ -201,6 +203,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   netIncome: "Net income",
   operatingIncome: "Operating income",
   operatingCashFlow: "Operating cash flow",
+  investingCashFlow: "Reported investing cash flow (USD)",
+  financingCashFlow: "Reported financing cash flow (USD)",
   netMargin: "Net margin",
   operatingMargin: "Operating margin",
   operatingCashFlowMargin: "Operating cash flow margin",
@@ -230,6 +234,10 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   operatingIncome: "Reported operating income (loss).",
   operatingCashFlow:
     "Reported net cash provided by (used in) operating activities.",
+  investingCashFlow:
+    "Reported NetCashProvidedByUsedInInvestingActivities in USD, including discontinued operations. This net category covers loans and transactions in investments and productive assets. Retains the reported sign and actual annual period. Independent of the revenue basis and PP&E purchases; no continuing-operations variant or reconstructed amount fills missing values. Inspect this amount’s actual dates and filing.",
+  financingCashFlow:
+    "Reported NetCashProvidedByUsedInFinancingActivities in USD, including discontinued operations. This net category covers funding from owners and creditors and returns or repayments to them. Retains the reported sign and actual annual period. Independent of the revenue basis; this net category is not debt issuance, shareholder distributions or a change in stockholders’ equity. No continuing-operations variant or reconstructed amount fills missing values. Inspect this amount’s actual dates and filing.",
   netMargin:
     "Net income / revenue × 100. Requires positive revenue and identical source periods.",
   operatingMargin:
@@ -1025,7 +1033,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "11.0.0",
+          schemaVersion: "12.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -2498,6 +2506,8 @@ function FinancialResults({
                     <th scope="row">
                       {labels[metric]}
                       {metric !== "totalAssets" &&
+                        metric !== "investingCashFlow" &&
+                        metric !== "financingCashFlow" &&
                         metric !== "totalLiabilities" &&
                         metric !== "cashAndCashEquivalents" &&
                         metric !== "stockholdersEquity" && (
@@ -2555,6 +2565,8 @@ function FinancialResults({
                 <th scope="col" key={metric}>
                   {labels[metric]}
                   {metric !== "grossMargin" &&
+                    metric !== "investingCashFlow" &&
+                    metric !== "financingCashFlow" &&
                     metric !== "operatingCashFlowToNetIncome" &&
                     metric !== "operatingCashFlowLessPpePurchasesMargin" &&
                     metric !== "revenueGrowth" &&
@@ -2847,6 +2859,16 @@ function FinancialCellDetails({
           : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
       </p>
       <p>{formulaFor(metric, revenueBasis)}</p>
+      {(metric === "investingCashFlow" || metric === "financingCashFlow") && (
+        <p>
+          Positive, negative and reported zero amounts are shown without
+          reversing their signs. A positive amount is not inherently favorable.
+          The three activity categories do not establish the change in cash:
+          exchange effects, restricted cash and differences in source periods or
+          classification require separate consideration. Missing or unresolved
+          exact reported amounts stay unknown.
+        </p>
+      )}
       {metric === "revenueGrowth" && "currentRevenue" in cell && (
         <>
           <p>

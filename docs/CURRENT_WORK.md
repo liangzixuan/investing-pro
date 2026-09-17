@@ -15,7 +15,24 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reported cash and stockholders' equity
+## Immediate delivery: reported investing and financing cash flows
+
+Add **Reported investing cash flow (USD)** and **Reported financing cash flow
+(USD)** using only the exact annual SEC
+`NetCashProvidedByUsedInInvestingActivities` and
+`NetCashProvidedByUsedInFinancingActivities` concepts. Preserve reported
+inflows, outflows and zero, with each field's actual period and filing.
+Continuing-operation variants do not fill a missing total. These amounts do not
+reconstruct changes in cash, PP&E spending, borrowing or shareholder returns.
+
+Expand twenty-two fields to twenty-four and seventeen Frames to nineteen.
+Cash flow columns can include both new amounts; Overview, Q4 balances, starter
+criteria and literal saved layouts keep their existing meanings. Coordinate
+transport v12 without changing formula-set1.7 or saved payload versions.
+Measure actual coverage and reconcile positive, negative, zero and non-calendar
+annual filing samples. The thirty-metric breadth target remains open.
+
+## Delivered: reported cash and stockholders' equity
 
 Add **Reported cash and cash equivalents (USD)** and **Reported stockholders'
 equity (USD)** using only the exact SEC `CashAndCashEquivalentsAtCarryingValue`
@@ -29,6 +46,11 @@ calculations and literal saved layouts. Transport v11 coordinates strict API and
 browser admission; formula-set1.7 and saved payload versions remain unchanged.
 Measure actual coverage and reconcile varied primary filings. This is another
 bounded step toward the thirty-metric target, not completion of that gate.
+
+Release `c18d3abf` passed 6,141 native checks, 24 builds, all six hosted jobs on
+attempt1 and configured Brave checks. Production evaluation covered 3,227
+listings; cash was known for 2,375 and parent equity for 2,622. The release
+checkpoint retains missing/date-excluded counts and primary-filing evidence.
 
 ## Delivered: reported balance totals
 

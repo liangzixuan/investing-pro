@@ -5436,6 +5436,25 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     found.push(`${secConceptsPath}: ${conceptsViolation}`);
   const invalidSecConceptRegistries = [
     secConcepts.replace('"SalesRevenueNet"', '"UnreviewedConcept"'),
+    ...[
+      "NetCashProvidedByUsedInInvestingActivities",
+      "NetCashProvidedByUsedInFinancingActivities",
+    ].flatMap((concept) => [
+      secConcepts.replace(`"${concept}",`, ""),
+      secConcepts.replace(
+        `"${concept}"`,
+        '"NetCashProvidedByUsedInOperatingActivities"',
+      ),
+      secConcepts.replace(`"${concept}"`, `"${concept}ContinuingOperations"`),
+      secConcepts.replace(
+        `"${concept}"`,
+        `"${concept}", "${concept}ContinuingOperations"`,
+      ),
+    ]),
+    secConcepts.replace(
+      /"NetCashProvidedByUsedInInvestingActivities",\s*"NetCashProvidedByUsedInFinancingActivities"/u,
+      '"NetCashProvidedByUsedInFinancingActivities", "NetCashProvidedByUsedInInvestingActivities"',
+    ),
     secConcepts.replace('"GrossProfit",', ""),
     secConcepts.replace('"GrossProfit"', '"NetIncomeLoss"'),
     secConcepts.replace('"GrossProfit"', '"GrossProfit", "Assets"'),
@@ -7681,6 +7700,8 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "NetIncomeLoss",
       "OperatingIncomeLoss",
       "NetCashProvidedByUsedInOperatingActivities",
+      "NetCashProvidedByUsedInInvestingActivities",
+      "NetCashProvidedByUsedInFinancingActivities",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]) &&
@@ -7700,7 +7721,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         "SalesRevenueNet",
       ])
     ? null
-    : "SEC financial frames must retain the exact eight current annual, six instant and three prior revenue concept registries";
+    : "SEC financial frames must retain the exact ten current annual, six instant and three prior revenue concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

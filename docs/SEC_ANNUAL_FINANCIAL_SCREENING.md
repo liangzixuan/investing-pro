@@ -192,6 +192,8 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Net income                                                     | `NetIncomeLoss`                                                                    | USD      |
 | Operating income                                               | `OperatingIncomeLoss`                                                              | USD      |
 | Operating cash flow                                            | `NetCashProvidedByUsedInOperatingActivities`                                       | USD      |
+| Reported investing cash flow                                   | `NetCashProvidedByUsedInInvestingActivities`, as reported                          | USD      |
+| Reported financing cash flow                                   | `NetCashProvidedByUsedInFinancingActivities`, as reported                          | USD      |
 | Net margin                                                     | Net income / revenue × 100                                                         | percent  |
 | Operating margin                                               | Operating income / revenue × 100                                                   | percent  |
 | Operating cash flow margin                                     | Operating cash flow / revenue × 100                                                | percent  |
@@ -209,6 +211,41 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Reported total liabilities                                     | `Liabilities`, actual instant balance date                                         | USD      |
 | Reported cash and cash equivalents                             | `CashAndCashEquivalentsAtCarryingValue`, actual instant balance date               | USD      |
 | Reported stockholders' equity                                  | `StockholdersEquity`, attributable to parent, actual instant balance date          | USD      |
+
+### Reported investing and financing cash flows
+
+**Reported investing cash flow (USD)** uses only
+`us-gaap:NetCashProvidedByUsedInInvestingActivities`. It covers reported cash
+from investing activities, including discontinued operations: for example,
+loans, investments and acquiring or disposing of productive assets.
+**Reported financing cash flow (USD)** uses only
+`us-gaap:NetCashProvidedByUsedInFinancingActivities`. It covers reported cash
+from financing activities, including discontinued operations, such as owner
+funding and returns, borrowing, repayments and long-term creditor financing.
+These scopes follow the [FASB 2026 definitions](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-doc-2026.xml).
+
+Both are directly reported USD annual duration concepts. Positive amounts are
+net inflows and negative amounts are net outflows; neither sign is inherently
+favorable. Reported zero remains zero. Each field retains its actual start/end
+dates and accession independently of the other flows and the revenue basis.
+The existing 335–395 inclusive-day annual source-admission window and end-year
+sanity bound apply. Calendar-aligned Frames can include 52/53-week periods and
+annual periods ending outside December.
+
+The separate `ContinuingOperations` variants, custom tags and individual
+components never replace a missing exact total. Investing cash flow is distinct
+from PP&E purchases, and financing cash flow is distinct from debt issuance,
+dividends or changes in equity. The app does not infer that operating, investing
+and financing cash flows sum to the change in cash: exchange effects, scope and
+source-period differences require separate treatment. Failed, invalid,
+conflicting or missing sources leave the affected field unknown.
+
+Both fields support Cash flow/All/individual columns, filters, sorting, source
+inspection, comparison and explicit saved views. Old twenty-two calculations,
+Overview, Q4 balances, starters and literal saved column lists are unchanged.
+Loading an old view adds no field, request or write. Transport v12 coordinates
+the expanded response; these reported amounts add no formula or saved-payload
+version. Twenty-four fields leave the thirty-metric breadth target open.
 
 ### Reported cash and stockholders' equity
 
@@ -577,9 +614,9 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "11.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly twenty-two metric
-and coverage keys, fourteen current sources, and three separately typed
+Financial-screen requests and responses use `schemaVersion: "12.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly twenty-four metric
+and coverage keys, sixteen current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
 reference shapes. Deploy the API and browser together: old browser
@@ -591,12 +628,12 @@ criteria-only records and `schemaVersion: 2` for reusable column selections.
 An explicit new save writes v2; existing v1 records do not change on read. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are preserved. Existing criteria load with their original meanings and make a
-fresh v11 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v12 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
 The seven-clause limit is unchanged; the cash-difference percentage is an
 additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. The directly reported balance totals, cash and equity introduce no new
+than drop a filter. The directly reported activity cash flows, balance totals, cash and equity introduce no new
 formula; screen formula-set version 1.7.0 remains unchanged. It includes
 `operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
 expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
@@ -630,8 +667,8 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches seventeen fixed cross-company Frames sequentially: eight
-  unchanged annual requests followed by six Q4 instant requests and three prior
+- One operation fetches nineteen fixed cross-company Frames sequentially: ten
+  annual requests followed by six Q4 instant requests and three prior
   revenue requests, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
@@ -722,8 +759,8 @@ period/filing eligibility, deterministic unknown reasons, signed and extreme
 decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
 stable pages and saved-definition compatibility. Browser cases reject forged
 values, references and reasons, including maximum-length results. Cache tests
-verify seventeen initial reads, no additional reads when changing revenue basis, and
-seventeen reads on explicit refresh. Actual live ratio coverage and bounded primary
+verify nineteen initial reads, no additional reads when changing revenue basis, and
+nineteen reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
 

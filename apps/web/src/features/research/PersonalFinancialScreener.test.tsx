@@ -4,6 +4,7 @@ import {
   PERSONAL_SEC_INSTANT_CONCEPTS,
   PERSONAL_SEC_REVENUE_CONCEPTS,
   type PersonalFinancialScreenGrowthCellDto,
+  type PersonalFinancialScreenAnnualCellDto,
   type PersonalFinancialScreenInstantCellDto,
   type PersonalFinancialScreenInstantSourceRefDto,
   type PersonalFinancialScreenRequestDto,
@@ -171,6 +172,205 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it.each(["investingCashFlow", "financingCashFlow"] as const)(
+    "displays signed %s values and exact independent annual evidence, including unknowns",
+    async (field) => {
+      const label =
+        field === "investingCashFlow"
+          ? "Reported investing cash flow (USD)"
+          : "Reported financing cash flow (USD)";
+      for (const value of ["-125.5", "0", "12.50001"]) {
+        const result = response();
+        const cell = activityCell(field, value);
+        api.screenPersonalFinancials.mockResolvedValueOnce({
+          ...result,
+          rows: result.rows.map((row) => ({
+            ...row,
+            metrics: { ...row.metrics, [field]: cell },
+          })),
+        });
+        await mount();
+        change(render(), "Financial column view", "cashFlow");
+        submit(render());
+        await flush();
+        inspectCell(render(), label, "ONE");
+        expect(text(inspector(render()))).toContain(
+          `Exact value: ${value} USD`,
+        );
+        expect(text(inspector(render()))).toContain("2024-09-29");
+        expect(text(inspector(render()))).toContain("2025-09-27");
+        expect(text(inspector(render()))).toContain("0000000001-26-000091");
+        expect(text(inspector(render()))).toContain(
+          "A positive amount is not inherently favorable",
+        );
+        harness.unmount();
+        harness.reset();
+      }
+      for (const reason of [
+        "missing",
+        "conflicting",
+        "source_unavailable",
+      ] as const) {
+        const result = response();
+        api.screenPersonalFinancials.mockResolvedValueOnce({
+          ...result,
+          rows: result.rows.map((row) => ({
+            ...row,
+            metrics: {
+              ...row.metrics,
+              [field]: {
+                status: "unavailable" as const,
+                unit: "USD" as const,
+                reason,
+                sources: [],
+              },
+            },
+          })),
+        });
+        await mount();
+        change(render(), "Financial column view", "cashFlow");
+        submit(render());
+        await flush();
+        inspectCell(render(), label, "ONE");
+        expect(text(inspector(render()))).toContain(
+          `Unavailable: ${reason.replaceAll("_", " ")}`,
+        );
+        expect(text(inspector(render()))).toContain(
+          "Missing or unresolved exact reported amounts stay unknown",
+        );
+        harness.unmount();
+        harness.reset();
+      }
+    },
+  );
+
+  it("preserves a literal old twenty-two-column saved view and explicitly saves investing/financing criteria and columns", async () => {
+    const oldMetrics = [
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "operatingCashFlow",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "grossMargin",
+      "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
+      "currentAssets",
+      "currentLiabilities",
+      "currentRatio",
+      "currentAssetsLessCurrentLiabilities",
+      "totalAssets",
+      "totalLiabilities",
+      "cashAndCashEquivalents",
+      "stockholdersEquity",
+      "revenueGrowth",
+    ] as const;
+    const old = {
+      ...savedViewFixture("old-twenty-two"),
+      display: { visibleMetrics: oldMetrics },
+    };
+    const untouched = { ...savedViewFixture("legacy"), display: null };
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 3,
+      payload: { schemaVersion: 2, views: [old, untouched] },
+    });
+    api.screenPersonalFinancials.mockResolvedValue(comparisonResponse(0, 2));
+    await mount();
+    change(render(), "Saved financial view", old.id);
+    click(render(), "Load financial view");
+    expect(input(render(), "Financial column view").props.value).toBe("custom");
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    submit(render());
+    await flush();
+    expect(columnHeaders(render())).toHaveLength(24);
+    expect(columnHeaders(render())).not.toContain(
+      "Reported investing cash flow (USD)",
+    );
+    expect(columnHeaders(render())).not.toContain(
+      "Reported financing cash flow (USD)",
+    );
+    change(render(), "Financial column view", "cashFlow");
+    click(render(), "Add financial filter");
+    change(render(), "Financial metric 1", "investingCashFlow");
+    change(render(), "Financial threshold 1", "0");
+    change(render(), "Financial sort field", "financingCashFlow");
+    submit(render());
+    await flush();
+    click(render(), "Save financial view");
+    await flush();
+    const payload = api.savePersonalFinancialSavedViews.mock
+      .calls[0]![1] as Extract<
+      PersonalFinancialSavedViewsPayloadDto,
+      { schemaVersion: 2 }
+    >;
+    expect(payload.views[0]!.display?.visibleMetrics).toEqual([
+      "operatingCashFlow",
+      "investingCashFlow",
+      "financingCashFlow",
+      "operatingCashFlowMargin",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
+    ]);
+    expect(payload.views[0]!.criteria.clauses).toEqual([
+      { field: "investingCashFlow", operator: "gte", value: "0" },
+    ]);
+    expect(payload.views[0]!.criteria.sort.field).toBe("financingCashFlow");
+    expect(payload.views[1]).toEqual(untouched);
+    harness.unmount();
+    harness.reset();
+    api.fetchPersonalFinancialSavedViews.mockResolvedValueOnce({
+      version: 4,
+      payload: structuredClone(payload),
+    });
+    await mount();
+    change(render(), "Saved financial view", old.id);
+    click(render(), "Load financial view");
+    expect(input(render(), "Financial column view").props.value).toBe(
+      "cashFlow",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledOnce();
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for comparison");
+    click(render(), "Select CMP1 for comparison");
+    click(render(), "Compare companies");
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(8);
+    expect(
+      comparisonMetricRows(comparisonPanel(render()))
+        .slice(1, 3)
+        .map((row) => text(row).trim()),
+    ).toEqual([
+      "Reported investing cash flow (USD)",
+      "Reported financing cash flow (USD)",
+    ]);
+    inspectCell(
+      comparisonPanel(render()),
+      "Reported investing cash flow (USD)",
+      "CMP0",
+    );
+    expect(text(inspector(render()))).toContain("Exact value: -125.5 USD");
+    expect(text(inspector(render()))).toContain(
+      "including discontinued operations",
+    );
+    inspectCell(
+      comparisonPanel(render()),
+      "Reported financing cash flow (USD)",
+      "CMP0",
+    );
+    expect(text(inspector(render()))).toContain("Exact value: 0 USD");
+    expect(text(inspector(render()))).toContain(
+      "The three activity categories do not establish the change in cash",
+    );
+  });
+
   it("preserves a literal old twenty-column saved view and explicitly saves cash/equity criteria and columns", async () => {
     const oldMetrics = [
       "revenue",
@@ -621,6 +821,8 @@ describe("PersonalFinancialScreener", () => {
       .views[0] as PersonalFinancialSavedViewWithDisplayDto;
     expect(admitted.display?.visibleMetrics).toEqual([
       "operatingCashFlow",
+      "investingCashFlow",
+      "financingCashFlow",
       "ppePurchases",
       "operatingCashFlowLessPpePurchases",
       "operatingCashFlowToNetIncome",
@@ -1256,7 +1458,7 @@ describe("PersonalFinancialScreener", () => {
     expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
   });
 
-  it("reuses all22 columns, comparison and source inspection for selected saved companies", async () => {
+  it("reuses all24 columns, comparison and source inspection for selected saved companies", async () => {
     configureWatchlist(3);
     api.screenPersonalFinancials.mockImplementation(
       (request: PersonalFinancialScreenRequestDto) =>
@@ -1271,7 +1473,7 @@ describe("PersonalFinancialScreener", () => {
     click(render(), "Select CMP1 for comparison");
     click(render(), "Compare companies");
     change(render(), "Financial column view", "all");
-    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(22);
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(24);
     const comparison = comparisonPanel(render());
     expect(text(comparison)).toContain(cashPpeMarginLabel);
     const cell = ratioCell(
@@ -1576,7 +1778,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual({
-        schemaVersion: "11.0.0",
+        schemaVersion: "12.0.0",
         catalogSnapshotSha256: sha("a"),
         financialSnapshotSha256: null,
         criteria: {
@@ -1830,7 +2032,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-      schemaVersion: "11.0.0",
+      schemaVersion: "12.0.0",
       criteria: {
         clauses: [{ field: "revenueGrowth", operator: "gte", value: "-10.5" }],
         sort: { field: "revenueGrowth", direction: "desc" },
@@ -2013,6 +2215,8 @@ describe("PersonalFinancialScreener", () => {
       "cashFlow",
       [
         "Operating cash flow USD",
+        "Reported investing cash flow (USD)",
+        "Reported financing cash flow (USD)",
         "Operating cash flow margin %",
         "PP&E purchases USD",
         "Operating cash flow less PP&E purchases USD",
@@ -2041,6 +2245,8 @@ describe("PersonalFinancialScreener", () => {
         "Net income USD",
         "Operating income USD",
         "Operating cash flow USD",
+        "Reported investing cash flow (USD)",
+        "Reported financing cash flow (USD)",
         "Net margin %",
         "Operating margin %",
         "Operating cash flow margin %",
@@ -2223,7 +2429,7 @@ describe("PersonalFinancialScreener", () => {
         item.type === "button" &&
         item.props.className === "financial-screen-value-button",
     );
-    expect(values).toHaveLength(22);
+    expect(values).toHaveLength(24);
     for (const value of values) {
       const scrollIntoView = vi.fn();
       const closest = vi.fn().mockReturnValue(null);
@@ -2728,7 +2934,7 @@ describe("PersonalFinancialScreener", () => {
       submit(render());
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-        schemaVersion: "11.0.0",
+        schemaVersion: "12.0.0",
         criteria: {
           clauses: [{ field, operator: "gte", value: "1.000" }],
           sort: { field, direction: "desc" },
@@ -2973,7 +3179,7 @@ describe("PersonalFinancialScreener", () => {
         element.type === "a" &&
         String(element.props.href).includes("/api/xbrl/frames/"),
     );
-    expect(links).toHaveLength(17);
+    expect(links).toHaveLength(19);
     expect(
       links
         .filter((link) => String(link.props.href).endsWith("CY2025Q4I.json"))
@@ -3491,7 +3697,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "11.0.0",
+          schemaVersion: "12.0.0",
           financialSnapshotSha256: null,
           criteria: legacy.criteria,
         }),
@@ -3516,7 +3722,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[2]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "11.0.0",
+          schemaVersion: "12.0.0",
           criteria: grossRequest.criteria,
           financialSnapshotSha256: sha("b"),
           page: { offset: 25, limit: 25 },
@@ -3540,7 +3746,7 @@ describe("PersonalFinancialScreener", () => {
       await flush();
       expect(api.screenPersonalFinancials.mock.calls[3]?.[0]).toEqual(
         expect.objectContaining({
-          schemaVersion: "11.0.0",
+          schemaVersion: "12.0.0",
           financialSnapshotSha256: null,
           page: { offset: 0, limit: 25 },
           criteria: grossRequest.criteria,
@@ -3784,7 +3990,7 @@ describe("PersonalFinancialScreener", () => {
     },
   );
 
-  it("shows missing gross profit as unknown and spans all twenty-two metrics when no rows match", async () => {
+  it("shows missing gross profit as unknown and spans all twenty-four metrics when no rows match", async () => {
     const result = response();
     const row = result.rows[0]!;
     api.screenPersonalFinancials.mockResolvedValueOnce({
@@ -3824,7 +4030,7 @@ describe("PersonalFinancialScreener", () => {
           element.type === "td" &&
           text(element) === "No matching financial results.",
       )?.props.colSpan,
-    ).toBe(24);
+    ).toBe(26);
   });
 
   it("screens cash after PP&E as a percentage and exposes exact three-input arithmetic, revenue multiplicity and coverage", async () => {
@@ -3861,7 +4067,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-      schemaVersion: "11.0.0",
+      schemaVersion: "12.0.0",
       criteria: {
         clauses: [
           {
@@ -4169,7 +4375,7 @@ describe("PersonalFinancialScreener", () => {
     submit(render());
     await flush();
     expect(api.screenPersonalFinancials.mock.calls[0]?.[0]).toMatchObject({
-      schemaVersion: "11.0.0",
+      schemaVersion: "12.0.0",
       criteria: {
         revenueBasis: "SalesRevenueNet",
         clauses: [
@@ -4693,7 +4899,7 @@ describe("PersonalFinancialScreener", () => {
             element.type === "a" &&
             String(element.props.href).startsWith("https://data.sec.gov/"),
         ),
-      ).toHaveLength(17);
+      ).toHaveLength(19);
     },
   );
 
@@ -5194,7 +5400,7 @@ describe("PersonalFinancialScreener", () => {
     click(render(), "Select CMP25 for comparison");
     change(render(), "Financial column view", "cashFlow");
     click(render(), "Compare companies");
-    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(6);
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(8);
     const negative = ratioCell(
       comparisonPanel(render()),
       cashPpeMarginLabel,
@@ -5230,7 +5436,7 @@ describe("PersonalFinancialScreener", () => {
     expect(
       ratioCell(comparisonPanel(render()), cashPpeMarginLabel, "CMP0"),
     ).toBeDefined();
-    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(6);
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(8);
     expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
     expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
     expect(props.onAddToWatchlist).not.toHaveBeenCalled();
@@ -5278,10 +5484,10 @@ describe("PersonalFinancialScreener", () => {
     change(render(), "Financial column view", "q4Balances");
     expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(8);
     change(render(), "Financial column view", "all");
-    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(22);
+    expect(comparisonMetricRows(comparisonPanel(render()))).toHaveLength(24);
     toggleColumn(render(), "Revenue", false);
     panel = comparisonPanel(render());
-    expect(comparisonMetricRows(panel)).toHaveLength(21);
+    expect(comparisonMetricRows(panel)).toHaveLength(23);
     expect(text(render())).toContain("3 of 3 companies selected");
     const balance = ratioCell(
       panel,
@@ -5541,12 +5747,12 @@ describe("PersonalFinancialScreener", () => {
     expect(rendered).toContain(result.catalogSnapshotSha256);
     expect(rendered).toContain(result.financialSnapshotSha256);
     expect(rendered).toContain(result.formulaVersion);
-    expect(comparisonMetricRows(panel)).toHaveLength(22);
+    expect(comparisonMetricRows(panel)).toHaveLength(24);
     const cells = elements(panel).filter(
       (item) =>
         typeof item.type === "function" && item.type.name === "FinancialCell",
     );
-    expect(cells).toHaveLength(66);
+    expect(cells).toHaveLength(72);
     for (const row of rows) {
       const companyCells = cells.filter(
         (item) => item.props.symbol === row.identity.symbol,
@@ -6725,7 +6931,7 @@ function growthResponse(
 
 function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "11.0.0",
+    schemaVersion: "12.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: new Date().getUTCFullYear() - 1,
@@ -6767,78 +6973,84 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
         metrics: Object.fromEntries(
           PERSONAL_FINANCIAL_SCREEN_METRICS.map((metric) => [
             metric,
-            metric === "revenueGrowth"
-              ? defaultGrowthCell()
-              : metric === "currentAssets" ||
-                  metric === "currentLiabilities" ||
-                  metric === "currentRatio" ||
-                  metric === "currentAssetsLessCurrentLiabilities" ||
-                  metric === "totalAssets" ||
-                  metric === "totalLiabilities" ||
-                  metric === "cashAndCashEquivalents" ||
-                  metric === "stockholdersEquity"
-                ? defaultInstantCells()[metric]
-                : {
-                    status: "available",
-                    value:
-                      metric === "operatingCashFlow"
-                        ? "-123456789.12"
-                        : metric === "operatingCashFlowLessPpePurchases"
-                          ? "-123456804.12"
-                          : metric === "grossMargin"
-                            ? "100.00"
-                            : metric ===
-                                "operatingCashFlowLessPpePurchasesMargin"
-                              ? "-823045360.80"
-                              : metric === "operatingCashFlowToNetIncome"
-                                ? "-823045260.80"
-                                : "15",
-                    unit:
-                      metric.endsWith("Margin") ||
-                      metric === "operatingCashFlowToNetIncome"
-                        ? "percent"
-                        : "USD",
-                    sources: (metric ===
-                    "operatingCashFlowLessPpePurchasesMargin"
-                      ? [
-                          "NetCashProvidedByUsedInOperatingActivities",
-                          "PaymentsToAcquirePropertyPlantAndEquipment",
-                          "Revenues",
-                        ]
-                      : metric === "operatingCashFlowLessPpePurchases"
+            metric === "investingCashFlow" || metric === "financingCashFlow"
+              ? activityCell(
+                  metric,
+                  metric === "investingCashFlow" ? "-125.5" : "0",
+                )
+              : metric === "revenueGrowth"
+                ? defaultGrowthCell()
+                : metric === "currentAssets" ||
+                    metric === "currentLiabilities" ||
+                    metric === "currentRatio" ||
+                    metric === "currentAssetsLessCurrentLiabilities" ||
+                    metric === "totalAssets" ||
+                    metric === "totalLiabilities" ||
+                    metric === "cashAndCashEquivalents" ||
+                    metric === "stockholdersEquity"
+                  ? defaultInstantCells()[metric]
+                  : {
+                      status: "available",
+                      value:
+                        metric === "operatingCashFlow"
+                          ? "-123456789.12"
+                          : metric === "operatingCashFlowLessPpePurchases"
+                            ? "-123456804.12"
+                            : metric === "grossMargin"
+                              ? "100.00"
+                              : metric ===
+                                  "operatingCashFlowLessPpePurchasesMargin"
+                                ? "-823045360.80"
+                                : metric === "operatingCashFlowToNetIncome"
+                                  ? "-823045260.80"
+                                  : "15",
+                      unit:
+                        metric.endsWith("Margin") ||
+                        metric === "operatingCashFlowToNetIncome"
+                          ? "percent"
+                          : "USD",
+                      sources: (metric ===
+                      "operatingCashFlowLessPpePurchasesMargin"
                         ? [
                             "NetCashProvidedByUsedInOperatingActivities",
                             "PaymentsToAcquirePropertyPlantAndEquipment",
+                            "Revenues",
                           ]
-                        : metric === "grossMargin"
-                          ? ["GrossProfit", "Revenues"]
-                          : metric === "operatingCashFlowToNetIncome"
-                            ? [
-                                "NetCashProvidedByUsedInOperatingActivities",
-                                "NetIncomeLoss",
-                              ]
-                            : [
-                                metric === "grossProfit"
-                                  ? "GrossProfit"
-                                  : metric === "ppePurchases"
-                                    ? "PaymentsToAcquirePropertyPlantAndEquipment"
-                                    : metric === "operatingCashFlow"
-                                      ? "NetCashProvidedByUsedInOperatingActivities"
-                                      : metric === "netIncome"
-                                        ? "NetIncomeLoss"
-                                        : "Revenues",
-                              ]
-                    ).map((concept) => ({
-                      concept,
-                      accessionNumber: "0000000001-25-000001",
-                      startDate: "2024-01-01",
-                      endDate: "2024-12-31",
-                      value:
-                        concept === "NetCashProvidedByUsedInOperatingActivities"
-                          ? "-123456789.12"
-                          : "15",
-                    })),
-                  },
+                        : metric === "operatingCashFlowLessPpePurchases"
+                          ? [
+                              "NetCashProvidedByUsedInOperatingActivities",
+                              "PaymentsToAcquirePropertyPlantAndEquipment",
+                            ]
+                          : metric === "grossMargin"
+                            ? ["GrossProfit", "Revenues"]
+                            : metric === "operatingCashFlowToNetIncome"
+                              ? [
+                                  "NetCashProvidedByUsedInOperatingActivities",
+                                  "NetIncomeLoss",
+                                ]
+                              : [
+                                  metric === "grossProfit"
+                                    ? "GrossProfit"
+                                    : metric === "ppePurchases"
+                                      ? "PaymentsToAcquirePropertyPlantAndEquipment"
+                                      : metric === "operatingCashFlow"
+                                        ? "NetCashProvidedByUsedInOperatingActivities"
+                                        : metric === "netIncome"
+                                          ? "NetIncomeLoss"
+                                          : "Revenues",
+                                ]
+                      ).map((concept) => ({
+                        concept,
+                        accessionNumber: "0000000001-25-000001",
+                        startDate: "2024-01-01",
+                        endDate: "2024-12-31",
+                        value:
+                          concept ===
+                          "NetCashProvidedByUsedInOperatingActivities"
+                            ? "-123456789.12"
+                            : "15",
+                      })),
+                    },
           ]),
         ) as unknown as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
       }),
@@ -6857,5 +7069,28 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
     offset,
     limitApplied: 25,
     hasMore: offset + 25 < count,
+  };
+}
+
+function activityCell(
+  field: "investingCashFlow" | "financingCashFlow",
+  value: string,
+): PersonalFinancialScreenAnnualCellDto {
+  return {
+    status: "available",
+    unit: "USD",
+    value,
+    sources: [
+      {
+        concept:
+          field === "investingCashFlow"
+            ? "NetCashProvidedByUsedInInvestingActivities"
+            : "NetCashProvidedByUsedInFinancingActivities",
+        accessionNumber: "0000000001-26-000091",
+        startDate: "2024-09-29",
+        endDate: "2025-09-27",
+        value,
+      },
+    ],
   };
 }

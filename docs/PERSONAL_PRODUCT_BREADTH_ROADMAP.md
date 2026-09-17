@@ -1406,7 +1406,7 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-16)
 
-The SEC cross-company screen now has twenty annual/Q4 fields, including
+The SEC cross-company screen now has twenty-two annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
 thirteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
@@ -1470,13 +1470,22 @@ Acceptance measures complete-catalog listing and issuer coverage, date-window
 exclusions and a bounded primary-filing sample. It does not satisfy the full
 thirty-metric target or equate evaluated securities with known values.
 
-The next increment adds reported cash and cash equivalents and parent
+The delivered increment adds reported cash and cash equivalents and parent
 stockholders' equity from exact USD Q4 instant concepts. This expands twenty
 fields to twenty-two and fifteen Frames to seventeen while retaining all old
 calculations and saved layouts. Parent equity excludes temporary equity and
 noncontrolling interests; cash does not substitute broader restricted-cash
 variants. Signed deficits, per-field filing/date references and unknown reasons
 remain visible. Coverage and varied primary-filing reconciliation are required.
+
+The next increment adds reported investing and financing cash flows from their
+exact annual USD concepts, including discontinued operations. It expands
+twenty-two fields to twenty-four and seventeen Frames to nineteen. Preserve
+signs, actual periods, independent filings, all old calculations and saved
+layouts. Continuing-operation variants and component sums do not fill missing
+totals. These activity categories do not establish the change in cash or a
+universal quality ranking. Verify actual coverage and varied primary filings,
+including zero and 52/53-week observations when available.
 Deliver both related fields together, run independent evidence work alongside
 the release gates, and reuse established verification helpers. Preserve the
 existing acceptance gates and avoid unrelated infrastructure work.

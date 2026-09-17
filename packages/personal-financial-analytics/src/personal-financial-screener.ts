@@ -78,6 +78,8 @@ const METRICS = [
   "netIncome",
   "operatingIncome",
   "operatingCashFlow",
+  "investingCashFlow",
+  "financingCashFlow",
   "netMargin",
   "operatingMargin",
   "operatingCashFlowMargin",
@@ -107,6 +109,8 @@ const CONCEPTS = [
   "NetIncomeLoss",
   "OperatingIncomeLoss",
   "NetCashProvidedByUsedInOperatingActivities",
+  "NetCashProvidedByUsedInInvestingActivities",
+  "NetCashProvidedByUsedInFinancingActivities",
   "GrossProfit",
   "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const satisfies readonly PersonalSecAnnualConceptDto[];
@@ -298,7 +302,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "11.0.0",
+      schemaVersion: "12.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
@@ -387,6 +391,16 @@ function buildMetrics(
     netIncome,
     operatingIncome,
     operatingCashFlow,
+    investingCashFlow: resolveReported(
+      cik,
+      ["NetCashProvidedByUsedInInvestingActivities"],
+      frames,
+    ),
+    financingCashFlow: resolveReported(
+      cik,
+      ["NetCashProvidedByUsedInFinancingActivities"],
+      frames,
+    ),
     netMargin: margin(netIncome, revenue),
     operatingMargin: margin(operatingIncome, revenue),
     operatingCashFlowMargin: margin(operatingCashFlow, revenue),

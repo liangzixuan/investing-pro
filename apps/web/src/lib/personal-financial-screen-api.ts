@@ -36,6 +36,10 @@ const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
 const instantConcepts = PERSONAL_SEC_INSTANT_CONCEPTS;
+const reportedActivityConcepts = {
+  investingCashFlow: "NetCashProvidedByUsedInInvestingActivities",
+  financingCashFlow: "NetCashProvidedByUsedInFinancingActivities",
+} as const;
 const reportedInstantConcepts = {
   currentAssets: "AssetsCurrent",
   currentLiabilities: "LiabilitiesCurrent",
@@ -143,7 +147,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "11.0.0" ||
+    input.schemaVersion !== "12.0.0" ||
     (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
@@ -434,7 +438,7 @@ function isResponse(
       ],
       true,
     ) ||
-    value.schemaVersion !== "11.0.0" ||
+    value.schemaVersion !== "12.0.0" ||
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
@@ -930,6 +934,10 @@ function cell(
 ): boolean {
   if (member(PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS, metric))
     return instantCell(value, metric, year, sourceStatuses);
+  const activityConcept =
+    metric === "investingCashFlow" || metric === "financingCashFlow"
+      ? reportedActivityConcepts[metric]
+      : null;
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
   const cashMargin = metric === "operatingCashFlowLessPpePurchasesMargin";
   const exactRatio =
@@ -960,6 +968,16 @@ function cell(
         date(source.startDate) &&
         date(source.endDate) &&
         source.endDate > source.startDate &&
+        (activityConcept === null ||
+          (Math.abs(Number(source.endDate.slice(0, 4)) - year) <= 1 &&
+            (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+              86_400_000 +
+              1 >=
+              335 &&
+            (Date.parse(source.endDate) - Date.parse(source.startDate)) /
+              86_400_000 +
+              1 <=
+              395)) &&
         decimal(source.value),
     )
   )
@@ -978,9 +996,36 @@ function cell(
         cashMargin ||
         (exactRatio && value.reason === "filing_mismatch") ||
         !["filing_mismatch", "unsupported_sign"].includes(value.reason)));
+  if (activityConcept !== null) {
+    const frameStatus = sourceStatuses.find(
+      (source) => source.concept === activityConcept,
+    )?.status;
+    if (frameStatus !== "available")
+      return (
+        value.status === "unavailable" &&
+        "reason" in value &&
+        value.reason ===
+          (frameStatus === "not_covered" ? "missing" : "source_unavailable") &&
+        value.sources.length === 0
+      );
+    if (
+      value.status === "unavailable" &&
+      "reason" in value &&
+      (value.reason === "source_unavailable" ||
+        value.reason === "invalid_value" ||
+        (value.reason === "missing" && value.sources.length !== 0))
+    )
+      return false;
+  }
   if (
     !valid ||
-    !["grossProfit", "ppePurchases", "operatingCashFlow"].includes(metric)
+    ![
+      "grossProfit",
+      "ppePurchases",
+      "operatingCashFlow",
+      "investingCashFlow",
+      "financingCashFlow",
+    ].includes(metric)
   )
     return valid;
   const reported = value as unknown as PersonalFinancialScreenAnnualCellDto;
@@ -1233,6 +1278,8 @@ function admittedSource(
     return concept === "PaymentsToAcquirePropertyPlantAndEquipment";
   if (metric === "operatingCashFlow")
     return concept === "NetCashProvidedByUsedInOperatingActivities";
+  if (metric === "investingCashFlow" || metric === "financingCashFlow")
+    return concept === reportedActivityConcepts[metric];
   if (metric === "operatingCashFlowLessPpePurchases")
     return (
       concept === "NetCashProvidedByUsedInOperatingActivities" ||
@@ -1246,7 +1293,9 @@ function admittedSource(
     );
   return (
     concept !== "GrossProfit" &&
-    concept !== "PaymentsToAcquirePropertyPlantAndEquipment"
+    concept !== "PaymentsToAcquirePropertyPlantAndEquipment" &&
+    concept !== "NetCashProvidedByUsedInInvestingActivities" &&
+    concept !== "NetCashProvidedByUsedInFinancingActivities"
   );
 }
 
