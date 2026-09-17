@@ -6,8 +6,9 @@ exact listings. Each company shows its own loading, available or unavailable
 state. Opening the comparison or changing its financial columns makes no price
 request. Prices are separate from the reported annual financial amounts.
 
-The comparison uses the existing overview API with its shortest supported
-history range, 1m. Requests run one company at a time; each overview uses the
+Choose one month, three months or one year of history, then load explicitly.
+Changing the range clears the previous results without sending a request.
+The comparison uses the existing overview API. Requests run one company at a time; each overview uses the
 existing quote and EOD operations. There is no automatic retry or refresh.
 Credential, entitlement, configuration, session and rate-limit failures stop
 the remaining batch. Ordinary missing company coverage remains visible without
@@ -27,16 +28,41 @@ visible so an older reference or prior close is not presented as a current trade
 The annual financial periods remain independent. No price-to-earnings, yield,
 market-capitalization estimate or valuation ranking is inferred from this view.
 
+## Compare adjusted-price performance
+
+The same load supplies a comparison of adjusted closes. All selected companies
+must finish successfully before this table appears; a missing company never
+silently reduces the group. The app intersects the observed dates from every
+history and requires at least two shared dates. It uses the earliest and latest
+of these dates for every company's percentage change. Empty histories, no
+overlap or a single shared date produce an explicit unavailable result.
+
+The table shows the actual common start and end, shared observation count,
+first and last adjusted closes, and percentage change. Coverage details retain
+each requested window, observed first and last date, loaded session count and
+the count excluded from the common sample. The common window may be shorter
+than the selected range, including when a company has limited or older history.
+Missing dates are not filled, and quote freshness does not establish history
+freshness; inspect the actual history dates.
+
+Percentage change is `(last adjusted close / first adjusted close - 1) * 100`,
+using the existing selected-window analytics with 80 significant decimal digits
+and half-up rounding to four decimal places. Raw closes and current quotes do
+not determine this result. Provider-adjusted prices can reflect corporate-action
+adjustments; the app does not independently reconstruct a total return, model
+reinvestment, or infer a valuation or trading recommendation.
+
 ## Lifetime and boundaries
 
-Only the quote, provider and EOD bar date needed for display are retained in
-active component memory. The history payload is not kept by the comparison.
+Only the quote, provider, EOD bar date, requested history bounds and narrow
+date/adjusted-close/raw-close projection are retained in active component memory.
+The full OHLCV and corporate-action payload is not kept by the comparison.
 Removing or replacing a company, invalidating its financial/catalog context,
-losing the owner session or closing the comparison clears the price context and
+changing the history range, losing the owner session or closing the comparison clears the price context and
 cancels pending work. Late callbacks cannot repopulate former selections. A
 display-only column change retains the comparison context.
 
-Prices are not written to saved financial views, the vault, browser storage,
+Prices, history and derived comparisons are not written to saved financial views, the vault, browser storage,
 URLs, exports or logs. Existing financial criteria, columns, presets, metrics
 and saved payload versions retain their meaning. Company research still has its
 own explicit price-loading action.
@@ -47,6 +73,10 @@ Cover explicit-only requests, sequential batches, independent failures, batch
 stops, complete listing identity, stale callbacks, abort/unmount and session or
 snapshot changes. Exercise current/stale reference prices, EOD fallback and an
 early-close date with an explicit assumed-time label using synthetic responses.
+Cover exact common-date alignment, unequal endpoints, interior gaps, zero or one
+common observation, unavailable members, positive and negative changes, decimal
+rounding, and range changes with late responses. Validate original histories
+before intersecting so invalid excluded observations cannot disappear silently.
 Verify desktop/narrow layouts and keyboard access in external Brave. Any retained
 screenshots or fixtures contain only synthetic prices. The workspace checkpoint
 records the actual released revision and dated configured-source observations;

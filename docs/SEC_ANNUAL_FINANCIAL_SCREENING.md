@@ -132,7 +132,12 @@ snapshot-bound request. The separate selected-company peer workspace is unchange
 
 Use **Load prices** inside an open comparison for separate, dated Tiingo price
 context. Only that explicit action requests prices. Source kind and freshness
-stay visible; the price is not a new SEC metric or part of saved criteria. See
+stay visible; the price is not a new SEC metric or part of saved criteria.
+The same action loads the selected one-month, three-month or one-year history
+for adjusted-price comparisons on common observed dates. All selected companies
+must have usable history; the actual common window and coverage are explicit.
+Changing the range clears results without fetching. These transient calculations
+remain separate from financial metrics and saved criteria. See
 [Comparison prices](./PERSONAL_COMPARISON_PRICES.md) for availability, lifetime
 and EOD timestamp limits.
 

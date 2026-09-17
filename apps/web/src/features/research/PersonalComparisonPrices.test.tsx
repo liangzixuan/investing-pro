@@ -119,7 +119,7 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalComparisonPrices", () => {
-  it("loads only after a click, sequentially, and retains price context without history", async () => {
+  it("loads only after a click, sequentially, and retains only history close fields", async () => {
     props = { ...props, listings: [...props.listings, listing("CCC")] };
     const pending = [
       deferred<PersonalMarketOverviewDto>(),
@@ -138,7 +138,7 @@ describe("PersonalComparisonPrices", () => {
     click(initial);
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
     expect(api.fetchPersonalMarketOverview).toHaveBeenLastCalledWith(
-      { listingId: "lst-AAA", symbol: "AAA", range: "1m" },
+      { listingId: "lst-aaa", symbol: "AAA", range: "1m" },
       expect.any(AbortSignal),
     );
     expect(card("AAA")).toContain("Loading price…");
@@ -156,13 +156,265 @@ describe("PersonalComparisonPrices", () => {
     expect(props.onActivityStart).toHaveBeenCalledTimes(3);
     expect(complete).toHaveBeenCalledTimes(3);
     expect(button(render()).props.disabled).toBe(false);
-    expect(JSON.stringify(harness.states)).not.toContain('"history"');
-    expect(JSON.stringify(harness.states)).not.toContain('"bars"');
+    const retained = JSON.stringify(harness.states);
+    expect(retained).toContain('"bars"');
+    expect(retained).toContain('"adjusted":{"close":"101.50"}');
+    for (const field of [
+      "open",
+      "high",
+      "low",
+      "volume",
+      "dividendCash",
+      "splitFactor",
+    ])
+      expect(retained).not.toContain(`"${field}"`);
     const displayed = text(render());
     expect(displayed).toContain("Derived reference price");
     expect(displayed).toContain("Loaded at");
     expect(displayed).toContain("Freshness when loaded");
     expect(displayed).toContain("UTC");
+  });
+
+  it("waits for the complete batch and compares shared adjusted closes independently of quotes", async () => {
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(
+        history("AAA", [
+          ["2030-01-02", "40"],
+          ["2030-01-03", "50"],
+          ["2030-01-04", "60"],
+        ]),
+      )
+      .mockImplementationOnce(() => pending.promise);
+    click(render());
+    await flush();
+    expect(card("AAA")).toContain("101.50 USD");
+    expect(performance()).toContain(
+      "Waiting for every selected company's history",
+    );
+    expect(elements(render()).some((element) => element.type === "table")).toBe(
+      false,
+    );
+    pending.resolve(
+      history("BBB", [
+        ["2030-01-02", "100"],
+        ["2030-01-04", "90"],
+        ["2030-01-05", "500"],
+      ]),
+    );
+    await flush();
+    const displayed = performance();
+    expect(displayed).toContain(
+      "Shared window: 2030-01-02 to 2030-01-04 · 2 shared observations",
+    );
+    expect(displayed).toContain("50.0000%");
+    expect(displayed).toContain("-10.0000%");
+    expect(displayed).toContain("Latest history bar 2030-01-05");
+    expect(displayed).toContain("First history bar 2030-01-02");
+    expect(displayed).toContain("Observed bars 3");
+    expect(displayed).toContain(
+      "not an independently reconstructed total return",
+    );
+    expect(displayed).toContain(
+      "quote freshness does not establish history freshness",
+    );
+    const rows = elements(render()).filter((element) => element.type === "tr");
+    expect(text(rows[1])).toMatch(/1\s*$/u);
+    expect(text(rows[2])).toMatch(/1\s*$/u);
+    const headers = elements(render()).filter(
+      (element) => element.type === "th",
+    );
+    expect(
+      headers.every((element) =>
+        ["col", "row"].includes(element.props.scope as string),
+      ),
+    ).toBe(true);
+    expect(
+      elements(render()).some((element) => element.type === "caption"),
+    ).toBe(true);
+    expect(
+      elements(render()).find((element) => element.props.role === "region")
+        ?.props.tabIndex,
+    ).toBe(0);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([0, 1])(
+    "shows no changes with %s shared dates and keeps coverage visible",
+    async (count) => {
+      api.fetchPersonalMarketOverview
+        .mockResolvedValueOnce(
+          history("AAA", [
+            ["2030-01-02", "40"],
+            ["2030-01-03", "50"],
+          ]),
+        )
+        .mockResolvedValueOnce(
+          history("BBB", [
+            [count === 0 ? "2030-01-04" : "2030-01-03", "100"],
+            ["2030-01-05", "90"],
+          ]),
+        );
+      click(render());
+      await flush();
+      const displayed = performance();
+      expect(displayed).toContain(
+        "at least 2 dates observed for every selected company are required",
+      );
+      expect(displayed).toContain(`${count} shared observations loaded`);
+      expect(displayed).toContain("Loaded history coverage");
+      expect(displayed).not.toContain("Adjusted-price change");
+      expect(displayed).not.toContain("Shared window:");
+      expect(card("AAA")).toContain("101.50 USD");
+    },
+  );
+
+  it.each(["1m", "3m", "1y"] as const)(
+    "requests the selected %s range only on explicit load",
+    async (range) => {
+      changeRange(render(), range);
+      render();
+      expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      api.fetchPersonalMarketOverview.mockImplementation(
+        ({ symbol }: { symbol: string }) => {
+          const result = overview(symbol);
+          return Promise.resolve({
+            ...result,
+            history: { ...result.history, range },
+          });
+        },
+      );
+      click(render());
+      await flush();
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+      expect(api.fetchPersonalMarketOverview).toHaveBeenLastCalledWith(
+        { listingId: "lst-bbb", symbol: "BBB", range },
+        expect.any(AbortSignal),
+      );
+      expect(card("BBB")).toContain("101.50 USD");
+    },
+  );
+
+  it("range changes clear loaded prices and history without persisting or fetching", async () => {
+    const setItem = vi.fn();
+    vi.stubGlobal("localStorage", { setItem });
+    vi.stubGlobal("sessionStorage", { setItem });
+    try {
+      api.fetchPersonalMarketOverview.mockImplementation(
+        ({ symbol }: { symbol: string }) =>
+          Promise.resolve(
+            history(symbol, [
+              ["2030-01-02", "40"],
+              ["2030-01-03", "50"],
+            ]),
+          ),
+      );
+      click(render());
+      await flush();
+      expect(performance()).toContain("Shared window:");
+      changeRange(render(), "3m");
+      render();
+      expect(card("AAA")).toContain("Price not loaded.");
+      expect(performance()).toContain("Performance not loaded.");
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+      expect(setItem).not.toHaveBeenCalled();
+      expect(JSON.stringify(harness.states)).not.toContain('"bars"');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("rejects stale range results and obsolete clicks after 1m→3m→1m", async () => {
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview.mockImplementationOnce(
+      () => pending.promise,
+    );
+    const old = render();
+    click(old);
+    const signal = api.fetchPersonalMarketOverview.mock
+      .calls[0]![1] as AbortSignal;
+    changeRange(render(), "3m");
+    expect(signal.aborted).toBe(true);
+    render();
+    changeRange(render(), "1m");
+    render();
+    click(old);
+    pending.resolve(overview("AAA"));
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+    expect(card("AAA")).toContain("Price not loaded.");
+    click(render());
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(3);
+    expect(card("BBB")).toContain("101.50 USD");
+  });
+
+  it("rejects a response for a different requested range", async () => {
+    const result = overview("AAA");
+    api.fetchPersonalMarketOverview.mockResolvedValueOnce({
+      ...result,
+      history: { ...result.history, range: "3m" },
+    });
+    click(render());
+    await flush();
+    expect(card("AAA")).toContain("did not match");
+    expect(card("BBB")).toContain("101.50 USD");
+    expect(performance()).toContain("No subset was compared.");
+  });
+
+  it("does not compare two successful members when the third selected member failed", async () => {
+    props = { ...props, listings: [...props.listings, listing("CCC")] };
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(
+        history("AAA", [
+          ["2030-01-02", "40"],
+          ["2030-01-03", "50"],
+        ]),
+      )
+      .mockRejectedValueOnce(new PersonalWorkspaceApiError("not_covered"))
+      .mockResolvedValueOnce(
+        history("CCC", [
+          ["2030-01-02", "100"],
+          ["2030-01-03", "90"],
+        ]),
+      );
+    click(render());
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(3);
+    expect(card("AAA")).toContain("101.50 USD");
+    expect(card("CCC")).toContain("101.50 USD");
+    expect(performance()).toContain("No subset was compared.");
+    expect(performance()).not.toContain("Shared window:");
+    expect(elements(render()).some((element) => element.type === "table")).toBe(
+      false,
+    );
+  });
+
+  it("fails closed when projected histories cannot support the comparison", async () => {
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(
+        history("AAA", [
+          ["2030-01-02", "0"],
+          ["2030-01-03", "50"],
+        ]),
+      )
+      .mockResolvedValueOnce(
+        history("BBB", [
+          ["2030-01-02", "100"],
+          ["2030-01-03", "90"],
+        ]),
+      );
+    click(render());
+    await flush();
+    expect(card("AAA")).toContain("101.50 USD");
+    expect(performance()).toContain(
+      "the loaded histories could not be compared",
+    );
+    expect(performance()).not.toContain("Shared window:");
+    expect(elements(render()).some((element) => element.type === "table")).toBe(
+      false,
+    );
   });
 
   it.each(["unavailable", "not_covered", "invalid_response"] as const)(
@@ -177,6 +429,7 @@ describe("PersonalComparisonPrices", () => {
       expect(card("AAA")).not.toContain("101.50 USD");
       expect(card("BBB")).toContain("101.50 USD");
       expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+      expect(performance()).toContain("No subset was compared.");
     },
   );
 
@@ -446,6 +699,22 @@ function button(value: unknown) {
 function click(value: unknown) {
   (button(value).props.onClick as () => void)();
 }
+function changeRange(value: unknown, range: string) {
+  const selector = elements(value).find(
+    (element) => element.type === "select",
+  )!;
+  (selector.props.onChange as (event: { target: { value: string } }) => void)({
+    target: { value: range },
+  });
+}
+function performance() {
+  return text(
+    elements(render()).find(
+      (element) =>
+        element.props["aria-labelledby"] === "comparison-performance-title",
+    ),
+  );
+}
 function card(symbol: string) {
   return text(
     elements(render()).find(
@@ -461,7 +730,7 @@ function listing(symbol: string): PersonalSecurityMasterScreenRowDto {
     instrumentType: "common_stock",
     issuerId: `iss-${symbol}`,
     issuerName: `${symbol} Company`,
-    listingId: `lst-${symbol}`,
+    listingId: `lst-${symbol.toLowerCase()}`,
     securityId: `sec-${symbol}`,
     securityName: `${symbol} Common Stock`,
     shareClassId: `shr-${symbol}`,
@@ -545,6 +814,27 @@ function eod(
       startDate: date,
       endDate: date,
       bars: [bar(date)],
+    },
+  };
+}
+function history(
+  symbol: string,
+  observations: readonly (readonly [string, string])[],
+): PersonalMarketOverviewDto {
+  const result = overview(symbol);
+  return {
+    ...result,
+    history: {
+      range: "1m",
+      startDate: "2030-01-01",
+      endDate: "2030-01-15",
+      bars: observations.map(([date, adjustedClose]) => {
+        const item = bar(date);
+        return {
+          ...item,
+          adjusted: { ...item.adjusted, close: adjustedClose },
+        };
+      }),
     },
   };
 }

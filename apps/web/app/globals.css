@@ -2544,6 +2544,73 @@ html:has(.personal-financial-screener:focus-within) {
   font-size: 1.15rem;
 }
 
+.comparison-price-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.comparison-price-range select {
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+
+.comparison-performance {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.8rem;
+}
+
+.comparison-performance-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.comparison-performance-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.comparison-performance-table caption {
+  padding-bottom: 8px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.comparison-performance-table :is(th, td) {
+  min-width: 120px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.comparison-performance-change {
+  font-weight: 700;
+}
+
+.comparison-performance-coverage {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.comparison-performance-coverage dt {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
 @media (max-width: 720px) {
   .financial-screen-clause,
   .financial-screen-counts {

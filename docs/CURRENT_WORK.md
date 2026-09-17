@@ -15,7 +15,24 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: prices beside a financial comparison
+## Immediate delivery: compare adjusted prices over shared dates
+
+Extend the explicit financial-comparison price load with one-month, three-month
+and one-year history choices. Changing the range clears and cancels the previous
+result; it never fetches automatically. Use the observed-date intersection of
+all two or three selected companies and require at least two common dates. Show
+the actual shared window, adjusted-price percentage change, start/end adjusted
+closes and per-company coverage. Missing history must remain visible rather than
+silently shortening the selected group or comparing different endpoints.
+
+Reuse the existing selected-window decimal analytics and overview requests.
+Keep only the needed close/date projection in active-session memory, preserve
+all listing and lifecycle checks, and exclude provider and derived values from
+saved views. Provider-adjusted price change is not an independently reconstructed
+total return or valuation ranking. See [Comparison prices](./PERSONAL_COMPARISON_PRICES.md)
+for semantics and the workspace checkpoint for actual verification and release.
+
+## Delivered: prices beside a financial comparison
 
 Add an explicit **Load prices** action for the existing two-or-three-company
 shortlist. Reuse the admitted Tiingo overview with sequential 1m requests and
@@ -587,14 +604,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Now              | Load dated price context beside a selected financial comparison                                  | Existing Tiingo quote/history operations verified for two admitted listings |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps             |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters  |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                    |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                 |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Compare adjusted-price changes over shared dates in a financial comparison                       | Reuse explicit overview loads and admitted selected-window analytics       |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

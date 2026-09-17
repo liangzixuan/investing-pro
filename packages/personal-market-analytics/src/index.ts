@@ -37,6 +37,17 @@ export {
 } from "./personal-market-analytics";
 
 export {
+  calculatePersonalPricePerformanceComparison,
+  type PersonalPricePerformanceComparisonAvailableResult,
+  type PersonalPricePerformanceComparisonAvailableRow,
+  type PersonalPricePerformanceComparisonInput,
+  type PersonalPricePerformanceComparisonInsufficientHistoryResult,
+  type PersonalPricePerformanceComparisonResult,
+  type PersonalPricePerformanceComparisonRow,
+  type PersonalPricePerformanceComparisonSeries,
+} from "./personal-price-performance-comparison";
+
+export {
   PERSONAL_HISTORICAL_MULTIPLE_VALUATION_FORMULAS,
   PERSONAL_HISTORICAL_MULTIPLE_VALUATION_FORMULA_SET_VERSION,
   PERSONAL_HISTORICAL_MULTIPLE_VALUATION_MAXIMUM_OBSERVATIONS,

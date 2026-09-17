@@ -14,6 +14,7 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
+import { PersonalComparisonPerformance } from "./PersonalComparisonPerformance";
 
 export interface PersonalComparisonPricesProps {
   readonly contextKey: string;
@@ -28,7 +29,17 @@ interface PriceContext {
   readonly quote: PersonalMarketOverviewDto["quote"];
   readonly provider: PersonalMarketOverviewDto["provider"];
   readonly eodDate: string | null;
+  readonly history: {
+    readonly startDate: string;
+    readonly endDate: string;
+    readonly bars: readonly {
+      readonly date: string;
+      readonly adjusted: { readonly close: string };
+      readonly raw: { readonly close: string };
+    }[];
+  };
 }
+type HistoryRange = PersonalMarketOverviewDto["history"]["range"];
 type PriceEntry =
   | { readonly state: "queued" | "loading" }
   | { readonly state: "available"; readonly value: PriceContext }
@@ -61,11 +72,13 @@ export function PersonalComparisonPrices({
   onActivityStart,
   onSessionUnavailable,
 }: PersonalComparisonPricesProps) {
+  const [range, setRange] = useState<HistoryRange>("1m");
   const context = JSON.stringify([
     contextKey,
     listings,
     enabled,
     providerStatus,
+    range,
   ]);
   const currentContext = useRef<string | null>(context);
   currentContext.current = context;
@@ -107,6 +120,22 @@ export function PersonalComparisonPrices({
       currentContext.current = null;
     };
   }, [context]);
+
+  function changeRange(value: string) {
+    if (
+      (value !== "1m" && value !== "3m" && value !== "1y") ||
+      value === range ||
+      !active.current ||
+      currentContext.current !== context ||
+      incarnation.current.token !== token
+    )
+      return;
+    generation.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+    setState({ context, busy: false, entries: {} });
+    setRange(value);
+  }
 
   async function loadPrices() {
     if (
@@ -155,7 +184,7 @@ export function PersonalComparisonPrices({
             {
               listingId: listing.listingId,
               symbol: listing.symbol,
-              range: "1m",
+              range,
             },
             request.signal,
           );
@@ -167,7 +196,8 @@ export function PersonalComparisonPrices({
           if (
             identityFields.some(
               (field) => overview.security[field] !== listing[field],
-            )
+            ) ||
+            overview.history.range !== range
           ) {
             throw new PersonalWorkspaceApiError("invalid_response");
           }
@@ -184,13 +214,22 @@ export function PersonalComparisonPrices({
           ) {
             throw new PersonalWorkspaceApiError("invalid_response");
           }
-          // Keep only the comparison's price context; do not retain the requested history.
+          // Retain only the close fields needed for an active-session comparison.
           entries[listing.listingId] = {
             state: "available",
             value: {
               quote: { ...overview.quote },
               provider: { ...overview.provider },
               eodDate: eodDate ?? null,
+              history: {
+                startDate: overview.history.startDate,
+                endDate: overview.history.endDate,
+                bars: overview.history.bars.map((bar) => ({
+                  date: bar.date,
+                  adjusted: { close: bar.adjusted.close },
+                  raw: { close: bar.raw.close },
+                })),
+              },
             },
           };
         } catch (error) {
@@ -237,7 +276,7 @@ export function PersonalComparisonPrices({
       aria-busy={visible.busy}
     >
       <div className="discovery-section-heading">
-        <h4 id="comparison-prices-title">Price context</h4>
+        <h4 id="comparison-prices-title">Prices and performance</h4>
         <button
           type="button"
           className="secondary-action compact-action"
@@ -247,10 +286,23 @@ export function PersonalComparisonPrices({
           {visible.busy ? "Loading prices…" : "Load prices"}
         </button>
       </div>
+      <label className="comparison-price-range">
+        History range
+        <select
+          value={range}
+          onChange={(event) => changeRange(event.target.value)}
+          disabled={!enabled}
+        >
+          <option value="1m">1 month</option>
+          <option value="3m">3 months</option>
+          <option value="1y">1 year</option>
+        </select>
+      </label>
       <p className="market-scope-note">
         Reference prices and end-of-day closes are separate from SEC financials.
         They are not executable quotes or valuation ratios. Prices load only
-        when requested.
+        when requested. Changing the history range clears the loaded values;
+        choose Load prices to fetch that range.
       </p>
       {!configured && (
         <p role="note" className="market-scope-note">
@@ -288,6 +340,27 @@ export function PersonalComparisonPrices({
           );
         })}
       </div>
+      <PersonalComparisonPerformance
+        listings={listings}
+        state={
+          visible.busy
+            ? "loading"
+            : listings.every(
+                  (listing) =>
+                    visible.entries[listing.listingId]?.state === "available",
+                ) && listings.length >= 2
+              ? "ready"
+              : Object.keys(visible.entries).length > 0
+                ? "incomplete"
+                : "idle"
+        }
+        series={listings.flatMap((listing) => {
+          const entry = visible.entries[listing.listingId];
+          return entry?.state === "available"
+            ? [{ listingId: listing.listingId, ...entry.value.history }]
+            : [];
+        })}
+      />
       <p className="market-scope-note">
         Data attribution: Tiingo. Values remain in active-session memory only;
         export and redistribution are prohibited. Load again to request another

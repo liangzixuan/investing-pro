@@ -782,7 +782,12 @@ The financial-screen shortlist can explicitly load price context for its two
 or three exact listings through the same overview operations. Sequential requests
 keep the existing provider concurrency bound; each company retains its own
 availability, source kind, dated timestamp basis and freshness as of loading.
-Only a small quote projection remains in active component memory. This connects
+The same explicit load can compare adjusted closes over dates observed for
+every selected listing, using one-month, three-month or one-year history.
+At least two shared dates and all selected companies are required; actual
+endpoints, coverage and the existing decimal percentage calculation are visible.
+This is provider-adjusted price change, not independently reconstructed total
+return. Only a small quote and close/date projection remains in active component memory. This connects
 existing price coverage to discovery without adding price filters, saved prices,
 new valuation ratios or a coverage claim. See
 [Comparison prices](./PERSONAL_COMPARISON_PRICES.md).
