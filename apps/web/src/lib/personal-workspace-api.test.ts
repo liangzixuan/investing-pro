@@ -789,10 +789,13 @@ describe("personal workspace API client", () => {
   });
 
   it.each([
+    [400, "invalid_request"],
+    [402, "not_entitled"],
     [403, "session_unavailable"],
     [404, "not_covered"],
     [424, "credentials_invalid"],
     [429, "rate_limited"],
+    [500, "unavailable"],
     [502, "provider_unavailable"],
     [503, "not_configured"],
   ] as const)("maps market overview HTTP %s to %s", async (status, code) => {
@@ -804,6 +807,7 @@ describe("personal workspace API client", () => {
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("rejects invalid requests before issuing network traffic", async () => {

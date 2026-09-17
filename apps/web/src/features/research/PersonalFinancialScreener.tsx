@@ -16,6 +16,7 @@ import {
   type PersonalSecurityMasterScreenRowDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
   type PersonalFinancialScreenWatchlistScopeDto,
+  type PersonalMarketDataStatusDto,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
@@ -34,6 +35,7 @@ import {
   type PersonalWatchlistMembership,
 } from "@/lib/personal-workspace-api";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
+import { PersonalComparisonPrices } from "./PersonalComparisonPrices";
 
 export const PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE = 25;
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
@@ -513,6 +515,7 @@ export interface PersonalFinancialScreenerProps {
   readonly watchlistVersion?: number;
   readonly watchlistMemberships?: readonly PersonalWatchlistMembership[];
   readonly watchlistAvailable?: boolean;
+  readonly marketDataStatus?: PersonalMarketDataStatusDto | null;
 }
 
 const emptyWatchlist: readonly PersonalWatchlistMembership[] = [];
@@ -543,6 +546,7 @@ export function PersonalFinancialScreener({
   watchlistVersion = 0,
   watchlistMemberships = emptyWatchlist,
   watchlistAvailable = false,
+  marketDataStatus = null,
 }: PersonalFinancialScreenerProps) {
   const [scope, setScope] = useState<"catalog" | "watchlist">("catalog");
   const [watchlistSelection, setWatchlistSelection] = useState<
@@ -590,6 +594,7 @@ export function PersonalFinancialScreener({
     useState<FinancialComparisonSelection | null>(null);
   const currentComparison = useRef(comparison);
   currentComparison.current = comparison;
+  const comparisonPriceEpoch = useRef(0);
   const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
   const shortlistHeading = useRef<HTMLHeadingElement | null>(null);
   const comparisonButton = useRef<HTMLButtonElement | null>(null);
@@ -714,6 +719,13 @@ export function PersonalFinancialScreener({
   }, [comparison?.open]);
 
   function updateComparison(next: FinancialComparisonSelection | null) {
+    const previous = currentComparison.current;
+    if (
+      next?.key !== previous?.key ||
+      next?.open !== previous?.open ||
+      next?.rows !== previous?.rows
+    )
+      comparisonPriceEpoch.current += 1;
     currentComparison.current = next;
     setComparison(next);
   }
@@ -1967,6 +1979,20 @@ export function PersonalFinancialScreener({
           }
           onCloseInspection={closeInspection}
           comparison={comparison}
+          priceContextKey={JSON.stringify([
+            comparison?.key,
+            comparisonPriceEpoch.current,
+          ])}
+          marketDataStatus={marketDataStatus}
+          pricesEnabled={enabled && !running}
+          onPriceActivityStart={() =>
+            comparisonIsCurrent(response, comparison)
+              ? onActivityStart()
+              : undefined
+          }
+          onPriceSessionUnavailable={() => {
+            if (comparisonIsCurrent(response, comparison)) clearSession();
+          }}
           comparisonHeading={comparisonHeading}
           shortlistHeading={shortlistHeading}
           comparisonButton={comparisonButton}
@@ -2112,6 +2138,11 @@ function FinancialResults({
   onInspect,
   onCloseInspection,
   comparison,
+  priceContextKey,
+  marketDataStatus,
+  pricesEnabled,
+  onPriceActivityStart,
+  onPriceSessionUnavailable,
   comparisonHeading,
   shortlistHeading,
   comparisonButton,
@@ -2140,6 +2171,11 @@ function FinancialResults({
   ) => void;
   readonly onCloseInspection: () => void;
   readonly comparison: FinancialComparisonSelection | null;
+  readonly priceContextKey: string;
+  readonly marketDataStatus: PersonalMarketDataStatusDto | null;
+  readonly pricesEnabled: boolean;
+  readonly onPriceActivityStart: OwnerSessionActivityStart;
+  readonly onPriceSessionUnavailable: () => void;
   readonly comparisonHeading: RefObject<HTMLHeadingElement | null>;
   readonly shortlistHeading: RefObject<HTMLHeadingElement | null>;
   readonly comparisonButton: RefObject<HTMLButtonElement | null>;
@@ -2476,6 +2512,14 @@ function FinancialResults({
               Financial data: {response.financialSnapshotSha256}
             </p>
           </details>
+          <PersonalComparisonPrices
+            contextKey={priceContextKey}
+            listings={comparedRows.map((row) => row.identity)}
+            enabled={pricesEnabled}
+            providerStatus={marketDataStatus}
+            onActivityStart={onPriceActivityStart}
+            onSessionUnavailable={onPriceSessionUnavailable}
+          />
           <div
             className="personal-stock-screener-table-wrap financial-screen-comparison-scroll"
             role="region"

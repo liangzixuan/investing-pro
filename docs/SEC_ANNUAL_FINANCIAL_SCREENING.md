@@ -130,6 +130,12 @@ requests or writes. The shortlist is not saved in definitions, browser storage,
 the vault, a URL or an export. Ordinary pagination still makes its existing
 snapshot-bound request. The separate selected-company peer workspace is unchanged.
 
+Use **Load prices** inside an open comparison for separate, dated Tiingo price
+context. Only that explicit action requests prices. Source kind and freshness
+stay visible; the price is not a new SEC metric or part of saved criteria. See
+[Comparison prices](./PERSONAL_COMPARISON_PRICES.md) for availability, lifetime
+and EOD timestamp limits.
+
 ### Start from editable examples
 
 **Editable starter screens** offers three sparse starting points using the

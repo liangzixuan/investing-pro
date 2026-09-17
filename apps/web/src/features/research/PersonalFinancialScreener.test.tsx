@@ -115,6 +115,9 @@ vi.mock("react", async (original) => ({
 vi.mock("react-dom", () => ({
   flushSync: <T,>(callback: () => T) => harness.flushSync(callback),
 }));
+vi.mock("./PersonalComparisonPrices", () => ({
+  PersonalComparisonPrices: () => null,
+}));
 vi.mock("@/lib/personal-financial-screen-api", async () => ({
   ...(await import("../../lib/personal-financial-screen-api")),
   ...api,
@@ -132,6 +135,10 @@ import {
   type PersonalFinancialScreenerProps,
 } from "./PersonalFinancialScreener";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
+import {
+  PersonalComparisonPrices,
+  type PersonalComparisonPricesProps,
+} from "./PersonalComparisonPrices";
 
 const sha = (letter: string): `sha256:${string}` =>
   `sha256:${letter.repeat(64)}`;
@@ -172,6 +179,44 @@ afterEach(() => {
 });
 
 describe("PersonalFinancialScreener", () => {
+  it("mounts explicit price context only for an open comparison and keeps it stable across display columns", async () => {
+    await mountComparison();
+    const first = elements(render()).find(
+      (item) => item.type === PersonalComparisonPrices,
+    )!.props as unknown as PersonalComparisonPricesProps;
+    expect(first.listings.map((row) => row.symbol)).toEqual(["CMP0", "CMP1"]);
+    expect(first.providerStatus).toBeNull();
+    const key = first.contextKey;
+    change(render(), "Financial column view", "cashFlow");
+    const unchanged = elements(render()).find(
+      (item) => item.type === PersonalComparisonPrices,
+    )!.props as unknown as PersonalComparisonPricesProps;
+    expect(unchanged.contextKey).toBe(key);
+    click(render(), "Select CMP2 for comparison");
+    const changed = elements(render()).find(
+      (item) => item.type === PersonalComparisonPrices,
+    )!.props as unknown as PersonalComparisonPricesProps;
+    expect(changed.contextKey).not.toBe(key);
+    expect(changed.listings.map((row) => row.symbol)).toEqual([
+      "CMP0",
+      "CMP1",
+      "CMP2",
+    ]);
+    expect(first.onActivityStart()).toBeUndefined();
+    first.onSessionUnavailable();
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+    click(render(), "Close comparison");
+    expect(
+      elements(render()).find((item) => item.type === PersonalComparisonPrices),
+    ).toBeUndefined();
+    click(render(), "Compare companies");
+    const reopened = elements(render()).find(
+      (item) => item.type === PersonalComparisonPrices,
+    )!.props as unknown as PersonalComparisonPricesProps;
+    expect(reopened.contextKey).not.toBe(changed.contextKey);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
   it.each(["interestPaidNet", "incomeTaxesPaidNet"] as const)(
     "displays signed %s values and exact independent annual evidence, including unknowns",
     async (field) => {

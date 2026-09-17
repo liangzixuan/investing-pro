@@ -15,7 +15,31 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: interest and income-tax cash payments
+## Immediate delivery: prices beside a financial comparison
+
+Add an explicit **Load prices** action for the existing two-or-three-company
+shortlist. Reuse the admitted Tiingo overview with sequential 1m requests and
+independent company states. Show the reference or EOD price, provider, dated
+source basis and freshness as of loading. For EOD, label the assumed regular
+session close and the unmodeled early-close limitation. Opening comparison,
+changing columns, running the financial screen and saving a view never load prices.
+
+Keep only the small price projection in active component memory. Cancel and
+clear it when the shortlist, financial/catalog snapshot, owner session or
+comparison changes. Reject late responses and mismatched full listing identities.
+Stop the batch for credential, entitlement, configuration, session and rate-limit
+failures; represent ordinary company coverage failures separately. The existing
+28 SEC metrics, formulas, presets, saved payloads and transport stay unchanged.
+No valuation ratios, price filters, exports or saved prices are added.
+
+The configured source was verified on 2026-09-17 with two exact catalog listings:
+AAPL and MSFT returned reference quotes and price history. This is sampled
+operation access, not a broad coverage or independent accuracy claim. Use
+synthetic values for persisted browser QA and regression fixtures. See
+[Comparison prices](./PERSONAL_COMPARISON_PRICES.md) and the workspace checkpoint
+for actual release and runtime verification.
+
+## Delivered: interest and income-tax cash payments
 
 Add **Reported interest paid excluding capitalized interest (USD)** and
 **Reported income taxes paid net of refunds (USD)** using only `InterestPaidNet`
@@ -563,14 +587,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Now              | Navigate a selected company's existing research and return to preserved screening results        | Connect existing panels into a repeatable workflow without new provider inputs |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps                |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters     |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                       |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions            |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                    |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| Now              | Load dated price context beside a selected financial comparison                                  | Existing Tiingo quote/history operations verified for two admitted listings |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps             |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters  |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                    |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions         |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                 |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -588,9 +612,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/personal-financial-analytics test -- personal-financial-screener
-   pnpm --filter @research-cockpit/api test -- workspace-financial-screen-routes personal-sec-financial-provider
-   pnpm --filter @research-cockpit/web test -- personal-financial-screen-api PersonalFinancialScreener
+   pnpm --filter @research-cockpit/web test -- PersonalComparisonPrices PersonalFinancialScreener SecurityDiscoveryWorkspace personal-workspace-api
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed

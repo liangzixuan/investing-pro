@@ -283,6 +283,8 @@ describe("SecurityDiscoveryWorkspace", () => {
       renderWorkspace(),
       componentMocks.FinancialScreener,
     )!;
+    expect(financial.props.marketDataStatus).toEqual(marketStatus());
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
     financial.props.onOpenResearch(screenRow());
     let view = renderWorkspace();
     const company = requireCompanyResearch(view);

@@ -2490,6 +2490,60 @@ html:has(.personal-financial-screener:focus-within) {
   line-height: 1.5;
 }
 
+.comparison-prices {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.comparison-prices :is(h4, h5, p, dl, dd) {
+  margin: 0;
+}
+
+.comparison-prices > .discovery-section-heading h4 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.comparison-prices > .discovery-section-heading .compact-action {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.comparison-price-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 10px;
+}
+
+.comparison-price-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+.comparison-price-card dl {
+  display: grid;
+  gap: 8px;
+}
+
+.comparison-price-card dt {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+}
+
+.comparison-price-value {
+  font-size: 1.15rem;
+}
+
 @media (max-width: 720px) {
   .financial-screen-clause,
   .financial-screen-counts {

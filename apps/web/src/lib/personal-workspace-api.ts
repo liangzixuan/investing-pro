@@ -1016,6 +1016,7 @@ function responseError(status: number): PersonalWorkspaceApiError {
 function marketOverviewResponseError(
   status: number,
 ): PersonalWorkspaceApiError {
+  if (status === 402) return new PersonalWorkspaceApiError("not_entitled");
   if (status === 403)
     return new PersonalWorkspaceApiError("session_unavailable");
   if (status === 404) return new PersonalWorkspaceApiError("not_covered");

@@ -778,6 +778,15 @@ and a zero range remain explicit. The calculation is pure and in-memory, makes
 no additional provider request, emits no derived price series, and gives no
 buy/sell rating.
 
+The financial-screen shortlist can explicitly load price context for its two
+or three exact listings through the same overview operations. Sequential requests
+keep the existing provider concurrency bound; each company retains its own
+availability, source kind, dated timestamp basis and freshness as of loading.
+Only a small quote projection remains in active component memory. This connects
+existing price coverage to discovery without adding price filters, saved prices,
+new valuation ratios or a coverage claim. See
+[Comparison prices](./PERSONAL_COMPARISON_PRICES.md).
+
 The selected Tiingo Starter-compatible path is deliberately non-persistent:
 provider values exist only in active owner-session memory and cannot be replayed
 offline. Full 3g-a remains open until the declared 100-symbol/ten-year validation

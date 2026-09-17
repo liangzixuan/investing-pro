@@ -1650,7 +1650,8 @@ export function SecurityDiscoveryWorkspace({
             />
 
             <PersonalFinancialScreener
-              key={`financial-${workspace.snapshot.snapshotSha256}`}
+              key={`financial-${workspace.snapshot.snapshotSha256}-${renderedWorkspaceEpoch}`}
+              marketDataStatus={marketDataStatus}
               watchlistVersion={workspace.version}
               watchlistMemberships={workspace.watchlist.memberships}
               watchlistAvailable={
