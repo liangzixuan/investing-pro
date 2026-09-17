@@ -36,6 +36,12 @@ const revenueBases = PERSONAL_FINANCIAL_REVENUE_BASES;
 const revenueConcepts = revenueBases.filter((basis) => basis !== "agreement");
 const concepts = PERSONAL_SEC_ANNUAL_CONCEPTS;
 const instantConcepts = PERSONAL_SEC_INSTANT_CONCEPTS;
+const reportedInstantConcepts = {
+  currentAssets: "AssetsCurrent",
+  currentLiabilities: "LiabilitiesCurrent",
+  totalAssets: "Assets",
+  totalLiabilities: "Liabilities",
+} as const;
 const allConcepts = [...concepts, ...instantConcepts];
 const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
   "netMargin",
@@ -135,7 +141,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "9.0.0" ||
+    input.schemaVersion !== "10.0.0" ||
     (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
@@ -426,7 +432,7 @@ function isResponse(
       ],
       true,
     ) ||
-    value.schemaVersion !== "9.0.0" ||
+    value.schemaVersion !== "10.0.0" ||
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
@@ -1011,11 +1017,10 @@ function instantCell(
       (source) =>
         keys(source, ["concept", "accessionNumber", "asOfDate", "value"]) &&
         member(instantConcepts, source.concept) &&
-        (derived ||
-          source.concept ===
-            (metric === "currentAssets"
-              ? "AssetsCurrent"
-              : "LiabilitiesCurrent")) &&
+        (derived
+          ? source.concept === "AssetsCurrent" ||
+            source.concept === "LiabilitiesCurrent"
+          : source.concept === reportedInstantConcepts[metric]) &&
         matches(source.accessionNumber, /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u) &&
         date(source.asOfDate) &&
         Math.abs(Number(source.asOfDate.slice(0, 4)) - year) <= 1 &&
@@ -1024,8 +1029,7 @@ function instantCell(
   )
     return false;
   if (!derived) {
-    const concept =
-      metric === "currentAssets" ? "AssetsCurrent" : "LiabilitiesCurrent";
+    const concept = reportedInstantConcepts[metric];
     const frameStatus = sourceStatuses.find(
       (source) => source.concept === concept,
     )?.status;

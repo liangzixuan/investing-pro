@@ -15,7 +15,24 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reusable financial views
+## Immediate delivery: reported balance totals
+
+Add **Reported total assets (USD)** and **Reported total liabilities (USD)** to
+the financial screen, filters, sorting, comparison and source inspection. Use
+only the exact SEC `Assets` and `Liabilities` concepts from USD Q4 instant Frames.
+Each amount stands alone; total liabilities is not a financial-debt measure.
+Retain the actual balance date, filing and existing October–December date window.
+Missing direct concepts remain unknown rather than being reconstructed.
+
+This expands eighteen fields to twenty and thirteen source requests to fifteen.
+Preserve all previous calculations, Overview columns, starter screens and exact
+saved layouts. Existing v1/v2 records remain readable; only an explicit edit and
+save adds the new columns. Transport v10 coordinates the expanded strict response;
+formula-set1.7 is unchanged. Measure actual catalog coverage and inspect bounded
+primary filings; this increment does not close the thirty-metric breadth target.
+See [SEC financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md).
+
+## Delivered: reusable financial views
 
 Save a financial view's chosen columns with its criteria, then restore both
 when loading it. The results and comparison use the restored columns. Loading
@@ -30,6 +47,12 @@ Deletion preserves the existing payload version. Keep the twenty-view limit,
 name rules, optimistic conflicts and source-digest provenance. No new metric,
 provider, formula or account behavior is part of this slice. See
 [Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md).
+
+Release `3e49f96` passed 5,871 native checks, 24 builds, all six hosted jobs,
+and synthetic/configured Brave checks. It includes a narrow Windows CI startup
+preflight and explicit filesystem-integration test deadlines after the original
+release's two distinct hosted timeouts. Production ACL behavior is unchanged;
+the checkpoint retains both failures and final acceptance evidence.
 
 ## Delivered: company research workspace
 

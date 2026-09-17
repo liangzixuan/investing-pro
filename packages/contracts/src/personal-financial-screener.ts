@@ -22,6 +22,8 @@ export const PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS = [
   "currentLiabilities",
   "currentRatio",
   "currentAssetsLessCurrentLiabilities",
+  "totalAssets",
+  "totalLiabilities",
 ] as const;
 export type PersonalFinancialScreenInstantMetricDto =
   (typeof PERSONAL_FINANCIAL_SCREEN_INSTANT_METRICS)[number];
@@ -67,6 +69,8 @@ export type PersonalFinancialRevenueBasisDto =
 export const PERSONAL_SEC_INSTANT_CONCEPTS = [
   "AssetsCurrent",
   "LiabilitiesCurrent",
+  "Assets",
+  "Liabilities",
 ] as const;
 export type PersonalSecInstantConceptDto =
   (typeof PERSONAL_SEC_INSTANT_CONCEPTS)[number];
@@ -231,7 +235,7 @@ export interface PersonalFinancialScreenWatchlistResponseScopeDto extends Person
   readonly totalWatchlistListings: number;
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "9.0.0";
+  readonly schemaVersion: "10.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -258,7 +262,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "9.0.0";
+  readonly schemaVersion: "10.0.0";
   /** Present exactly for a watchlist-scoped request; counts cover its selection. */
   readonly scope?: PersonalFinancialScreenWatchlistResponseScopeDto;
   readonly instantQuarter: 4;

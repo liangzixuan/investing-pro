@@ -1453,13 +1453,22 @@ reveal the relevant panel. It uses existing inputs and explicit Load actions,
 without new formulas, providers or durable layouts. See
 [Company research](./PERSONAL_COMPANY_RESEARCH.md).
 
-The next slice makes financial views reusable across sessions by saving chosen
+The delivered slice makes financial views reusable across sessions by saving chosen
 columns with criteria. Existing version1 definitions remain readable and keep
 their criteria-only loading behavior; explicit saves add a version2 display
 definition without losing other views. Scope and saved-listing selection remain
 temporary, and loading requires an explicit Run. See
 [Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md). This is a bounded part of
 the saved-layout target, with no new metrics, provider coverage or export format.
+
+The next breadth increment adds reported total assets and total liabilities from
+the exact USD `Assets` and `Liabilities` Q4 instant concepts. It takes eighteen
+screen fields to twenty and thirteen source Frames to fifteen, retaining all
+prior formulas and saved layouts. Each amount keeps its actual date and filing;
+missing direct concepts remain unknown. Total liabilities is not financial debt.
+Acceptance measures complete-catalog listing and issuer coverage, date-window
+exclusions and a bounded primary-filing sample. It does not satisfy the full
+thirty-metric target or equate evaluated securities with known values.
 
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.

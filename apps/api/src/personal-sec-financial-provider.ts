@@ -356,7 +356,12 @@ class SecPersonalFinancialProvider implements PersonalSecFinancialProvider {
 function isInstantConcept(
   concept: PersonalSecFinancialConceptDto,
 ): concept is PersonalSecInstantConceptDto {
-  return concept === "AssetsCurrent" || concept === "LiabilitiesCurrent";
+  return (
+    concept === "AssetsCurrent" ||
+    concept === "LiabilitiesCurrent" ||
+    concept === "Assets" ||
+    concept === "Liabilities"
+  );
 }
 
 function normalizeInstantFrame(

@@ -205,6 +205,41 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Current assets / current liabilities (×)                       | Current assets / positive current liabilities                                      | multiple |
 | Selected revenue YoY change (%)                                | (Current selected revenue − prior selected revenue) / positive prior revenue × 100 | percent  |
 | Current assets less current liabilities                        | Current assets − current liabilities, on the same actual Q4 date and filing        | USD      |
+| Reported total assets                                          | `Assets`, actual instant balance date                                              | USD      |
+| Reported total liabilities                                     | `Liabilities`, actual instant balance date                                         | USD      |
+
+### Reported total assets and total liabilities
+
+These are separate directly reported amounts from `us-gaap:Assets` and
+`us-gaap:Liabilities`, in USD. The [FASB taxonomy](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-2026.xsd)
+declares both monetary instant concepts. Assets has a natural debit balance and
+liabilities a credit balance; that metadata does not change a reported sign.
+Total liabilities includes obligations beyond financial debt. Neither amount is
+calculated from current balances, equity or another concept.
+
+Both use the selected year's `CY{year}Q4I` Frame and the existing inclusive
+October 1–December 31 actual-date rule. The [SEC Frames documentation](https://www.sec.gov/search-filings/edgar-application-programming-interfaces)
+describes calendar alignment and warns that reporting dates differ. A Q4 Frame
+is not an exact December 31 snapshot or a common fiscal year-end. Inspect the
+actual date and accession beside each amount. Missing, failed, conflicting or
+out-of-window facts stay unknown, with available source references retained.
+
+Each total is resolved independently. A missing liability amount does not hide
+valid assets, and differing dates or filings between the totals do not create
+an implicit ratio or paired measure. Existing current-ratio and current-balance
+subtraction still use only `AssetsCurrent` and `LiabilitiesCurrent`.
+
+Use either total in filters, sorting, Q4 balances, All metrics, individual
+columns, source inspection and company comparison. Overview and starter
+thresholds remain unchanged. Existing saved v1 criteria and v2 column lists
+retain their meanings and exact columns; an explicit edit and save is required
+to add totals. Catalog and My Watchlist share the same definitions.
+
+Fresh coverage and bounded primary-filing reconciliation are recorded in the
+release handoff. Listing and unique-issuer counts are separate, and evaluated
+securities are not automatically known values. Missing direct liabilities are
+not reconstructed to increase coverage. Twenty fields leave the thirty-metric
+roadmap and its broader coverage requirements open.
 
 ### Current assets less current liabilities
 
@@ -508,9 +543,9 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "9.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly eighteen metric
-and coverage keys, the existing ten current sources, and three separately typed
+Financial-screen requests and responses use `schemaVersion: "10.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly twenty metric
+and coverage keys, twelve current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
 reference shapes. Deploy the API and browser together: old browser
@@ -522,12 +557,13 @@ criteria-only records and `schemaVersion: 2` for reusable column selections.
 An explicit new save writes v2; existing v1 records do not change on read. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are preserved. Existing criteria load with their original meanings and make a
-fresh v9 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v10 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
 The seven-clause limit is unchanged; the cash-difference percentage is an
 additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. Screen formula-set version 1.7.0 adds
+than drop a filter. The two directly reported balance totals introduce no new
+formula; screen formula-set version 1.7.0 remains unchanged. It includes
 `operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
 expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
 Current-balance subtraction retains version 1.0.0 and its exact expression
@@ -560,8 +596,8 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches thirteen fixed cross-company Frames sequentially: eight
-  unchanged annual requests followed by two Q4 instant requests and three prior
+- One operation fetches fifteen fixed cross-company Frames sequentially: eight
+  unchanged annual requests followed by four Q4 instant requests and three prior
   revenue requests, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
@@ -652,8 +688,8 @@ period/filing eligibility, deterministic unknown reasons, signed and extreme
 decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
 stable pages and saved-definition compatibility. Browser cases reject forged
 values, references and reasons, including maximum-length results. Cache tests
-verify thirteen initial reads, no additional reads when changing revenue basis, and
-thirteen reads on explicit refresh. Actual live ratio coverage and bounded primary
+verify fifteen initial reads, no additional reads when changing revenue basis, and
+fifteen reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
 

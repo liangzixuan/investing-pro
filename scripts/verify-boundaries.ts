@@ -5467,6 +5467,19 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       /"AssetsCurrent",\s*"LiabilitiesCurrent"/u,
       '"LiabilitiesCurrent", "AssetsCurrent"',
     ),
+    secConcepts.replace(/"Assets",?\s*/u, ""),
+    secConcepts.replace(/"Liabilities",?\s*/u, ""),
+    secConcepts.replace('"Assets"', '"AssetsCurrent"'),
+    secConcepts.replace('"Liabilities"', '"Assets"'),
+    secConcepts.replace('"Liabilities"', '"StockholdersEquity"'),
+    secConcepts.replace(
+      '"Liabilities"',
+      '"Liabilities", "LiabilitiesAndStockholdersEquity"',
+    ),
+    secConcepts.replace(
+      /"Assets",\s*"Liabilities"/u,
+      '"Liabilities", "Assets"',
+    ),
     secConcepts.replace(
       "PERSONAL_SEC_REVENUE_CONCEPTS =",
       "UNREVIEWED_REVENUE_CONCEPTS =",
@@ -5519,6 +5532,15 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       ),
     (source: string) =>
       source.replace('concept === "AssetsCurrent"', 'concept === "Assets"'),
+    (source: string) =>
+      source.replace('concept === "Assets"', 'concept === "AssetsCurrent"'),
+    (source: string) =>
+      source.replace('concept === "Liabilities"', 'concept === "Assets"'),
+    (source: string) =>
+      source.replace(
+        'concept === "Liabilities"',
+        'concept === "LiabilitiesAndStockholdersEquity"',
+      ),
     (source: string) =>
       source.replace('Object.hasOwn(candidate, "start")', "false"),
     (source: string) =>
@@ -7434,7 +7456,7 @@ function personalSecFinancialProviderViolation(content: string): string | null {
     "coefficient>MAX_SAFE_COEFFICIENT",
     "constnormalizedInstant=Object.freeze(instantFrames);",
     "normalizeInstantFrame(parsed,concept,calendarYear,sourceUrl)",
-    'returnconcept==="AssetsCurrent"||concept==="LiabilitiesCurrent";',
+    'return(concept==="AssetsCurrent"||concept==="LiabilitiesCurrent"||concept==="Assets"||concept==="Liabilities");',
     'Object.hasOwn(candidate,"start")',
     "constasOfDate=normalizeDate(candidate.end);",
     "Math.abs(Number(asOfDate.slice(0,4))-calendarYear)>1",
@@ -7625,7 +7647,12 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]) &&
     JSON.stringify(instantConcepts) ===
-      JSON.stringify(["AssetsCurrent", "LiabilitiesCurrent"]) &&
+      JSON.stringify([
+        "AssetsCurrent",
+        "LiabilitiesCurrent",
+        "Assets",
+        "Liabilities",
+      ]) &&
     JSON.stringify(revenueConcepts) ===
       JSON.stringify([
         "RevenueFromContractWithCustomerExcludingAssessedTax",
@@ -7633,7 +7660,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         "SalesRevenueNet",
       ])
     ? null
-    : "SEC financial frames must retain the exact eight current annual, two instant and three prior revenue concept registries";
+    : "SEC financial frames must retain the exact eight current annual, four instant and three prior revenue concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {
