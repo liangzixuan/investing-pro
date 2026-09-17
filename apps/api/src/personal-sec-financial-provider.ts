@@ -360,7 +360,9 @@ function isInstantConcept(
     concept === "AssetsCurrent" ||
     concept === "LiabilitiesCurrent" ||
     concept === "Assets" ||
-    concept === "Liabilities"
+    concept === "Liabilities" ||
+    concept === "CashAndCashEquivalentsAtCarryingValue" ||
+    concept === "StockholdersEquity"
   );
 }
 

@@ -36,10 +36,12 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe("reported total balance decoding", () => {
+describe("reported balance decoding", () => {
   const totals = [
     ["totalAssets", "Assets"],
     ["totalLiabilities", "Liabilities"],
+    ["cashAndCashEquivalents", "CashAndCashEquivalentsAtCarryingValue"],
+    ["stockholdersEquity", "StockholdersEquity"],
   ] as const;
   const withTotal = (
     field: (typeof totals)[number][0],
@@ -56,7 +58,7 @@ describe("reported total balance decoding", () => {
   };
 
   it.each(totals)(
-    "preserves exact signed %s amounts and the prior eighteen metrics",
+    "preserves exact signed %s amounts and every independent metric",
     async (field, concept) => {
       for (const value of ["0", "-0.00001", "9007199254740993.00001"]) {
         const result = withTotal(
@@ -79,7 +81,7 @@ describe("reported total balance decoding", () => {
           result.rows[0]!.metrics[field],
         );
         for (const metric of PERSONAL_FINANCIAL_SCREEN_METRICS.filter(
-          (metric) => !metric.startsWith("total"),
+          (metric) => metric !== field,
         ))
           expect(decoded.rows[0]!.metrics[metric]).toEqual(
             response().rows[0]!.metrics[metric],
@@ -224,7 +226,12 @@ describe("reported total balance decoding", () => {
           source.concept = concept === "Assets" ? "Liabilities" : "Assets";
         },
         (_, source) => {
-          source.concept = "StockholdersEquity";
+          source.concept =
+            "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest";
+        },
+        (_, source) => {
+          source.concept =
+            "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents";
         },
         (_, source) => {
           source.asOfDate = "2024-09-30";
@@ -276,33 +283,119 @@ describe("reported total balance decoding", () => {
     },
   );
 
-  it("rejects total-balance sources substituted into either derived current metric", async () => {
-    for (const metric of [
+  it.each(totals)(
+    "rejects every other admitted instant concept as a substitute for %s",
+    async (field, concept) => {
+      for (const other of PERSONAL_SEC_INSTANT_CONCEPTS.filter(
+        (candidate) => candidate !== concept,
+      )) {
+        fetchMock.mockResolvedValueOnce(
+          json(withTotal(field, instantOperand(other, "1"))),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
+    },
+  );
+
+  it("round-trips literal old twenty-column layouts unchanged beside new cash/equity criteria and columns", async () => {
+    const legacy = savedPayload().views[0]!;
+    const oldMetrics = [
+      "revenue",
+      "grossProfit",
+      "netIncome",
+      "operatingIncome",
+      "operatingCashFlow",
+      "netMargin",
+      "operatingMargin",
+      "operatingCashFlowMargin",
+      "ppePurchases",
+      "operatingCashFlowLessPpePurchases",
+      "grossMargin",
+      "operatingCashFlowToNetIncome",
+      "operatingCashFlowLessPpePurchasesMargin",
+      "currentAssets",
+      "currentLiabilities",
       "currentRatio",
       "currentAssetsLessCurrentLiabilities",
-    ] as const) {
-      const result = structuredClone(response());
-      const cell = result.rows[0]!.metrics[metric];
-      const forged = {
-        ...cell,
-        sources: cell.sources.map((source) => ({
-          ...source,
-          concept:
-            source.concept === "AssetsCurrent" ? "Assets" : "Liabilities",
-        })),
-      };
-      fetchMock.mockResolvedValueOnce(
-        json({
-          ...result,
-          rows: result.rows.map((row) => ({
-            ...row,
-            metrics: { ...row.metrics, [metric]: forged },
+      "totalAssets",
+      "totalLiabilities",
+      "revenueGrowth",
+    ] as const;
+    const payload: PersonalFinancialSavedViewsPayloadDto = {
+      schemaVersion: 2,
+      views: [
+        { ...legacy, display: null },
+        {
+          ...legacy,
+          id: "old-twenty",
+          name: "Old twenty",
+          display: { visibleMetrics: oldMetrics },
+        },
+        {
+          ...legacy,
+          id: "cash-equity",
+          name: "Cash and equity",
+          criteria: {
+            ...legacy.criteria,
+            clauses: [
+              { field: "stockholdersEquity", operator: "lte", value: "-12.5" },
+            ],
+            sort: { field: "cashAndCashEquivalents", direction: "asc" },
+          },
+          display: {
+            visibleMetrics: ["cashAndCashEquivalents", "stockholdersEquity"],
+          },
+        },
+      ],
+    };
+    fetchMock.mockResolvedValueOnce(json({ ...record(), payload }));
+    expect((await fetchPersonalFinancialSavedViews(signal()))?.payload).toEqual(
+      payload,
+    );
+    fetchMock.mockResolvedValueOnce(json(receipt(2)));
+    expect(
+      (await savePersonalFinancialSavedViews(1, payload, signal())).payload,
+    ).toEqual(payload);
+    expect(fetchMock.mock.calls[1]?.[1]?.body).toBe(
+      JSON.stringify({ payload }),
+    );
+  });
+
+  it("rejects reported cash/equity and total-balance sources substituted into either derived current metric", async () => {
+    for (const concept of [
+      "Assets",
+      "Liabilities",
+      "CashAndCashEquivalentsAtCarryingValue",
+      "StockholdersEquity",
+    ]) {
+      for (const metric of [
+        "currentRatio",
+        "currentAssetsLessCurrentLiabilities",
+      ] as const) {
+        const result = structuredClone(response());
+        const cell = result.rows[0]!.metrics[metric];
+        const forged = {
+          ...cell,
+          sources: cell.sources.map((source) => ({
+            ...source,
+            concept,
           })),
-        }),
-      );
-      await expect(
-        screenPersonalFinancials(request(), signal()),
-      ).rejects.toMatchObject({ code: "invalid_response" });
+        };
+        fetchMock.mockResolvedValueOnce(
+          json({
+            ...result,
+            rows: result.rows.map((row) => ({
+              ...row,
+              metrics: { ...row.metrics, [metric]: forged },
+            })),
+          }),
+        );
+        await expect(
+          screenPersonalFinancials(request(), signal()),
+        ).rejects.toMatchObject({ code: "invalid_response" });
+      }
     }
   });
 
@@ -784,7 +877,7 @@ describe("selected revenue year-over-year decoding", () => {
         ...selected.map(() => "current_revenue"),
         ...selected.map(() => "prior_revenue"),
       ]);
-      expect(result.sources).toHaveLength(12);
+      expect(result.sources).toHaveLength(14);
       expect(result.priorRevenueSources).toHaveLength(3);
     },
   );
@@ -4274,7 +4367,7 @@ describe("financial screen transport", () => {
     },
   );
 
-  it("sends v10 criteria and retains the complete twenty-metric, fifteen-Frame response", async () => {
+  it("sends v11 criteria and retains the complete twenty-two-metric, seventeen-Frame response", async () => {
     const result = response();
     fetchMock.mockResolvedValue(json(result));
     const input = {
@@ -4286,7 +4379,7 @@ describe("financial screen transport", () => {
       },
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
-    expect(decoded.schemaVersion).toBe("10.0.0");
+    expect(decoded.schemaVersion).toBe("11.0.0");
     expect(decoded.formulaVersion).toBe("1.7.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
@@ -4308,6 +4401,8 @@ describe("financial screen transport", () => {
       "currentAssetsLessCurrentLiabilities",
       "totalAssets",
       "totalLiabilities",
+      "cashAndCashEquivalents",
+      "stockholdersEquity",
       "revenueGrowth",
     ]);
     expect(Object.keys(decoded.metricCoverage)).toEqual(
@@ -4326,6 +4421,8 @@ describe("financial screen transport", () => {
       "LiabilitiesCurrent",
       "Assets",
       "Liabilities",
+      "CashAndCashEquivalentsAtCarryingValue",
+      "StockholdersEquity",
     ]);
     expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(JSON.stringify(input));
   });
@@ -4340,6 +4437,7 @@ describe("financial screen transport", () => {
     "7.0.0",
     "8.0.0",
     "9.0.0",
+    "10.0.0",
   ])(
     "rejects historical %s requests before transport",
     async (schemaVersion) => {
@@ -5467,7 +5565,7 @@ function json(value: unknown, status = 200) {
 }
 function request(): PersonalFinancialScreenRequestDto {
   return {
-    schemaVersion: "10.0.0",
+    schemaVersion: "11.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: null,
     criteria: {
@@ -5864,6 +5962,11 @@ function defaultInstantCells() {
     currentRatio,
     totalAssets: instantOperand("Assets", "1000"),
     totalLiabilities: instantOperand("Liabilities", "600"),
+    cashAndCashEquivalents: instantOperand(
+      "CashAndCashEquivalentsAtCarryingValue",
+      "0",
+    ),
+    stockholdersEquity: instantOperand("StockholdersEquity", "-12.5"),
     currentAssetsLessCurrentLiabilities: {
       status: "available",
       unit: "USD",
@@ -5961,7 +6064,7 @@ function currentResponse(
 }
 function response(): PersonalFinancialScreenResponseDto {
   return {
-    schemaVersion: "10.0.0",
+    schemaVersion: "11.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
     calendarYear: 2024,
@@ -6013,7 +6116,9 @@ function response(): PersonalFinancialScreenResponseDto {
               metric === "currentRatio" ||
               metric === "currentAssetsLessCurrentLiabilities" ||
               metric === "totalAssets" ||
-              metric === "totalLiabilities"
+              metric === "totalLiabilities" ||
+              metric === "cashAndCashEquivalents" ||
+              metric === "stockholdersEquity"
             )
               return [metric, defaultInstantCells()[metric]];
             if (metric === "operatingCashFlowLessPpePurchasesMargin")

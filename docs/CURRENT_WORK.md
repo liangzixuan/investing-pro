@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reported balance totals
+## Immediate delivery: reported cash and stockholders' equity
+
+Add **Reported cash and cash equivalents (USD)** and **Reported stockholders'
+equity (USD)** using only the exact SEC `CashAndCashEquivalentsAtCarryingValue`
+and `StockholdersEquity` concepts. Equity belongs to the parent and excludes
+temporary equity and noncontrolling interests. Preserve negative equity deficits;
+do not substitute broader restricted-cash or consolidated-equity measures.
+
+Expand twenty fields to twenty-two and fifteen Frames to seventeen. Retain each
+amount's own actual Q4 date and accession, the October–December window, all old
+calculations and literal saved layouts. Transport v11 coordinates strict API and
+browser admission; formula-set1.7 and saved payload versions remain unchanged.
+Measure actual coverage and reconcile varied primary filings. This is another
+bounded step toward the thirty-metric target, not completion of that gate.
+
+## Delivered: reported balance totals
 
 Add **Reported total assets (USD)** and **Reported total liabilities (USD)** to
 the financial screen, filters, sorting, comparison and source inspection. Use
@@ -31,6 +46,12 @@ save adds the new columns. Transport v10 coordinates the expanded strict respons
 formula-set1.7 is unchanged. Measure actual catalog coverage and inspect bounded
 primary filings; this increment does not close the thirty-metric breadth target.
 See [SEC financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md).
+
+Release `2fc90bee` passed 6,007 native checks, 24 builds and all six hosted jobs
+on attempt1, plus synthetic and configured Brave checks. Production evaluation
+covered 3,227 listings and retained all eighteen prior fields. Total assets were
+known for 2,724 listings; total liabilities for 2,407. Five primary filings were
+reconciled; the checkpoint retains date exclusions, issuer counts and limits.
 
 ## Delivered: reusable financial views
 

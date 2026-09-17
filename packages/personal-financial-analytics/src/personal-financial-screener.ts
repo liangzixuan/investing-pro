@@ -92,6 +92,8 @@ const METRICS = [
   "currentAssetsLessCurrentLiabilities",
   "totalAssets",
   "totalLiabilities",
+  "cashAndCashEquivalents",
+  "stockholdersEquity",
   "revenueGrowth",
 ] as const satisfies readonly PersonalFinancialScreenMetricDto[];
 
@@ -113,6 +115,8 @@ const INSTANT_CONCEPTS = [
   "LiabilitiesCurrent",
   "Assets",
   "Liabilities",
+  "CashAndCashEquivalentsAtCarryingValue",
+  "StockholdersEquity",
 ] as const satisfies readonly PersonalSecInstantConceptDto[];
 const FAILED_SOURCE_STATUSES = new Set([
   "rate_limited",
@@ -294,7 +298,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "10.0.0",
+      schemaVersion: "11.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
@@ -412,6 +416,18 @@ function buildMetrics(
     totalLiabilities: resolveInstant(
       cik,
       "Liabilities",
+      instantFrames,
+      calendarYear,
+    ),
+    cashAndCashEquivalents: resolveInstant(
+      cik,
+      "CashAndCashEquivalentsAtCarryingValue",
+      instantFrames,
+      calendarYear,
+    ),
+    stockholdersEquity: resolveInstant(
+      cik,
+      "StockholdersEquity",
       instantFrames,
       calendarYear,
     ),

@@ -1406,7 +1406,7 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-16)
 
-The SEC cross-company screen now has eighteen annual/Q4 fields, including
+The SEC cross-company screen now has twenty annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
 thirteen-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
@@ -1461,7 +1461,7 @@ temporary, and loading requires an explicit Run. See
 [Saved financial views](./PERSONAL_FINANCIAL_VIEWS.md). This is a bounded part of
 the saved-layout target, with no new metrics, provider coverage or export format.
 
-The next breadth increment adds reported total assets and total liabilities from
+The delivered balance-totals increment adds reported total assets and total liabilities from
 the exact USD `Assets` and `Liabilities` Q4 instant concepts. It takes eighteen
 screen fields to twenty and thirteen source Frames to fifteen, retaining all
 prior formulas and saved layouts. Each amount keeps its actual date and filing;
@@ -1469,6 +1469,17 @@ missing direct concepts remain unknown. Total liabilities is not financial debt.
 Acceptance measures complete-catalog listing and issuer coverage, date-window
 exclusions and a bounded primary-filing sample. It does not satisfy the full
 thirty-metric target or equate evaluated securities with known values.
+
+The next increment adds reported cash and cash equivalents and parent
+stockholders' equity from exact USD Q4 instant concepts. This expands twenty
+fields to twenty-two and fifteen Frames to seventeen while retaining all old
+calculations and saved layouts. Parent equity excludes temporary equity and
+noncontrolling interests; cash does not substitute broader restricted-cash
+variants. Signed deficits, per-field filing/date references and unknown reasons
+remain visible. Coverage and varied primary-filing reconciliation are required.
+Deliver both related fields together, run independent evidence work alongside
+the release gates, and reuse established verification helpers. Preserve the
+existing acceptance gates and avoid unrelated infrastructure work.
 
 Recent watchlist filing loads are also delivered; their broader source coverage
 remains a separate validation task.

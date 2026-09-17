@@ -80,6 +80,8 @@ const columnViews = {
       "currentAssetsLessCurrentLiabilities",
       "totalAssets",
       "totalLiabilities",
+      "cashAndCashEquivalents",
+      "stockholdersEquity",
     ],
   },
   all: { label: "All metrics", metrics },
@@ -216,6 +218,8 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenueGrowth: "Selected revenue YoY change (%)",
   totalAssets: "Reported total assets (USD)",
   totalLiabilities: "Reported total liabilities (USD)",
+  cashAndCashEquivalents: "Reported cash and cash equivalents (USD)",
+  stockholdersEquity: "Reported stockholders' equity (USD)",
 };
 const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   revenue:
@@ -250,6 +254,10 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported Assets in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Zero and negative reported amounts retain their signs. Independent of current assets, total liabilities and the revenue basis; inspect this amount’s actual balance date and filing.",
   totalLiabilities:
     "Reported Liabilities in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. Zero and negative reported amounts retain their signs. This is total reported liabilities, not financial debt or an assets-minus-equity calculation. Independent of current liabilities, total assets and the revenue basis; inspect this amount’s actual balance date and filing.",
+  cashAndCashEquivalents:
+    "Reported CashAndCashEquivalentsAtCarryingValue in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. This exact carrying amount covers cash and short-term, highly liquid cash equivalents. Broader cash-and-restricted-cash concepts are not substituted. It does not measure net cash or cash available to spend. Zero and negative reported amounts retain their signs. Independent of the revenue basis; inspect this amount’s actual balance date and filing.",
+  stockholdersEquity:
+    "Reported StockholdersEquity in USD. The screen uses balances dated October 1 through December 31 of the selected year, inclusive. This is equity (deficit) attributable to the parent, excluding temporary equity and noncontrolling interests; broader equity concepts are not substituted. Zero and negative reported equity retain their signs. No assets-minus-liabilities calculation fills missing equity. Independent of the revenue basis; inspect this amount’s actual balance date and filing.",
   currentRatio:
     "Current assets / current liabilities, in multiples. Requires nonnegative assets, positive liabilities, and every reference to share the same actual balance date within Q4 and filing accession. Rounded half-up to two decimal places; inclusive filters compare the displayed rounded multiple. Independent of the revenue basis.",
   currentAssetsLessCurrentLiabilities:
@@ -349,6 +357,19 @@ function reportedTotalUnknownExplanation(
   if (cell.reason === "source_unavailable")
     return "The SEC source for this exact reported total is unavailable. Other fields remain independent; a failed source is never treated as zero.";
   return "The exact reported total is missing or unresolved. Other fields remain independent; a missing total is never treated as zero or filled from another concept.";
+}
+
+function reportedCashEquityUnknownExplanation(
+  cell: PersonalFinancialScreenCellDto,
+): string {
+  if (cell.status !== "unavailable") return "";
+  if (cell.reason === "unsupported_balance_date")
+    return "The reported amount has an actual balance date outside October 1–December 31 of the selected year. The retained date and amount remain visible below; the Q4 frame label does not establish a December 31 balance.";
+  if (cell.reason === "conflicting")
+    return "The exact reported concept is unresolved because its source facts conflict or were quarantined. A different cash or equity concept does not replace it.";
+  if (cell.reason === "source_unavailable")
+    return "The SEC source for this exact reported concept is unavailable. Other fields remain independent; a failed source is never treated as zero.";
+  return "The exact reported concept is missing or unresolved. Other fields remain independent; a missing amount is never treated as zero, calculated from other fields or filled from another concept.";
 }
 
 function currentBalanceDifferenceUnknownExplanation(
@@ -1004,7 +1025,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "10.0.0",
+          schemaVersion: "11.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -2039,7 +2060,7 @@ export function PersonalFinancialScreener({
         {savedMessage}
       </p>
       <p className="fcff-dcf-caveat">
-        SEC annual frames select facts aligned to a calendar year; the four
+        SEC annual frames select facts aligned to a calendar year; the six
         balance-sheet sources use its Q4 instant frame. These are historical
         reported values, with no prices, trailing-twelve-month estimates, growth
         forecasts, or historical universe reconstruction. Sources can be
@@ -2477,7 +2498,9 @@ function FinancialResults({
                     <th scope="row">
                       {labels[metric]}
                       {metric !== "totalAssets" &&
-                        metric !== "totalLiabilities" && (
+                        metric !== "totalLiabilities" &&
+                        metric !== "cashAndCashEquivalents" &&
+                        metric !== "stockholdersEquity" && (
                           <>
                             <br />
                             <small>{metricUnitLabel(metric)}</small>
@@ -2538,7 +2561,9 @@ function FinancialResults({
                     metric !== "currentRatio" &&
                     metric !== "currentAssetsLessCurrentLiabilities" &&
                     metric !== "totalAssets" &&
-                    metric !== "totalLiabilities" && (
+                    metric !== "totalLiabilities" &&
+                    metric !== "cashAndCashEquivalents" &&
+                    metric !== "stockholdersEquity" && (
                       <>
                         <br />
                         <small>{metricUnitLabel(metric)}</small>
@@ -2854,6 +2879,8 @@ function FinancialCellDetails({
         "currentAssetsLessCurrentLiabilities",
         "totalAssets",
         "totalLiabilities",
+        "cashAndCashEquivalents",
+        "stockholdersEquity",
       ].includes(metric) && (
         <>
           <p>
@@ -2872,9 +2899,12 @@ function FinancialCellDetails({
             <p>
               {metric === "totalAssets" || metric === "totalLiabilities"
                 ? reportedTotalUnknownExplanation(cell)
-                : metric === "currentAssetsLessCurrentLiabilities"
-                  ? currentBalanceDifferenceUnknownExplanation(cell)
-                  : currentRatioUnknownExplanation(cell)}
+                : metric === "cashAndCashEquivalents" ||
+                    metric === "stockholdersEquity"
+                  ? reportedCashEquityUnknownExplanation(cell)
+                  : metric === "currentAssetsLessCurrentLiabilities"
+                    ? currentBalanceDifferenceUnknownExplanation(cell)
+                    : currentRatioUnknownExplanation(cell)}
             </p>
           )}
         </>

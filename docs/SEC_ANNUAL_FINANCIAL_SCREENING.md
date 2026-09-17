@@ -207,6 +207,40 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Current assets less current liabilities                        | Current assets − current liabilities, on the same actual Q4 date and filing        | USD      |
 | Reported total assets                                          | `Assets`, actual instant balance date                                              | USD      |
 | Reported total liabilities                                     | `Liabilities`, actual instant balance date                                         | USD      |
+| Reported cash and cash equivalents                             | `CashAndCashEquivalentsAtCarryingValue`, actual instant balance date               | USD      |
+| Reported stockholders' equity                                  | `StockholdersEquity`, attributable to parent, actual instant balance date          | USD      |
+
+### Reported cash and stockholders' equity
+
+**Reported cash and cash equivalents (USD)** uses only
+`us-gaap:CashAndCashEquivalentsAtCarryingValue`. The [FASB 2026 documentation](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-doc-2026.xml)
+describes cash, demand deposits and qualifying short-term liquid investments.
+The app does not substitute the broader cash-plus-restricted-cash concept,
+discontinued-operation variants, investments or a cash-flow ending total. It is
+not net cash or a claim that every dollar is freely available.
+
+**Reported stockholders' equity (USD)** uses only `us-gaap:StockholdersEquity`:
+equity or deficit attributable to the parent, excluding temporary equity and
+equity attributable to noncontrolling interests. The broader
+`StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest` concept
+is distinct and never substituted. A negative deficit is a valid signed amount.
+This field is not common equity, tangible equity or market capitalization, and
+the app never reconstructs it from assets minus liabilities.
+
+Both concepts are monetary instant items in the [FASB schema](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-2026.xsd).
+Use the exact USD Q4 Frame with each amount's own actual balance date and filing.
+The existing October 1–December 31 rule applies; zero and negative values retain
+their signs. Source filings may differ even within one issuer and date. Missing,
+failed, conflicting or out-of-window data stays unknown independently for each
+field. No implied cash/equity ratio or cross-field identity is introduced.
+
+The fields appear in Q4 balances, All metrics, individual columns, filtering,
+sorting, source inspection, comparison and explicit saved views. Q4 balances now
+contains eight fields. Overview and starter definitions stay unchanged. Existing
+literal saved column lists retain their exact contents; loading never appends a
+new field. An explicit edit and save is required. Twenty-two fields leave the
+thirty-metric breadth target open. Dated production coverage and primary-filing
+checks, including variants and negative equity, belong in the release handoff.
 
 ### Reported total assets and total liabilities
 
@@ -543,9 +577,9 @@ load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "10.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly twenty metric
-and coverage keys, twelve current sources, and three separately typed
+Financial-screen requests and responses use `schemaVersion: "11.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly twenty-two metric
+and coverage keys, fourteen current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
 reference shapes. Deploy the API and browser together: old browser
@@ -557,12 +591,12 @@ criteria-only records and `schemaVersion: 2` for reusable column selections.
 An explicit new save writes v2; existing v1 records do not change on read. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are preserved. Existing criteria load with their original meanings and make a
-fresh v10 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v11 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
 The seven-clause limit is unchanged; the cash-difference percentage is an
 additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. The two directly reported balance totals introduce no new
+than drop a filter. The directly reported balance totals, cash and equity introduce no new
 formula; screen formula-set version 1.7.0 remains unchanged. It includes
 `operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
 expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
@@ -596,8 +630,8 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches fifteen fixed cross-company Frames sequentially: eight
-  unchanged annual requests followed by four Q4 instant requests and three prior
+- One operation fetches seventeen fixed cross-company Frames sequentially: eight
+  unchanged annual requests followed by six Q4 instant requests and three prior
   revenue requests, at
   fewer than five requests per second. Each request has a 10-second deadline,
   an 8 MiB response cap and 50,000-row bound. Redirects and arbitrary URLs
@@ -688,8 +722,8 @@ period/filing eligibility, deterministic unknown reasons, signed and extreme
 decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
 stable pages and saved-definition compatibility. Browser cases reject forged
 values, references and reasons, including maximum-length results. Cache tests
-verify fifteen initial reads, no additional reads when changing revenue basis, and
-fifteen reads on explicit refresh. Actual live ratio coverage and bounded primary
+verify seventeen initial reads, no additional reads when changing revenue basis, and
+seventeen reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
 

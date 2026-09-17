@@ -41,6 +41,8 @@ const reportedInstantConcepts = {
   currentLiabilities: "LiabilitiesCurrent",
   totalAssets: "Assets",
   totalLiabilities: "Liabilities",
+  cashAndCashEquivalents: "CashAndCashEquivalentsAtCarryingValue",
+  stockholdersEquity: "StockholdersEquity",
 } as const;
 const allConcepts = [...concepts, ...instantConcepts];
 const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
@@ -141,7 +143,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "10.0.0" ||
+    input.schemaVersion !== "11.0.0" ||
     (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
@@ -432,7 +434,7 @@ function isResponse(
       ],
       true,
     ) ||
-    value.schemaVersion !== "10.0.0" ||
+    value.schemaVersion !== "11.0.0" ||
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
