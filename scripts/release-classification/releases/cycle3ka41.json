@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "caseNumber": 41,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "c18d3abf419c89efb3b50e49727090c5b1e24862",
+  "featureRevision": "01ead58895df7744ada08792ba48143199a6d1b7",
+  "featureCount": 183,
+  "closureCount": 184,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-sec-financial-provider.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-request-scheduler.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-screen-api.ts",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_FINANCIAL_VIEWS.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "status": "M" },
+    { "path": "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-financial-screener.ts",
+      "status": "M"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka41.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka41.json",
+  "presentation": {
+    "featureDescription": "reported investing and financing cash flows",
+    "closureDescription": "reported investing and financing cash flows",
+    "inventoryDescription": "reported investing and financing cash flows",
+    "testBinding": "reportedActivityCashFlows",
+    "routingDescription": "reported investing and financing cash flows",
+    "summaryDescription": "reported investing and financing cash flows"
+  }
+}

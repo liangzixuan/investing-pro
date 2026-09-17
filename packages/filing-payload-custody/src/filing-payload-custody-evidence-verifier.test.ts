@@ -420,6 +420,10 @@ import {
   isCycle3ka40FeatureTopologyAllowed,
   isCycle3ka40RoutingClosureCommitDiffSetAllowed,
   isCycle3ka40RoutingClosureTopologyAllowed,
+  isCycle3ka41FeatureCommitDiffSetAllowed,
+  isCycle3ka41FeatureTopologyAllowed,
+  isCycle3ka41RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka41RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1380,6 +1384,10 @@ const CYCLE_3K_A39_ROUTING_CLOSURE_REVISION =
   "2fc90bee3bcc6fe4dfad61cc51d28926f78518bc" as const;
 const CYCLE_3K_A40_FEATURE_REVISION =
   "0b522973a3164199cb0bf4b3c030cba4d985d4ea" as const;
+const CYCLE_3K_A40_ROUTING_CLOSURE_REVISION =
+  "c18d3abf419c89efb3b50e49727090c5b1e24862" as const;
+const CYCLE_3K_A41_FEATURE_REVISION =
+  "01ead58895df7744ada08792ba48143199a6d1b7" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -6678,6 +6686,80 @@ const CYCLE_3K_A40_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka40.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A41_FEATURE_TRANSITION = [
+  { path: "apps/api/src/personal-sec-financial-provider.test.ts", status: "M" },
+  { path: "apps/api/src/personal-sec-request-scheduler.test.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-financial-screen-routes.test.ts",
+    status: "M",
+  },
+  { path: "apps/api/src/workspace-financial-screen-routes.ts", status: "M" },
+  {
+    path: "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/lib/personal-financial-screen-api.test.ts",
+    status: "M",
+  },
+  { path: "apps/web/src/lib/personal-financial-screen-api.ts", status: "M" },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "docs/PERSONAL_FINANCIAL_VIEWS.md", status: "M" },
+  { path: "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", status: "M" },
+  { path: "docs/SEC_ANNUAL_FINANCIAL_SCREENING.md", status: "M" },
+  {
+    path: "packages/contracts/src/personal-financial-screener.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-screener.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/personal-financial-analytics/src/personal-financial-screener.ts",
+    status: "M",
+  },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3K_A41_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka41.json",
     status: "A",
   },
 ];
@@ -18766,6 +18848,120 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedReportedCashEquityClosure = [
+      "182",
+      "182",
+      CYCLE_3K_A40_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A40_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A40_FEATURE_REVISION}`,
+      reportedCashEquityFeature,
+    ] as const;
+    expect(
+      isCycle3ka40RoutingClosureTopologyAllowed(
+        ...pinnedReportedCashEquityClosure,
+      ),
+    ).toBe(true);
+    const reportedActivityCashFlowsFeature = [
+      "183",
+      "183",
+      CYCLE_3K_A41_FEATURE_REVISION,
+      `${CYCLE_3K_A41_FEATURE_REVISION} ${CYCLE_3K_A40_ROUTING_CLOSURE_REVISION}`,
+      pinnedReportedCashEquityClosure,
+    ] as const;
+    expect(
+      isCycle3ka41FeatureTopologyAllowed(...reportedActivityCashFlowsFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "182"],
+      [1, "184"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A41_FEATURE_REVISION} ${CYCLE_3K_A40_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A41_FEATURE_REVISION} ${CYCLE_3K_A40_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...reportedActivityCashFlowsFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka41FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka41FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedReportedCashEquityClosure: unknown[] = [
+      ...pinnedReportedCashEquityClosure,
+    ];
+    tamperedPinnedReportedCashEquityClosure[4] =
+      tamperedReportedCashEquityFeature;
+    expect(
+      isCycle3ka41FeatureTopologyAllowed(
+        "183",
+        "183",
+        CYCLE_3K_A41_FEATURE_REVISION,
+        `${CYCLE_3K_A41_FEATURE_REVISION} ${CYCLE_3K_A40_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedReportedCashEquityClosure as unknown as Parameters<
+          typeof isCycle3ka41FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const reportedActivityCashFlowsClosureRevision = "e".repeat(40);
+    const reportedActivityCashFlowsClosure = [
+      "184",
+      "184",
+      reportedActivityCashFlowsClosureRevision,
+      `${reportedActivityCashFlowsClosureRevision} ${CYCLE_3K_A41_FEATURE_REVISION}`,
+      reportedActivityCashFlowsFeature,
+    ] as const;
+    expect(
+      isCycle3ka41RoutingClosureTopologyAllowed(
+        ...reportedActivityCashFlowsClosure,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "183"],
+      [1, "185"],
+      [2, CYCLE_3K_A41_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${reportedActivityCashFlowsClosureRevision} ${CYCLE_3K_A40_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${reportedActivityCashFlowsClosureRevision} ${CYCLE_3K_A41_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...reportedActivityCashFlowsClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka41RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka41RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedReportedActivityCashFlowsFeature: unknown[] = [
+      ...reportedActivityCashFlowsFeature,
+    ];
+    tamperedReportedActivityCashFlowsFeature[4] =
+      tamperedPinnedReportedCashEquityClosure;
+    expect(
+      isCycle3ka41RoutingClosureTopologyAllowed(
+        "184",
+        "184",
+        reportedActivityCashFlowsClosureRevision,
+        `${reportedActivityCashFlowsClosureRevision} ${CYCLE_3K_A41_FEATURE_REVISION}`,
+        tamperedReportedActivityCashFlowsFeature as unknown as Parameters<
+          typeof isCycle3ka41RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -19701,6 +19897,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A40_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka41FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A41_FEATURE_TRANSITION,
+      16,
+    );
+    expectExactTransition(
+      isCycle3ka41RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A41_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -19888,6 +20094,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A39_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A40_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A40_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A41_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A41_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -20127,6 +20335,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A39_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A40_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A40_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A41_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A41_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);
