@@ -10,6 +10,8 @@ export const PERSONAL_FINANCIAL_SCREEN_ANNUAL_METRICS = [
   "financingCashFlow",
   "commonDividendsPaid",
   "commonStockRepurchases",
+  "interestPaidNet",
+  "incomeTaxesPaidNet",
   "netMargin",
   "operatingMargin",
   "operatingCashFlowMargin",
@@ -56,6 +58,8 @@ export const PERSONAL_SEC_ANNUAL_CONCEPTS = [
   "NetCashProvidedByUsedInFinancingActivities",
   "PaymentsOfDividendsCommonStock",
   "PaymentsForRepurchaseOfCommonStock",
+  "InterestPaidNet",
+  "IncomeTaxesPaidNet",
   "GrossProfit",
   "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const;
@@ -247,7 +251,7 @@ export interface PersonalFinancialScreenWatchlistResponseScopeDto extends Person
   readonly totalWatchlistListings: number;
 }
 export interface PersonalFinancialScreenRequestDto {
-  readonly schemaVersion: "13.0.0";
+  readonly schemaVersion: "14.0.0";
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly financialSnapshotSha256: `sha256:${string}` | null;
   readonly criteria: PersonalFinancialScreenCriteriaDto;
@@ -274,7 +278,7 @@ export interface PersonalFinancialScreenRowDto {
   >;
 }
 export interface PersonalFinancialScreenResponseDto {
-  readonly schemaVersion: "13.0.0";
+  readonly schemaVersion: "14.0.0";
   /** Present exactly for a watchlist-scoped request; counts cover its selection. */
   readonly scope?: PersonalFinancialScreenWatchlistResponseScopeDto;
   readonly instantQuarter: 4;

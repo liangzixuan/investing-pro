@@ -15,7 +15,27 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: common-stock payments
+## Immediate delivery: interest and income-tax cash payments
+
+Add **Reported interest paid excluding capitalized interest (USD)** and
+**Reported income taxes paid net of refunds (USD)** using only `InterestPaidNet`
+and `IncomeTaxesPaidNet`. Interest is cash classified as operating activity,
+excluding capitalized cash interest; it is not net of interest receipts. Income
+taxes are cash paid to foreign, federal, state and local jurisdictions after
+refunds. Preserve reported signs, zero and each exact annual period and filing.
+Expense, broader payment and component concepts never replace missing facts.
+
+Expand twenty-six fields to twenty-eight and twenty-one Frames to twenty-three.
+Use explicit columns, filters, sorting, comparison, source inspection and saved
+views. All existing presets, starters and literal saved layouts stay unchanged;
+no new preset is needed. Coordinate transport v14 without changing formula-set1.7
+or saved payload versions. Verify production coverage and bounded primary
+evidence, including tax refunds, zero payments and 52/53-week periods. Do not
+subtract these amounts from operating cash flow or derive interest coverage,
+effective tax rates or cash available to shareholders. The thirty-metric breadth
+target and broad joint eligibility remain open.
+
+## Delivered: common-stock payments
 
 Add **Reported common dividends paid (USD)** and **Reported common stock
 repurchase payments (USD)** using only `PaymentsOfDividendsCommonStock` and
@@ -33,6 +53,12 @@ formula-set1.7 or saved payload versions. Measure actual coverage and reconcile
 bounded primary filings, including zero and non-calendar periods. These amounts
 do not establish dividend yield, payout ratios or net buybacks. The thirty-metric
 breadth target and broad joint coverage remain open.
+
+Release `4426fcaf` passed 6,371 native checks, 24 builds, all six hosted jobs on
+attempt1 and configured Brave checks. Production evaluation covered 3,227
+listings; common dividends were known for 583 and common-stock repurchases for
+1,377. Five primary filings were inspected. The release checkpoint retains
+issuer counts, source limits and dated acceptance evidence.
 
 ## Delivered: reported investing and financing cash flows
 

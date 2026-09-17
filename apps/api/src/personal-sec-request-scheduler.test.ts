@@ -249,7 +249,7 @@ describe("shared SEC request scheduler", () => {
     expect(rows.every((row) => row.status === "available")).toBe(true);
     expect(evidence.sources.companyFacts.status).toBe("available");
     expect(evidence.sources.submissions.status).toBe("available");
-    expect(snapshot.frames).toHaveLength(12);
+    expect(snapshot.frames).toHaveLength(14);
     expect(snapshot.instantFrames).toHaveLength(6);
     expect(
       snapshot.instantFrames.every((frame) => frame.status === "available"),
@@ -261,15 +261,15 @@ describe("shared SEC request scheduler", () => {
         (frame) => frame.status === "available",
       ),
     ).toBe(true);
-    expect(starts).toHaveLength(25);
+    expect(starts).toHaveLength(27);
     const refresh = annual.loadSnapshot(2025, undefined, true);
     filings.close();
     const replacement = createSecPersonalFilingsProvider(USER_AGENT, { fetch });
     const third = replacement.loadFilings([CIK], FROM, THROUGH);
     await vi.runAllTimersAsync();
     await Promise.all([refresh, third]);
-    expect(starts).toHaveLength(47);
-    expect(wait).toHaveBeenCalledTimes(47);
+    expect(starts).toHaveLength(51);
+    expect(wait).toHaveBeenCalledTimes(51);
     assertSpaced(starts);
     const count = fetch.mock.calls.length;
     await annual.loadSnapshot(2025);
@@ -311,7 +311,7 @@ describe("shared SEC request scheduler", () => {
       const retry = load();
       await vi.runAllTimersAsync();
       await retry;
-      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 21 : 1);
+      expect(fetch).toHaveBeenCalledTimes(kind === "annual" ? 23 : 1);
       annual.close();
       filings.close();
     },

@@ -41,6 +41,8 @@ const reportedAnnualConcepts = {
   financingCashFlow: "NetCashProvidedByUsedInFinancingActivities",
   commonDividendsPaid: "PaymentsOfDividendsCommonStock",
   commonStockRepurchases: "PaymentsForRepurchaseOfCommonStock",
+  interestPaidNet: "InterestPaidNet",
+  incomeTaxesPaidNet: "IncomeTaxesPaidNet",
 } as const;
 const reportedInstantConcepts = {
   currentAssets: "AssetsCurrent",
@@ -149,7 +151,7 @@ export async function screenPersonalFinancials(
       "page",
       "refresh",
     ]) ||
-    input.schemaVersion !== "13.0.0" ||
+    input.schemaVersion !== "14.0.0" ||
     (Object.hasOwn(input, "scope") && !watchlistScope(input.scope)) ||
     !sha(input.catalogSnapshotSha256) ||
     (input.financialSnapshotSha256 !== null &&
@@ -440,7 +442,7 @@ function isResponse(
       ],
       true,
     ) ||
-    value.schemaVersion !== "13.0.0" ||
+    value.schemaVersion !== "14.0.0" ||
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
@@ -940,7 +942,9 @@ function cell(
     metric === "investingCashFlow" ||
     metric === "financingCashFlow" ||
     metric === "commonDividendsPaid" ||
-    metric === "commonStockRepurchases"
+    metric === "commonStockRepurchases" ||
+    metric === "interestPaidNet" ||
+    metric === "incomeTaxesPaidNet"
       ? reportedAnnualConcepts[metric]
       : null;
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
@@ -1032,6 +1036,8 @@ function cell(
       "financingCashFlow",
       "commonDividendsPaid",
       "commonStockRepurchases",
+      "interestPaidNet",
+      "incomeTaxesPaidNet",
     ].includes(metric)
   )
     return valid;
@@ -1289,7 +1295,9 @@ function admittedSource(
     metric === "investingCashFlow" ||
     metric === "financingCashFlow" ||
     metric === "commonDividendsPaid" ||
-    metric === "commonStockRepurchases"
+    metric === "commonStockRepurchases" ||
+    metric === "interestPaidNet" ||
+    metric === "incomeTaxesPaidNet"
   )
     return concept === reportedAnnualConcepts[metric];
   if (metric === "operatingCashFlowLessPpePurchases")
@@ -1309,7 +1317,9 @@ function admittedSource(
     concept !== "NetCashProvidedByUsedInInvestingActivities" &&
     concept !== "NetCashProvidedByUsedInFinancingActivities" &&
     concept !== "PaymentsOfDividendsCommonStock" &&
-    concept !== "PaymentsForRepurchaseOfCommonStock"
+    concept !== "PaymentsForRepurchaseOfCommonStock" &&
+    concept !== "InterestPaidNet" &&
+    concept !== "IncomeTaxesPaidNet"
   );
 }
 

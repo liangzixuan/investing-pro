@@ -166,7 +166,7 @@ through the existing saved-definition flow. New saves use payload v2 with no
 starter identifier; legacy v1 definitions remain readable and contain no column
 preference. The financial source set and formulas are unchanged.
 
-The twelve current annual concepts use the public endpoint template
+The fourteen current annual concepts use the public endpoint template
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}.json`.
 Six balance-sheet concepts use
 `https://data.sec.gov/api/xbrl/frames/us-gaap/{concept}/USD/CY{year}Q4I.json`.
@@ -196,6 +196,8 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Reported financing cash flow                                   | `NetCashProvidedByUsedInFinancingActivities`, as reported                             | USD      |
 | Reported common dividends paid                                 | `PaymentsOfDividendsCommonStock`, ordinary dividends to common shareholders of parent | USD      |
 | Reported common stock repurchase payments                      | `PaymentsForRepurchaseOfCommonStock`, as reported                                     | USD      |
+| Reported interest paid excluding capitalized interest          | `InterestPaidNet`, cash operating interest excluding capitalized interest             | USD      |
+| Reported income taxes paid net of refunds                      | `IncomeTaxesPaidNet`, cash income taxes after refunds                                 | USD      |
 | Net margin                                                     | Net income / revenue × 100                                                            | percent  |
 | Operating margin                                               | Operating income / revenue × 100                                                      | percent  |
 | Operating cash flow margin                                     | Operating cash flow / revenue × 100                                                   | percent  |
@@ -213,6 +215,41 @@ set an aggregate ceiling of 10 requests per second. Reviewed 2026-09-09.
 | Reported total liabilities                                     | `Liabilities`, actual instant balance date                                            | USD      |
 | Reported cash and cash equivalents                             | `CashAndCashEquivalentsAtCarryingValue`, actual instant balance date                  | USD      |
 | Reported stockholders' equity                                  | `StockholdersEquity`, attributable to parent, actual instant balance date             | USD      |
+
+### Reported interest and income-tax cash payments
+
+**Reported interest paid excluding capitalized interest (USD)** uses only
+`us-gaap:InterestPaidNet`: cash interest classified as operating activity,
+excluding capitalized interest. It includes specified payments for accreted
+debt discounts. The source does not mean interest paid net of interest receipts.
+**Reported income taxes paid net of refunds (USD)** uses only
+`us-gaap:IncomeTaxesPaidNet`: cash income tax paid to foreign, federal, state
+and local jurisdictions after refunds. These scopes follow the
+[FASB 2026 definitions](https://xbrl.fasb.org/us-gaap/2026/elts/us-gaap-doc-2026.xml).
+Neither definition states an explicit continuing/discontinued-operations
+restriction; none is inferred here.
+
+Both are direct annual USD amounts. Keep signed values and zero; positive
+payments mean cash paid and a negative net tax amount reflects net refunds.
+Each keeps its own actual dates and accession, independently of revenue and
+other cash flows. The existing 335–395 inclusive-day window and selected-year
+sanity bound apply, including eligible 52/53-week and non-December periods.
+
+`InterestPaid` includes capitalized cash interest and is not a fallback.
+`InterestPaidCapitalized`, `IncomeTaxesPaid` before refunds, expense concepts,
+refund components and custom tags never replace missing exact observations.
+Missing, invalid, conflicting or failed sources leave the affected amount
+unknown. Frame absence does not establish no payment or an absent filing tag.
+Do not subtract either amount from operating cash flow again or derive interest
+coverage, effective tax rates, debt service or shareholder cash from this slice.
+
+Choose the fields individually or in All metrics, then use filters, sorting,
+source details, comparison and explicit saved views. Existing presets and
+starters remain unchanged. Old twenty-six calculations and their relative order,
+including literal saved column lists, are preserved. Transport v14 coordinates
+twenty-eight fields and twenty-three Frames; formula-set1.7 and saved payload
+versions remain unchanged. Actual coverage and primary evidence are recorded
+in the release checkpoint; marginal coverage does not establish joint eligibility.
 
 ### Reported common-stock payments
 
@@ -242,8 +279,9 @@ also support All metrics, individual columns, filters, sorting, source inspectio
 comparison and explicit saved views. The eight-column Cash flow preset, all
 twenty-four previous calculations and their relative order, Overview, Q4 balances,
 starters and literal saved layouts remain unchanged. Loading an old view adds no
-field, request or write. Transport v13 coordinates twenty-six fields and twenty-one
-Frames; formula-set1.7 and saved payload versions remain unchanged. Sparse exact
+field, request or write. The common-stock payment release introduced transport v13;
+current transport v14 also includes interest and income-tax cash payments.
+Formula-set1.7 and saved payload versions remain unchanged. Sparse exact
 concept coverage does not establish the roadmap's broader coverage gate.
 
 ### Reported investing and financing cash flows
@@ -643,14 +681,14 @@ Existing four-field saved criteria remain valid and retain the agreement rule.
 The optional `revenueBasis` stores an explicit choice. Omitted-basis requests omit
 the corresponding response property; explicit requests echo the basis, which the
 strict browser client checks against the request. Unedited saved definitions are
-not rewritten. Choosing a revenue basis adds no source reads to the twenty-one-Frame
+not rewritten. Choosing a revenue basis adds no source reads to the twenty-three-Frame
 load.
 
 ### Screening and saved-definition compatibility
 
-Financial-screen requests and responses use `schemaVersion: "13.0.0"` at the
-existing route. The response requires `instantQuarter: 4`, exactly twenty-six metric
-and coverage keys, eighteen current sources, and three separately typed
+Financial-screen requests and responses use `schemaVersion: "14.0.0"` at the
+existing route. The response requires `instantQuarter: 4`, exactly twenty-eight metric
+and coverage keys, twenty current sources, and three separately typed
 `priorRevenueSources` with `priorCalendarYear = calendarYear - 1`. Growth cells
 retain typed current/prior operands and source roles without changing old cell
 reference shapes. Deploy the API and browser together: old browser
@@ -662,12 +700,12 @@ criteria-only records and `schemaVersion: 2` for reusable column selections.
 An explicit new save writes v2; existing v1 records do not change on read. Their
 record ID, existing view IDs, names, creation digests and version/conflict behavior
 are preserved. Existing criteria load with their original meanings and make a
-fresh v13 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
+fresh v14 request only when explicitly run. Fixed Q4 and derived prior year add no criteria property or
 saved default; the original four/five-field criteria grammar is unchanged.
 The seven-clause limit is unchanged; the cash-difference percentage is an
 additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
-than drop a filter. The directly reported common-stock payments, activity cash flows, balance totals, cash and equity introduce no new
+than drop a filter. The directly reported interest/tax payments, common-stock payments, activity cash flows, balance totals, cash and equity introduce no new
 formula; screen formula-set version 1.7.0 remains unchanged. It includes
 `operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
 expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
@@ -701,7 +739,7 @@ IFRS concepts or unsupported custom extensions.
 - Coverage is measured over the identity-filtered cohort. Match, non-match
   and unknown counts reconcile to that cohort. Missing, conflicting,
   incompatible and failed-source values never become zero.
-- One operation fetches twenty-one fixed cross-company Frames sequentially: twelve
+- One operation fetches twenty-three fixed cross-company Frames sequentially: fourteen
   annual requests followed by six Q4 instant requests and three prior
   revenue requests, at
   fewer than five requests per second. Each request has a 10-second deadline,
@@ -742,11 +780,22 @@ No polling, automatic source refresh, extra request or credential storage is add
 
 ### Financial acceptance
 
+Interest/tax payment acceptance verifies exact concepts and documented scope,
+signed/zero values, independent periods and filings, unchanged annual eligibility
+and strict transport admission. Reject broader payments, capitalized-interest,
+expense and refund-component substitutes. Verify each failed new source leaves
+the other twenty-seven metrics intact across all revenue bases and compare the
+old twenty-six full cells and evidence under identical source inputs. Preserve
+literal v1/v2 saved layouts and all presets. Exercise explicit columns, filters,
+sort, source details, comparison and save/load in Brave using synthetic records.
+Measure listing and issuer coverage separately and reconcile bounded primary
+filings. Preliminary source feasibility does not establish release acceptance.
+
 Common-stock payment acceptance verifies exact concepts, reported signed and zero
 values, independent dates and accessions, annual eligibility and strict response
 admission. Reject broader/preferred substitutes and malformed or duplicate facts.
-Verify each source failure preserves all other twenty-five metrics across all
-revenue bases, all old twenty-four calculations and literal saved layouts, and the
+Verify each source failure preserves every other metric across all
+revenue bases, prior calculations and literal saved layouts, and the
 unchanged Cash flow preset. Exercise the separate two-column preset, filters,
 comparison, source details and explicit save/load in the isolated Brave fixture.
 Measure production listing/issuer coverage and reconcile a bounded primary-filing
@@ -804,8 +853,8 @@ period/filing eligibility, deterministic unknown reasons, signed and extreme
 decimal inputs, half-up boundaries, rounded thresholds, source-failure isolation,
 stable pages and saved-definition compatibility. Browser cases reject forged
 values, references and reasons, including maximum-length results. Cache tests
-verify twenty-one initial reads, no additional reads when changing revenue basis, and
-twenty-one reads on explicit refresh. Actual live ratio coverage and bounded primary
+verify twenty-three initial reads, no additional reads when changing revenue basis, and
+twenty-three reads on explicit refresh. Actual live ratio coverage and bounded primary
 filing comparisons belong in the local release handoff; synthetic cases and the
 historical observations below do not establish coverage of this new ratio.
 

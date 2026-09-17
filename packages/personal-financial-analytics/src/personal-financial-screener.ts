@@ -82,6 +82,8 @@ const METRICS = [
   "financingCashFlow",
   "commonDividendsPaid",
   "commonStockRepurchases",
+  "interestPaidNet",
+  "incomeTaxesPaidNet",
   "netMargin",
   "operatingMargin",
   "operatingCashFlowMargin",
@@ -115,6 +117,8 @@ const CONCEPTS = [
   "NetCashProvidedByUsedInFinancingActivities",
   "PaymentsOfDividendsCommonStock",
   "PaymentsForRepurchaseOfCommonStock",
+  "InterestPaidNet",
+  "IncomeTaxesPaidNet",
   "GrossProfit",
   "PaymentsToAcquirePropertyPlantAndEquipment",
 ] as const satisfies readonly PersonalSecAnnualConceptDto[];
@@ -306,7 +310,7 @@ export function evaluatePersonalFinancialScreen(
     }
     matches.sort((left, right) => compareRows(left, right, criteria.sort));
     return {
-      schemaVersion: "13.0.0",
+      schemaVersion: "14.0.0",
       instantQuarter: 4,
       catalogSnapshotSha256,
       financialSnapshotSha256: snapshot.snapshotSha256,
@@ -415,6 +419,8 @@ function buildMetrics(
       ["PaymentsForRepurchaseOfCommonStock"],
       frames,
     ),
+    interestPaidNet: resolveReported(cik, ["InterestPaidNet"], frames),
+    incomeTaxesPaidNet: resolveReported(cik, ["IncomeTaxesPaidNet"], frames),
     netMargin: margin(netIncome, revenue),
     operatingMargin: margin(operatingIncome, revenue),
     operatingCashFlowMargin: margin(operatingCashFlow, revenue),

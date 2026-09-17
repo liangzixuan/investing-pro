@@ -1487,7 +1487,7 @@ totals. These activity categories do not establish the change in cash or a
 universal quality ranking. Verify actual coverage and varied primary filings,
 including zero and 52/53-week observations when available.
 
-The next increment adds reported common dividends paid and common-stock
+The delivered increment adds reported common dividends paid and common-stock
 repurchase payments from exact annual USD concepts. It expands twenty-four
 fields to twenty-six and nineteen Frames to twenty-one. Ordinary dividends to
 common shareholders of the parent stay distinct from total/preferred dividends;
@@ -1498,6 +1498,17 @@ yield, payout-ratio or net-buyback inference. A separate two-column Common stock
 payments preset leaves the existing Cash flow preset and saved layouts intact.
 Measure actual coverage and bounded primary evidence; neither the thirty-metric
 target nor broad joint eligibility is complete.
+
+The next increment adds reported cash interest excluding capitalized interest
+and cash income taxes net of refunds from exact annual USD concepts. This expands
+twenty-six fields to twenty-eight and twenty-one Frames to twenty-three. Cash
+payments remain distinct from expense measures, broader payment tags and
+components. Keep signs, zero, independent periods/filings and unknown reasons.
+Use explicit columns and existing screen tools; all presets, starters and old
+saved layouts stay unchanged. Verify actual coverage and bounded primary samples,
+including net tax refunds, zero and 52/53-week periods. Do not subtract these
+payments from operating cash flow again or infer interest coverage or tax rates.
+This slice does not complete the thirty-metric or broad joint-coverage targets.
 
 Deliver both related fields together, run independent evidence work alongside
 the release gates, and reuse established verification helpers. Preserve the

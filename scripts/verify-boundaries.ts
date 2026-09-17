@@ -5481,6 +5481,31 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       /"PaymentsOfDividendsCommonStock",\s*"PaymentsForRepurchaseOfCommonStock"/u,
       '"PaymentsForRepurchaseOfCommonStock", "PaymentsOfDividendsCommonStock"',
     ),
+    ...[
+      [
+        "InterestPaidNet",
+        "InterestPaid",
+        "InterestPaidCapitalized",
+        "InterestExpense",
+      ],
+      [
+        "IncomeTaxesPaidNet",
+        "IncomeTaxesPaid",
+        "IncomeTaxExpenseBenefit",
+        "IncomeTaxRefundsDiscontinuedOperations",
+      ],
+    ].flatMap(([concept, ...alternates]) => [
+      secConcepts.replace(`"${concept}",`, ""),
+      ...alternates.flatMap((alternate) => [
+        secConcepts.replace(`"${concept}"`, `"${alternate}"`),
+        secConcepts.replace(`"${concept}"`, `"${concept}", "${alternate}"`),
+      ]),
+      secConcepts.replace('"GrossProfit"', `"${concept}"`),
+    ]),
+    secConcepts.replace(
+      /"InterestPaidNet",\s*"IncomeTaxesPaidNet"/u,
+      '"IncomeTaxesPaidNet", "InterestPaidNet"',
+    ),
     secConcepts.replace('"GrossProfit",', ""),
     secConcepts.replace('"GrossProfit"', '"NetIncomeLoss"'),
     secConcepts.replace('"GrossProfit"', '"GrossProfit", "Assets"'),
@@ -7730,6 +7755,8 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
       "NetCashProvidedByUsedInFinancingActivities",
       "PaymentsOfDividendsCommonStock",
       "PaymentsForRepurchaseOfCommonStock",
+      "InterestPaidNet",
+      "IncomeTaxesPaidNet",
       "GrossProfit",
       "PaymentsToAcquirePropertyPlantAndEquipment",
     ]) &&
@@ -7749,7 +7776,7 @@ function personalSecFinancialConceptsViolation(content: string): string | null {
         "SalesRevenueNet",
       ])
     ? null
-    : "SEC financial frames must retain the exact twelve current annual, six instant and three prior revenue concept registries";
+    : "SEC financial frames must retain the exact fourteen current annual, six instant and three prior revenue concept registries";
 }
 
 function personalMarketDataProviderViolation(content: string): string | null {

@@ -211,6 +211,9 @@ const labels: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   financingCashFlow: "Reported financing cash flow (USD)",
   commonDividendsPaid: "Reported common dividends paid (USD)",
   commonStockRepurchases: "Reported common stock repurchase payments (USD)",
+  interestPaidNet:
+    "Reported interest paid excluding capitalized interest (USD)",
+  incomeTaxesPaidNet: "Reported income taxes paid net of refunds (USD)",
   netMargin: "Net margin",
   operatingMargin: "Operating margin",
   operatingCashFlowMargin: "Operating cash flow margin",
@@ -248,6 +251,10 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
     "Reported PaymentsOfDividendsCommonStock in USD: ordinary cash dividends paid to the parent’s common stockholders. Broader distributions, preferred dividends and payments to noncontrolling interests are not substituted. This is a reported payment amount, not dividends per share, a dividend yield, payout ratio or dividend calendar. Independent of the revenue basis; inspect this amount’s actual annual dates and filing.",
   commonStockRepurchases:
     "Reported PaymentsForRepurchaseOfCommonStock in USD: cash paid to reacquire common stock during the period. Broader equity repurchases and preferred-stock repurchases are not substituted. This is a reported payment amount, not net buybacks, shareholder yield or investor return. Independent of the revenue basis; inspect this amount’s actual annual dates and filing.",
+  interestPaidNet:
+    "Reported InterestPaidNet in USD: cash interest paid excluding capitalized interest, classified as operating activity. Includes specified accreted-discount cash settlements; this is not net of interest receipts. Broader interest payments, capitalized interest and accrued interest expense do not substitute. Independent of the revenue basis; inspect this amount's actual annual dates and filing.",
+  incomeTaxesPaidNet:
+    "Reported IncomeTaxesPaidNet in USD: cash income taxes paid to foreign, federal, state and local jurisdictions after refunds. Broader payments before refunds, refund components and accrued income-tax expense do not substitute. Independent of the revenue basis; inspect this amount's actual annual dates and filing.",
   netMargin:
     "Net income / revenue × 100. Requires positive revenue and identical source periods.",
   operatingMargin:
@@ -1043,7 +1050,7 @@ export function PersonalFinancialScreener({
       }
       const result = await screenPersonalFinancials(
         {
-          schemaVersion: "13.0.0",
+          schemaVersion: "14.0.0",
           catalogSnapshotSha256: snapshot.snapshotSha256,
           financialSnapshotSha256,
           criteria: normalized,
@@ -2520,6 +2527,8 @@ function FinancialResults({
                         metric !== "financingCashFlow" &&
                         metric !== "commonDividendsPaid" &&
                         metric !== "commonStockRepurchases" &&
+                        metric !== "interestPaidNet" &&
+                        metric !== "incomeTaxesPaidNet" &&
                         metric !== "totalLiabilities" &&
                         metric !== "cashAndCashEquivalents" &&
                         metric !== "stockholdersEquity" && (
@@ -2581,6 +2590,8 @@ function FinancialResults({
                     metric !== "financingCashFlow" &&
                     metric !== "commonDividendsPaid" &&
                     metric !== "commonStockRepurchases" &&
+                    metric !== "interestPaidNet" &&
+                    metric !== "incomeTaxesPaidNet" &&
                     metric !== "operatingCashFlowToNetIncome" &&
                     metric !== "operatingCashFlowLessPpePurchasesMargin" &&
                     metric !== "revenueGrowth" &&
@@ -2873,6 +2884,18 @@ function FinancialCellDetails({
           : `Unavailable: ${cell.reason.replaceAll("_", " ")}.`}
       </p>
       <p>{formulaFor(metric, revenueBasis)}</p>
+      {(metric === "interestPaidNet" || metric === "incomeTaxesPaidNet") && (
+        <p>
+          Reported positive, zero and negative payments retain their signs.
+          Negative net income-tax payments can reflect net refunds. Missing or
+          unresolved exact reported amounts stay unknown; they do not establish
+          that no payment occurred or that the filing lacks the tag. The source
+          definitions do not specify a continuing/discontinued-operations
+          restriction. Do not subtract these amounts from operating cash flow
+          again or use them alone as interest coverage, a tax rate or a cash
+          available measure.
+        </p>
+      )}
       {(metric === "commonDividendsPaid" ||
         metric === "commonStockRepurchases") && (
         <p>
