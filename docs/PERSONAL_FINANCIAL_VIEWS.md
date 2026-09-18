@@ -12,10 +12,15 @@ their criteria may have changed. Run explicitly to evaluate the loaded view
 against current sources. Results and company comparison use the same restored
 columns. Display-only column changes remain independent of numeric filters.
 
-Catalog/My Watchlist scope and selected saved listings stay temporary. Loading
-a view leaves them as they are, so one view can be reused for either cohort.
+Catalog/My Watchlist scope and selected listings are not part of a financial
+view. Loading a view leaves them as they are, so one view can be reused for either cohort.
 Loading makes no SEC request and performs no automatic save or migration.
 Company research data, portfolio holdings and watchlist membership are unaffected.
+
+[Saved comparison companies](./PERSONAL_SAVED_COMPARISON.md) separately remembers
+one two-or-three-company group. It restores watchlist inputs, followed by an
+explicit screen and all-member comparison. It does not change this view format
+or store financial results, prices or chart state.
 
 ## Existing saved screens
 

@@ -2129,6 +2129,17 @@ h4,
   border-radius: var(--radius-sm);
 }
 
+.financial-comparison-saved-companies {
+  min-width: 0;
+  margin: 0;
+  padding-inline-start: 24px;
+}
+
+.financial-comparison-saved-companies li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .personal-financial-screener input,
 .personal-financial-screener select {
   width: 100%;

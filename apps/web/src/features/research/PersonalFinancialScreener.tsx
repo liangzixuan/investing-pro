@@ -17,6 +17,7 @@ import {
   type PersonalSecurityMasterSnapshotReceiptDto,
   type PersonalFinancialScreenWatchlistScopeDto,
   type PersonalMarketDataStatusDto,
+  type PersonalFinancialComparisonSelectionResolvedDto,
 } from "@research-cockpit/contracts";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
@@ -36,6 +37,8 @@ import {
 } from "@/lib/personal-workspace-api";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import { PersonalComparisonPrices } from "./PersonalComparisonPrices";
+import { samePersonalFinancialComparisonMembers } from "@/lib/personal-financial-comparison-selection-api";
+import { usePersonalFinancialComparisonSelection } from "./usePersonalFinancialComparisonSelection";
 
 export const PERSONAL_FINANCIAL_SCREENER_PAGE_SIZE = 25;
 const metrics = PERSONAL_FINANCIAL_SCREEN_METRICS;
@@ -592,6 +595,12 @@ export function PersonalFinancialScreener({
   const resultsHeading = useRef<HTMLHeadingElement | null>(null);
   const [comparison, setComparison] =
     useState<FinancialComparisonSelection | null>(null);
+  const [restoredCompanies, setRestoredCompanies] = useState<{
+    readonly resolved: PersonalFinancialComparisonSelectionResolvedDto;
+    readonly watchlistContext: string;
+  } | null>(null);
+  const currentRestoredCompanies = useRef(restoredCompanies);
+  currentRestoredCompanies.current = restoredCompanies;
   const currentComparison = useRef(comparison);
   currentComparison.current = comparison;
   const comparisonPriceEpoch = useRef(0);
@@ -654,8 +663,68 @@ export function PersonalFinancialScreener({
   const canRun =
     enabled &&
     (scope === "catalog" || (watchlistReady && watchlistSelection.length > 0));
+  const companySessionEpoch = epoch.current;
+  const companyScreenEpoch = screenEpoch.current;
+  const companyComparisonEpoch = comparisonPriceEpoch.current;
+  function companyContextIsCurrent() {
+    return (
+      enabled &&
+      companySessionEpoch === epoch.current &&
+      companyScreenEpoch === screenEpoch.current &&
+      companyComparisonEpoch === comparisonPriceEpoch.current &&
+      screenContext === activeScreenContext.current &&
+      response === currentResponse.current &&
+      comparison === currentComparison.current
+    );
+  }
+  function clearRestoredCompanies() {
+    currentRestoredCompanies.current = null;
+    setRestoredCompanies(null);
+  }
+  const saveCompanyMembers =
+    scope === "watchlist" &&
+    watchlistReady &&
+    !running &&
+    response?.scope?.kind === "watchlist" &&
+    response.scope.watchlistVersion === watchlistVersion &&
+    comparison?.open &&
+    comparisonIsCurrent(response, comparison) &&
+    comparison.rows.length >= 2 &&
+    comparison.rows.length <= 3 &&
+    comparison.rows.every(({ identity }) =>
+      watchlistMemberships.some((member) =>
+        watchlistIdentityFields.every(
+          (field) => member[field] === identity[field],
+        ),
+      ),
+    )
+      ? comparison.rows.map((row) => row.identity)
+      : null;
+  const savedCompanies = usePersonalFinancialComparisonSelection({
+    enabled,
+    workspaceKey: savedWorkspaceContext,
+    contextKey: JSON.stringify([
+      screenContext,
+      watchlistContext,
+      watchlistReady,
+      criteria,
+      comparison?.key,
+      comparison?.rows.map((row) => row.identity),
+      comparison?.open,
+      running,
+    ]),
+    watchlistBinding: watchlistReady
+      ? { catalogSnapshotSha256: snapshot.snapshotSha256, watchlistVersion }
+      : null,
+    saveMembers: saveCompanyMembers,
+    isCurrent: companyContextIsCurrent,
+    onRestore: restoreCompanyInputs,
+    onDefinitionChange: clearRestoredCompanies,
+    onSessionUnavailable: clearSession,
+  });
 
   useEffect(() => {
+    clearRestoredCompanies();
     setWatchlistSelection([]);
     setWatchlistQuery("");
     setWatchlistPage(0);
@@ -677,6 +746,7 @@ export function PersonalFinancialScreener({
     setWatchlistSelection([]);
     setWatchlistQuery("");
     setWatchlistPage(0);
+    clearRestoredCompanies();
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
     clearComparison();
@@ -768,6 +838,7 @@ export function PersonalFinancialScreener({
       )
     )
       return;
+    clearRestoredCompanies();
     clearInspection();
     updateComparison({
       key: comparisonKey(selectedResponse, criteria),
@@ -807,6 +878,7 @@ export function PersonalFinancialScreener({
       selectedComparison === null
     )
       return;
+    if (action === "clear" || action === "remove") clearRestoredCompanies();
     if (action === "open" && selectedComparison.rows.length < 2) return;
     if (
       action === "remove" &&
@@ -908,6 +980,8 @@ export function PersonalFinancialScreener({
   }
 
   function clearSession() {
+    savedCompanies.clearSession();
+    clearRestoredCompanies();
     epoch.current += 1;
     screenEpoch.current += 1;
     screenController.current?.abort();
@@ -956,6 +1030,7 @@ export function PersonalFinancialScreener({
 
   function changeScope(next: "catalog" | "watchlist") {
     if (!enabled || screenContext !== activeScreenContext.current) return;
+    clearRestoredCompanies();
     invalidateScreen(
       "Scope changed. Choose listings and criteria, then run the financial screen.",
     );
@@ -979,11 +1054,100 @@ export function PersonalFinancialScreener({
       )
     )
       return;
+    clearRestoredCompanies();
     invalidateScreen(
       "Saved listing selection changed. Run financial screen to load these companies.",
     );
     activeScreenContext.current = "changing";
     setWatchlistSelection(ids);
+  }
+
+  function restoreCompanyInputs(
+    resolved: PersonalFinancialComparisonSelectionResolvedDto,
+  ): boolean {
+    if (
+      !companyContextIsCurrent() ||
+      !watchlistReady ||
+      resolved.catalogSnapshotSha256 !== snapshot.snapshotSha256 ||
+      resolved.watchlistVersion !== watchlistVersion ||
+      resolved.members.some(
+        (identity) =>
+          !watchlistMemberships.some((member) =>
+            watchlistIdentityFields.every(
+              (field) => member[field] === identity[field],
+            ),
+          ),
+      )
+    )
+      return false;
+    invalidateScreen(
+      "Saved companies restored. Run financial screen to evaluate current criteria.",
+    );
+    activeScreenContext.current = "changing";
+    setScope("watchlist");
+    setWatchlistSelection(resolved.members.map((member) => member.listingId));
+    setWatchlistQuery("");
+    setWatchlistPage(0);
+    const next = { resolved, watchlistContext };
+    currentRestoredCompanies.current = next;
+    setRestoredCompanies(next);
+    return true;
+  }
+
+  function savedComparisonRows():
+    readonly PersonalFinancialScreenRowDto[] | null {
+    const saved = savedCompanies.selection;
+    if (
+      !enabled ||
+      !savedCompanies.available ||
+      savedCompanies.busy ||
+      saved === null ||
+      restoredCompanies === null ||
+      restoredCompanies !== currentRestoredCompanies.current ||
+      restoredCompanies.watchlistContext !== watchlistContext ||
+      savedCompanies.record?.version !==
+        restoredCompanies.resolved.savedSelectionVersion ||
+      !samePersonalFinancialComparisonMembers(
+        saved.members,
+        restoredCompanies.resolved.members,
+      ) ||
+      scope !== "watchlist" ||
+      !watchlistReady ||
+      running ||
+      response === null ||
+      response !== currentResponse.current ||
+      screenContext !== activeScreenContext.current ||
+      response.catalogSnapshotSha256 !== snapshot.snapshotSha256 ||
+      response.scope?.kind !== "watchlist" ||
+      response.scope.watchlistVersion !== watchlistVersion ||
+      JSON.stringify(watchlistSelection) !==
+        JSON.stringify(saved.members.map((member) => member.listingId)) ||
+      JSON.stringify(response.scope.listingIds) !==
+        JSON.stringify(watchlistSelection)
+    )
+      return null;
+    const rows = saved.members.map((member) =>
+      response.rows.find((row) =>
+        samePersonalFinancialComparisonMembers([row.identity], [member]),
+      ),
+    );
+    return rows.every(
+      (row): row is PersonalFinancialScreenRowDto => row !== undefined,
+    )
+      ? rows
+      : null;
+  }
+
+  function compareSavedCompanies() {
+    if (!companyContextIsCurrent()) return;
+    const rows = savedComparisonRows();
+    if (rows === null || response === null) return;
+    clearInspection();
+    updateComparison({
+      key: comparisonKey(response, criteria),
+      rows,
+      open: true,
+    });
   }
 
   function changeClause(
@@ -1250,6 +1414,7 @@ export function PersonalFinancialScreener({
     )
       return;
     const view = savedPayload.views.find((item) => item.id === selectedId);
+    clearRestoredCompanies();
     if (view === undefined) return;
     changeCriteria(structuredClone(view.criteria));
     const display =
@@ -1446,7 +1611,7 @@ export function PersonalFinancialScreener({
     <section
       className="security-search-panel personal-financial-screener"
       aria-labelledby="personal-financial-screener-title"
-      aria-busy={running || savedBusy}
+      aria-busy={running || savedBusy || savedCompanies.busy}
     >
       <div className="discovery-section-heading">
         <div>
@@ -1620,6 +1785,92 @@ export function PersonalFinancialScreener({
               </>
             )}
           </>
+        )}
+      </fieldset>
+      <fieldset
+        className="financial-screen-saved"
+        disabled={!enabled || savedCompanies.busy}
+      >
+        <legend>Saved comparison companies</legend>
+        <p className="market-scope-note">
+          Keep one ordered group of two or three My Watchlist companies. Saving
+          replaces this group and stores identities only. Financial criteria,
+          columns, results and prices are kept separate.
+        </p>
+        {savedCompanies.selection !== null && (
+          <ol
+            className="financial-comparison-saved-companies"
+            aria-label="Saved comparison company order"
+          >
+            {savedCompanies.selection.members.map((member) => (
+              <li key={member.listingId}>
+                {member.symbol} · {member.issuerName} · {member.exchangeMic}
+              </li>
+            ))}
+          </ol>
+        )}
+        <div className="personal-stock-screener-run-actions">
+          <button
+            type="button"
+            className="secondary-action compact-action"
+            disabled={!savedCompanies.canSave}
+            onClick={() => void savedCompanies.save()}
+          >
+            Save these companies
+          </button>
+          <button
+            type="button"
+            className="secondary-action compact-action"
+            disabled={!savedCompanies.canRestore}
+            onClick={() => void savedCompanies.restore()}
+          >
+            Restore saved companies
+          </button>
+          <button
+            type="button"
+            className="secondary-action compact-action"
+            disabled={savedComparisonRows() === null}
+            onClick={compareSavedCompanies}
+          >
+            Compare saved companies
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            disabled={!savedCompanies.canClear}
+            onClick={() => void savedCompanies.clear()}
+          >
+            Clear saved companies
+          </button>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => void savedCompanies.reload()}
+          >
+            Reload saved companies
+          </button>
+        </div>
+        <p className="discovery-status" aria-live="polite">
+          {savedCompanies.message}
+        </p>
+        {restoredCompanies !== null &&
+          response !== null &&
+          !running &&
+          savedCompanies.available &&
+          !savedCompanies.busy &&
+          savedComparisonRows() === null && (
+            <p className="discovery-warning">
+              Current results must contain every saved company with its complete
+              identity. No partial comparison will open. Review the filters and
+              run again, or restore the saved companies again after changing the
+              selection.
+            </p>
+          )}
+        {!watchlistReady && (
+          <p className="market-scope-note">
+            Reload or reconcile My Watchlist to save or restore companies. An
+            existing saved group can still be cleared.
+          </p>
         )}
       </fieldset>
       <fieldset

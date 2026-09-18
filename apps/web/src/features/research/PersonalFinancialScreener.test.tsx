@@ -13,6 +13,8 @@ import {
   type PersonalFinancialSavedViewDto,
   type PersonalFinancialSavedViewWithDisplayDto,
   type PersonalSecurityMasterSnapshotReceiptDto,
+  type PersonalFinancialComparisonSelectionPayloadDto,
+  type PersonalFinancialComparisonSelectionResolvedDto,
 } from "@research-cockpit/contracts";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -103,6 +105,11 @@ const api = vi.hoisted(() => ({
   savePersonalFinancialSavedViews: vi.fn(),
   screenPersonalFinancials: vi.fn(),
 }));
+const comparisonApi = vi.hoisted(() => ({
+  fetchPersonalFinancialComparisonSelection: vi.fn(),
+  savePersonalFinancialComparisonSelection: vi.fn(),
+  resolvePersonalFinancialComparisonSelection: vi.fn(),
+}));
 vi.mock("react", async (original) => ({
   ...(await original()),
   useState: (initial: unknown) => harness.useState(initial),
@@ -121,6 +128,10 @@ vi.mock("./PersonalComparisonPrices", () => ({
 vi.mock("@/lib/personal-financial-screen-api", async () => ({
   ...(await import("../../lib/personal-financial-screen-api")),
   ...api,
+}));
+vi.mock("@/lib/personal-financial-comparison-selection-api", async () => ({
+  ...(await import("../../lib/personal-financial-comparison-selection-api")),
+  ...comparisonApi,
 }));
 vi.mock(
   "@/lib/personal-workspace-api",
@@ -150,6 +161,16 @@ const activityStart = vi.fn<OwnerSessionActivityStart>();
 beforeEach(() => {
   harness.reset();
   Object.values(api).forEach((mock) => mock.mockReset());
+  Object.values(comparisonApi).forEach((mock) => mock.mockReset());
+  comparisonApi.fetchPersonalFinancialComparisonSelection.mockResolvedValue(
+    null,
+  );
+  comparisonApi.savePersonalFinancialComparisonSelection.mockImplementation(
+    (
+      version: number,
+      payload: PersonalFinancialComparisonSelectionPayloadDto,
+    ) => Promise.resolve({ version: version + 1, payload }),
+  );
   activityCompletion.mockReset().mockReturnValue(true);
   activityStart.mockReset().mockReturnValue(activityCompletion);
   api.fetchPersonalFinancialSavedViews.mockResolvedValue(null);
@@ -177,6 +198,526 @@ afterEach(() => {
   harness.unmount();
   vi.unstubAllGlobals();
 });
+
+describe("saved financial comparison companies", () => {
+  it("restores ordered identities without running, then compares only explicit current results while preserving criteria and columns", async () => {
+    const record = configureSavedCompanies([2, 0]);
+    await mount();
+    expect(
+      comparisonApi.fetchPersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    change(render(), "Financial calendar year", "2023");
+    change(render(), "Financial column view", "cashFlow");
+    const columns = input(render(), "Financial column view").props.value;
+    click(render(), "Restore saved companies");
+    await flush();
+    expect(input(render(), "Financial screen scope").props.value).toBe(
+      "watchlist",
+    );
+    expect(input(render(), "Financial calendar year").props.value).toBe(2023);
+    expect(input(render(), "Financial column view").props.value).toBe(columns);
+    expect(financialListing(render(), "CMP2").props.checked).toBe(true);
+    expect(financialListing(render(), "CMP0").props.checked).toBe(true);
+    expect(financialListing(render(), "CMP1").props.checked).toBe(false);
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      true,
+    );
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+    api.screenPersonalFinancials.mockImplementationOnce(
+      (request: PersonalFinancialScreenRequestDto) => {
+        const result = watchlistResponse(request);
+        return Promise.resolve({ ...result, rows: [...result.rows].reverse() });
+      },
+    );
+    submit(render());
+    await flush();
+    expect(
+      (
+        api.screenPersonalFinancials.mock
+          .calls[0]?.[0] as PersonalFinancialScreenRequestDto
+      ).scope?.listingIds,
+    ).toEqual(
+      record.payload.selection.members.map((member) => member.listingId),
+    );
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      false,
+    );
+    click(render(), "Compare saved companies");
+    const prices = elements(render()).find(
+      (item) => item.type === PersonalComparisonPrices,
+    )!.props as unknown as PersonalComparisonPricesProps;
+    expect(prices.listings.map((member) => member.symbol)).toEqual([
+      "CMP2",
+      "CMP0",
+    ]);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(
+      comparisonApi.fetchPersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+  });
+
+  it("saves only ordered full identities and reuses the retained version after clear", async () => {
+    configureSavedCompanies([1, 0]);
+    await mountSavedComparison();
+    const unchangedViews =
+      api.savePersonalFinancialSavedViews.mock.calls.length;
+    const unchangedWatchlist = props.watchlistMemberships;
+    click(render(), "Save these companies");
+    await flush();
+    const [version, payload, binding] = comparisonApi
+      .savePersonalFinancialComparisonSelection.mock.calls[0]! as [
+      number,
+      PersonalFinancialComparisonSelectionPayloadDto,
+      unknown,
+    ];
+    expect(version).toBe(4);
+    expect(payload).toEqual({
+      schemaVersion: 1,
+      selection: {
+        createdAgainstCatalogSnapshotSha256: sha("a"),
+        members: [
+          comparisonResponse(1, 2).rows[0]!.identity,
+          comparisonResponse(0, 1).rows[0]!.identity,
+        ],
+      },
+    });
+    expect(binding).toEqual({
+      catalogSnapshotSha256: sha("a"),
+      watchlistVersion: 7,
+    });
+    expect(JSON.stringify(payload)).not.toMatch(
+      /financialSnapshot|criteria|columns|revenue|adjusted|indexed|quote|note/iu,
+    );
+    click(render(), "Clear saved companies");
+    await flush();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection.mock.calls[1]?.slice(
+        0,
+        3,
+      ),
+    ).toEqual([5, { schemaVersion: 1, selection: null }, null]);
+    expect(text(render())).toContain("Saved companies cleared");
+    click(render(), "Save these companies");
+    await flush();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection.mock.calls[2]?.[0],
+    ).toBe(6);
+    expect(props.watchlistMemberships).toBe(unchangedWatchlist);
+    expect(api.savePersonalFinancialSavedViews).toHaveBeenCalledTimes(
+      unchangedViews,
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+  });
+
+  it("never saves a catalog comparison or a single-company shortlist", async () => {
+    await mountComparison();
+    click(render(), "Save these companies");
+    expect(button(render(), "Save these companies").props.disabled).toBe(true);
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("requires every saved identity in current results and permits explicit rerun after changing criteria", async () => {
+    configureSavedCompanies([1, 0]);
+    await mount();
+    click(render(), "Restore saved companies");
+    await flush();
+    api.screenPersonalFinancials.mockImplementationOnce(
+      (request: PersonalFinancialScreenRequestDto) => {
+        const result = watchlistResponse(request);
+        return Promise.resolve({
+          ...result,
+          rows: result.rows.slice(0, 1),
+          totalMatches: 1,
+        });
+      },
+    );
+    submit(render());
+    await flush();
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Compare saved companies");
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(text(render())).toContain("No partial comparison will open");
+    change(render(), "Financial calendar year", "2023");
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      true,
+    );
+    submit(render());
+    await flush();
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      false,
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["cik", "securityId", "issuerName", "order"] as const)(
+    "rejects resolved %s substitution even when listing IDs/tickers are unchanged",
+    async (field) => {
+      const record = configureSavedCompanies([1, 0]);
+      const members = record.payload.selection.members.map((member) => ({
+        ...member,
+      }));
+      if (field === "order") members.reverse();
+      else
+        members[0] = {
+          ...members[0]!,
+          [field]: field === "cik" ? "9999999999" : "changed",
+        };
+      comparisonApi.resolvePersonalFinancialComparisonSelection.mockResolvedValue(
+        { ...resolvedCompanies(record), members },
+      );
+      await mount();
+      click(render(), "Restore saved companies");
+      await flush();
+      expect(input(render(), "Financial screen scope").props.value).toBe(
+        "catalog",
+      );
+      expect(text(render())).toContain("No companies were restored");
+      expect(button(render(), "Clear saved companies").props.disabled).toBe(
+        false,
+      );
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a result CIK substitution rather than comparing the saved ticker", async () => {
+    configureSavedCompanies([1, 0]);
+    await mount();
+    click(render(), "Restore saved companies");
+    await flush();
+    api.screenPersonalFinancials.mockImplementationOnce(
+      (request: PersonalFinancialScreenRequestDto) => {
+        const result = watchlistResponse(request);
+        return Promise.resolve({
+          ...result,
+          rows: result.rows.map((row, index) =>
+            index === 0
+              ? { ...row, identity: { ...row.identity, cik: "9999999999" } }
+              : row,
+          ),
+        });
+      },
+    );
+    submit(render());
+    await flush();
+    click(render(), "Compare saved companies");
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      true,
+    );
+    expect(comparisonPanel(render())).toBeUndefined();
+  });
+
+  it.each(["criteria ABA", "watchlist version", "unmount"] as const)(
+    "ignores pending restore after %s and retained handlers",
+    async (boundary) => {
+      const record = configureSavedCompanies([1, 0]);
+      const pending =
+        deferred<PersonalFinancialComparisonSelectionResolvedDto>();
+      comparisonApi.resolvePersonalFinancialComparisonSelection.mockReturnValueOnce(
+        pending.promise,
+      );
+      await mount();
+      const oldRestore = button(render(), "Restore saved companies").props
+        .onClick!;
+      oldRestore();
+      const signal = comparisonApi.resolvePersonalFinancialComparisonSelection
+        .mock.calls[0]?.[2] as AbortSignal;
+      if (boundary === "criteria ABA") {
+        const year = input(render(), "Financial calendar year").props.value;
+        change(render(), "Financial calendar year", "2023");
+        change(render(), "Financial calendar year", String(year));
+      } else if (boundary === "watchlist version") {
+        props = { ...props, watchlistVersion: 8 };
+        render();
+      } else harness.unmount();
+      pending.resolve(resolvedCompanies(record));
+      await flush();
+      oldRestore();
+      expect(
+        comparisonApi.resolvePersonalFinancialComparisonSelection,
+      ).toHaveBeenCalledOnce();
+      if (boundary !== "unmount") {
+        expect(signal.aborted).toBe(true);
+        expect(input(render(), "Financial screen scope").props.value).toBe(
+          "catalog",
+        );
+      }
+      expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    },
+  );
+
+  it("clears an unresolved group while My Watchlist is unavailable", async () => {
+    configureSavedCompanies();
+    props = { ...props, watchlistAvailable: false };
+    await mount();
+    expect(button(render(), "Restore saved companies").props.disabled).toBe(
+      true,
+    );
+    expect(button(render(), "Clear saved companies").props.disabled).toBe(
+      false,
+    );
+    click(render(), "Clear saved companies");
+    await flush();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection.mock.calls[0]?.slice(
+        0,
+        3,
+      ),
+    ).toEqual([4, { schemaVersion: 1, selection: null }, null]);
+    expect(
+      comparisonApi.resolvePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("invalidates a saved comparison when its definition changes during a financial run", async () => {
+    configureSavedCompanies();
+    await mount();
+    click(render(), "Restore saved companies");
+    await flush();
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    submit(render());
+    const request = api.screenPersonalFinancials.mock
+      .calls[0]![0] as PersonalFinancialScreenRequestDto;
+    click(render(), "Clear saved companies");
+    await flush();
+    pending.resolve(watchlistResponse(request));
+    await flush();
+    expect(button(render(), "Compare saved companies").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Compare saved companies");
+    expect(comparisonPanel(render())).toBeUndefined();
+  });
+
+  it("requires reload after a conflict and never retries the mutation automatically", async () => {
+    configureSavedCompanies();
+    await mountSavedComparison();
+    comparisonApi.savePersonalFinancialComparisonSelection.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    const oldSave = button(render(), "Save these companies").props.onClick!;
+    oldSave();
+    await flush();
+    expect(text(render())).toContain("Reload saved companies");
+    expect(button(render(), "Save these companies").props.disabled).toBe(true);
+    oldSave();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+    click(render(), "Reload saved companies");
+    await flush();
+    expect(
+      comparisonApi.fetchPersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledTimes(2);
+    expect(button(render(), "Save these companies").props.disabled).toBe(false);
+  });
+
+  it("clears saved identities on a session failure and ignores old callbacks", async () => {
+    configureSavedCompanies();
+    await mount();
+    comparisonApi.resolvePersonalFinancialComparisonSelection.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("session_unavailable"),
+    );
+    const oldClear = button(render(), "Clear saved companies").props.onClick!;
+    click(render(), "Restore saved companies");
+    await flush();
+    expect(props.onSessionUnavailable).toHaveBeenCalledOnce();
+    expect(text(render())).not.toContain("Comparison company 1");
+    oldClear();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("reads the saved identity group after remount without restoring results or automatically running", async () => {
+    const original = configureSavedCompanies([2, 0]);
+    let stored = original;
+    comparisonApi.fetchPersonalFinancialComparisonSelection.mockImplementation(
+      () => Promise.resolve(stored),
+    );
+    comparisonApi.savePersonalFinancialComparisonSelection.mockImplementation(
+      (version: number, payload: typeof original.payload) => {
+        stored = { version: version + 1, payload };
+        return Promise.resolve(stored);
+      },
+    );
+    await mountSavedComparison();
+    click(render(), "Save these companies");
+    await flush();
+    harness.unmount();
+    harness.reset();
+    await mount();
+    const order = elements(render()).find(
+      (item) => item.props["aria-label"] === "Saved comparison company order",
+    );
+    expect(text(order).indexOf("CMP2")).toBeLessThan(
+      text(order).indexOf("CMP0"),
+    );
+    expect(comparisonPanel(render())).toBeUndefined();
+    expect(input(render(), "Financial screen scope").props.value).toBe(
+      "catalog",
+    );
+    expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+    expect(
+      comparisonApi.fetchPersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      comparisonApi.resolvePersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+  });
+
+  it.each(["manual watchlist selection", "saved financial view"] as const)(
+    "requires Restore again after %s changes the restored action context",
+    async (action) => {
+      configureSavedCompanies();
+      const view = savedViewFixture("criteria");
+      api.fetchPersonalFinancialSavedViews.mockResolvedValue({
+        version: 2,
+        payload: { schemaVersion: 1, views: [view] },
+      });
+      await mountSavedComparison();
+      if (action === "manual watchlist selection") {
+        selectFinancialListing(render(), "CMP0", false);
+        selectFinancialListing(render(), "CMP0", true);
+      } else {
+        change(render(), "Saved financial view", view.id);
+        click(render(), "Load financial view");
+      }
+      submit(render());
+      await flush();
+      expect(button(render(), "Compare saved companies").props.disabled).toBe(
+        true,
+      );
+      click(render(), "Compare saved companies");
+      expect(comparisonPanel(render())).toBeUndefined();
+      expect(
+        comparisonApi.resolvePersonalFinancialComparisonSelection,
+      ).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("discards an in-flight save after criteria change and requires a fresh record read", async () => {
+    const record = configureSavedCompanies();
+    await mountSavedComparison();
+    const pending = deferred<typeof record>();
+    comparisonApi.savePersonalFinancialComparisonSelection.mockReturnValueOnce(
+      pending.promise,
+    );
+    const oldSave = button(render(), "Save these companies").props.onClick!;
+    oldSave();
+    const signal = comparisonApi.savePersonalFinancialComparisonSelection.mock
+      .calls[0]?.[3] as AbortSignal;
+    change(render(), "Financial calendar year", "2023");
+    render();
+    pending.resolve({ ...record, version: 5 });
+    await flush();
+    expect(signal.aborted).toBe(true);
+    expect(button(render(), "Restore saved companies").props.disabled).toBe(
+      true,
+    );
+    expect(text(render())).toContain(
+      "Reload saved companies before continuing",
+    );
+    oldSave();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+    expect(
+      comparisonApi.fetchPersonalFinancialComparisonSelection,
+    ).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a late record read across a catalog ABA boundary", async () => {
+    const record = configureSavedCompanies();
+    const pending = deferred<typeof record>();
+    comparisonApi.fetchPersonalFinancialComparisonSelection.mockReturnValueOnce(
+      pending.promise,
+    );
+    render();
+    const signal = comparisonApi.fetchPersonalFinancialComparisonSelection.mock
+      .calls[0]?.[0] as AbortSignal;
+    const firstSnapshot = props.snapshot;
+    props = {
+      ...props,
+      snapshot: { ...props.snapshot, snapshotSha256: sha("b") },
+    };
+    render();
+    props = { ...props, snapshot: firstSnapshot };
+    comparisonApi.fetchPersonalFinancialComparisonSelection.mockResolvedValue(
+      null,
+    );
+    render();
+    await flush();
+    pending.resolve(record);
+    await flush();
+    expect(signal.aborted).toBe(true);
+    expect(
+      elements(render()).find(
+        (item) => item.props["aria-label"] === "Saved comparison company order",
+      ),
+    ).toBeUndefined();
+    expect(api.screenPersonalFinancials).not.toHaveBeenCalled();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+  });
+});
+
+function configureSavedCompanies(order = [1, 0]) {
+  configureWatchlist(3);
+  const record = {
+    version: 4,
+    payload: {
+      schemaVersion: 1 as const,
+      selection: {
+        createdAgainstCatalogSnapshotSha256: sha("a"),
+        members: order.map(
+          (index) => comparisonResponse(index, index + 1).rows[0]!.identity,
+        ),
+      },
+    },
+  };
+  comparisonApi.fetchPersonalFinancialComparisonSelection.mockResolvedValue(
+    record,
+  );
+  comparisonApi.resolvePersonalFinancialComparisonSelection.mockResolvedValue(
+    resolvedCompanies(record),
+  );
+  api.screenPersonalFinancials.mockImplementation(
+    (request: PersonalFinancialScreenRequestDto) =>
+      Promise.resolve(request.scope ? watchlistResponse(request) : response()),
+  );
+  return record;
+}
+function resolvedCompanies(
+  record: ReturnType<typeof configureSavedCompanies>,
+): PersonalFinancialComparisonSelectionResolvedDto {
+  return {
+    schemaVersion: "1.0.0",
+    catalogSnapshotSha256: sha("a"),
+    watchlistVersion: 7,
+    savedSelectionVersion: record.version,
+    members: record.payload.selection.members,
+  };
+}
+async function mountSavedComparison() {
+  await mount();
+  click(render(), "Restore saved companies");
+  await flush();
+  submit(render());
+  await flush();
+  click(render(), "Compare saved companies");
+  expect(comparisonPanel(render())).toBeDefined();
+}
 
 describe("PersonalFinancialScreener", () => {
   it("mounts explicit price context only for an open comparison and keeps it stable across display columns", async () => {

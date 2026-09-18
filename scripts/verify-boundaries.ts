@@ -8589,6 +8589,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot", "screenPersonalSecurityMaster"],
     ],
     [
+      "apps/api/src/workspace-financial-comparison-selection-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "screenPersonalSecurityMaster"],
+    ],
+    [
       "apps/api/src/workspace-watchlist-filings-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
@@ -13801,6 +13805,16 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
         "type LocalResearchRecord",
         "type LocalResearchVault",
         "type PutLocalResearchRecordCommand",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-financial-comparison-selection-routes.test.ts",
+      [
+        "LocalResearchVault",
+        "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+        "type WindowsOwnerOnlyAclPort",
+        "type WindowsOwnerOnlyAclTarget",
+        "type WindowsOwnerOnlyAclVerificationReceipt",
       ],
     ],
     [

@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: see shared-date adjusted-price paths
+## Immediate delivery: reuse comparison companies
+
+Save one ordered selection of two or three companies from a current My Watchlist
+financial comparison. Restore those watchlist inputs in a later session, run the
+financial screen explicitly, and compare the saved group only when every full
+identity is present in those current results. Keep filters and columns unchanged.
+Do not restore a subset, substitute by ticker, broaden filters or fetch prices
+automatically.
+
+Use a separate encrypted settings record containing identities and catalog
+provenance only. Save, replace, clear and resolve use existing owner and version
+boundaries, without changing saved financial views or watchlist membership.
+Missing or changed members stay explicit, and an unusable selection remains
+clearable. See [Saved comparison companies](./PERSONAL_SAVED_COMPARISON.md).
+
+## Delivered: see shared-date adjusted-price paths
 
 Add an indexed comparison chart beside the existing price-change and drawdown
 table. Start every selected company at 100 on the first shared date, using
@@ -638,7 +653,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Plot indexed adjusted-price paths beside the shared-date comparison                              | Reuse already-loaded histories and the validated common observations       |
+| Now              | Save and restore one ordered comparison company group                                            | Reuse current watchlist identities and explicit financial/price loading    |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -661,8 +676,8 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web test -- PersonalComparisonPriceChart PersonalComparisonPerformance PersonalComparisonPrices
-   pnpm --filter @research-cockpit/personal-market-analytics test -- personal-price-performance-comparison
+   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-financial-comparison-selection-api.test.ts src/features/research/PersonalFinancialScreener.test.tsx
+   pnpm --filter @research-cockpit/api exec vitest run src/workspace-financial-screen-routes.test.ts
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed

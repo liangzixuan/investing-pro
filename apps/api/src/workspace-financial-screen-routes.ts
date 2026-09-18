@@ -1,4 +1,8 @@
 import {
+  isPersonalFinancialComparisonSelectionPayload,
+  isPersonalFinancialComparisonSelectionPutRequest,
+  isPersonalFinancialComparisonSelectionResolveRequest,
+  PERSONAL_FINANCIAL_COMPARISON_IDENTITY_FIELDS,
   PERSONAL_FINANCIAL_SCREEN_METRICS,
   PERSONAL_FINANCIAL_SCREEN_WATCHLIST_LIMIT,
   type PersonalFinancialSavedViewDisplayDto,
@@ -6,6 +10,9 @@ import {
   type PersonalFinancialScreenWatchlistScopeDto,
   type PersonalFinancialSavedViewsPayloadDto,
   type PersonalSecurityMasterScreenRowDto,
+  type PersonalFinancialComparisonSelectionDto,
+  type PersonalFinancialComparisonSelectionBindingDto,
+  type PersonalFinancialComparisonSelectionResolvedDto,
   type ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
@@ -50,6 +57,12 @@ export const PERSONAL_FINANCIAL_SAVED_VIEWS_PATH =
   "/v1/personal-filing/workspace/financial-screen/saved-views" as const;
 export const PERSONAL_FINANCIAL_SAVED_VIEWS_RECORD_ID =
   "financial-screener-saved-views" as const;
+export const PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH =
+  "/v1/personal-filing/workspace/financial-screen/saved-comparison" as const;
+export const PERSONAL_FINANCIAL_SAVED_COMPARISON_RESOLVE_PATH =
+  `${PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH}/resolve` as const;
+export const PERSONAL_FINANCIAL_SAVED_COMPARISON_RECORD_ID =
+  "financial-comparison-selection" as const;
 const SAVED_VIEWS_KIND = "settings" as const;
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
@@ -79,6 +92,13 @@ export function registerPersonalWorkspaceFinancialScreenRoutes(
   ownerSession: PersonalOwnerSessionAuthority,
   listenOptions: DemoApiListenOptions,
 ): void {
+  registerSavedComparisonRoutes(
+    app,
+    catalog,
+    vault,
+    ownerSession,
+    listenOptions,
+  );
   app.post<{ Body: unknown }>(
     PERSONAL_FINANCIAL_SCREEN_PATH,
     {
@@ -324,6 +344,263 @@ export function registerPersonalWorkspaceFinancialScreenRoutes(
       }
     },
   );
+}
+
+function registerSavedComparisonRoutes(
+  app: FastifyInstance,
+  catalog: PersonalSecurityMasterCatalog,
+  vault: LocalResearchVault,
+  ownerSession: PersonalOwnerSessionAuthority,
+  listenOptions: DemoApiListenOptions,
+): void {
+  app.get(
+    PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH,
+    {
+      exposeHeadRoute: false,
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH,
+          )
+        )
+          return sendPersonalOwnerSessionProblem(reply, request);
+      },
+    },
+    (request, reply) => {
+      try {
+        const record = vault.getRecord(
+          "settings",
+          PERSONAL_FINANCIAL_SAVED_COMPARISON_RECORD_ID,
+        );
+        if (!isPersonalFinancialComparisonSelectionPayload(record.payload))
+          return sendSavedComparisonProblem(
+            reply.header("ETag", versionEtag(record.version)),
+            request,
+            409,
+          );
+        return reply.header("ETag", versionEtag(record.version)).send(record);
+      } catch (error) {
+        return handleSavedComparisonError(error, reply, request);
+      }
+    },
+  );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH,
+    {
+      onRequest: async (request, reply) => {
+        const intent = singleHeader(request, PERSONAL_OWNER_INTENT_HEADER_NAME);
+        if (
+          (intent !== "personal-vault-create" &&
+            intent !== "personal-vault-update") ||
+          !authorizePersonalVaultMutationRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH,
+            intent,
+            "json",
+          )
+        )
+          return sendPersonalOwnerSessionProblem(reply, request);
+        const idempotencyKey = singleHeader(
+          request,
+          PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
+        );
+        if (
+          mutationPrecondition(request, intent) === undefined ||
+          idempotencyKey === undefined ||
+          !IDEMPOTENCY_PATTERN.test(idempotencyKey)
+        )
+          return sendSavedComparisonProblem(reply, request, 400);
+      },
+      errorHandler: (_error, request, reply) => {
+        void sendSavedComparisonProblem(reply, request, 400);
+      },
+    },
+    (request, reply) => {
+      const intent = singleHeader(request, PERSONAL_OWNER_INTENT_HEADER_NAME);
+      if (
+        (intent !== "personal-vault-create" &&
+          intent !== "personal-vault-update") ||
+        !isPersonalFinancialComparisonSelectionPutRequest(request.body)
+      )
+        return sendSavedComparisonProblem(reply, request, 400);
+      const expectedVersion = mutationPrecondition(request, intent);
+      const idempotencyKey = singleHeader(
+        request,
+        PERSONAL_OWNER_IDEMPOTENCY_HEADER_NAME,
+      );
+      if (expectedVersion === undefined || idempotencyKey === undefined)
+        return sendSavedComparisonProblem(reply, request, 400);
+      try {
+        const { payload, context } = request.body;
+        if (payload.selection !== null) {
+          if (context === null)
+            return sendSavedComparisonProblem(reply, request, 400);
+          resolveComparisonMembers(vault, catalog, payload.selection, context);
+        }
+        const receipt = vault.putRecord({
+          expectedVersion,
+          id: PERSONAL_FINANCIAL_SAVED_COMPARISON_RECORD_ID,
+          idempotencyKey,
+          kind: "settings",
+          payload: payload as unknown as JsonValue,
+        });
+        return reply
+          .status(intent === "personal-vault-create" ? 201 : 200)
+          .header("ETag", versionEtag(receipt.version))
+          .send(receipt);
+      } catch (error) {
+        return handleSavedComparisonError(error, reply, request);
+      }
+    },
+  );
+
+  app.post<{ Body: unknown }>(
+    PERSONAL_FINANCIAL_SAVED_COMPARISON_RESOLVE_PATH,
+    {
+      onRequest: async (request, reply) => {
+        if (
+          !authorizePersonalJsonRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            PERSONAL_FINANCIAL_SAVED_COMPARISON_RESOLVE_PATH,
+          )
+        )
+          return sendPersonalOwnerSessionProblem(reply, request);
+      },
+      errorHandler: (_error, request, reply) => {
+        void sendSavedComparisonProblem(reply, request, 400);
+      },
+    },
+    (request, reply) => {
+      if (!isPersonalFinancialComparisonSelectionResolveRequest(request.body))
+        return sendSavedComparisonProblem(reply, request, 400);
+      try {
+        const body = request.body;
+        const record = vault.getRecord(
+          "settings",
+          PERSONAL_FINANCIAL_SAVED_COMPARISON_RECORD_ID,
+        );
+        if (
+          record.version !== body.expectedVersion ||
+          !isPersonalFinancialComparisonSelectionPayload(record.payload)
+        )
+          return sendSavedComparisonProblem(reply, request, 409);
+        if (record.payload.selection === null)
+          return sendSavedComparisonProblem(reply, request, 404);
+        const members = resolveComparisonMembers(
+          vault,
+          catalog,
+          record.payload.selection,
+          body,
+        );
+        // Fail closed if a concurrent vault writer changed either record while
+        // resolving. This is a read-only check, not a cross-record transaction.
+        readBoundWatchlist(vault, catalog, {
+          kind: "watchlist",
+          watchlistVersion: body.watchlistVersion,
+          listingIds: members.map((member) => member.listingId),
+        });
+        if (
+          vault.getRecord(
+            "settings",
+            PERSONAL_FINANCIAL_SAVED_COMPARISON_RECORD_ID,
+          ).version !== record.version
+        )
+          return sendSavedComparisonProblem(reply, request, 409);
+        const response: PersonalFinancialComparisonSelectionResolvedDto = {
+          schemaVersion: "1.0.0",
+          catalogSnapshotSha256: catalog.snapshotSha256,
+          watchlistVersion: body.watchlistVersion,
+          savedSelectionVersion: record.version,
+          members,
+        };
+        return reply.send(response);
+      } catch (error) {
+        return handleSavedComparisonError(error, reply, request);
+      }
+    },
+  );
+}
+
+function resolveComparisonMembers(
+  vault: LocalResearchVault,
+  catalog: PersonalSecurityMasterCatalog,
+  selection: PersonalFinancialComparisonSelectionDto,
+  context: PersonalFinancialComparisonSelectionBindingDto,
+): PersonalSecurityMasterScreenRowDto[] {
+  if (context.catalogSnapshotSha256 !== catalog.snapshotSha256)
+    throw new WatchlistFinancialSelectionError(409);
+  const scope = {
+    kind: "watchlist" as const,
+    watchlistVersion: context.watchlistVersion,
+    listingIds: selection.members.map((member) => member.listingId),
+  };
+  const members = resolveSelectedListings(
+    catalog,
+    readBoundWatchlist(vault, catalog, scope),
+    scope,
+  );
+  if (
+    members.some((member, index) =>
+      PERSONAL_FINANCIAL_COMPARISON_IDENTITY_FIELDS.some(
+        (field) => member[field] !== selection.members[index]?.[field],
+      ),
+    )
+  )
+    throw new WatchlistFinancialSelectionError(409);
+  return members;
+}
+
+function handleSavedComparisonError(
+  error: unknown,
+  reply: FastifyReply,
+  request: FastifyRequest,
+) {
+  if (error instanceof WatchlistFinancialSelectionError)
+    return sendSavedComparisonProblem(reply, request, 409);
+  if (error instanceof LocalResearchVaultError) {
+    if (error.code === "VAULT_INVALID_INPUT")
+      return sendSavedComparisonProblem(reply, request, 400);
+    if (error.code === "VAULT_NOT_FOUND" || error.code === "VAULT_DELETED")
+      return sendSavedComparisonProblem(reply, request, 404);
+    if (
+      error.code === "VAULT_CONFLICT" ||
+      error.code === "VAULT_IDEMPOTENCY_CONFLICT"
+    )
+      return sendSavedComparisonProblem(reply, request, 409);
+  }
+  return sendSavedComparisonProblem(reply, request, 500);
+}
+
+function sendSavedComparisonProblem(
+  reply: FastifyReply,
+  request: FastifyRequest,
+  status: 400 | 404 | 409 | 500,
+) {
+  const problem: ProblemDetailsDto = {
+    detail: "The saved comparison selection request was not accepted.",
+    instance:
+      request.url.split("?", 1)[0] ?? PERSONAL_FINANCIAL_SAVED_COMPARISON_PATH,
+    status,
+    title:
+      status === 400
+        ? "Saved comparison request invalid"
+        : status === 404
+          ? "Saved comparison unavailable"
+          : status === 409
+            ? "Saved comparison conflict"
+            : "Saved comparison unavailable",
+    traceId: request.id,
+    type: `https://research-cockpit.local/problems/${String(status)}`,
+  };
+  return reply.status(status).type("application/problem+json").send(problem);
 }
 
 function isScreenRequest(

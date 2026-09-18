@@ -791,8 +791,8 @@ its nonnegative magnitude and peak/trough dates. It preserves the existing
 arithmetic, tie handling and distinction between no decline and a small decline
 rounded to zero. Omitted observations may hide intervening declines; this does
 not establish full daily-history drawdown or a risk rating.
-The next increment plots indexed adjusted-price paths with each company's first
-shared close set to 100. Reuse the validated common observations and expose dates,
+The comparison plots indexed adjusted-price paths with each company's first
+shared close set to 100. It reuses the validated common observations and exposes dates,
 original adjusted closes and rounded index values in an accessible exact-data
 table. Keep every selected company, preserve clearing and cancellation, and
 avoid presenting connecting lines as missing prices. The chart and table require
@@ -1122,6 +1122,16 @@ three examples do not complete the 24-screen target, establish joint input
 coverage, or imply universal industry applicability. The financial-screen guide
 owns exact thresholds and source eligibility; the current-work guide and local
 handoff own actual release acceptance.
+
+The next repeatable-workflow increment remembers one ordered group of two or
+three comparison companies from My Watchlist. A separate encrypted settings
+record stores only full identities and catalog provenance. Restore validates
+current catalog/watchlist membership; an explicit financial screen supplies
+fresh rows before the whole group can be compared. Existing filters and columns
+stay independent, price loading remains explicit, and missing members cannot
+produce a partial or substituted comparison. This adds no saved provider data,
+watchlist mutation, named groups, alerts or source coverage claim. See
+[Saved comparison companies](./PERSONAL_SAVED_COMPARISON.md).
 
 Cycle 3k-a1 is the usable catalog-screener foundation. One explicit local
 operation evaluates a closed, AND-only query AST over the already admitted
