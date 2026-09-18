@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "caseNumber": 54,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "7a424f70664db37d501b5f6924582158d73d9ec4",
+  "featureRevision": "1d0b17a67de331573dba4c1da9340603936bfd2f",
+  "featureCount": 209,
+  "closureCount": 210,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchNote.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchNote.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka54.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka54.json",
+  "presentation": {
+    "featureDescription": "Shared company and watchlist research notes",
+    "closureDescription": "Shared company and watchlist research notes",
+    "inventoryDescription": "Shared company and watchlist research notes",
+    "testBinding": "companyNote",
+    "routingDescription": "Shared company and watchlist research notes",
+    "summaryDescription": "Shared company and watchlist research notes"
+  }
+}
