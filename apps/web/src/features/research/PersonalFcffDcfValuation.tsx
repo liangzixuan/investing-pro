@@ -25,6 +25,7 @@ export interface PersonalFcffDcfValuationProps {
 }
 
 type ModelResult = ReturnType<typeof calculatePersonalFcffDcfValuation>;
+type ViewResult = ModelResult | { readonly status: "invalid_input" };
 type AvailableResult = Extract<ModelResult, { status: "available" }>;
 type UnavailableResult = Extract<ModelResult, { status: "unavailable" }>;
 type ScenarioName = keyof AvailableResult["scenarios"];
@@ -57,7 +58,7 @@ export function PersonalFcffDcfValuation({
   const result =
     selection === null || assumptions === null
       ? null
-      : calculatePersonalFcffDcfValuation({
+      : calculateModel({
           annuals: mapAnnualFinancials(annualFinancials),
           assumptions,
           market: mapMarketOverview(marketOverview),
@@ -118,7 +119,7 @@ export function PersonalFcffDcfValuation({
 
       {selection === null ? (
         <ReadinessState
-          detail="Use “View market” in search results or My Watchlist. The model will not load or infer a company automatically."
+          detail="Use “Research” in My Watchlist or “View market” in search results. The model will not load or infer a company automatically."
           title="Choose a security to build cash-flow scenarios."
         />
       ) : (
@@ -144,6 +145,11 @@ export function PersonalFcffDcfValuation({
               detail={draftIssue}
               title="Finish entering valid assumptions."
             />
+          ) : result?.status === "invalid_input" ? (
+            <ReadinessState
+              detail="The selected identity or loaded source data does not meet this model's input limits. Other company research remains available; no identity was shortened or substituted."
+              title="Cash-flow valuation is unavailable for these inputs."
+            />
           ) : result?.status === "available" ? (
             <AvailableValuation result={result} symbol={selection.symbol} />
           ) : result === null ? null : (
@@ -167,6 +173,18 @@ export function PersonalFcffDcfValuation({
       </p>
     </section>
   );
+}
+
+function calculateModel(
+  input: Parameters<typeof calculatePersonalFcffDcfValuation>[0],
+): ViewResult {
+  try {
+    return calculatePersonalFcffDcfValuation(input);
+  } catch (error) {
+    // Workspace identities can exceed this model's stricter input bounds.
+    if (error instanceof TypeError) return { status: "invalid_input" };
+    throw error;
+  }
 }
 
 function SourceReadiness({
@@ -1090,13 +1108,15 @@ function annualInputLabel(value: string): string {
 
 function summaryCopy(
   selection: PersonalMarketSelection | null,
-  result: ModelResult | null,
+  result: ViewResult | null,
   draftIssue: string | null,
 ): string {
   if (selection === null)
     return "Choose a security, then explicitly load its market, valuation, and annual-statement inputs.";
   if (draftIssue !== null)
     return `${selection.symbol} cash-flow valuation is paused while an assumption field is incomplete.`;
+  if (result?.status === "invalid_input")
+    return `${selection.symbol} cash-flow valuation is unavailable because the selected identity or loaded data is outside this model's supported inputs.`;
   if (result?.status === "available")
     return `${selection.symbol} forward and reverse cash-flow scenarios are available from exact-date market inputs and the latest annual model inputs.`;
   return `${selection.symbol} cash-flow valuation is unavailable; the exact missing or invalid input is shown below.`;

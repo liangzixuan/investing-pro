@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reuse comparison companies
+## Immediate delivery: find and research saved companies
+
+Make My Watchlist easy to reach from the workspace header. Filter its loaded
+entries by ticker or company name and browse pages of 50 in saved order.
+Research opens the exact visible identity; Back preserves the filter, page and
+unsaved note drafts. Filtering, paging and navigation make no source request
+or saved-data write. Keep the full watchlist available to screening, filings
+and peer selection, and keep reorder positions global across page boundaries.
+
+Disable reordering while a filter is active. Reject retained row actions and
+return-focus targets when the list or identity no longer matches. Use synthetic
+large lists and keyboard/narrow-layout checks. This adds no multi-list support,
+tags, note search, import/export, provider source or persistence format. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: reuse comparison companies
 
 Save one ordered selection of two or three companies from a current My Watchlist
 financial comparison. Restore those watchlist inputs in a later session, run the
@@ -651,14 +666,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Save and restore one ordered comparison company group                                            | Reuse current watchlist identities and explicit financial/price loading    |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Now              | Filter and page My Watchlist with reliable Research/Back navigation                              | Reuse loaded identities while preserving drafts, position and explicit loads |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps              |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters   |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                     |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions          |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                  |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -676,8 +691,8 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/lib/personal-financial-comparison-selection-api.test.ts src/features/research/PersonalFinancialScreener.test.tsx
-   pnpm --filter @research-cockpit/api exec vitest run src/workspace-financial-screen-routes.test.ts
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
+   pnpm --filter @research-cockpit/web typecheck
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed

@@ -19,6 +19,10 @@ Five sections organize the existing panels:
 The sections retain their existing data availability and explicit Load actions.
 Moving between sections does not request data or save anything. Loaded data and
 DCF draft assumptions remain in active-session memory while sections are hidden.
+The DCF model has stricter input limits than the watchlist. If an exact company
+identity or loaded input falls outside those limits, that panel explains why
+cash-flow valuation is unavailable while company research remains usable.
+Names are not shortened or substituted to produce a valuation.
 Hidden panels stay mounted, but their controls are absent from keyboard and
 accessibility navigation. Tabs support Left/Right arrows, Home and End.
 DCF links to missing price or annual inputs reveal the target section before
@@ -41,6 +45,36 @@ browser storage or a saved layout. Local access and account behavior remain
 unchanged. Explicit source requests retain their existing freshness and
 availability limits; navigation is not a refresh.
 
+## Find a saved company
+
+The workspace header's **My Watchlist** link moves to the primary saved list.
+Filter by ticker or company name to search only its already-loaded entries.
+Matching ignores case, surrounding whitespace and canonically equivalent
+Unicode spelling. It does not search notes or request the security catalog.
+The filter is limited to 128 characters and stays in current-session memory.
+
+Entries retain their saved order in pages of 50. Matching and total counts
+distinguish a filter with no matches from an empty or unavailable watchlist.
+Changing the filter starts at page1; removals or reloads clamp an out-of-range
+page. Paging and filtering do not discard unsaved note drafts.
+
+Use a row's **Research** action, then **Back to My Watchlist**, to return to
+that control when it still represents the same visible identity. Otherwise
+focus returns to the watchlist heading; the filter and page do not change to
+search for a disappeared row. A newly selected company opens Price. Reopening
+the same full identity preserves its current research section and loaded state.
+
+Displayed positions and move arrows refer to the complete saved list, including
+across page boundaries. Clear the filter before reordering so hidden neighbors
+are not moved unexpectedly. Save note, Remove and reorder retain their existing
+explicit versioned operations. Screening, filing checks and peer candidates
+continue using the full admitted list, independently of its visible page.
+
+Jump navigation, filtering, paging, Research and Back make no additional data
+request or saved-data write. Session/workspace loss clears the browsing state
+under the existing lifecycle rules. Multiple lists, tags, sorting, imports,
+exports and saved layouts remain outside this feature.
+
 ## Acceptance
 
 - Keep all five panels mounted with only the selected panel exposed. Verify
@@ -54,6 +88,13 @@ availability limits; navigation is not a refresh.
 - Check desktop and 390px Brave layout, focus after navigation and return,
   long names, source links and hidden-panel keyboard accessibility. Use isolated
   synthetic data for populated scenarios and preserve the owner's real data.
+- Verify 50/50/20 paging, bounded rendering at the existing maximum admitted
+  watchlist size, canonical-text filtering, no matches and page correction.
+  Preserve note drafts across filtering and paging; use absolute reorder
+  indices and reject stale row actions after list, version or identity changes.
+- Keep Research/Back focus bound to the current visible full identity, including
+  same-listing-ID replacements. Preserve the full inputs for downstream panels
+  and make no implicit request or write during list navigation.
 
 The workspace checkpoint records the actual accepted revision and validation;
 this guide describes behavior and does not itself establish release acceptance.

@@ -729,6 +729,17 @@ primary watchlist cannot be loaded. Public verification uses synthetic data; no
 private row, path, digest, count, latency, credential, or activation is recorded
 here.
 
+The primary list now has a local jump link, ticker/company filtering and pages
+of 50 loaded entries. Research and Back preserve browsing position and note
+drafts, with current full-identity checks for row actions and return focus.
+Saved order and move positions remain global; filtering disables reordering.
+Screening, filings and peers continue using the complete list. These controls
+add no source requests, saved layout, multi-list support, tags or import/export.
+Synthetic maximum-size checks establish bounded visible rows, not completion
+of the planned multi-list aggregate stress objective. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md) and the current checkpoint
+for actual acceptance evidence.
+
 ### Cycle 3f — automated SEC filing refresh and amendment discovery
 
 Target: replace manual frozen-corpus preparation with an explicitly enabled,
@@ -1123,7 +1134,7 @@ coverage, or imply universal industry applicability. The financial-screen guide
 owns exact thresholds and source eligibility; the current-work guide and local
 handoff own actual release acceptance.
 
-The next repeatable-workflow increment remembers one ordered group of two or
+The saved-comparison workflow remembers one ordered group of two or
 three comparison companies from My Watchlist. A separate encrypted settings
 record stores only full identities and catalog provenance. Restore validates
 current catalog/watchlist membership; an explicit financial screen supplies

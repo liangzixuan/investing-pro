@@ -73,6 +73,17 @@ interface LoadedWorkspace {
   readonly watchlistAvailable: boolean;
 }
 
+interface WatchlistRow {
+  readonly membership: PersonalWatchlistMembership;
+  readonly absoluteIndex: number;
+}
+
+interface CompanyOriginTarget {
+  readonly headingId: string;
+  readonly trigger: HTMLElement | null;
+  readonly isCurrent?: () => boolean;
+}
+
 interface ReconciliationPreview {
   readonly matched: readonly PersonalWatchlistMembership[];
   readonly snapshotSha256: string;
@@ -117,6 +128,7 @@ type RequestState = "idle" | "loading" | "saving";
 const SESSION_REVALIDATION_MESSAGE =
   "The owner session is no longer available. Revalidate the session before loading private data again.";
 const MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES = 250;
+const WATCHLIST_PAGE_SIZE = 50;
 
 class WorkspaceSnapshotChangedError extends Error {}
 
@@ -138,6 +150,10 @@ export function SecurityDiscoveryWorkspace({
   const [watchlistState, setWatchlistState] = useState<RequestState>("idle");
   const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const currentNoteDrafts = useRef(noteDrafts);
+  currentNoteDrafts.current = noteDrafts;
+  const [watchlistQuery, setWatchlistQuery] = useState("");
+  const [watchlistPage, setWatchlistPage] = useState(0);
   const [reconciling, setReconciling] = useState(false);
   const [reconciliationPreview, setReconciliationPreview] =
     useState<ReconciliationPreview | null>(null);
@@ -153,10 +169,7 @@ export function SecurityDiscoveryWorkspace({
   const [companyOrigin, setCompanyOrigin] =
     useState<CompanyResearchOrigin>("search");
   const companyIdentity = useRef<string | null>(null);
-  const companyOriginTarget = useRef<{
-    readonly headingId: string;
-    readonly trigger: HTMLElement | null;
-  } | null>(null);
+  const companyOriginTarget = useRef<CompanyOriginTarget | null>(null);
   const companyNavigationEpoch = useRef(0);
   const companySelectionEpoch = useRef(0);
   const [marketOverview, setMarketOverview] =
@@ -211,6 +224,142 @@ export function SecurityDiscoveryWorkspace({
   const renderedWorkspaceEpoch = workspaceEpoch.current;
   const renderedCompanyEpoch = companySelectionEpoch.current;
 
+  const normalizedWatchlistQuery = normalizeWatchlistQuery(watchlistQuery);
+  const matchingWatchlistRows = (workspace?.watchlist.memberships ?? [])
+    .map((membership, absoluteIndex) => ({ membership, absoluteIndex }))
+    .filter(({ membership }) =>
+      matchesWatchlistQuery(membership, normalizedWatchlistQuery),
+    );
+  const watchlistPageCount = Math.max(
+    1,
+    Math.ceil(matchingWatchlistRows.length / WATCHLIST_PAGE_SIZE),
+  );
+  const currentWatchlistPage = Math.min(watchlistPage, watchlistPageCount - 1);
+  if (watchlistPage !== currentWatchlistPage)
+    setWatchlistPage(currentWatchlistPage);
+  const visibleWatchlistRows = matchingWatchlistRows.slice(
+    currentWatchlistPage * WATCHLIST_PAGE_SIZE,
+    (currentWatchlistPage + 1) * WATCHLIST_PAGE_SIZE,
+  );
+  const watchlistView = useRef({
+    workspace,
+    query: watchlistQuery,
+    page: currentWatchlistPage,
+    saving: watchlistState === "saving",
+    reconciling,
+    generation: 0,
+  });
+  if (
+    watchlistView.current.workspace !== workspace ||
+    watchlistView.current.query !== watchlistQuery ||
+    watchlistView.current.page !== currentWatchlistPage ||
+    watchlistView.current.saving !== (watchlistState === "saving") ||
+    watchlistView.current.reconciling !== reconciling
+  ) {
+    watchlistView.current = {
+      workspace,
+      query: watchlistQuery,
+      page: currentWatchlistPage,
+      saving: watchlistState === "saving",
+      reconciling,
+      generation: watchlistView.current.generation + 1,
+    };
+  }
+  const renderedWatchlistGeneration = watchlistView.current.generation;
+
+  function replaceWorkspace(next: LoadedWorkspace | null) {
+    watchlistView.current.workspace = next;
+    watchlistView.current.generation += 1;
+    setWorkspace(next);
+  }
+
+  function replaceNoteDrafts(next: Record<string, string>) {
+    currentNoteDrafts.current = next;
+    setNoteDrafts(next);
+  }
+
+  function resetWatchlistNavigation() {
+    watchlistView.current.query = "";
+    watchlistView.current.page = 0;
+    watchlistView.current.generation += 1;
+    setWatchlistQuery("");
+    setWatchlistPage(0);
+  }
+
+  function isCurrentWatchlistView() {
+    return (
+      workspace !== null &&
+      workspace === watchlistView.current.workspace &&
+      renderedWatchlistGeneration === watchlistView.current.generation &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      workspaceActivityReady.current
+    );
+  }
+
+  function withCurrentWatchlistRow(row: WatchlistRow, action: () => void) {
+    if (
+      !isCurrentWatchlistView() ||
+      workspace === null ||
+      !workspace.watchlistAvailable ||
+      !hasCurrentWatchlistSnapshot(workspace) ||
+      watchlistView.current.saving ||
+      watchlistView.current.reconciling
+    )
+      return;
+    const current = workspace.watchlist.memberships[row.absoluteIndex];
+    if (
+      current === undefined ||
+      companyResearchIdentityKey(current) !==
+        companyResearchIdentityKey(row.membership) ||
+      !visibleWatchlistRows.some(
+        (visible) => visible.absoluteIndex === row.absoluteIndex,
+      )
+    )
+      return;
+    action();
+  }
+
+  function changeWatchlistQuery(value: string) {
+    if (!isCurrentWatchlistView()) return;
+    const next = value.slice(0, 128);
+    watchlistView.current.query = next;
+    watchlistView.current.page = 0;
+    watchlistView.current.generation += 1;
+    setWatchlistQuery(next);
+    setWatchlistPage(0);
+  }
+
+  function changeWatchlistPage(direction: -1 | 1) {
+    if (!isCurrentWatchlistView()) return;
+    const next = currentWatchlistPage + direction;
+    if (next < 0 || next >= watchlistPageCount) return;
+    watchlistView.current.page = next;
+    watchlistView.current.generation += 1;
+    setWatchlistPage(next);
+  }
+
+  function isCurrentWatchlistOrigin(identityKey: string) {
+    const current = watchlistView.current;
+    const currentWorkspace = current.workspace;
+    if (
+      !workspaceActivityReady.current ||
+      currentWorkspace === null ||
+      !currentWorkspace.watchlistAvailable ||
+      !hasCurrentWatchlistSnapshot(currentWorkspace) ||
+      current.saving ||
+      current.reconciling
+    )
+      return false;
+    const query = normalizeWatchlistQuery(current.query);
+    return currentWorkspace.watchlist.memberships
+      .filter((member) => matchesWatchlistQuery(member, query))
+      .slice(
+        current.page * WATCHLIST_PAGE_SIZE,
+        (current.page + 1) * WATCHLIST_PAGE_SIZE,
+      )
+      .some((member) => companyResearchIdentityKey(member) === identityKey);
+  }
+
   const handleOwnerActivityChange = useCallback(
     (start: OwnerSessionActivityStart | null) => {
       ownerActivityStart.current = start;
@@ -238,7 +387,8 @@ export function SecurityDiscoveryWorkspace({
       ownerActivityStart.current = null;
       const epoch = ++workspaceEpoch.current;
       searchEpoch.current += 1;
-      setWorkspace(null);
+      replaceWorkspace(null);
+      resetWatchlistNavigation();
       setQuery("");
       setResults([]);
       setHasSearched(false);
@@ -246,7 +396,7 @@ export function SecurityDiscoveryWorkspace({
       setSearchMessage(null);
       setWatchlistState("idle");
       setWatchlistMessage(null);
-      setNoteDrafts({});
+      replaceNoteDrafts({});
       setReconciling(false);
       setReconciliationPreview(null);
       clearMarketState();
@@ -293,7 +443,7 @@ export function SecurityDiscoveryWorkspace({
         const watchlist =
           record?.payload ??
           createEmptyPersonalWatchlist(status.snapshot.snapshotSha256);
-        setWorkspace({
+        replaceWorkspace({
           snapshot: status.snapshot,
           version: record?.version ?? 0,
           watchlist,
@@ -326,7 +476,8 @@ export function SecurityDiscoveryWorkspace({
     ownerActivityStart.current = null;
     workspaceEpoch.current += 1;
     searchEpoch.current += 1;
-    setWorkspace(null);
+    replaceWorkspace(null);
+    resetWatchlistNavigation();
     setWorkspaceMessage(
       authMode === "local"
         ? "The local workspace connection is unavailable."
@@ -339,7 +490,7 @@ export function SecurityDiscoveryWorkspace({
     setSearchMessage(null);
     setWatchlistState("idle");
     setWatchlistMessage(null);
-    setNoteDrafts({});
+    replaceNoteDrafts({});
     setReconciling(false);
     setReconciliationPreview(null);
     clearMarketState();
@@ -516,6 +667,9 @@ export function SecurityDiscoveryWorkspace({
       typeof document === "undefined" ? null : document.activeElement;
     companyOriginTarget.current = {
       headingId,
+      ...(origin === "watchlist"
+        ? { isCurrent: () => isCurrentWatchlistOrigin(identityKey) }
+        : {}),
       trigger:
         active !== null &&
         active instanceof HTMLElement &&
@@ -523,11 +677,13 @@ export function SecurityDiscoveryWorkspace({
           ? active
           : null,
     };
+    const originTarget = companyOriginTarget.current;
     queueMicrotask(() => {
       if (
         typeof document === "undefined" ||
         navigation !== companyNavigationEpoch.current ||
         identityKey !== companyIdentity.current ||
+        originTarget.isCurrent?.() === false ||
         renderedWorkspaceEpoch !== workspaceEpoch.current ||
         !workspaceActivityReady.current
       )
@@ -1123,6 +1279,8 @@ export function SecurityDiscoveryWorkspace({
     }
     const epoch = workspaceEpoch.current;
     const controller = new AbortController();
+    watchlistView.current.saving = true;
+    watchlistView.current.generation += 1;
     setWatchlistState("saving");
     setWatchlistMessage(null);
     try {
@@ -1132,7 +1290,7 @@ export function SecurityDiscoveryWorkspace({
         controller.signal,
       );
       if (epoch !== workspaceEpoch.current) return false;
-      setWorkspace({
+      replaceWorkspace({
         ...activeWorkspace,
         version: saved.version,
         watchlist: saved.payload,
@@ -1169,7 +1327,7 @@ export function SecurityDiscoveryWorkspace({
         new AbortController().signal,
       );
       if (epoch !== workspaceEpoch.current) return;
-      setWorkspace({
+      replaceWorkspace({
         snapshot,
         version: latest?.version ?? 0,
         watchlist:
@@ -1277,7 +1435,8 @@ export function SecurityDiscoveryWorkspace({
     ) {
       return;
     }
-    const draft = noteDrafts[membership.listingId] ?? membership.note;
+    const draft =
+      currentNoteDrafts.current[membership.listingId] ?? membership.note;
     const note = normalizeWatchlistNote(draft);
     if (note === null) {
       setWatchlistMessage(
@@ -1295,11 +1454,11 @@ export function SecurityDiscoveryWorkspace({
       `${membership.symbol} note was saved.`,
     );
     if (saved) {
-      setNoteDrafts((current) => {
-        const next = { ...current };
+      if (currentNoteDrafts.current[membership.listingId] === draft) {
+        const next = { ...currentNoteDrafts.current };
         delete next[membership.listingId];
-        return next;
-      });
+        replaceNoteDrafts(next);
+      }
     }
   }
 
@@ -1317,6 +1476,8 @@ export function SecurityDiscoveryWorkspace({
 
     const epoch = workspaceEpoch.current;
     const controller = new AbortController();
+    watchlistView.current.reconciling = true;
+    watchlistView.current.generation += 1;
     setReconciling(true);
     setReconciliationPreview(null);
     setWatchlistMessage(null);
@@ -1396,6 +1557,8 @@ export function SecurityDiscoveryWorkspace({
     }
 
     const epoch = workspaceEpoch.current;
+    watchlistView.current.reconciling = true;
+    watchlistView.current.generation += 1;
     setReconciling(true);
     try {
       const saved = await persistWatchlist(
@@ -1418,9 +1581,9 @@ export function SecurityDiscoveryWorkspace({
     const retained = new Set(
       memberships.map((membership) => membership.listingId),
     );
-    setNoteDrafts((current) =>
+    replaceNoteDrafts(
       Object.fromEntries(
-        Object.entries(current).filter(([listingId]) =>
+        Object.entries(currentNoteDrafts.current).filter(([listingId]) =>
           retained.has(listingId),
         ),
       ),
@@ -1454,6 +1617,11 @@ export function SecurityDiscoveryWorkspace({
         <Link className="wordmark" href="/discover">
           <span>RC</span> Research Cockpit
         </Link>
+        {workspace !== null && (
+          <nav aria-label="Workspace sections" className="watchlist-jump">
+            <a href="#watchlist-title">My Watchlist</a>
+          </nav>
+        )}
         <div className="mode-chips" aria-label="Data mode">
           <span className="personal-dossier-chip">Personal · local only</span>
         </div>
@@ -1850,7 +2018,9 @@ export function SecurityDiscoveryWorkspace({
               <div className="discovery-section-heading">
                 <div>
                   <p className="eyebrow">Durable local list</p>
-                  <h2 id="watchlist-title">{workspace.watchlist.name}</h2>
+                  <h2 id="watchlist-title" tabIndex={-1}>
+                    {workspace.watchlist.name}
+                  </h2>
                 </div>
                 <span>
                   {String(workspace.watchlist.memberships.length)} saved securit
@@ -1934,6 +2104,62 @@ export function SecurityDiscoveryWorkspace({
                       : (watchlistMessage ??
                         "Changes survive browser and API restarts.")}
               </p>
+              {workspace.watchlistAvailable &&
+                workspace.watchlist.memberships.length > 0 && (
+                  <div className="watchlist-navigation">
+                    <label htmlFor="watchlist-filter">
+                      Filter My Watchlist by ticker or company
+                    </label>
+                    <input
+                      id="watchlist-filter"
+                      maxLength={128}
+                      onChange={(event) =>
+                        changeWatchlistQuery(event.target.value)
+                      }
+                      type="search"
+                      value={watchlistQuery}
+                    />
+                    <p aria-live="polite" className="watchlist-match-count">
+                      {String(matchingWatchlistRows.length)} matching of{" "}
+                      {String(workspace.watchlist.memberships.length)} saved
+                      securities.
+                    </p>
+                    {normalizedWatchlistQuery !== "" && (
+                      <p id="watchlist-reorder-guidance">
+                        Clear the filter to reorder My Watchlist.
+                      </p>
+                    )}
+                    {matchingWatchlistRows.length > 0 && (
+                      <nav
+                        aria-label="My Watchlist pages"
+                        className="watchlist-pagination"
+                      >
+                        <button
+                          className="secondary-action compact-action"
+                          disabled={currentWatchlistPage === 0}
+                          onClick={() => changeWatchlistPage(-1)}
+                          type="button"
+                        >
+                          Previous watchlist page
+                        </button>
+                        <span aria-live="polite">
+                          Page {String(currentWatchlistPage + 1)} of{" "}
+                          {String(watchlistPageCount)}
+                        </span>
+                        <button
+                          className="secondary-action compact-action"
+                          disabled={
+                            currentWatchlistPage === watchlistPageCount - 1
+                          }
+                          onClick={() => changeWatchlistPage(1)}
+                          type="button"
+                        >
+                          Next watchlist page
+                        </button>
+                      </nav>
+                    )}
+                  </div>
+                )}
               {!workspace.watchlistAvailable ? (
                 <div className="discovery-empty-state watchlist-empty-state">
                   <strong>My Watchlist is unavailable.</strong>
@@ -1949,18 +2175,159 @@ export function SecurityDiscoveryWorkspace({
                     Search above and add the first company you want to follow.
                   </span>
                 </div>
+              ) : matchingWatchlistRows.length === 0 ? (
+                <div className="discovery-empty-state watchlist-empty-state">
+                  <strong>No saved companies match this filter.</strong>
+                  <span>
+                    Change or clear the filter to see your saved list.
+                  </span>
+                </div>
               ) : (
                 <ol className="watchlist-members">
-                  {workspace.watchlist.memberships.map((membership, index) => (
-                    <li key={membership.listingId}>
-                      <div className="watchlist-member-heading">
-                        <span className="watchlist-position">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <SecurityIdentity membership={membership} />
-                        <div className="watchlist-actions">
+                  {visibleWatchlistRows.map((row) => {
+                    const { membership, absoluteIndex: index } = row;
+                    return (
+                      <li key={membership.listingId}>
+                        <div className="watchlist-member-heading">
+                          <span className="watchlist-position">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <SecurityIdentity membership={membership} />
+                          <div className="watchlist-actions">
+                            <button
+                              aria-label={`Research ${membership.symbol}`}
+                              disabled={
+                                !workspace.watchlistAvailable ||
+                                snapshotChanged ||
+                                watchlistState === "saving" ||
+                                reconciling
+                              }
+                              onClick={() =>
+                                withCurrentWatchlistRow(row, () =>
+                                  selectMarketSecurity(membership, "watchlist"),
+                                )
+                              }
+                              type="button"
+                            >
+                              Research
+                            </button>
+                            <button
+                              aria-label={`Choose ${membership.symbol} for portfolio`}
+                              disabled={
+                                snapshotChanged ||
+                                reconciling ||
+                                watchlistState === "saving"
+                              }
+                              onClick={() =>
+                                withCurrentWatchlistRow(row, () =>
+                                  selectPortfolioSecurity(membership),
+                                )
+                              }
+                              type="button"
+                            >
+                              Choose holding
+                            </button>
+                            <button
+                              aria-label={`Move ${membership.symbol} up`}
+                              aria-describedby={
+                                normalizedWatchlistQuery !== ""
+                                  ? "watchlist-reorder-guidance"
+                                  : undefined
+                              }
+                              disabled={
+                                !workspace.watchlistAvailable ||
+                                snapshotChanged ||
+                                index === 0 ||
+                                normalizedWatchlistQuery !== "" ||
+                                watchlistState === "saving" ||
+                                reconciling
+                              }
+                              onClick={() =>
+                                withCurrentWatchlistRow(row, () => {
+                                  if (normalizedWatchlistQuery === "")
+                                    moveMembership(index, -1);
+                                })
+                              }
+                              type="button"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              aria-label={`Move ${membership.symbol} down`}
+                              aria-describedby={
+                                normalizedWatchlistQuery !== ""
+                                  ? "watchlist-reorder-guidance"
+                                  : undefined
+                              }
+                              disabled={
+                                !workspace.watchlistAvailable ||
+                                snapshotChanged ||
+                                index ===
+                                  workspace.watchlist.memberships.length - 1 ||
+                                normalizedWatchlistQuery !== "" ||
+                                watchlistState === "saving" ||
+                                reconciling
+                              }
+                              onClick={() =>
+                                withCurrentWatchlistRow(row, () => {
+                                  if (normalizedWatchlistQuery === "")
+                                    moveMembership(index, 1);
+                                })
+                              }
+                              type="button"
+                            >
+                              ↓
+                            </button>
+                            <button
+                              className="watchlist-remove"
+                              disabled={
+                                !workspace.watchlistAvailable ||
+                                snapshotChanged ||
+                                watchlistState === "saving" ||
+                                reconciling
+                              }
+                              onClick={() =>
+                                withCurrentWatchlistRow(row, () =>
+                                  removeMembership(membership),
+                                )
+                              }
+                              type="button"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div className="watchlist-note-row">
+                          <label htmlFor={`note-${membership.listingId}`}>
+                            Research note
+                          </label>
+                          <textarea
+                            id={`note-${membership.listingId}`}
+                            disabled={
+                              !workspace.watchlistAvailable ||
+                              snapshotChanged ||
+                              watchlistState === "saving" ||
+                              reconciling
+                            }
+                            maxLength={2_000}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              withCurrentWatchlistRow(row, () =>
+                                replaceNoteDrafts({
+                                  ...currentNoteDrafts.current,
+                                  [membership.listingId]: value,
+                                }),
+                              );
+                            }}
+                            placeholder="Why is this company on the list?"
+                            rows={2}
+                            value={
+                              noteDrafts[membership.listingId] ??
+                              membership.note
+                            }
+                          />
                           <button
-                            aria-label={`View market for ${membership.symbol}`}
+                            className="text-button"
                             disabled={
                               !workspace.watchlistAvailable ||
                               snapshotChanged ||
@@ -1968,105 +2335,19 @@ export function SecurityDiscoveryWorkspace({
                               reconciling
                             }
                             onClick={() =>
-                              selectMarketSecurity(membership, "watchlist")
+                              withCurrentWatchlistRow(
+                                row,
+                                () => void saveNote(membership),
+                              )
                             }
                             type="button"
                           >
-                            View market
-                          </button>
-                          <button
-                            aria-label={`Choose ${membership.symbol} for portfolio`}
-                            disabled={snapshotChanged || reconciling}
-                            onClick={() => selectPortfolioSecurity(membership)}
-                            type="button"
-                          >
-                            Choose holding
-                          </button>
-                          <button
-                            aria-label={`Move ${membership.symbol} up`}
-                            disabled={
-                              !workspace.watchlistAvailable ||
-                              snapshotChanged ||
-                              index === 0 ||
-                              watchlistState === "saving" ||
-                              reconciling
-                            }
-                            onClick={() => moveMembership(index, -1)}
-                            type="button"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            aria-label={`Move ${membership.symbol} down`}
-                            disabled={
-                              !workspace.watchlistAvailable ||
-                              snapshotChanged ||
-                              index ===
-                                workspace.watchlist.memberships.length - 1 ||
-                              watchlistState === "saving" ||
-                              reconciling
-                            }
-                            onClick={() => moveMembership(index, 1)}
-                            type="button"
-                          >
-                            ↓
-                          </button>
-                          <button
-                            className="watchlist-remove"
-                            disabled={
-                              !workspace.watchlistAvailable ||
-                              snapshotChanged ||
-                              watchlistState === "saving" ||
-                              reconciling
-                            }
-                            onClick={() => removeMembership(membership)}
-                            type="button"
-                          >
-                            Remove
+                            Save note
                           </button>
                         </div>
-                      </div>
-                      <div className="watchlist-note-row">
-                        <label htmlFor={`note-${membership.listingId}`}>
-                          Research note
-                        </label>
-                        <textarea
-                          id={`note-${membership.listingId}`}
-                          disabled={
-                            !workspace.watchlistAvailable ||
-                            snapshotChanged ||
-                            watchlistState === "saving" ||
-                            reconciling
-                          }
-                          maxLength={2_000}
-                          onChange={(event) =>
-                            setNoteDrafts((current) => ({
-                              ...current,
-                              [membership.listingId]: event.target.value,
-                            }))
-                          }
-                          placeholder="Why is this company on the list?"
-                          rows={2}
-                          value={
-                            noteDrafts[membership.listingId] ?? membership.note
-                          }
-                        />
-                        <button
-                          className="text-button"
-                          disabled={
-                            !workspace.watchlistAvailable ||
-                            snapshotChanged ||
-                            watchlistState === "saving" ||
-                            reconciling
-                          }
-                          onClick={() => void saveNote(membership)}
-                          type="button"
-                        >
-                          Save note
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </section>
@@ -2100,6 +2381,20 @@ function companyResearchIdentityKey(
   ]);
 }
 
+function normalizeWatchlistQuery(query: string): string {
+  return query.trim().normalize("NFC").toLocaleLowerCase("en-US");
+}
+
+function matchesWatchlistQuery(
+  membership: PersonalWatchlistMembership,
+  query: string,
+): boolean {
+  return `${membership.symbol} ${membership.issuerName}`
+    .normalize("NFC")
+    .toLocaleLowerCase("en-US")
+    .includes(query);
+}
+
 function isVisibleFocusTarget(
   target: HTMLElement | null,
 ): target is HTMLElement {
@@ -2112,12 +2407,11 @@ function isVisibleFocusTarget(
   );
 }
 
-function focusCompanyOrigin(
-  origin: Readonly<{ headingId: string; trigger: HTMLElement | null }>,
-) {
-  const target = isVisibleFocusTarget(origin.trigger)
-    ? origin.trigger
-    : document.getElementById(origin.headingId);
+function focusCompanyOrigin(origin: CompanyOriginTarget) {
+  const target =
+    (origin.isCurrent?.() ?? true) && isVisibleFocusTarget(origin.trigger)
+      ? origin.trigger
+      : document.getElementById(origin.headingId);
   focusCompanyTarget(target);
 }
 

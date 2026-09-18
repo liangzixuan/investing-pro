@@ -553,7 +553,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       target: { value: "Keep this unsaved research note" },
     });
     requireElementByProps<{ onClick: () => void }>(view, {
-      "aria-label": "View market for ZERO",
+      "aria-label": "Research ZERO",
     }).props.onClick();
     await flushPromises();
     const company = requireCompanyResearch(renderWorkspace());
@@ -2425,6 +2425,571 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).toBe("");
   });
 });
+
+describe("My Watchlist navigation", () => {
+  it("renders 120 saved companies as ordered pages of 50, 50 and 20 with global positions", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    let view = renderWorkspace();
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
+    expect(watchlistPageButton(view, "Previous").props.disabled).toBe(true);
+    expect(watchlistPageButton(view, "Next").props.disabled).toBe(false);
+    expect(textContent(view)).toMatch(/Page\s+1\s+of\s+3/u);
+    watchlistPageButton(view, "Next").props.onClick();
+    view = renderWorkspace();
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(
+      textContent(
+        requireElementByProps(view, { className: "watchlist-position" }),
+      ),
+    ).toBe("51");
+    watchlistPageButton(view, "Next").props.onClick();
+    view = renderWorkspace();
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(101, 120));
+    expect(textContent(view)).toMatch(/Page\s+3\s+of\s+3/u);
+    expect(watchlistPageButton(view, "Next").props.disabled).toBe(true);
+    expect(watchlistPageButton(view, "Previous").props.disabled).toBe(false);
+    watchlistPageButton(view, "Previous").props.onClick();
+    expect(watchlistRowIds(renderWorkspace())).toEqual(watchlistIds(51, 100));
+  });
+
+  it("bounds rendered rows and editors for the maximum admitted 10,000-membership payload", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(10_000),
+    );
+    await activateWorkspace();
+    const view = renderWorkspace();
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
+    expect(findAllElements(view, "textarea")).toHaveLength(50);
+    expect(textContent(view)).toMatch(/10,?000/u);
+    expect(textContent(view)).toMatch(/Page\s+1\s+of\s+200/u);
+    const filtered = filterWatchlist("SYN10000");
+    expect(watchlistRowIds(filtered)).toEqual(["lst-syn-10000"]);
+    expect(findAllElements(filtered, "textarea")).toHaveLength(1);
+  });
+
+  it("matches ticker and canonically equivalent company text case-insensitively without searching notes or rewriting identities", async () => {
+    const record = watchlistRecord(3);
+    record.payload.memberships[0]!.issuerName = "Cafe\u0301 Growth";
+    record.payload.memberships[1]!.issuerName = "Other Company";
+    record.payload.memberships[1]!.note = "Caf\u00e9 hidden note";
+    record.payload.memberships[2]!.issuerName = "CAF\u00c9 Income";
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    expect(watchlistFilter(renderWorkspace()).props.maxLength).toBe(128);
+    expect(watchlistRowIds(filterWatchlist("  cAf\u00e9  "))).toEqual([
+      "lst-syn-00001",
+      "lst-syn-00003",
+    ]);
+    expect(watchlistRowIds(filterWatchlist("cafe\u0301"))).toEqual([
+      "lst-syn-00001",
+      "lst-syn-00003",
+    ]);
+    const tickerView = filterWatchlist("  syn00002  ");
+    expect(watchlistRowIds(tickerView)).toEqual(["lst-syn-00002"]);
+    const missing = filterWatchlist("missing company");
+    expect(watchlistRowIds(missing)).toEqual([]);
+    expect(textContent(missing)).toMatch(/no .*match/iu);
+    expect(textContent(missing)).not.toContain("Your watchlist is empty");
+    expect(watchlistRowIds(filterWatchlist("   "))).toEqual(watchlistIds(1, 3));
+    expect(record.payload.memberships[0]!.issuerName).toBe("Cafe\u0301 Growth");
+    expect(apiMocks.searchPersonalSecurities).not.toHaveBeenCalled();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("resets a changed filter to page one and keeps matching and total counts distinct", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    const view = filterWatchlist("SYN001");
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(100, 120));
+    expect(textContent(view)).toMatch(/\b21\b/u);
+    expect(textContent(view)).toMatch(/\b120\b/u);
+    expect(textContent(view)).toMatch(/Page\s+1\s+of\s+1/u);
+    expect(watchlistRowIds(filterWatchlist(""))).toEqual(watchlistIds(1, 50));
+  });
+
+  it("keeps filter, paging, jump, Research and Back entirely local after initialization", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    const fetch = vi.fn();
+    const storage = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    };
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("sessionStorage", storage);
+    const dom = companyFocusDocument("watchlist-title");
+    void filterWatchlist(" SYN ");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    const jump = requireElementByProps<{ href: string; onClick?: unknown }>(
+      renderWorkspace(),
+      { href: "#watchlist-title" },
+    );
+    expect(jump.props.onClick).toBeUndefined();
+    watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
+    await flushPromises();
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    const view = renderWorkspace();
+    expect(watchlistFilter(view).props.value).toBe(" SYN ");
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    expect(fetch).not.toHaveBeenCalled();
+    for (const mock of Object.values(storage))
+      expect(mock).not.toHaveBeenCalled();
+  });
+
+  it("provides an unmodified native jump to the focusable heading only while the section exists", async () => {
+    expect(
+      findAllElements(renderWorkspace(), "a").some(
+        (a) => a.props.href === "#watchlist-title",
+      ),
+    ).toBe(false);
+    await activateWorkspace();
+    const view = renderWorkspace();
+    const link = requireElementByProps<{ onClick?: unknown }>(view, {
+      href: "#watchlist-title",
+    });
+    expect(link.type).toBe("a");
+    expect(link.props.onClick).toBeUndefined();
+    const heading = requireElementByProps<{ tabIndex: number }>(view, {
+      id: "watchlist-title",
+    });
+    expect(heading.type).toBe("h2");
+    expect(heading.props.tabIndex).toBe(-1);
+  });
+
+  it("retains independent note drafts through filtering, paging and Research, then saves the full list explicitly", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    editWatchlistNote("lst-syn-00001", " First draft ");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    editWatchlistNote("lst-syn-00051", " Second draft ");
+    void filterWatchlist("SYN00120");
+    void filterWatchlist("");
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      " First draft ",
+    );
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    const view = renderWorkspace();
+    expect(watchlistNote(view, "lst-syn-00051").props.value).toBe(
+      " Second draft ",
+    );
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    requireButton(
+      watchlistRow(view, "lst-syn-00051"),
+      "Save note",
+    ).props.onClick();
+    await flushPromises();
+    const [version, payload] =
+      apiMocks.saveMainPersonalWatchlist.mock.calls[0]!;
+    expect(version).toBe(7);
+    expect(payload.memberships).toHaveLength(120);
+    expect(payload.memberships[50]!.note).toBe("Second draft");
+    expect(payload.memberships[0]!.note).toBe("");
+    watchlistPageButton(renderWorkspace(), "Previous").props.onClick();
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      " First draft ",
+    );
+  });
+
+  it("keeps complete financial and filing inputs and bounded full-list peer candidates while one filtered company is visible", async () => {
+    const record = watchlistRecord(300);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    void filterWatchlist("SYN00300");
+    watchlistAction(renderWorkspace(), "Research SYN00300").props.onClick();
+    const view = renderWorkspace();
+    const financial = findElement<PersonalFinancialScreenerProps>(
+      view,
+      componentMocks.FinancialScreener,
+    )!;
+    const filings = findElement<PersonalWatchlistFilingsProps>(
+      view,
+      componentMocks.WatchlistFilings,
+    )!;
+    expect(financial.props.watchlistMemberships).toBe(
+      record.payload.memberships,
+    );
+    expect(financial.props.watchlistVersion).toBe(7);
+    expect(filings.props.memberships).toBe(record.payload.memberships);
+    expect(filings.props.watchlistVersion).toBe(7);
+    expect(watchlistRowIds(view)).toEqual(["lst-syn-00300"]);
+    const peers = requireManualPeerComparison(view).props.candidates;
+    expect(peers).toHaveLength(250);
+    expect(peers.map((peer) => peer.listingId)).toEqual(watchlistIds(1, 250));
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+  });
+
+  it("moves across the 50/51 boundary using saved positions and prevents filtered reorder even through a retained handler", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    const retained = watchlistAction(renderWorkspace(), "Move SYN00050 down");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    const first = watchlistAction(renderWorkspace(), "Move SYN00051 up");
+    expect(first.props.disabled).toBe(false);
+    first.props.onClick();
+    await flushPromises();
+    const order =
+      apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1].memberships.map(
+        (m) => m.listingId,
+      );
+    expect(order).toEqual([
+      ...watchlistIds(1, 49),
+      "lst-syn-00051",
+      "lst-syn-00050",
+      ...watchlistIds(52, 120),
+    ]);
+    expect(watchlistRowIds(renderWorkspace())[0]).toBe("lst-syn-00050");
+    const filtered = filterWatchlist("SYN00050");
+    expect(textContent(filtered)).toContain(
+      "Clear the filter to reorder My Watchlist",
+    );
+    for (const direction of ["up", "down"]) {
+      const action = watchlistAction(filtered, `Move SYN00050 ${direction}`);
+      expect(action.props.disabled).toBe(true);
+      action.props.onClick();
+    }
+    retained.props.onClick();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+  });
+
+  it("clamps a removed final page to the remaining page without losing earlier drafts", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(101),
+    );
+    await activateWorkspace();
+    editWatchlistNote("lst-syn-00001", "Draft survives removal");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    requireButton(
+      watchlistRow(renderWorkspace(), "lst-syn-00101"),
+      "Remove",
+    ).props.onClick();
+    await flushPromises();
+    const view = renderWorkspace();
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(textContent(view)).toMatch(/Page\s+2\s+of\s+2/u);
+    expect(watchlistPageButton(view, "Next").props.disabled).toBe(true);
+    watchlistPageButton(view, "Previous").props.onClick();
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      "Draft survives removal",
+    );
+  });
+
+  it("passes all eleven identity fields to Research and preserves the same company's section and data", async () => {
+    const record = watchlistRecord(2);
+    record.payload.memberships[0] = {
+      ...membership("ZERO", "lst-zero"),
+      note: "Not part of the identity",
+    };
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    watchlistAction(renderWorkspace(), "Research ZERO").props.onClick();
+    let view = renderWorkspace();
+    const expected = { ...record.payload.memberships[0] };
+    const { note, ...identity } = expected;
+    expect(note).toBe("Not part of the identity");
+    expect(
+      findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
+        .selectedListing,
+    ).toEqual(identity);
+    expect(Object.keys(identity)).toHaveLength(11);
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises();
+    view = renderWorkspace();
+    const overview = requireMarketOverview(view).props.overview;
+    const companyKey = requireCompanyResearch(view).key;
+    requireCompanyResearch(view).props.onSectionChange("valuation");
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    watchlistAction(renderWorkspace(), "Research ZERO").props.onClick();
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).key).toBe(companyKey);
+    expect(requireCompanyResearch(view).props.activeSection).toBe("valuation");
+    expect(requireMarketOverview(view).props.overview).toBe(overview);
+    watchlistAction(view, "Research SYN00002").props.onClick();
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).props.activeSection).toBe("price");
+    expect(requireMarketOverview(view).props.overview).toBeNull();
+    expect(apiMocks.fetchPersonalMarketOverview).toHaveBeenCalledOnce();
+  });
+
+  it.each(["version", "identity", "reorder", "remove"] as const)(
+    "rejects retained row actions and note edits after a %s replacement before another render",
+    async (change) => {
+      const original = watchlistRecord(2);
+      const latest = watchlistRecord(2, change === "version" ? 8 : 7);
+      if (change === "identity")
+        latest.payload.memberships[0] = {
+          ...latest.payload.memberships[0]!,
+          shareClassId: "shr-replaced",
+        };
+      if (change === "reorder") latest.payload.memberships.reverse();
+      if (change === "remove") latest.payload.memberships.shift();
+      apiMocks.fetchMainPersonalWatchlist
+        .mockResolvedValueOnce(original)
+        .mockResolvedValueOnce(latest);
+      apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError("conflict"),
+      );
+      await activateWorkspace();
+      const old = renderWorkspace();
+      const row = watchlistRow(old, "lst-syn-00001");
+      const note = watchlistNote(old, "lst-syn-00001");
+      editWatchlistNote("lst-syn-00001", "Current draft");
+      requireButton(
+        watchlistRow(renderWorkspace(), "lst-syn-00001"),
+        "Save note",
+      ).props.onClick();
+      await flushPromises();
+      for (const button of findAllElements(row, "button"))
+        (button.props.onClick as () => void)();
+      note.props.onChange({ target: { value: "Stale overwrite" } });
+      const view = renderWorkspace();
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+      expect(requireCompanyResearch(view).props.selection).toBeNull();
+      expect(
+        findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!
+          .props.selectedListing,
+      ).toBeNull();
+      if (change !== "remove")
+        expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(
+          "Current draft",
+        );
+    },
+  );
+
+  it("rejects retained off-page and filtered-out actions synchronously", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    const row = watchlistRow(renderWorkspace(), "lst-syn-00001");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    for (const button of findAllElements(row, "button"))
+      (button.props.onClick as () => void)();
+    let view = renderWorkspace();
+    expect(requireCompanyResearch(view).props.selection).toBeNull();
+    const second = watchlistRow(view, "lst-syn-00051");
+    watchlistFilter(view).props.onChange({ target: { value: "SYN00120" } });
+    for (const button of findAllElements(second, "button"))
+      (button.props.onClick as () => void)();
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).props.selection).toBeNull();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("cancels queued Research focus when its origin is filtered out before the microtask runs", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(2),
+    );
+    await activateWorkspace();
+    const dom = companyFocusDocument("watchlist-title");
+    const pending: Array<() => void> = [];
+    vi.stubGlobal("queueMicrotask", (callback: () => void) =>
+      pending.push(callback),
+    );
+    const view = renderWorkspace();
+    watchlistAction(view, "Research SYN00001").props.onClick();
+    watchlistFilter(view).props.onChange({ target: { value: "SYN00002" } });
+    pending.forEach((callback) => callback());
+    expect(dom.company.focus).not.toHaveBeenCalled();
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-syn-00001");
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+  });
+
+  it.each(["page", "filter", "identity", "remove", "session"] as const)(
+    "invalidates delayed watchlist return focus after %s changes even when the old DOM trigger remains connected",
+    async (change) => {
+      const original = watchlistRecord(60);
+      const latest = watchlistRecord(60, 8);
+      latest.payload.memberships[0] = {
+        ...latest.payload.memberships[0]!,
+        securityName: "Replacement common shares",
+      };
+      if (change === "remove") latest.payload.memberships.shift();
+      apiMocks.fetchMainPersonalWatchlist
+        .mockResolvedValueOnce(original)
+        .mockResolvedValueOnce(latest);
+      await activateWorkspace();
+      const dom = companyFocusDocument("watchlist-title");
+      watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+      await flushPromises();
+      const pending: Array<() => void> = [];
+      vi.stubGlobal("queueMicrotask", (callback: () => void) =>
+        pending.push(callback),
+      );
+      requireCompanyResearch(renderWorkspace()).props.onBack();
+      if (change === "page")
+        watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+      if (change === "filter") void filterWatchlist("SYN00002");
+      if (change === "identity" || change === "remove") {
+        apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+          new PersonalWorkspaceApiError("conflict"),
+        );
+        requireButton(
+          watchlistRow(renderWorkspace(), "lst-syn-00001"),
+          "Save note",
+        ).props.onClick();
+        await flushPromises();
+      }
+      if (change === "session")
+        await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+          false,
+          new AbortController().signal,
+        );
+      void renderWorkspace();
+      pending.forEach((callback) => callback());
+      expect(dom.trigger.isConnected).toBe(true);
+      expect(dom.trigger.focus).not.toHaveBeenCalled();
+      if (change === "session") expect(dom.origin.focus).not.toHaveBeenCalled();
+      else expect(dom.origin.focus).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("clears paging and filtering on session loss and rejects every retained private row callback", async () => {
+    const record = watchlistRecord(120);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValue(record);
+    await activateWorkspace();
+    void filterWatchlist("SYN");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    const old = renderWorkspace();
+    const row = watchlistRow(old, "lst-syn-00051");
+    const oldNote = watchlistNote(old, "lst-syn-00051");
+    const ending = requireOwnerSession(old).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    for (const button of findAllElements(row, "button"))
+      (button.props.onClick as () => void)();
+    oldNote.props.onChange({ target: { value: "Must not reappear" } });
+    await ending;
+    expect(watchlistRowIds(renderWorkspace())).toEqual([]);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    await activateWorkspace();
+    const view = renderWorkspace();
+    expect(watchlistFilter(view).props.value).toBe("");
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
+    expect(requireCompanyResearch(view).props.selection).toBeNull();
+    watchlistPageButton(view, "Next").props.onClick();
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00051").props.value).toBe(
+      "",
+    );
+  });
+});
+
+function watchlistRecord(count: number, version = 7) {
+  return {
+    id: "main" as const,
+    version,
+    createdAt: "2030-01-15T01:00:00.000Z",
+    updatedAt: "2030-01-15T02:00:00.000Z",
+    payload: {
+      schemaVersion: 1 as const,
+      name: "My Watchlist" as const,
+      snapshotSha256: snapshot().snapshotSha256,
+      memberships: Array.from({ length: count }, (_, index) => {
+        const suffix = String(index + 1).padStart(5, "0");
+        return {
+          ...membership(`SYN${suffix}`, `lst-syn-${suffix}`),
+          issuerName: `Synthetic Company ${suffix}`,
+        };
+      }),
+    },
+  };
+}
+
+function watchlistIds(first: number, last: number) {
+  return Array.from(
+    { length: last - first + 1 },
+    (_, index) => `lst-syn-${String(first + index).padStart(5, "0")}`,
+  );
+}
+
+function watchlistRows(value: unknown) {
+  const list = findAllElements(value, "ol").find(
+    (element) => element.props.className === "watchlist-members",
+  );
+  return list === undefined ? [] : findAllElements(list, "li");
+}
+
+function watchlistRowIds(value: unknown) {
+  return watchlistRows(value).map((row) => row.key);
+}
+
+function watchlistRow(value: unknown, listingId: string) {
+  const row = watchlistRows(value).find(
+    (candidate) => candidate.key === listingId,
+  );
+  if (row === undefined)
+    throw new Error(`Expected visible watchlist row ${listingId}.`);
+  return row;
+}
+
+function watchlistAction(value: unknown, label: string) {
+  return requireElementByProps<{ disabled?: boolean; onClick: () => void }>(
+    value,
+    { "aria-label": label },
+  );
+}
+
+function watchlistPageButton(value: unknown, direction: "Previous" | "Next") {
+  return requireButton(value, `${direction} watchlist page`);
+}
+
+function watchlistFilter(value: unknown) {
+  return requireElementByProps<{
+    value: string;
+    maxLength: number;
+    onChange: (event: { target: { value: string } }) => void;
+  }>(value, { id: "watchlist-filter" });
+}
+
+function filterWatchlist(query: string) {
+  watchlistFilter(renderWorkspace()).props.onChange({
+    target: { value: query },
+  });
+  return renderWorkspace();
+}
+
+function watchlistNote(value: unknown, listingId: string) {
+  return requireElementByProps<{
+    value: string;
+    onChange: (event: { target: { value: string } }) => void;
+  }>(value, { id: `note-${listingId}` });
+}
+
+function editWatchlistNote(listingId: string, value: string) {
+  watchlistNote(renderWorkspace(), listingId).props.onChange({
+    target: { value },
+  });
+}
 
 async function activateWorkspace() {
   const owner = requireOwnerSession(renderWorkspace());

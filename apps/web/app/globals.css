@@ -449,6 +449,23 @@ h4,
 
 .personal-app-header {
   border-bottom-color: #99b2c2;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.personal-app-header .watchlist-jump {
+  display: flex;
+}
+
+.watchlist-jump a:focus-visible,
+#watchlist-title:focus-visible,
+.watchlist-navigation :is(input, button):focus-visible {
+  outline: 3px solid var(--mint-deep);
+  outline-offset: 4px;
+}
+
+#watchlist-title {
+  scroll-margin-top: 160px;
 }
 
 .personal-dossier-chip {
@@ -755,6 +772,7 @@ h4,
 }
 
 .watchlist-members > li {
+  min-width: 0;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
@@ -776,7 +794,57 @@ h4,
 
 .watchlist-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+}
+
+.watchlist-navigation {
+  display: grid;
+  min-width: 0;
+  margin-top: 18px;
+  gap: 10px;
+}
+
+.watchlist-navigation > label {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.watchlist-navigation > input {
+  width: 100%;
+  max-width: 480px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: white;
+  color: var(--ink);
+}
+
+.watchlist-navigation > p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.watchlist-pagination {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.watchlist-pagination > span {
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+}
+
+.watchlist-pagination > button {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .watchlist-actions button {

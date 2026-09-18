@@ -9,9 +9,10 @@ import {
   PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
   PERSONAL_FCFF_DCF_MAXIMUM_DECIMAL_LENGTH,
 } from "@research-cockpit/personal-market-analytics";
+import * as analytics from "@research-cockpit/personal-market-analytics";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   PersonalFcffDcfValuation,
@@ -53,6 +54,10 @@ vi.mock("react", async (importOriginal) => ({
 }));
 
 beforeEach(() => stateHarness.reset());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("PersonalFcffDcfValuation", () => {
   it("starts with explicit selection guidance and the permanent decision limits", () => {
@@ -90,6 +95,123 @@ describe("PersonalFcffDcfValuation", () => {
     expect(markup).toContain(
       "No DCF value, implied growth, sensitivity value, or recommendation was substituted",
     );
+  });
+
+  it.each(
+    (["issuerName", "securityName"] as const).flatMap((field) =>
+      [257, 486, 512].map((length) => ({ field, length })),
+    ),
+  )(
+    "withholds only DCF for a decoder-admitted $length-character $field before any source load",
+    ({ field, length }) => {
+      const props = defaultProps({
+        annualFinancials: null,
+        marketOverview: null,
+        valuationHistory: null,
+      });
+      const selection = { ...props.selection!, [field]: "N".repeat(length) };
+      const selectedProps = { ...props, selection };
+      const before = structuredClone(selectedProps);
+
+      const markup = render(selectedProps);
+
+      expect(markup).toContain(
+        "Cash-flow valuation is unavailable for these inputs.",
+      );
+      expect(markup).toContain("Other company research remains available");
+      expect(markup).toContain("no identity was shortened or substituted");
+      expect(markup.match(/Not loaded/gu)).toHaveLength(3);
+      expect(markup).not.toContain("Conservative scenario");
+      expect(markup).not.toContain("Base-scenario implied price");
+      expect(selectedProps).toEqual(before);
+    },
+  );
+
+  it.each(["issuerName", "securityName"] as const)(
+    "preserves exact loaded %s above the model limit and withholds calculated outputs",
+    (field) => {
+      const loadedIdentity = identity({ [field]: "L".repeat(486) });
+      const props = defaultProps({
+        annualFinancials: annualFinancials(loadedIdentity),
+        marketOverview: marketOverview(loadedIdentity),
+        selection: { ...loadedIdentity, issuerId: "issuer-zero" },
+        valuationHistory: valuationHistory(loadedIdentity),
+      });
+      const before = structuredClone(props);
+
+      const markup = render(props);
+
+      expect(markup).toContain(
+        "Cash-flow valuation is unavailable for these inputs.",
+      );
+      expect(markup.match(/<dd>Loaded<\/dd>/gu)).toHaveLength(3);
+      expect(markup).not.toContain("Conservative scenario");
+      expect(markup).not.toContain("WACC × terminal-growth sensitivity");
+      expect(props).toEqual(before);
+    },
+  );
+
+  it("keeps exact boundary-valid identity names and the normal model result", () => {
+    const boundaryIdentity = identity({
+      issuerName: "I".repeat(256),
+      securityName: "S".repeat(256),
+    });
+    const markup = render(
+      defaultProps({
+        annualFinancials: annualFinancials(boundaryIdentity),
+        marketOverview: marketOverview(boundaryIdentity),
+        selection: { ...boundaryIdentity, issuerId: "issuer-zero" },
+        valuationHistory: valuationHistory(boundaryIdentity),
+      }),
+    );
+
+    expect(markup).toContain("Conservative scenario");
+    expect(markup).toContain("$1,079.00");
+    expect(markup.match(/<td/gu)).toHaveLength(25);
+    expect(markup).not.toContain(
+      "Cash-flow valuation is unavailable for these inputs.",
+    );
+  });
+
+  it("recomputes after selecting another company without fetching or retaining an unavailable result", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const longSelection = {
+      ...defaultProps().selection!,
+      issuerName: "L".repeat(486),
+    };
+    expect(render(defaultProps({ selection: longSelection }))).toContain(
+      "Cash-flow valuation is unavailable for these inputs.",
+    );
+
+    const selectedWithoutSources = render(
+      defaultProps({
+        annualFinancials: null,
+        marketOverview: null,
+        valuationHistory: null,
+      }),
+    );
+    expect(selectedWithoutSources).toContain("Load ZERO price history");
+    expect(selectedWithoutSources).not.toContain("Conservative scenario");
+
+    const loaded = render(defaultProps());
+    expect(loaded).toContain("Conservative scenario");
+    expect(loaded).not.toContain(
+      "Cash-flow valuation is unavailable for these inputs.",
+    );
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not disguise an unexpected model failure as invalid input", () => {
+    const failure = new Error("Synthetic unexpected model failure");
+    vi.spyOn(
+      analytics,
+      "calculatePersonalFcffDcfValuation",
+    ).mockImplementationOnce(() => {
+      throw failure;
+    });
+
+    expect(() => render(defaultProps())).toThrow(failure);
   });
 
   it("renders all forward, reverse, sensitivity, provenance, and formula context from exact loaded inputs", () => {
