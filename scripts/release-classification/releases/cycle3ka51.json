@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "caseNumber": 51,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "80ca6286d51dbeabcdc2b4ffa6ef1f7583764474",
+  "featureRevision": "653aa5b8da038fcfb1aab214cc5e8d869b150680",
+  "featureCount": 203,
+  "closureCount": 204,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/research/PersonalFcffDcfValuation.tsx",
+      "status": "M"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka51.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka51.json",
+  "presentation": {
+    "featureDescription": "watchlist navigation DCF boundary repair",
+    "closureDescription": "watchlist navigation DCF boundary repair",
+    "inventoryDescription": "watchlist navigation DCF boundary repair",
+    "testBinding": "watchlistNavigationRepair",
+    "routingDescription": "watchlist navigation DCF boundary repair",
+    "summaryDescription": "watchlist navigation DCF boundary repair"
+  }
+}
