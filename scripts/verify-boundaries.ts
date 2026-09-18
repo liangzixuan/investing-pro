@@ -4576,7 +4576,7 @@ const validFilingPayloadCustodyManifest = {
   scripts: {
     build: "tsc --noEmit",
     typecheck: "tsc --noEmit",
-    test: "vitest run",
+    test: "vitest run --no-file-parallelism",
   },
 };
 if (
@@ -17560,7 +17560,7 @@ function filingPayloadCustodyManifestViolation(
     scripts: {
       build: "tsc --noEmit",
       typecheck: "tsc --noEmit",
-      test: "vitest run",
+      test: "vitest run --no-file-parallelism",
     },
   };
   return JSON.stringify(manifest) === JSON.stringify(expected)

@@ -17,7 +17,7 @@
     "start:vault": "node dist/src/vault-server.js",
     "start:workspace": "node dist/src/workspace-server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --no-file-parallelism"
   },
   "dependencies": {
     "@fastify/cors": "11.3.0",
