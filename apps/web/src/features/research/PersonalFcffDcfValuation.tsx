@@ -179,7 +179,7 @@ function calculateModel(
   input: Parameters<typeof calculatePersonalFcffDcfValuation>[0],
 ): ViewResult {
   try {
-    return calculatePersonalFcffDcfValuation(input);
+    return calculatePersonalFcffDcfValuation({ ...input });
   } catch (error) {
     // Workspace identities can exceed this model's stricter input bounds.
     if (error instanceof TypeError) return { status: "invalid_input" };
