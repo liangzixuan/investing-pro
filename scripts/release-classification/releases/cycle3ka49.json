@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "caseNumber": 49,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "7a27971647c2cb2ed191db4d79f13176c55803f1",
+  "featureRevision": "57a7544f4840aab5cf3c8a3caf8a7b0c7650bf32",
+  "featureCount": 199,
+  "closureCount": 200,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/workspace-financial-comparison-selection-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-financial-screen-routes.ts",
+      "status": "M"
+    },
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialScreener.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/usePersonalFinancialComparisonSelection.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-comparison-selection-api.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-financial-comparison-selection-api.ts",
+      "status": "A"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_FINANCIAL_VIEWS.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "status": "M" },
+    { "path": "docs/PERSONAL_SAVED_COMPARISON.md", "status": "A" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-financial-comparison-selection.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-financial-comparison-selection.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka49.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka49.json",
+  "presentation": {
+    "featureDescription": "saved comparison selection",
+    "closureDescription": "saved comparison selection",
+    "inventoryDescription": "saved comparison selection",
+    "testBinding": "savedComparisonSelection",
+    "routingDescription": "saved comparison selection",
+    "summaryDescription": "saved comparison selection"
+  }
+}
