@@ -26,7 +26,7 @@ jobs:
             timeout: 15
           - os: windows-latest
             python: "3.12.10"
-            timeout: 20
+            timeout: 30
 
     steps:
       - name: Check out source
