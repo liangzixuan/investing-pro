@@ -14,6 +14,7 @@ export interface PersonalCompanyResearchWorkspaceProps {
   readonly backLabel: string;
   readonly onBack: () => void;
   readonly onClear: () => void;
+  readonly researchNote?: ReactNode;
   readonly sections: Readonly<
     Record<PersonalCompanyResearchSection, ReactNode>
   >;
@@ -41,6 +42,7 @@ export function PersonalCompanyResearchWorkspace({
   backLabel,
   onBack,
   onClear,
+  researchNote,
   sections: content,
 }: PersonalCompanyResearchWorkspaceProps) {
   const identity = JSON.stringify(selection);
@@ -174,6 +176,7 @@ export function PersonalCompanyResearchWorkspace({
         </p>
       ) : (
         <>
+          {researchNote}
           <p className="company-research-guidance">
             Move between sections without losing loaded data. Each section loads
             new data only when you request it.

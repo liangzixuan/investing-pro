@@ -14,14 +14,17 @@ import type {
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as PersonalWorkspaceApiModule from "@/lib/personal-workspace-api";
 import {
   PersonalWorkspaceApiError,
+  type PersonalWatchlistMembership,
   type PersonalWatchlistPayload,
   type PersonalWatchlistRecord,
   type SavedPersonalWatchlist,
 } from "@/lib/personal-workspace-api";
 
 import type { PersonalCompanyResearchWorkspaceProps } from "./PersonalCompanyResearchWorkspace";
+import type { PersonalCompanyResearchNoteProps } from "./PersonalCompanyResearchNote";
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { OwnerSessionPanelProps } from "./OwnerSessionPanel";
 import type { LocalWorkspaceAccessPanelProps } from "./LocalWorkspaceAccessPanel";
@@ -139,6 +142,7 @@ const apiMocks = vi.hoisted(() => ({
 }));
 const componentMocks = vi.hoisted(() => ({
   CompanyResearch: () => null,
+  CompanyResearchNote: () => null,
   AnnualFinancials: () => null,
   FcffDcfValuation: () => null,
   FinancialQualityScorecard: () => null,
@@ -162,7 +166,7 @@ vi.mock("react", async (importOriginal) => ({
   useRef: hookHarness.useRef,
   useState: hookHarness.useState,
 }));
-vi.mock("@/lib/personal-workspace-api", () => ({
+vi.mock("@/lib/personal-workspace-api", async () => ({
   ...apiMocks,
   PersonalWorkspaceApiError: class PersonalWorkspaceApiError extends Error {
     constructor(readonly code: string) {
@@ -191,13 +195,20 @@ vi.mock("@/lib/personal-workspace-api", () => ({
     shareClassName: result.shareClassName,
     symbol: result.symbol,
   }),
-  normalizeWatchlistNote: (value: string) => value.trim(),
+  normalizeWatchlistNote: (
+    await vi.importActual<typeof PersonalWorkspaceApiModule>(
+      "../../lib/personal-workspace-api",
+    )
+  ).normalizeWatchlistNote,
 }));
 vi.mock("./OwnerSessionPanel", () => ({
   OwnerSessionPanel: componentMocks.OwnerSession,
 }));
 vi.mock("./PersonalCompanyResearchWorkspace", () => ({
   PersonalCompanyResearchWorkspace: componentMocks.CompanyResearch,
+}));
+vi.mock("./PersonalCompanyResearchNote", () => ({
+  PersonalCompanyResearchNote: componentMocks.CompanyResearchNote,
 }));
 vi.mock("./PersonalAnnualFinancials", () => ({
   PersonalAnnualFinancials: componentMocks.AnnualFinancials,
@@ -2777,7 +2788,7 @@ describe("My Watchlist navigation", () => {
       ).toBeNull();
       if (change !== "remove")
         expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(
-          "Current draft",
+          change === "identity" ? "" : "Current draft",
         );
     },
   );
@@ -2904,6 +2915,565 @@ describe("My Watchlist navigation", () => {
   });
 });
 
+describe("Shared company research notes", () => {
+  it("shares raw edits in both directions and saves the latest edit before rerendering", async () => {
+    const record = watchlistRecord(2);
+    record.payload.memberships[1]!.note = "Other saved note";
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const first = renderWorkspace();
+    watchlistNote(first, "lst-syn-00001").props.onChange({
+      target: { value: "  Draft from the row  " },
+    });
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "  Draft from the row  ",
+    );
+    requireCompanyNote(renderWorkspace()).props.onChange(
+      "  Cafe\u0301 outlook  ",
+    );
+    const view = renderWorkspace();
+    expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(
+      "  Cafe\u0301 outlook  ",
+    );
+    const editor = requireCompanyNote(view);
+    editor.props.onChange("  Cafe\u0301 final thesis  ");
+    editor.props.onSave();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+    const [version, payload] =
+      apiMocks.saveMainPersonalWatchlist.mock.calls[0]!;
+    expect(version).toBe(7);
+    expect(payload).toEqual({
+      ...record.payload,
+      memberships: [
+        { ...record.payload.memberships[0], note: "Caf\u00e9 final thesis" },
+        record.payload.memberships[1],
+      ],
+    });
+    await flushPromises();
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "Caf\u00e9 final thesis",
+    );
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      "Caf\u00e9 final thesis",
+    );
+  });
+
+  it.each(["company", "row"] as const)(
+    "accepts only one write when %s saves and retained controls fire before rerender",
+    async (origin) => {
+      const record = watchlistRecord(1);
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      const pending = deferred<SavedPersonalWatchlist>();
+      apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(pending.promise);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+      const view = renderWorkspace();
+      const company = requireCompanyNote(view);
+      const row = watchlistNote(view, "lst-syn-00001");
+      const rowSave = requireButton(
+        watchlistRow(view, "lst-syn-00001"),
+        "Save note",
+      );
+      row.props.onChange({ target: { value: "  Save exactly this  " } });
+      if (origin === "company") company.props.onSave();
+      else rowSave.props.onClick();
+      company.props.onSave();
+      rowSave.props.onClick();
+      company.props.onChange("Rejected company edit");
+      row.props.onChange({ target: { value: "Rejected row edit" } });
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+      const payload = apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1];
+      expect(payload.memberships[0]!.note).toBe("Save exactly this");
+      expect(requireCompanyNote(renderWorkspace()).props.disabled).toBe(true);
+      expect(
+        watchlistNote(renderWorkspace(), "lst-syn-00001").props.disabled,
+      ).toBe(true);
+      expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+        "  Save exactly this  ",
+      );
+      pending.resolve({ version: 8, payload });
+      await flushPromises();
+      expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+        "Save exactly this",
+      );
+    },
+  );
+
+  it("keeps company A's note independent of the separately chosen holding B", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    watchlistAction(
+      renderWorkspace(),
+      "Choose SYN00002 for portfolio",
+    ).props.onClick();
+    const view = renderWorkspace();
+    expect(
+      findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
+        .selectedListing?.listingId,
+    ).toBe("lst-syn-00002");
+    expect(requireCompanyResearch(view).props.selection?.listingId).toBe(
+      "lst-syn-00001",
+    );
+    const editor = requireCompanyNote(view);
+    editor.props.onChange("A's thesis");
+    editor.props.onSave();
+    await flushPromises();
+    expect(
+      apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1].memberships,
+    ).toEqual([
+      { ...record.payload.memberships[0], note: "A's thesis" },
+      record.payload.memberships[1],
+    ]);
+  });
+
+  it.each([
+    ["exchangeMic", "XNYS"],
+    ["instrumentType", "adr"],
+    ["issuerId", "iss-replacement"],
+    ["issuerName", "Replacement Issuer"],
+    ["listingId", "lst-replacement"],
+    ["securityId", "sec-replacement"],
+    ["securityName", "Replacement Common Stock"],
+    ["shareClassId", "shr-replacement"],
+    ["shareClassName", "Class B"],
+    ["symbol", "REPLACED"],
+  ] as const)(
+    "does not lend a saved note to a selected company with a different %s",
+    async (field, value) => {
+      const record = watchlistRecord(1);
+      record.payload.memberships[0]!.note =
+        "Belongs to the original full identity";
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+      const oldEditor = requireCompanyNote(renderWorkspace());
+      openNoteCompany({ ...record.payload.memberships[0]!, [field]: value });
+      oldEditor.props.onChange("Stale edit");
+      oldEditor.props.onSave();
+      const current = findCompanyNote(renderWorkspace());
+      expect(current === undefined || current.props.disabled).toBe(true);
+      expect(current?.props.value ?? "").not.toBe(
+        "Belongs to the original full identity",
+      );
+      expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+      expect(
+        watchlistNote(renderWorkspace(), "lst-syn-00001").props.value,
+      ).toBe("Belongs to the original full identity");
+    },
+  );
+
+  it.each(["page", "filter"] as const)(
+    "edits an exact saved company while its row is outside the current %s",
+    async (hiddenBy) => {
+      const record = watchlistRecord(60);
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+      if (hiddenBy === "page")
+        watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+      else void filterWatchlist("SYN00060");
+      expect(watchlistRowIds(renderWorkspace())).not.toContain("lst-syn-00001");
+      const editor = requireCompanyNote(renderWorkspace());
+      expect(editor.props.disabled).toBe(false);
+      editor.props.onChange("Off-page research");
+      editor.props.onSave();
+      await flushPromises();
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+      const payload = apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1];
+      expect(payload.memberships).toHaveLength(60);
+      expect(payload.memberships[0]!.note).toBe("Off-page research");
+      expect(payload.memberships.slice(1)).toEqual(
+        record.payload.memberships.slice(1),
+      );
+      if (hiddenBy === "page")
+        watchlistPageButton(renderWorkspace(), "Previous").props.onClick();
+      else void filterWatchlist("");
+      expect(
+        watchlistNote(renderWorkspace(), "lst-syn-00001").props.value,
+      ).toBe("Off-page research");
+    },
+  );
+
+  it("preserves the raw draft across a version conflict while retiring pre-reload controls", async () => {
+    const original = watchlistRecord(1);
+    const latest = watchlistRecord(1, 8);
+    latest.payload.memberships[0]!.note = "Saved elsewhere";
+    apiMocks.fetchMainPersonalWatchlist
+      .mockResolvedValueOnce(original)
+      .mockResolvedValueOnce(latest);
+    apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    await activateWorkspace();
+    openNoteCompany(original.payload.memberships[0]!);
+    const oldView = renderWorkspace();
+    const old = requireCompanyNote(oldView);
+    const oldRow = watchlistNote(oldView, "lst-syn-00001");
+    const oldRowSave = requireButton(
+      watchlistRow(oldView, "lst-syn-00001"),
+      "Save note",
+    );
+    old.props.onChange("  Keep the unsaved thesis  ");
+    old.props.onSave();
+    await flushPromises(12);
+    old.props.onChange("Stale company overwrite");
+    old.props.onSave();
+    oldRow.props.onChange({ target: { value: "Stale row overwrite" } });
+    oldRowSave.props.onClick();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+    const current = requireCompanyNote(renderWorkspace());
+    expect(current.props.value).toBe("  Keep the unsaved thesis  ");
+    expect(current.props.message).toMatch(/changed|conflict/iu);
+    current.props.onSave();
+    await flushPromises();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledTimes(2);
+    expect(apiMocks.saveMainPersonalWatchlist.mock.calls[1]![0]).toBe(8);
+    expect(
+      apiMocks.saveMainPersonalWatchlist.mock.calls[1]![1].memberships[0]!.note,
+    ).toBe("Keep the unsaved thesis");
+  });
+
+  it("does not claim a latest-version reload when conflict recovery fails", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist
+      .mockResolvedValueOnce(record)
+      .mockRejectedValueOnce(new Error("Synthetic reload unavailable"));
+    apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const editor = requireCompanyNote(renderWorkspace());
+    editor.props.onChange("  Preserve on failed reload  ");
+    editor.props.onSave();
+    await flushPromises(12);
+    const current = requireCompanyNote(renderWorkspace());
+    expect(current.props.value).toBe("  Preserve on failed reload  ");
+    expect(current.props.message).toMatch(/could not|unavailable|failed/iu);
+    expect(current.props.message).not.toMatch(
+      /latest saved (?:list|version) is(?: now)? shown|latest watchlist (?:was|is|has been) loaded/iu,
+    );
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+  });
+
+  it.each(["identity replacement", "removal"] as const)(
+    "prunes the exact draft after %s and never revives it when the original identity returns",
+    async (change) => {
+      const original = watchlistRecord(2);
+      original.payload.memberships[0]!.note = "Original saved note";
+      const latest = watchlistRecord(2, 8);
+      if (change === "identity replacement")
+        latest.payload.memberships[0] = {
+          ...latest.payload.memberships[0]!,
+          securityId: "sec-replaced",
+          note: "Replacement saved note",
+        };
+      else latest.payload.memberships.shift();
+      const returned = { ...original, version: 9 };
+      apiMocks.fetchMainPersonalWatchlist
+        .mockResolvedValueOnce(original)
+        .mockResolvedValueOnce(latest)
+        .mockResolvedValueOnce(returned);
+      apiMocks.saveMainPersonalWatchlist
+        .mockRejectedValueOnce(new PersonalWorkspaceApiError("conflict"))
+        .mockRejectedValueOnce(new PersonalWorkspaceApiError("conflict"));
+      await activateWorkspace();
+      openNoteCompany(original.payload.memberships[0]!);
+      const old = requireCompanyNote(renderWorkspace());
+      old.props.onChange("Never revive this unsaved draft");
+      old.props.onSave();
+      await flushPromises(12);
+      old.props.onChange("Retired overwrite");
+      old.props.onSave();
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+      expect(
+        findCompanyNote(renderWorkspace())?.props.value ?? "",
+      ).not.toContain("Never revive");
+      if (change === "identity replacement")
+        expect(
+          watchlistNote(renderWorkspace(), "lst-syn-00001").props.value,
+        ).toBe("Replacement saved note");
+      else
+        expect(watchlistRowIds(renderWorkspace())).not.toContain(
+          "lst-syn-00001",
+        );
+      expect(textContent(renderWorkspace())).toMatch(
+        /unsaved research notes.*(?:removed|changed).*discarded/iu,
+      );
+      requireButton(
+        watchlistRow(renderWorkspace(), "lst-syn-00002"),
+        "Save note",
+      ).props.onClick();
+      await flushPromises(12);
+      old.props.onChange("Still retired after re-add");
+      old.props.onSave();
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledTimes(2);
+      openNoteCompany(original.payload.memberships[0]!);
+      expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+        "Original saved note",
+      );
+      expect(
+        watchlistNote(renderWorkspace(), "lst-syn-00001").props.value,
+      ).toBe("Original saved note");
+    },
+  );
+});
+
+describe("Company research note lifecycle", () => {
+  it("does not revive a draft or feedback after session loss during conflict recovery", async () => {
+    const record = watchlistRecord(1);
+    const reload = deferred<PersonalWatchlistRecord | null>();
+    apiMocks.fetchMainPersonalWatchlist
+      .mockResolvedValueOnce(record)
+      .mockReturnValueOnce(reload.promise)
+      .mockResolvedValueOnce(record);
+    apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const oldView = renderWorkspace();
+    const editor = requireCompanyNote(oldView);
+    editor.props.onChange("Clear this private draft");
+    editor.props.onSave();
+    await flushPromises(6);
+    expect(apiMocks.fetchMainPersonalWatchlist).toHaveBeenCalledTimes(2);
+    const end = requireOwnerSession(renderWorkspace()).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    editor.props.onChange("Retired session edit");
+    editor.props.onSave();
+    await end;
+    reload.resolve({ ...record, version: 8 });
+    await flushPromises(12);
+    expect(
+      findElement(renderWorkspace(), componentMocks.CompanyResearch),
+    ).toBeUndefined();
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const current = requireCompanyNote(renderWorkspace());
+    expect(current.props.value).toBe("");
+    expect(current.props.message ?? "").not.toMatch(
+      /saved|latest|conflict|another tab/iu,
+    );
+  });
+
+  it("does not erase company B's equally worded draft or feedback when company A's save finishes", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const pending = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(pending.promise);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[1]!);
+    requireCompanyNote(renderWorkspace()).props.onChange("  Same draft text  ");
+    openNoteCompany(record.payload.memberships[0]!);
+    const editorA = requireCompanyNote(renderWorkspace());
+    editorA.props.onChange("  Same draft text  ");
+    editorA.props.onSave();
+    openNoteCompany(record.payload.memberships[1]!);
+    const before = requireCompanyNote(renderWorkspace());
+    expect(before.props.value).toBe("  Same draft text  ");
+    const feedbackB = before.props.message;
+    editorA.props.onChange("Stale A edit while B is selected");
+    editorA.props.onSave();
+    pending.resolve({
+      version: 8,
+      payload: apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1],
+    });
+    await flushPromises(12);
+    const after = requireCompanyNote(renderWorkspace());
+    expect(after.props.value).toBe("  Same draft text  ");
+    expect(after.props.message).toBe(feedbackB);
+    expect(after.props.message ?? "").not.toMatch(/SYN00001|saved/iu);
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00002").props.value).toBe(
+      "  Same draft text  ",
+    );
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+    openNoteCompany(record.payload.memberships[0]!);
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "Same draft text",
+    );
+  });
+
+  it("keeps failed saves and their draft associated with the initiating company", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const pending = deferred<void>();
+    apiMocks.saveMainPersonalWatchlist.mockImplementationOnce(async () => {
+      await pending.promise;
+      throw new Error("Synthetic write unavailable");
+    });
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const editor = requireCompanyNote(renderWorkspace());
+    editor.props.onChange("  Retry this company later  ");
+    editor.props.onSave();
+    openNoteCompany(record.payload.memberships[1]!);
+    const feedbackB = requireCompanyNote(renderWorkspace()).props.message;
+    pending.resolve();
+    await flushPromises(12);
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe("");
+    expect(requireCompanyNote(renderWorkspace()).props.message).toBe(feedbackB);
+    openNoteCompany(record.payload.memberships[0]!);
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "  Retry this company later  ",
+    );
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["overlength", "x".repeat(2_001)],
+    ["control character", "Before\u0000after"],
+    ["format character", "Before\u202eafter"],
+    ["unpaired surrogate", "Before\ud800after"],
+  ])(
+    "preserves but never writes a draft containing %s",
+    async (_case, value) => {
+      const record = watchlistRecord(1);
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+      const editor = requireCompanyNote(renderWorkspace());
+      editor.props.onChange(value);
+      editor.props.onSave();
+      await flushPromises();
+      const view = renderWorkspace();
+      expect(requireCompanyNote(view).props.value).toBe(value);
+      expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(value);
+      expect(requireCompanyNote(view).props.message).toMatch(
+        /2,000|control|invalid/iu,
+      );
+      requireButton(
+        watchlistRow(view, "lst-syn-00001"),
+        "Save note",
+      ).props.onClick();
+      await flushPromises();
+      expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["", "x".repeat(2_000)])(
+    "allows an explicitly saved empty or maximum-length note",
+    async (value) => {
+      const record = watchlistRecord(1);
+      record.payload.memberships[0]!.note = "Previously saved";
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+      const editor = requireCompanyNote(renderWorkspace());
+      editor.props.onChange(value);
+      editor.props.onSave();
+      await flushPromises();
+      expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+      expect(
+        apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1].memberships[0]!
+          .note,
+      ).toBe(value);
+    },
+  );
+
+  it.each(["not saved", "stale catalog", "unavailable list"] as const)(
+    "does not provide an editable note for a company with %s membership",
+    async (state) => {
+      const record = watchlistRecord(1);
+      const identity = record.payload.memberships[0]!;
+      if (state === "not saved") record.payload.memberships = [];
+      if (state === "stale catalog")
+        record.payload.snapshotSha256 = `sha256:${"d".repeat(64)}`;
+      if (state === "unavailable list")
+        apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+          new Error("Synthetic read unavailable"),
+        );
+      else apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(identity);
+      const editor = findCompanyNote(renderWorkspace());
+      expect(editor === undefined || editor.props.disabled).toBe(true);
+      editor?.props.onChange("Cannot edit this membership");
+      editor?.props.onSave();
+      await flushPromises();
+      expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    },
+  );
+
+  it("preserves drafts through company sections, Back and Clear without additional reads or storage", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    const fetch = vi.fn();
+    const storage = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    };
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("localStorage", storage);
+    vi.stubGlobal("sessionStorage", storage);
+    openNoteCompany(record.payload.memberships[0]!);
+    requireCompanyNote(renderWorkspace()).props.onChange(
+      "  Local research draft  ",
+    );
+    for (const section of [
+      "financials",
+      "valuation",
+      "peers",
+      "sec",
+      "price",
+    ] as const) {
+      requireCompanyResearch(renderWorkspace()).props.onSectionChange(section);
+      expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+        "  Local research draft  ",
+      );
+    }
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      "  Local research draft  ",
+    );
+    requireCompanyResearch(renderWorkspace()).props.onClear();
+    openNoteCompany(record.payload.memberships[1]!);
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe("");
+    openNoteCompany(record.payload.memberships[0]!);
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "  Local research draft  ",
+    );
+    await flushPromises();
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    expect(fetch).not.toHaveBeenCalled();
+    for (const method of Object.values(storage))
+      expect(method).not.toHaveBeenCalled();
+  });
+});
+
+function findCompanyNote(value: unknown) {
+  return findElement<PersonalCompanyResearchNoteProps>(
+    requireCompanyResearch(value).props.researchNote,
+    componentMocks.CompanyResearchNote,
+  );
+}
+
+function requireCompanyNote(value: unknown) {
+  const editor = findCompanyNote(value);
+  if (editor === undefined)
+    throw new Error("Expected selected company's saved research note.");
+  return editor;
+}
+
+function openNoteCompany(identity: PersonalWatchlistMembership) {
+  requireStockScreener(renderWorkspace()).props.onOpenResearch({
+    ...identity,
+    cik: "0000000001",
+  });
+}
+
 function watchlistRecord(count: number, version = 7) {
   return {
     id: "main" as const,
@@ -2981,6 +3551,7 @@ function filterWatchlist(query: string) {
 function watchlistNote(value: unknown, listingId: string) {
   return requireElementByProps<{
     value: string;
+    disabled?: boolean;
     onChange: (event: { target: { value: string } }) => void;
   }>(value, { id: `note-${listingId}` });
 }

@@ -15,7 +15,20 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: find and research saved companies
+## Immediate delivery: capture a note beside company research
+
+Show the selected company's existing My Watchlist research note beside its five
+research sections. Share the same raw draft with the watchlist row and save only
+through the existing explicit versioned operation. Use the complete current
+membership identity, independently of the visible filter/page or holding picker.
+
+Keep drafts through navigation and same-identity conflicts; discard and report
+drafts for removed or replaced identities. Reject stale or concurrent edits and
+saves, and keep completion feedback scoped to the correct company. This adds no
+source request, persistence format, automatic save or watchlist membership.
+See [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: find and research saved companies
 
 Make My Watchlist easy to reach from the workspace header. Filter its loaded
 entries by ticker or company name and browse pages of 50 in saved order.
@@ -666,14 +679,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Now              | Filter and page My Watchlist with reliable Research/Back navigation                              | Reuse loaded identities while preserving drafts, position and explicit loads |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps              |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters   |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                     |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions          |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                  |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Edit the shared My Watchlist note beside company research                                        | Preserve exact identity, drafts and explicit versioned saves               |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
@@ -691,7 +704,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
    pnpm --filter @research-cockpit/web typecheck
    ```
 

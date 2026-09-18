@@ -42,6 +42,7 @@ import {
   PersonalCompanyResearchWorkspace,
   type PersonalCompanyResearchSection,
 } from "./PersonalCompanyResearchWorkspace";
+import { PersonalCompanyResearchNote } from "./PersonalCompanyResearchNote";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
@@ -125,6 +126,23 @@ const COMPANY_RESEARCH_ORIGINS: Readonly<
 
 type RequestState = "idle" | "loading" | "saving";
 
+interface WatchlistNoteDraft {
+  readonly identityKey: string;
+  readonly value: string;
+}
+
+interface WatchlistNoteFeedback {
+  readonly identityKey: string;
+  readonly message: string;
+}
+
+type WatchlistSaveOutcome =
+  | "saved"
+  | "conflict_reloaded"
+  | "conflict_reload_failed"
+  | "unavailable"
+  | "inactive";
+
 const SESSION_REVALIDATION_MESSAGE =
   "The owner session is no longer available. Revalidate the session before loading private data again.";
 const MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES = 250;
@@ -149,9 +167,16 @@ export function SecurityDiscoveryWorkspace({
   const [searchMessage, setSearchMessage] = useState<string | null>(null);
   const [watchlistState, setWatchlistState] = useState<RequestState>("idle");
   const [watchlistMessage, setWatchlistMessage] = useState<string | null>(null);
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [noteDrafts, setNoteDrafts] = useState<
+    Record<string, WatchlistNoteDraft>
+  >({});
   const currentNoteDrafts = useRef(noteDrafts);
   currentNoteDrafts.current = noteDrafts;
+  const [noteFeedback, setNoteFeedback] =
+    useState<WatchlistNoteFeedback | null>(null);
+  const currentNoteFeedback = useRef(noteFeedback);
+  currentNoteFeedback.current = noteFeedback;
+  const [noteDraftNotice, setNoteDraftNotice] = useState<string | null>(null);
   const [watchlistQuery, setWatchlistQuery] = useState("");
   const [watchlistPage, setWatchlistPage] = useState(0);
   const [reconciling, setReconciling] = useState(false);
@@ -223,6 +248,7 @@ export function SecurityDiscoveryWorkspace({
   const workspaceActivityReady = useRef(false);
   const renderedWorkspaceEpoch = workspaceEpoch.current;
   const renderedCompanyEpoch = companySelectionEpoch.current;
+  const renderedWatchlistVersion = workspace?.version;
 
   const normalizedWatchlistQuery = normalizeWatchlistQuery(watchlistQuery);
   const matchingWatchlistRows = (workspace?.watchlist.memberships ?? [])
@@ -268,14 +294,72 @@ export function SecurityDiscoveryWorkspace({
   const renderedWatchlistGeneration = watchlistView.current.generation;
 
   function replaceWorkspace(next: LoadedWorkspace | null) {
+    if (next === null) {
+      replaceNoteDrafts({});
+      replaceNoteFeedback(null);
+      setNoteDraftNotice(null);
+    } else {
+      retainNoteDrafts(next.watchlist.memberships);
+      const feedback = currentNoteFeedback.current;
+      if (
+        feedback !== null &&
+        !next.watchlist.memberships.some(
+          (member) =>
+            companyResearchIdentityKey(member) === feedback.identityKey,
+        )
+      )
+        replaceNoteFeedback(null);
+    }
     watchlistView.current.workspace = next;
     watchlistView.current.generation += 1;
     setWorkspace(next);
   }
 
-  function replaceNoteDrafts(next: Record<string, string>) {
+  function replaceNoteDrafts(next: Record<string, WatchlistNoteDraft>) {
     currentNoteDrafts.current = next;
     setNoteDrafts(next);
+  }
+
+  function replaceNoteFeedback(next: WatchlistNoteFeedback | null) {
+    currentNoteFeedback.current = next;
+    setNoteFeedback(next);
+  }
+
+  function isCurrentNoteMember(membership: PersonalWatchlistMembership) {
+    return (
+      workspace !== null &&
+      workspace === watchlistView.current.workspace &&
+      renderedWatchlistVersion === workspace.version &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      workspaceActivityReady.current &&
+      workspace.watchlistAvailable &&
+      hasCurrentWatchlistSnapshot(workspace) &&
+      !watchlistView.current.saving &&
+      !watchlistView.current.reconciling &&
+      workspace.watchlist.memberships.some(
+        (member) =>
+          companyResearchIdentityKey(member) ===
+          companyResearchIdentityKey(membership),
+      )
+    );
+  }
+
+  function noteValue(membership: PersonalWatchlistMembership) {
+    const draft = noteDrafts[membership.listingId];
+    return draft?.identityKey === companyResearchIdentityKey(membership)
+      ? draft.value
+      : membership.note;
+  }
+
+  function editNote(membership: PersonalWatchlistMembership, value: string) {
+    if (!isCurrentNoteMember(membership)) return;
+    const identityKey = companyResearchIdentityKey(membership);
+    replaceNoteDrafts({
+      ...currentNoteDrafts.current,
+      [membership.listingId]: Object.freeze({ identityKey, value }),
+    });
+    replaceNoteFeedback({ identityKey, message: "Unsaved changes." });
+    setNoteDraftNotice(null);
   }
 
   function resetWatchlistNavigation() {
@@ -601,6 +685,7 @@ export function SecurityDiscoveryWorkspace({
   }
 
   function clearCompanyNavigation() {
+    replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
     companyIdentity.current = null;
     companyOriginTarget.current = null;
@@ -693,6 +778,7 @@ export function SecurityDiscoveryWorkspace({
       );
     });
     if (identityKey === companyIdentity.current) return;
+    replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
     companyIdentity.current = identityKey;
     setCompanyIdentityKey(identityKey);
@@ -1268,14 +1354,17 @@ export function SecurityDiscoveryWorkspace({
   async function persistWatchlist(
     next: PersonalWatchlistPayload,
     successMessage: string,
-  ): Promise<boolean> {
+  ): Promise<WatchlistSaveOutcome> {
     const activeWorkspace = workspace;
     if (
       activeWorkspace === null ||
+      activeWorkspace !== watchlistView.current.workspace ||
+      renderedWorkspaceEpoch !== workspaceEpoch.current ||
+      !workspaceActivityReady.current ||
       !activeWorkspace.watchlistAvailable ||
-      watchlistState === "saving"
+      watchlistView.current.saving
     ) {
-      return false;
+      return "inactive";
     }
     const epoch = workspaceEpoch.current;
     const controller = new AbortController();
@@ -1289,7 +1378,7 @@ export function SecurityDiscoveryWorkspace({
         next,
         controller.signal,
       );
-      if (epoch !== workspaceEpoch.current) return false;
+      if (epoch !== workspaceEpoch.current) return "inactive";
       replaceWorkspace({
         ...activeWorkspace,
         version: saved.version,
@@ -1297,36 +1386,49 @@ export function SecurityDiscoveryWorkspace({
       });
       setReconciliationPreview(null);
       setWatchlistMessage(successMessage);
-      return true;
+      return "saved";
     } catch (error) {
-      if (epoch !== workspaceEpoch.current) return false;
+      if (epoch !== workspaceEpoch.current) return "inactive";
       if (isSessionUnavailable(error)) {
         clearWorkspaceForSessionLoss();
+        return "inactive";
       } else if (
         error instanceof PersonalWorkspaceApiError &&
         error.code === "conflict"
       ) {
-        await reloadAfterConflict(activeWorkspace.snapshot, epoch);
+        const reloaded = await reloadAfterConflict(
+          activeWorkspace.snapshot,
+          epoch,
+        );
+        return reloaded === "inactive"
+          ? "inactive"
+          : reloaded === "reloaded"
+            ? "conflict_reloaded"
+            : "conflict_reload_failed";
       } else {
         setWatchlistMessage(
           "The watchlist change was not saved. Your prior saved list is unchanged.",
         );
       }
-      return false;
+      return "unavailable";
     } finally {
-      if (epoch === workspaceEpoch.current) setWatchlistState("idle");
+      if (epoch === workspaceEpoch.current) {
+        watchlistView.current.saving = false;
+        watchlistView.current.generation += 1;
+        setWatchlistState("idle");
+      }
     }
   }
 
   async function reloadAfterConflict(
     snapshot: PersonalSecurityMasterSnapshotReceiptDto,
     epoch: number,
-  ) {
+  ): Promise<"reloaded" | "failed" | "inactive"> {
     try {
       const latest = await fetchMainPersonalWatchlist(
         new AbortController().signal,
       );
-      if (epoch !== workspaceEpoch.current) return;
+      if (epoch !== workspaceEpoch.current) return "inactive";
       replaceWorkspace({
         snapshot,
         version: latest?.version ?? 0,
@@ -1339,15 +1441,18 @@ export function SecurityDiscoveryWorkspace({
       setWatchlistMessage(
         "The watchlist changed in another tab. The latest saved version is now shown; try your change again.",
       );
+      return "reloaded";
     } catch (error) {
-      if (epoch !== workspaceEpoch.current) return;
+      if (epoch !== workspaceEpoch.current) return "inactive";
       if (isSessionUnavailable(error)) {
         clearWorkspaceForSessionLoss();
+        return "inactive";
       } else {
         setWatchlistMessage(
           "The watchlist changed elsewhere and could not be reloaded.",
         );
       }
+      return "failed";
     }
   }
 
@@ -1428,38 +1533,65 @@ export function SecurityDiscoveryWorkspace({
   }
 
   async function saveNote(membership: PersonalWatchlistMembership) {
-    if (
-      workspace === null ||
-      !workspace.watchlistAvailable ||
-      !hasCurrentWatchlistSnapshot(workspace)
-    ) {
-      return;
-    }
-    const draft =
-      currentNoteDrafts.current[membership.listingId] ?? membership.note;
-    const note = normalizeWatchlistNote(draft);
+    if (workspace === null || !isCurrentNoteMember(membership)) return;
+    const identityKey = companyResearchIdentityKey(membership);
+    const slot = currentNoteDrafts.current[membership.listingId];
+    const capturedDraft = slot?.identityKey === identityKey ? slot : undefined;
+    const note = normalizeWatchlistNote(
+      capturedDraft?.value ?? membership.note,
+    );
     if (note === null) {
-      setWatchlistMessage(
-        "Notes must be at most 2,000 characters and cannot contain control characters.",
-      );
+      const message =
+        "Notes must be at most 2,000 characters and cannot contain control characters.";
+      setWatchlistMessage(message);
+      replaceNoteFeedback({ identityKey, message });
       return;
     }
+    const epoch = workspaceEpoch.current;
+    const pendingFeedback = Object.freeze({
+      identityKey,
+      message: "Saving research note…",
+    });
+    replaceNoteFeedback(pendingFeedback);
     const memberships = workspace.watchlist.memberships.map((candidate) =>
-      candidate.listingId === membership.listingId
+      companyResearchIdentityKey(candidate) === identityKey
         ? Object.freeze({ ...candidate, note })
         : candidate,
     );
-    const saved = await persistWatchlist(
+    const outcome = await persistWatchlist(
       withMemberships(workspace.watchlist, memberships),
       `${membership.symbol} note was saved.`,
     );
-    if (saved) {
-      if (currentNoteDrafts.current[membership.listingId] === draft) {
-        const next = { ...currentNoteDrafts.current };
-        delete next[membership.listingId];
-        replaceNoteDrafts(next);
-      }
+    if (
+      outcome === "saved" &&
+      capturedDraft !== undefined &&
+      currentNoteDrafts.current[membership.listingId] === capturedDraft
+    ) {
+      const next = { ...currentNoteDrafts.current };
+      delete next[membership.listingId];
+      replaceNoteDrafts(next);
     }
+    if (
+      outcome === "inactive" ||
+      epoch !== workspaceEpoch.current ||
+      !workspaceActivityReady.current ||
+      currentNoteFeedback.current !== pendingFeedback ||
+      !watchlistView.current.workspace?.watchlistAvailable ||
+      !watchlistView.current.workspace.watchlist.memberships.some(
+        (member) => companyResearchIdentityKey(member) === identityKey,
+      )
+    )
+      return;
+    const messages = {
+      saved: "Research note saved to My Watchlist.",
+      conflict_reloaded:
+        "My Watchlist changed in another tab. The latest saved list is shown and your draft is retained. Review it before saving again.",
+      conflict_reload_failed:
+        "The note was not saved, and the latest watchlist could not be loaded. Your draft is retained.",
+      unavailable:
+        "Could not confirm that the research note was saved. Your draft is retained.",
+    };
+    replaceNoteFeedback({ identityKey, message: messages[outcome] });
   }
 
   async function reconcileStaleWatchlist() {
@@ -1507,7 +1639,7 @@ export function SecurityDiscoveryWorkspace({
         setWatchlistMessage(reconciliationPreviewMessage(unmatched));
         return;
       }
-      const saved = await persistWatchlist(
+      await persistWatchlist(
         Object.freeze({
           ...activeWorkspace.watchlist,
           snapshotSha256: activeWorkspace.snapshot.snapshotSha256,
@@ -1515,7 +1647,6 @@ export function SecurityDiscoveryWorkspace({
         }),
         reconciliationSuccessMessage(matched.length, []),
       );
-      if (saved) retainNoteDrafts(matched);
     } catch (error) {
       if (epoch !== workspaceEpoch.current) return;
       if (isSessionUnavailable(error)) {
@@ -1561,7 +1692,7 @@ export function SecurityDiscoveryWorkspace({
     watchlistView.current.generation += 1;
     setReconciling(true);
     try {
-      const saved = await persistWatchlist(
+      await persistWatchlist(
         Object.freeze({
           ...activeWorkspace.watchlist,
           snapshotSha256: preview.snapshotSha256,
@@ -1569,7 +1700,6 @@ export function SecurityDiscoveryWorkspace({
         }),
         reconciliationSuccessMessage(preview.matched.length, preview.unmatched),
       );
-      if (saved) retainNoteDrafts(preview.matched);
     } finally {
       if (epoch === workspaceEpoch.current) setReconciling(false);
     }
@@ -1578,16 +1708,22 @@ export function SecurityDiscoveryWorkspace({
   function retainNoteDrafts(
     memberships: readonly PersonalWatchlistMembership[],
   ) {
-    const retained = new Set(
-      memberships.map((membership) => membership.listingId),
+    const identities = new Map(
+      memberships.map((membership) => [
+        membership.listingId,
+        companyResearchIdentityKey(membership),
+      ]),
     );
-    replaceNoteDrafts(
-      Object.fromEntries(
-        Object.entries(currentNoteDrafts.current).filter(([listingId]) =>
-          retained.has(listingId),
-        ),
-      ),
+    const drafts = Object.entries(currentNoteDrafts.current);
+    const retained = drafts.filter(
+      ([listingId, draft]) => identities.get(listingId) === draft.identityKey,
     );
+    if (retained.length !== drafts.length) {
+      replaceNoteDrafts(Object.fromEntries(retained));
+      setNoteDraftNotice(
+        "Unsaved research notes for removed or changed companies were discarded.",
+      );
+    }
   }
 
   const savedListingIds = new Set(
@@ -1597,6 +1733,13 @@ export function SecurityDiscoveryWorkspace({
   );
   const snapshotChanged =
     workspace !== null && !hasCurrentWatchlistSnapshot(workspace);
+  const companyNoteMembership =
+    companyIdentityKey === null
+      ? undefined
+      : workspace?.watchlist.memberships.find(
+          (membership) =>
+            companyResearchIdentityKey(membership) === companyIdentityKey,
+        );
   const manualPeerCandidates = collectManualPeerCandidates(
     results,
     workspace !== null &&
@@ -1867,6 +2010,44 @@ export function SecurityDiscoveryWorkspace({
               backLabel={COMPANY_RESEARCH_ORIGINS[companyOrigin].label}
               onBack={returnFromCompany}
               onClear={clearSelectedCompany}
+              researchNote={
+                companyNoteMembership === undefined ? (
+                  <p className="company-research-guidance">
+                    {workspace.watchlistAvailable
+                      ? "Research notes are available for companies saved in My Watchlist."
+                      : "My Watchlist is unavailable. Research notes cannot be edited right now."}
+                  </p>
+                ) : (
+                  <PersonalCompanyResearchNote
+                    value={noteValue(companyNoteMembership)}
+                    disabled={
+                      !workspace.watchlistAvailable ||
+                      snapshotChanged ||
+                      watchlistState === "saving" ||
+                      reconciling
+                    }
+                    message={
+                      !workspace.watchlistAvailable
+                        ? "My Watchlist is unavailable. Research notes cannot be edited right now."
+                        : snapshotChanged
+                          ? "Reconcile My Watchlist with the current catalog before editing this note."
+                          : noteFeedback?.identityKey === companyIdentityKey
+                            ? noteFeedback.message
+                            : null
+                    }
+                    onChange={(value) =>
+                      withCurrentCompany(() =>
+                        editNote(companyNoteMembership, value),
+                      )
+                    }
+                    onSave={() =>
+                      withCurrentCompany(
+                        () => void saveNote(companyNoteMembership),
+                      )
+                    }
+                  />
+                )
+              }
               sections={{
                 price: (
                   <>
@@ -2027,6 +2208,11 @@ export function SecurityDiscoveryWorkspace({
                   {workspace.watchlist.memberships.length === 1 ? "y" : "ies"}
                 </span>
               </div>
+              {noteDraftNotice !== null && (
+                <p className="discovery-warning" role="alert">
+                  {noteDraftNotice}
+                </p>
+              )}
               {snapshotChanged && (
                 <div className="discovery-warning" role="alert">
                   <p>
@@ -2313,18 +2499,12 @@ export function SecurityDiscoveryWorkspace({
                             onChange={(event) => {
                               const value = event.target.value;
                               withCurrentWatchlistRow(row, () =>
-                                replaceNoteDrafts({
-                                  ...currentNoteDrafts.current,
-                                  [membership.listingId]: value,
-                                }),
+                                editNote(membership, value),
                               );
                             }}
                             placeholder="Why is this company on the list?"
                             rows={2}
-                            value={
-                              noteDrafts[membership.listingId] ??
-                              membership.note
-                            }
+                            value={noteValue(membership)}
                           />
                           <button
                             className="text-button"

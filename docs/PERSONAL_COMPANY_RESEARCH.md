@@ -75,6 +75,33 @@ request or saved-data write. Session/workspace loss clears the browsing state
 under the existing lifecycle rules. Multiple lists, tags, sorting, imports,
 exports and saved layouts remain outside this feature.
 
+## Capture a research note
+
+When the selected company exactly matches a current My Watchlist membership,
+**My Watchlist research note** appears above the five research sections. It is
+the same note and draft as the saved-list row, even when that row is filtered or
+paged away. Choosing a different holding does not change the research note.
+Companies outside My Watchlist show guidance instead of an editor.
+
+Typing in either editor updates their shared draft. Section changes, Back,
+Clear company and ordinary company navigation preserve these watchlist drafts.
+Only **Save research note** or the row's **Save note** performs the existing
+versioned save and note normalization. Notes keep their 2,000-character limit
+and existing control-character validation. No note is loaded or saved by
+navigation, and editing does not automatically add a company to My Watchlist.
+
+Both editors pause during a watchlist save or reconciliation. A version conflict
+retains the draft when the full saved identity still matches; review the latest
+list before explicitly retrying. Removed or replaced identities discard their
+old drafts with a visible notice, including replacements with the same listing
+ID. Workspace/session loss clears drafts. An unavailable list or stale catalog
+blocks editing under the existing list rules. Note feedback remains specific to
+its company; completing an earlier save does not clear another company's draft.
+
+Saving a note retains existing downstream watchlist-version invalidation. This
+feature does not promise to preserve comparisons bound to the previous version,
+and introduces no persistence schema, browser storage or separate note service.
+
 ## Acceptance
 
 - Keep all five panels mounted with only the selected panel exposed. Verify
@@ -95,6 +122,14 @@ exports and saved layouts remain outside this feature.
 - Keep Research/Back focus bound to the current visible full identity, including
   same-listing-ID replacements. Preserve the full inputs for downstream panels
   and make no implicit request or write during list navigation.
+- Verify both note editors share raw text and explicit normalization, including
+  edit then Save before a rerender and duplicate retained Save callbacks. Keep
+  all unaffected memberships in the one versioned write.
+- Cover all eleven identity fields, an independently chosen holding, off-page
+  membership, conflict reload/retry and failure, removal/replacement without
+  draft revival, session loss, and late completion after changing companies.
+- Check distinct labels and IDs, keyboard/Back behavior and long-note wrapping
+  at narrow widths with synthetic data and no writes to the owner's watchlist.
 
 The workspace checkpoint records the actual accepted revision and validation;
 this guide describes behavior and does not itself establish release acceptance.

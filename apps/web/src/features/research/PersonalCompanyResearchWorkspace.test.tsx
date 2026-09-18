@@ -163,6 +163,87 @@ describe("PersonalCompanyResearchWorkspace", () => {
     expect(props.onSectionChange).not.toHaveBeenCalled();
   });
 
+  it("places an optional research note after company actions and before the five tabs", () => {
+    const note = <aside id="note-slot">Shared research note</aside>;
+    props = { ...props, researchNote: note };
+    const view = render();
+    expect(elementById(view, "note-slot")).toBe(note);
+    const markup = renderToStaticMarkup(view);
+    expect(markup.indexOf("Clear company")).toBeLessThan(
+      markup.indexOf('id="note-slot"'),
+    );
+    expect(markup.indexOf('id="note-slot"')).toBeLessThan(
+      markup.indexOf('role="tablist"'),
+    );
+    const panels = elements(view).filter(
+      (node) => node.props.role === "tabpanel",
+    );
+    expect(panels).toHaveLength(5);
+    expect(
+      panels
+        .flatMap((panel) => elements(panel.props.children))
+        .some((node) => node.props.id === "note-slot"),
+    ).toBe(false);
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+    expect(props.onBack).not.toHaveBeenCalled();
+    expect(props.onClear).not.toHaveBeenCalled();
+  });
+
+  it("retains the same note outside every section while keeping panels mounted", () => {
+    const note = (
+      <textarea aria-label="Shared note" value="Raw draft" readOnly />
+    );
+    props = { ...props, researchNote: note };
+    const panels = elements(render()).filter(
+      (node) => node.props.role === "tabpanel",
+    );
+    for (const activeSection of [
+      "financials",
+      "valuation",
+      "peers",
+      "sec",
+      "price",
+    ] as const) {
+      props = { ...props, activeSection };
+      const view = render();
+      const currentPanels = elements(view).filter(
+        (node) => node.props.role === "tabpanel",
+      );
+      expect(elements(view).filter((node) => node === note)).toHaveLength(1);
+      expect(
+        currentPanels.map((node) => [node.type, node.key, node.props.children]),
+      ).toEqual(
+        panels.map((node) => [node.type, node.key, node.props.children]),
+      );
+      expect(
+        currentPanels
+          .filter((node) => !node.props.hidden)
+          .map((node) => node.props.id),
+      ).toEqual([`company-research-panel-${activeSection}`]);
+    }
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+  });
+
+  it("omits the note when company selection is cleared without exposing a hidden duplicate", () => {
+    const selection = props.selection;
+    props = {
+      ...props,
+      researchNote: (
+        <textarea id="note-slot" defaultValue="Retained by parent" />
+      ),
+      selection: null,
+    };
+    const cleared = render();
+    expect(
+      elements(cleared).some((node) => node.props.id === "note-slot"),
+    ).toBe(false);
+    expect(renderToStaticMarkup(cleared)).not.toContain("Retained by parent");
+    props = { ...props, selection };
+    expect(elementById(render(), "note-slot").props.defaultValue).toBe(
+      "Retained by parent",
+    );
+  });
+
   it("hides all company content and navigation when selection is cleared", () => {
     props = { ...props, selection: null };
     const view = render();
