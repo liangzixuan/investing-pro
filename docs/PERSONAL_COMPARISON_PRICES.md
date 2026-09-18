@@ -52,6 +52,28 @@ not determine this result. Provider-adjusted prices can reflect corporate-action
 adjustments; the app does not independently reconstruct a total return, model
 reinvestment, or infer a valuation or trading recommendation.
 
+## Compare maximum drawdown
+
+The same shared observations also show each company's maximum drawdown: the
+largest decline from an earlier running peak adjusted close to a later adjusted
+close. The value is a nonnegative percentage magnitude, with the peak and trough
+dates returned by the existing analytics. All selected companies must have a
+successful load and at least two common dates, just as for price change.
+
+The calculation is `max((running peak - adjusted close) / running peak * 100)`
+on the common observed dates. It uses the same 80-digit arithmetic and four-place
+half-up rounding. Equal drawdowns before display rounding keep the earliest peak
+and then earliest trough. A zero value with the same peak and trough date means no decline was
+observed, and no loss episode is displayed. A positive decline can round to
+`0.0000%`; differing peak and trough dates retain that distinction and remain
+visible with an explanation.
+
+This is maximum drawdown **on shared observations**. Dates absent from any
+company are omitted for every company, so intervening peaks or declines can be
+hidden. Inspect the common window and omitted counts; this is not a full daily
+history risk measure or a forecast. It uses the existing loaded history and
+requires no additional price request.
+
 ## Lifetime and boundaries
 
 Only the quote, provider, EOD bar date, requested history bounds and narrow
@@ -77,6 +99,9 @@ Cover exact common-date alignment, unequal endpoints, interior gaps, zero or one
 common observation, unavailable members, positive and negative changes, decimal
 rounding, and range changes with late responses. Validate original histories
 before intersecting so invalid excluded observations cannot disappear silently.
+Check maximum drawdown on rising, falling and flat histories, repeated peaks,
+tied drawdowns, tiny declines rounded to zero and omitted interior observations.
+No-decline wording must not rely on the rounded percentage alone.
 Verify desktop/narrow layouts and keyboard access in external Brave. Any retained
 screenshots or fixtures contain only synthetic prices. The workspace checkpoint
 records the actual released revision and dated configured-source observations;

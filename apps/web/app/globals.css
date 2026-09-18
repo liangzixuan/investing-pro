@@ -2600,6 +2600,12 @@ html:has(.personal-financial-screener:focus-within) {
   font-weight: 700;
 }
 
+.comparison-performance-drawdown {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+}
+
 .comparison-performance-coverage {
   display: grid;
   gap: 6px;

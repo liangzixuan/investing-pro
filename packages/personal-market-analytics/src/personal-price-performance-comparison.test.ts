@@ -178,6 +178,7 @@ describe("personal price performance comparison", () => {
         lastDate: expectedDate,
       });
       for (const row of result.rows) {
+        expect(row).not.toHaveProperty("maximumDrawdown");
         expect(row).not.toHaveProperty("selectedWindowReturn");
         expect(row).not.toHaveProperty("firstAdjustedClose");
         expect(row).not.toHaveProperty("lastAdjustedClose");
@@ -200,6 +201,8 @@ describe("personal price performance comparison", () => {
     expect(result.status).toBe("insufficient_history");
     expect(result.rows).toHaveLength(3);
     expect(result.sharedDates).toEqual([]);
+    for (const row of result.rows)
+      expect(row).not.toHaveProperty("maximumDrawdown");
   });
 
   it.each([
@@ -266,6 +269,164 @@ describe("personal price performance comparison", () => {
     expect(JSON.stringify(result)).toBe(before);
     expect(result).not.toHaveProperty("series");
     for (const row of result.rows) expect(row).not.toHaveProperty("bars");
+  });
+});
+
+describe("maximum drawdown on shared observations", () => {
+  it.each([
+    {
+      name: "rising prices",
+      closes: ["100", "110", "120"],
+      value: "0.0000",
+      peak: 1,
+      trough: 1,
+    },
+    {
+      name: "flat prices",
+      closes: ["42.5", "42.5", "42.5"],
+      value: "0.0000",
+      peak: 1,
+      trough: 1,
+    },
+    {
+      name: "falling prices",
+      closes: ["100", "90", "80"],
+      value: "20.0000",
+      peak: 1,
+      trough: 3,
+    },
+    {
+      name: "an interior peak and recovery",
+      closes: ["100", "150", "100", "120"],
+      value: "33.3333",
+      peak: 2,
+      trough: 3,
+    },
+    {
+      name: "equal peaks",
+      closes: ["100", "120", "120", "90", "120"],
+      value: "25.0000",
+      peak: 2,
+      trough: 4,
+    },
+    {
+      name: "equal maximum drawdowns",
+      closes: ["100", "120", "90", "140", "105"],
+      value: "25.0000",
+      peak: 2,
+      trough: 3,
+    },
+    {
+      name: "equal troughs",
+      closes: ["100", "80", "80"],
+      value: "20.0000",
+      peak: 1,
+      trough: 2,
+    },
+    {
+      name: "a tiny positive decline rounding to zero",
+      closes: ["100000", "99999.99999"],
+      value: "0.0000",
+      peak: 1,
+      trough: 2,
+    },
+    {
+      name: "a half-up rounding boundary",
+      closes: ["100", "99.99995"],
+      value: "0.0001",
+      peak: 1,
+      trough: 2,
+    },
+  ])(
+    "preserves the admitted result for $name",
+    ({ closes, value, peak, trough }) => {
+      const result = calculatePersonalPricePerformanceComparison({
+        series: [
+          series(
+            "listing-a",
+            closes.map((close, index) =>
+              bar(index + 1, close, String(1000 + index)),
+            ),
+          ),
+          series(
+            "listing-b",
+            closes.map((_close, index) => bar(index + 1, "10")),
+          ),
+        ],
+      });
+      if (result.status !== "available") throw new TypeError();
+      expect(result.rows[0]?.maximumDrawdown).toMatchObject({
+        status: "available",
+        valuePercent: value,
+        peakDate: bar(peak, "1").date,
+        troughDate: bar(trough, "1").date,
+        formulaId: "maximum_drawdown_magnitude_percent",
+        formulaVersion: "1.0.0",
+        observedSessions: closes.length,
+        sampleFirstDate: result.firstDate,
+        sampleLastDate: result.lastDate,
+        parameters: {
+          definition: "maximum_of_running_peak_minus_close_over_running_peak",
+          sign: "nonnegative_magnitude",
+          tieBreak: "earliest_peak_then_earliest_trough",
+          minimumSessions: 2,
+          roundingDecimalPlaces: 4,
+          roundingMethod: "round_half_up",
+          sessionPolicy: "observed_sessions_only_no_gap_filling",
+        },
+      });
+      expect(result.rows[1]?.maximumDrawdown).toMatchObject({
+        valuePercent: "0.0000",
+        peakDate: result.firstDate,
+        troughDate: result.firstDate,
+      });
+    },
+  );
+
+  it("excludes unshared peaks, troughs and earlier dates rather than implying full-history drawdown", () => {
+    const result = calculatePersonalPricePerformanceComparison({
+      series: [
+        series("listing-a", [
+          bar(1, "100"),
+          bar(2, "1"),
+          bar(3, "200"),
+          bar(4, "400"),
+          bar(5, "160"),
+        ]),
+        series("listing-b", [
+          bar(1, "10"),
+          bar(3, "20"),
+          bar(4, "5"),
+          bar(5, "16"),
+        ]),
+        series("listing-c", [bar(2, "10"), bar(3, "30"), bar(5, "30")]),
+      ],
+    });
+    expect(result.sharedDates).toEqual(["2025-01-03", "2025-01-05"]);
+    expect(result.rows.map((row) => row.excludedSessionCount)).toEqual([
+      3, 2, 1,
+    ]);
+    if (result.status !== "available") throw new TypeError();
+    expect(result.rows.map((row) => row.maximumDrawdown.valuePercent)).toEqual([
+      "20.0000",
+      "20.0000",
+      "0.0000",
+    ]);
+    for (const row of result.rows) {
+      expect(row.maximumDrawdown).toMatchObject({
+        observedSessions: 2,
+        sampleFirstDate: "2025-01-03",
+        sampleLastDate: "2025-01-05",
+        peakDate: "2025-01-03",
+      });
+      expect(result.sharedDates).toContain(row.maximumDrawdown.troughDate);
+      expect(row.maximumDrawdown.sampleFirstDate).toBe(
+        row.selectedWindowReturn.sampleFirstDate,
+      );
+      expect(row.maximumDrawdown.sampleLastDate).toBe(
+        row.selectedWindowReturn.sampleLastDate,
+      );
+    }
   });
 });
 

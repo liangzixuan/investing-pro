@@ -15,7 +15,23 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare adjusted prices over shared dates
+## Immediate delivery: compare drawdowns over shared observations
+
+Extend the shared-date price comparison with maximum drawdown from the same
+already-loaded adjusted closes. Reuse the existing analytical result and show
+the nonnegative decline magnitude with peak and trough dates. Keep all selected
+companies, the common window and history coverage visible; omitted observations
+can hide intervening declines. Do not infer full daily-history drawdown or a risk
+rating from a sparse common sample.
+
+Preserve earliest-peak/earliest-trough tie handling and four-decimal rounding.
+Distinguish no observed decline from a positive decline rounded to zero using
+the existing peak/trough dates. Add no provider requests, transport changes or
+persistence. Preserve explicit loading, range and session cancellation, and
+verify normal, flat, tied, tiny and sparse histories with synthetic data.
+See [Comparison prices](./PERSONAL_COMPARISON_PRICES.md) for exact semantics.
+
+## Delivered: compare adjusted prices over shared dates
 
 Extend the explicit financial-comparison price load with one-month, three-month
 and one-year history choices. Changing the range clears and cancels the previous

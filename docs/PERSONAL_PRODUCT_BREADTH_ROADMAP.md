@@ -786,8 +786,14 @@ The same explicit load can compare adjusted closes over dates observed for
 every selected listing, using one-month, three-month or one-year history.
 At least two shared dates and all selected companies are required; actual
 endpoints, coverage and the existing decimal percentage calculation are visible.
-This is provider-adjusted price change, not independently reconstructed total
-return. Only a small quote and close/date projection remains in active component memory. This connects
+The next increment adds maximum drawdown from that same common sample, with its
+nonnegative magnitude and peak/trough dates. Preserve the existing arithmetic,
+tie handling and distinction between no decline and a small decline rounded to
+zero. Omitted observations may hide intervening declines; this does not establish
+full daily-history drawdown or a risk rating. No new request or persistence is
+needed to expose the existing aggregate.
+Both measures use provider-adjusted prices without independently reconstructing
+total return. Only a small quote and close/date projection remains in active component memory. This connects
 existing price coverage to discovery without adding price filters, saved prices,
 new valuation ratios or a coverage claim. See
 [Comparison prices](./PERSONAL_COMPARISON_PRICES.md).
@@ -1420,9 +1426,9 @@ This program does not imply that every benchmark feature is obtainable:
 
 ### Active delivery priority (2026-09-17)
 
-The accepted SEC cross-company screen now has twenty-four annual/Q4 fields, including
+The accepted SEC cross-company screen now has twenty-eight annual/Q4 fields, including
 selected revenue YoY, readable column views and source inspection. Its dated
-nineteen-Frame coverage, sampled filing operands and configured browser checks
+twenty-three-Frame coverage, sampled filing operands and configured browser checks
 are recorded for the accepted source releases. It still does not close the
 shared 30-core-metric/500-security gate. Three editable, explicitly sparse starter
 screens are delivered. The accepted balance slice adds current assets less current
@@ -1513,7 +1519,7 @@ payments preset leaves the existing Cash flow preset and saved layouts intact.
 Measure actual coverage and bounded primary evidence; neither the thirty-metric
 target nor broad joint eligibility is complete.
 
-The next increment adds reported cash interest excluding capitalized interest
+The delivered increment adds reported cash interest excluding capitalized interest
 and cash income taxes net of refunds from exact annual USD concepts. This expands
 twenty-six fields to twenty-eight and twenty-one Frames to twenty-three. Cash
 payments remain distinct from expense measures, broader payment tags and

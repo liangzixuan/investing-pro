@@ -1,6 +1,7 @@
 import {
   calculatePersonalMarketAnalytics,
   type PersonalMarketAnalyticsBar,
+  type PersonalMarketAnalyticsMaximumDrawdownMetric,
   type PersonalMarketAnalyticsSelectedWindowReturnMetric,
 } from "./personal-market-analytics";
 
@@ -28,6 +29,10 @@ export interface PersonalPricePerformanceComparisonRow {
 export interface PersonalPricePerformanceComparisonAvailableRow extends PersonalPricePerformanceComparisonRow {
   readonly firstAdjustedClose: string;
   readonly lastAdjustedClose: string;
+  readonly maximumDrawdown: Extract<
+    PersonalMarketAnalyticsMaximumDrawdownMetric,
+    { readonly status: "available" }
+  >;
   readonly selectedWindowReturn: Extract<
     PersonalMarketAnalyticsSelectedWindowReturnMetric,
     { readonly status: "available" }
@@ -111,16 +116,18 @@ function compareValidated(
     const firstBar = alignedBars[0];
     const lastBar = alignedBars.at(-1);
     const coverage = coverageRows[index];
-    const metric = calculatePersonalMarketAnalytics({
-      asOfDate: lastDate,
-      bars: alignedBars,
-      mode: "adjusted",
-    }).metrics.selectedWindowReturn;
+    const { maximumDrawdown, selectedWindowReturn } =
+      calculatePersonalMarketAnalytics({
+        asOfDate: lastDate,
+        bars: alignedBars,
+        mode: "adjusted",
+      }).metrics;
     if (
       firstBar === undefined ||
       lastBar === undefined ||
       coverage === undefined ||
-      metric.status !== "available"
+      maximumDrawdown.status !== "available" ||
+      selectedWindowReturn.status !== "available"
     ) {
       throw new TypeError();
     }
@@ -128,7 +135,8 @@ function compareValidated(
       ...coverage,
       firstAdjustedClose: firstBar.adjusted.close,
       lastAdjustedClose: lastBar.adjusted.close,
-      selectedWindowReturn: metric,
+      maximumDrawdown,
+      selectedWindowReturn,
     };
   });
 

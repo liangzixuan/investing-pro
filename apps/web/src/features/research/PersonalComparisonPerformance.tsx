@@ -1,6 +1,7 @@
 import type { PersonalSecurityMasterScreenRowDto } from "@research-cockpit/contracts";
 import {
   calculatePersonalPricePerformanceComparison,
+  type PersonalPricePerformanceComparisonAvailableRow,
   type PersonalPricePerformanceComparisonResult,
   type PersonalPricePerformanceComparisonSeries,
 } from "@research-cockpit/personal-market-analytics";
@@ -63,7 +64,7 @@ export function PersonalComparisonPerformance({
           <table className="comparison-performance-table">
             <caption>
               {result.status === "available"
-                ? "Adjusted closes in USD on shared first and last dates; coverage of the loaded history."
+                ? "Adjusted-price change and maximum drawdown on shared observations; adjusted closes in USD and loaded history coverage."
                 : "Loaded history coverage; percentage changes are unavailable without a shared window."}
             </caption>
             <thead>
@@ -72,6 +73,7 @@ export function PersonalComparisonPerformance({
                 {result.status === "available" && (
                   <>
                     <th scope="col">Adjusted-price change</th>
+                    <th scope="col">Maximum drawdown on shared observations</th>
                     <th scope="col">Start adjusted close (USD)</th>
                     <th scope="col">End adjusted close (USD)</th>
                   </>
@@ -95,6 +97,9 @@ export function PersonalComparisonPerformance({
                       <>
                         <td className="comparison-performance-change">
                           {`${row.selectedWindowReturn.valuePercent}%`}
+                        </td>
+                        <td>
+                          <ComparisonDrawdown metric={row.maximumDrawdown} />
                         </td>
                         <td>{row.firstAdjustedClose}</td>
                         <td>{row.lastAdjustedClose}</td>
@@ -139,10 +144,54 @@ export function PersonalComparisonPerformance({
         freshness does not establish history freshness.
       </p>
       <p className="market-scope-note">
+        Maximum drawdown is the largest peak-to-later-trough decline in adjusted
+        closes on the shared observations, shown as a nonnegative percentage.
+        Omitted or missing observations can hide intervening declines. This is
+        not a full daily-history drawdown or a risk score.
+      </p>
+      <p className="market-scope-note">
         These are provider-adjusted prices, not an independently reconstructed
         total return. Reference quotes above are not used in this calculation.
         This comparison does not produce valuations or trading signals.
       </p>
     </section>
+  );
+}
+
+function ComparisonDrawdown({
+  metric,
+}: {
+  readonly metric: PersonalPricePerformanceComparisonAvailableRow["maximumDrawdown"];
+}) {
+  const roundsToZero = metric.valuePercent === "0.0000";
+  const noDecline = roundsToZero && metric.peakDate === metric.troughDate;
+
+  return (
+    <div className="comparison-performance-drawdown">
+      <p>
+        <strong>{`${metric.valuePercent}%`}</strong>
+        {noDecline
+          ? " — no decline observed on shared dates"
+          : roundsToZero
+            ? " — positive decline rounded to four decimals"
+            : null}
+      </p>
+      {!noDecline && (
+        <dl className="comparison-performance-coverage">
+          <div>
+            <dt>Peak</dt>
+            <dd>
+              <time dateTime={metric.peakDate}>{metric.peakDate}</time>
+            </dd>
+          </div>
+          <div>
+            <dt>Trough</dt>
+            <dd>
+              <time dateTime={metric.troughDate}>{metric.troughDate}</time>
+            </dd>
+          </div>
+        </dl>
+      )}
+    </div>
   );
 }
