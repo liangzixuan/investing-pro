@@ -464,6 +464,10 @@ import {
   isCycle3ka51FeatureTopologyAllowed,
   isCycle3ka51RoutingClosureCommitDiffSetAllowed,
   isCycle3ka51RoutingClosureTopologyAllowed,
+  isCycle3ka52FeatureCommitDiffSetAllowed,
+  isCycle3ka52FeatureTopologyAllowed,
+  isCycle3ka52RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka52RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1468,6 +1472,10 @@ const CYCLE_3K_A50_ROUTING_CLOSURE_REVISION =
   "80ca6286d51dbeabcdc2b4ffa6ef1f7583764474" as const;
 const CYCLE_3K_A51_FEATURE_REVISION =
   "653aa5b8da038fcfb1aab214cc5e8d869b150680" as const;
+const CYCLE_3K_A51_ROUTING_CLOSURE_REVISION =
+  "29d0702c2d776382e7cda5500ba9a9db218e6abf" as const;
+const CYCLE_3K_A52_FEATURE_REVISION =
+  "6c501d3e50a233c4104cb315b8d0a8ff433c22cc" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -7467,6 +7475,46 @@ const CYCLE_3K_A51_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka51.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A52_FEATURE_TRANSITION = [
+  { path: "apps/api/package.json", status: "M" },
+  { path: "packages/filing-payload-custody/package.json", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+];
+const CYCLE_3K_A52_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka52.json",
     status: "A",
   },
 ];
@@ -20814,6 +20862,118 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedWatchlistNavigationRepairClosure = [
+      "204",
+      "204",
+      CYCLE_3K_A51_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A51_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A51_FEATURE_REVISION}`,
+      watchlistNavigationRepairFeature,
+    ] as const;
+    expect(
+      isCycle3ka51RoutingClosureTopologyAllowed(
+        ...pinnedWatchlistNavigationRepairClosure,
+      ),
+    ).toBe(true);
+    const watchlistSuitesFeature = [
+      "205",
+      "205",
+      CYCLE_3K_A52_FEATURE_REVISION,
+      `${CYCLE_3K_A52_FEATURE_REVISION} ${CYCLE_3K_A51_ROUTING_CLOSURE_REVISION}`,
+      pinnedWatchlistNavigationRepairClosure,
+    ] as const;
+    expect(isCycle3ka52FeatureTopologyAllowed(...watchlistSuitesFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "204"],
+      [1, "206"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A52_FEATURE_REVISION} ${CYCLE_3K_A51_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A52_FEATURE_REVISION} ${CYCLE_3K_A51_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...watchlistSuitesFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka52FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka52FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedWatchlistNavigationRepairClosure: unknown[] = [
+      ...pinnedWatchlistNavigationRepairClosure,
+    ];
+    tamperedPinnedWatchlistNavigationRepairClosure[4] =
+      tamperedWatchlistNavigationRepairFeature;
+    expect(
+      isCycle3ka52FeatureTopologyAllowed(
+        "205",
+        "205",
+        CYCLE_3K_A52_FEATURE_REVISION,
+        `${CYCLE_3K_A52_FEATURE_REVISION} ${CYCLE_3K_A51_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedWatchlistNavigationRepairClosure as unknown as Parameters<
+          typeof isCycle3ka52FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const watchlistSuitesClosureRevision = "e".repeat(40);
+    const watchlistSuitesClosure = [
+      "206",
+      "206",
+      watchlistSuitesClosureRevision,
+      `${watchlistSuitesClosureRevision} ${CYCLE_3K_A52_FEATURE_REVISION}`,
+      watchlistSuitesFeature,
+    ] as const;
+    expect(
+      isCycle3ka52RoutingClosureTopologyAllowed(...watchlistSuitesClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "205"],
+      [1, "207"],
+      [2, CYCLE_3K_A52_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${watchlistSuitesClosureRevision} ${CYCLE_3K_A51_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${watchlistSuitesClosureRevision} ${CYCLE_3K_A52_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...watchlistSuitesClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka52RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka52RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedWatchlistSuitesFeature: unknown[] = [
+      ...watchlistSuitesFeature,
+    ];
+    tamperedWatchlistSuitesFeature[4] =
+      tamperedPinnedWatchlistNavigationRepairClosure;
+    expect(
+      isCycle3ka52RoutingClosureTopologyAllowed(
+        "206",
+        "206",
+        watchlistSuitesClosureRevision,
+        `${watchlistSuitesClosureRevision} ${CYCLE_3K_A52_FEATURE_REVISION}`,
+        tamperedWatchlistSuitesFeature as unknown as Parameters<
+          typeof isCycle3ka52RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -21897,6 +22057,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A51_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka52FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A52_FEATURE_TRANSITION,
+      3,
+    );
+    expectExactTransition(
+      isCycle3ka52RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A52_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -22106,6 +22276,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A50_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A51_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A51_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A52_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A52_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -22367,6 +22539,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A50_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A51_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A51_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A52_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A52_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);

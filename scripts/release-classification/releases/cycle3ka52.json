@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "caseNumber": 52,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "29d0702c2d776382e7cda5500ba9a9db218e6abf",
+  "featureRevision": "6c501d3e50a233c4104cb315b8d0a8ff433c22cc",
+  "featureCount": 205,
+  "closureCount": 206,
+  "featureChanges": [
+    { "path": "apps/api/package.json", "status": "M" },
+    { "path": "packages/filing-payload-custody/package.json", "status": "M" },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka52.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka52.json",
+  "presentation": {
+    "featureDescription": "serialized filesystem test execution",
+    "closureDescription": "serialized filesystem test execution",
+    "inventoryDescription": "serialized filesystem test execution",
+    "testBinding": "watchlistSuites",
+    "routingDescription": "serialized filesystem test execution",
+    "summaryDescription": "serialized filesystem test execution"
+  }
+}
