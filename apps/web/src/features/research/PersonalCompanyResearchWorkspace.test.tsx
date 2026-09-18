@@ -163,6 +163,113 @@ describe("PersonalCompanyResearchWorkspace", () => {
     expect(props.onSectionChange).not.toHaveBeenCalled();
   });
 
+  it("places optional company navigation after the heading actions and before the shared note and tabs", () => {
+    const navigation = (
+      <nav id="navigation-slot">
+        <p id="navigation-description">Company sequence</p>
+      </nav>
+    );
+    const note = <aside id="note-slot">Shared research note</aside>;
+    props = {
+      ...props,
+      navigation,
+      navigationDescriptionId: "navigation-description",
+      researchNote: note,
+    };
+    const view = render();
+    expect(elementById(view, "navigation-slot")).toBe(navigation);
+    const heading = elementById(view, "personal-company-research-title");
+    expect(heading.props["aria-describedby"]).toBe("navigation-description");
+    expect(
+      elementById(view, heading.props["aria-describedby"] as string).props
+        .children,
+    ).toBe("Company sequence");
+    const markup = renderToStaticMarkup(view);
+    expect(markup.indexOf("Clear company")).toBeLessThan(
+      markup.indexOf('id="navigation-slot"'),
+    );
+    expect(markup.indexOf('id="navigation-slot"')).toBeLessThan(
+      markup.indexOf('id="note-slot"'),
+    );
+    expect(markup.indexOf('id="note-slot"')).toBeLessThan(
+      markup.indexOf('role="tablist"'),
+    );
+    expect(
+      elements(view)
+        .filter((node) => node.props.role === "tabpanel")
+        .flatMap((panel) => elements(panel.props.children))
+        .some((node) => node.props.id === "navigation-slot"),
+    ).toBe(false);
+    expect(props.onBack).not.toHaveBeenCalled();
+    expect(props.onClear).not.toHaveBeenCalled();
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+  });
+
+  it("omits a supplied navigation description when the navigation slot is absent", () => {
+    props = { ...props, navigationDescriptionId: "absent-navigation" };
+    expect(
+      elementById(render(), "personal-company-research-title").props[
+        "aria-describedby"
+      ],
+    ).toBeUndefined();
+  });
+
+  it("retains the supplied navigation across sections without changing panel keys or contents", () => {
+    const navigation = <nav id="navigation-slot">Company 2 of 3</nav>;
+    props = { ...props, navigation };
+    const panels = elements(render()).filter(
+      (node) => node.props.role === "tabpanel",
+    );
+    for (const activeSection of [
+      "financials",
+      "valuation",
+      "peers",
+      "sec",
+    ] as const) {
+      props = { ...props, activeSection };
+      const view = render();
+      expect(elements(view).filter((node) => node === navigation)).toHaveLength(
+        1,
+      );
+      expect(
+        elements(view)
+          .filter((node) => node.props.role === "tabpanel")
+          .map((node) => [node.type, node.key, node.props.children]),
+      ).toEqual(
+        panels.map((node) => [node.type, node.key, node.props.children]),
+      );
+    }
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+  });
+
+  it("omits navigation when selection is cleared and renders only the latest parent-supplied slot", () => {
+    const selection = props.selection;
+    props = {
+      ...props,
+      navigation: <nav id="navigation-slot">Old company sequence</nav>,
+      navigationDescriptionId: "navigation-description",
+      selection: null,
+    };
+    const cleared = render();
+    expect(
+      elements(cleared).some((node) => node.props.id === "navigation-slot"),
+    ).toBe(false);
+    expect(renderToStaticMarkup(cleared)).not.toContain("Old company sequence");
+    expect(
+      elementById(cleared, "personal-company-research-title").props[
+        "aria-describedby"
+      ],
+    ).toBeUndefined();
+    props = {
+      ...props,
+      selection,
+      navigation: <nav id="navigation-slot">New company sequence</nav>,
+    };
+    expect(elementById(render(), "navigation-slot").props.children).toBe(
+      "New company sequence",
+    );
+  });
+
   it("places an optional research note after company actions and before the five tabs", () => {
     const note = <aside id="note-slot">Shared research note</aside>;
     props = { ...props, researchNote: note };

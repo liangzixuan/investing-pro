@@ -75,6 +75,42 @@ request or saved-data write. Session/workspace loss clears the browsing state
 under the existing lifecycle rules. Multiple lists, tags, sorting, imports,
 exports and saved layouts remain outside this feature.
 
+## Move through saved-company research
+
+Opening a saved row's **Research** action captures all current filter matches in
+saved order, across watchlist pages. **Previous company** and **Next company**
+move within those matches, with a position such as **Company 3 of 14 My Watchlist
+matches**. The endpoints are disabled; navigation does not wrap or change the list
+page. A single match has both controls disabled. Opening research from another
+origin does not create a watchlist sequence.
+
+Changing company clears loaded research and valuation assumptions and opens Price.
+The controls disclose this reset. Note drafts remain shared with their current
+saved identities and return when you revisit a company. There is no automatic
+source request or save, and a separately chosen portfolio holding stays unchanged.
+Section changes, Back and reopening the same exact company retain their existing
+loaded state.
+
+**Back to My Watchlist** keeps the original row destination throughout the
+sequence. It returns focus there when the row still has the same visible identity,
+otherwise to the list heading. It does not search another page for the current
+company. Each Previous/Next transition focuses the new company heading.
+
+Paging alone preserves the sequence. Editing the filter, or changing any saved
+membership, identity or order, invalidates it and shows a restart instruction.
+Returning the filter to its old text or removing and re-adding a company does not
+revive the old sequence: explicitly open a row's Research action again. A note
+save or same-identity conflict reload may retain the sequence only when the entire
+ordered saved-list identities and catalog binding are unchanged. Old version-bound
+callbacks remain inert. Navigation pauses during list saves or reconciliation and
+is unavailable with stale or unavailable list data.
+
+Clear company, research from another origin and workspace/session loss clear the
+sequence. If an explicit search discovers a changed catalog snapshot, the sequence
+is cleared and cannot be recaptured until the workspace is revalidated. It remains
+a transient navigation aid, with no saved cohort, per-company valuation cache or
+general browsing history.
+
 ## Capture a research note
 
 When the selected company exactly matches a current My Watchlist membership,
@@ -130,6 +166,17 @@ and introduces no persistence schema, browser storage or separate note service.
   draft revival, session loss, and late completion after changing companies.
 - Check distinct labels and IDs, keyboard/Back behavior and long-note wrapping
   at narrow widths with synthetic data and no writes to the owner's watchlist.
+- Verify filtered sequential order across the 50-row boundary, endpoint and
+  single-match controls, unchanged original Back target, heading fallback and an
+  independently chosen holding. A-to-B-to-A restores only current note drafts;
+  changed-company research and DCF assumptions reset as disclosed.
+- Preserve the sequence on paging and identical full-list note-version reloads,
+  while rejecting old callbacks. Invalidate after filter changes, off-filter
+  membership changes, reordering, every full identity-field change or session loss.
+  Check repeated retained actions and delayed focus, including A-to-B-to-A.
+- Verify sequential navigation, tabs and Back add no fetch or write; a pending
+  explicit source load cannot populate the later company. Use synthetic desktop,
+  keyboard and 375px layout checks without mutating the owner's saved data.
 
 The workspace checkpoint records the actual accepted revision and validation;
 this guide describes behavior and does not itself establish release acceptance.

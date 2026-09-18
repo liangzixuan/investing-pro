@@ -43,6 +43,7 @@ import {
   type PersonalCompanyResearchSection,
 } from "./PersonalCompanyResearchWorkspace";
 import { PersonalCompanyResearchNote } from "./PersonalCompanyResearchNote";
+import { PersonalCompanyResearchNavigation } from "./PersonalCompanyResearchNavigation";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
@@ -77,6 +78,14 @@ interface LoadedWorkspace {
 interface WatchlistRow {
   readonly membership: PersonalWatchlistMembership;
   readonly absoluteIndex: number;
+}
+
+interface WatchlistResearchCohort {
+  readonly identities: readonly string[];
+  readonly allIdentities: readonly string[];
+  readonly snapshotSha256: string;
+  readonly index: number;
+  readonly invalidated: boolean;
 }
 
 interface CompanyOriginTarget {
@@ -197,6 +206,10 @@ export function SecurityDiscoveryWorkspace({
   const companyOriginTarget = useRef<CompanyOriginTarget | null>(null);
   const companyNavigationEpoch = useRef(0);
   const companySelectionEpoch = useRef(0);
+  const [researchCohort, setResearchCohort] =
+    useState<WatchlistResearchCohort | null>(null);
+  const currentResearchCohort = useRef(researchCohort);
+  const researchCatalogInvalidatedEpoch = useRef<number | null>(null);
   const [marketOverview, setMarketOverview] =
     useState<PersonalMarketOverviewDto | null>(null);
   const [marketRange, setMarketRange] =
@@ -294,6 +307,12 @@ export function SecurityDiscoveryWorkspace({
   const renderedWatchlistGeneration = watchlistView.current.generation;
 
   function replaceWorkspace(next: LoadedWorkspace | null) {
+    if (next === null) replaceResearchCohort(null);
+    else if (
+      currentResearchCohort.current !== null &&
+      !cohortMatchesWorkspace(currentResearchCohort.current, next)
+    )
+      invalidateResearchCohort();
     if (next === null) {
       replaceNoteDrafts({});
       replaceNoteFeedback(null);
@@ -323,6 +342,37 @@ export function SecurityDiscoveryWorkspace({
   function replaceNoteFeedback(next: WatchlistNoteFeedback | null) {
     currentNoteFeedback.current = next;
     setNoteFeedback(next);
+  }
+
+  function replaceResearchCohort(next: WatchlistResearchCohort | null) {
+    currentResearchCohort.current = next;
+    setResearchCohort(next);
+  }
+
+  function invalidateResearchCohort() {
+    const current = currentResearchCohort.current;
+    if (current !== null && !current.invalidated)
+      replaceResearchCohort(Object.freeze({ ...current, invalidated: true }));
+  }
+
+  function isCurrentResearchCohort() {
+    return (
+      researchCohort !== null &&
+      researchCohort === currentResearchCohort.current &&
+      !researchCohort.invalidated &&
+      workspace !== null &&
+      workspace === watchlistView.current.workspace &&
+      renderedWatchlistVersion === workspace.version &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      renderedCompanyEpoch === companySelectionEpoch.current &&
+      researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current &&
+      workspaceActivityReady.current &&
+      !watchlistView.current.saving &&
+      !watchlistView.current.reconciling &&
+      companyIdentityKey === companyIdentity.current &&
+      researchCohort.identities[researchCohort.index] === companyIdentityKey &&
+      cohortMatchesWorkspace(researchCohort, workspace)
+    );
   }
 
   function isCurrentNoteMember(membership: PersonalWatchlistMembership) {
@@ -406,6 +456,7 @@ export function SecurityDiscoveryWorkspace({
   function changeWatchlistQuery(value: string) {
     if (!isCurrentWatchlistView()) return;
     const next = value.slice(0, 128);
+    if (next !== watchlistView.current.query) invalidateResearchCohort();
     watchlistView.current.query = next;
     watchlistView.current.page = 0;
     watchlistView.current.generation += 1;
@@ -638,6 +689,8 @@ export function SecurityDiscoveryWorkspace({
         response.snapshot.snapshotSha256 !==
         activeWorkspace.snapshot.snapshotSha256
       ) {
+        researchCatalogInvalidatedEpoch.current = epoch;
+        replaceResearchCohort(null);
         setResults([]);
         setHasSearched(false);
         setSearchMessage(
@@ -685,6 +738,7 @@ export function SecurityDiscoveryWorkspace({
   }
 
   function clearCompanyNavigation() {
+    replaceResearchCohort(null);
     replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
     companyIdentity.current = null;
@@ -744,6 +798,28 @@ export function SecurityDiscoveryWorkspace({
       return;
     const identity = portfolioIdentity(membership);
     const identityKey = companyResearchIdentityKey(identity);
+    if (
+      origin === "watchlist" &&
+      researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current
+    ) {
+      const identities = matchingWatchlistRows.map(({ membership: member }) =>
+        companyResearchIdentityKey(member),
+      );
+      const index = identities.indexOf(identityKey);
+      replaceResearchCohort(
+        index < 0
+          ? null
+          : Object.freeze({
+              identities: Object.freeze(identities),
+              allIdentities: Object.freeze(
+                workspace.watchlist.memberships.map(companyResearchIdentityKey),
+              ),
+              snapshotSha256: workspace.snapshot.snapshotSha256,
+              index,
+              invalidated: false,
+            }),
+      );
+    } else replaceResearchCohort(null);
     const navigation = ++companyNavigationEpoch.current;
     setPortfolioSelection(identity);
     setCompanyOrigin(origin);
@@ -763,12 +839,17 @@ export function SecurityDiscoveryWorkspace({
           : null,
     };
     const originTarget = companyOriginTarget.current;
+    const capturedCohort = currentResearchCohort.current;
     queueMicrotask(() => {
       if (
         typeof document === "undefined" ||
         navigation !== companyNavigationEpoch.current ||
         identityKey !== companyIdentity.current ||
         originTarget.isCurrent?.() === false ||
+        (origin === "watchlist" &&
+          (capturedCohort !== currentResearchCohort.current ||
+            workspace !== watchlistView.current.workspace ||
+            renderedWatchlistVersion !== workspace.version)) ||
         renderedWorkspaceEpoch !== workspaceEpoch.current ||
         !workspaceActivityReady.current
       )
@@ -777,6 +858,55 @@ export function SecurityDiscoveryWorkspace({
         document.getElementById("personal-company-research-title"),
       );
     });
+    selectCompanyIdentity(identity, origin);
+  }
+
+  function moveResearchCompany(direction: -1 | 1) {
+    if (
+      !isCurrentResearchCohort() ||
+      researchCohort === null ||
+      workspace === null
+    )
+      return;
+    const index = researchCohort.index + direction;
+    if (index < 0 || index >= researchCohort.identities.length) return;
+    const identityKey = researchCohort.identities[index];
+    const member = workspace.watchlist.memberships.find(
+      (candidate) => companyResearchIdentityKey(candidate) === identityKey,
+    );
+    if (member === undefined) return;
+    const next = Object.freeze({ ...researchCohort, index });
+    replaceResearchCohort(next);
+    const navigation = ++companyNavigationEpoch.current;
+    selectCompanyIdentity(member, "watchlist");
+    const selectionEpoch = companySelectionEpoch.current;
+    queueMicrotask(() => {
+      if (
+        typeof document === "undefined" ||
+        navigation !== companyNavigationEpoch.current ||
+        currentResearchCohort.current !== next ||
+        selectionEpoch !== companySelectionEpoch.current ||
+        identityKey !== companyIdentity.current ||
+        workspace !== watchlistView.current.workspace ||
+        renderedWatchlistVersion !== workspace.version ||
+        renderedWorkspaceEpoch !== workspaceEpoch.current ||
+        !workspaceActivityReady.current ||
+        watchlistView.current.saving ||
+        watchlistView.current.reconciling ||
+        !cohortMatchesWorkspace(next, workspace)
+      )
+        return;
+      focusCompanyTarget(
+        document.getElementById("personal-company-research-title"),
+      );
+    });
+  }
+
+  function selectCompanyIdentity(
+    membership: PersonalPortfolioIdentity,
+    origin: CompanyResearchOrigin,
+  ) {
+    const identityKey = companyResearchIdentityKey(membership);
     if (identityKey === companyIdentity.current) return;
     replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
@@ -1998,7 +2128,7 @@ export function SecurityDiscoveryWorkspace({
             />
 
             <PersonalCompanyResearchWorkspace
-              key={companyIdentityKey ?? "no-selection"}
+              key={`${companyIdentityKey ?? "no-selection"}:${renderedCompanyEpoch}`}
               selection={marketSelection}
               activeSection={companySection}
               onSectionChange={(section) =>
@@ -2010,6 +2140,23 @@ export function SecurityDiscoveryWorkspace({
               backLabel={COMPANY_RESEARCH_ORIGINS[companyOrigin].label}
               onBack={returnFromCompany}
               onClear={clearSelectedCompany}
+              navigationDescriptionId={
+                researchCohort === null
+                  ? undefined
+                  : "company-research-navigation-status"
+              }
+              navigation={
+                researchCohort === null ? undefined : (
+                  <PersonalCompanyResearchNavigation
+                    position={researchCohort.index + 1}
+                    total={researchCohort.identities.length}
+                    disabled={!isCurrentResearchCohort()}
+                    invalidated={researchCohort.invalidated}
+                    onPrevious={() => moveResearchCompany(-1)}
+                    onNext={() => moveResearchCompany(1)}
+                  />
+                )
+              }
               researchNote={
                 companyNoteMembership === undefined ? (
                   <p className="company-research-guidance">
@@ -2559,6 +2706,22 @@ function companyResearchIdentityKey(
     identity.shareClassName,
     identity.symbol,
   ]);
+}
+
+function cohortMatchesWorkspace(
+  cohort: WatchlistResearchCohort,
+  workspace: LoadedWorkspace,
+): boolean {
+  return (
+    workspace.watchlistAvailable &&
+    hasCurrentWatchlistSnapshot(workspace) &&
+    cohort.snapshotSha256 === workspace.snapshot.snapshotSha256 &&
+    cohort.allIdentities.length === workspace.watchlist.memberships.length &&
+    workspace.watchlist.memberships.every(
+      (member, index) =>
+        companyResearchIdentityKey(member) === cohort.allIdentities[index],
+    )
+  );
 }
 
 function normalizeWatchlistQuery(query: string): string {

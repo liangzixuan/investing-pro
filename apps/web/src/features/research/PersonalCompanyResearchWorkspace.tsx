@@ -14,6 +14,8 @@ export interface PersonalCompanyResearchWorkspaceProps {
   readonly backLabel: string;
   readonly onBack: () => void;
   readonly onClear: () => void;
+  readonly navigation?: ReactNode;
+  readonly navigationDescriptionId?: string | undefined;
   readonly researchNote?: ReactNode;
   readonly sections: Readonly<
     Record<PersonalCompanyResearchSection, ReactNode>
@@ -42,6 +44,8 @@ export function PersonalCompanyResearchWorkspace({
   backLabel,
   onBack,
   onClear,
+  navigation,
+  navigationDescriptionId,
   researchNote,
   sections: content,
 }: PersonalCompanyResearchWorkspaceProps) {
@@ -138,7 +142,15 @@ export function PersonalCompanyResearchWorkspace({
       <div className="company-research-heading">
         <div>
           <p className="eyebrow">Company research</p>
-          <h2 id="personal-company-research-title" tabIndex={-1}>
+          <h2
+            aria-describedby={
+              selection !== null && navigation
+                ? navigationDescriptionId
+                : undefined
+            }
+            id="personal-company-research-title"
+            tabIndex={-1}
+          >
             {selection === null ? "Explore a company" : selection.symbol}
           </h2>
           {selection !== null && (
@@ -176,6 +188,7 @@ export function PersonalCompanyResearchWorkspace({
         </p>
       ) : (
         <>
+          {navigation}
           {researchNote}
           <p className="company-research-guidance">
             Move between sections without losing loaded data. Each section loads

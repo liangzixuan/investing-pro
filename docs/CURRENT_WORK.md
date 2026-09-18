@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: capture a note beside company research
+## Immediate delivery: move through watchlist research
+
+After opening Research from My Watchlist, move to the previous or next company
+among all loaded filter matches in saved order, including matches on other pages.
+Show the current position and endpoints. Preserve the original Back destination,
+list filter/page, independent holding and exact-identity note drafts.
+
+Changing company clears loaded research and valuation assumptions; disclose this
+beside the controls. Navigation performs no automatic load or save. Filter edits
+and changed membership, order or identities invalidate the sequence with a restart
+instruction. An ordinary note save may preserve it only when the complete ordered
+watchlist identities and catalog binding remain unchanged; old callbacks still
+expire on the workspace version change. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: capture a note beside company research
 
 Show the selected company's existing My Watchlist research note beside its five
 research sections. Share the same raw draft with the watchlist row and save only
@@ -704,7 +719,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchNavigation.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
    pnpm --filter @research-cockpit/web typecheck
    ```
 

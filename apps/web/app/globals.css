@@ -2883,6 +2883,57 @@ html:has(.personal-financial-screener:focus-within) {
   overflow-wrap: anywhere;
 }
 
+.company-research-navigation {
+  display: grid;
+  min-width: 0;
+  margin: 18px 0;
+  padding: 16px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.company-research-navigation-status,
+.company-research-navigation-hint {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.company-research-navigation-status {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.company-research-navigation-hint {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.company-research-navigation-actions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.company-research-navigation-actions > button {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.company-research-navigation-actions > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .company-research-note {
   display: grid;
   min-width: 0;
