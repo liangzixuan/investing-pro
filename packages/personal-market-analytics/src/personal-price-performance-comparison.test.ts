@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
 
 import {
+  calculatePersonalMarketAnalytics,
   calculatePersonalPricePerformanceComparison,
   type PersonalMarketAnalyticsBar,
   type PersonalPricePerformanceComparisonInput,
@@ -178,6 +179,7 @@ describe("personal price performance comparison", () => {
         lastDate: expectedDate,
       });
       for (const row of result.rows) {
+        expect(row).not.toHaveProperty("indexedObservations");
         expect(row).not.toHaveProperty("maximumDrawdown");
         expect(row).not.toHaveProperty("selectedWindowReturn");
         expect(row).not.toHaveProperty("firstAdjustedClose");
@@ -201,8 +203,10 @@ describe("personal price performance comparison", () => {
     expect(result.status).toBe("insufficient_history");
     expect(result.rows).toHaveLength(3);
     expect(result.sharedDates).toEqual([]);
-    for (const row of result.rows)
+    for (const row of result.rows) {
+      expect(row).not.toHaveProperty("indexedObservations");
       expect(row).not.toHaveProperty("maximumDrawdown");
+    }
   });
 
   it.each([
@@ -232,9 +236,19 @@ describe("personal price performance comparison", () => {
   );
 
   it("is unaffected by external Decimal precision and rounding changes", () => {
-    const before = { precision: Decimal.precision, rounding: Decimal.rounding };
+    const before = {
+      precision: Decimal.precision,
+      rounding: Decimal.rounding,
+      minE: Decimal.minE,
+      maxE: Decimal.maxE,
+    };
     try {
-      Decimal.set({ precision: 2, rounding: Decimal.ROUND_DOWN });
+      Decimal.set({
+        precision: 2,
+        rounding: Decimal.ROUND_DOWN,
+        minE: -1,
+        maxE: 1,
+      });
       const result = calculatePersonalPricePerformanceComparison({
         series: [
           series("listing-a", [bar(1, "3"), bar(2, "4")]),
@@ -243,6 +257,11 @@ describe("personal price performance comparison", () => {
       });
       if (result.status !== "available") throw new TypeError();
       expect(result.rows[0]?.selectedWindowReturn.valuePercent).toBe("33.3333");
+      expect(
+        result.rows[0]?.indexedObservations.map(
+          (point) => point.indexedAdjustedClose,
+        ),
+      ).toEqual(["100.0000", "133.3333"]);
     } finally {
       Decimal.set(before);
     }
@@ -269,7 +288,133 @@ describe("personal price performance comparison", () => {
     expect(JSON.stringify(result)).toBe(before);
     expect(result).not.toHaveProperty("series");
     for (const row of result.rows) expect(row).not.toHaveProperty("bars");
+    if (result.status !== "available") throw new TypeError();
+    const point = result.rows[0]!.indexedObservations[0]!;
+    expect(point.adjustedClose).toBe("10");
+    expect(Object.keys(point)).toEqual([
+      "date",
+      "adjustedClose",
+      "indexedAdjustedClose",
+    ]);
+    expect(Reflect.set(point, "indexedAdjustedClose", "999")).toBe(false);
+    expect(point.indexedAdjustedClose).toBe("100.0000");
   });
+});
+
+describe("indexed adjusted closes on shared observations", () => {
+  it("rebases unequal prices to the same path without changing original decimal strings", () => {
+    const result = calculatePersonalPricePerformanceComparison({
+      series: [
+        series("listing-a", [
+          bar(1, "100.00", "10"),
+          bar(2, "80.00", "100"),
+          bar(3, "110.00", "1"),
+        ]),
+        series("listing-b", [
+          bar(1, "200", "1"),
+          bar(2, "160", "2"),
+          bar(3, "220", "3"),
+        ]),
+      ],
+    });
+    if (result.status !== "available") throw new TypeError();
+    for (const row of result.rows) {
+      expect(row.indexedObservations.map((point) => point.date)).toEqual(
+        result.sharedDates,
+      );
+      expect(
+        row.indexedObservations.map((point) => point.indexedAdjustedClose),
+      ).toEqual(["100.0000", "80.0000", "110.0000"]);
+    }
+    expect(
+      result.rows[0]?.indexedObservations.map((point) => point.adjustedClose),
+    ).toEqual(["100.00", "80.00", "110.00"]);
+  });
+
+  it.each([
+    ["repeating ratio", "3", "1", "33.3333"],
+    ["flat prices", "42.50", "42.50", "100.0000"],
+    ["half-up boundary", "100", "100.00005", "100.0001"],
+    ["below the half-up boundary", "100", "100.000049", "100.0000"],
+    [
+      "precision beyond binary integers",
+      "9007199254740993",
+      "18014398509481986",
+      "200.0000",
+    ],
+  ])("uses decimal arithmetic for %s", (_name, first, last, expected) => {
+    const result = calculatePersonalPricePerformanceComparison({
+      series: [
+        series("listing-a", [bar(1, first), bar(2, last)]),
+        validInput().series[1]!,
+      ],
+    });
+    if (result.status !== "available") throw new TypeError();
+    expect(
+      result.rows[0]?.indexedObservations.map(
+        (point) => point.indexedAdjustedClose,
+      ),
+    ).toEqual(["100.0000", expected]);
+  });
+
+  it("keeps valid extreme prices and their finite decimal indices without clipping", () => {
+    const smallest = `0.${"0".repeat(61)}1`;
+    const largest = `1${"0".repeat(63)}`;
+    const result = calculatePersonalPricePerformanceComparison({
+      series: [
+        series("listing-a", [bar(1, smallest), bar(2, largest)]),
+        series("listing-b", [bar(1, largest), bar(2, smallest)]),
+      ],
+    });
+    if (result.status !== "available") throw new TypeError();
+    expect(result.rows[0]?.indexedObservations[1]).toEqual({
+      date: "2025-01-02",
+      adjustedClose: largest,
+      indexedAdjustedClose: `1${"0".repeat(127)}.0000`,
+    });
+    expect(result.rows[1]?.indexedObservations[1]).toEqual({
+      date: "2025-01-02",
+      adjustedClose: smallest,
+      indexedAdjustedClose: "0.0000",
+    });
+    for (const row of result.rows)
+      expect(row.indexedObservations[0]?.indexedAdjustedClose).toBe("100.0000");
+  });
+
+  it.each([
+    ["100", "99.99995", "-0.0001", "0.0001"],
+    ["100000", "99999.99999", "0.0000", "0.0000"],
+  ])(
+    "preserves independently calculated metrics when a decline looks flat at index precision",
+    (first, last, expectedReturn, expectedDrawdown) => {
+      const bars = [bar(1, first), bar(2, last)];
+      const admitted = calculatePersonalMarketAnalytics({
+        asOfDate: "2025-01-02",
+        bars,
+        mode: "adjusted",
+      }).metrics;
+      const result = calculatePersonalPricePerformanceComparison({
+        series: [series("listing-a", bars), validInput().series[1]!],
+      });
+      if (result.status !== "available") throw new TypeError();
+      const row = result.rows[0]!;
+      expect(
+        row.indexedObservations.map((point) => point.indexedAdjustedClose),
+      ).toEqual(["100.0000", "100.0000"]);
+      expect(row.selectedWindowReturn.valuePercent).toBe(expectedReturn);
+      expect(row.maximumDrawdown).toMatchObject({
+        valuePercent: expectedDrawdown,
+        peakDate: "2025-01-01",
+        troughDate: "2025-01-02",
+      });
+      expect(JSON.stringify(row.selectedWindowReturn)).toBe(
+        JSON.stringify(admitted.selectedWindowReturn),
+      );
+      expect(JSON.stringify(row.maximumDrawdown)).toBe(
+        JSON.stringify(admitted.maximumDrawdown),
+      );
+    },
+  );
 });
 
 describe("maximum drawdown on shared observations", () => {
@@ -407,6 +552,44 @@ describe("maximum drawdown on shared observations", () => {
       3, 2, 1,
     ]);
     if (result.status !== "available") throw new TypeError();
+    expect(result.rows.map((row) => row.indexedObservations)).toEqual([
+      [
+        {
+          date: "2025-01-03",
+          adjustedClose: "200",
+          indexedAdjustedClose: "100.0000",
+        },
+        {
+          date: "2025-01-05",
+          adjustedClose: "160",
+          indexedAdjustedClose: "80.0000",
+        },
+      ],
+      [
+        {
+          date: "2025-01-03",
+          adjustedClose: "20",
+          indexedAdjustedClose: "100.0000",
+        },
+        {
+          date: "2025-01-05",
+          adjustedClose: "16",
+          indexedAdjustedClose: "80.0000",
+        },
+      ],
+      [
+        {
+          date: "2025-01-03",
+          adjustedClose: "30",
+          indexedAdjustedClose: "100.0000",
+        },
+        {
+          date: "2025-01-05",
+          adjustedClose: "30",
+          indexedAdjustedClose: "100.0000",
+        },
+      ],
+    ]);
     expect(result.rows.map((row) => row.maximumDrawdown.valuePercent)).toEqual([
       "20.0000",
       "20.0000",
@@ -604,6 +787,18 @@ describe("price performance comparison admission", () => {
     expect(result.sharedSessionCount).toBe(4_096);
     expect(result.sharedDates).toContain("2016-02-29");
     expect(result.rows.map((row) => row.excludedSessionCount)).toEqual([0, 0]);
+    if (result.status !== "available") throw new TypeError();
+    for (const row of result.rows) {
+      expect(row.indexedObservations).toHaveLength(4_096);
+      expect(row.indexedObservations.map((point) => point.date)).toEqual(
+        result.sharedDates,
+      );
+      expect(
+        row.indexedObservations.every(
+          (point) => point.indexedAdjustedClose === "100.0000",
+        ),
+      ).toBe(true);
+    }
   });
 });
 

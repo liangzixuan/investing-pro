@@ -40,6 +40,7 @@ export {
   calculatePersonalPricePerformanceComparison,
   type PersonalPricePerformanceComparisonAvailableResult,
   type PersonalPricePerformanceComparisonAvailableRow,
+  type PersonalPricePerformanceComparisonIndexedObservation,
   type PersonalPricePerformanceComparisonInput,
   type PersonalPricePerformanceComparisonInsufficientHistoryResult,
   type PersonalPricePerformanceComparisonResult,

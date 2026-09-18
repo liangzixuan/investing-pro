@@ -786,12 +786,17 @@ The same explicit load can compare adjusted closes over dates observed for
 every selected listing, using one-month, three-month or one-year history.
 At least two shared dates and all selected companies are required; actual
 endpoints, coverage and the existing decimal percentage calculation are visible.
-The next increment adds maximum drawdown from that same common sample, with its
-nonnegative magnitude and peak/trough dates. Preserve the existing arithmetic,
-tie handling and distinction between no decline and a small decline rounded to
-zero. Omitted observations may hide intervening declines; this does not establish
-full daily-history drawdown or a risk rating. No new request or persistence is
-needed to expose the existing aggregate.
+The comparison also shows maximum drawdown from that same common sample, with
+its nonnegative magnitude and peak/trough dates. It preserves the existing
+arithmetic, tie handling and distinction between no decline and a small decline
+rounded to zero. Omitted observations may hide intervening declines; this does
+not establish full daily-history drawdown or a risk rating.
+The next increment plots indexed adjusted-price paths with each company's first
+shared close set to 100. Reuse the validated common observations and expose dates,
+original adjusted closes and rounded index values in an accessible exact-data
+table. Keep every selected company, preserve clearing and cancellation, and
+avoid presenting connecting lines as missing prices. The chart and table require
+no additional provider request or persistence.
 Both measures use provider-adjusted prices without independently reconstructing
 total return. Only a small quote and close/date projection remains in active component memory. This connects
 existing price coverage to discovery without adding price filters, saved prices,

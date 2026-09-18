@@ -5,7 +5,7 @@ import type {
   PersonalMarketOverviewDto,
   PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   fetchPersonalMarketOverview,
@@ -96,6 +96,16 @@ export function PersonalComparisonPrices({
   });
   const visible: PriceState =
     state.context === context ? state : { context, busy: false, entries: {} };
+  const comparisonSeries = useMemo(
+    () =>
+      listings.flatMap((listing) => {
+        const entry = visible.entries[listing.listingId];
+        return entry?.state === "available"
+          ? [{ listingId: listing.listingId, ...entry.value.history }]
+          : [];
+      }),
+    [context, visible.entries],
+  );
   const configured = providerStatus?.status === "configured";
   const eligible =
     enabled &&
@@ -354,12 +364,7 @@ export function PersonalComparisonPrices({
                 ? "incomplete"
                 : "idle"
         }
-        series={listings.flatMap((listing) => {
-          const entry = visible.entries[listing.listingId];
-          return entry?.state === "available"
-            ? [{ listingId: listing.listingId, ...entry.value.history }]
-            : [];
-        })}
+        series={comparisonSeries}
       />
       <p className="market-scope-note">
         Data attribution: Tiingo. Values remain in active-session memory only;

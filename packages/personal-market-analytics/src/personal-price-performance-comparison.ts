@@ -1,3 +1,5 @@
+import Decimal from "decimal.js";
+
 import {
   calculatePersonalMarketAnalytics,
   type PersonalMarketAnalyticsBar,
@@ -26,9 +28,16 @@ export interface PersonalPricePerformanceComparisonRow {
   readonly observedLastDate: string | null;
 }
 
+export interface PersonalPricePerformanceComparisonIndexedObservation {
+  readonly date: string;
+  readonly adjustedClose: string;
+  readonly indexedAdjustedClose: string;
+}
+
 export interface PersonalPricePerformanceComparisonAvailableRow extends PersonalPricePerformanceComparisonRow {
   readonly firstAdjustedClose: string;
   readonly lastAdjustedClose: string;
+  readonly indexedObservations: readonly PersonalPricePerformanceComparisonIndexedObservation[];
   readonly maximumDrawdown: Extract<
     PersonalMarketAnalyticsMaximumDrawdownMetric,
     { readonly status: "available" }
@@ -111,6 +120,11 @@ function compareValidated(
     });
   }
 
+  const IndexDecimal = Decimal.clone({
+    defaults: true,
+    precision: 80,
+    rounding: Decimal.ROUND_HALF_UP,
+  });
   const rows = series.map((entry, index) => {
     const alignedBars = entry.bars.filter((bar) => commonDates.has(bar.date));
     const firstBar = alignedBars[0];
@@ -131,10 +145,22 @@ function compareValidated(
     ) {
       throw new TypeError();
     }
+    const firstClose = new IndexDecimal(firstBar.adjusted.close);
+    // Rebase only shared observations: 100 × adjusted close / first shared close.
+    // Four-place chart rounding never feeds back into return or drawdown.
+    const indexedObservations = alignedBars.map((bar) => ({
+      date: bar.date,
+      adjustedClose: bar.adjusted.close,
+      indexedAdjustedClose: new IndexDecimal(bar.adjusted.close)
+        .times(100)
+        .div(firstClose)
+        .toFixed(4),
+    }));
     return {
       ...coverage,
       firstAdjustedClose: firstBar.adjusted.close,
       lastAdjustedClose: lastBar.adjusted.close,
+      indexedObservations,
       maximumDrawdown,
       selectedWindowReturn,
     };

@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-17 following the handover from **Investing Pro+** to
+Updated 2026-09-18 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -15,7 +15,23 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare drawdowns over shared observations
+## Immediate delivery: see shared-date adjusted-price paths
+
+Add an indexed comparison chart beside the existing price-change and drawdown
+table. Start every selected company at 100 on the first shared date, using
+`100 * adjusted close / first shared adjusted close`. Plot only the validated
+observations already admitted for every company. Keep the same explicit load,
+range, common window, coverage and cancellation behavior.
+
+Provide distinct labeled lines and an accessible, paginated exact-data table
+with dates, original adjusted closes and four-decimal index values. Connecting
+lines are visual guides; missing observations are not filled. Preserve existing
+metric formulas and show an honest chart-unavailable state when valid decimal
+values cannot safely be plotted. This adds no provider request, saved data,
+valuation signal or total-return reconstruction. See
+[Comparison prices](./PERSONAL_COMPARISON_PRICES.md) for the exact scope.
+
+## Delivered: compare drawdowns over shared observations
 
 Extend the shared-date price comparison with maximum drawdown from the same
 already-loaded adjusted closes. Reuse the existing analytical result and show
@@ -622,7 +638,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Compare adjusted-price changes over shared dates in a financial comparison                       | Reuse explicit overview loads and admitted selected-window analytics       |
+| Now              | Plot indexed adjusted-price paths beside the shared-date comparison                              | Reuse already-loaded histories and the validated common observations       |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -645,7 +661,8 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web test -- PersonalComparisonPrices PersonalFinancialScreener SecurityDiscoveryWorkspace personal-workspace-api
+   pnpm --filter @research-cockpit/web test -- PersonalComparisonPriceChart PersonalComparisonPerformance PersonalComparisonPrices
+   pnpm --filter @research-cockpit/personal-market-analytics test -- personal-price-performance-comparison
    ```
 
    If this Windows shell cannot resolve installed tools, use the installed

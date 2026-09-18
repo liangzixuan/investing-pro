@@ -5,6 +5,9 @@ import {
   type PersonalPricePerformanceComparisonResult,
   type PersonalPricePerformanceComparisonSeries,
 } from "@research-cockpit/personal-market-analytics";
+import { useMemo } from "react";
+
+import { PersonalComparisonPriceChart } from "./PersonalComparisonPriceChart";
 
 export interface PersonalComparisonPerformanceProps {
   readonly listings: readonly PersonalSecurityMasterScreenRowDto[];
@@ -17,14 +20,16 @@ export function PersonalComparisonPerformance({
   series,
   state,
 }: PersonalComparisonPerformanceProps) {
-  let result: PersonalPricePerformanceComparisonResult | null = null;
-  if (state === "ready") {
-    try {
-      result = calculatePersonalPricePerformanceComparison({ series });
-    } catch {
-      // Fail closed if an admitted history cannot support the calculation.
-    }
-  }
+  const result =
+    useMemo<PersonalPricePerformanceComparisonResult | null>(() => {
+      if (state !== "ready") return null;
+      try {
+        return calculatePersonalPricePerformanceComparison({ series });
+      } catch {
+        // Fail closed if an admitted history cannot support the calculation.
+        return null;
+      }
+    }, [series, state]);
 
   return (
     <section
@@ -53,6 +58,9 @@ export function PersonalComparisonPerformance({
                   ? `Performance unavailable: at least 2 dates observed for every selected company are required; ${result.sharedSessionCount} shared observations loaded.`
                   : "Performance unavailable: the loaded histories could not be compared."}
         </p>
+      )}
+      {result?.status === "available" && (
+        <PersonalComparisonPriceChart result={result} listings={listings} />
       )}
       {result !== null && (
         <div

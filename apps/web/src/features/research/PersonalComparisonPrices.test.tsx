@@ -10,17 +10,20 @@ const harness = vi.hoisted(() => {
   const states: unknown[] = [],
     refs: Array<{ current: unknown }> = [];
   const dependencies: Array<readonly unknown[] | undefined> = [];
+  const memos: Array<{ deps: readonly unknown[]; value: unknown }> = [];
   const cleanup = new Map<number, () => void>();
   let pending: Array<() => void> = [],
     stateIndex = 0,
     refIndex = 0,
-    effectIndex = 0;
+    effectIndex = 0,
+    memoIndex = 0;
   return {
     states,
     reset() {
       states.splice(0);
       refs.splice(0);
       dependencies.splice(0);
+      memos.splice(0);
       cleanup.clear();
       pending = [];
     },
@@ -28,6 +31,7 @@ const harness = vi.hoisted(() => {
       stateIndex = 0;
       refIndex = 0;
       effectIndex = 0;
+      memoIndex = 0;
     },
     effects() {
       const effects = pending;
@@ -63,6 +67,18 @@ const harness = vi.hoisted(() => {
       if (!(index in refs)) refs[index] = { current: initial };
       return refs[index] as { current: T };
     },
+    useMemo<T>(factory: () => T, deps: readonly unknown[]): T {
+      const index = memoIndex++;
+      const previous = memos[index];
+      if (
+        !previous ||
+        previous.deps.length !== deps.length ||
+        !deps.every((value, offset) => Object.is(value, previous.deps[offset]))
+      ) {
+        memos[index] = { deps, value: factory() };
+      }
+      return memos[index]!.value as T;
+    },
     useState(initial: unknown) {
       const index = stateIndex++;
       if (!(index in states)) states[index] = initial;
@@ -81,6 +97,8 @@ const harness = vi.hoisted(() => {
 const api = vi.hoisted(() => ({ fetchPersonalMarketOverview: vi.fn() }));
 vi.mock("react", async (original) => ({
   ...(await original()),
+  useMemo: <T,>(factory: () => T, deps: readonly unknown[]) =>
+    harness.useMemo(factory, deps),
   useState: (initial: unknown) => harness.useState(initial),
   useRef: <T,>(initial: T) => harness.useRef(initial),
   useEffect: (
@@ -93,6 +111,7 @@ vi.mock("@/lib/personal-workspace-api", async () => ({
   ...api,
 }));
 import { PersonalWorkspaceApiError } from "@/lib/personal-workspace-api";
+import { PersonalComparisonPriceChart } from "./PersonalComparisonPriceChart";
 import {
   PersonalComparisonPrices,
   type PersonalComparisonPricesProps,
@@ -119,6 +138,41 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalComparisonPrices", () => {
+  it("retains the chart aggregate across display-only rerenders and clears it on range change", async () => {
+    api.fetchPersonalMarketOverview.mockImplementation(
+      ({ symbol }: { symbol: string }) =>
+        Promise.resolve(
+          history(symbol, [
+            ["2030-01-02", "100"],
+            ["2030-01-03", "110"],
+          ]),
+        ),
+    );
+    click(render());
+    await flush();
+    const first = elements(render()).find(
+      (element) => element.type === PersonalComparisonPriceChart,
+    )?.props.result;
+    expect(first).toBeDefined();
+    props = {
+      ...props,
+      listings: props.listings.map((item) => ({ ...item })),
+      providerStatus: status(),
+    };
+    const second = elements(render()).find(
+      (element) => element.type === PersonalComparisonPriceChart,
+    )?.props.result;
+    expect(second).toBe(first);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    changeRange(render(), "3m");
+    expect(
+      elements(render()).some(
+        (element) => element.type === PersonalComparisonPriceChart,
+      ),
+    ).toBe(false);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
   it("loads only after a click, sequentially, and retains only history close fields", async () => {
     props = { ...props, listings: [...props.listings, listing("CCC")] };
     const pending = [

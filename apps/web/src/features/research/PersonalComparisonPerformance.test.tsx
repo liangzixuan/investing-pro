@@ -9,6 +9,26 @@ import {
 } from "./PersonalComparisonPerformance";
 
 describe("PersonalComparisonPerformance", () => {
+  it.each(["100000000000000", "0.000000001"])(
+    "keeps comparison metrics and exact-data access when %s cannot be plotted",
+    (close) => {
+      const markup = render([
+        history("aaa", ["1", close]),
+        history("bbb", ["2", "2"]),
+      ]);
+      expect(visibleText(markup)).toContain("Chart unavailable");
+      expect(visibleText(markup)).toContain(
+        "Inspect exact adjusted closes and index values (2 observations)",
+      );
+      expect(performanceRows(markup)).toHaveLength(2);
+      expect(visibleText(markup)).toContain(
+        "Maximum drawdown on shared observations",
+      );
+      expect(visibleText(performanceRows(markup)[0]?.[2] ?? "")).toBe("1");
+      expect(visibleText(performanceRows(markup)[0]?.[3] ?? "")).toBe(close);
+    },
+  );
+
   it("shows a positive peak-to-trough loss even when the shared window recovers", () => {
     const markup = render([
       history("aaa", ["100", "80", "110"]),
@@ -137,6 +157,9 @@ describe("PersonalComparisonPerformance", () => {
     expect(visibleText(markup)).toContain(message);
     expect(markup).toContain('role="status"');
     expect(markup).not.toContain("<table");
+    expect(markup).not.toContain(
+      'aria-label="Indexed adjusted-price comparison"',
+    );
     expect(markup).not.toContain("20.0000%");
     expect(markup).not.toContain('class="comparison-performance-drawdown"');
   });

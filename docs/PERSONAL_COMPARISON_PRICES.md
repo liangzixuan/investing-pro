@@ -74,6 +74,39 @@ hidden. Inspect the common window and omitted counts; this is not a full daily
 history risk measure or a forecast. It uses the existing loaded history and
 requires no additional price request.
 
+## See the adjusted-price path
+
+The indexed chart starts each selected company at **100 on the first shared
+date**, making differently priced shares comparable on one scale. Each point is
+`100 * adjusted close / first shared adjusted close`, using an isolated 80-digit
+decimal calculation and half-up rounding to four decimal places. The baseline
+is always `100.0000`. The index has no currency unit; it is not a dollar holding,
+benchmark or independently reconstructed total return.
+
+Only the same validated shared observations used by the metrics are plotted.
+Every selected company must load successfully and share at least two dates.
+Straight connecting lines are visual guides, not observed or interpolated
+missing prices. Dates are spaced by observation, so calendar gaps are not shown
+to scale. The shared window, omitted-date counts and sparse-history
+warning still apply. Prices that round to the same index can look flat while
+the existing drawdown metric retains a tiny positive decline and its dates.
+
+Distinct labeled line styles identify the companies. Expand the exact-data table
+to inspect each shared date, original adjusted close and four-decimal index.
+Pages of 25 dates keep the table manageable without dropping observations. Plotting
+uses approximate numeric coordinates; the table preserves the decimal strings.
+If the values cannot safely be plotted, an explicit chart-unavailable message
+replaces the plot while the exact table and existing metrics remain available.
+The plotting range admits only finite, positive numeric coordinates no greater
+than JavaScript's maximum safe integer, `9007199254740991`. A positive index that
+rounds to `0.0000` therefore remains in the exact table without being plotted as
+an actual zero. This display boundary does not change the underlying metrics.
+
+The chart, table and pagination use the existing response. Opening or inspecting
+them makes no request, and they do not change the comparison's membership,
+baseline or metric formulas. Existing price/session clearing also removes the
+chart and its exact-data state.
+
 ## Lifetime and boundaries
 
 Only the quote, provider, EOD bar date, requested history bounds and narrow
@@ -102,6 +135,10 @@ before intersecting so invalid excluded observations cannot disappear silently.
 Check maximum drawdown on rising, falling and flat histories, repeated peaks,
 tied drawdowns, tiny declines rounded to zero and omitted interior observations.
 No-decline wording must not rely on the rounded percentage alone.
+For indexed paths, verify proportional histories with different starting prices,
+the exact 100 baseline, rounding, omitted interior observations, unsafe plotting
+values and all exact-data pages. Confirm stale chart disposal, resize and reduced
+motion, accessible labels and table controls, and no new request or persistence.
 Verify desktop/narrow layouts and keyboard access in external Brave. Any retained
 screenshots or fixtures contain only synthetic prices. The workspace checkpoint
 records the actual released revision and dated configured-source observations;
