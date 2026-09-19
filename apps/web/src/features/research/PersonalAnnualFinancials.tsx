@@ -14,7 +14,9 @@ import {
 
 import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api";
 
+import { PersonalAnnualFinancialTrend } from "./PersonalAnnualFinancialTrend";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
+import { projectPersonalAnnualFinancialTrend } from "./personal-annual-financial-trend-input";
 
 export interface PersonalAnnualFinancialsProps {
   readonly errorCode: PersonalWorkspaceApiErrorCode | null;
@@ -152,7 +154,11 @@ export function PersonalAnnualFinancials({
           </div>
 
           {financials !== null && analytics !== null ? (
-            <FinancialsResult financials={financials} analytics={analytics} />
+            <FinancialsResult
+              financials={financials}
+              analytics={analytics}
+              selection={selection}
+            />
           ) : null}
         </>
       )}
@@ -163,10 +169,17 @@ export function PersonalAnnualFinancials({
 function FinancialsResult({
   analytics,
   financials,
+  selection,
 }: {
   readonly analytics: ReturnType<typeof buildPersonalFinancialAnalytics>;
   readonly financials: PersonalAnnualFinancialsDto;
+  readonly selection: PersonalMarketSelection;
 }) {
+  const trend = projectPersonalAnnualFinancialTrend({
+    financials,
+    selection,
+    analyticsStatus: analytics.status,
+  });
   const displayFiscalYears = Array.from(
     { length: financials.coverage.requestedAnnualYears },
     (_, offset) => financials.coverage.latestFiscalYear - offset,
@@ -208,6 +221,20 @@ function FinancialsResult({
           <strong>Missing annual years:</strong>{" "}
           {financials.coverage.missingFiscalYears.join(", ")}. These remain
           blank; later years are never shifted into their place.
+        </p>
+      )}
+
+      {trend.status === "ready" ? (
+        <PersonalAnnualFinancialTrend
+          key={trend.selectionKey}
+          projection={trend}
+        />
+      ) : (
+        <p className="market-scope-note" role="note">
+          <strong>Annual business trends unavailable.</strong>{" "}
+          {trend.reason === "identity_mismatch"
+            ? "The loaded statements do not match the selected company. Refresh annual financials for this company."
+            : "The loaded annual history cannot support a reliable trend view. Exact reported statements remain below."}
         </p>
       )}
 

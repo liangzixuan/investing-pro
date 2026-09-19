@@ -875,6 +875,16 @@ provider P/E, P/B, and trailing PEG 1Y with exact USD or unitless-ratio labels
 and explicit unknown cells. The current provider-most-recent revision basis is
 visible and is not presented as point-in-time or as-reported history.
 
+Annual business trends adds a local view of the loaded annual revenue, net income,
+operating cash flow and provider-reported free cash flow. One selectable signed
+bar series keeps ten oldest-first fiscal-year slots and a zero baseline; an exact
+table retains all four decimal values and each returned year's own statement date.
+Missing years, unknown fields and known zero remain distinct. Unsafe plotting
+coordinates or a chart failure preserve the exact table. Existing annual admission,
+company lifetime, statements and analytics remain intact, with no new acquisition,
+storage, transport contract or financial formula. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
 Partial Cycle 3h-a4 adds a browser-local assessment of revenue and net income
 over the latest four exact expected fiscal slots. It separates missing quarters
 and unknown cells from missing fact-level period, flow-basis, unit, scope,

@@ -56,6 +56,11 @@ describe("PersonalAnnualFinancials", () => {
     expect(text).toContain("inputs 2029:revenue + 2028:revenue");
     expect(text).toContain("exact decimal arithmetic");
     expect(text).toContain("provider's most-recent corrected history");
+    expect(text).toContain("Annual business trends");
+    expect(text).toContain("Annual trend metric");
+    expect(text).toContain(
+      "Annual business trend values · USD · oldest to newest",
+    );
   });
 
   it("leaves missing years and unknown provider cells visibly blank", () => {
@@ -130,6 +135,73 @@ describe("PersonalAnnualFinancials", () => {
     );
   });
 
+  it("admits the trend when partial coverage concerns a different reported field", () => {
+    const onLoad = vi.fn();
+    const packet = financials(
+      Array.from({ length: 10 }, (_, offset) =>
+        financialYear(2029 - offset, annualValues(2029 - offset), {
+          gross_profit: unknownCell(),
+        }),
+      ),
+    );
+    const before = JSON.stringify(packet);
+    const markup = render(
+      defaultProps({ financials: packet, selection: selection(), onLoad }),
+    );
+    const text = visibleText(markup);
+    expect(text).toContain("Inspect exact annual trend values");
+    expect(text).not.toContain("Annual business trends unavailable.");
+    expect(text).toContain(
+      "Gross margin Unknown Required reported input is missing",
+    );
+    expect(text).toContain("Income statement · USD · newest to oldest");
+    expect(JSON.stringify(packet)).toBe(before);
+    expect(onLoad).not.toHaveBeenCalled();
+  });
+
+  it("withholds the trend for the existing engine's quarantined history", () => {
+    const latest = financialYear(2029, annualValues(2029));
+    const packet = financials([latest, latest]);
+    const text = visibleText(
+      render(defaultProps({ financials: packet, selection: selection() })),
+    );
+    expect(text).toContain("Annual business trends unavailable.");
+    expect(text).not.toContain("Inspect exact annual trend values");
+    expect(text).toContain("Income statement · USD · newest to oldest");
+  });
+
+  it("withholds trends for another full company identity while preserving existing reported tables", () => {
+    const packet = financials([financialYear(2029, annualValues(2029))]);
+    const text = visibleText(
+      render(
+        defaultProps({
+          financials: packet,
+          selection: {
+            ...selection(),
+            securityName: "Another security of Zero Alpha",
+          },
+        }),
+      ),
+    );
+    expect(text).toContain(
+      "The loaded statements do not match the selected company",
+    );
+    expect(text).not.toContain("Inspect exact annual trend values");
+    expect(text).toContain("Income statement · USD · newest to oldest");
+  });
+
+  it("withholds malformed consumed values without hiding the original reported statements", () => {
+    const packet = financials([
+      financialYear(2029, { ...annualValues(2029), revenue: "01" }),
+    ]);
+    const text = visibleText(
+      render(defaultProps({ financials: packet, selection: selection() })),
+    );
+    expect(text).toContain("Annual business trends unavailable.");
+    expect(text).not.toContain("Inspect exact annual trend values");
+    expect(text).toContain("Cash flow · USD · newest to oldest");
+  });
+
   it("exposes an announced loading state and readable no-selection guidance", () => {
     const loadingMarkup = render(
       defaultProps({
@@ -151,6 +223,12 @@ describe("PersonalAnnualFinancials", () => {
     );
     expect(visibleText(emptyMarkup)).toContain(
       "request annual statements for that exact admitted listing",
+    );
+    expect(visibleText(loadingMarkup)).not.toContain(
+      "Annual business trend values",
+    );
+    expect(visibleText(emptyMarkup)).not.toContain(
+      "Annual business trend values",
     );
   });
 

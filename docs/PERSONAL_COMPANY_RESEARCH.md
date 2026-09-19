@@ -11,7 +11,7 @@ Five sections organize the existing panels:
 | Section      | Existing capabilities                                                   |
 | ------------ | ----------------------------------------------------------------------- |
 | Price        | Quote, price history and market analytics                               |
-| Financials   | Annual and quarterly statements, financial quality checks               |
+| Financials   | Annual trends and statements, quarterly statements, quality checks      |
 | Valuation    | Valuation history, historical multiples, DCF and reverse DCF            |
 | Peers        | Manual peer selection, metrics, annual quality checks and a saved group |
 | SEC evidence | Dated quarterly observations and primary-filing context                 |
@@ -44,6 +44,35 @@ This view does not add financial metrics, provider coverage, a new company URL,
 browser storage or a saved layout. Local access and account behavior remain
 unchanged. Explicit source requests retain their existing freshness and
 availability limits; navigation is not a refresh.
+
+## Inspect annual business trends
+
+After **Load annual financials**, **Annual business trends** shows one metric at a
+time: Revenue, Net income, Operating cash flow or Provider-reported free cash flow.
+The signed bar chart uses ten fiscal-year slots from oldest to newest, a zero
+baseline and nominal USD amounts. It does not calculate returns or annualized or
+per-share values. Provider-reported free cash flow is distinct from the cash flow
+derived by the DCF model.
+
+Open **Inspect exact annual trend values** for all four original decimal values
+and each returned year's own provider statement/release date. A **Missing year**
+has no returned statement; **Unknown** means the year was returned without that
+field. Both leave chart gaps and neither becomes zero. A known zero remains `0`
+in the exact table. Dates are not invented period ends or filing timestamps.
+
+Axis positions are approximate; the exact table is authoritative. If any known
+value in the selected metric exceeds the safe plotting range, its entire chart
+is withheld while all exact values and other metric choices remain available.
+The table also remains available when the chart cannot initialize. A history
+withheld by the existing annual checks, mismatched company identity or malformed
+trend inputs has no trend view; the existing reported statements remain below.
+
+Changing the metric makes no request or saved-data change and keeps keyboard
+focus on the selector. Equal-content renders retain the current metric and open
+exact table. Changed source content closes the table; refresh or a different
+company resets the view under the existing annual-data lifetime rules. The full
+statement tables and latest-year analytics remain unchanged. All values retain
+Tiingo's most-recent corrected-history and active-session retention limits.
 
 ## Inspect a peer metric's inputs
 

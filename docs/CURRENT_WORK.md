@@ -15,7 +15,20 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reorder peers without losing loaded work
+## Immediate delivery: inspect annual business trends
+
+Use the already loaded annual statements to chart revenue, net income, operating
+cash flow or provider-reported free cash flow across ten fiscal-year slots. Keep
+signed values and a zero baseline, with missing years and unknown cells visibly
+distinct from known zero. An exact table retains all four values and each year's
+own statement/release date, oldest first.
+
+Keep the table available if a metric cannot be plotted safely or the chart fails.
+Preserve exact decimals, company identity, source retirement, keyboard focus and
+existing statements and analytics. No new provider request, storage, formula or
+transport contract. See [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: reorder peers without losing loaded work
 
 Move a selected peer earlier or later in the comparison while keeping its loaded
 sources, errors and pending requests. The selected company stays first. Preserve
@@ -806,7 +819,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Reorder current peers while retaining loaded sources and pending work                            | Arrange repeatable comparisons without removing and reloading companies    |
+| Now              | Inspect annual business trends with a signed chart and exact values                              | Understand already loaded revenue, earnings and cash flow over time        |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |

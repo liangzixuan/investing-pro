@@ -2891,6 +2891,68 @@ html:has(.personal-financial-screener:focus-within) {
   min-width: 0;
 }
 
+.annual-financial-trend {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.annual-financial-trend h4 {
+  margin: 0;
+}
+
+.annual-financial-trend-selector {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.annual-financial-trend-selector select {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+.annual-financial-trend-canvas {
+  height: 340px;
+  width: 100%;
+  min-width: 0;
+}
+
+.annual-financial-trend-data,
+.annual-financial-trend-table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.annual-financial-trend-table-wrap {
+  overflow-x: auto;
+}
+
+.annual-financial-trend-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.annual-financial-trend-table-wrap caption {
+  padding-block: 10px;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.annual-financial-trend-table-wrap :is(th, td) {
+  min-width: 110px;
+  max-width: 220px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
 .comparison-price-chart h6 {
   margin: 0;
   font-size: 0.9rem;
