@@ -46,7 +46,7 @@ import { PersonalCompanyResearchNote } from "./PersonalCompanyResearchNote";
 import { PersonalCompanyResearchNavigation } from "./PersonalCompanyResearchNavigation";
 import { PersonalCompanyWatchlistAction } from "./PersonalCompanyWatchlistAction";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
-import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
+import { PersonalSavedFcffDcfValuation } from "./PersonalSavedFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
 import { PersonalHistoricalMultipleValuation } from "./PersonalHistoricalMultipleValuation";
 import {
@@ -333,6 +333,33 @@ export function SecurityDiscoveryWorkspace({
     };
   }
   const renderedWatchlistGeneration = watchlistView.current.generation;
+  const savedDcfOrigin = companyOriginTarget.current;
+  const savedDcfCatalogInvalidation = researchCatalogInvalidatedEpoch.current;
+  const savedDcfContext = useRef({
+    workspace,
+    origin: savedDcfOrigin,
+    saving: watchlistState === "saving",
+    reconciling,
+    catalogInvalidation: savedDcfCatalogInvalidation,
+    epoch: 0,
+  });
+  if (
+    savedDcfContext.current.workspace !== workspace ||
+    savedDcfContext.current.origin !== savedDcfOrigin ||
+    savedDcfContext.current.saving !== (watchlistState === "saving") ||
+    savedDcfContext.current.reconciling !== reconciling ||
+    savedDcfContext.current.catalogInvalidation !== savedDcfCatalogInvalidation
+  ) {
+    savedDcfContext.current = {
+      workspace,
+      origin: savedDcfOrigin,
+      saving: watchlistState === "saving",
+      reconciling,
+      catalogInvalidation: savedDcfCatalogInvalidation,
+      epoch: savedDcfContext.current.epoch + 1,
+    };
+  }
+  const renderedSavedDcfEpoch = savedDcfContext.current.epoch;
 
   useEffect(() => {
     const handoff = currentCompanyAddFocusHandoff.current;
@@ -2545,12 +2572,50 @@ export function SecurityDiscoveryWorkspace({
                       selection={marketSelection}
                       valuationHistory={valuationHistory}
                     />
-                    <PersonalFcffDcfValuation
+                    <PersonalSavedFcffDcfValuation
                       key={companyIdentityKey ?? "no-selection"}
                       annualFinancials={annualFinancials}
                       marketOverview={marketOverview}
                       selection={marketSelection}
                       valuationHistory={valuationHistory}
+                      savedContext={{
+                        workspaceKey: String(renderedWorkspaceEpoch),
+                        contextKey: `${renderedCompanyEpoch}:${renderedSavedDcfEpoch}`,
+                        enabled: workspaceActivityReady.current,
+                        identity:
+                          companyNoteMembership === undefined
+                            ? null
+                            : portfolioIdentity(companyNoteMembership),
+                        watchlistBinding:
+                          companyNoteMembership !== undefined &&
+                          workspace.watchlistAvailable &&
+                          !snapshotChanged &&
+                          watchlistState !== "saving" &&
+                          !reconciling &&
+                          savedDcfCatalogInvalidation !== renderedWorkspaceEpoch
+                            ? {
+                                catalogSnapshotSha256:
+                                  workspace.snapshot.snapshotSha256,
+                                watchlistVersion: workspace.version,
+                              }
+                            : null,
+                        isCurrent: () =>
+                          workspaceActivityReady.current &&
+                          renderedWorkspaceEpoch === workspaceEpoch.current &&
+                          renderedCompanyEpoch ===
+                            companySelectionEpoch.current &&
+                          companyIdentityKey === companyIdentity.current &&
+                          savedDcfOrigin === companyOriginTarget.current &&
+                          savedDcfCatalogInvalidation ===
+                            researchCatalogInvalidatedEpoch.current &&
+                          workspace === watchlistView.current.workspace &&
+                          renderedWatchlistGeneration ===
+                            watchlistView.current.generation &&
+                          renderedSavedDcfEpoch ===
+                            savedDcfContext.current.epoch,
+                        onSessionUnavailable: () =>
+                          withCurrentCompany(clearWorkspaceForSessionLoss),
+                      }}
                     />
                   </>
                 ),

@@ -36,7 +36,7 @@ import {
 import type { PersonalAnnualFinancialsProps } from "./PersonalAnnualFinancials";
 import type { OwnerSessionPanelProps } from "./OwnerSessionPanel";
 import type { LocalWorkspaceAccessPanelProps } from "./LocalWorkspaceAccessPanel";
-import type { PersonalFcffDcfValuationProps } from "./PersonalFcffDcfValuation";
+import type { PersonalSavedFcffDcfValuationProps } from "./PersonalSavedFcffDcfValuation";
 import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
 import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComparison";
@@ -264,8 +264,8 @@ vi.mock("./PersonalCompanyResearchNote", () => ({
 vi.mock("./PersonalAnnualFinancials", () => ({
   PersonalAnnualFinancials: componentMocks.AnnualFinancials,
 }));
-vi.mock("./PersonalFcffDcfValuation", () => ({
-  PersonalFcffDcfValuation: componentMocks.FcffDcfValuation,
+vi.mock("./PersonalSavedFcffDcfValuation", () => ({
+  PersonalSavedFcffDcfValuation: componentMocks.FcffDcfValuation,
 }));
 vi.mock("./PersonalFinancialQualityScorecard", () => ({
   PersonalFinancialQualityScorecard: componentMocks.FinancialQualityScorecard,
@@ -1480,6 +1480,138 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(valuation.props.marketOverview).toBeNull();
     expect(valuation.props.valuationHistory).toBeNull();
     expect(valuation.props.annualFinancials).not.toBeNull();
+  });
+
+  it("binds saved DCF inputs to the full off-page membership independently of the visible filter", async () => {
+    const record = watchlistRecord(120);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    void filterWatchlist("SYN00001");
+    const company = record.payload.memberships[60]!;
+    openNoteCompany(company);
+    const view = renderWorkspace();
+    const valuation = requireFcffDcfValuation(view);
+    const identity = Object.fromEntries(
+      Object.entries(company).filter(([key]) => key !== "note"),
+    );
+    expect(Object.keys(valuation.props.savedContext.identity!)).toHaveLength(
+      11,
+    );
+    expect(valuation.props.savedContext.identity).toEqual(identity);
+    expect(valuation.props.savedContext.watchlistBinding).toEqual({
+      catalogSnapshotSha256: snapshot().snapshotSha256,
+      watchlistVersion: 7,
+    });
+    expect(valuation.props.savedContext.isCurrent()).toBe(true);
+    expect(valuation.props.savedContext.enabled).toBe(true);
+    expect(watchlistRowIds(view)).toEqual(["lst-syn-00001"]);
+    expect(apiMocks.fetchMainPersonalWatchlist).toHaveBeenCalledTimes(1);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+  });
+
+  it("invalidates saved DCF metadata across note writes while preserving the mounted company editor", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const before = renderWorkspace();
+    const valuation = requireFcffDcfValuation(before);
+    const pending = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(pending.promise);
+    requireCompanyNote(before).props.onChange(
+      "A note changes only the list version",
+    );
+    requireCompanyNote(renderWorkspace()).props.onSave();
+    expect(valuation.props.savedContext.isCurrent()).toBe(false);
+    const during = requireFcffDcfValuation(renderWorkspace());
+    expect(during.key).toBe(valuation.key);
+    expect(during.props.savedContext.contextKey).not.toBe(
+      valuation.props.savedContext.contextKey,
+    );
+    expect(during.props.savedContext.watchlistBinding).toBeNull();
+    pending.resolve({
+      version: 8,
+      payload: apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1],
+    });
+    await flushPromises();
+    const settled = requireFcffDcfValuation(renderWorkspace());
+    expect(settled.key).toBe(valuation.key);
+    expect(requireCompanyResearch(renderWorkspace()).key).toBe(
+      requireCompanyResearch(before).key,
+    );
+    expect(settled.props.savedContext.watchlistBinding?.watchlistVersion).toBe(
+      8,
+    );
+    expect(settled.props.savedContext.isCurrent()).toBe(true);
+    expect(valuation.props.savedContext.isCurrent()).toBe(false);
+    expect(during.props.savedContext.isCurrent()).toBe(false);
+  });
+
+  it("retires saved DCF origin callbacks even when the selected identity stays the same", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const before = requireFcffDcfValuation(renderWorkspace());
+    watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+    expect(before.props.savedContext.isCurrent()).toBe(false);
+    const after = requireFcffDcfValuation(renderWorkspace());
+    expect(after.key).toBe(before.key);
+    expect(after.props.savedContext.contextKey).not.toBe(
+      before.props.savedContext.contextKey,
+    );
+    expect(after.props.savedContext.identity).toEqual(
+      before.props.savedContext.identity,
+    );
+    expect(after.props.savedContext.isCurrent()).toBe(true);
+    requireCompanyResearch(renderWorkspace()).props.onClear();
+    expect(after.props.savedContext.isCurrent()).toBe(false);
+    openNoteCompany(record.payload.memberships[0]!);
+    expect(before.props.savedContext.isCurrent()).toBe(false);
+    expect(after.props.savedContext.isCurrent()).toBe(false);
+    expect(
+      requireFcffDcfValuation(renderWorkspace()).props.savedContext.isCurrent(),
+    ).toBe(true);
+  });
+
+  it.each(["not saved", "stale catalog", "unavailable list"] as const)(
+    "withholds saved DCF admission for %s without changing provider loading",
+    async (state) => {
+      const record = watchlistRecord(1);
+      const selected = record.payload.memberships[0]!;
+      if (state === "not saved") record.payload.memberships = [];
+      if (state === "stale catalog")
+        record.payload.snapshotSha256 = `sha256:${"d".repeat(64)}`;
+      if (state === "unavailable list")
+        apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+          new Error("Synthetic unavailable list"),
+        );
+      else apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(selected);
+      const valuation = requireFcffDcfValuation(renderWorkspace());
+      expect(valuation.props.savedContext.watchlistBinding).toBeNull();
+      expect(valuation.props.selection?.listingId).toBe(selected.listingId);
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+      expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+    },
+  );
+
+  it("clears the active company and retires saved DCF callbacks after session loss", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    openNoteCompany(record.payload.memberships[0]!);
+    const context =
+      requireFcffDcfValuation(renderWorkspace()).props.savedContext;
+    context.onSessionUnavailable();
+    expect(context.isCurrent()).toBe(false);
+    expect(findFcffDcfValuation(renderWorkspace())).toBeUndefined();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
   });
 
   it("feeds the quality scorecard only the explicitly loaded selected annual financials", async () => {
@@ -5512,7 +5644,7 @@ function findAnnualFinancials(value: unknown) {
 }
 
 function findFcffDcfValuation(value: unknown) {
-  return findElement<PersonalFcffDcfValuationProps>(
+  return findElement<PersonalSavedFcffDcfValuationProps>(
     value,
     componentMocks.FcffDcfValuation,
   );

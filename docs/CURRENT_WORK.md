@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-18 following the handover from **Investing Pro+** to
+Updated 2026-09-19 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: save the researched company
+## Immediate delivery: reuse company DCF assumptions
+
+Explicitly load, save, restore and clear one set of the seven existing DCF inputs
+per exact researched My Watchlist company, up to twenty companies. Keep the raw
+editor draft separate from the versioned saved collection. Valid assumptions
+can be saved before provider inputs are loaded; Restore checks the saved record,
+current catalog and complete watchlist identity before replacing all seven inputs.
+
+Use a separate encrypted settings record containing assumptions, model version,
+identity and catalog provenance only. Preserve drafts during delayed Save and
+cancel Restore application after intervening edits or Reset. Keep unsupported
+versions and removed companies clearable. No automatic loading, provider request,
+stored result, changed formula or authentication change. See
+[Saved DCF assumptions](./PERSONAL_SAVED_DCF_ASSUMPTIONS.md).
+
+## Delivered: save the researched company
 
 Add an unsaved company directly to My Watchlist from its research view when it
 was opened from current admitted search, catalog or financial-screen results.
@@ -711,7 +726,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Add the researched company directly to My Watchlist                                              | Preserve admitted identity, research state and explicit versioned saves    |
+| Now              | Save and explicitly restore company DCF assumptions                                              | Preserve current draft, exact identity and versioned local settings        |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -734,7 +749,9 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyWatchlistAction.test.tsx src/features/research/PersonalCompanyResearchNavigation.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalSavedFcffDcfValuation.test.tsx src/features/research/PersonalSavedDcfAssumptionsControls.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx src/lib/personal-saved-dcf-assumptions-api.test.ts
+   pnpm --filter @research-cockpit/contracts exec vitest run src/personal-saved-dcf-assumptions.test.ts
+   pnpm --filter @research-cockpit/api exec vitest run src/workspace-saved-dcf-routes.test.ts
    pnpm --filter @research-cockpit/web typecheck
    ```
 

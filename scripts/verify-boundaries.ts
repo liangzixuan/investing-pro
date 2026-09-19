@@ -5234,6 +5234,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-app.ts",
     "apps/api/src/workspace-composition-root.ts",
     "apps/api/src/workspace-financial-screen-routes.ts",
+    "apps/api/src/workspace-saved-dcf-routes.ts",
     marketRoutesPath,
     "apps/api/src/workspace-screener-routes.ts",
     "apps/api/src/workspace-server.ts",
@@ -6167,6 +6168,19 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       ],
     ],
     [
+      "apps/web/src/features/research/PersonalSavedFcffDcfValuation.tsx",
+      [
+        "export function PersonalSavedFcffDcfValuation(",
+        "<PersonalFcffDcfValuation",
+        "normalizePersonalSavedDcfAssumptions(",
+        "resolvePersonalSavedDcfAssumptions(",
+        "samePersonalSavedDcfEntry(resolved.entry, selected)",
+        "editEpoch !== current.current.draftEpoch",
+        "current.current.controller?.abort()",
+        "<PersonalSavedDcfAssumptionsControls",
+      ],
+    ],
+    [
       "apps/web/src/features/research/PersonalFinancialQualityScorecard.tsx",
       [
         "export function PersonalFinancialQualityScorecard(",
@@ -6236,7 +6250,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         "function clearValuationHistoryState(",
         "<PersonalValuationHistory",
         "<PersonalHistoricalMultipleValuation",
-        "<PersonalFcffDcfValuation",
+        "<PersonalSavedFcffDcfValuation",
         "<PersonalFinancialQualityScorecard",
         "useState<",
         "readonly PersonalManualPeerState[]",
@@ -6955,7 +6969,8 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === "apps/api/src/workspace-sec-filing-context-routes.ts" ||
         path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
         path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
-        path === "apps/api/src/workspace-financial-screen-routes.ts") &&
+        path === "apps/api/src/workspace-financial-screen-routes.ts" ||
+        path === "apps/api/src/workspace-saved-dcf-routes.ts") &&
       findIdentifiers(source, new Set(["process"])).length > 0
     ) {
       return `${path}: provider and market-data routes must not read process state`;
@@ -8593,6 +8608,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot", "screenPersonalSecurityMaster"],
     ],
     [
+      "apps/api/src/workspace-saved-dcf-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "screenPersonalSecurityMaster"],
+    ],
+    [
       "apps/api/src/workspace-watchlist-filings-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
@@ -8688,6 +8707,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-watchlist-filings-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-saved-dcf-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -13818,6 +13845,17 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       ],
     ],
     [
+      "apps/api/src/workspace-saved-dcf-routes.test.ts",
+      [
+        "LocalResearchVault",
+        "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+        "type JsonValue",
+        "type WindowsOwnerOnlyAclPort",
+        "type WindowsOwnerOnlyAclTarget",
+        "type WindowsOwnerOnlyAclVerificationReceipt",
+      ],
+    ],
+    [
       "apps/api/src/personal-vault-routes.ts",
       [
         "LOCAL_RESEARCH_RECORD_KINDS",
@@ -13852,6 +13890,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-financial-screen-routes.ts",
+      ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-saved-dcf-routes.ts",
       ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],
     ],
     [

@@ -19,7 +19,16 @@ import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 
 export interface PersonalFcffDcfValuationProps {
   readonly annualFinancials: PersonalAnnualFinancialsDto | null;
+  readonly assumptionControl?: {
+    readonly value: PersonalFcffDcfAssumptionDraft;
+    readonly onChange: (
+      update: (
+        current: PersonalFcffDcfAssumptionDraft,
+      ) => PersonalFcffDcfAssumptionDraft,
+    ) => void;
+  };
   readonly marketOverview: PersonalMarketOverviewDto | null;
+  readonly savedAssumptionsControls?: ReactNode;
   readonly selection: PersonalMarketSelection | null;
   readonly valuationHistory: PersonalValuationHistoryDto | null;
 }
@@ -31,7 +40,10 @@ type UnavailableResult = Extract<ModelResult, { status: "unavailable" }>;
 type ScenarioName = keyof AvailableResult["scenarios"];
 type ScenarioResult = AvailableResult["scenarios"][ScenarioName];
 type SensitivityCell = AvailableResult["sensitivity"]["cells"][number];
-type AssumptionDraft = Omit<PersonalFcffDcfAssumptions, "forecastYears"> & {
+export type PersonalFcffDcfAssumptionDraft = Omit<
+  PersonalFcffDcfAssumptions,
+  "forecastYears"
+> & {
   readonly forecastYears: string;
 };
 
@@ -45,13 +57,19 @@ const scenarioLabels = {
 
 export function PersonalFcffDcfValuation({
   annualFinancials,
+  assumptionControl,
   marketOverview,
+  savedAssumptionsControls,
   selection,
   valuationHistory,
 }: PersonalFcffDcfValuationProps) {
-  const [assumptionDraft, setAssumptionDraft] = useState<AssumptionDraft>(() =>
-    createAssumptionDraft(PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS),
-  );
+  const [localAssumptionDraft, setLocalAssumptionDraft] =
+    useState<PersonalFcffDcfAssumptionDraft>(() =>
+      createPersonalFcffDcfAssumptionDraft(),
+    );
+  const assumptionDraft = assumptionControl?.value ?? localAssumptionDraft;
+  const setAssumptionDraft =
+    assumptionControl?.onChange ?? setLocalAssumptionDraft;
   const draftIssue = assumptionDraftIssue(assumptionDraft);
   const assumptions =
     draftIssue === null ? materializeAssumptions(assumptionDraft) : null;
@@ -134,12 +152,11 @@ export function PersonalFcffDcfValuation({
             assumptions={assumptionDraft}
             onCommonChange={updateCommon}
             onReset={() =>
-              setAssumptionDraft(
-                createAssumptionDraft(PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS),
-              )
+              setAssumptionDraft(() => createPersonalFcffDcfAssumptionDraft())
             }
             onScenarioGrowthChange={updateScenarioGrowth}
           />
+          {savedAssumptionsControls}
           {draftIssue !== null ? (
             <ReadinessState
               detail={draftIssue}
@@ -168,8 +185,18 @@ export function PersonalFcffDcfValuation({
         distressed companies, or structurally negative-FCF issuers. It is not
         intrinsic certainty, a price target, or a buy/sell recommendation.
         Inputs use provider-most-recent history, not point-in-time or
-        as-reported history. This view makes no fetch, persists nothing, and
-        provides no export.
+        as-reported history.{" "}
+        {savedAssumptionsControls ? (
+          <>
+            Only assumptions can be saved through the explicit controls. The
+            calculation makes no provider request and saves no source data or
+            results. This view provides no export.
+          </>
+        ) : (
+          <>
+            This view makes no fetch, persists nothing, and provides no export.
+          </>
+        )}
       </p>
     </section>
   );
@@ -251,7 +278,7 @@ function AssumptionEditor({
   onReset,
   onScenarioGrowthChange,
 }: {
-  readonly assumptions: AssumptionDraft;
+  readonly assumptions: PersonalFcffDcfAssumptionDraft;
   readonly onCommonChange: (
     key:
       | "forecastYears"
@@ -1212,7 +1239,9 @@ function mapAnnualFinancials(financials: PersonalAnnualFinancialsDto | null) {
   };
 }
 
-function assumptionDraftIssue(assumptions: AssumptionDraft): string | null {
+function assumptionDraftIssue(
+  assumptions: PersonalFcffDcfAssumptionDraft,
+): string | null {
   if (!/^(?:0|[1-9][0-9]*)$/u.test(assumptions.forecastYears)) {
     return "Complete the forecast horizon with an ordinary whole number; no stale result is retained while you edit.";
   }
@@ -1237,9 +1266,9 @@ function assumptionDraftIssue(assumptions: AssumptionDraft): string | null {
     : "Complete every numeric field using ordinary decimal notation with no more than four decimal places; no stale result is retained while you edit.";
 }
 
-function createAssumptionDraft(
-  assumptions: PersonalFcffDcfAssumptions,
-): AssumptionDraft {
+export function createPersonalFcffDcfAssumptionDraft(
+  assumptions: PersonalFcffDcfAssumptions = PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
+): PersonalFcffDcfAssumptionDraft {
   return {
     ...assumptions,
     forecastYears: String(assumptions.forecastYears),
@@ -1252,7 +1281,7 @@ function createAssumptionDraft(
 }
 
 function materializeAssumptions(
-  assumptions: AssumptionDraft,
+  assumptions: PersonalFcffDcfAssumptionDraft,
 ): PersonalFcffDcfAssumptions {
   return {
     ...assumptions,

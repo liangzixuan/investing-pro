@@ -174,6 +174,11 @@ lifecycle; this does not add a saved research layout or a new sequence.
 
 ## Acceptance
 
+The Valuation section also provides explicit per-company saved DCF inputs. See
+[Saved DCF assumptions](./PERSONAL_SAVED_DCF_ASSUMPTIONS.md) for Save, Restore,
+Clear, model-version handling and draft/request lifetime rules. These settings
+actions do not load research sources or persist calculated results.
+
 - Keep all five panels mounted with only the selected panel exposed. Verify
   tab relationships, keyboard wrapping and untouched ordinary/modified links.
 - Preserve loaded results and model drafts across sections, Back and reopening

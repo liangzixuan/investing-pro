@@ -15,7 +15,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createPersonalFcffDcfAssumptionDraft,
   PersonalFcffDcfValuation,
+  type PersonalFcffDcfAssumptionDraft,
   type PersonalFcffDcfValuationProps,
 } from "./PersonalFcffDcfValuation";
 
@@ -476,6 +478,161 @@ describe("PersonalFcffDcfValuation", () => {
     expect(markup).toMatch(/id="fcff-dcf-horizon"[^>]*value="5"/u);
     expect(markup).toMatch(/id="fcff-dcf-wacc"[^>]*value="10"/u);
     expect(markup).toContain("Base-scenario implied price");
+  });
+
+  it("keeps controlled raw edits and Reset separate from saved-setting actions", () => {
+    let draft = createPersonalFcffDcfAssumptionDraft();
+    const onChange = vi.fn(
+      (
+        update: (
+          current: PersonalFcffDcfAssumptionDraft,
+        ) => PersonalFcffDcfAssumptionDraft,
+      ) => {
+        draft = update(draft);
+      },
+    );
+    const onSave = vi.fn();
+    const onClear = vi.fn();
+    const props = () =>
+      defaultProps({
+        assumptionControl: { value: draft, onChange },
+        savedAssumptionsControls: (
+          <div>
+            <button onClick={onSave}>Save test assumptions</button>
+            <button onClick={onClear}>Clear test assumptions</button>
+          </div>
+        ),
+      });
+    changeControl(props(), "fcff-dcf-wacc", "-");
+    expect(draft.waccPercent).toBe("-");
+    expect(render(props())).toContain("Finish entering valid assumptions");
+    changeControl(props(), "fcff-dcf-horizon", "");
+    expect(draft.forecastYears).toBe("");
+    changeControl(props(), "fcff-dcf-base-growth", "2.");
+    expect(draft.scenarios.base.annualFcfProxyGrowthPercent).toBe("2.");
+    expect(render(props())).not.toContain("Base-scenario implied price");
+
+    clickControl(props(), "Reset illustrative assumptions");
+    expect(draft).toEqual(createPersonalFcffDcfAssumptionDraft());
+    expect(onChange).toHaveBeenCalledTimes(4);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onClear).not.toHaveBeenCalled();
+    expect(render(props())).toContain("Base-scenario implied price");
+  });
+
+  it("applies functional controlled edits to the latest draft without losing other fields", () => {
+    let draft = createPersonalFcffDcfAssumptionDraft();
+    const props = defaultProps({
+      assumptionControl: {
+        value: draft,
+        onChange: (update) => {
+          draft = update(draft);
+        },
+      },
+    });
+    const staleWacc = findHostElement(
+      PersonalFcffDcfValuation(props),
+      (element) =>
+        element.type === "input" && element.props.id === "fcff-dcf-wacc",
+    )!;
+    draft = {
+      ...draft,
+      forecastYears: "8",
+      scenarios: {
+        ...draft.scenarios,
+        base: { annualFcfProxyGrowthPercent: "6" },
+      },
+    };
+    (
+      staleWacc.props.onChange as (event: { target: { value: string } }) => void
+    )({ target: { value: "12" } });
+    expect(draft.waccPercent).toBe("12");
+    expect(draft.forecastYears).toBe("8");
+    expect(draft.scenarios.base.annualFcfProxyGrowthPercent).toBe("6");
+  });
+
+  it("uses all seven explicitly restored controlled inputs together without fetching or restoring itself", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    const calculate = vi.spyOn(analytics, "calculatePersonalFcffDcfValuation");
+    const onChange = vi.fn();
+    const restored = {
+      forecastYears: "8",
+      taxShieldRatePercent: "21.0000",
+      waccPercent: "11.0000",
+      terminalGrowthPercent: "2.0000",
+      scenarios: {
+        conservative: { annualFcfProxyGrowthPercent: "-2.0000" },
+        base: { annualFcfProxyGrowthPercent: "4.0000" },
+        expansion: { annualFcfProxyGrowthPercent: "9.0000" },
+      },
+    } satisfies PersonalFcffDcfAssumptionDraft;
+    const props = defaultProps({
+      assumptionControl: { value: restored, onChange },
+    });
+    const markup = render(props);
+    expect(calculate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        assumptions: { ...restored, forecastYears: 8 },
+      }),
+    );
+    expect(markup).toContain("Base-scenario implied price");
+    for (const [id, value] of [
+      ["fcff-dcf-horizon", "8"],
+      ["fcff-dcf-tax-rate", "21.0000"],
+      ["fcff-dcf-wacc", "11.0000"],
+      ["fcff-dcf-terminal-growth", "2.0000"],
+      ["fcff-dcf-conservative-growth", "-2.0000"],
+      ["fcff-dcf-base-growth", "4.0000"],
+      ["fcff-dcf-expansion-growth", "9.0000"],
+    ]) {
+      expect(
+        findHostElement(
+          PersonalFcffDcfValuation(props),
+          (element) => element.type === "input" && element.props.id === id,
+        )?.props.value,
+      ).toBe(value);
+    }
+    expect(onChange).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("shows the saved-controls slot only for a selection and describes its persistence separately", () => {
+    const controls = <aside>Explicit saved-assumption controls</aside>;
+    const withSelection = render(
+      defaultProps({ savedAssumptionsControls: controls }),
+    );
+    expect(withSelection).toContain("Explicit saved-assumption controls");
+    expect(withSelection.indexOf("Illustrative assumptions")).toBeLessThan(
+      withSelection.indexOf("Explicit saved-assumption controls"),
+    );
+    expect(withSelection).toContain(
+      "Only assumptions can be saved through the explicit controls",
+    );
+    expect(withSelection).toContain("saves no source data or results");
+    expect(withSelection).not.toContain("persists nothing");
+    expect(
+      render(
+        defaultProps({ selection: null, savedAssumptionsControls: controls }),
+      ),
+    ).not.toContain("Explicit saved-assumption controls");
+    expect(render(defaultProps())).toContain(
+      "makes no fetch, persists nothing",
+    );
+  });
+
+  it("initializes independent raw drafts without changing numeric strings or sharing scenario objects", () => {
+    const source = structuredClone(PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS);
+    const first = createPersonalFcffDcfAssumptionDraft(source);
+    const second = createPersonalFcffDcfAssumptionDraft(source);
+    expect(first.forecastYears).toBe(String(source.forecastYears));
+    expect(first.waccPercent).toBe(source.waccPercent);
+    expect(first.scenarios).not.toBe(source.scenarios);
+    for (const name of ["conservative", "base", "expansion"] as const) {
+      expect(first.scenarios[name]).not.toBe(source.scenarios[name]);
+      expect(first.scenarios[name]).not.toBe(second.scenarios[name]);
+      expect(first.scenarios[name]).toEqual(source.scenarios[name]);
+    }
   });
 
   it.each(["", "-", "5.5", "1e1", "0xA", " 10"])(

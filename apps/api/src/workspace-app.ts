@@ -50,6 +50,7 @@ import {
   type PersonalSecFinancialProvider,
 } from "./personal-sec-financial-provider";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
+import { registerPersonalSavedDcfRoutes } from "./workspace-saved-dcf-routes";
 import { registerPersonalWorkspacePortfolioRoutes } from "./workspace-portfolio-routes";
 import { registerPersonalWorkspaceWatchlistFilingsRoutes } from "./workspace-watchlist-filings-routes";
 import {
@@ -187,6 +188,13 @@ export async function buildPersonalWorkspaceApp(
     listenOptions,
   );
   registerPersonalWorkspacePortfolioRoutes(
+    app,
+    catalog,
+    vault,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalSavedDcfRoutes(
     app,
     catalog,
     vault,
