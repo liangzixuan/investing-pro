@@ -14,7 +14,7 @@ import type {
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createEmptyPersonalWatchlist,
@@ -44,6 +44,7 @@ import {
 } from "./PersonalCompanyResearchWorkspace";
 import { PersonalCompanyResearchNote } from "./PersonalCompanyResearchNote";
 import { PersonalCompanyResearchNavigation } from "./PersonalCompanyResearchNavigation";
+import { PersonalCompanyWatchlistAction } from "./PersonalCompanyWatchlistAction";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalFcffDcfValuation } from "./PersonalFcffDcfValuation";
 import { PersonalFinancialQualityScorecard } from "./PersonalFinancialQualityScorecard";
@@ -86,6 +87,19 @@ interface WatchlistResearchCohort {
   readonly snapshotSha256: string;
   readonly index: number;
   readonly invalidated: boolean;
+}
+
+interface CompanyWatchlistCandidate {
+  readonly result:
+    PersonalSecurityMasterSearchResultDto | PersonalSecurityMasterScreenRowDto;
+  readonly identityKey: string;
+  readonly snapshotSha256: string;
+}
+
+interface CompanyWatchlistFeedback {
+  readonly candidate: CompanyWatchlistCandidate;
+  readonly message: string;
+  readonly pending: boolean;
 }
 
 interface CompanyOriginTarget {
@@ -156,6 +170,7 @@ const SESSION_REVALIDATION_MESSAGE =
   "The owner session is no longer available. Revalidate the session before loading private data again.";
 const MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES = 250;
 const WATCHLIST_PAGE_SIZE = 50;
+const WATCHLIST_MAXIMUM_MEMBERSHIPS = 10_000;
 
 class WorkspaceSnapshotChangedError extends Error {}
 
@@ -210,6 +225,18 @@ export function SecurityDiscoveryWorkspace({
     useState<WatchlistResearchCohort | null>(null);
   const currentResearchCohort = useRef(researchCohort);
   const researchCatalogInvalidatedEpoch = useRef<number | null>(null);
+  const [companyWatchlistCandidate, setCompanyWatchlistCandidate] =
+    useState<CompanyWatchlistCandidate | null>(null);
+  const currentCompanyWatchlistCandidate = useRef(companyWatchlistCandidate);
+  const [companyWatchlistFeedback, setCompanyWatchlistFeedback] =
+    useState<CompanyWatchlistFeedback | null>(null);
+  const currentCompanyAddOperation = useRef<object | null>(null);
+  const currentCompanyAddFocusCleanup = useRef<(() => void) | null>(null);
+  const currentCompanyAddFocusHandoff = useRef<{
+    feedback: CompanyWatchlistFeedback;
+    run: () => void;
+  } | null>(null);
+  const failedCompanyAddReloadWorkspace = useRef<LoadedWorkspace | null>(null);
   const [marketOverview, setMarketOverview] =
     useState<PersonalMarketOverviewDto | null>(null);
   const [marketRange, setMarketRange] =
@@ -262,6 +289,7 @@ export function SecurityDiscoveryWorkspace({
   const renderedWorkspaceEpoch = workspaceEpoch.current;
   const renderedCompanyEpoch = companySelectionEpoch.current;
   const renderedWatchlistVersion = workspace?.version;
+  const renderedSearchEpoch = searchEpoch.current;
 
   const normalizedWatchlistQuery = normalizeWatchlistQuery(watchlistQuery);
   const matchingWatchlistRows = (workspace?.watchlist.memberships ?? [])
@@ -306,7 +334,19 @@ export function SecurityDiscoveryWorkspace({
   }
   const renderedWatchlistGeneration = watchlistView.current.generation;
 
+  useEffect(() => {
+    const handoff = currentCompanyAddFocusHandoff.current;
+    if (handoff === null || handoff.feedback !== companyWatchlistFeedback)
+      return;
+    currentCompanyAddFocusHandoff.current = null;
+    handoff.run();
+  }, [companyWatchlistFeedback]);
+
   function replaceWorkspace(next: LoadedWorkspace | null) {
+    if (next === null) {
+      replaceCompanyWatchlistCandidate(null);
+      failedCompanyAddReloadWorkspace.current = null;
+    }
     if (next === null) replaceResearchCohort(null);
     else if (
       currentResearchCohort.current !== null &&
@@ -347,6 +387,17 @@ export function SecurityDiscoveryWorkspace({
   function replaceResearchCohort(next: WatchlistResearchCohort | null) {
     currentResearchCohort.current = next;
     setResearchCohort(next);
+  }
+
+  function replaceCompanyWatchlistCandidate(
+    next: CompanyWatchlistCandidate | null,
+  ) {
+    currentCompanyAddFocusCleanup.current?.();
+    currentCompanyAddFocusHandoff.current = null;
+    currentCompanyWatchlistCandidate.current = next;
+    currentCompanyAddOperation.current = null;
+    setCompanyWatchlistCandidate(next);
+    setCompanyWatchlistFeedback(null);
   }
 
   function invalidateResearchCohort() {
@@ -691,6 +742,7 @@ export function SecurityDiscoveryWorkspace({
       ) {
         researchCatalogInvalidatedEpoch.current = epoch;
         replaceResearchCohort(null);
+        replaceCompanyWatchlistCandidate(null);
         setResults([]);
         setHasSearched(false);
         setSearchMessage(
@@ -739,6 +791,7 @@ export function SecurityDiscoveryWorkspace({
 
   function clearCompanyNavigation() {
     replaceResearchCohort(null);
+    replaceCompanyWatchlistCandidate(null);
     replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
     companyIdentity.current = null;
@@ -789,6 +842,9 @@ export function SecurityDiscoveryWorkspace({
       | PersonalWatchlistMembership
       | PersonalPortfolioIdentity,
     origin: CompanyResearchOrigin,
+    admittedResult?:
+      | PersonalSecurityMasterSearchResultDto
+      | PersonalSecurityMasterScreenRowDto,
   ) {
     if (
       workspace === null ||
@@ -798,6 +854,26 @@ export function SecurityDiscoveryWorkspace({
       return;
     const identity = portfolioIdentity(membership);
     const identityKey = companyResearchIdentityKey(identity);
+    replaceCompanyWatchlistCandidate(
+      admittedResult !== undefined &&
+        (origin === "search" ||
+          origin === "catalog" ||
+          origin === "financials") &&
+        companyResearchIdentityKey(admittedResult) === identityKey &&
+        workspace === watchlistView.current.workspace &&
+        renderedWatchlistVersion === workspace.version &&
+        researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current &&
+        (origin !== "search" ||
+          (renderedSearchEpoch === searchEpoch.current &&
+            searchState !== "loading" &&
+            results.some((result) => result === admittedResult)))
+        ? Object.freeze({
+            result: Object.freeze({ ...admittedResult }),
+            identityKey,
+            snapshotSha256: workspace.snapshot.snapshotSha256,
+          })
+        : null,
+    );
     if (
       origin === "watchlist" &&
       researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current
@@ -877,6 +953,7 @@ export function SecurityDiscoveryWorkspace({
     if (member === undefined) return;
     const next = Object.freeze({ ...researchCohort, index });
     replaceResearchCohort(next);
+    replaceCompanyWatchlistCandidate(null);
     const navigation = ++companyNavigationEpoch.current;
     selectCompanyIdentity(member, "watchlist");
     const selectionEpoch = companySelectionEpoch.current;
@@ -1616,6 +1693,187 @@ export function SecurityDiscoveryWorkspace({
     );
   }
 
+  function companyWatchlistUnavailableReason(): string | null {
+    if (workspace === null || !workspace.watchlistAvailable)
+      return "My Watchlist is unavailable. Reload the workspace before adding this company.";
+    if (
+      !hasCurrentWatchlistSnapshot(workspace) ||
+      researchCatalogInvalidatedEpoch.current === workspaceEpoch.current
+    )
+      return "Revalidate the workspace and reconcile My Watchlist with the current catalog before adding this company.";
+    if (failedCompanyAddReloadWorkspace.current === workspace)
+      return "The changed watchlist could not be reloaded. Reload the workspace before adding a company.";
+    if (
+      companyWatchlistCandidate === null ||
+      companyWatchlistCandidate !== currentCompanyWatchlistCandidate.current ||
+      companyWatchlistCandidate.identityKey !== companyIdentityKey ||
+      companyWatchlistCandidate.snapshotSha256 !==
+        workspace.snapshot.snapshotSha256
+    )
+      return "Research notes are available for companies saved in My Watchlist. Open this company from current search or screening results to add it.";
+    if (
+      workspace.watchlist.memberships.some(
+        (member) =>
+          member.listingId === companyWatchlistCandidate.result.listingId,
+      )
+    )
+      return "My Watchlist already contains this listing with a different identity. Reconcile the list before adding it.";
+    if (workspace.watchlist.memberships.length >= WATCHLIST_MAXIMUM_MEMBERSHIPS)
+      return "My Watchlist has reached its 10,000-company limit. Remove a company before adding another.";
+    return null;
+  }
+
+  async function addResearchedCompany() {
+    const candidate = companyWatchlistCandidate;
+    const activeWorkspace = workspace;
+    if (
+      candidate === null ||
+      activeWorkspace === null ||
+      candidate !== currentCompanyWatchlistCandidate.current ||
+      companyWatchlistUnavailableReason() !== null ||
+      companyIdentityKey !== companyIdentity.current ||
+      renderedCompanyEpoch !== companySelectionEpoch.current ||
+      renderedWorkspaceEpoch !== workspaceEpoch.current ||
+      activeWorkspace !== watchlistView.current.workspace ||
+      renderedWatchlistGeneration !== watchlistView.current.generation ||
+      renderedWatchlistVersion !== activeWorkspace.version ||
+      !workspaceActivityReady.current ||
+      watchlistView.current.saving ||
+      watchlistView.current.reconciling
+    )
+      return;
+
+    const operation = {};
+    currentCompanyAddFocusCleanup.current?.();
+    currentCompanyAddFocusHandoff.current = null;
+    currentCompanyAddOperation.current = operation;
+    const selectionEpoch = companySelectionEpoch.current;
+    const sessionEpoch = workspaceEpoch.current;
+    const navigationEpoch = companyNavigationEpoch.current;
+    const button =
+      typeof document === "undefined"
+        ? null
+        : document.getElementById("company-watchlist-add");
+    const ownedFocus = button !== null && document.activeElement === button;
+    let focusMoved = false;
+    const observeFocusMove = (event: Event) => {
+      if (event.target !== button) focusMoved = true;
+    };
+    if (ownedFocus) {
+      document.addEventListener?.("focusin", observeFocusMove, true);
+      document.addEventListener?.("pointerdown", observeFocusMove, true);
+    }
+    let focusObservationReleased = false;
+    const releaseFocusObservation = () => {
+      if (focusObservationReleased) return;
+      focusObservationReleased = true;
+      if (ownedFocus) {
+        document.removeEventListener?.("focusin", observeFocusMove, true);
+        document.removeEventListener?.("pointerdown", observeFocusMove, true);
+      }
+      if (currentCompanyAddFocusCleanup.current === releaseFocusObservation)
+        currentCompanyAddFocusCleanup.current = null;
+    };
+    currentCompanyAddFocusCleanup.current = releaseFocusObservation;
+    let focusHandoffQueued = false;
+    const ownsCompletion = () =>
+      currentCompanyAddOperation.current === operation &&
+      currentCompanyWatchlistCandidate.current === candidate &&
+      selectionEpoch === companySelectionEpoch.current &&
+      sessionEpoch === workspaceEpoch.current &&
+      candidate.identityKey === companyIdentity.current &&
+      workspaceActivityReady.current &&
+      researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current;
+
+    setCompanyWatchlistFeedback({
+      candidate,
+      pending: true,
+      message: "Adding this company to My Watchlist…",
+    });
+    try {
+      const membership = membershipFromSearchResult(candidate.result);
+      const outcome = await persistWatchlist(
+        withMemberships(activeWorkspace.watchlist, [
+          ...activeWorkspace.watchlist.memberships,
+          membership,
+        ]),
+        `${membership.symbol} was added to My Watchlist.`,
+      );
+      // A failed reload leaves the old workspace stale, even after navigation.
+      if (
+        outcome === "conflict_reload_failed" &&
+        sessionEpoch === workspaceEpoch.current &&
+        watchlistView.current.workspace === activeWorkspace
+      )
+        failedCompanyAddReloadWorkspace.current = activeWorkspace;
+      if (!ownsCompletion()) return;
+      const currentWorkspace = watchlistView.current.workspace;
+      const savedMember = currentWorkspace?.watchlist.memberships.find(
+        (member) =>
+          companyResearchIdentityKey(member) === candidate.identityKey,
+      );
+      const currentCatalog =
+        currentWorkspace !== null &&
+        currentWorkspace.watchlistAvailable &&
+        hasCurrentWatchlistSnapshot(currentWorkspace) &&
+        currentWorkspace.snapshot.snapshotSha256 === candidate.snapshotSha256;
+      const saved = savedMember !== undefined && currentCatalog;
+      const feedback: CompanyWatchlistFeedback = {
+        candidate,
+        pending: false,
+        message:
+          outcome === "saved" && saved
+            ? `${membership.symbol} was added to My Watchlist. You can now write a research note.`
+            : outcome === "conflict_reloaded"
+              ? saved
+                ? "This company is already in the latest My Watchlist. Its saved research note is shown."
+                : "My Watchlist changed elsewhere. Review the latest list, then explicitly try adding again."
+              : outcome === "conflict_reload_failed"
+                ? "My Watchlist changed elsewhere and could not be reloaded. Reload the workspace before trying again."
+                : "Could not confirm whether this company was added to My Watchlist. Reload the workspace to check the latest saved list.",
+      };
+      setCompanyWatchlistFeedback(feedback);
+      if ((outcome === "saved" || outcome === "conflict_reloaded") && saved) {
+        focusHandoffQueued = true;
+        currentCompanyAddFocusHandoff.current = {
+          feedback,
+          run: () => {
+            try {
+              if (
+                !ownedFocus ||
+                focusMoved ||
+                !ownsCompletion() ||
+                navigationEpoch !== companyNavigationEpoch.current ||
+                watchlistView.current.workspace !== currentWorkspace ||
+                watchlistView.current.saving ||
+                watchlistView.current.reconciling ||
+                typeof document === "undefined" ||
+                document.visibilityState === "hidden" ||
+                (document.activeElement !== button &&
+                  document.activeElement !== document.body)
+              )
+                return;
+              document.getElementById("company-watchlist-note")?.focus();
+            } finally {
+              releaseFocusObservation();
+            }
+          },
+        };
+      }
+    } catch {
+      if (ownsCompletion())
+        setCompanyWatchlistFeedback({
+          candidate,
+          pending: false,
+          message:
+            "This company could not be added. Reopen it from current search or screening results and try again.",
+        });
+    } finally {
+      // A successful handoff waits for its completion render to mount the note.
+      if (!focusHandoffQueued) releaseFocusObservation();
+    }
+  }
+
   function removeMembership(membership: PersonalWatchlistMembership) {
     if (
       workspace === null ||
@@ -2030,7 +2288,7 @@ export function SecurityDiscoveryWorkspace({
                           <button
                             className="secondary-action compact-action"
                             onClick={() =>
-                              selectMarketSecurity(result, "search")
+                              selectMarketSecurity(result, "search", result)
                             }
                             type="button"
                           >
@@ -2083,7 +2341,7 @@ export function SecurityDiscoveryWorkspace({
               }
               onAddToWatchlist={addResult}
               onOpenResearch={(selection) =>
-                selectMarketSecurity(selection, "catalog")
+                selectMarketSecurity(selection, "catalog", selection)
               }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
@@ -2110,7 +2368,7 @@ export function SecurityDiscoveryWorkspace({
               }
               onAddToWatchlist={addResult}
               onOpenResearch={(selection) =>
-                selectMarketSecurity(selection, "financials")
+                selectMarketSecurity(selection, "financials", selection)
               }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
@@ -2158,42 +2416,55 @@ export function SecurityDiscoveryWorkspace({
                 )
               }
               researchNote={
-                companyNoteMembership === undefined ? (
-                  <p className="company-research-guidance">
-                    {workspace.watchlistAvailable
-                      ? "Research notes are available for companies saved in My Watchlist."
-                      : "My Watchlist is unavailable. Research notes cannot be edited right now."}
-                  </p>
-                ) : (
-                  <PersonalCompanyResearchNote
-                    value={noteValue(companyNoteMembership)}
-                    disabled={
-                      !workspace.watchlistAvailable ||
-                      snapshotChanged ||
-                      watchlistState === "saving" ||
-                      reconciling
+                <>
+                  <PersonalCompanyWatchlistAction
+                    saved={companyNoteMembership !== undefined}
+                    pending={
+                      companyWatchlistFeedback?.candidate ===
+                        companyWatchlistCandidate &&
+                      companyWatchlistFeedback?.pending === true
                     }
+                    disabled={watchlistState === "saving" || reconciling}
+                    unavailableReason={companyWatchlistUnavailableReason()}
                     message={
-                      !workspace.watchlistAvailable
-                        ? "My Watchlist is unavailable. Research notes cannot be edited right now."
-                        : snapshotChanged
-                          ? "Reconcile My Watchlist with the current catalog before editing this note."
-                          : noteFeedback?.identityKey === companyIdentityKey
-                            ? noteFeedback.message
-                            : null
+                      companyWatchlistFeedback?.candidate ===
+                      companyWatchlistCandidate
+                        ? (companyWatchlistFeedback?.message ?? null)
+                        : null
                     }
-                    onChange={(value) =>
-                      withCurrentCompany(() =>
-                        editNote(companyNoteMembership, value),
-                      )
-                    }
-                    onSave={() =>
-                      withCurrentCompany(
-                        () => void saveNote(companyNoteMembership),
-                      )
-                    }
+                    onAdd={() => void addResearchedCompany()}
                   />
-                )
+                  {companyNoteMembership !== undefined && (
+                    <PersonalCompanyResearchNote
+                      value={noteValue(companyNoteMembership)}
+                      disabled={
+                        !workspace.watchlistAvailable ||
+                        snapshotChanged ||
+                        watchlistState === "saving" ||
+                        reconciling
+                      }
+                      message={
+                        !workspace.watchlistAvailable
+                          ? "My Watchlist is unavailable. Research notes cannot be edited right now."
+                          : snapshotChanged
+                            ? "Reconcile My Watchlist with the current catalog before editing this note."
+                            : noteFeedback?.identityKey === companyIdentityKey
+                              ? noteFeedback.message
+                              : null
+                      }
+                      onChange={(value) =>
+                        withCurrentCompany(() =>
+                          editNote(companyNoteMembership, value),
+                        )
+                      }
+                      onSave={() =>
+                        withCurrentCompany(
+                          () => void saveNote(companyNoteMembership),
+                        )
+                      }
+                    />
+                  )}
+                </>
               }
               sections={{
                 price: (

@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: move through watchlist research
+## Immediate delivery: save the researched company
+
+Add an unsaved company directly to My Watchlist from its research view when it
+was opened from current admitted search, catalog or financial-screen results.
+One explicit Add appends its full identity with an empty note through the existing
+versioned save. Show the shared note editor after success without changing the
+company, research section, loaded data, valuation draft, holding or Back target.
+
+Require the complete catalog-admitted identity; a holding or historical filing
+alone does not establish eligibility. Reject stale, duplicate and concurrent
+actions, report conflicts without automatic retries, and require a successful
+reload after a failed conflict reload. Keep existing downstream watchlist-version
+invalidation. No new source request, persistence format or provider is added.
+See [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: move through watchlist research
 
 After opening Research from My Watchlist, move to the previous or next company
 among all loaded filter matches in saved order, including matches on other pages.
@@ -696,7 +711,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Edit the shared My Watchlist note beside company research                                        | Preserve exact identity, drafts and explicit versioned saves               |
+| Now              | Add the researched company directly to My Watchlist                                              | Preserve admitted identity, research state and explicit versioned saves    |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
@@ -719,7 +734,7 @@ where the next feature exposes concrete duplication or makes changes risky.
    focused checks for this feature include:
 
    ```powershell
-   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyResearchNavigation.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
+   pnpm --filter @research-cockpit/web exec vitest run src/features/research/SecurityDiscoveryWorkspace.test.tsx src/features/research/PersonalCompanyWatchlistAction.test.tsx src/features/research/PersonalCompanyResearchNavigation.test.tsx src/features/research/PersonalCompanyResearchNote.test.tsx src/features/research/PersonalCompanyResearchWorkspace.test.tsx src/features/research/PersonalFcffDcfValuation.test.tsx
    pnpm --filter @research-cockpit/web typecheck
    ```
 

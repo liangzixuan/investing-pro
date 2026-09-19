@@ -117,7 +117,8 @@ When the selected company exactly matches a current My Watchlist membership,
 **My Watchlist research note** appears above the five research sections. It is
 the same note and draft as the saved-list row, even when that row is filtered or
 paged away. Choosing a different holding does not change the research note.
-Companies outside My Watchlist show guidance instead of an editor.
+Companies outside My Watchlist show an explicit Add action or guidance instead
+of an editor, as described below.
 
 Typing in either editor updates their shared draft. Section changes, Back,
 Clear company and ordinary company navigation preserve these watchlist drafts.
@@ -137,6 +138,39 @@ its company; completing an earlier save does not clear another company's draft.
 Saving a note retains existing downstream watchlist-version invalidation. This
 feature does not promise to preserve comparisons bound to the previous version,
 and introduces no persistence schema, browser storage or separate note service.
+
+## Save the researched company
+
+When an unsaved company was opened from current search, catalog-screen or
+financial-screen results, **Add to My Watchlist** is available beside research.
+This also applies to an admitted company retained on another comparison page.
+The explicit action appends the complete company identity with an empty saved
+note and preserves the existing list order and other saved notes. It does not
+save a note, add a portfolio holding or load provider data automatically.
+
+After success the shared research-note editor appears. The same company,
+selected section, loaded research, valuation assumptions and Back destination
+remain open; an independently chosen holding is unchanged. If the Add action
+still owns focus, focus moves to the note editor. Completion cannot take focus
+or display another company's feedback after intervening navigation.
+
+A company opened only from a holding or historical filing needs to be opened
+from current search or screening results before it can be added here. A listing
+already saved under a different complete identity requires reconciliation; it
+is never silently replaced. Unavailable or outdated watchlists and the existing
+10,000-company limit block Add. Saving or reconciling pauses the action.
+
+If another tab changed the list, the latest version is loaded without retrying
+the write. A company already added there shows its current saved note; otherwise
+review the list and explicitly retry. If that reload fails, reload the workspace
+before adding. Reopening the same company cannot bypass the failed-reload block.
+Other unavailable responses retain the last loaded list and report that the save
+could not be confirmed; reload the workspace to check the latest saved list.
+
+The action uses the existing watchlist version boundary. Changes may invalidate
+watchlist-scoped financial results or comparisons under their existing rules.
+Search/catalog criteria and the company research view retain their normal
+lifecycle; this does not add a saved research layout or a new sequence.
 
 ## Acceptance
 
@@ -177,6 +211,15 @@ and introduces no persistence schema, browser storage or separate note service.
 - Verify sequential navigation, tabs and Back add no fetch or write; a pending
   explicit source load cannot populate the later company. Use synthetic desktop,
   keyboard and 375px layout checks without mutating the owner's saved data.
+- Verify explicit Add from each admitted origin copies all eleven saved identity
+  fields with an empty note, preserves other members and the active research key,
+  and reveals the note editor only after saved membership exists. Keep section,
+  loaded data, valuation assumptions, holding and original Back focus unchanged.
+- Reject duplicate, retained and same-company origin callbacks; cover conflicts,
+  concurrent additions, failed reloads, full/stale/unavailable lists and identity
+  mismatches. Late completion can update the global list but cannot revive an
+  old company, feedback or focus. Check keyboard handoff and narrow layouts with
+  synthetic writes only; live owner-data QA remains read-only.
 
 The workspace checkpoint records the actual accepted revision and validation;
 this guide describes behavior and does not itself establish release acceptance.
