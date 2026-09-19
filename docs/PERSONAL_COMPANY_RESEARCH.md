@@ -45,6 +45,34 @@ browser storage or a saved layout. Local access and account behavior remain
 unchanged. Explicit source requests retain their existing freshness and
 availability limits; navigation is not a refresh.
 
+## Inspect a peer metric's inputs
+
+Each metric cell in the Peers comparison has an **Inspect inputs** disclosure
+identified by its company and metric. Open it to see the existing formula and
+expression, exact result or unavailable reason, company identity, source
+coordinate and retained operands. This uses the same comparison result already
+on screen and makes no request or calculation.
+
+Known operands retain their exact signed decimal strings and units; unknown
+operands remain **Unknown**. Each annual operand shows its own fiscal year and
+provider statement date, so revenue growth exposes both years. Valuation operands
+show their own valuation dates. The response timestamp belongs to the cell's
+coordinate when available; it is not a separate timestamp for every operand.
+If the engine retained no operand references, the disclosure says so.
+
+Provider-supplied multiples expose the supplied field without inventing underlying
+earnings, book value or filing links. These are inputs from loaded provider
+responses, not independent filing verification or point-in-time history. Existing
+fiscal-year-label, most-recent-provider and differing statement-date limits apply.
+
+The disclosure uses normal keyboard controls and stays within the comparison's
+horizontal scroll area on narrow screens. Changing its displayed inputs, result,
+formula or company identity closes it. Equal-content rerenders preserve an open
+disclosure while it stays mounted. Removing the cell, withholding a quarantined
+comparison or resetting the company destroys that open state; returning later
+does not reopen it. No peer roster, draft, saved group or source data is changed
+by opening or closing a disclosure.
+
 ## Reuse a manual peer group
 
 The Peers section can keep one saved group containing its primary company and

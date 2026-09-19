@@ -570,8 +570,8 @@ function MetricRow({
       {row.cells.map((cell, index) => (
         <MetricCell
           cell={cell}
+          company={result.companies[index]!}
           key={cell.listingId}
-          primary={result.companies[index]?.role === "primary"}
           row={row}
         />
       ))}
@@ -581,15 +581,19 @@ function MetricRow({
 
 function MetricCell({
   cell,
-  primary,
+  company,
   row,
 }: {
   readonly cell: ComparisonCell;
-  readonly primary: boolean;
+  readonly company: ComparisonCompany;
   readonly row: ComparisonRow;
 }) {
   return (
-    <td className={primary ? "manual-peer-primary-column" : undefined}>
+    <td
+      className={
+        company.role === "primary" ? "manual-peer-primary-column" : undefined
+      }
+    >
       {cell.status === "available" ? (
         <span title={`${cell.value} ${row.unit}`}>
           {formatMetricValue(cell.value, row.unit)}
@@ -600,7 +604,226 @@ function MetricCell({
           <small>{unavailableReason(cell.reason)}</small>
         </span>
       )}
+      <MetricInputs
+        cell={cell}
+        company={company}
+        key={metricInputsSnapshot(company, row, cell)}
+        row={row}
+      />
     </td>
+  );
+}
+
+function metricInputsSnapshot(
+  company: ComparisonCompany,
+  row: ComparisonRow,
+  cell: ComparisonCell,
+): string {
+  const identity = company.selection;
+  const coordinate = cell.coordinate;
+  return JSON.stringify([
+    identity.country,
+    identity.exchangeMic,
+    identity.issuerId,
+    identity.issuerName,
+    identity.listingId,
+    identity.securityName,
+    identity.symbol,
+    company.role,
+    row.metricId,
+    row.label,
+    row.domain,
+    row.unit,
+    row.expression,
+    row.formulaId,
+    row.formulaVersion,
+    cell.listingId,
+    cell.status,
+    cell.status === "available" ? cell.value : cell.reason,
+    coordinate === null
+      ? null
+      : coordinate.kind === "annual"
+        ? [
+            coordinate.kind,
+            coordinate.asOf,
+            coordinate.fiscalYear,
+            coordinate.statementDate,
+          ]
+        : [coordinate.kind, coordinate.asOf, coordinate.date],
+    cell.inputRefs.map((input) => [
+      input.domain,
+      input.fieldKey,
+      input.listingId,
+      input.status,
+      input.unit,
+      input.value,
+      ...(input.domain === "annual"
+        ? [input.fiscalYear, input.statementDate]
+        : [input.date]),
+    ]),
+  ]);
+}
+
+function MetricInputs({
+  cell,
+  company,
+  row,
+}: {
+  readonly cell: ComparisonCell;
+  readonly company: ComparisonCompany;
+  readonly row: ComparisonRow;
+}) {
+  const identity = company.selection;
+  const coordinate = cell.coordinate;
+  const summary = `Inspect ${identity.symbol} ${row.label} inputs`;
+  return (
+    <details className="manual-peer-metric-inputs">
+      <summary
+        aria-label={`${summary} (${identity.exchangeMic} · ${identity.listingId})`}
+      >
+        {summary}
+      </summary>
+      <div className="manual-peer-metric-inputs-body">
+        <p>
+          <strong>Company identity</strong> ·{" "}
+          {company.role === "primary" ? "Selected company" : "Manual peer"}
+        </p>
+        <dl>
+          <div>
+            <dt>Symbol</dt>
+            <dd>{identity.symbol}</dd>
+          </div>
+          <div>
+            <dt>Issuer</dt>
+            <dd>{identity.issuerName}</dd>
+          </div>
+          <div>
+            <dt>Security</dt>
+            <dd>{identity.securityName}</dd>
+          </div>
+          <div>
+            <dt>Exchange</dt>
+            <dd>{identity.exchangeMic}</dd>
+          </div>
+          <div>
+            <dt>Country</dt>
+            <dd>{identity.country}</dd>
+          </div>
+          <div>
+            <dt>Issuer ID</dt>
+            <dd>{identity.issuerId}</dd>
+          </div>
+          <div>
+            <dt>Listing ID</dt>
+            <dd>{identity.listingId}</dd>
+          </div>
+          <div>
+            <dt>Result</dt>
+            <dd>
+              {cell.status === "available"
+                ? `${cell.value} ${row.unit}`
+                : `Unknown — ${unavailableReason(cell.reason)}`}
+            </dd>
+          </div>
+          <div>
+            <dt>Expression</dt>
+            <dd>
+              <code>{row.expression}</code>
+            </dd>
+          </div>
+          <div>
+            <dt>Formula</dt>
+            <dd>
+              {row.formulaId} · version {row.formulaVersion}
+            </dd>
+          </div>
+          {coordinate !== null && (
+            <>
+              {coordinate.kind === "annual" ? (
+                <>
+                  <div>
+                    <dt>Cell fiscal year</dt>
+                    <dd>{coordinate.fiscalYear}</dd>
+                  </div>
+                  <div>
+                    <dt>Cell provider statement date</dt>
+                    <dd>{coordinate.statementDate}</dd>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <dt>Cell valuation date</dt>
+                  <dd>{coordinate.date}</dd>
+                </div>
+              )}
+              <div>
+                <dt>Source response as of</dt>
+                <dd>{coordinate.asOf}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+        {coordinate === null && (
+          <p>No source coordinate was retained for this metric.</p>
+        )}
+        <p>
+          <strong>Retained inputs</strong>
+        </p>
+        {cell.inputRefs.length === 0 ? (
+          <p>No operand references were retained for this metric.</p>
+        ) : (
+          <ol>
+            {cell.inputRefs.map((input, index) => (
+              <li key={index}>
+                <dl>
+                  <div>
+                    <dt>Field</dt>
+                    <dd>
+                      <code>{input.fieldKey}</code>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Value</dt>
+                    <dd>
+                      {input.status === "known" ? input.value : "Unknown"}{" "}
+                      {input.unit}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Listing ID</dt>
+                    <dd>{input.listingId}</dd>
+                  </div>
+                  {input.domain === "annual" ? (
+                    <>
+                      <div>
+                        <dt>Fiscal year</dt>
+                        <dd>{input.fiscalYear}</dd>
+                      </div>
+                      <div>
+                        <dt>Provider statement date</dt>
+                        <dd>{input.statementDate}</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <dt>Valuation date</dt>
+                      <dd>{input.date}</dd>
+                    </div>
+                  )}
+                </dl>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p>
+          {row.domain === "valuation"
+            ? "Provider-supplied value; underlying components are not reconstructed here."
+            : "Annual alignment uses fiscal-year labels. Provider statement/release dates may differ between companies."}{" "}
+          These are loaded provider-most-recent inputs, not point-in-time filing
+          verification.
+        </p>
+      </div>
+    </details>
   );
 }
 

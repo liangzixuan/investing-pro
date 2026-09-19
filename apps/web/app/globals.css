@@ -3588,6 +3588,78 @@ html:has(.personal-financial-screener:focus-within) {
   margin-top: 18px;
 }
 
+@media (max-width: 600px) {
+  .financial-table-scroll .manual-peer-table th:first-child {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+}
+
+.manual-peer-metric-inputs {
+  width: 240px;
+  max-width: 100%;
+  margin-top: 10px;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.manual-peer-metric-inputs summary {
+  color: var(--mint-deep);
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.manual-peer-metric-inputs summary:focus-visible {
+  outline: 2px solid var(--mint-deep);
+  outline-offset: 3px;
+}
+
+.manual-peer-metric-inputs-body {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.manual-peer-metric-inputs-body :is(p, dl, ol) {
+  margin: 0 0 12px;
+}
+
+.manual-peer-metric-inputs-body p:last-child {
+  margin-bottom: 0;
+}
+
+.manual-peer-metric-inputs-body dl > div + div {
+  margin-top: 6px;
+}
+
+.manual-peer-metric-inputs-body dt {
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.manual-peer-metric-inputs-body dd {
+  margin: 0;
+}
+
+.manual-peer-metric-inputs-body ol {
+  padding-left: 18px;
+}
+
+.manual-peer-metric-inputs-body code {
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
 .fcff-dcf-cell-unavailable {
   color: var(--ink-soft);
   background: #f8f5ef;

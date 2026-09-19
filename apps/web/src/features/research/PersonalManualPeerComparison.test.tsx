@@ -6,6 +6,7 @@ import type {
   PersonalValuationHistoryPointDto,
 } from "@research-cockpit/contracts";
 import { PERSONAL_FINANCIAL_REPORTED_FIELDS } from "@research-cockpit/personal-financial-analytics";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -186,6 +187,7 @@ describe("PersonalManualPeerComparison", () => {
     expect(text).toContain("Market capitalization");
     expect(text).toContain("Trailing PEG (1Y)");
     expect(markup.match(/manual-peer-primary-column/gu)).toHaveLength(16);
+    expect(markup.match(/<details /gu)).toHaveLength(60);
     expect(text).toContain("Selected company");
     expect(text).toContain("Manual peer");
   });
@@ -332,10 +334,430 @@ describe("PersonalManualPeerComparison", () => {
   });
 });
 
+describe("manual peer metric input disclosures", () => {
+  it("keeps exact signed and negative-zero operands distinct from rounded results", () => {
+    const props = loadedComparison();
+    const annual = replaceAnnualFields(props.annualFinancials, {
+      gross_profit: knownCell("-12.345600"),
+      operating_income: knownCell("-0.0000"),
+      revenue: knownCell("1000.0000"),
+    });
+    const gross = disclosure(
+      { ...props, annualFinancials: annual },
+      "ZERO",
+      "Gross margin",
+    );
+    const operating = disclosure(
+      { ...props, annualFinancials: annual },
+      "ZERO",
+      "Operating margin",
+    );
+
+    expect(disclosureText(gross)).toContain("100 * gross_profit / revenue");
+    expect(disclosureText(gross)).toContain("gross_margin_percent");
+    expect(disclosureText(gross)).toContain("-12.345600 USD");
+    expect(disclosureText(gross)).toContain("1000.0000 USD");
+    expect(
+      retainedInputs(gross).map((input) => [input.Field, input.Value]),
+    ).toEqual([
+      ["gross_profit", "-12.345600 USD"],
+      ["revenue", "1000.0000 USD"],
+    ]);
+    expect(disclosureText(gross).indexOf("gross_profit")).toBeLessThan(
+      disclosureText(gross).lastIndexOf("revenue"),
+    );
+    expect(disclosureText(operating)).toContain("-0.0000 USD");
+    expect(disclosureText(operating)).toContain("0.00");
+    expect(disclosureText(operating)).not.toContain("-0.00 percent");
+  });
+
+  it("retains unknown inputs and known zero denominators without inventing a ratio", () => {
+    const props = loadedComparison();
+    const annual = replaceAnnualFields(props.annualFinancials, {
+      current_assets: unknownFinancialCell(),
+      current_liabilities: knownCell("0.0000"),
+    });
+    const missing = disclosure(
+      { ...props, annualFinancials: annual },
+      "ZERO",
+      "Current ratio",
+    );
+    expect(disclosureText(missing)).toContain("Missing input");
+    expect(disclosureText(missing)).toContain("current_assets");
+    expect(disclosureText(missing)).toContain("Unknown");
+    expect(disclosureText(missing)).toContain("0.0000 USD");
+
+    const zero = disclosure(
+      {
+        ...props,
+        annualFinancials: replaceAnnualFields(annual, {
+          current_assets: knownCell("800"),
+        }),
+      },
+      "ZERO",
+      "Current ratio",
+    );
+    expect(disclosureText(zero)).toContain("Nonpositive denominator");
+    expect(disclosureText(zero)).toContain("800 USD");
+    expect(disclosureText(zero)).toContain("0.0000 USD");
+    expect(disclosureText(zero)).not.toContain("Infinity");
+    expect(disclosureText(zero)).not.toContain("NaN");
+  });
+
+  it("shows both growth years with their own statement dates and one cell response timestamp", () => {
+    const props = loadedComparison();
+    const current = props.annualFinancials;
+    const annual = {
+      ...current,
+      years: current.years.map((year) => ({
+        ...year,
+        statementDate: year.fiscalYear === 2029 ? "2030-02-15" : "2029-02-20",
+      })),
+    };
+    const growth = disclosure(
+      { ...props, annualFinancials: annual },
+      "ZERO",
+      "Revenue growth",
+    );
+    const text = disclosureText(growth);
+    expect(text).toContain("100 * (revenue_fy / revenue_fy_minus_1 - 1)");
+    expect(text).toContain("25.00");
+    expect(text).toContain("Fiscal year 2029");
+    expect(text).toContain("2030-02-15");
+    expect(text).toContain("Fiscal year 2028");
+    expect(text).toContain("2029-02-20");
+    expect(text.indexOf("1000 USD")).toBeLessThan(text.indexOf("800 USD"));
+    expect(text.match(/2030-03-01T15:00:00\.000Z/gu)).toHaveLength(1);
+    expect(retainedInputs(growth)).toEqual([
+      {
+        Field: "revenue",
+        Value: "1000 USD",
+        "Listing ID": "primary",
+        "Fiscal year": "2029",
+        "Provider statement date": "2030-02-15",
+      },
+      {
+        Field: "revenue",
+        Value: "800 USD",
+        "Listing ID": "primary",
+        "Fiscal year": "2028",
+        "Provider statement date": "2029-02-20",
+      },
+    ]);
+
+    const peerText = disclosureText(
+      disclosure(props, "PEER", "Revenue growth"),
+    );
+    expect(peerText).toContain("2029-12-31");
+    expect(peerText).not.toContain("2030-02-15");
+  });
+
+  it("does not manufacture a missing prior-year operand", () => {
+    const props = loadedComparison();
+    const annual = annualWithYears(props.annualFinancials, [
+      props.annualFinancials.years[0]!,
+    ]);
+    const text = disclosureText(
+      disclosure(
+        { ...props, annualFinancials: annual },
+        "ZERO",
+        "Revenue growth",
+      ),
+    );
+    expect(text).toContain("Exact prior fiscal year not found");
+    expect(text).toContain("1000 USD");
+    expect(text).not.toContain("800 USD");
+    expect(text).not.toContain("2028-12-31");
+    expect(text).not.toContain("Fiscal year 2028");
+  });
+
+  it("identifies supplied P/E and its exact valuation date without EPS or filing links", () => {
+    const props = loadedComparison();
+    const pe = disclosure(
+      {
+        ...props,
+        valuationHistory: valuationHistory(props.selection, "-12.345600"),
+      },
+      "ZERO",
+      "Price / earnings",
+    );
+    const text = disclosureText(pe);
+    expect(text).toContain("provider_price_to_earnings");
+    expect(text).toContain("priceToEarnings");
+    expect(text).toContain("-12.345600 ratio");
+    expect(text).toContain("2030-02-28");
+    expect(text).toContain("2030-03-01T15:00:00.000Z");
+    expect(text).not.toContain("earnings per share");
+    expect(text).not.toContain("EPS");
+    expect(text).not.toContain("FY 2029");
+    expect(renderToStaticMarkup(pe.element)).not.toContain("href=");
+    expect(retainedInputs(pe)).toEqual([
+      {
+        Field: "priceToEarnings",
+        Value: "-12.345600 ratio",
+        "Listing ID": "primary",
+        "Valuation date": "2030-02-28",
+      },
+    ]);
+  });
+
+  it("preserves a precise operand above the JavaScript safe-integer boundary", () => {
+    const props = loadedComparison();
+    const annual = replaceAnnualFields(props.annualFinancials, {
+      revenue: knownCell("9007199254740993.123456"),
+    });
+    const revenue = disclosure(
+      { ...props, annualFinancials: annual },
+      "ZERO",
+      "Revenue",
+    );
+    expect(retainedInputs(revenue)[0]?.Value).toBe(
+      "9007199254740993.123456 USD",
+    );
+    expect(disclosureText(revenue)).toContain("9007199254740993.12 USD");
+  });
+
+  it.each(["not loaded", "quarantined", "date mismatch"] as const)(
+    "does not invent references or response timestamps when valuation is %s",
+    (kind) => {
+      const props = loadedComparison();
+      const peer = props.peers[0]!;
+      const history = peer.valuationHistory!;
+      const shiftedPoint = {
+        ...history.history.latestPoint,
+        date: "2030-02-27",
+      };
+      const valuation =
+        kind === "not loaded"
+          ? null
+          : kind === "quarantined"
+            ? { ...history, asOf: "invalid-response-time" }
+            : {
+                ...history,
+                history: {
+                  ...history.history,
+                  latestPoint: shiftedPoint,
+                  points: [shiftedPoint],
+                },
+              };
+      const text = disclosureText(
+        disclosure(
+          { ...props, peers: [{ ...peer, valuationHistory: valuation }] },
+          "PEER",
+          "Price / earnings",
+        ),
+      );
+      expect(text).toContain(
+        kind === "not loaded"
+          ? "Source not loaded"
+          : kind === "quarantined"
+            ? "Source quarantined"
+            : "Exact valuation date not found",
+      );
+      expect(text).not.toContain("11 ratio");
+      expect(text).not.toContain("2030-02-27");
+      expect(text).not.toContain("2030-03-01T15:00:00.000Z");
+      expect(text).not.toContain("invalid-response-time");
+      expect(text).toContain("No source coordinate was retained");
+      expect(text).toContain("No operand references were retained");
+    },
+  );
+
+  it("retains the unknown provider field without substituting zero", () => {
+    const props = loadedComparison();
+    const text = disclosureText(
+      disclosure(
+        {
+          ...props,
+          valuationHistory: unknownValuationHistory(props.selection),
+        },
+        "ZERO",
+        "Price / earnings",
+      ),
+    );
+    expect(text).toContain("priceToEarnings");
+    expect(text).toContain("Unknown");
+    expect(text).toContain("Missing input");
+    expect(text).not.toContain("0 ratio");
+    expect(text).not.toContain("0.0000 ratio");
+  });
+
+  it("disambiguates native summaries by listing and escapes admitted display names", () => {
+    const props = loadedComparison();
+    const peer = {
+      ...props.peers[0]!.selection,
+      symbol: "ZERO",
+      issuerName: '<Peer & "Company">',
+    };
+    const ready = { ...props, peers: [loadedPeer(peer, "1100")] };
+    const details = nativeDisclosures(ready);
+    expect(details).toHaveLength(30);
+    const labels = details.map(summaryLabel);
+    expect(new Set(labels).size).toBe(30);
+    expect(labels).toContain("Inspect ZERO Revenue inputs (XNAS · primary)");
+    expect(labels).toContain("Inspect ZERO Revenue inputs (XNAS · peer)");
+    const markup = render(ready);
+    expect(markup).toContain("&lt;Peer &amp; &quot;Company&quot;&gt;");
+    expect(markup).not.toContain('<Peer & "Company">');
+    for (const node of details) {
+      expect(node.props.open).toBeUndefined();
+      expect(node.props.onToggle).toBeUndefined();
+      expect(node.props.onClick).toBeUndefined();
+    }
+  });
+
+  it("keeps identical disclosure keys for equal-content responses and unrelated request-status renders", () => {
+    const props = loadedComparison();
+    const initial = nativeDisclosures(props).map((node) => node.key);
+    const cloned = structuredClone(props);
+    const busy = {
+      ...cloned,
+      peers: cloned.peers.map((peer) => ({
+        ...peer,
+        requestState: "loading" as const,
+      })),
+    };
+    expect(nativeDisclosures(cloned).map((node) => node.key)).toEqual(initial);
+    expect(nativeDisclosures(busy).map((node) => node.key)).toEqual(initial);
+    expect(initial.every((key) => key !== null)).toBe(true);
+  });
+
+  it.each([
+    ["exchangeMic", "XNYS"],
+    ["issuerId", "issuer-replaced"],
+    ["issuerName", "Different issuer"],
+    ["listingId", "different-listing"],
+    ["securityName", "Different security"],
+    ["symbol", "OTHER"],
+  ] as const)(
+    "replaces the native disclosure key when admitted %s changes",
+    (field, value) => {
+      const props = loadedComparison();
+      const before = disclosure(props, "PEER", "Revenue");
+      const peer = { ...props.peers[0]!.selection, [field]: value };
+      const after = disclosure(
+        { ...props, peers: [loadedPeer(peer, "1100")] },
+        peer.symbol,
+        "Revenue",
+      );
+      expect(after.key).not.toBe(before.key);
+      expect(after.props.open).toBeUndefined();
+    },
+  );
+
+  it("quarantines an invalid country instead of inventing a seventh admitted identity variant", () => {
+    const props = loadedComparison();
+    const peer = {
+      ...props.peers[0]!.selection,
+      country: "CA",
+    } as unknown as PersonalManualPeerSelection;
+    const invalid = { ...props, peers: [loadedPeer(peer, "1100")] };
+    expect(nativeDisclosures(invalid)).toEqual([]);
+    expect(visibleText(render(invalid))).toContain(
+      "Manual peer comparison was withheld",
+    );
+  });
+
+  it.each([
+    "operand spelling",
+    "operand value",
+    "statement date",
+    "response timestamp",
+    "unavailable operand",
+  ] as const)(
+    "replaces only affected source disclosures when the %s changes",
+    (change) => {
+      const props = loadedComparison();
+      const annual = props.annualFinancials;
+      const changed =
+        change === "statement date"
+          ? {
+              ...annual,
+              years: annual.years.map((year, index) =>
+                index === 0 ? { ...year, statementDate: "2030-02-15" } : year,
+              ),
+            }
+          : change === "response timestamp"
+            ? { ...annual, asOf: "2030-03-01T16:00:00.000Z" }
+            : replaceAnnualFields(annual, {
+                gross_profit:
+                  change === "unavailable operand"
+                    ? unknownFinancialCell()
+                    : knownCell(
+                        change === "operand spelling" ? "500.0000" : "501",
+                      ),
+              });
+      const next = { ...props, annualFinancials: changed };
+      expect(disclosure(next, "ZERO", "Gross margin").key).not.toBe(
+        disclosure(props, "ZERO", "Gross margin").key,
+      );
+      expect(disclosure(next, "ZERO", "Price / earnings").key).toBe(
+        disclosure(props, "ZERO", "Price / earnings").key,
+      );
+      expect(disclosure(next, "PEER", "Gross margin").key).toBe(
+        disclosure(props, "PEER", "Gross margin").key,
+      );
+    },
+  );
+
+  it("keys growth by its prior operand even when the rounded result is unchanged", () => {
+    const props = loadedComparison();
+    const annual = props.annualFinancials;
+    const changed = {
+      ...annual,
+      years: annual.years.map((year, index) =>
+        index === 1
+          ? {
+              ...year,
+              statementDate: "2029-02-20",
+              reported: { ...year.reported, revenue: knownCell("800.0000") },
+            }
+          : year,
+      ),
+    };
+    const next = { ...props, annualFinancials: changed };
+    expect(disclosure(next, "ZERO", "Revenue growth").key).not.toBe(
+      disclosure(props, "ZERO", "Revenue growth").key,
+    );
+    expect(disclosure(next, "ZERO", "Gross margin").key).toBe(
+      disclosure(props, "ZERO", "Gross margin").key,
+    );
+  });
+
+  it.each(["remove peer", "clear company", "quarantine"] as const)(
+    "removes native disclosures for %s and renders fresh uncontrolled markup on return",
+    (transition) => {
+      const props = loadedComparison();
+      const before = disclosure(props, "PEER", "Revenue");
+      const absent =
+        transition === "remove peer"
+          ? { ...props, peers: [] }
+          : transition === "clear company"
+            ? { ...props, selection: null }
+            : { ...props, peers: [props.peers[0]!, props.peers[0]!] };
+      expect(nativeDisclosures(absent)).toEqual([]);
+      const returned = disclosure(structuredClone(props), "PEER", "Revenue");
+      expect(returned.key).toBe(before.key);
+      expect(returned).not.toBe(before);
+      expect(renderToStaticMarkup(returned.element)).not.toMatch(
+        /<details[^>]*\sopen(?:=|\s|>)/u,
+      );
+      // Real mounted native open-state disposal/reconciliation is covered in Brave.
+      // These assertions establish the actual React key and absence/return contract.
+    },
+  );
+});
+
 function render(
   overrides: Partial<PersonalManualPeerComparisonProps> = {},
 ): string {
-  return renderToStaticMarkup(
+  return renderToStaticMarkup(comparisonElement(overrides));
+}
+
+function comparisonElement(
+  overrides: Partial<PersonalManualPeerComparisonProps>,
+) {
+  return (
     <PersonalManualPeerComparison
       annualFinancials={null}
       candidates={[]}
@@ -348,8 +770,155 @@ function render(
       selection={null}
       valuationHistory={null}
       {...overrides}
-    />,
+    />
   );
+}
+
+type HostElement = ReactElement<
+  Record<string, unknown> & { readonly children?: ReactNode }
+>;
+interface Disclosure {
+  readonly element: HostElement;
+  readonly key: string | null;
+  readonly props: HostElement["props"];
+}
+
+function hostElements(node: ReactNode): HostElement[] {
+  if (Array.isArray(node)) return node.flatMap(hostElements);
+  if (!isValidElement<HostElement["props"]>(node)) return [];
+  if (typeof node.type === "function") {
+    return hostElements(
+      (node.type as (props: HostElement["props"]) => ReactNode)(node.props),
+    );
+  }
+  return [node, ...hostElements(node.props.children)];
+}
+
+function nativeDisclosures(
+  props: Partial<PersonalManualPeerComparisonProps>,
+): Disclosure[] {
+  // Inspect real React keys at the boundary that mounts each native details node.
+  // This does not emulate DOM reconciliation or native open-state behavior.
+  function visit(node: ReactNode, ancestorKey: string | null): Disclosure[] {
+    if (Array.isArray(node))
+      return (node as ReactNode[]).flatMap((child) =>
+        visit(child, ancestorKey),
+      );
+    if (!isValidElement<HostElement["props"]>(node)) return [];
+    const key = node.key ?? ancestorKey;
+    if (typeof node.type === "function") {
+      return visit(
+        (node.type as (props: HostElement["props"]) => ReactNode)(node.props),
+        key,
+      );
+    }
+    if (node.type === "details")
+      return [{ element: node, key, props: node.props }];
+    return visit(node.props.children, key);
+  }
+  return visit(comparisonElement(props), null);
+}
+
+function summaryLabel(node: Disclosure): string {
+  const summary = hostElements(node.props.children).find(
+    (child) => child.type === "summary",
+  );
+  if (!summary) throw new Error("Missing native summary");
+  const label = summary.props["aria-label"];
+  return typeof label === "string"
+    ? label
+    : visibleText(renderToStaticMarkup(summary));
+}
+
+function disclosure(
+  props: Partial<PersonalManualPeerComparisonProps>,
+  symbol: string,
+  metric: string,
+): Disclosure {
+  const result = nativeDisclosures(props).find((node) =>
+    summaryLabel(node).startsWith(`Inspect ${symbol} ${metric} inputs`),
+  );
+  if (!result) throw new Error(`Missing ${symbol} ${metric} disclosure`);
+  return result;
+}
+
+function disclosureText(node: Disclosure): string {
+  return visibleText(renderToStaticMarkup(node.element));
+}
+
+function retainedInputs(node: Disclosure): Record<string, string>[] {
+  return hostElements(node.props.children)
+    .filter((element) => element.type === "li")
+    .map((item) => {
+      const terms = hostElements(item.props.children).filter(
+        (element) => element.type === "dt" || element.type === "dd",
+      );
+      return Object.fromEntries(
+        terms.flatMap((term, index) =>
+          term.type === "dt"
+            ? [
+                [
+                  visibleText(renderToStaticMarkup(term)),
+                  visibleText(renderToStaticMarkup(terms[index + 1])),
+                ],
+              ]
+            : [],
+        ),
+      );
+    });
+}
+
+function loadedComparison() {
+  const primary = selection("primary", "ZERO", "issuer-primary");
+  return {
+    selection: primary,
+    annualFinancials: annualFinancials(primary, "1000"),
+    valuationHistory: valuationHistory(primary, "10"),
+    peers: [loadedPeer(selection("peer", "PEER", "issuer-peer"), "1100")],
+  };
+}
+
+function replaceAnnualFields(
+  annual: PersonalAnnualFinancialsDto,
+  fields: Partial<PersonalAnnualFinancialReportedValuesDto>,
+): PersonalAnnualFinancialsDto {
+  return annualWithYears(
+    annual,
+    annual.years.map((year, index) =>
+      index === 0
+        ? { ...year, reported: { ...year.reported, ...fields } }
+        : year,
+    ),
+  );
+}
+
+function annualWithYears(
+  annual: PersonalAnnualFinancialsDto,
+  years: PersonalAnnualFinancialsDto["years"],
+): PersonalAnnualFinancialsDto {
+  const known = years
+    .flatMap((year) => Object.values(year.reported))
+    .filter((cell) => cell.status === "known").length;
+  return {
+    ...annual,
+    years,
+    coverage: {
+      ...annual.coverage,
+      earliestFiscalYear: Math.min(...years.map((year) => year.fiscalYear)),
+      latestFiscalYear: Math.max(...years.map((year) => year.fiscalYear)),
+      knownReportedCells: known,
+      unknownReportedCells:
+        years.length * PERSONAL_FINANCIAL_REPORTED_FIELDS.length - known,
+      returnedAnnualYears: years.length,
+      missingFiscalYears: Array.from(
+        { length: 10 },
+        (_, index) => 2029 - index,
+      ).filter(
+        (year) => !years.some((candidate) => candidate.fiscalYear === year),
+      ),
+      status: "partial",
+    },
+  };
 }
 
 function selection(

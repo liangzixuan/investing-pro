@@ -15,7 +15,19 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare current and saved DCF outcomes
+## Immediate delivery: inspect manual peer metric inputs
+
+Open a comparison cell to inspect the exact retained inputs, formula and source
+dates behind its value or unavailable reason. Annual operands keep their own
+fiscal years and statement dates; provider multiples show only their supplied
+references. Keep signed decimal strings, units and unknown values explicit.
+
+Use a native disclosure with no new requests or calculation. Changed displayed
+data or company identity closes it; equal-content renders preserve it while it
+remains mounted. Keep the existing provider-history limitations and contained
+narrow-screen comparison layout. See [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: compare current and saved DCF outcomes
 
 Compare Conservative, Base and Expansion scenario values using current inputs and
 explicitly loaded saved assumptions, without replacing the working draft. Both
@@ -768,7 +780,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Compare current and loaded saved DCF scenario values on the same loaded sources                  | Preserve the working draft, source provenance and unavailable states       |
+| Now              | Inspect exact inputs and source dates behind manual peer comparison metrics                      | Reuse retained evidence without new requests or formulas                   |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
