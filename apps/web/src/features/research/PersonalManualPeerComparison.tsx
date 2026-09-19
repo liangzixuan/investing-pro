@@ -17,6 +17,7 @@ import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api
 import { PersonalManualPeerQualityComparison } from "./PersonalManualPeerQualityComparison";
 
 export const PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS = 3 as const;
+export type PersonalManualPeerMoveDirection = "earlier" | "later";
 
 export type PersonalManualPeerSelection =
   PersonalManualPeerComparisonCompanyInput["selection"];
@@ -35,6 +36,10 @@ export interface PersonalManualPeerComparisonProps {
   readonly candidates: readonly PersonalManualPeerSelection[];
   readonly onAddPeer: (selection: PersonalManualPeerSelection) => void;
   readonly onLoadPeerData: (listingId: string) => void;
+  readonly onMovePeer: (
+    listingId: string,
+    direction: PersonalManualPeerMoveDirection,
+  ) => boolean;
   readonly onRemovePeer: (listingId: string) => void;
   readonly peers: readonly PersonalManualPeerState[];
   readonly providerStatus: PersonalMarketDataStatusDto | null;
@@ -86,6 +91,7 @@ export function PersonalManualPeerComparison({
   candidates,
   onAddPeer,
   onLoadPeerData,
+  onMovePeer,
   onRemovePeer,
   peers,
   providerStatus,
@@ -227,6 +233,7 @@ export function PersonalManualPeerComparison({
 
           <PeerRoster
             onLoadPeerData={onLoadPeerData}
+            onMovePeer={onMovePeer}
             onRemovePeer={onRemovePeer}
             peers={peers}
             peerLoadInProgress={peerLoadInProgress}
@@ -353,6 +360,7 @@ function PrimaryReadiness({
 
 function PeerRoster({
   onLoadPeerData,
+  onMovePeer,
   onRemovePeer,
   peers,
   peerLoadInProgress,
@@ -361,7 +369,12 @@ function PeerRoster({
   range,
 }: Pick<
   PersonalManualPeerComparisonProps,
-  "onLoadPeerData" | "onRemovePeer" | "peers" | "providerStatus" | "range"
+  | "onLoadPeerData"
+  | "onMovePeer"
+  | "onRemovePeer"
+  | "peers"
+  | "providerStatus"
+  | "range"
 > & {
   readonly peerLoadInProgress: boolean;
   readonly primarySourceReady: boolean;
@@ -396,6 +409,33 @@ function PeerRoster({
                 type="button"
               >
                 Remove peer
+              </button>
+            </div>
+
+            <div className="manual-peer-move-controls">
+              <button
+                aria-disabled={index === 0}
+                aria-label={`Move earlier: ${peer.selection.issuerName} (${peer.selection.symbol} · ${peer.selection.exchangeMic})`}
+                className="secondary-action compact-action"
+                onClick={() => {
+                  if (index !== 0)
+                    onMovePeer(peer.selection.listingId, "earlier");
+                }}
+                type="button"
+              >
+                Move earlier
+              </button>
+              <button
+                aria-disabled={index === peers.length - 1}
+                aria-label={`Move later: ${peer.selection.issuerName} (${peer.selection.symbol} · ${peer.selection.exchangeMic})`}
+                className="secondary-action compact-action"
+                onClick={() => {
+                  if (index !== peers.length - 1)
+                    onMovePeer(peer.selection.listingId, "later");
+                }}
+                type="button"
+              >
+                Move later
               </button>
             </div>
 

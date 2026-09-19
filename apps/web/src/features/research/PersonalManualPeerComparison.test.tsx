@@ -338,6 +338,240 @@ describe("PersonalManualPeerComparison", () => {
   });
 });
 
+describe("manual peer display order", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps both single-peer endpoints focusable and ignores their activation", () => {
+    const onMovePeer = vi.fn(() => true);
+    const props = { ...loadedComparison(), onMovePeer };
+    const buttons = peerMoveButtons(props);
+
+    expect(buttons).toHaveLength(2);
+    for (const button of buttons) {
+      expect(button.type).toBe("button");
+      expect(button.props.type).toBe("button");
+      expect(button.props["aria-disabled"]).toBe(true);
+      expect(button.props.disabled).toBeUndefined();
+      expect(button.props.tabIndex).toBeUndefined();
+      activateButton(button);
+    }
+    expect(onMovePeer).not.toHaveBeenCalled();
+    expect(buttons.map((button) => button.props["aria-label"])).toEqual([
+      "Move earlier: PEER Holdings (PEER · XNAS)",
+      "Move later: PEER Holdings (PEER · XNAS)",
+    ]);
+  });
+
+  it("requests only the selected adjacent move and leaves endpoint callbacks untouched", () => {
+    const onMovePeer = vi.fn(() => true);
+    const onAddPeer = vi.fn();
+    const onLoadPeerData = vi.fn();
+    const onRemovePeer = vi.fn();
+    const peers = [
+      peerState(selection("one", "ONE", "issuer-one")),
+      peerState(selection("two", "TWO", "issuer-two")),
+      peerState(selection("three", "THREE", "issuer-three")),
+    ];
+    const buttons = peerMoveButtons({
+      selection: selection("primary", "ZERO", "issuer-primary"),
+      peers,
+      onAddPeer,
+      onLoadPeerData,
+      onMovePeer,
+      onRemovePeer,
+    });
+
+    expect(buttons.map((button) => button.props["aria-disabled"])).toEqual([
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+    ]);
+    expect(onMovePeer).not.toHaveBeenCalled();
+    for (const button of buttons) activateButton(button);
+    expect(onMovePeer.mock.calls).toEqual([
+      ["one", "later"],
+      ["two", "earlier"],
+      ["two", "later"],
+      ["three", "earlier"],
+    ]);
+    expect(onAddPeer).not.toHaveBeenCalled();
+    expect(onLoadPeerData).not.toHaveBeenCalled();
+    expect(onRemovePeer).not.toHaveBeenCalled();
+  });
+
+  it.each(["unloaded", "loading", "partial failure"] as const)(
+    "allows a move with %s sources while provider loading remains disabled",
+    (state) => {
+      const props = loadedComparison();
+      const onMovePeer = vi.fn(() => true);
+      const peer = props.peers[0]!;
+      const peers = [
+        state === "unloaded"
+          ? peerState(peer.selection)
+          : state === "loading"
+            ? { ...peer, requestState: "loading" as const }
+            : {
+                ...peer,
+                valuationHistory: null,
+                valuationErrorCode: "not_covered" as const,
+              },
+        peerState(selection("second", "TWO", "issuer-two")),
+      ];
+      const input = {
+        ...props,
+        annualFinancials: null,
+        valuationHistory: null,
+        providerStatus: null,
+        peers,
+        onMovePeer,
+      };
+      const later = peerMoveButtons(input)[1]!;
+      expect(later.props["aria-disabled"]).toBe(false);
+      expect(later.props.disabled).toBeUndefined();
+      activateButton(later);
+      expect(onMovePeer).toHaveBeenCalledExactlyOnceWith("peer", "later");
+      const load = hostElements(comparisonElement(input)).find(
+        (node) =>
+          node.type === "button" &&
+          String(node.props["aria-label"]).endsWith("data for TWO"),
+      );
+      expect(load?.props.disabled).toBe(true);
+    },
+  );
+
+  it("does not optimistically reorder or perform IO when the controller rejects a move", () => {
+    const onMovePeer = vi.fn(() => false);
+    const fetch = vi.fn();
+    const storage = { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() };
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("localStorage", storage);
+    const props = freezeDeep({
+      ...loadedComparison(),
+      peers: [
+        loadedPeer(selection("one", "ONE", "issuer-one"), "1100"),
+        loadedPeer(selection("two", "TWO", "issuer-two"), "1200"),
+      ],
+      onMovePeer,
+    });
+    const before = render(props);
+    activateButton(peerMoveButtons(props)[1]!);
+    expect(onMovePeer).toHaveBeenCalledExactlyOnceWith("one", "later");
+    expect(render(props)).toBe(before);
+    expect(props.peers.map((peer) => peer.selection.listingId)).toEqual([
+      "one",
+      "two",
+    ]);
+    expect(fetch).not.toHaveBeenCalled();
+    for (const method of Object.values(storage))
+      expect(method).not.toHaveBeenCalled();
+  });
+
+  it("keeps company card keys and both tables' exact cells when peer order changes", () => {
+    const first = loadedPeer(selection("one", "ONE", "issuer-one"), "1100");
+    const second = loadedPeer(selection("two", "TWO", "issuer-two"), "2200");
+    const before = { ...loadedComparison(), peers: [first, second] };
+    const after = { ...before, peers: [second, first] };
+    const cards = (props: typeof before) =>
+      hostElements(comparisonElement(props))
+        .filter((node) => node.props.className === "manual-peer-card")
+        .map((node) => node.key);
+    expect(cards(before)).toEqual(["one", "two"]);
+    expect(cards(after)).toEqual(["two", "one"]);
+    const tables = (props: typeof before) =>
+      hostElements(comparisonElement(props)).filter(
+        (node) => node.type === "table",
+      );
+    const initialTables = tables(before);
+    const movedTables = tables(after);
+    expect(initialTables).toHaveLength(2);
+    expect(movedTables).toHaveLength(2);
+    for (const [index, table] of initialTables.entries()) {
+      const rows = (value: ReactNode) =>
+        hostElements(value)
+          .filter((node) => node.type === "tr")
+          .map((row) =>
+            hostElements(row)
+              .filter((node) => node.type === "td")
+              .map((cell) => renderToStaticMarkup(cell)),
+          )
+          .filter((cells) => cells.length > 0);
+      const initialRows = rows(table);
+      expect(initialRows).toHaveLength(index === 0 ? 15 : 12);
+      expect(rows(movedTables[index])).toEqual(
+        initialRows.map(([primary, one, two]) => [primary, two, one]),
+      );
+    }
+    expect(
+      peerMoveButtons(after).map((button) => button.props["aria-label"]),
+    ).toEqual([
+      "Move earlier: TWO Holdings (TWO · XNAS)",
+      "Move later: TWO Holdings (TWO · XNAS)",
+      "Move earlier: ONE Holdings (ONE · XNAS)",
+      "Move later: ONE Holdings (ONE · XNAS)",
+    ]);
+  });
+
+  it("preserves native metric and quality disclosure keys across peer moves", () => {
+    const before = {
+      ...loadedComparison(),
+      peers: [
+        loadedPeer(selection("one", "ONE", "issuer-one"), "1100"),
+        loadedPeer(selection("two", "TWO", "issuer-two"), "2200"),
+      ],
+    };
+    const after = { ...before, peers: [before.peers[1]!, before.peers[0]!] };
+    for (const [className, expectedCount] of [
+      ["manual-peer-metric-inputs", 45],
+      ["manual-peer-quality-inputs", 36],
+    ] as const) {
+      const initial = nativeDisclosures(before, className);
+      const moved = nativeDisclosures(after, className);
+      expect(initial).toHaveLength(expectedCount);
+      expect(moved).toHaveLength(expectedCount);
+      expect(new Set(moved.map((node) => node.key))).toEqual(
+        new Set(initial.map((node) => node.key)),
+      );
+      expect(initial.every((node) => node.key !== null)).toBe(true);
+      for (const node of moved) {
+        expect(node.props.open).toBeUndefined();
+        expect(node.props.onToggle).toBeUndefined();
+      }
+    }
+  });
+
+  it("escapes company names and distinguishes shared symbols by company and exchange", () => {
+    const first = {
+      ...selection("one", "SAME", "issuer-one"),
+      issuerName: '<First & "Company">',
+    };
+    const second = {
+      ...selection("two", "SAME", "issuer-two"),
+      exchangeMic: "XNYS",
+      issuerName: "Second Company",
+    };
+    const props = {
+      ...loadedComparison(),
+      peers: [peerState(first), peerState(second)],
+    };
+    const labels = peerMoveButtons(props).map(
+      (button) => button.props["aria-label"],
+    );
+    expect(new Set(labels).size).toBe(4);
+    expect(labels).toContain('Move earlier: <First & "Company"> (SAME · XNAS)');
+    expect(labels).toContain("Move earlier: Second Company (SAME · XNYS)");
+    const markup = render(props);
+    expect(markup).toContain("&lt;First &amp; &quot;Company&quot;&gt;");
+    expect(markup).not.toContain('<First & "Company">');
+    expect(peerMoveButtons({ ...props, peers: [] })).toHaveLength(0);
+    expect(peerMoveButtons({ ...props, selection: null })).toHaveLength(0);
+  });
+});
+
 describe("manual peer metric input disclosures", () => {
   it("keeps exact signed and negative-zero operands distinct from rounded results", () => {
     const props = loadedComparison();
@@ -962,6 +1196,20 @@ function qualityTable(props: Partial<PersonalManualPeerComparisonProps>) {
   );
 }
 
+function peerMoveButtons(props: Partial<PersonalManualPeerComparisonProps>) {
+  return hostElements(comparisonElement(props)).filter(
+    (node) =>
+      node.type === "button" &&
+      /^Move (earlier|later): /u.test(String(node.props["aria-label"])),
+  );
+}
+
+function activateButton(button: HostElement): void {
+  if (typeof button.props.onClick !== "function")
+    throw new Error("Missing button action");
+  (button.props.onClick as () => void)();
+}
+
 function render(
   overrides: Partial<PersonalManualPeerComparisonProps> = {},
 ): string {
@@ -977,6 +1225,7 @@ function comparisonElement(
       candidates={[]}
       onAddPeer={vi.fn()}
       onLoadPeerData={vi.fn()}
+      onMovePeer={vi.fn(() => false)}
       onRemovePeer={vi.fn()}
       peers={[]}
       providerStatus={providerStatus()}
@@ -1010,6 +1259,7 @@ function hostElements(node: ReactNode): HostElement[] {
 
 function nativeDisclosures(
   props: Partial<PersonalManualPeerComparisonProps>,
+  className = "manual-peer-metric-inputs",
 ): Disclosure[] {
   // Inspect real React keys at the boundary that mounts each native details node.
   // This does not emulate DOM reconciliation or native open-state behavior.
@@ -1026,10 +1276,7 @@ function nativeDisclosures(
         key,
       );
     }
-    if (
-      node.type === "details" &&
-      node.props.className === "manual-peer-metric-inputs"
-    )
+    if (node.type === "details" && node.props.className === className)
       return [{ element: node, key, props: node.props }];
     return visit(node.props.children, key);
   }

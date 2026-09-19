@@ -3507,6 +3507,20 @@ html:has(.personal-financial-screener:focus-within) {
   font-size: 0.68rem;
 }
 
+.manual-peer-move-controls {
+  display: flex;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.manual-peer-move-controls button[aria-disabled="true"] {
+  border-color: #cbd8d1;
+  background: var(--paper);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+
 .manual-peer-card dl {
   display: grid;
   margin: 14px 0 0;

@@ -1751,6 +1751,504 @@ describe("SecurityDiscoveryWorkspace", () => {
     ]);
   });
 
+  it("moves adjacent peers with exact retained entries and retires same-turn and move-undo callbacks", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    const add = requireManualPeerComparison(view).props.onAddPeer;
+    for (const id of watchlistIds(2, 4)) add(peerCandidate(view, id));
+    const before = requireManualPeerComparison(renderWorkspace()).props;
+    const original = before.peers;
+    const calls = Object.values(peerApiMocks).map(
+      (mock) => mock.mock.calls.length,
+    );
+    expect(before.onMovePeer("lst-syn-00002", "earlier")).toBe(false);
+    expect(before.onMovePeer("lst-syn-00004", "later")).toBe(false);
+    expect(before.onMovePeer("missing", "later")).toBe(false);
+    expect(before.onMovePeer("lst-syn-00002", "invalid" as "later")).toBe(
+      false,
+    );
+    expect(requireManualPeerComparison(renderWorkspace()).props.peers).toBe(
+      original,
+    );
+    expect(before.onMovePeer("lst-syn-00002", "later")).toBe(true);
+    expect(before.onMovePeer("lst-syn-00004", "earlier")).toBe(false);
+    const moved = requireManualPeerComparison(renderWorkspace()).props;
+    expect(moved.peers.map((peer) => peer.selection.listingId)).toEqual([
+      "lst-syn-00003",
+      "lst-syn-00002",
+      "lst-syn-00004",
+    ]);
+    expect(Object.isFrozen(moved.peers)).toBe(true);
+    expect(moved.peers[0]).toBe(original[1]);
+    expect(moved.peers[1]).toBe(original[0]);
+    expect(moved.peers[2]).toBe(original[2]);
+    expect(moved.onMovePeer("lst-syn-00002", "earlier")).toBe(true);
+    expect(peerListingIds(renderWorkspace())).toEqual(watchlistIds(2, 4));
+    expect(before.onMovePeer("lst-syn-00002", "later")).toBe(false);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(
+      Object.values(peerApiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("leaves a single peer unchanged and retires its move callback after Add or Remove", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    const add = requireManualPeerComparison(view).props.onAddPeer;
+    add(peerCandidate(view, "lst-syn-00002"));
+    const single = requireManualPeerComparison(renderWorkspace()).props;
+    expect(single.onMovePeer("lst-syn-00002", "earlier")).toBe(false);
+    expect(single.onMovePeer("lst-syn-00002", "later")).toBe(false);
+    expect(requireManualPeerComparison(renderWorkspace()).props.peers).toBe(
+      single.peers,
+    );
+    add(peerCandidate(view, "lst-syn-00003"));
+    expect(single.onMovePeer("lst-syn-00002", "later")).toBe(false);
+    const pair = requireManualPeerComparison(renderWorkspace()).props;
+    pair.onRemovePeer("lst-syn-00003");
+    add(peerCandidate(view, "lst-syn-00003"));
+    expect(pair.onMovePeer("lst-syn-00002", "later")).toBe(false);
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.onMovePeer(
+        "lst-syn-00002",
+        "later",
+      ),
+    ).toBe(true);
+    expect(peerListingIds(renderWorkspace())).toEqual([
+      "lst-syn-00003",
+      "lst-syn-00002",
+    ]);
+  });
+
+  it("reorders loaded and partial peers without changing primary research, drafts, holding or requests", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+      Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+    );
+    requireAnnualFinancials(view).props.onLoad();
+    requireValuationHistory(view).props.onLoad();
+    requireQuarterlyFinancials(view).props.onLoad();
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises(6);
+    const ready = renderWorkspace();
+    requireManualPeerComparison(ready).props.onAddPeer(
+      peerCandidate(ready, "lst-syn-00002"),
+    );
+    requireManualPeerComparison(ready).props.onAddPeer(
+      peerCandidate(ready, "lst-syn-00003"),
+    );
+    requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+      "lst-syn-00002",
+    );
+    await flushPromises(6);
+    apiMocks.fetchPersonalValuationHistory.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("not_entitled"),
+    );
+    requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+      "lst-syn-00003",
+    );
+    await flushPromises(6);
+    watchlistAction(
+      renderWorkspace(),
+      "Choose SYN00005 for portfolio",
+    ).props.onClick();
+    requireCompanyResearch(renderWorkspace()).props.onSectionChange("peers");
+    requireCompanyNote(renderWorkspace()).props.onChange(
+      "Keep this unsaved research draft",
+    );
+    const before = renderWorkspace();
+    const peers = requireManualPeerComparison(before).props.peers;
+    expect(peers[0]!.valuationHistory).not.toBeNull();
+    expect(peers[1]!.annualFinancials).not.toBeNull();
+    expect(peers[1]!.valuationErrorCode).toBe("not_entitled");
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    expect(
+      requireManualPeerComparison(before).props.onMovePeer(
+        "lst-syn-00002",
+        "later",
+      ),
+    ).toBe(true);
+    const after = renderWorkspace();
+    expect(requireManualPeerComparison(after).props.peers[0]).toBe(peers[1]);
+    expect(requireManualPeerComparison(after).props.peers[1]).toBe(peers[0]);
+    expect(requireCompanyResearch(after).key).toBe(
+      requireCompanyResearch(before).key,
+    );
+    expect(requireCompanyResearch(after).props.activeSection).toBe("peers");
+    expect(requireCompanyResearch(after).props.backLabel).toBe(
+      "Back to My Watchlist",
+    );
+    expect(requireFcffDcfValuation(after).key).toBe(
+      requireFcffDcfValuation(before).key,
+    );
+    expect(requireAnnualFinancials(after).props.financials).toBe(
+      requireAnnualFinancials(before).props.financials,
+    );
+    expect(requireValuationHistory(after).props.history).toBe(
+      requireValuationHistory(before).props.history,
+    );
+    expect(requireQuarterlyFinancials(after).props.financials).toBe(
+      requireQuarterlyFinancials(before).props.financials,
+    );
+    expect(requireMarketOverview(after).props.overview).toBe(
+      requireMarketOverview(before).props.overview,
+    );
+    expect(requireManualPeerComparison(after).props.range).toBe(
+      requireManualPeerComparison(before).props.range,
+    );
+    expect(
+      findElement<PersonalPortfolioProps>(after, componentMocks.Portfolio)!
+        .props.selectedListing?.listingId,
+    ).toBe("lst-syn-00005");
+    expect(requireCompanyNote(after).props.value).toBe(
+      "Keep this unsaved research draft",
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).not.toHaveBeenCalled();
+    // Back moves focus without a render. Mounted controls must remain usable.
+    requireCompanyResearch(after).props.onBack();
+    expect(
+      requireManualPeerComparison(after).props.onMovePeer(
+        "lst-syn-00002",
+        "earlier",
+      ),
+    ).toBe(true);
+    expect(peerListingIds(renderWorkspace())).toEqual(watchlistIds(2, 3));
+  });
+
+  it("moves an in-flight peer without aborting and admits held moves across source-only updates", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    requireAnnualFinancials(view).props.onLoad();
+    await flushPromises(6);
+    const ready = renderWorkspace();
+    for (const id of watchlistIds(2, 3))
+      requireManualPeerComparison(ready).props.onAddPeer(
+        peerCandidate(ready, id),
+      );
+    const beforeLoad = requireManualPeerComparison(renderWorkspace()).props;
+    const annual = deferred<PersonalAnnualFinancialsDto>();
+    const valuation = deferred<PersonalValuationHistoryDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(annual.promise);
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+      valuation.promise,
+    );
+    beforeLoad.onLoadPeerData("lst-syn-00002");
+    const signals = [
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)![1],
+      apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)![1],
+    ];
+    const loading =
+      requireManualPeerComparison(renderWorkspace()).props.peers[0];
+    const calls = providerRequestCounts();
+    expect(beforeLoad.onMovePeer("lst-syn-00002", "later")).toBe(true);
+    const during = requireManualPeerComparison(renderWorkspace()).props;
+    expect(during.peers[1]).toBe(loading);
+    expect(signals.every((signal) => !signal.aborted)).toBe(true);
+    const annualDto = annualFinancials("lst-syn-00002", "SYN00002");
+    const valuationDto = valuationHistory("lst-syn-00002", "SYN00002");
+    annual.resolve(annualDto);
+    valuation.resolve(valuationDto);
+    await flushPromises(6);
+    const settled = requireManualPeerComparison(renderWorkspace()).props;
+    expect(settled.peers[1]!.annualFinancials).toBe(annualDto);
+    expect(settled.peers[1]!.valuationHistory).toBe(valuationDto);
+    expect(settled.peers[1]!.requestState).toBe("idle");
+    expect(during.onMovePeer("lst-syn-00002", "earlier")).toBe(true);
+    expect(requireManualPeerComparison(renderWorkspace()).props.peers[0]).toBe(
+      settled.peers[1],
+    );
+    expect(providerRequestCounts()).toEqual(calls);
+    expect(signals.every((signal) => !signal.aborted)).toBe(true);
+  });
+
+  it("saves a same-turn moved order with full identities and keeps a newer order after delayed Save", async () => {
+    const { record, view } = await setupSavedPeerWorkspace();
+    for (const id of watchlistIds(2, 4))
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, id),
+      );
+    const before = renderWorkspace();
+    const pending = deferred<PersonalSavedManualPeerGroup>();
+    peerApiMocks.putPersonalSavedManualPeerGroup.mockReturnValueOnce(
+      pending.promise,
+    );
+    expect(
+      requireManualPeerComparison(before).props.onMovePeer(
+        "lst-syn-00002",
+        "later",
+      ),
+    ).toBe(true);
+    requireSavedPeerControls(before).props.onSave();
+    const request =
+      peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]![1];
+    expect(request.payload.group).toEqual(savedPeerGroup(record, [2, 1, 3]));
+    const during = renderWorkspace();
+    expect(requireSavedPeerControls(during).props.busy).toBe(true);
+    expect(
+      requireManualPeerComparison(during).props.onMovePeer(
+        "lst-syn-00004",
+        "earlier",
+      ),
+    ).toBe(true);
+    const latest = requireManualPeerComparison(renderWorkspace()).props.peers;
+    pending.resolve({ version: 1, payload: request.payload });
+    await flushPromises(6);
+    const after = renderWorkspace();
+    expect(requireManualPeerComparison(after).props.peers).toBe(latest);
+    expect(peerListingIds(after)).toEqual([
+      "lst-syn-00003",
+      "lst-syn-00004",
+      "lst-syn-00002",
+    ]);
+    expect(requireSavedPeerControls(after).props.savedGroup).toEqual(
+      savedPeerGroup(record, [2, 1, 3]),
+    );
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).toHaveBeenCalledTimes(
+      1,
+    );
+  });
+
+  it("cancels delayed Restore after move and undo, then allows a new explicit Restore", async () => {
+    const { group, view } = await setupSavedPeerWorkspace([2, 1]);
+    for (const id of watchlistIds(2, 3))
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, id),
+      );
+    const before = renderWorkspace();
+    const original = requireManualPeerComparison(before).props.peers;
+    const pending = deferred<PersonalSavedManualPeerResolvedDto>();
+    peerApiMocks.resolvePersonalSavedManualPeerGroup.mockReturnValueOnce(
+      pending.promise,
+    );
+    requireSavedPeerControls(before).props.onRestore();
+    const [, primary, context] =
+      peerApiMocks.resolvePersonalSavedManualPeerGroup.mock.calls[0]!;
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.onMovePeer(
+        "lst-syn-00002",
+        "later",
+      ),
+    ).toBe(true);
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.onMovePeer(
+        "lst-syn-00002",
+        "earlier",
+      ),
+    ).toBe(true);
+    pending.resolve({
+      schemaVersion: "1.0.0",
+      ...context,
+      savedPeerGroupVersion: 3,
+      group: { ...group!, primary },
+    });
+    await flushPromises(6);
+    const after = renderWorkspace();
+    expect(peerListingIds(after)).toEqual(watchlistIds(2, 3));
+    expect(requireManualPeerComparison(after).props.peers[0]).toBe(original[0]);
+    expect(requireManualPeerComparison(after).props.peers[1]).toBe(original[1]);
+    requireSavedPeerControls(after).props.onRestore();
+    await flushPromises(6);
+    expect(peerListingIds(renderWorkspace())).toEqual([
+      "lst-syn-00003",
+      "lst-syn-00002",
+    ]);
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.peers[1],
+    ).not.toBe(original[0]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("does not cancel delayed Restore for endpoint, missing-target or invalid-direction no-ops", async () => {
+    const { group, view } = await setupSavedPeerWorkspace([2, 1]);
+    for (const id of watchlistIds(2, 3))
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, id),
+      );
+    const before = renderWorkspace();
+    const pending = deferred<PersonalSavedManualPeerResolvedDto>();
+    peerApiMocks.resolvePersonalSavedManualPeerGroup.mockReturnValueOnce(
+      pending.promise,
+    );
+    requireSavedPeerControls(before).props.onRestore();
+    const [, primary, context] =
+      peerApiMocks.resolvePersonalSavedManualPeerGroup.mock.calls[0]!;
+    const move = requireManualPeerComparison(before).props.onMovePeer;
+    expect(move("lst-syn-00002", "earlier")).toBe(false);
+    expect(move("lst-syn-00003", "later")).toBe(false);
+    expect(move("missing", "later")).toBe(false);
+    expect(move("lst-syn-00002", "invalid" as "later")).toBe(false);
+    pending.resolve({
+      schemaVersion: "1.0.0",
+      ...context,
+      savedPeerGroupVersion: 3,
+      group: { ...group!, primary },
+    });
+    await flushPromises(6);
+    expect(peerListingIds(renderWorkspace())).toEqual([
+      "lst-syn-00003",
+      "lst-syn-00002",
+    ]);
+  });
+
+  it("reorders unsaved search peers without a saved-group membership or binding", async () => {
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "ZERO",
+      results: [
+        searchResult("ZERO", "lst-zero"),
+        searchResult("ONE", "lst-one"),
+        searchResult("TWO", "lst-two"),
+      ],
+      snapshot: snapshot(),
+      totalMatches: 3,
+    });
+    await activateWorkspace();
+    const view = await searchAndSelectMarket("ZERO");
+    const peers = requireManualPeerComparison(view).props;
+    for (const candidate of peers.candidates) peers.onAddPeer(candidate);
+    const before = renderWorkspace();
+    expect(requireSavedPeerControls(before).props.canSave).toBe(false);
+    expect(
+      requireManualPeerComparison(before).props.onMovePeer(
+        "lst-two",
+        "earlier",
+      ),
+    ).toBe(true);
+    expect(peerListingIds(renderWorkspace())).toEqual(["lst-two", "lst-one"]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(
+      Object.values(peerApiMocks).every((mock) => mock.mock.calls.length === 0),
+    ).toBe(true);
+  });
+
+  it.each([
+    "company ABA",
+    "Clear then reopen",
+    "session ABA",
+    "workspace reload",
+    "watchlist note version",
+    "same company new origin",
+    "catalog replacement",
+  ] as const)("retires a retained peer move after %s", async (change) => {
+    const { record, view } = await setupSavedPeerWorkspace();
+    for (const id of watchlistIds(2, 3))
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, id),
+      );
+    const move =
+      requireManualPeerComparison(renderWorkspace()).props.onMovePeer;
+    if (change === "company ABA") {
+      openNoteCompany(record.payload.memberships[3]!);
+      void renderWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+    } else if (change === "Clear then reopen") {
+      requireCompanyResearch(renderWorkspace()).props.onClear();
+      openNoteCompany(record.payload.memberships[0]!);
+    } else if (change === "session ABA" || change === "workspace reload") {
+      if (change === "session ABA")
+        await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+          false,
+          new AbortController().signal,
+        );
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      openNoteCompany(record.payload.memberships[0]!);
+    } else if (change === "watchlist note version") {
+      requireCompanyNote(renderWorkspace()).props.onChange(
+        "Version changes without changing company identity",
+      );
+      requireCompanyNote(renderWorkspace()).props.onSave();
+      await flushPromises(6);
+    } else if (change === "same company new origin") {
+      openNoteCompany(record.payload.memberships[0]!);
+    } else {
+      apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+        limitApplied: 15,
+        normalizedQuery: "SYN",
+        results: [],
+        totalMatches: 0,
+        snapshot: { ...snapshot(), snapshotSha256: `sha256:${"d".repeat(64)}` },
+      });
+      requireElementByProps<{
+        onChange: (event: { target: { value: string } }) => void;
+      }>(renderWorkspace(), { id: "security-query" }).props.onChange({
+        target: { value: "SYN" },
+      });
+      requireElementByProps<{
+        onSubmit: (event: { preventDefault: () => void }) => void;
+      }>(renderWorkspace(), {
+        className: "security-search-form",
+      }).props.onSubmit({ preventDefault: vi.fn() });
+      await flushPromises(6);
+    }
+    const current = renderWorkspace();
+    const entries = requireManualPeerComparison(current).props.peers;
+    expect(move("lst-syn-00002", "later")).toBe(false);
+    expect(requireManualPeerComparison(renderWorkspace()).props.peers).toBe(
+      entries,
+    );
+    if (change !== "catalog replacement") {
+      for (const id of watchlistIds(2, 3)) {
+        if (!peerListingIds(current).includes(id))
+          requireManualPeerComparison(current).props.onAddPeer(
+            peerCandidate(current, id),
+          );
+      }
+      const renewed = requireManualPeerComparison(renderWorkspace()).props;
+      expect(move("lst-syn-00002", "later")).toBe(false);
+      expect(renewed.onMovePeer("lst-syn-00002", "later")).toBe(true);
+    }
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["country", "CA"],
+    ["exchangeMic", "XNYS"],
+    ["instrumentType", "adr"],
+    ["issuerId", "iss-replaced"],
+    ["issuerName", "Replaced company"],
+    ["listingId", "lst-replaced"],
+    ["securityId", "sec-replaced"],
+    ["securityName", "Replaced security"],
+    ["shareClassId", "cls-replaced"],
+    ["shareClassName", "Replaced voting class"],
+    ["symbol", "REPLACED"],
+  ] as const)(
+    "retires the old move across a full company %s identity replacement",
+    async (field, value) => {
+      const { record, view } = await setupSavedPeerWorkspace();
+      for (const id of watchlistIds(2, 3))
+        requireManualPeerComparison(view).props.onAddPeer(
+          peerCandidate(view, id),
+        );
+      const move =
+        requireManualPeerComparison(renderWorkspace()).props.onMovePeer;
+      openNoteCompany({ ...record.payload.memberships[0]!, [field]: value });
+      const current = renderWorkspace();
+      for (const id of watchlistIds(2, 3))
+        requireManualPeerComparison(current).props.onAddPeer(
+          peerCandidate(current, id),
+        );
+      const renewed = requireManualPeerComparison(renderWorkspace()).props;
+      expect(move("lst-syn-00002", "later")).toBe(false);
+      expect(renewed.onMovePeer("lst-syn-00002", "later")).toBe(true);
+      expect(peerListingIds(renderWorkspace())).toEqual([
+        "lst-syn-00003",
+        "lst-syn-00002",
+      ]);
+      expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    },
+  );
+
   it("uses a same-turn removal for Save and rejects duplicate Add and stale removed-peer requests", async () => {
     const { view } = await setupSavedPeerWorkspace();
     const comparison = requireManualPeerComparison(view);

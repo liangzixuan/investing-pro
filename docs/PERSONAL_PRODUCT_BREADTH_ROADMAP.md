@@ -1073,7 +1073,11 @@ removing a peer is memory-only and makes no request. After at least one usable
 selected-company source—annual or same-range valuation—is loaded, one explicit
 per-peer action requests both existing annual-financial and valuation-history
 routes, with at most two peer-load-originated provider reads in flight. Each peer can fail or remain partially
-available without hiding the other companies.
+available without hiding the other companies. **Move earlier** and **Move later**
+reorder the current peers while keeping loaded sources, pending requests and open
+unchanged disclosures attached to their companies. The primary remains first.
+Moving is memory-only; explicit Save captures the new order, and moving then
+undoing cancels an already-pending saved-group Restore.
 
 The fixed 15-metric comparison covers revenue, market capitalization,
 enterprise value, revenue growth, gross/operating/net/free-cash-flow margins,

@@ -61,6 +61,7 @@ import { PersonalHistoricalMultipleValuation } from "./PersonalHistoricalMultipl
 import {
   PersonalManualPeerComparison,
   PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS,
+  type PersonalManualPeerMoveDirection,
   type PersonalManualPeerSelection,
   type PersonalManualPeerState,
 } from "./PersonalManualPeerComparison";
@@ -289,6 +290,8 @@ export function SecurityDiscoveryWorkspace({
   const currentManualPeers = useRef(manualPeers);
   currentManualPeers.current = manualPeers;
   const manualPeerEditGeneration = useRef(0);
+  const renderedManualPeerEditGeneration = manualPeerEditGeneration.current;
+  const renderedManualPeerIdentities = manualPeers.map((peer) => peer.identity);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
   const marketEpoch = useRef(0);
@@ -1228,6 +1231,42 @@ export function SecurityDiscoveryWorkspace({
           : current,
       true,
     );
+  }
+
+  function moveManualPeer(
+    listingId: string,
+    direction: PersonalManualPeerMoveDirection,
+  ): boolean {
+    const current = currentManualPeers.current;
+    if (
+      (direction !== "earlier" && direction !== "later") ||
+      !savedPeerContextCurrent() ||
+      renderedManualPeerEditGeneration !== manualPeerEditGeneration.current ||
+      renderedManualPeerIdentities.length !== current.length ||
+      !renderedManualPeerIdentities.every((identity, index) => {
+        const peer = current[index];
+        return (
+          peer !== undefined &&
+          samePersonalSavedManualPeerIdentity(identity, peer.identity)
+        );
+      })
+    )
+      return false;
+
+    const index = current.findIndex(
+      (peer) => peer.identity.listingId === listingId,
+    );
+    if (index < 0) return false;
+    const destination = index + (direction === "earlier" ? -1 : 1);
+    const peer = current[index];
+    const adjacent = current[destination];
+    if (peer === undefined || adjacent === undefined) return false;
+
+    const reordered = [...current];
+    reordered[index] = adjacent;
+    reordered[destination] = peer;
+    replaceManualPeers(() => Object.freeze(reordered), true);
+    return true;
   }
 
   async function loadManualPeerData(listingId: string) {
@@ -2749,6 +2788,7 @@ export function SecurityDiscoveryWorkspace({
                       onRemovePeer={(listingId) =>
                         withCurrentCompany(() => removeManualPeer(listingId))
                       }
+                      onMovePeer={moveManualPeer}
                       peers={manualPeers}
                       providerStatus={marketDataStatus}
                       range={marketRange}

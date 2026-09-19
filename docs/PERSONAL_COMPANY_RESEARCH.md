@@ -107,6 +107,26 @@ most-recent annual statements and fiscal-year labels, not point-in-time or
 sector-adjusted comparisons. A met check is not a recommendation or universal
 assessment of a company's financial health.
 
+## Reorder the current peers
+
+Use **Move earlier** or **Move later** on a peer card to swap it with its neighbor.
+The selected company stays first; the one to three peers follow your chosen order
+in their cards, both comparison tables and the current-group preview. This changes
+presentation order, not a ranking or the companies' results.
+
+Reordering keeps the same loaded sources, errors and any in-flight peer request.
+A response settles into that company's new position. Open input and quality-check
+disclosures stay with their company when their displayed content is unchanged.
+The move controls remain focusable at an endpoint, where the unavailable direction
+does nothing. A single peer has no available move.
+
+Moves make no provider request or saved-data write, and work without saved-group
+eligibility. They preserve primary research, the price range, DCF draft, notes,
+holding and Back destination. Explicit Save captures the latest order; a Save
+already in progress may show its earlier captured order as saved while preserving
+the newer current order. Moving and then undoing still cancels a pending Restore.
+A new explicit Restore retains the replacement and unloaded-source rules below.
+
 ## Reuse a manual peer group
 
 The Peers section can keep one saved group containing its primary company and

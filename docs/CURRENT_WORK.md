@@ -15,7 +15,20 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare annual quality checks across peers
+## Immediate delivery: reorder peers without losing loaded work
+
+Move a selected peer earlier or later in the comparison while keeping its loaded
+sources, errors and pending requests. The selected company stays first. Preserve
+open metric and quality disclosures with their companies and keep keyboard focus
+on the moved control, including at an endpoint.
+
+Changing order makes no request or saved-data write. Save captures the current
+order; a delayed Save retains newer edits, and moving then undoing cancels an
+already-pending Restore. Keep full identity and current-context guards, source
+completion at the new position and explicit Restore's unloaded behavior. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: compare annual quality checks across peers
 
 Show the existing twelve annual quality checks beside each selected peer, using
 only explicitly loaded statements already admitted for the comparison. Keep the
@@ -793,7 +806,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Compare existing annual quality checks across the selected peer group                            | Reuse admitted statements and unchanged formulas without new requests      |
+| Now              | Reorder current peers while retaining loaded sources and pending work                            | Arrange repeatable comparisons without removing and reloading companies    |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
