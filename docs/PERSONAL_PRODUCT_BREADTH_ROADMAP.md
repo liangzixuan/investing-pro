@@ -4,6 +4,11 @@ For current priorities and the short delivery plan, read
 [Current work](./CURRENT_WORK.md). It orders the next useful slices without
 changing the capability targets or historical acceptance requirements below.
 
+For the current delivered/partial/open assessment and measured coverage
+denominators, use the [capability scoreboard](./CAPABILITY_STATUS.md). The exact
+promotion records and initial-slice nonclaims below retain their historical scope;
+they are not a substitute for that current-status summary.
+
 Status: **Cycle 3a is promoted only for exact source revision
 `ee023b9cf7cf43fd63baa9b531ae71cc34f349e1`. Cycle 3b is accepted and promoted
 only for exact source revision

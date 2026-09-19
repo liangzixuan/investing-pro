@@ -122,6 +122,40 @@ function same(actual: unknown, expected: unknown, label: string): void {
   );
 }
 
+function isSupportedReleaseCase(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isSafeInteger(value) &&
+    value >= 14 &&
+    // The renderer also emits closureCount + 1 as a rejected topology case.
+    Number.isSafeInteger(103 + 2 * value)
+  );
+}
+
+/** Canonical names and contiguous history, independent of digit width. */
+export function orderedReleaseRegistry(names: readonly string[]): string[] {
+  const entries = names.map((name) => {
+    const match = /^cycle3ka([1-9][0-9]*)\.json$/u.exec(name);
+    const caseNumber = match === null ? null : Number(match[1]);
+    requireCondition(
+      isSupportedReleaseCase(caseNumber),
+      "Unexpected release registry entry",
+    );
+    return { name, caseNumber };
+  });
+  entries.sort((left, right) => left.caseNumber - right.caseNumber);
+  const ordered = entries.map(({ name }) => name);
+  same(
+    ordered,
+    Array.from(
+      { length: ordered.length },
+      (_, index) => `cycle3ka${14 + index}.json`,
+    ),
+    "contiguous descriptor registry",
+  );
+  return ordered;
+}
+
 /** JSON.parse supplies strict syntax; the AST additionally rejects duplicate keys. */
 export function parseReleaseDescriptor(
   text: string,
@@ -172,10 +206,7 @@ export function parseReleaseDescriptor(
   );
   requireCondition(object.version === 1, "Unsupported descriptor version");
   requireCondition(
-    typeof object.caseNumber === "number" &&
-      Number.isInteger(object.caseNumber) &&
-      object.caseNumber >= 14 &&
-      object.caseNumber <= 64,
+    isSupportedReleaseCase(object.caseNumber),
     "Unsupported release case",
   );
   const caseNumber = object.caseNumber;
@@ -769,7 +800,9 @@ export async function runReleaseClassification(
   let installedPath: string | undefined;
   if (args.length === 0) {
     const directory = outputPath(repository, RELEASE_DIRECTORY);
-    const names = existsSync(directory) ? readdirSync(directory) : [];
+    const names = orderedReleaseRegistry(
+      existsSync(directory) ? readdirSync(directory) : [],
+    );
     if (names.length === 0) {
       requireCondition(
         git.head() === BOOTSTRAP_PREDECESSOR ||
@@ -779,25 +812,6 @@ export async function runReleaseClassification(
       );
       return "Release classification: manual bootstrap feature; no installed descriptor yet.";
     }
-    requireCondition(
-      names.every((name) =>
-        /^cycle3ka(?:1[4-9]|[2-5][0-9]|6[0-4])\.json$/u.test(name),
-      ),
-      "Unexpected release registry entry",
-    );
-    names.sort(
-      (left, right) =>
-        Number(left.match(/\d+(?=\.json$)/u)?.[0]) -
-        Number(right.match(/\d+(?=\.json$)/u)?.[0]),
-    );
-    same(
-      names,
-      Array.from(
-        { length: names.length },
-        (_, index) => `cycle3ka${14 + index}.json`,
-      ),
-      "contiguous descriptor registry",
-    );
     installedPath = `${RELEASE_DIRECTORY}/${names.at(-1) ?? ""}`;
     const input = outputPath(repository, installedPath);
     requireCondition(

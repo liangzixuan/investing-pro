@@ -3,7 +3,9 @@
 An evidence-first investment research workspace being built from the audited product plan. `Research Cockpit` is an internal working name and is not trademark-cleared.
 
 Start with [current work and delivery priorities](./docs/CURRENT_WORK.md) for
-the active handover, next product outcome, and development loop. Use
+the active handover, next product outcome, and development loop. The
+[capability and coverage scoreboard](./docs/CAPABILITY_STATUS.md) separates current
+deliveries from remaining targets and dated source verification. Use
 [personal workspace setup](#personal-discovery-workspace) to run the app and
 [the breadth roadmap](./docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md) for capability
 targets. The detailed cycle records below retain historical acceptance claims.

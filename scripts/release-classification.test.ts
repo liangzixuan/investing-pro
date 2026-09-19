@@ -22,6 +22,7 @@ import {
   createReleaseGitReader,
   descriptorText,
   inspectRelease,
+  orderedReleaseRegistry,
   parseGitChanges,
   parseReleaseDescriptor,
   RELEASE_DIRECTORY,
@@ -127,7 +128,7 @@ describe("strict release descriptor", () => {
   it.each([
     ["version", 2],
     ["caseNumber", 13],
-    ["caseNumber", 65],
+    ["caseNumber", Number.MAX_SAFE_INTEGER],
     ["caseNumber", 14.5],
     ["baselineRevision", "a".repeat(40)],
     ["predecessorRevision", "b".repeat(40)],
@@ -145,6 +146,43 @@ describe("strict release descriptor", () => {
     expect(() =>
       parseReleaseDescriptor(JSON.stringify({ ...descriptor(), [key]: value })),
     ).toThrow();
+  });
+
+  it.each([64, 65, 66, 99, 100, 101])(
+    "accepts case %s with its exact counts and installed filename",
+    (caseNumber) => {
+      const expected = descriptor(caseNumber);
+      expect(
+        parseReleaseDescriptor(
+          JSON.stringify(expected),
+          expected.descriptorPath,
+        ),
+      ).toEqual(expected);
+    },
+  );
+
+  it("keeps every rendered count exact at the arithmetic boundary", () => {
+    const last = {
+      ...descriptor(4_503_599_627_370_444),
+      featureCount: 9_007_199_254_740_989,
+      closureCount: 9_007_199_254_740_990,
+    };
+    expect(parseReleaseDescriptor(JSON.stringify(last))).toEqual(last);
+    expect(() =>
+      parseReleaseDescriptor(JSON.stringify(descriptor(4_503_599_627_370_445))),
+    ).toThrow(/Unsupported release case/u);
+    for (const caseNumber of [
+      Number.MAX_SAFE_INTEGER,
+      Number.MAX_SAFE_INTEGER + 1,
+    ])
+      expect(() =>
+        parseReleaseDescriptor(JSON.stringify(descriptor(caseNumber))),
+      ).toThrow(/Unsupported release case/u);
+    expect(() =>
+      parseReleaseDescriptor(
+        JSON.stringify({ ...last, closureCount: last.closureCount + 1 }),
+      ),
+    ).toThrow(/release counts/u);
   });
 
   it.each([
@@ -285,6 +323,46 @@ describe("strict release descriptor", () => {
       ),
     ).toThrow();
     expect(() => parseReleaseDescriptor(" ".repeat(64_001))).toThrow(/size/u);
+  });
+});
+
+describe("installed release registry", () => {
+  const through100 = Array.from(
+    { length: 87 },
+    (_, index) => `cycle3ka${14 + index}.json`,
+  );
+
+  it("orders a contiguous registry numerically beyond a64 and across three digits", () => {
+    expect(orderedReleaseRegistry([...through100].reverse())).toEqual(
+      through100,
+    );
+    expect(orderedReleaseRegistry([])).toEqual([]);
+  });
+
+  it.each([
+    "cycle3ka13.json",
+    "cycle3ka065.json",
+    "cycle3ka+65.json",
+    "cycle3ka6.5e1.json",
+    "cycle3ka65.0.json",
+    "cycle3ka65.json.bak",
+    "Cycle3ka65.json",
+    "cycle3ka4503599627370445.json",
+    "cycle3ka9007199254740992.json",
+    "cycle3ka999999999999999999999999999999.json",
+  ])("rejects noncanonical or unsafe registry entry %s", (name) => {
+    expect(() => orderedReleaseRegistry([...through100, name])).toThrow(
+      /Unexpected release registry entry/u,
+    );
+  });
+
+  it("rejects gaps, duplicates and missing bootstrap entries above the old limit", () => {
+    for (const names of [
+      through100.filter((name) => name !== "cycle3ka65.json"),
+      [...through100, "cycle3ka65.json"],
+      through100.slice(1),
+    ])
+      expect(() => orderedReleaseRegistry(names)).toThrow(/contiguous/u);
   });
 });
 

@@ -1,7 +1,9 @@
 # Current work
 
 Updated 2026-09-19 following the handover from **Investing Pro+** to
-**Investing Pro+ II**. Start here for active priorities. The
+**Investing Pro+ II**. Start here for active priorities and use the
+[capability scoreboard](./CAPABILITY_STATUS.md) for delivered functionality,
+dated coverage, verification limits and remaining targets. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
 the [build history](./BUILD_ROADMAP.md), exit matrices, and ADRs retain their
 historical source and evidence claims.
@@ -15,7 +17,24 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: inspect annual business trends
+## Immediate delivery: bounded release capacity and measured priorities
+
+The accepted annual-trends release is
+`690c0c1565e698a4819f47a0c188e55247ca9f18`. First establish a reviewed release
+path beyond the existing a64 capacity, preserving every source, inventory and
+historical evidence check. Keep this maintenance outcome bounded and use the
+[release-classification guide](./RELEASE_CLASSIFICATION.md) for its independent
+preparation and verification. This is a prerequisite, not new product coverage.
+
+Then prioritize measured financial-data coverage and useful discovery inputs,
+followed by one daily SEC filing follow-up loop with reliable delivery. The
+[scoreboard](./CAPABILITY_STATUS.md#approved-delivery-order) separates delivered
+features from unclosed goals. Do not equate more fields, templates, tests or
+releases with usable coverage, and do not prioritize another DCF display slice
+over these larger gaps. Later implementation and source acquisition each require
+their own bounded scope and acceptance.
+
+## Delivered: inspect annual business trends
 
 Use the already loaded annual statements to chart revenue, net income, operating
 cash flow or provider-reported free cash flow across ten fiscal-year slots. Keep
@@ -555,22 +574,31 @@ registry or its coverage gate.
 
 ## Current position
 
-| User job                  | Implemented capability                                                                                                                       | Important remaining gap                                       |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist                                                                             | Catalog refresh and broader discovery data                    |
-| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications                                                 | Wider reconciliation and benchmark-relative analysis          |
-| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics and growth                                                                  | Verified TTM and the shared 30-core-metric screening registry |
-| Examine valuation         | Historical multiple bands, editable forward/reverse DCF                                                                                      | Direct normalized FCFF inputs and further justified models    |
-| Compare businesses        | SEC-screen shortlist of two or three issuers with source inspection; twelve financial checks and up to three manual peers                    | Broader compatible multi-company coverage and automatic peers |
-| Screen for ideas          | Eighteen SEC financial fields, source inspection, three editable starter screens, explicit revenue basis, stable pages and saved definitions | Broader verified metric coverage and compatible source inputs |
-| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                                 | Broader live samples, upcoming events, alerts and exports     |
-| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/linked returns and FIFO                                                               | Further corporate actions, benchmarks and live coverage       |
+The [capability scoreboard](./CAPABILITY_STATUS.md) is the current decision
+reference, including measured denominators and verification limits. This summary
+does not replace its distinction between delivered slices and full targets.
+
+| User job                  | Implemented capability                                                                                                                     | Important remaining gap                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Find and follow companies | Admitted local stock/ADR catalog, search, encrypted My Watchlist, shared notes and research navigation                                     | Catalog refresh and broader discovery data                          |
+| Inspect price behavior    | Explicit Tiingo quote/history loads, charts, actions, five analytics and SMA classifications; shared-date comparisons                      | Wider reconciliation and benchmark-relative analysis                |
+| Understand financials     | Annual/quarterly statements, 30 reported fields, derived metrics, growth and annual trend charts                                           | Verified TTM and the shared 30-core-metric screening registry       |
+| Examine valuation         | Historical multiple bands, editable forward/reverse DCF and saved assumptions/comparisons                                                  | Direct normalized FCFF inputs and further justified models          |
+| Compare businesses        | SEC-screen shortlist of two or three issuers; twelve financial checks and up to three saved/reordered manual peers                         | Broader compatible multi-company coverage and automatic peers       |
+| Screen for ideas          | Twenty-eight SEC financial fields, source inspection, three sparse starter screens, revenue basis, stable pages and saved criteria/columns | Broader verified metric coverage and compatible discovery inputs    |
+| Keep up with changes      | On-demand recent SEC filings for selected watchlist listings                                                                               | Upcoming events, persistent alerts and permitted outputs            |
+| Track holdings            | Encrypted ledger, splits, daily values, endpoint/Dietz/EOD-linked returns and FIFO estimates                                               | Multiple portfolios, further corporate actions, benchmarks and XIRR |
 
 These are bounded implemented features, not complete Investing.com Pro+ parity.
 The selected-company provider payloads remain in session memory. A catalog
 entry does not establish financial-data coverage or a source entitlement.
 
-## Verified baseline and configured runtime
+## Historical baseline and runtime transition
+
+The following records the earlier `37ad3d7` acceptance. For the current accepted
+source and verification scope use the [scoreboard](./CAPABILITY_STATUS.md);
+the workspace `CURRENT.md` records actual runtime state. Preserve this historical
+result and its source observations unchanged.
 
 Accepted baseline `37ad3d7` includes selected revenue YoY and correct mobile
 focus restoration after closing source details. Native acceptance passed 5,385
@@ -817,14 +845,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Inspect annual business trends with a signed chart and exact values                              | Understand already loaded revenue, earnings and cash flow over time        |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority          | Deliverable                                                                    | Dependency or reason                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Now               | Bounded release capacity beyond a64 and a current capability scoreboard        | Preserve all existing checks while restoring a supported path for further releases                                    |
+| Next              | Measured shared-core and discovery coverage with independent issuer validation | Field counts and individual observations do not establish complete research-job coverage                              |
+| Within that scope | Useful price/valuation screening and verified quarterly/TTM admission          | Need applicable inputs, actual periods, standalone flow basis and revision selection                                  |
+| Then              | One daily SEC filing follow-up loop with reliable notifications                | Existing metadata is a starting point; scheduling, retention, change detection and delivery still need implementation |
+| As permitted      | Evidence-bearing outputs and wider model/peer/portfolio capability             | Follow actual use, compatible inputs and retention/export rights                                                      |
+| Later             | Broader event feeds, AI and point-in-time strategy backtests                   | Require source, entitlement and validation prerequisites absent from the current product                              |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only
