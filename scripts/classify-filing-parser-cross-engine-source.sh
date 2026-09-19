@@ -208,6 +208,8 @@ cycle3ka62_routing_closure="c8b3210c2875fd0e15e7810b2f45e01b6b81f02d"
 cycle3ka63_feature="358c1706cd6d2acdf7c2bd5a39aabf226837aa87"
 cycle3ka63_routing_closure="b756d9a0a950d21749631120460229348c960f1e"
 cycle3ka64_feature="40dc7d7ebb1e67e09bc92706bdce9fa01a915990"
+cycle3ka64_routing_closure="690c0c1565e698a4819f47a0c188e55247ca9f18"
+cycle3ka65_feature="9578639a9fac9360d098488fd027c6d2662f40a4"
 expected_source=(
   "M" "README.md"
   "M" "apps/api/package.json"
@@ -2721,6 +2723,26 @@ expected_cycle3ka64_routing_closure=(
   "M" "scripts/classify-filing-parser-cross-engine-source.sh"
   "A" "scripts/release-classification/releases/cycle3ka64.json"
 )
+expected_cycle3ka65_feature=(
+  "M" "README.md"
+  "A" "docs/CAPABILITY_STATUS.md"
+  "M" "docs/CURRENT_WORK.md"
+  "M" "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md"
+  "M" "docs/RELEASE_CLASSIFICATION.md"
+  "M" "scripts/release-classification.test.ts"
+  "M" "scripts/release-classification.ts"
+)
+expected_cycle3ka65_routing_closure=(
+  "M" ".github/workflows/filing-parser-acceptance.yml"
+  "M" ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml"
+  "M" ".github/workflows/filing-payload-custody-acceptance.yml"
+  "M" "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts"
+  "M" "packages/filing-parser/src/filing-parser-evidence-verifier.ts"
+  "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts"
+  "M" "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts"
+  "M" "scripts/classify-filing-parser-cross-engine-source.sh"
+  "A" "scripts/release-classification/releases/cycle3ka65.json"
+)
 protected=()
 for ((index = 1; index < ${#expected_source[@]}; index += 2)); do
   protected+=("${expected_source[$index]}")
@@ -3337,6 +3359,12 @@ done
 for ((index = 1; index < ${#expected_cycle3ka64_routing_closure[@]}; index += 2)); do
   protected+=("${expected_cycle3ka64_routing_closure[$index]}")
 done
+for ((index = 1; index < ${#expected_cycle3ka65_feature[@]}; index += 2)); do
+  protected+=("${expected_cycle3ka65_feature[$index]}")
+done
+for ((index = 1; index < ${#expected_cycle3ka65_routing_closure[@]}; index += 2)); do
+  protected+=("${expected_cycle3ka65_routing_closure[$index]}")
+done
 matches_exactly() {
   local -n expected_values="$1"
   local -n actual_values="$2"
@@ -3562,7 +3590,9 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
        git cat-file -e "$cycle3ka62_routing_closure^{commit}" && \
        git cat-file -e "$cycle3ka63_feature^{commit}" && \
        git cat-file -e "$cycle3ka63_routing_closure^{commit}" && \
-       git cat-file -e "$cycle3ka64_feature^{commit}"; then
+       git cat-file -e "$cycle3ka64_feature^{commit}" && \
+       git cat-file -e "$cycle3ka64_routing_closure^{commit}" && \
+       git cat-file -e "$cycle3ka65_feature^{commit}"; then
       read -r -a head_topology <<< "$(git rev-list --parents -n 1 HEAD)"
       read -r -a public_topology <<< "$(git rev-list --parents -n 1 "$public_promotion")"
       read -r -a source_topology <<< "$(git rev-list --parents -n 1 "$source")"
@@ -3770,6 +3800,8 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       read -r -a cycle3ka63_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka63_feature")"
       read -r -a cycle3ka63_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka63_routing_closure")"
       read -r -a cycle3ka64_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka64_feature")"
+      read -r -a cycle3ka64_routing_closure_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka64_routing_closure")"
+      read -r -a cycle3ka65_feature_topology <<< "$(git rev-list --parents -n 1 "$cycle3ka65_feature")"
       merge_base="$(git merge-base "$cycle2z_baseline" HEAD)"
       public_successor_count="$(git rev-list --count "$cycle2z_baseline".."$public_promotion")"
       public_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$public_promotion")"
@@ -4183,6 +4215,10 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       cycle3ka63_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka63_routing_closure")"
       cycle3ka64_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka64_feature")"
       cycle3ka64_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka64_feature")"
+      cycle3ka64_routing_closure_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka64_routing_closure")"
+      cycle3ka64_routing_closure_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka64_routing_closure")"
+      cycle3ka65_feature_successor_count="$(git rev-list --count "$cycle2z_baseline".."$cycle3ka65_feature")"
+      cycle3ka65_feature_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline".."$cycle3ka65_feature")"
       head_successor_count="$(git rev-list --count "$cycle2z_baseline"..HEAD)"
       head_first_parent_count="$(git rev-list --first-parent --count "$cycle2z_baseline"..HEAD)"
       mapfile -d '' -t source_actual < <(
@@ -5048,6 +5084,15 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
       )
       mapfile -d '' -t cycle3ka64_routing_closure_actual < <(
         git diff --name-status --no-renames -z "$cycle3ka64_feature" HEAD --
+      )
+      mapfile -d '' -t pinned_cycle3ka64_routing_closure_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka64_feature" "$cycle3ka64_routing_closure" --
+      )
+      mapfile -d '' -t cycle3ka65_feature_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka64_routing_closure" "$cycle3ka65_feature" --
+      )
+      mapfile -d '' -t cycle3ka65_routing_closure_actual < <(
+        git diff --name-status --no-renames -z "$cycle3ka65_feature" HEAD --
       )
       history_exact=false
       if [[ "$merge_base" == "$cycle2z_baseline" ]] && \
@@ -7083,6 +7128,26 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
          [[ "${cycle3ka64_feature_topology[1]}" == "$cycle3ka63_routing_closure" ]] && \
          matches_exactly expected_cycle3ka64_feature cycle3ka64_feature_actual; then
         cycle3ka64_feature_history_exact=true
+      fi
+      cycle3ka64_routing_closure_history_exact=false
+      if [[ "$cycle3ka64_feature_history_exact" == "true" ]] && \
+         [[ "$cycle3ka64_routing_closure_successor_count" == "230" ]] && \
+         [[ "$cycle3ka64_routing_closure_first_parent_count" == "230" ]] && \
+         [[ "${#cycle3ka64_routing_closure_topology[@]}" == "2" ]] && \
+         [[ "${cycle3ka64_routing_closure_topology[0]}" == "$cycle3ka64_routing_closure" ]] && \
+         [[ "${cycle3ka64_routing_closure_topology[1]}" == "$cycle3ka64_feature" ]] && \
+         matches_exactly expected_cycle3ka64_routing_closure pinned_cycle3ka64_routing_closure_actual; then
+        cycle3ka64_routing_closure_history_exact=true
+      fi
+      cycle3ka65_feature_history_exact=false
+      if [[ "$cycle3ka64_routing_closure_history_exact" == "true" ]] && \
+         [[ "$cycle3ka65_feature_successor_count" == "231" ]] && \
+         [[ "$cycle3ka65_feature_first_parent_count" == "231" ]] && \
+         [[ "${#cycle3ka65_feature_topology[@]}" == "2" ]] && \
+         [[ "${cycle3ka65_feature_topology[0]}" == "$cycle3ka65_feature" ]] && \
+         [[ "${cycle3ka65_feature_topology[1]}" == "$cycle3ka64_routing_closure" ]] && \
+         matches_exactly expected_cycle3ka65_feature cycle3ka65_feature_actual; then
+        cycle3ka65_feature_history_exact=true
       fi
       if [[ "$history_exact" == "true" ]] && \
          [[ "$head_revision" == "$GITHUB_SHA" ]] && \
@@ -9248,6 +9313,26 @@ if git merge-base --is-ancestor "$cycle2z_baseline" HEAD; then
            [[ "${head_topology[1]}" == "$cycle3ka64_feature" ]] && \
            matches_exactly expected_cycle3ka64_routing_closure cycle3ka64_routing_closure_actual; then
          exact=true
+      elif [[ "$cycle3ka64_routing_closure_history_exact" == "true" ]] && \
+           [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+           [[ "$head_revision" == "$cycle3ka65_feature" ]] && \
+           [[ "$head_successor_count" == "231" ]] && \
+           [[ "$head_first_parent_count" == "231" ]] && \
+           [[ "${#head_topology[@]}" == "2" ]] && \
+           [[ "${head_topology[0]}" == "$cycle3ka65_feature" ]] && \
+           [[ "${head_topology[1]}" == "$cycle3ka64_routing_closure" ]] && \
+           matches_exactly expected_cycle3ka65_feature cycle3ka65_feature_actual; then
+         exact=true
+      elif [[ "$cycle3ka65_feature_history_exact" == "true" ]] && \
+           [[ "$head_revision" == "$GITHUB_SHA" ]] && \
+           [[ "$head_revision" != "$cycle3ka65_feature" ]] && \
+           [[ "$head_successor_count" == "232" ]] && \
+           [[ "$head_first_parent_count" == "232" ]] && \
+           [[ "${#head_topology[@]}" == "2" ]] && \
+           [[ "${head_topology[0]}" == "$GITHUB_SHA" ]] && \
+           [[ "${head_topology[1]}" == "$cycle3ka65_feature" ]] && \
+           matches_exactly expected_cycle3ka65_routing_closure cycle3ka65_routing_closure_actual; then
+         exact=true
       fi
     fi
   fi
@@ -9255,6 +9340,6 @@ fi
 echo "required=$required" >> "$GITHUB_OUTPUT"
 echo "exact=$exact" >> "$GITHUB_OUTPUT"
 if [[ "$required" == "true" && "$exact" != "true" ]]; then
-  echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure, partial Cycle 3h-a12 loaded filing-context blocker explanation feature and routing closure, bounded Cycle 3h-a13 database evidence test-case isolation and routing closure, bounded Cycle 3h-a14 native vault test-file serialization and routing closure, partial Cycle 3k-a3 annual revenue-basis selection and routing closure, bounded Cycle 3k-a4 cross-engine canonical and drift test-case isolation and routing closure, partial Cycle 3k-a5 reported annual gross-profit screening and routing closure, bounded Cycle 3k-a6 seven-source scheduler test expectations and routing closure, bounded Cycle 3k-a7 PostgreSQL source-case isolation and routing closure, partial Cycle 3k-a8 browser owner-session financial activity integration and routing closure, bounded Cycle 3k-a9 cross-engine classifier script extraction and routing closure, partial Cycle 3k-a10 PP&E purchases and operating cash flow subtraction and routing closure, partial Cycle 3k-a11 reusable local owner login and routing closure, partial Cycle 3k-a12 local owner account ACL initialization and routing closure, partial Cycle 3k-a13 PostgreSQL source-rejection test-case isolation and routing closure, partial Cycle 3k-a14 release classification descriptor generation and routing closure, partial Cycle 3k-a15 release classification graft rejection and routing closure, partial Cycle 3k-a16 Windows release job budget and routing closure, partial Cycle 3k-a17 literal Git graft path validation and routing closure, partial Cycle 3k-a18 canonical graft test directory identity and routing closure, partial Cycle 3k-a19 gross profit to selected revenue screening and routing closure, partial Cycle 3k-a20 operating cash flow to net income screening and routing closure, partial Cycle 3k-a21 module-free Windows vault ACL checks and routing closure, partial Cycle 3k-a22 exact Windows vault ACL test boundary registration and routing closure, partial Cycle 3k-a23 Q4 current balance and liquidity screening and routing closure, partial Cycle 3k-a24 Financial screen readability and routing closure, partial Cycle 3k-a25 Selected revenue YoY screening and routing closure, partial Cycle 3k-a26 Financial source inspector focus restoration and routing closure, partial Cycle 3k-a27 Editable financial starter screens and routing closure, partial Cycle 3k-a28 Explicit local workspace access without login and routing closure, partial Cycle 3k-a29 Windows ACL failure diagnostics and routing closure, partial Cycle 3k-a30 current assets less current liabilities screening and routing closure, partial Cycle 3k-a31 SEC financial-screen company comparison and routing closure, partial Cycle 3k-a32 SEC financial-screen visible focus restoration and routing closure, partial Cycle 3k-a33 SEC financial-screen native focus scrolling and routing closure, partial Cycle 3k-a34 cash after PP&E relative to revenue screening and routing closure, partial Cycle 3k-a35 watchlist financial screening and routing closure, partial Cycle 3k-a36 company research workspace and routing closure, partial Cycle 3k-a37 reusable financial views and routing closure, partial Cycle 3k-a38 reusable financial views CI repair and routing closure, partial Cycle 3k-a39 reported total assets and liabilities and routing closure, partial Cycle 3k-a40 reported cash and parent stockholders equity and routing closure, partial Cycle 3k-a41 reported investing and financing cash flows and routing closure, partial Cycle 3k-a42 reported common dividends and common stock repurchase payments and routing closure, partial Cycle 3k-a43 reported interest and income-tax cash payments and routing closure, partial Cycle 3k-a44 dated prices in financial comparisons and routing closure, partial Cycle 3k-a45 shared-date adjusted-price comparisons and routing closure, partial Cycle 3k-a46 bounded v3 verifier source fixture and routing closure, partial Cycle 3k-a47 comparison maximum drawdown and routing closure, partial Cycle 3k-a48 indexed price comparison and routing closure, partial Cycle 3k-a49 saved comparison selection and routing closure, partial Cycle 3k-a50 watchlist navigation and routing closure, partial Cycle 3k-a51 watchlist navigation DCF boundary repair and routing closure, partial Cycle 3k-a52 serialized filesystem test execution and routing closure, partial Cycle 3k-a53 Windows aggregate release-gate budget and routing closure, partial Cycle 3k-a54 Shared company and watchlist research notes and routing closure, partial Cycle 3k-a55 Sequential research through filtered watchlist companies and routing closure, partial Cycle 3k-a56 Save researched companies to My Watchlist and routing closure, partial Cycle 3k-a57 Save and restore company DCF assumptions and routing closure, partial Cycle 3k-a58 Compare current and saved DCF inputs and routing closure, partial Cycle 3k-a59 Save and restore a manual peer group and routing closure, partial Cycle 3k-a60 Compare current and saved DCF outcomes and routing closure, partial Cycle 3k-a61 Inspect manual peer metric inputs and routing closure, partial Cycle 3k-a62 Compare annual quality checks across peers and routing closure, partial Cycle 3k-a63 Reorder peers without losing loaded work and routing closure, or partial Cycle 3k-a64 Inspect annual business trends and routing closure; refusing inherited evidence routing." >&2
+  echo "Protected Cycle 3 source surfaces changed outside the exact Cycle 3e-a chain, coarse public promotion, Cycle 3e-b1 feature and routing closure, Cycle 3g-a1 feature and routing closure, Cycle 3g-b1 feature and routing closure, Cycle 3h-a1 feature and routing closure, Cycle 3h-a2 feature and routing closure, Cycle 3h-a3 feature and routing closure, Cycle 3i-a1 feature and routing closure, Cycle 3i-a2 feature and routing closure, Cycle 3j-a1 feature and routing closure, Cycle 3j-a2 feature and routing closure, Cycle 3k-a1 feature and routing closure, partial Cycle 3k-a2 SEC annual financial-screening feature and routing closure, partial Cycle 3l-a1 SEC recent watchlist-filings feature and routing closure, partial Cycle 3m-a1 manual portfolio holdings feature and routing closure, partial Cycle 3m-a2 portfolio transaction-ledger and CSV-import feature and routing closure, partial Cycle 3m-a3 portfolio split-reconciliation and historical-price-coverage feature and routing closure, partial Cycle 3m-a4 historical portfolio valuation feature and routing closure, partial Cycle 3m-a5 portfolio endpoint percentage-return feature and routing closure, partial Cycle 3m-a6 portfolio Modified Dietz period-estimate feature and routing closure, partial Cycle 3m-a7 portfolio linked period-return feature and routing closure, partial Cycle 3h-a4 quarterly compatibility-assessment feature and routing closure, partial Cycle 3h-a5 SEC quarterly source-evidence feature and routing closure, partial Cycle 3h-a6 browser-local same-period SEC observation-comparison feature and routing closure, partial Cycle 3h-a7 bounded SEC filing-context inspection feature and routing closure, partial Cycle 3h-a8 filing-declared reporting metadata feature and routing closure, partial Cycle 3h-a9 bounded XML declaration and built-entrypoint startup repair feature and routing closure, partial Cycle 3h-a10 scoped inline linking attribute repair feature and routing closure, partial Cycle 3h-a11 bounded report-end date transformation feature and routing closure, partial Cycle 3h-a12 loaded filing-context blocker explanation feature and routing closure, bounded Cycle 3h-a13 database evidence test-case isolation and routing closure, bounded Cycle 3h-a14 native vault test-file serialization and routing closure, partial Cycle 3k-a3 annual revenue-basis selection and routing closure, bounded Cycle 3k-a4 cross-engine canonical and drift test-case isolation and routing closure, partial Cycle 3k-a5 reported annual gross-profit screening and routing closure, bounded Cycle 3k-a6 seven-source scheduler test expectations and routing closure, bounded Cycle 3k-a7 PostgreSQL source-case isolation and routing closure, partial Cycle 3k-a8 browser owner-session financial activity integration and routing closure, bounded Cycle 3k-a9 cross-engine classifier script extraction and routing closure, partial Cycle 3k-a10 PP&E purchases and operating cash flow subtraction and routing closure, partial Cycle 3k-a11 reusable local owner login and routing closure, partial Cycle 3k-a12 local owner account ACL initialization and routing closure, partial Cycle 3k-a13 PostgreSQL source-rejection test-case isolation and routing closure, partial Cycle 3k-a14 release classification descriptor generation and routing closure, partial Cycle 3k-a15 release classification graft rejection and routing closure, partial Cycle 3k-a16 Windows release job budget and routing closure, partial Cycle 3k-a17 literal Git graft path validation and routing closure, partial Cycle 3k-a18 canonical graft test directory identity and routing closure, partial Cycle 3k-a19 gross profit to selected revenue screening and routing closure, partial Cycle 3k-a20 operating cash flow to net income screening and routing closure, partial Cycle 3k-a21 module-free Windows vault ACL checks and routing closure, partial Cycle 3k-a22 exact Windows vault ACL test boundary registration and routing closure, partial Cycle 3k-a23 Q4 current balance and liquidity screening and routing closure, partial Cycle 3k-a24 Financial screen readability and routing closure, partial Cycle 3k-a25 Selected revenue YoY screening and routing closure, partial Cycle 3k-a26 Financial source inspector focus restoration and routing closure, partial Cycle 3k-a27 Editable financial starter screens and routing closure, partial Cycle 3k-a28 Explicit local workspace access without login and routing closure, partial Cycle 3k-a29 Windows ACL failure diagnostics and routing closure, partial Cycle 3k-a30 current assets less current liabilities screening and routing closure, partial Cycle 3k-a31 SEC financial-screen company comparison and routing closure, partial Cycle 3k-a32 SEC financial-screen visible focus restoration and routing closure, partial Cycle 3k-a33 SEC financial-screen native focus scrolling and routing closure, partial Cycle 3k-a34 cash after PP&E relative to revenue screening and routing closure, partial Cycle 3k-a35 watchlist financial screening and routing closure, partial Cycle 3k-a36 company research workspace and routing closure, partial Cycle 3k-a37 reusable financial views and routing closure, partial Cycle 3k-a38 reusable financial views CI repair and routing closure, partial Cycle 3k-a39 reported total assets and liabilities and routing closure, partial Cycle 3k-a40 reported cash and parent stockholders equity and routing closure, partial Cycle 3k-a41 reported investing and financing cash flows and routing closure, partial Cycle 3k-a42 reported common dividends and common stock repurchase payments and routing closure, partial Cycle 3k-a43 reported interest and income-tax cash payments and routing closure, partial Cycle 3k-a44 dated prices in financial comparisons and routing closure, partial Cycle 3k-a45 shared-date adjusted-price comparisons and routing closure, partial Cycle 3k-a46 bounded v3 verifier source fixture and routing closure, partial Cycle 3k-a47 comparison maximum drawdown and routing closure, partial Cycle 3k-a48 indexed price comparison and routing closure, partial Cycle 3k-a49 saved comparison selection and routing closure, partial Cycle 3k-a50 watchlist navigation and routing closure, partial Cycle 3k-a51 watchlist navigation DCF boundary repair and routing closure, partial Cycle 3k-a52 serialized filesystem test execution and routing closure, partial Cycle 3k-a53 Windows aggregate release-gate budget and routing closure, partial Cycle 3k-a54 Shared company and watchlist research notes and routing closure, partial Cycle 3k-a55 Sequential research through filtered watchlist companies and routing closure, partial Cycle 3k-a56 Save researched companies to My Watchlist and routing closure, partial Cycle 3k-a57 Save and restore company DCF assumptions and routing closure, partial Cycle 3k-a58 Compare current and saved DCF inputs and routing closure, partial Cycle 3k-a59 Save and restore a manual peer group and routing closure, partial Cycle 3k-a60 Compare current and saved DCF outcomes and routing closure, partial Cycle 3k-a61 Inspect manual peer metric inputs and routing closure, partial Cycle 3k-a62 Compare annual quality checks across peers and routing closure, partial Cycle 3k-a63 Reorder peers without losing loaded work and routing closure, partial Cycle 3k-a64 Inspect annual business trends and routing closure, or partial Cycle 3k-a65 Release classification capacity and routing closure; refusing inherited evidence routing." >&2
   exit 1
 fi
