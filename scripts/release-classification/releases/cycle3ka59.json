@@ -1,0 +1,110 @@
+{
+  "version": 1,
+  "caseNumber": 59,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "c8401ead3a12353311148c36ae294b39ca72968b",
+  "featureRevision": "2ef58ef7cb2e18afa7e4d4ba59d4d6fdfe70a812",
+  "featureCount": 219,
+  "closureCount": 220,
+  "featureChanges": [
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-saved-manual-peer-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-saved-manual-peer-routes.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" },
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedManualPeerGroupControls.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedManualPeerGroupControls.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/usePersonalSavedManualPeerGroup.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/usePersonalSavedManualPeerGroup.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-saved-manual-peer-group-api.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-saved-manual-peer-group-api.ts",
+      "status": "A"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-saved-manual-peer-group.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-saved-manual-peer-group.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka59.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka59.json",
+  "presentation": {
+    "featureDescription": "Save and restore a manual peer group",
+    "closureDescription": "Save and restore a manual peer group",
+    "inventoryDescription": "Save and restore a manual peer group",
+    "testBinding": "savedManualPeerGroup",
+    "routingDescription": "Save and restore a manual peer group",
+    "summaryDescription": "Save and restore a manual peer group"
+  }
+}
