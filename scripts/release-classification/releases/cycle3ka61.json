@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "caseNumber": 61,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "127f22f9fdf237434dc92f66d6cb990f75f0e89f",
+  "featureRevision": "ee3b1fc9f8fa86beccd45c8f13cf7e1d3948491b",
+  "featureCount": 223,
+  "closureCount": 224,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalManualPeerComparison.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalManualPeerComparison.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka61.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka61.json",
+  "presentation": {
+    "featureDescription": "Inspect manual peer metric inputs",
+    "closureDescription": "Inspect manual peer metric inputs",
+    "inventoryDescription": "Inspect manual peer metric inputs",
+    "testBinding": "manualPeerMetricInputs",
+    "routingDescription": "Inspect manual peer metric inputs",
+    "summaryDescription": "Inspect manual peer metric inputs"
+  }
+}
