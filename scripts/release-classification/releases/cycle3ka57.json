@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "caseNumber": 57,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "e3a6bb99db7087d6d74528efc49f5378020cc694",
+  "featureRevision": "c98e30b797f7559f99564221880e473a27d5624b",
+  "featureCount": 215,
+  "closureCount": 216,
+  "featureChanges": [
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-saved-dcf-routes.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-saved-dcf-routes.ts", "status": "A" },
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalFcffDcfValuation.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFcffDcfValuation.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedDcfAssumptionsControls.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedDcfAssumptionsControls.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedFcffDcfValuation.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSavedFcffDcfValuation.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-saved-dcf-assumptions-api.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-saved-dcf-assumptions-api.ts",
+      "status": "A"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" },
+    { "path": "docs/PERSONAL_SAVED_DCF_ASSUMPTIONS.md", "status": "A" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-saved-dcf-assumptions.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-saved-dcf-assumptions.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka57.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka57.json",
+  "presentation": {
+    "featureDescription": "Save and restore company DCF assumptions",
+    "closureDescription": "Save and restore company DCF assumptions",
+    "inventoryDescription": "Save and restore company DCF assumptions",
+    "testBinding": "savedDcfAssumptions",
+    "routingDescription": "Save and restore company DCF assumptions",
+    "summaryDescription": "Save and restore company DCF assumptions"
+  }
+}
