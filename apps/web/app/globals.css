@@ -2208,6 +2208,56 @@ h4,
   overflow-wrap: anywhere;
 }
 
+.saved-dcf-input-comparison {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.saved-dcf-input-comparison-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.saved-dcf-input-comparison-scroll:focus-visible {
+  outline: 2px solid var(--mint-deep);
+  outline-offset: 3px;
+}
+
+.saved-dcf-input-comparison table {
+  width: 100%;
+  min-width: 600px;
+  table-layout: fixed;
+}
+
+.saved-dcf-input-comparison caption {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0 0 10px;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  color: var(--ink-soft);
+  text-align: left;
+  white-space: normal;
+}
+
+.saved-dcf-input-comparison :is(th, td) {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.saved-dcf-input-comparison th:first-child {
+  width: 30%;
+}
+
+.saved-dcf-input-comparison-value {
+  white-space: pre-wrap;
+}
+
 .personal-financial-screener input,
 .personal-financial-screener select {
   width: 100%;

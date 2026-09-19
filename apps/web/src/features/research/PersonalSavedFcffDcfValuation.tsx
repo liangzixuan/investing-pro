@@ -6,6 +6,7 @@ import {
   isPersonalSavedDcfPayload,
   isPersonalSavedDcfSupportedEntry,
   normalizePersonalSavedDcfAssumptions,
+  type PersonalSavedDcfAssumptionsDto,
   type PersonalSavedDcfBindingDto,
   type PersonalSavedDcfIdentityDto,
   type PersonalSavedDcfPayloadDto,
@@ -29,7 +30,10 @@ import {
   type PersonalFcffDcfAssumptionDraft,
   type PersonalFcffDcfValuationProps,
 } from "./PersonalFcffDcfValuation";
-import { PersonalSavedDcfAssumptionsControls } from "./PersonalSavedDcfAssumptionsControls";
+import {
+  PersonalSavedDcfAssumptionsControls,
+  type PersonalSavedDcfAssumptionsComparison,
+} from "./PersonalSavedDcfAssumptionsControls";
 
 export interface PersonalSavedDcfContext {
   readonly workspaceKey: string;
@@ -139,6 +143,13 @@ export function PersonalSavedFcffDcfValuation({
     identity !== null &&
     samePersonalSavedDcfIdentity(selected.identity, identity);
   const assumptions = normalizeDraft(draft);
+  const comparison =
+    currentContext() &&
+    visible.loaded &&
+    exactSelected &&
+    isPersonalSavedDcfSupportedEntry(selected)
+      ? compareAssumptionInputs(draft, selected.assumptions, assumptions)
+      : null;
   const eligible = identity !== null && context.watchlistBinding !== null;
   const hasCapacity =
     selected !== undefined ||
@@ -410,6 +421,7 @@ export function PersonalSavedFcffDcfValuation({
             saveUnavailableReason={saveUnavailableReason}
             message={visible.message}
             draftIsSaved={draftIsSaved}
+            comparison={comparison}
             entries={entries.map((entry) => ({
               listingId: entry.identity.listingId,
               symbol: entry.identity.symbol,
@@ -436,4 +448,59 @@ function normalizeDraft(draft: PersonalFcffDcfAssumptionDraft) {
     ...draft,
     forecastYears: Number(draft.forecastYears),
   });
+}
+
+const comparisonInputs = [
+  ["forecastYears", "Forecast horizon", "years"],
+  ["taxShieldRatePercent", "Marginal tax-shield rate", "%"],
+  ["waccPercent", "WACC", "%"],
+  ["terminalGrowthPercent", "Terminal growth", "%"],
+  ["conservative", "Conservative annual FCF-proxy growth", "%"],
+  ["base", "Base annual FCF-proxy growth", "%"],
+  ["expansion", "Expansion annual FCF-proxy growth", "%"],
+] as const;
+
+function assumptionInputValues(
+  value: PersonalFcffDcfAssumptionDraft | PersonalSavedDcfAssumptionsDto,
+) {
+  return {
+    forecastYears: String(value.forecastYears),
+    taxShieldRatePercent: value.taxShieldRatePercent,
+    waccPercent: value.waccPercent,
+    terminalGrowthPercent: value.terminalGrowthPercent,
+    conservative: value.scenarios.conservative.annualFcfProxyGrowthPercent,
+    base: value.scenarios.base.annualFcfProxyGrowthPercent,
+    expansion: value.scenarios.expansion.annualFcfProxyGrowthPercent,
+  };
+}
+
+function compareAssumptionInputs(
+  draft: PersonalFcffDcfAssumptionDraft,
+  saved: PersonalSavedDcfAssumptionsDto,
+  normalized: PersonalSavedDcfAssumptionsDto | null,
+): PersonalSavedDcfAssumptionsComparison {
+  const currentValues = assumptionInputValues(draft);
+  const savedValues = assumptionInputValues(saved);
+  const normalizedValues =
+    normalized === null ? null : assumptionInputValues(normalized);
+  const rows = comparisonInputs.map(([input, label, unit]) => ({
+    input,
+    label,
+    unit,
+    currentValue: currentValues[input],
+    savedValue: savedValues[input],
+    state:
+      normalizedValues === null
+        ? ("unavailable" as const)
+        : normalizedValues[input] === savedValues[input]
+          ? ("same" as const)
+          : ("changed" as const),
+  }));
+  return {
+    rows,
+    changedCount:
+      normalizedValues === null
+        ? null
+        : rows.filter((row) => row.state === "changed").length,
+  };
 }

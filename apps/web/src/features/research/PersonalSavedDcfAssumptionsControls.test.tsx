@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   PersonalSavedDcfAssumptionsControls,
+  type PersonalSavedDcfAssumptionsComparison,
   type PersonalSavedDcfAssumptionsControlsProps,
 } from "./PersonalSavedDcfAssumptionsControls";
 
@@ -25,6 +26,7 @@ beforeEach(() => {
     message: "Load your saved assumptions when ready.",
     draftIsSaved: false,
     entries: [],
+    comparison: null,
     onLoad: vi.fn(),
     onSave: vi.fn(),
     onRestore: vi.fn(),
@@ -283,7 +285,277 @@ describe("PersonalSavedDcfAssumptionsControls", () => {
     );
     expect(props.onClear).not.toHaveBeenCalled();
   });
+
+  it("presents all seven supplied raw and saved values with semantic headers and explicit units", () => {
+    props = { ...props, loaded: true, comparison: comparison() };
+    const view = PersonalSavedDcfAssumptionsControls(props);
+    const table = elements(view).find((node) => node.type === "table")!;
+    const caption = elements(table).find((node) => node.type === "caption")!;
+    expect(text(caption)).toBe(
+      "SYN001: current draft and loaded saved DCF inputs. This compares assumptions, not company value.",
+    );
+    expect(
+      elements(table)
+        .filter((node) => node.type === "th" && node.props.scope === "col")
+        .map(text),
+    ).toEqual(["Input", "Current draft", "Loaded saved", "Comparison"]);
+    const body = elements(table).find((node) => node.type === "tbody")!;
+    const rows = elements(body).filter((node) => node.type === "tr");
+    expect(rows).toHaveLength(7);
+    expect(
+      elements(body).filter(
+        (node) => node.type === "th" && node.props.scope === "row",
+      ),
+    ).toHaveLength(7);
+    expect(text(rows[0])).toBe("Forecast horizon7 years7 yearsSame");
+    expect(
+      elements(rows[2])
+        .filter((node) => node.type === "th" || node.type === "td")
+        .map(text),
+    ).toEqual(["WACC assumption", "12.3 %", "12.3000 %", "Same"]);
+    expect(text(rows[3])).toBe("Terminal growth3 %2.0000 %Changed");
+    expect(renderToStaticMarkup(view)).toContain(
+      "1 of 7 inputs differ from the loaded saved set.",
+    );
+    for (const handler of [
+      props.onLoad,
+      props.onSave,
+      props.onRestore,
+      props.onClear,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("keeps a supplied comparison visible while busy and places it outside the live status", () => {
+    props = {
+      ...props,
+      loaded: true,
+      busy: true,
+      canSave: false,
+      canRestore: false,
+      comparison: comparison(),
+      message: "Saving the submitted set; newer edits are kept.",
+    };
+    const view = PersonalSavedDcfAssumptionsControls(props);
+    const status = elements(view).find((node) => node.props.role === "status")!;
+    expect(text(status)).toBe(props.message);
+    expect(elements(status).some((node) => node.type === "table")).toBe(false);
+    expect(elements(view).filter((node) => node.type === "table")).toHaveLength(
+      1,
+    );
+    expect(
+      elements(view)
+        .filter((node) => node.type === "button")
+        .every((node) => node.props.disabled === true),
+    ).toBe(true);
+    const liveRegions = elements(view).filter(
+      (node) => node.props["aria-live"],
+    );
+    expect(liveRegions).toEqual([status]);
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it("hides unloaded or ineligible comparison data instead of showing retained saved inputs", () => {
+    props = { ...props, loaded: true, comparison: comparison() };
+    expect(
+      elements(PersonalSavedDcfAssumptionsControls(props)).some(
+        (node) => node.type === "table",
+      ),
+    ).toBe(true);
+    props = { ...props, loaded: false };
+    const unloaded = PersonalSavedDcfAssumptionsControls(props);
+    expect(elements(unloaded).some((node) => node.type === "table")).toBe(
+      false,
+    );
+    expect(renderToStaticMarkup(unloaded)).not.toContain("12.3000");
+    props = { ...props, loaded: true, comparison: null };
+    const ineligible = PersonalSavedDcfAssumptionsControls(props);
+    expect(elements(ineligible).some((node) => node.type === "table")).toBe(
+      false,
+    );
+    expect(renderToStaticMarkup(ineligible)).not.toContain("inputs differ");
+  });
+
+  it("shows invalid whole-draft states without numeric counts and escapes unbounded raw text", () => {
+    const invalid = `<img src=x onerror=alert(1)>${"Z".repeat(1024)}&`;
+    const supplied = comparison();
+    props = {
+      ...props,
+      loaded: true,
+      comparison: {
+        changedCount: null,
+        rows: supplied.rows.map((row, index) => ({
+          ...row,
+          currentValue:
+            index === 0 ? "" : index === 2 ? invalid : row.currentValue,
+          state: "unavailable",
+        })),
+      },
+    };
+    const view = PersonalSavedDcfAssumptionsControls(props);
+    const markup = renderToStaticMarkup(view);
+    expect(markup).toContain(
+      "Enter a valid, complete set of all seven assumptions to compare values.",
+    );
+    expect(markup).not.toContain("inputs differ from");
+    expect(
+      elements(view).filter(
+        (node) => node.type === "td" && text(node) === "Unavailable",
+      ),
+    ).toHaveLength(7);
+    expect(markup).toContain("Not entered");
+    expect(markup).toContain(
+      `&lt;img src=x onerror=alert(1)&gt;${"Z".repeat(1024)}&amp;`,
+    );
+    expect(markup).not.toContain("<img");
+    expect(markup).toContain("12.3000");
+    expect(
+      elements(view).every(
+        (node) => node.props.dangerouslySetInnerHTML === undefined,
+      ),
+    ).toBe(true);
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it("updates comparison text only from fresh supplied props without changing the action structure", () => {
+    props = { ...props, loaded: true, comparison: comparison() };
+    const before = PersonalSavedDcfAssumptionsControls(props);
+    props = {
+      ...props,
+      comparison: {
+        changedCount: 2,
+        rows: props.comparison!.rows.map((row) =>
+          row.input === "waccPercent"
+            ? { ...row, currentValue: "16", state: "changed" }
+            : row,
+        ),
+      },
+    };
+    const after = PersonalSavedDcfAssumptionsControls(props);
+    expect(renderToStaticMarkup(after)).toContain("2 of 7 inputs differ");
+    const updatedWacc = elements(after).find(
+      (node) =>
+        node.type === "tr" &&
+        elements(node).some(
+          (cell) => cell.type === "th" && text(cell) === "WACC assumption",
+        ),
+    )!;
+    expect(
+      elements(updatedWacc)
+        .filter((node) => node.type === "th" || node.type === "td")
+        .map(text),
+    ).toEqual(["WACC assumption", "16 %", "12.3000 %", "Changed"]);
+    expect(
+      elements(after)
+        .filter((node) => node.type === "button")
+        .map((node) => [text(node), node.props.onClick]),
+    ).toEqual(
+      elements(before)
+        .filter((node) => node.type === "button")
+        .map((node) => [text(node), node.props.onClick]),
+    );
+    expect(props.onLoad).not.toHaveBeenCalled();
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it("provides an accessible keyboard scroll region and preserves raw spacing without an inline layout", () => {
+    const supplied = comparison();
+    props = {
+      ...props,
+      loaded: true,
+      comparison: {
+        ...supplied,
+        rows: supplied.rows.map((row) =>
+          row.input === "waccPercent"
+            ? { ...row, currentValue: " 12.3 " }
+            : row,
+        ),
+      },
+    };
+    const view = PersonalSavedDcfAssumptionsControls(props);
+    const region = elements(view).find((node) => node.props.role === "region")!;
+    expect(region.props.tabIndex).toBe(0);
+    expect(region.props["aria-label"]).toBe(
+      "SYN001 saved DCF input comparison",
+    );
+    expect(
+      elements(view).filter(
+        (node) => node.props.id === region.props["aria-describedby"],
+      ),
+    ).toHaveLength(1);
+    const raw = elements(region).find(
+      (node) => node.type === "span" && node.props.children === " 12.3 ",
+    )!;
+    expect(raw.props.className).toBe("saved-dcf-input-comparison-value");
+    expect(elements(view).every((node) => node.props.style === undefined)).toBe(
+      true,
+    );
+  });
 });
+
+function comparison(): PersonalSavedDcfAssumptionsComparison {
+  return {
+    changedCount: 1,
+    rows: [
+      {
+        input: "forecastYears",
+        label: "Forecast horizon",
+        currentValue: "7",
+        savedValue: "7",
+        unit: "years",
+        state: "same",
+      },
+      {
+        input: "taxShieldRatePercent",
+        label: "Marginal tax-shield rate assumption",
+        currentValue: "21",
+        savedValue: "21.0000",
+        unit: "%",
+        state: "same",
+      },
+      {
+        input: "waccPercent",
+        label: "WACC assumption",
+        currentValue: "12.3",
+        savedValue: "12.3000",
+        unit: "%",
+        state: "same",
+      },
+      {
+        input: "terminalGrowthPercent",
+        label: "Terminal growth",
+        currentValue: "3",
+        savedValue: "2.0000",
+        unit: "%",
+        state: "changed",
+      },
+      {
+        input: "conservative",
+        label: "Conservative annual FCF-proxy growth",
+        currentValue: "0",
+        savedValue: "0.0000",
+        unit: "%",
+        state: "same",
+      },
+      {
+        input: "base",
+        label: "Base annual FCF-proxy growth",
+        currentValue: "5",
+        savedValue: "5.0000",
+        unit: "%",
+        state: "same",
+      },
+      {
+        input: "expansion",
+        label: "Expansion annual FCF-proxy growth",
+        currentValue: "10",
+        savedValue: "10.0000",
+        unit: "%",
+        state: "same",
+      },
+    ],
+  };
+}
 
 function elements(node: ReactNode): Element[] {
   if (Array.isArray(node)) return node.flatMap(elements);

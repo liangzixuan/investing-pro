@@ -22,6 +22,26 @@ requests without resetting the draft. Reload saved assumptions explicitly.
 
 ## Inputs and storage
 
+After explicit Load, the current company's supported saved set appears beside
+all seven current inputs. The table shows the raw editor text, the canonical
+loaded saved values and units. It compares assumptions, not company value, and
+does not claim that a loaded set is the latest durable version; existing version
+checks still apply when saving or restoring.
+
+For a valid complete draft, the comparison counts differing values using the same
+exact normalization as Save. Decimal spellings such as 12.3 and 12.3000 match, as do
+admitted negative and positive zero. Incomplete inputs, excess precision, invalid
+bounds or scenario order make the whole numeric comparison unavailable while
+keeping the current and saved text visible. No value is rounded or rewritten.
+
+Pending work keeps a valid loaded comparison visible while action buttons are
+disabled. A Save acknowledgment updates only its saved side; newer draft edits
+remain. Restore and Reset update the current side, while Clear removes the saved
+set without changing the draft. Context invalidation, conflicts or uncertain
+responses hide the comparison until an explicit successful reload. Missing,
+unsupported or different-identity sets are never presented as a current match.
+Rendering and updating the table introduces no settings or provider request.
+
 The seven inputs are forecast years, tax shield, WACC, terminal growth and the
 conservative, base and expansion annual FCF-proxy growth rates. Forecast years
 must be an ordinary whole-number input from 5 to 10. Rates use ordinary decimal

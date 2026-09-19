@@ -228,6 +228,7 @@ describe("saved DCF assumption controller", () => {
       ),
     );
     expect(view.controls.loaded).toBe(false);
+    expect(view.controls.comparison).toBeNull();
     view.controls.onSave();
     view.controls.onRestore();
     view.controls.onClear(identity().listingId);
@@ -273,6 +274,7 @@ describe("saved DCF assumption controller", () => {
       loaded: true,
       busy: false,
       entries: beforeReplay.controls.entries,
+      comparison: beforeReplay.controls.comparison,
       count: 1,
       canSave: true,
       canRestore: true,
@@ -394,6 +396,7 @@ describe("saved DCF assumption controller", () => {
     expect(view.controls.loaded).toBe(true);
     expect(view.controls.count).toBe(1);
     expect(view.controls.canRestore).toBe(true);
+    expect(view.controls.comparison?.changedCount).toBeGreaterThan(0);
     expect(view.draft).toEqual(before);
     expect(client.resolve).not.toHaveBeenCalled();
     expect(client.put).not.toHaveBeenCalled();
@@ -425,6 +428,7 @@ describe("saved DCF assumption controller", () => {
     });
     expect(render().draft).toEqual(submitted);
     expect(render().controls.draftIsSaved).toBe(true);
+    expect(render().controls.comparison?.changedCount).toBe(0);
     expect(client.resolve).not.toHaveBeenCalled();
   });
 
@@ -443,6 +447,12 @@ describe("saved DCF assumption controller", () => {
     expect(view.draft.forecastYears).toBe("");
     expect(view.controls.loaded).toBe(true);
     expect(view.controls.draftIsSaved).toBe(false);
+    expect(view.controls.comparison?.changedCount).toBeNull();
+    expect(view.controls.comparison?.rows[2]).toMatchObject({
+      currentValue: "-",
+      savedValue: "12.0000",
+      state: "unavailable",
+    });
     expect(client.put).toHaveBeenCalledTimes(1);
   });
 
@@ -520,6 +530,7 @@ describe("saved DCF assumption controller", () => {
     const view = render();
     expect(view.controls.canSave).toBe(false);
     expect(view.controls.canRestore).toBe(false);
+    expect(view.controls.comparison).toBeNull();
     view.controls.onClear(orphan.identity.listingId);
     await flush();
     expect(client.put).toHaveBeenCalledWith(
@@ -632,6 +643,7 @@ describe("saved DCF assumption controller", () => {
       invoke(retained, action);
       const busy = render().controls;
       expect(busy.busy).toBe(true);
+      expect(busy.comparison).toEqual(retained.comparison);
       busy.onLoad();
       busy.onSave();
       busy.onRestore();
@@ -669,6 +681,7 @@ describe("saved DCF assumption controller", () => {
     let view = render();
     expect(view.draft).toEqual(before.draft);
     expect(view.controls.loaded).toBe(false);
+    expect(view.controls.comparison).toBeNull();
     before.controls.onLoad();
     before.controls.onSave();
     before.controls.onRestore();
@@ -717,6 +730,7 @@ describe("saved DCF assumption controller", () => {
       };
       expect(render().controls.loaded).toBe(false);
       expect(signal.aborted).toBe(true);
+      expect(render().controls.comparison).toBeNull();
       await load(record([entry(identity("new"))], 8));
       const afterNewLoad = render();
       pendingRecord.resolve(record([entry(identity("stale"))], 6));
@@ -786,6 +800,7 @@ describe("saved DCF assumption controller", () => {
       );
       expect(render().draft).toEqual(returned.draft);
       expect(render().controls.loaded).toBe(false);
+      expect(render().controls.comparison).toBeNull();
       expect(
         client.fetch.mock.calls.length +
           client.put.mock.calls.length +
@@ -806,6 +821,7 @@ describe("saved DCF assumption controller", () => {
     expect(client.put).not.toHaveBeenCalled();
     expect(client.resolve).not.toHaveBeenCalled();
     expect(render().draft).toEqual(view.draft);
+    expect(render().controls.comparison).toBeNull();
   });
 
   it.each(["conflict", "unavailable", "invalid_response"] as const)(
@@ -819,6 +835,7 @@ describe("saved DCF assumption controller", () => {
       await flush();
       const failed = render();
       expect(failed.controls.loaded).toBe(false);
+      expect(failed.controls.comparison).toBeNull();
       expect(failed.controls.message).toMatch(/reload/i);
       expect(failed.draft.waccPercent).toBe("17.75");
       expect(client.fetch).toHaveBeenCalledTimes(1);
@@ -835,6 +852,7 @@ describe("saved DCF assumption controller", () => {
       await flush();
       expect(render().controls.loaded).toBe(false);
       expect(render().draft.waccPercent).toBe("17.75");
+      expect(render().controls.comparison).toBeNull();
       client.fetch.mockResolvedValue(record([], 4));
       render().controls.onLoad();
       await flush();
@@ -902,6 +920,7 @@ describe("saved DCF assumption controller", () => {
       const different = { ...identity(), [field]: value };
       const view = await load(record([entry(different)]));
       expect(view.controls.canRestore).toBe(false);
+      expect(view.controls.comparison).toBeNull();
       view.controls.onRestore();
       expect(client.resolve).not.toHaveBeenCalled();
       expect(view.controls.entries[0]?.isCurrentCompany).toBe(false);
@@ -912,6 +931,244 @@ describe("saved DCF assumption controller", () => {
       }
     },
   );
+});
+
+describe("current and loaded saved input comparison", () => {
+  it("keeps current comparison during reload and clearing another company, then uses only the returned record", async () => {
+    const currentEntry = entry();
+    const other = entry(identity("other"), assumptions({ waccPercent: "20" }));
+    await load(record([currentEntry, other]));
+    const before = render().controls.comparison;
+    const pending = deferred<SavedRecord>();
+    client.fetch.mockReturnValue(pending.promise);
+    render().controls.onLoad();
+    expect(render().controls).toMatchObject({ busy: true, comparison: before });
+    pending.resolve(record([currentEntry, other], 2));
+    await flush();
+    render().controls.onClear(other.identity.listingId);
+    expect(render().controls.comparison).toEqual(before);
+    await flush();
+    expect(render().controls.comparison).toEqual(before);
+    expect(render().controls.entries).toHaveLength(1);
+    expect(client.fetch).toHaveBeenCalledTimes(2);
+    expect(client.put).toHaveBeenCalledTimes(1);
+    expect(client.resolve).not.toHaveBeenCalled();
+  });
+
+  it("projects all seven raw draft values, canonical saved values and units after explicit Load", async () => {
+    edit({
+      forecastYears: "9",
+      taxShieldRatePercent: "-0",
+      waccPercent: "13.5",
+      terminalGrowthPercent: "0",
+      scenarios: growth("-12", "3", "15"),
+    });
+    const before = render().draft;
+    const saved = entry(
+      identity(),
+      assumptions({
+        forecastYears: 8,
+        taxShieldRatePercent: "15.25",
+        waccPercent: "12.125",
+        terminalGrowthPercent: "-1",
+        scenarios: growth("-10", "2.5", "12"),
+      }),
+    );
+    const view = await load(record([saved]));
+    expect(view.draft).toEqual(before);
+    expect(view.controls.comparison?.changedCount).toBe(7);
+    expect(
+      view.controls.comparison?.rows.map((row) => [
+        row.input,
+        row.currentValue,
+        row.savedValue,
+        row.unit,
+        row.state,
+      ]),
+    ).toEqual([
+      ["forecastYears", "9", "8", "years", "changed"],
+      ["taxShieldRatePercent", "-0", "15.2500", "%", "changed"],
+      ["waccPercent", "13.5", "12.1250", "%", "changed"],
+      ["terminalGrowthPercent", "0", "-1.0000", "%", "changed"],
+      ["conservative", "-12", "-10.0000", "%", "changed"],
+      ["base", "3", "2.5000", "%", "changed"],
+      ["expansion", "15", "12.0000", "%", "changed"],
+    ]);
+    expect(client.fetch).toHaveBeenCalledTimes(1);
+    expect(client.put).not.toHaveBeenCalled();
+    expect(client.resolve).not.toHaveBeenCalled();
+  });
+
+  it("compares admitted decimal spellings and negative zero exactly without rewriting raw inputs", async () => {
+    const saved = entry(
+      identity(),
+      assumptions({
+        taxShieldRatePercent: "0",
+        terminalGrowthPercent: "0",
+        waccPercent: "12.3",
+        scenarios: growth("-10", "0", "12.5"),
+      }),
+    );
+    await load(record([saved]));
+    edit({
+      taxShieldRatePercent: "-0.0000",
+      terminalGrowthPercent: "-0",
+      waccPercent: "12.300",
+      scenarios: growth("-10.00", "-0", "12.5000"),
+    });
+    const view = render();
+    expect(view.controls.comparison?.changedCount).toBe(0);
+    expect(
+      view.controls.comparison?.rows.every((row) => row.state === "same"),
+    ).toBe(true);
+    expect(view.draft.taxShieldRatePercent).toBe("-0.0000");
+    expect(view.draft.waccPercent).toBe("12.300");
+    edit({ waccPercent: "12.3001" });
+    expect(render().controls.comparison?.changedCount).toBe(1);
+    edit({ scenarios: growth("-10.0001", "0", "12.5001") });
+    expect(render().controls.comparison?.changedCount).toBe(3);
+    expect(client.fetch).toHaveBeenCalledTimes(1);
+    expect(client.put).not.toHaveBeenCalled();
+    expect(client.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { forecastYears: "" },
+    { forecastYears: "5.0" },
+    { waccPercent: "-" },
+    { waccPercent: "12.00001" },
+    { waccPercent: "31" },
+    { taxShieldRatePercent: "51" },
+    { terminalGrowthPercent: "6" },
+    { scenarios: growth("10", "9", "12") },
+    { waccPercent: "5", terminalGrowthPercent: "5" },
+  ] satisfies Partial<PersonalFcffDcfAssumptionDraft>[])(
+    "keeps saved values but makes the entire comparison unavailable for invalid draft %j",
+    async (patch) => {
+      await load(record());
+      const saved = render().controls.comparison!.rows.map(
+        (row) => row.savedValue,
+      );
+      edit(patch);
+      const view = render();
+      expect(view.controls.comparison?.changedCount).toBeNull();
+      expect(view.controls.comparison?.rows).toHaveLength(7);
+      expect(
+        view.controls.comparison?.rows.every(
+          (row) => row.state === "unavailable",
+        ),
+      ).toBe(true);
+      expect(
+        view.controls.comparison?.rows.map((row) => row.savedValue),
+      ).toEqual(saved);
+      expect(view.draft).toMatchObject(patch);
+      expect(view.controls.canSave).toBe(false);
+      expect(client.fetch).toHaveBeenCalledTimes(1);
+      expect(client.put).not.toHaveBeenCalled();
+      expect(client.resolve).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps the loaded saved side while Save is pending and then compares its acknowledgment with newer edits", async () => {
+    await load(record());
+    const pending = deferred<SavedRecord>();
+    client.put.mockReturnValue(pending.promise);
+    edit({ waccPercent: "13" });
+    render().controls.onSave();
+    const submitted = client.put.mock.calls[0]![1].payload;
+    edit({ waccPercent: "16" });
+    const busy = render().controls;
+    expect(busy).toMatchObject({
+      busy: true,
+      canSave: false,
+      canRestore: false,
+    });
+    expect(busy.comparison?.rows[2]).toMatchObject({
+      currentValue: "16",
+      savedValue: "10.0000",
+      state: "changed",
+    });
+    pending.resolve({ version: 2, payload: submitted });
+    await flush();
+    expect(render().controls.comparison?.rows[2]).toMatchObject({
+      currentValue: "16",
+      savedValue: "13.0000",
+      state: "changed",
+    });
+    expect(render().controls.comparison?.changedCount).toBe(1);
+    expect(client.fetch).toHaveBeenCalledTimes(1);
+    expect(client.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("updates comparison through canceled Restore, successful Restore, Reset and Clear without extra requests", async () => {
+    const saved = entry(identity(), assumptions({ waccPercent: "15" }));
+    await load(record([saved]));
+    const pending = deferred<PersonalSavedDcfResolvedDto>();
+    client.resolve.mockReturnValue(pending.promise);
+    render().controls.onRestore();
+    edit({ waccPercent: "17" });
+    expect(render().controls.comparison?.rows[2]).toMatchObject({
+      currentValue: "17",
+      savedValue: "15.0000",
+    });
+    pending.resolve(resolved(saved));
+    await flush();
+    expect(render().controls.comparison?.changedCount).toBe(1);
+    client.resolve.mockResolvedValue(resolved(saved));
+    render().controls.onRestore();
+    await flush();
+    expect(render().controls.comparison?.changedCount).toBe(0);
+    render().dcf.assumptionControl!.onChange(() => draft());
+    expect(render().controls.comparison?.rows[2]).toMatchObject({
+      currentValue: "10",
+      savedValue: "15.0000",
+      state: "changed",
+    });
+    const draftBeforeClear = render().draft;
+    render().controls.onClear(identity().listingId);
+    expect(render().controls.comparison?.rows).toHaveLength(7);
+    await flush();
+    expect(render().controls.comparison).toBeNull();
+    expect(render().draft).toEqual(draftBeforeClear);
+    expect(client.fetch).toHaveBeenCalledTimes(1);
+    expect(client.resolve).toHaveBeenCalledTimes(2);
+    expect(client.put).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, record([]), record([{ ...entry(), modelVersion: "2.0.0" }])])(
+    "has no comparison for absent or unsupported saved inputs",
+    async (value) => {
+      const view = await load(value);
+      expect(view.controls.comparison).toBeNull();
+    },
+  );
+
+  it("separates display from write admission but retires it when identity or local access is absent", async () => {
+    await load(record());
+    props = {
+      ...props,
+      savedContext: { ...props.savedContext, watchlistBinding: null },
+    };
+    expect(render().controls.canRestore).toBe(false);
+    expect(render().controls.comparison?.rows).toHaveLength(7);
+    props = {
+      ...props,
+      savedContext: { ...props.savedContext, identity: null },
+    };
+    expect(render().controls.comparison).toBeNull();
+    props = {
+      ...props,
+      savedContext: {
+        ...props.savedContext,
+        identity: identity(),
+        enabled: false,
+      },
+    };
+    expect(render().controls.comparison).toBeNull();
+    expect(client.fetch).toHaveBeenCalledTimes(1);
+    expect(client.put).not.toHaveBeenCalled();
+    expect(client.resolve).not.toHaveBeenCalled();
+  });
 });
 
 describe("saved assumption parity with the unchanged DCF engine", () => {

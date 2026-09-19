@@ -8,6 +8,20 @@ export interface PersonalSavedDcfAssumptionsEntry {
   readonly isCurrentCompany: boolean;
 }
 
+export interface PersonalSavedDcfAssumptionsComparisonRow {
+  readonly input: string;
+  readonly label: string;
+  readonly currentValue: string;
+  readonly savedValue: string;
+  readonly unit: "years" | "%";
+  readonly state: "same" | "changed" | "unavailable";
+}
+
+export interface PersonalSavedDcfAssumptionsComparison {
+  readonly rows: readonly PersonalSavedDcfAssumptionsComparisonRow[];
+  readonly changedCount: number | null;
+}
+
 export interface PersonalSavedDcfAssumptionsControlsProps {
   readonly symbol: string;
   readonly busy: boolean;
@@ -19,6 +33,7 @@ export interface PersonalSavedDcfAssumptionsControlsProps {
   readonly message: string;
   readonly draftIsSaved: boolean;
   readonly entries: readonly PersonalSavedDcfAssumptionsEntry[];
+  readonly comparison: PersonalSavedDcfAssumptionsComparison | null;
   readonly onLoad: () => void;
   readonly onSave: () => void;
   readonly onRestore: () => void;
@@ -36,6 +51,7 @@ export function PersonalSavedDcfAssumptionsControls({
   message,
   draftIsSaved,
   entries,
+  comparison,
   onLoad,
   onSave,
   onRestore,
@@ -110,6 +126,70 @@ export function PersonalSavedDcfAssumptionsControls({
       >
         {message}
       </p>
+      {loaded && comparison !== null && (
+        <div className="saved-dcf-input-comparison">
+          <p
+            className="company-research-note-hint"
+            id="saved-dcf-input-comparison-summary"
+          >
+            {comparison.changedCount === null
+              ? "Numeric comparison is unavailable. Enter a valid, complete set of all seven assumptions to compare values."
+              : `${comparison.changedCount} of 7 inputs differ from the loaded saved set.`}
+          </p>
+          <div
+            aria-describedby="saved-dcf-input-comparison-summary"
+            aria-label={`${symbol} saved DCF input comparison`}
+            className="saved-dcf-input-comparison-scroll"
+            role="region"
+            tabIndex={0}
+          >
+            <table>
+              <caption>
+                {symbol}: current draft and loaded saved DCF inputs. This
+                compares assumptions, not company value.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Input</th>
+                  <th scope="col">Current draft</th>
+                  <th scope="col">Loaded saved</th>
+                  <th scope="col">Comparison</th>
+                </tr>
+              </thead>
+              <tbody>
+                {comparison.rows.map((row) => (
+                  <tr key={row.input}>
+                    <th scope="row">{row.label}</th>
+                    <td>
+                      <span className="saved-dcf-input-comparison-value">
+                        {row.currentValue === "" ? (
+                          <em>Not entered</em>
+                        ) : (
+                          row.currentValue
+                        )}
+                      </span>{" "}
+                      <span>{row.unit}</span>
+                    </td>
+                    <td>
+                      <span className="saved-dcf-input-comparison-value">
+                        {row.savedValue}
+                      </span>{" "}
+                      <span>{row.unit}</span>
+                    </td>
+                    <td>
+                      {row.state === "same"
+                        ? "Same"
+                        : row.state === "changed"
+                          ? "Changed"
+                          : "Unavailable"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {loaded && (
         <>
           <p className="company-research-note-hint">

@@ -15,7 +15,20 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reuse company DCF assumptions
+## Immediate delivery: compare current and saved DCF inputs
+
+After explicitly loading a supported saved set for the exact current company,
+show all seven raw draft inputs beside the loaded saved values with their units.
+Compare using the existing whole-draft normalizer: equivalent decimal spellings
+match, while incomplete or invalid drafts have no numeric difference count.
+
+Keep the comparison visible during pending operations, update the saved side only
+on verified acknowledgments, and hide invalidated metadata. Preserve explicit
+Save, Restore, Clear and Reset semantics, newer edits, full identity and lifetime
+guards. Add no requests, stored schema, provider acquisition or formula changes.
+See [Saved DCF assumptions](./PERSONAL_SAVED_DCF_ASSUMPTIONS.md).
+
+## Delivered: reuse company DCF assumptions
 
 Explicitly load, save, restore and clear one set of the seven existing DCF inputs
 per exact researched My Watchlist company, up to twenty companies. Keep the raw
