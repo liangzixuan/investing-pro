@@ -1088,6 +1088,14 @@ peer relevance, a sector benchmark or percentile, a point-in-time comparison,
 a rank, winner, recommendation, financial-sector applicability claim, or full
 Cycle 3j.
 
+The same selected peer group also exposes the twelve existing annual quality
+checks from Cycle 3j-a1 using its already-loaded, admitted annual packets. Each
+company's latest fiscal year must match the selected company's anchor; older
+matching periods are not substituted. Exact observations and source dates remain
+inspectable, without grades, ranks, sector normalization or additional acquisition.
+This combines the bounded diagnostics and manual peer sample; full Cycle 3j remains
+outside this delivered scope.
+
 ### Cycle 3k — typed screener and saved screens
 
 Target: close the largest stock-discovery gap with reproducible, point-in-time

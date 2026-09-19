@@ -14,6 +14,8 @@ import type { FormEvent } from "react";
 
 import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api";
 
+import { PersonalManualPeerQualityComparison } from "./PersonalManualPeerQualityComparison";
+
 export const PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS = 3 as const;
 
 export type PersonalManualPeerSelection =
@@ -101,10 +103,10 @@ export function PersonalManualPeerComparison({
   const peerLoadInProgress = peers.some(
     (peer) => peer.requestState === "loading",
   );
-  const result =
+  const comparisonInput =
     selection === null
       ? null
-      : safelyBuildComparison({
+      : {
           peers: peers.map((peer) => ({
             annualFinancials: peer.annualFinancials,
             selection: peer.selection,
@@ -115,6 +117,13 @@ export function PersonalManualPeerComparison({
             selection,
             valuationHistory,
           },
+        };
+  const result =
+    comparisonInput === null
+      ? null
+      : safelyBuildComparison({
+          primary: comparisonInput.primary,
+          peers: comparisonInput.peers,
         });
 
   function addPeer(event: FormEvent<HTMLFormElement>) {
@@ -234,7 +243,18 @@ export function PersonalManualPeerComparison({
           ) : result?.status === "ready" &&
             (result.anchors.annualFiscalYear !== null ||
               result.anchors.valuationDate !== null) ? (
-            <ComparisonTable result={result} />
+            <>
+              <ComparisonTable result={result} />
+              {comparisonInput !== null ? (
+                <PersonalManualPeerQualityComparison
+                  admission={result}
+                  companies={[
+                    comparisonInput.primary,
+                    ...comparisonInput.peers,
+                  ]}
+                />
+              ) : null}
+            </>
           ) : result?.status === "ready" ? (
             <ReadinessState
               detail="Load annual statements, valuation history, or both for the selected company. At least one valid source is required before peer data can load."

@@ -177,8 +177,12 @@ describe("PersonalManualPeerComparison", () => {
 
     expect(text).toContain("Side-by-side comparison ready for 4 companies");
     expect(text).toContain("15 fixed metrics");
-    expect(markup.match(/<th scope="row">/gu)).toHaveLength(15);
-    expect(markup.match(/scope="rowgroup"/gu)).toHaveLength(4);
+    const metricTable = markup.match(
+      /<table class="manual-peer-table">[\s\S]*?<\/table>/u,
+    )?.[0];
+    expect(metricTable).toBeDefined();
+    expect(metricTable!.match(/<th scope="row">/gu)).toHaveLength(15);
+    expect(metricTable!.match(/scope="rowgroup"/gu)).toHaveLength(4);
     expect(text).toContain("Scale");
     expect(text).toContain("Growth & profitability");
     expect(text).toContain("Balance sheet & efficiency");
@@ -186,8 +190,8 @@ describe("PersonalManualPeerComparison", () => {
     expect(text).toContain("Revenue");
     expect(text).toContain("Market capitalization");
     expect(text).toContain("Trailing PEG (1Y)");
-    expect(markup.match(/manual-peer-primary-column/gu)).toHaveLength(16);
-    expect(markup.match(/<details /gu)).toHaveLength(60);
+    expect(metricTable!.match(/manual-peer-primary-column/gu)).toHaveLength(16);
+    expect(metricTable!.match(/<details /gu)).toHaveLength(60);
     expect(text).toContain("Selected company");
     expect(text).toContain("Manual peer");
   });
@@ -748,6 +752,216 @@ describe("manual peer metric input disclosures", () => {
   );
 });
 
+describe("manual peer annual quality integration", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("keeps quality output behind peer presence and whole-group admission", () => {
+    const props = loadedComparison();
+    const noPeers = { ...props, peers: [] };
+    expect(qualityTable(noPeers)).toBeUndefined();
+    expect(visibleText(render(noPeers))).toContain("Add the first peer");
+    const duplicateIssuer = {
+      ...props.peers[0]!.selection,
+      issuerId: props.selection.issuerId,
+    };
+    const quarantined = {
+      ...props,
+      peers: [loadedPeer(duplicateIssuer, "1100")],
+    };
+    expect(qualityTable(quarantined)).toBeUndefined();
+    expect(visibleText(render(quarantined))).toContain(
+      "Manual peer comparison was withheld",
+    );
+    expect(render(quarantined)).not.toContain("Inspect PEER");
+  });
+
+  it("requires the primary annual anchor even when valuation metrics are ready", () => {
+    const props = { ...loadedComparison(), annualFinancials: null };
+    expect(qualityTable(props)).toBeUndefined();
+    expect(nativeDisclosures(props)).toHaveLength(30);
+    expect(
+      disclosureText(disclosure(props, "ZERO", "Price / earnings")),
+    ).toContain("10");
+  });
+
+  it("adds twelve checks per admitted company without changing the fifteen metrics", () => {
+    const props = loadedComparison();
+    const table = qualityTable(props);
+    expect(table).toBeDefined();
+    const summaries = hostElements(table).filter(
+      (node) => node.type === "summary",
+    );
+    expect(summaries).toHaveLength(24);
+    const labels = summaries.map((node) => node.props["aria-label"]);
+    expect(new Set(labels).size).toBe(24);
+    expect(
+      labels.filter((label) => String(label).startsWith("Inspect ZERO ")),
+    ).toHaveLength(12);
+    expect(
+      labels.filter((label) => String(label).startsWith("Inspect PEER ")),
+    ).toHaveLength(12);
+    expect(nativeDisclosures(props)).toHaveLength(30);
+    expect(disclosureText(disclosure(props, "PEER", "Revenue"))).toContain(
+      "1100",
+    );
+  });
+
+  it("uses annual-only sources and preserves each company's own statement date", () => {
+    const props = loadedComparison();
+    const peer = props.peers[0]!;
+    const peerAnnual = peer.annualFinancials!;
+    const differentDates = annualWithYears(
+      peerAnnual,
+      peerAnnual.years.map((year, index) => ({
+        ...year,
+        statementDate: index === 0 ? "2029-09-30" : "2028-09-30",
+      })),
+    );
+    const annualOnly = {
+      ...props,
+      valuationHistory: null,
+      peers: [
+        { ...peer, annualFinancials: differentDates, valuationHistory: null },
+      ],
+    };
+    const table = qualityTable(annualOnly);
+    expect(table).toBeDefined();
+    expect(
+      hostElements(table).filter((node) => node.type === "details"),
+    ).toHaveLength(24);
+    const text = visibleText(renderToStaticMarkup(table));
+    expect(text).toContain("2029-12-31");
+    expect(text).toContain("2029-09-30");
+    expect(text).toContain("2028-09-30");
+  });
+
+  it("withholds a newer peer's quality checks rather than rebasing its older matching year", () => {
+    const props = loadedComparison();
+    const peer = props.peers[0]!;
+    const peerAnnual = annualWithYears(peer.annualFinancials!, [
+      financialYear(2030, "1900", "2030-01-31"),
+      financialYear(2029, "1100", "2029-01-31"),
+    ]);
+    const mismatch = {
+      ...props,
+      peers: [{ ...peer, annualFinancials: peerAnnual }],
+    };
+    const table = qualityTable(mismatch);
+    expect(table).toBeDefined();
+    const text = visibleText(renderToStaticMarkup(table));
+    expect(text).toContain(
+      "Latest annual fiscal year differs from the selected company's year",
+    );
+    expect(
+      hostElements(table).filter((node) => node.type === "details"),
+    ).toHaveLength(12);
+    // The independently existing metric comparison still uses its exact FY2029 anchor.
+    expect(disclosureText(disclosure(mismatch, "PEER", "Revenue"))).toContain(
+      "1100",
+    );
+    expect(
+      disclosureText(disclosure(mismatch, "PEER", "Revenue")),
+    ).not.toContain("1900");
+  });
+
+  it("admits the entire source before deriving quality, including unused hidden periods", () => {
+    const props = loadedComparison();
+    const peer = props.peers[0]!;
+    const hidden = financialYear(2027, "700", "2027-12-31");
+    const malformed = {
+      ...hidden,
+      reported: {
+        ...hidden.reported,
+        cost_of_revenue: knownCell("not-a-decimal"),
+      },
+    };
+    const source = annualWithYears(peer.annualFinancials!, [
+      ...peer.annualFinancials!.years,
+      malformed,
+    ]);
+    const input = { ...props, peers: [{ ...peer, annualFinancials: source }] };
+    const table = qualityTable(input);
+    expect(table).toBeDefined();
+    const text = visibleText(renderToStaticMarkup(table));
+    expect(text.toLowerCase()).toContain("quarantined");
+    expect(text).not.toContain("not-a-decimal");
+    expect(
+      hostElements(table).filter((node) => node.type === "details"),
+    ).toHaveLength(12);
+  });
+
+  it.each([
+    ["exchangeMic", "XNYS"],
+    ["issuerName", "Replacement issuer"],
+    ["securityName", "Replacement security"],
+    ["symbol", "NEW"],
+  ] as const)(
+    "does not reuse a same-listing source after %s changes",
+    (field, value) => {
+      const props = loadedComparison();
+      const peer = props.peers[0]!;
+      const changed = {
+        ...props,
+        peers: [{ ...peer, selection: { ...peer.selection, [field]: value } }],
+      };
+      const table = qualityTable(changed);
+      expect(table).toBeDefined();
+      expect(visibleText(renderToStaticMarkup(table)).toLowerCase()).toContain(
+        "quarantined",
+      );
+      expect(
+        hostElements(table).filter((node) => node.type === "details"),
+      ).toHaveLength(12);
+    },
+  );
+
+  it("drops old checks on removal, reset and restored unloaded sources without invoking IO callbacks", () => {
+    const fetch = vi.fn();
+    const storage = { getItem: vi.fn(), setItem: vi.fn(), removeItem: vi.fn() };
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("localStorage", storage);
+    const callbacks = {
+      onAddPeer: vi.fn(),
+      onLoadPeerData: vi.fn(),
+      onRemovePeer: vi.fn(),
+    };
+    const props = freezeDeep({ ...loadedComparison(), ...callbacks });
+    expect(
+      hostElements(qualityTable(props)).filter(
+        (node) => node.type === "details",
+      ),
+    ).toHaveLength(24);
+    expect(qualityTable({ ...props, peers: [] })).toBeUndefined();
+    expect(qualityTable({ ...props, selection: null })).toBeUndefined();
+    const restored = {
+      ...props,
+      peers: [peerState(props.peers[0]!.selection)],
+    };
+    const table = qualityTable(restored);
+    expect(table).toBeDefined();
+    expect(
+      hostElements(table).filter((node) => node.type === "details"),
+    ).toHaveLength(12);
+    expect(visibleText(renderToStaticMarkup(table)).toLowerCase()).toContain(
+      "not loaded",
+    );
+    for (const callback of Object.values(callbacks))
+      expect(callback).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+    for (const method of Object.values(storage))
+      expect(method).not.toHaveBeenCalled();
+  });
+});
+
+function qualityTable(props: Partial<PersonalManualPeerComparisonProps>) {
+  return hostElements(comparisonElement(props)).find(
+    (node) =>
+      node.type === "table" &&
+      node.props["aria-label"] ===
+        "Annual quality checks across selected companies",
+  );
+}
+
 function render(
   overrides: Partial<PersonalManualPeerComparisonProps> = {},
 ): string {
@@ -812,7 +1026,10 @@ function nativeDisclosures(
         key,
       );
     }
-    if (node.type === "details")
+    if (
+      node.type === "details" &&
+      node.props.className === "manual-peer-metric-inputs"
+    )
       return [{ element: node, key, props: node.props }];
     return visit(node.props.children, key);
   }
@@ -912,7 +1129,7 @@ function annualWithYears(
       returnedAnnualYears: years.length,
       missingFiscalYears: Array.from(
         { length: 10 },
-        (_, index) => 2029 - index,
+        (_, index) => Math.max(...years.map((year) => year.fiscalYear)) - index,
       ).filter(
         (year) => !years.some((candidate) => candidate.fiscalYear === year),
       ),

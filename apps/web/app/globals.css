@@ -3588,6 +3588,19 @@ html:has(.personal-financial-screener:focus-within) {
   margin-top: 18px;
 }
 
+.manual-peer-quality-comparison {
+  margin-top: 24px;
+}
+
+.manual-peer-quality-reason {
+  display: block;
+  max-width: 240px;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 600px) {
   .financial-table-scroll .manual-peer-table th:first-child {
     position: static;
@@ -3597,7 +3610,8 @@ html:has(.personal-financial-screener:focus-within) {
   }
 }
 
-.manual-peer-metric-inputs {
+.manual-peer-metric-inputs,
+.manual-peer-quality-inputs {
   width: 240px;
   max-width: 100%;
   margin-top: 10px;
@@ -3606,7 +3620,8 @@ html:has(.personal-financial-screener:focus-within) {
   overflow-wrap: anywhere;
 }
 
-.manual-peer-metric-inputs summary {
+.manual-peer-metric-inputs summary,
+.manual-peer-quality-inputs summary {
   color: var(--mint-deep);
   cursor: pointer;
   font-size: 0.7rem;
@@ -3614,7 +3629,8 @@ html:has(.personal-financial-screener:focus-within) {
   line-height: 1.5;
 }
 
-.manual-peer-metric-inputs summary:focus-visible {
+.manual-peer-metric-inputs summary:focus-visible,
+.manual-peer-quality-inputs summary:focus-visible {
   outline: 2px solid var(--mint-deep);
   outline-offset: 3px;
 }

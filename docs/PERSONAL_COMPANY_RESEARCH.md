@@ -8,13 +8,13 @@ company retained from another result page.
 
 Five sections organize the existing panels:
 
-| Section      | Existing capabilities                                        |
-| ------------ | ------------------------------------------------------------ |
-| Price        | Quote, price history and market analytics                    |
-| Financials   | Annual and quarterly statements, financial quality checks    |
-| Valuation    | Valuation history, historical multiples, DCF and reverse DCF |
-| Peers        | Manual peer selection, comparison and a reusable saved group |
-| SEC evidence | Dated quarterly observations and primary-filing context      |
+| Section      | Existing capabilities                                                   |
+| ------------ | ----------------------------------------------------------------------- |
+| Price        | Quote, price history and market analytics                               |
+| Financials   | Annual and quarterly statements, financial quality checks               |
+| Valuation    | Valuation history, historical multiples, DCF and reverse DCF            |
+| Peers        | Manual peer selection, metrics, annual quality checks and a saved group |
+| SEC evidence | Dated quarterly observations and primary-filing context                 |
 
 The sections retain their existing data availability and explicit Load actions.
 Moving between sections does not request data or save anything. Loaded data and
@@ -72,6 +72,40 @@ disclosure while it stays mounted. Removing the cell, withholding a quarantined
 comparison or resetting the company destroys that open state; returning later
 does not reopen it. No peer roster, draft, saved group or source data is changed
 by opening or closing a disclosure.
+
+## Compare annual quality checks
+
+Below the metric comparison, **Annual quality checks** places the same twelve
+existing financial checks beside the selected company and one to three peers.
+Each result is **Met**, **Not met** or **Unavailable**. These are individual tests,
+with no combined grade, ranking or preferred company.
+
+This uses only annual statements already loaded for the current exact companies.
+The existing peer comparison admits the complete source packets first. A withheld
+peer group has no quality output; a missing or invalid annual source leaves its
+own column unavailable. Valuation data is not required. With no peers, the panel
+keeps its existing add-first-peer guidance.
+
+Each company's latest annual fiscal year must equal the selected company's annual
+anchor. An older matching period is not substituted, even when that period is
+usable in the separate metric table. The unchanged quality engine receives the
+whole annual history and uses the latest period and, where required, its immediately
+preceding consecutive fiscal year. Missing facts and unusable denominators retain
+the existing check-specific reasons. Different statement dates within the same
+fiscal-year label remain visible.
+
+Open a check to inspect its expression, formula version, current and prior
+observations, units, fiscal years, statement dates and source references. Values
+retain their exact decimal strings. A reference identifies an input used by the
+engine; it does not supply an otherwise absent raw operand or filing link. Each
+company keeps its own response timestamp. Disclosures follow full company identity
+and displayed content: equal-content mounted renders preserve them, while changed
+content or removal clears them.
+
+Inspecting checks makes no request or saved-data change. Results use the provider's
+most-recent annual statements and fiscal-year labels, not point-in-time or
+sector-adjusted comparisons. A met check is not a recommendation or universal
+assessment of a company's financial health.
 
 ## Reuse a manual peer group
 

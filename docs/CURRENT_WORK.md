@@ -15,7 +15,20 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: inspect manual peer metric inputs
+## Immediate delivery: compare annual quality checks across peers
+
+Show the existing twelve annual quality checks beside each selected peer, using
+only explicitly loaded statements already admitted for the comparison. Keep the
+same company order and require each company's latest fiscal year to match the
+selected company's annual anchor. Do not rebase an older matching period.
+
+Show Met, Not met or Unavailable, with inspectable exact observations, formulas,
+source references and dates. Preserve whole-group quarantine, individual source
+unavailability, full identities and disclosure lifetimes. Reuse the unchanged
+quality engine and full annual history; add no request, storage or ranking. See
+[Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: inspect manual peer metric inputs
 
 Open a comparison cell to inspect the exact retained inputs, formula and source
 dates behind its value or unavailable reason. Annual operands keep their own
@@ -780,7 +793,7 @@ independent so these limits do not block unrelated useful product improvements.
 
 | Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
 | ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Inspect exact inputs and source dates behind manual peer comparison metrics                      | Reuse retained evidence without new requests or formulas                   |
+| Now              | Compare existing annual quality checks across the selected peer group                            | Reuse admitted statements and unchanged formulas without new requests      |
 | Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
 | Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
 | As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
