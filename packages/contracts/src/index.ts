@@ -1002,4 +1002,5 @@ export * from "./personal-sec-reporting-value";
 export * from "./personal-financial-screener";
 export * from "./personal-financial-comparison-selection";
 export * from "./personal-saved-dcf-assumptions";
+export * from "./personal-saved-manual-peer-group";
 export * from "./personal-watchlist-filings";

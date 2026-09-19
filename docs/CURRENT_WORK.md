@@ -15,7 +15,21 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: compare current and saved DCF inputs
+## Immediate delivery: reuse a manual peer group
+
+Explicitly load, save, restore and clear one primary company with one to three
+ordered peers. Store complete identities and catalog provenance in a separate
+versioned encrypted settings record. Save and Restore require every exact member
+in the current reconciled My Watchlist. Restore checks the same primary and replaces
+all peers atomically with unloaded sources, preserving primary research and drafts.
+
+Load changes only saved metadata; Clear preserves current peers and loaded sources.
+Save captures the latest roster without overwriting later edits. An intervening
+peer edit cancels delayed Restore, including an edit that is then undone. Retire
+old peer requests on restoration. No implicit IO, provider data, formula, vault
+schema or authentication change. See [Company research](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: compare current and saved DCF inputs
 
 After explicitly loading a supported saved set for the exact current company,
 show all seven raw draft inputs beside the loaded saved values with their units.
@@ -737,14 +751,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
-| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Now              | Save and explicitly restore company DCF assumptions                                              | Preserve current draft, exact identity and versioned local settings        |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Now              | Save and explicitly restore one ordered manual peer group                                        | Preserve full identities, primary research, drafts and explicit source loads |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps              |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters   |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                     |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions          |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                  |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

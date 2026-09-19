@@ -35,6 +35,7 @@ describe("personal workspace startup static graph", () => {
       "workspace-market-data-routes.ts",
       "workspace-portfolio-routes.ts",
       "workspace-saved-dcf-routes.ts",
+      "workspace-saved-manual-peer-routes.ts",
       "workspace-screener-routes.ts",
       "workspace-sec-filing-context-routes.ts",
       "workspace-sec-quarterly-evidence-routes.ts",

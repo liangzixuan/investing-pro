@@ -13,7 +13,7 @@ Five sections organize the existing panels:
 | Price        | Quote, price history and market analytics                    |
 | Financials   | Annual and quarterly statements, financial quality checks    |
 | Valuation    | Valuation history, historical multiples, DCF and reverse DCF |
-| Peers        | Manual peer selection and comparison                         |
+| Peers        | Manual peer selection, comparison and a reusable saved group |
 | SEC evidence | Dated quarterly observations and primary-filing context      |
 
 The sections retain their existing data availability and explicit Load actions.
@@ -44,6 +44,33 @@ This view does not add financial metrics, provider coverage, a new company URL,
 browser storage or a saved layout. Local access and account behavior remain
 unchanged. Explicit source requests retain their existing freshness and
 availability limits; navigation is not a refresh.
+
+## Reuse a manual peer group
+
+The Peers section can keep one saved group containing its primary company and
+one to three ordered peers. **Load saved peer group** reads its metadata without
+changing the current comparison. **Save this peer group** replaces that saved slot
+with the current exact identities and catalog provenance. Every company must be
+in the current, reconciled My Watchlist; loaded provider inputs are not required.
+
+**Restore saved peer group** works only for the same exact primary. It checks the
+saved version, current catalog and every complete watchlist identity, then replaces
+all current peers together in saved order. Peer sources become unloaded and pending
+peer requests are retired. Primary research, price range, DCF inputs, notes, holding,
+research section and Back destination stay unchanged. Load each peer's sources
+explicitly when ready. Missing or changed members prevent the entire restoration;
+the app never substitutes by ticker or restores a subset.
+
+**Clear saved peer group** clears only the saved slot. Current peers and their
+loaded data stay in place. Valid saved metadata remains visible during pending
+actions. A delayed Save keeps newer peer edits; a delayed Restore is canceled if
+the peer roster was edited, even if that edit was then undone. Conflicts and
+unverified responses require an explicit Load before retrying.
+
+The encrypted settings record contains no prices, financials, results or notes.
+An orphan group remains inspectable and clearable. Malformed or unknown versions
+fail closed without migration or erasure. There are no automatic settings reads,
+writes or provider requests on navigation, roster changes or metadata display.
 
 ## Find a saved company
 

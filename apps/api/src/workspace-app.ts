@@ -51,6 +51,7 @@ import {
 } from "./personal-sec-financial-provider";
 import { registerPersonalWorkspaceWatchlistRoutes } from "./workspace-watchlist-routes";
 import { registerPersonalSavedDcfRoutes } from "./workspace-saved-dcf-routes";
+import { registerPersonalSavedManualPeerRoutes } from "./workspace-saved-manual-peer-routes";
 import { registerPersonalWorkspacePortfolioRoutes } from "./workspace-portfolio-routes";
 import { registerPersonalWorkspaceWatchlistFilingsRoutes } from "./workspace-watchlist-filings-routes";
 import {
@@ -202,6 +203,13 @@ export async function buildPersonalWorkspaceApp(
     listenOptions,
   );
   registerPersonalWorkspaceScreenerRoutes(
+    app,
+    catalog,
+    vault,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalSavedManualPeerRoutes(
     app,
     catalog,
     vault,

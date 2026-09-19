@@ -10,7 +10,12 @@ import type {
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
+  PersonalSavedManualPeerGroupDto,
+  PersonalSavedManualPeerIdentityDto,
+  PersonalSavedManualPeerPutRequestDto,
+  PersonalSavedManualPeerResolvedDto,
 } from "@research-cockpit/contracts";
+import { buildPersonalManualPeerComparison } from "@research-cockpit/personal-market-analytics";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -40,6 +45,9 @@ import type { PersonalSavedFcffDcfValuationProps } from "./PersonalSavedFcffDcfV
 import type { PersonalFinancialQualityScorecardProps } from "./PersonalFinancialQualityScorecard";
 import type { PersonalHistoricalMultipleValuationProps } from "./PersonalHistoricalMultipleValuation";
 import type { PersonalManualPeerComparisonProps } from "./PersonalManualPeerComparison";
+import type { PersonalSavedManualPeerGroupControlsProps } from "./PersonalSavedManualPeerGroupControls";
+import type { PersonalSavedManualPeerGroup } from "@/lib/personal-saved-manual-peer-group-api";
+import type * as PersonalSavedManualPeerApiModule from "@/lib/personal-saved-manual-peer-group-api";
 import type { PersonalMarketOverviewProps } from "./PersonalMarketOverview";
 import type { PersonalQuarterlyFinancialsProps } from "./PersonalQuarterlyFinancials";
 import type { PersonalSecQuarterlyEvidenceProps } from "./PersonalSecQuarterlyEvidence";
@@ -198,6 +206,7 @@ const componentMocks = vi.hoisted(() => ({
   FinancialQualityScorecard: () => null,
   HistoricalMultipleValuation: () => null,
   ManualPeerComparison: () => null,
+  SavedManualPeerGroupControls: () => null,
   MarketOverview: () => null,
   OwnerSession: () => null,
   LocalAccess: () => null,
@@ -208,6 +217,32 @@ const componentMocks = vi.hoisted(() => ({
   WatchlistFilings: () => null,
   Portfolio: () => null,
   ValuationHistory: () => null,
+}));
+
+const peerApiMocks = vi.hoisted(() => ({
+  fetchPersonalSavedManualPeerGroup:
+    vi.fn<
+      (signal: AbortSignal) => Promise<PersonalSavedManualPeerGroup | null>
+    >(),
+  putPersonalSavedManualPeerGroup:
+    vi.fn<
+      (
+        version: number,
+        request: PersonalSavedManualPeerPutRequestDto,
+        signal: AbortSignal,
+      ) => Promise<PersonalSavedManualPeerGroup>
+    >(),
+  resolvePersonalSavedManualPeerGroup: vi.fn<
+    (
+      version: number,
+      primary: PersonalSavedManualPeerIdentityDto,
+      context: Readonly<{
+        catalogSnapshotSha256: `sha256:${string}`;
+        watchlistVersion: number;
+      }>,
+      signal: AbortSignal,
+    ) => Promise<PersonalSavedManualPeerResolvedDto>
+  >(),
 }));
 
 vi.mock("react", async (importOriginal) => ({
@@ -281,6 +316,16 @@ vi.mock("./PersonalManualPeerComparison", () => ({
   PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS: 3,
   PersonalManualPeerComparison: componentMocks.ManualPeerComparison,
 }));
+vi.mock("./PersonalSavedManualPeerGroupControls", () => ({
+  PersonalSavedManualPeerGroupControls:
+    componentMocks.SavedManualPeerGroupControls,
+}));
+vi.mock("@/lib/personal-saved-manual-peer-group-api", async () => ({
+  ...(await vi.importActual<typeof PersonalSavedManualPeerApiModule>(
+    "../../lib/personal-saved-manual-peer-group-api",
+  )),
+  ...peerApiMocks,
+}));
 vi.mock("./PersonalQuarterlyFinancials", () => ({
   PersonalQuarterlyFinancials: componentMocks.QuarterlyFinancials,
 }));
@@ -314,6 +359,12 @@ afterEach(() => vi.unstubAllGlobals());
 beforeEach(() => {
   hookHarness.reset();
   for (const mock of Object.values(apiMocks)) mock.mockReset();
+  for (const mock of Object.values(peerApiMocks)) mock.mockReset();
+  peerApiMocks.fetchPersonalSavedManualPeerGroup.mockResolvedValue(null);
+  peerApiMocks.putPersonalSavedManualPeerGroup.mockImplementation(
+    (version, request) =>
+      Promise.resolve({ version: version + 1, payload: request.payload }),
+  );
   apiMocks.fetchPersonalSecurityMasterStatus.mockResolvedValue({
     snapshot: snapshot(),
   });
@@ -1634,6 +1685,634 @@ describe("SecurityDiscoveryWorkspace", () => {
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
     expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
+  });
+
+  it("saves the latest unloaded manual roster with all eleven identities while retaining exact seven-field engine inputs", async () => {
+    const { record, view } = await setupSavedPeerWorkspace();
+    const comparison = requireManualPeerComparison(view);
+    const save = requireSavedPeerControls(view).props.onSave;
+    for (const index of [3, 1, 2]) {
+      comparison.props.onAddPeer(
+        peerCandidate(view, record.payload.memberships[index]!.listingId),
+      );
+    }
+    save();
+    save();
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(
+      peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]!.slice(0, 2),
+    ).toEqual([
+      0,
+      {
+        operation: "save",
+        payload: { schemaVersion: 1, group: savedPeerGroup(record, [3, 1, 2]) },
+        context: {
+          catalogSnapshotSha256: snapshot().snapshotSha256,
+          watchlistVersion: 7,
+        },
+      },
+    ]);
+    const current = requireManualPeerComparison(renderWorkspace()).props;
+    const selectionKeys = [
+      "country",
+      "exchangeMic",
+      "issuerId",
+      "issuerName",
+      "listingId",
+      "securityName",
+      "symbol",
+    ];
+    expect(Object.keys(current.selection!).sort()).toEqual(selectionKeys);
+    for (const peer of current.peers)
+      expect(Object.keys(peer.selection).sort()).toEqual(selectionKeys);
+    expect(
+      buildPersonalManualPeerComparison({
+        primary: {
+          selection: current.selection!,
+          annualFinancials: null,
+          valuationHistory: null,
+        },
+        peers: current.peers.map(({ selection }) => ({
+          selection,
+          annualFinancials: null,
+          valuationHistory: null,
+        })),
+      }).status,
+    ).toBe("ready");
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    await flushPromises(6);
+    expect(peerListingIds(renderWorkspace())).toEqual([
+      "lst-syn-00004",
+      "lst-syn-00002",
+      "lst-syn-00003",
+    ]);
+  });
+
+  it("uses a same-turn removal for Save and rejects duplicate Add and stale removed-peer requests", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    const comparison = requireManualPeerComparison(view);
+    const first = peerCandidate(view, "lst-syn-00002");
+    comparison.props.onAddPeer(first);
+    comparison.props.onAddPeer(first);
+    comparison.props.onAddPeer(peerCandidate(view, "lst-syn-00003"));
+    const current = renderWorkspace();
+    const remove = requireManualPeerComparison(current).props.onRemovePeer;
+    const save = requireSavedPeerControls(current).props.onSave;
+    remove("lst-syn-00002");
+    remove("lst-syn-00002");
+    save();
+    requireManualPeerComparison(current).props.onLoadPeerData("lst-syn-00002");
+    expect(
+      peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]?.[1].payload.group?.peers.map(
+        (peer) => peer.listingId,
+      ),
+    ).toEqual(["lst-syn-00003"]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00003"]);
+  });
+
+  it("captures a full search candidate once and admits Save only after its exact current membership exists", async () => {
+    const record = watchlistRecord(2);
+    const peer = {
+      ...searchResult("SEARCH", "lst-search"),
+      instrumentType: "adr" as const,
+      shareClassName: "Depositary class",
+    };
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
+      ...record,
+      payload: {
+        ...record.payload,
+        memberships: [
+          ...record.payload.memberships,
+          {
+            ...savedPeerIdentity({ ...peer, note: "" }),
+            note: "Already saved search peer",
+          },
+        ],
+      },
+    });
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "SEARCH",
+      results: [peer],
+      snapshot: snapshot(),
+      totalMatches: 1,
+    });
+    await activateWorkspace();
+    await searchAndSelectMarket("SEARCH");
+    watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+    const view = renderWorkspace();
+    requireSavedPeerControls(view).props.onLoad();
+    await flushPromises(6);
+    const current = renderWorkspace();
+    requireManualPeerComparison(current).props.onAddPeer(
+      peerCandidate(current, "lst-search"),
+    );
+    requireSavedPeerControls(current).props.onSave();
+    expect(
+      peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]?.[1].payload
+        .group?.peers,
+    ).toEqual([savedPeerIdentity({ ...peer, note: "" })]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it.each([
+    "instrumentType",
+    "securityId",
+    "shareClassId",
+    "shareClassName",
+  ] as const)(
+    "does not backfill a captured peer after a same-listing %s replacement",
+    async (field) => {
+      const { record, view } = await setupSavedPeerWorkspace();
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, "lst-syn-00002"),
+      );
+      const replacement = {
+        ...record.payload.memberships[1]!,
+        [field]:
+          field === "instrumentType" ? ("adr" as const) : "replacement-class",
+      };
+      apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError("conflict"),
+      );
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
+        ...record,
+        version: 8,
+        payload: {
+          ...record.payload,
+          memberships: [
+            record.payload.memberships[0]!,
+            replacement,
+            ...record.payload.memberships.slice(2),
+          ],
+        },
+      });
+      requireCompanyNote(renderWorkspace()).props.onChange(
+        "Synthetic conflict reload",
+      );
+      requireCompanyNote(renderWorkspace()).props.onSave();
+      await flushPromises(8);
+      requireSavedPeerControls(renderWorkspace()).props.onLoad();
+      await flushPromises(6);
+      const controls = requireSavedPeerControls(renderWorkspace());
+      expect(controls.props.canSave).toBe(false);
+      controls.props.onSave();
+      expect(
+        peerApiMocks.putPersonalSavedManualPeerGroup,
+      ).not.toHaveBeenCalled();
+      expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+    },
+  );
+
+  it("a held peer-group Save updates saved metadata without replacing later roster edits", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    const pending = deferred<PersonalSavedManualPeerGroup>();
+    peerApiMocks.putPersonalSavedManualPeerGroup.mockReturnValueOnce(
+      pending.promise,
+    );
+    requireManualPeerComparison(view).props.onAddPeer(
+      peerCandidate(view, "lst-syn-00002"),
+    );
+    requireSavedPeerControls(view).props.onSave();
+    const request =
+      peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]![1];
+    const during = renderWorkspace();
+    expect(requireSavedPeerControls(during).props.busy).toBe(true);
+    requireManualPeerComparison(during).props.onRemovePeer("lst-syn-00002");
+    requireManualPeerComparison(during).props.onAddPeer(
+      peerCandidate(during, "lst-syn-00003"),
+    );
+    pending.resolve({ version: 1, payload: request.payload });
+    await flushPromises(6);
+    const current = renderWorkspace();
+    expect(peerListingIds(current)).toEqual(["lst-syn-00003"]);
+    expect(
+      requireSavedPeerControls(current).props.savedGroup?.peers.map(
+        (peer) => peer.listingId,
+      ),
+    ).toEqual(["lst-syn-00002"]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("cancels held Restore after an edit and undo even when the final peer identities match", async () => {
+    const { view } = await setupSavedPeerWorkspace([2]);
+    const add = requireManualPeerComparison(view).props.onAddPeer;
+    const candidate = peerCandidate(view, "lst-syn-00002");
+    add(candidate);
+    const before = renderWorkspace();
+    const pending = deferred<PersonalSavedManualPeerResolvedDto>();
+    peerApiMocks.resolvePersonalSavedManualPeerGroup.mockReturnValueOnce(
+      pending.promise,
+    );
+    requireSavedPeerControls(before).props.onRestore();
+    const [, primary, context] =
+      peerApiMocks.resolvePersonalSavedManualPeerGroup.mock.calls[0]!;
+    const during = renderWorkspace();
+    requireManualPeerComparison(during).props.onRemovePeer("lst-syn-00002");
+    add(candidate);
+    pending.resolve({
+      schemaVersion: "1.0.0",
+      ...context,
+      savedPeerGroupVersion: 3,
+      group: { ...requireSavedPeerControls(before).props.savedGroup!, primary },
+    });
+    await flushPromises(6);
+    expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it.each([
+    "company ABA",
+    "Clear then reopen",
+    "session loss",
+    "watchlist note version",
+  ] as const)(
+    "retires pending saved-group Restore after %s",
+    async (change) => {
+      const { record, group, view } = await setupSavedPeerWorkspace([1, 2]);
+      const pending = deferred<PersonalSavedManualPeerResolvedDto>();
+      peerApiMocks.resolvePersonalSavedManualPeerGroup.mockReturnValueOnce(
+        pending.promise,
+      );
+      const stale = requireSavedPeerControls(view).props;
+      stale.onRestore();
+      const [, primary, context, signal] =
+        peerApiMocks.resolvePersonalSavedManualPeerGroup.mock.calls[0]!;
+      if (change === "company ABA") {
+        openNoteCompany(record.payload.memberships[3]!);
+        void renderWorkspace();
+        openNoteCompany(record.payload.memberships[0]!);
+      } else if (change === "Clear then reopen") {
+        requireCompanyResearch(renderWorkspace()).props.onClear();
+        openNoteCompany(record.payload.memberships[0]!);
+      } else if (change === "session loss") {
+        await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+          false,
+          new AbortController().signal,
+        );
+      } else {
+        requireCompanyNote(renderWorkspace()).props.onChange(
+          "Version-only note edit",
+        );
+        requireCompanyNote(renderWorkspace()).props.onSave();
+        await flushPromises(6);
+      }
+      void renderWorkspace();
+      expect(signal.aborted).toBe(true);
+      pending.resolve({
+        schemaVersion: "1.0.0",
+        ...context,
+        savedPeerGroupVersion: 3,
+        group: { ...group!, primary },
+      });
+      await flushPromises(6);
+      stale.onRestore();
+      stale.onSave();
+      stale.onClear();
+      const current = renderWorkspace();
+      if (change === "session loss")
+        expect(findManualPeerComparison(current)).toBeUndefined();
+      else {
+        expect(peerListingIds(current)).toEqual([]);
+        expect(requireSavedPeerControls(current).props.loaded).toBe(false);
+      }
+      expect(
+        peerApiMocks.resolvePersonalSavedManualPeerGroup,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        peerApiMocks.putPersonalSavedManualPeerGroup,
+      ).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a seven-field peer callback instead of reconstructing its missing identity from a listing", async () => {
+    const { view } = await setupSavedPeerWorkspace();
+    const peer = peerCandidate(view, "lst-syn-00002");
+    const comparison = requireManualPeerComparison(view);
+    comparison.props.onAddPeer({
+      country: peer.country,
+      exchangeMic: peer.exchangeMic,
+      issuerId: peer.issuerId,
+      issuerName: peer.issuerName,
+      listingId: peer.listingId,
+      securityName: peer.securityName,
+      symbol: peer.symbol,
+    });
+    requireSavedPeerControls(view).props.onSave();
+    expect(peerListingIds(renderWorkspace())).toEqual([]);
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).not.toHaveBeenCalled();
+    comparison.props.onAddPeer(peer);
+    expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+  });
+
+  it.each([
+    "pending",
+    "partial failure",
+    "loaded",
+    "range interrupted refresh",
+  ] as const)(
+    "preserves the captured full peer identity for Save through %s source updates",
+    async (phase) => {
+      const { record, view } = await setupSavedPeerWorkspace();
+      apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+        Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+      );
+      apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+        Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+      );
+      requireAnnualFinancials(view).props.onLoad();
+      await flushPromises(6);
+      const ready = renderWorkspace();
+      requireManualPeerComparison(ready).props.onAddPeer(
+        peerCandidate(ready, "lst-syn-00002"),
+      );
+      const annual = deferred<PersonalAnnualFinancialsDto>();
+      const valuation = deferred<PersonalValuationHistoryDto>();
+      if (phase === "pending") {
+        apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(
+          annual.promise,
+        );
+        apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+          valuation.promise,
+        );
+      } else if (phase === "partial failure") {
+        apiMocks.fetchPersonalValuationHistory.mockRejectedValueOnce(
+          new PersonalWorkspaceApiError("not_entitled"),
+        );
+      }
+      requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+        "lst-syn-00002",
+      );
+      if (phase !== "pending") await flushPromises(6);
+      if (phase === "range interrupted refresh") {
+        apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(
+          annual.promise,
+        );
+        apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+          valuation.promise,
+        );
+        requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+          "lst-syn-00002",
+        );
+        requireMarketOverview(renderWorkspace()).props.onLoad("5y");
+        expect(
+          apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)![1].aborted,
+        ).toBe(true);
+      }
+      const beforeSave = providerRequestCounts();
+      const current = renderWorkspace();
+      const peerState = requireManualPeerComparison(current).props.peers[0]!;
+      if (phase === "pending") expect(peerState.requestState).toBe("loading");
+      if (phase === "partial failure")
+        expect(peerState.valuationErrorCode).toBe("not_entitled");
+      if (phase === "loaded") expect(peerState.valuationHistory).not.toBeNull();
+      if (phase === "range interrupted refresh") {
+        expect(peerState.annualFinancials).not.toBeNull();
+        expect(peerState.valuationHistory).toBeNull();
+      }
+      requireSavedPeerControls(current).props.onSave();
+      expect(
+        peerApiMocks.putPersonalSavedManualPeerGroup.mock.calls[0]?.[1].payload
+          .group,
+      ).toEqual(savedPeerGroup(record, [1]));
+      expect(providerRequestCounts()).toEqual(beforeSave);
+      annual.resolve(annualFinancials("lst-syn-00002", "SYN00002"));
+      valuation.resolve(valuationHistory("lst-syn-00002", "SYN00002"));
+      await flushPromises(6);
+      expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+      if (phase === "range interrupted refresh")
+        expect(
+          requireManualPeerComparison(renderWorkspace()).props.peers[0]
+            ?.valuationHistory,
+        ).toBeNull();
+    },
+  );
+
+  it("restores peers atomically and unloaded, aborts old sources, and preserves primary research, DCF mount, holding and Back", async () => {
+    const { group, view } = await setupSavedPeerWorkspace([1, 2]);
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+      Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+    );
+    requireAnnualFinancials(view).props.onLoad();
+    requireValuationHistory(view).props.onLoad();
+    requireQuarterlyFinancials(view).props.onLoad();
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises(6);
+    watchlistAction(
+      renderWorkspace(),
+      "Choose SYN00005 for portfolio",
+    ).props.onClick();
+    requireCompanyResearch(renderWorkspace()).props.onSectionChange("peers");
+    requireCompanyNote(renderWorkspace()).props.onChange(
+      "Unsaved note survives restored competitors",
+    );
+    const ready = renderWorkspace();
+    requireManualPeerComparison(ready).props.onAddPeer(
+      peerCandidate(ready, "lst-syn-00002"),
+    );
+    const annual = deferred<PersonalAnnualFinancialsDto>();
+    const valuation = deferred<PersonalValuationHistoryDto>();
+    apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(annual.promise);
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(
+      valuation.promise,
+    );
+    requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+      "lst-syn-00002",
+    );
+    const annualSignal =
+      apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)![1];
+    const valuationSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)![1];
+    const before = renderWorkspace();
+    const requests = Object.values(apiMocks).map(
+      (mock) => mock.mock.calls.length,
+    );
+    const restore = requireSavedPeerControls(before).props.onRestore;
+    restore();
+    restore();
+    expect(
+      peerApiMocks.resolvePersonalSavedManualPeerGroup,
+    ).toHaveBeenCalledExactlyOnceWith(
+      3,
+      group!.primary,
+      { catalogSnapshotSha256: snapshot().snapshotSha256, watchlistVersion: 7 },
+      expect.any(AbortSignal),
+    );
+    expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+    await flushPromises(6);
+    const restored = renderWorkspace();
+    expect(annualSignal.aborted).toBe(true);
+    expect(valuationSignal.aborted).toBe(true);
+    expect(peerListingIds(restored)).toEqual([
+      "lst-syn-00002",
+      "lst-syn-00003",
+    ]);
+    for (const peer of requireManualPeerComparison(restored).props.peers) {
+      expect(peer).toMatchObject({
+        annualFinancials: null,
+        valuationHistory: null,
+        annualErrorCode: null,
+        valuationErrorCode: null,
+        requestState: "idle",
+      });
+    }
+    expect(requireCompanyResearch(restored).key).toBe(
+      requireCompanyResearch(before).key,
+    );
+    expect(requireCompanyResearch(restored).props.activeSection).toBe("peers");
+    expect(requireCompanyResearch(restored).props.backLabel).toBe(
+      "Back to My Watchlist",
+    );
+    expect(requireFcffDcfValuation(restored).key).toBe(
+      requireFcffDcfValuation(before).key,
+    );
+    expect(requireAnnualFinancials(restored).props.financials).toBe(
+      requireAnnualFinancials(before).props.financials,
+    );
+    expect(requireValuationHistory(restored).props.history).toBe(
+      requireValuationHistory(before).props.history,
+    );
+    expect(requireMarketOverview(restored).props.overview).toBe(
+      requireMarketOverview(before).props.overview,
+    );
+    expect(requireQuarterlyFinancials(restored).props.financials).toBe(
+      requireQuarterlyFinancials(before).props.financials,
+    );
+    expect(
+      findElement<PersonalPortfolioProps>(restored, componentMocks.Portfolio)!
+        .props.selectedListing?.listingId,
+    ).toBe("lst-syn-00005");
+    expect(requireCompanyNote(restored).props.value).toBe(
+      "Unsaved note survives restored competitors",
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(requests);
+    annual.resolve(annualFinancials("lst-syn-00002", "SYN00002"));
+    valuation.resolve(valuationHistory("lst-syn-00002", "SYN00002"));
+    await flushPromises(6);
+    expect(
+      requireManualPeerComparison(renderWorkspace()).props.peers.every(
+        (peer) =>
+          peer.annualFinancials === null && peer.valuationHistory === null,
+      ),
+    ).toBe(true);
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    expect(requireCompanyResearch(renderWorkspace()).props.activeSection).toBe(
+      "peers",
+    );
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).not.toHaveBeenCalled();
+  });
+
+  it("Load and Clear leave live peer selections and loaded sources unchanged", async () => {
+    const { view } = await setupSavedPeerWorkspace([2]);
+    apiMocks.fetchPersonalAnnualFinancials.mockImplementation((input) =>
+      Promise.resolve(annualFinancials(input.listingId, input.symbol)),
+    );
+    apiMocks.fetchPersonalValuationHistory.mockImplementation((input) =>
+      Promise.resolve(valuationHistory(input.listingId, input.symbol)),
+    );
+    requireAnnualFinancials(view).props.onLoad();
+    await flushPromises(6);
+    const ready = renderWorkspace();
+    requireManualPeerComparison(ready).props.onAddPeer(
+      peerCandidate(ready, "lst-syn-00002"),
+    );
+    requireManualPeerComparison(renderWorkspace()).props.onLoadPeerData(
+      "lst-syn-00002",
+    );
+    await flushPromises(6);
+    const livePeers =
+      requireManualPeerComparison(renderWorkspace()).props.peers;
+    const requests = providerRequestCounts();
+    requireSavedPeerControls(renderWorkspace()).props.onLoad();
+    await flushPromises(6);
+    expect(requireManualPeerComparison(renderWorkspace()).props.peers).toEqual(
+      livePeers,
+    );
+    const clear = requireSavedPeerControls(renderWorkspace()).props.onClear;
+    clear();
+    clear();
+    await flushPromises(6);
+    const current = renderWorkspace();
+    expect(requireManualPeerComparison(current).props.peers).toEqual(livePeers);
+    expect(requireSavedPeerControls(current).props.savedGroup).toBeNull();
+    expect(
+      peerApiMocks.putPersonalSavedManualPeerGroup,
+    ).toHaveBeenCalledExactlyOnceWith(
+      3,
+      {
+        operation: "clear",
+        payload: { schemaVersion: 1, group: null },
+        context: null,
+      },
+      expect.any(AbortSignal),
+    );
+    expect(providerRequestCounts()).toEqual(requests);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it.each(["conflict", "unavailable"] as const)(
+    "keeps current peers after %s and waits for explicit saved-group recovery",
+    async (code) => {
+      const { view } = await setupSavedPeerWorkspace([2]);
+      requireManualPeerComparison(view).props.onAddPeer(
+        peerCandidate(view, "lst-syn-00002"),
+      );
+      peerApiMocks.putPersonalSavedManualPeerGroup.mockRejectedValueOnce(
+        new PersonalWorkspaceApiError(code),
+      );
+      requireSavedPeerControls(renderWorkspace()).props.onSave();
+      await flushPromises(6);
+      const current = renderWorkspace();
+      expect(peerListingIds(current)).toEqual(["lst-syn-00002"]);
+      expect(requireSavedPeerControls(current).props.loaded).toBe(false);
+      expect(
+        peerApiMocks.fetchPersonalSavedManualPeerGroup,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        peerApiMocks.putPersonalSavedManualPeerGroup,
+      ).toHaveBeenCalledTimes(1);
+      requireSavedPeerControls(current).props.onRestore();
+      expect(
+        peerApiMocks.resolvePersonalSavedManualPeerGroup,
+      ).not.toHaveBeenCalled();
+      requireSavedPeerControls(current).props.onLoad();
+      await flushPromises(6);
+      expect(requireSavedPeerControls(renderWorkspace()).props.loaded).toBe(
+        true,
+      );
+      expect(peerListingIds(renderWorkspace())).toEqual(["lst-syn-00002"]);
+      expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    },
+  );
+
+  it("does not offer Restore for another full primary and can still clear that saved group", async () => {
+    const { view } = await setupSavedPeerWorkspace([2]);
+    watchlistAction(view, "Research SYN00004").props.onClick();
+    requireSavedPeerControls(renderWorkspace()).props.onLoad();
+    await flushPromises(6);
+    const controls = requireSavedPeerControls(renderWorkspace()).props;
+    expect(controls.canRestore).toBe(false);
+    expect(controls.canClear).toBe(true);
+    controls.onRestore();
+    expect(
+      peerApiMocks.resolvePersonalSavedManualPeerGroup,
+    ).not.toHaveBeenCalled();
+    controls.onClear();
+    await flushPromises(6);
+    expect(peerListingIds(renderWorkspace())).toEqual([]);
+    expect(peerApiMocks.putPersonalSavedManualPeerGroup).toHaveBeenCalledTimes(
+      1,
+    );
   });
 
   it("adds a manual peer without a request and loads only that peer after the explicit action", async () => {
@@ -5728,6 +6407,109 @@ function requireManualPeerComparison(value: unknown) {
   if (comparison === undefined)
     throw new Error("Expected manual peer comparison.");
   return comparison;
+}
+
+function requireSavedPeerControls(value: unknown) {
+  const controls = findElement<PersonalSavedManualPeerGroupControlsProps>(
+    value,
+    componentMocks.SavedManualPeerGroupControls,
+  );
+  if (controls === undefined)
+    throw new Error("Expected saved manual peer controls.");
+  return controls;
+}
+
+function savedPeerIdentity(
+  member: PersonalWatchlistMembership,
+): PersonalSavedManualPeerIdentityDto {
+  return {
+    country: member.country,
+    exchangeMic: member.exchangeMic,
+    instrumentType: member.instrumentType,
+    issuerId: member.issuerId,
+    issuerName: member.issuerName,
+    listingId: member.listingId,
+    securityId: member.securityId,
+    securityName: member.securityName,
+    shareClassId: member.shareClassId,
+    shareClassName: member.shareClassName,
+    symbol: member.symbol,
+  };
+}
+
+function savedPeerGroup(
+  record: PersonalWatchlistRecord,
+  peerIndexes: readonly number[],
+  primaryIndex = 0,
+): PersonalSavedManualPeerGroupDto {
+  return {
+    createdAgainstCatalogSnapshotSha256: record.payload.snapshotSha256,
+    primary: savedPeerIdentity(record.payload.memberships[primaryIndex]!),
+    peers: peerIndexes.map((index) =>
+      savedPeerIdentity(record.payload.memberships[index]!),
+    ),
+  };
+}
+
+function savedPeerRecord(
+  group: PersonalSavedManualPeerGroupDto | null,
+  version = 3,
+): PersonalSavedManualPeerGroup {
+  return { version, payload: { schemaVersion: 1, group } };
+}
+
+async function setupSavedPeerWorkspace(savedPeerIndexes?: readonly number[]) {
+  const record = watchlistRecord(5);
+  record.payload.memberships[1]!.shareClassName =
+    "Synthetic distinct voting class";
+  apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+  const group =
+    savedPeerIndexes === undefined
+      ? null
+      : savedPeerGroup(record, savedPeerIndexes);
+  peerApiMocks.fetchPersonalSavedManualPeerGroup.mockResolvedValue(
+    group === null ? null : savedPeerRecord(group),
+  );
+  peerApiMocks.resolvePersonalSavedManualPeerGroup.mockImplementation(
+    (version, primary, context) =>
+      Promise.resolve({
+        schemaVersion: "1.0.0",
+        ...context,
+        savedPeerGroupVersion: version,
+        group: group ?? { ...savedPeerGroup(record, [1]), primary },
+      }),
+  );
+  await activateWorkspace();
+  watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+  const view = renderWorkspace();
+  expect(peerApiMocks.fetchPersonalSavedManualPeerGroup).not.toHaveBeenCalled();
+  requireSavedPeerControls(view).props.onLoad();
+  await flushPromises(6);
+  return { record, group, view: renderWorkspace() };
+}
+
+function peerCandidate(value: unknown, listingId: string) {
+  const candidate = requireManualPeerComparison(value).props.candidates.find(
+    (peer) => peer.listingId === listingId,
+  );
+  if (candidate === undefined)
+    throw new Error(`Expected peer candidate ${listingId}.`);
+  return candidate;
+}
+
+function peerListingIds(value: unknown) {
+  return requireManualPeerComparison(value).props.peers.map(
+    (peer) => peer.selection.listingId,
+  );
+}
+
+function providerRequestCounts() {
+  return [
+    apiMocks.fetchPersonalAnnualFinancials.mock.calls.length,
+    apiMocks.fetchPersonalQuarterlyFinancials.mock.calls.length,
+    apiMocks.fetchPersonalValuationHistory.mock.calls.length,
+    apiMocks.fetchPersonalMarketOverview.mock.calls.length,
+  ];
 }
 
 function requireOwnerSession(value: unknown) {

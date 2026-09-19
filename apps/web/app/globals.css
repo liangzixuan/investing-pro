@@ -2208,6 +2208,29 @@ h4,
   overflow-wrap: anywhere;
 }
 
+.saved-manual-peer-group-rosters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.saved-manual-peer-group-rosters > section,
+.saved-manual-peer-group :is(p, li, h4, button) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.saved-manual-peer-group-rosters ol {
+  margin: 0;
+  padding-inline-start: 24px;
+}
+
+.saved-manual-peer-group .compact-action {
+  max-width: 100%;
+  white-space: normal;
+}
+
 .saved-dcf-input-comparison {
   display: grid;
   min-width: 0;

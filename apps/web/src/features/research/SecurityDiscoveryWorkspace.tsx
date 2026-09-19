@@ -1,6 +1,8 @@
 "use client";
 
 import type {
+  PersonalSavedManualPeerGroupDto,
+  PersonalSavedManualPeerIdentityDto,
   PersonalPortfolioIdentity,
   PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
@@ -11,6 +13,10 @@ import type {
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
+} from "@research-cockpit/contracts";
+import {
+  isPersonalSavedManualPeerGroup,
+  isPersonalSavedManualPeerIdentity,
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
 import Link from "next/link";
@@ -36,6 +42,9 @@ import {
 } from "@/lib/personal-workspace-api";
 
 import { OwnerSessionPanel } from "./OwnerSessionPanel";
+import { samePersonalSavedManualPeerIdentity } from "@/lib/personal-saved-manual-peer-group-api";
+import { PersonalSavedManualPeerGroupControls } from "./PersonalSavedManualPeerGroupControls";
+import { usePersonalSavedManualPeerGroup } from "./usePersonalSavedManualPeerGroup";
 import { LocalWorkspaceAccessPanel } from "./LocalWorkspaceAccessPanel";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import {
@@ -119,6 +128,10 @@ interface ManualPeerRequest {
   readonly controller: AbortController;
   readonly priorAnnualErrorCode: PersonalWorkspaceApiErrorCode | null;
   readonly priorAnnualFinancials: PersonalAnnualFinancialsDto | null;
+}
+
+interface WorkspaceManualPeerState extends PersonalManualPeerState {
+  readonly identity: PersonalSavedManualPeerIdentityDto;
 }
 
 type CompanyResearchOrigin =
@@ -271,8 +284,11 @@ export function SecurityDiscoveryWorkspace({
   const [valuationHistoryErrorCode, setValuationHistoryErrorCode] =
     useState<PersonalWorkspaceApiErrorCode | null>(null);
   const [manualPeers, setManualPeers] = useState<
-    readonly PersonalManualPeerState[]
+    readonly WorkspaceManualPeerState[]
   >([]);
+  const currentManualPeers = useRef(manualPeers);
+  currentManualPeers.current = manualPeers;
+  const manualPeerEditGeneration = useRef(0);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
   const marketEpoch = useRef(0);
@@ -1129,13 +1145,27 @@ export function SecurityDiscoveryWorkspace({
 
   function clearManualPeerState() {
     abortManualPeerRequests();
-    setManualPeers([]);
+    replaceManualPeers(() => [], true);
+  }
+
+  function replaceManualPeers(
+    update: (
+      peers: readonly WorkspaceManualPeerState[],
+    ) => readonly WorkspaceManualPeerState[],
+    rosterEdit = false,
+  ) {
+    const previous = currentManualPeers.current;
+    const next = update(previous);
+    if (next === previous) return;
+    if (rosterEdit) manualPeerEditGeneration.current += 1;
+    currentManualPeers.current = next;
+    setManualPeers(next);
   }
 
   function clearManualPeerValuationState() {
     const activeRequests = new Map(manualPeerControllers.current);
     abortManualPeerRequests();
-    setManualPeers((current) =>
+    replaceManualPeers((current) =>
       Object.freeze(
         current.map((peer) => {
           const interrupted = activeRequests.get(peer.selection.listingId);
@@ -1155,14 +1185,18 @@ export function SecurityDiscoveryWorkspace({
   }
 
   function addManualPeer(candidate: PersonalManualPeerSelection) {
-    if (marketSelection === null) return;
+    if (
+      marketSelection === null ||
+      !isPersonalSavedManualPeerIdentity(candidate)
+    )
+      return;
     const admitted = manualPeerCandidates.find(
       (selection) =>
         selection.listingId === candidate.listingId &&
-        sameManualPeerSelection(selection, candidate),
+        samePersonalSavedManualPeerIdentity(selection, candidate),
     );
     if (admitted === undefined) return;
-    setManualPeers((current) => {
+    replaceManualPeers((current) => {
       if (
         current.length >= PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS ||
         current.some(
@@ -1175,18 +1209,8 @@ export function SecurityDiscoveryWorkspace({
       ) {
         return current;
       }
-      return Object.freeze([
-        ...current,
-        Object.freeze({
-          annualErrorCode: null,
-          annualFinancials: null,
-          requestState: "idle" as const,
-          selection: admitted,
-          valuationErrorCode: null,
-          valuationHistory: null,
-        }),
-      ]);
-    });
+      return Object.freeze([...current, unloadedManualPeer(admitted)]);
+    }, true);
   }
 
   function removeManualPeer(listingId: string) {
@@ -1195,15 +1219,19 @@ export function SecurityDiscoveryWorkspace({
     if (request !== undefined) {
       manualPeerControllers.current.delete(listingId);
     }
-    setManualPeers((current) =>
-      Object.freeze(
-        current.filter((peer) => peer.selection.listingId !== listingId),
-      ),
+    replaceManualPeers(
+      (current) =>
+        current.some((peer) => peer.selection.listingId === listingId)
+          ? Object.freeze(
+              current.filter((peer) => peer.selection.listingId !== listingId),
+            )
+          : current,
+      true,
     );
   }
 
   async function loadManualPeerData(listingId: string) {
-    const peer = manualPeers.find(
+    const peer = currentManualPeers.current.find(
       (candidate) => candidate.selection.listingId === listingId,
     );
     if (
@@ -1212,7 +1240,9 @@ export function SecurityDiscoveryWorkspace({
         (valuationHistory === null ||
           valuationHistory.history.range !== marketRange)) ||
       manualPeerControllers.current.size > 0 ||
-      manualPeers.some((candidate) => candidate.requestState === "loading")
+      currentManualPeers.current.some(
+        (candidate) => candidate.requestState === "loading",
+      )
     ) {
       return;
     }
@@ -1223,7 +1253,7 @@ export function SecurityDiscoveryWorkspace({
           ? "unavailable"
           : null;
     if (unavailableCode !== null) {
-      setManualPeers((current) =>
+      replaceManualPeers((current) =>
         updateManualPeer(current, listingId, (candidate) => ({
           ...candidate,
           annualErrorCode: unavailableCode,
@@ -1255,7 +1285,7 @@ export function SecurityDiscoveryWorkspace({
       }
       throw error;
     };
-    setManualPeers((current) =>
+    replaceManualPeers((current) =>
       updateManualPeer(current, listingId, (candidate) => ({
         ...candidate,
         annualErrorCode: null,
@@ -1301,7 +1331,7 @@ export function SecurityDiscoveryWorkspace({
       return;
     }
 
-    setManualPeers((current) =>
+    replaceManualPeers((current) =>
       updateManualPeer(current, listingId, (candidate) => ({
         ...candidate,
         annualErrorCode:
@@ -2165,6 +2195,85 @@ export function SecurityDiscoveryWorkspace({
     marketSelection,
     manualPeers,
   );
+  const savedPeerIdentity =
+    companyNoteMembership === undefined
+      ? null
+      : portfolioIdentity(companyNoteMembership);
+  const savedPeerBinding =
+    companyNoteMembership !== undefined &&
+    workspace !== null &&
+    workspace.watchlistAvailable &&
+    !snapshotChanged &&
+    watchlistState !== "saving" &&
+    !reconciling &&
+    savedDcfCatalogInvalidation !== renderedWorkspaceEpoch
+      ? {
+          catalogSnapshotSha256: workspace.snapshot.snapshotSha256,
+          watchlistVersion: workspace.version,
+        }
+      : null;
+  function savedPeerContextCurrent() {
+    return (
+      workspaceActivityReady.current &&
+      companyIdentityKey !== null &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      renderedCompanyEpoch === companySelectionEpoch.current &&
+      companyIdentityKey === companyIdentity.current &&
+      savedDcfOrigin === companyOriginTarget.current &&
+      savedDcfCatalogInvalidation === researchCatalogInvalidatedEpoch.current &&
+      workspace === watchlistView.current.workspace &&
+      renderedWatchlistGeneration === watchlistView.current.generation &&
+      renderedSavedDcfEpoch === savedDcfContext.current.epoch
+    );
+  }
+  function exactSavedPeerMembership(group: PersonalSavedManualPeerGroupDto) {
+    return (
+      savedPeerContextCurrent() &&
+      savedPeerIdentity !== null &&
+      savedPeerBinding !== null &&
+      !watchlistView.current.saving &&
+      !watchlistView.current.reconciling &&
+      isPersonalSavedManualPeerGroup(group) &&
+      samePersonalSavedManualPeerIdentity(group.primary, savedPeerIdentity) &&
+      [group.primary, ...group.peers].every((identity) =>
+        workspace?.watchlist.memberships.some((member) =>
+          samePersonalSavedManualPeerIdentity(member, identity),
+        ),
+      )
+    );
+  }
+  const savedManualPeerControls = usePersonalSavedManualPeerGroup({
+    workspaceKey: String(renderedWorkspaceEpoch),
+    contextKey: `${renderedCompanyEpoch}:${renderedSavedDcfEpoch}:${renderedWatchlistGeneration}`,
+    enabled: workspaceActivityReady.current && companyIdentityKey !== null,
+    identity: savedPeerIdentity,
+    watchlistBinding: savedPeerBinding,
+    isCurrent: savedPeerContextCurrent,
+    onSessionUnavailable: () =>
+      withCurrentCompany(clearWorkspaceForSessionLoss),
+    getSaveGroup: () => {
+      if (savedPeerIdentity === null || savedPeerBinding === null) return null;
+      const group = {
+        createdAgainstCatalogSnapshotSha256:
+          savedPeerBinding.catalogSnapshotSha256,
+        primary: savedPeerIdentity,
+        peers: currentManualPeers.current.map((peer) => peer.identity),
+      };
+      return exactSavedPeerMembership(group) ? group : null;
+    },
+    getEditGeneration: () => manualPeerEditGeneration.current,
+    onRestore: (group, generation) => {
+      if (
+        generation !== manualPeerEditGeneration.current ||
+        !exactSavedPeerMembership(group)
+      )
+        return false;
+      const restored = Object.freeze(group.peers.map(unloadedManualPeer));
+      abortManualPeerRequests();
+      replaceManualPeers(() => restored, true);
+      return true;
+    },
+  });
 
   return (
     <>
@@ -2621,6 +2730,11 @@ export function SecurityDiscoveryWorkspace({
                 ),
                 peers: (
                   <>
+                    <PersonalSavedManualPeerGroupControls
+                      {...savedManualPeerControls}
+                      currentPrimary={marketSelection}
+                      currentPeers={manualPeers.map((peer) => peer.identity)}
+                    />
                     <PersonalManualPeerComparison
                       annualFinancials={annualFinancials}
                       candidates={manualPeerCandidates}
@@ -3111,7 +3225,7 @@ function collectManualPeerCandidates(
   watchlist: readonly PersonalWatchlistMembership[],
   selection: PersonalManualPeerSelection | null,
   peers: readonly PersonalManualPeerState[],
-): readonly PersonalManualPeerSelection[] {
+): readonly PersonalSavedManualPeerIdentityDto[] {
   if (selection === null) return Object.freeze([]);
   const excludedListings = new Set([
     selection.listingId,
@@ -3121,7 +3235,7 @@ function collectManualPeerCandidates(
     selection.issuerId,
     ...peers.map((peer) => peer.selection.issuerId),
   ]);
-  const candidates = new Map<string, PersonalManualPeerSelection>();
+  const candidates = new Map<string, PersonalSavedManualPeerIdentityDto>();
   const candidateIssuerIds = new Set<string>();
   for (const source of [...searchResults, ...watchlist]) {
     if (candidates.size >= MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES) break;
@@ -3133,43 +3247,39 @@ function collectManualPeerCandidates(
     ) {
       continue;
     }
-    candidates.set(
-      source.listingId,
-      Object.freeze({
-        country: source.country,
-        exchangeMic: source.exchangeMic,
-        issuerId: source.issuerId,
-        issuerName: source.issuerName,
-        listingId: source.listingId,
-        securityName: source.securityName,
-        symbol: source.symbol,
-      }),
-    );
+    candidates.set(source.listingId, Object.freeze(portfolioIdentity(source)));
     candidateIssuerIds.add(source.issuerId);
   }
   return Object.freeze([...candidates.values()]);
 }
 
-function sameManualPeerSelection(
-  left: PersonalManualPeerSelection,
-  right: PersonalManualPeerSelection,
-): boolean {
-  return (
-    left.country === right.country &&
-    left.exchangeMic === right.exchangeMic &&
-    left.issuerId === right.issuerId &&
-    left.issuerName === right.issuerName &&
-    left.listingId === right.listingId &&
-    left.securityName === right.securityName &&
-    left.symbol === right.symbol
-  );
+function unloadedManualPeer(
+  identity: PersonalSavedManualPeerIdentityDto,
+): WorkspaceManualPeerState {
+  return Object.freeze({
+    identity: Object.freeze({ ...identity }),
+    selection: Object.freeze({
+      country: identity.country,
+      exchangeMic: identity.exchangeMic,
+      issuerId: identity.issuerId,
+      issuerName: identity.issuerName,
+      listingId: identity.listingId,
+      securityName: identity.securityName,
+      symbol: identity.symbol,
+    }),
+    annualErrorCode: null,
+    annualFinancials: null,
+    requestState: "idle",
+    valuationErrorCode: null,
+    valuationHistory: null,
+  });
 }
 
 function updateManualPeer(
-  peers: readonly PersonalManualPeerState[],
+  peers: readonly WorkspaceManualPeerState[],
   listingId: string,
-  update: (peer: PersonalManualPeerState) => PersonalManualPeerState,
-): readonly PersonalManualPeerState[] {
+  update: (peer: WorkspaceManualPeerState) => WorkspaceManualPeerState,
+): readonly WorkspaceManualPeerState[] {
   return Object.freeze(
     peers.map((peer) =>
       peer.selection.listingId === listingId
