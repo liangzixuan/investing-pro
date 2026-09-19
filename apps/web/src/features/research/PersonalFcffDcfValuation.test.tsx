@@ -8,6 +8,8 @@ import type {
 import {
   PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
   PERSONAL_FCFF_DCF_MAXIMUM_DECIMAL_LENGTH,
+  type PersonalFcffDcfAssumptions,
+  type PersonalFcffDcfInput,
 } from "@research-cockpit/personal-market-analytics";
 import * as analytics from "@research-cockpit/personal-market-analytics";
 import React from "react";
@@ -20,12 +22,23 @@ import {
   type PersonalFcffDcfAssumptionDraft,
   type PersonalFcffDcfValuationProps,
 } from "./PersonalFcffDcfValuation";
+import {
+  PersonalDcfOutcomeComparison,
+  type PersonalDcfOutcomeComparisonProps,
+} from "./PersonalDcfOutcomeComparison";
 
 const stateHarness = vi.hoisted(() => {
   let state: unknown;
+  const memos: Array<{ dependencies: readonly unknown[]; value: unknown }> = [];
+  let memoIndex = 0;
   return {
+    beginRender() {
+      memoIndex = 0;
+    },
     reset() {
       state = undefined;
+      memos.splice(0);
+      memoIndex = 0;
     },
     set(next: unknown) {
       state = next;
@@ -47,12 +60,32 @@ const stateHarness = vi.hoisted(() => {
         },
       ];
     },
+    useMemo<T>(
+      this: void,
+      calculate: () => T,
+      dependencies: readonly unknown[],
+    ): T {
+      const index = memoIndex++;
+      const prior = memos[index];
+      if (
+        prior !== undefined &&
+        prior.dependencies.length === dependencies.length &&
+        dependencies.every((value, position) =>
+          Object.is(value, prior.dependencies[position]),
+        )
+      )
+        return prior.value as T;
+      const value = calculate();
+      memos[index] = { dependencies: [...dependencies], value };
+      return value;
+    },
   };
 });
 
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal()),
   useState: (initial: unknown) => stateHarness.useState(initial),
+  useMemo: stateHarness.useMemo,
 }));
 
 beforeEach(() => stateHarness.reset());
@@ -531,7 +564,7 @@ describe("PersonalFcffDcfValuation", () => {
       },
     });
     const staleWacc = findHostElement(
-      PersonalFcffDcfValuation(props),
+      renderTree(props),
       (element) =>
         element.type === "input" && element.props.id === "fcff-dcf-wacc",
     )!;
@@ -588,7 +621,7 @@ describe("PersonalFcffDcfValuation", () => {
     ]) {
       expect(
         findHostElement(
-          PersonalFcffDcfValuation(props),
+          renderTree(props),
           (element) => element.type === "input" && element.props.id === id,
         )?.props.value,
       ).toBe(value);
@@ -678,8 +711,514 @@ describe("PersonalFcffDcfValuation", () => {
   });
 });
 
+describe("current and loaded saved DCF outcomes", () => {
+  it.each([
+    ["forecast years", { forecastYears: 8 }],
+    ["tax shield", { taxShieldRatePercent: "45.0000" }],
+    ["WACC", { waccPercent: "13.0000" }],
+    ["terminal growth", { terminalGrowthPercent: "3.0000" }],
+    [
+      "conservative growth",
+      { scenarios: scenarioInputs("-5.0000", "5.0000", "10.0000") },
+    ],
+    [
+      "base growth",
+      { scenarios: scenarioInputs("0.0000", "7.0000", "10.0000") },
+    ],
+    [
+      "expansion growth",
+      { scenarios: scenarioInputs("0.0000", "5.0000", "15.0000") },
+    ],
+  ] satisfies Array<[string, Partial<PersonalFcffDcfAssumptions>]>)(
+    "matches independent unchanged-engine calculations when saved %s differs",
+    (_name, patch) => {
+      const saved = canonicalAssumptions(patch);
+      const props = comparedProps(saved);
+      const before = structuredClone(props);
+      const fetch = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      const comparison = outcomeProps(props);
+      expect(comparison.current).toMatchObject({
+        status: "available",
+        result: analytics.calculatePersonalFcffDcfValuation(
+          independentInput(PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS),
+        ),
+      });
+      expect(comparison.saved).toMatchObject({
+        status: "available",
+        result: analytics.calculatePersonalFcffDcfValuation(
+          independentInput(saved),
+        ),
+      });
+      if (
+        comparison.current.status !== "available" ||
+        comparison.saved.status !== "available"
+      )
+        throw new Error("Expected both model results");
+      expect(comparison.current.result.scenarios).not.toEqual(
+        comparison.saved.result.scenarios,
+      );
+      expect(comparison.current.result.reference.sourceOperands).toEqual(
+        comparison.saved.result.reference.sourceOperands,
+      );
+      expect(props).toEqual(before);
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps raw negative-zero echoes while equivalent canonical inputs give equal numerical outcomes", () => {
+    const raw = {
+      ...PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
+      taxShieldRatePercent: "-0.0000",
+      terminalGrowthPercent: "-0",
+      scenarios: scenarioInputs("-0.000", "5.0", "10.00"),
+    };
+    const saved = canonicalAssumptions({
+      taxShieldRatePercent: "0.0000",
+      terminalGrowthPercent: "0.0000",
+    });
+    const props = comparedProps(saved, {
+      assumptionControl: {
+        value: createPersonalFcffDcfAssumptionDraft(raw),
+        onChange: vi.fn(),
+      },
+    });
+    const comparison = outcomeProps(props);
+    if (
+      comparison.current.status !== "available" ||
+      comparison.saved.status !== "available"
+    )
+      throw new Error("Expected equivalent available results");
+    expect(comparison.current.result.assumptions).toEqual(raw);
+    expect(comparison.saved.result.assumptions).toEqual(saved);
+    expect({ ...comparison.current.result, assumptions: saved }).toEqual(
+      comparison.saved.result,
+    );
+    expect(props.assumptionControl!.value.taxShieldRatePercent).toBe("-0.0000");
+    expect(props.assumptionControl!.onChange).not.toHaveBeenCalled();
+  });
+
+  it("shares exact source operands and coordinates without equating tax-derived starting proxies", () => {
+    const comparison = outcomeProps(
+      comparedProps(canonicalAssumptions({ taxShieldRatePercent: "50.0000" })),
+    );
+    if (
+      comparison.current.status !== "available" ||
+      comparison.saved.status !== "available"
+    )
+      throw new Error("Expected tax comparison");
+    const current = comparison.current.result.reference;
+    const saved = comparison.saved.result.reference;
+    expect(current.sourceOperands).toEqual(saved.sourceOperands);
+    expect(current).not.toEqual(saved);
+    expect(comparison.current.result).toEqual(
+      analytics.calculatePersonalFcffDcfValuation(
+        independentInput(PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS),
+      ),
+    );
+    expect(comparison.saved.result).toEqual(
+      analytics.calculatePersonalFcffDcfValuation(
+        independentInput(
+          canonicalAssumptions({ taxShieldRatePercent: "50.0000" }),
+        ),
+      ),
+    );
+  });
+
+  it.each([true, false])(
+    "withholds the whole invalid current side independently of source readiness (%s)",
+    (loaded) => {
+      const props = comparedProps(canonicalAssumptions(), {
+        ...(loaded
+          ? {}
+          : {
+              annualFinancials: null,
+              marketOverview: null,
+              valuationHistory: null,
+            }),
+        assumptionControl: {
+          value: {
+            ...createPersonalFcffDcfAssumptionDraft(),
+            waccPercent: "31",
+          },
+          onChange: vi.fn(),
+        },
+        savedAssumptionsComparison: {
+          assumptions: canonicalAssumptions(),
+          currentDraftValid: false,
+        },
+      });
+      const comparison = outcomeProps(props);
+      expect(comparison.current.status).toBe("unavailable");
+      expect(comparison.current).not.toHaveProperty("result");
+      if (comparison.current.status !== "unavailable")
+        throw new Error("Expected invalid draft");
+      expect(comparison.current.reason).toContain(
+        "complete valid current draft",
+      );
+      expect(comparison.saved.status).toBe(
+        loaded ? "available" : "unavailable",
+      );
+    },
+  );
+
+  it.each([
+    "missing annuals",
+    "wrong range",
+    "mismatched identity",
+    "no shared date",
+    "unknown cash flow",
+    "long identity",
+  ] as const)(
+    "replaces both prior available sides with unavailable outcomes for %s",
+    (reason) => {
+      const saved = canonicalAssumptions();
+      const initial = comparedProps(saved);
+      expect(outcomeProps(initial).saved.status).toBe("available");
+      let props = initial;
+      if (reason === "missing annuals")
+        props = { ...props, annualFinancials: null };
+      if (reason === "wrong range")
+        props = {
+          ...props,
+          marketOverview: {
+            ...props.marketOverview!,
+            history: { ...props.marketOverview!.history, range: "1m" },
+          },
+        };
+      if (reason === "mismatched identity")
+        props = {
+          ...props,
+          valuationHistory: valuationHistory(
+            identity({ issuerName: "Different exact issuer" }),
+          ),
+        };
+      if (reason === "no shared date")
+        props = {
+          ...props,
+          marketOverview: {
+            ...props.marketOverview!,
+            history: {
+              ...props.marketOverview!.history,
+              startDate: "2030-01-14",
+              endDate: "2030-01-14",
+              bars: [
+                {
+                  ...props.marketOverview!.history.bars[0]!,
+                  date: "2030-01-14",
+                },
+              ],
+            },
+          },
+        };
+      if (reason === "unknown cash flow")
+        props = {
+          ...props,
+          annualFinancials: {
+            ...props.annualFinancials!,
+            years: [
+              {
+                ...props.annualFinancials!.years[0]!,
+                reported: {
+                  ...props.annualFinancials!.years[0]!.reported,
+                  free_cash_flow: unknownAnnualCell(),
+                },
+              },
+            ],
+          },
+        };
+      if (reason === "long identity")
+        props = {
+          ...props,
+          selection: { ...props.selection!, issuerName: "X".repeat(257) },
+        };
+      const comparison = outcomeProps(props);
+      for (const side of [comparison.current, comparison.saved]) {
+        expect(side.status).toBe("unavailable");
+        if (side.status !== "unavailable")
+          throw new Error("Expected unavailable source outcome");
+        expect(side.reason.length).toBeGreaterThan(0);
+      }
+      expect(comparison.current).not.toHaveProperty("result");
+      expect(comparison.saved).not.toHaveProperty("result");
+    },
+  );
+
+  it.each(["current", "saved"] as const)(
+    "allows only the %s side to be unavailable when tax makes its starting proxy nonpositive",
+    (unavailableSide) => {
+      const annual = annualFinancials();
+      const props = comparedProps(
+        canonicalAssumptions({
+          taxShieldRatePercent:
+            unavailableSide === "saved" ? "50.0000" : "0.0000",
+        }),
+        {
+          annualFinancials: {
+            ...annual,
+            years: [
+              {
+                ...annual.years[0]!,
+                reported: {
+                  ...annual.years[0]!.reported,
+                  free_cash_flow: knownAnnualCell("-90"),
+                },
+              },
+            ],
+          },
+          assumptionControl: {
+            value: createPersonalFcffDcfAssumptionDraft({
+              ...PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
+              taxShieldRatePercent: unavailableSide === "current" ? "50" : "0",
+            }),
+            onChange: vi.fn(),
+          },
+        },
+      );
+      const comparison = outcomeProps(props);
+      expect(comparison[unavailableSide].status).toBe("unavailable");
+      expect(
+        comparison[unavailableSide === "current" ? "saved" : "current"].status,
+      ).toBe("available");
+    },
+  );
+
+  it("preserves unavailable residual-equity scenarios without discarding available scenarios", () => {
+    const valuation = valuationHistory();
+    const point = {
+      ...valuation.history.points[0]!,
+      enterpriseValue: knownMoney("24000"),
+    };
+    const comparison = outcomeProps(
+      comparedProps(canonicalAssumptions(), {
+        valuationHistory: {
+          ...valuation,
+          history: {
+            ...valuation.history,
+            latestPoint: point,
+            points: [point],
+          },
+        },
+      }),
+    );
+    for (const side of [comparison.current, comparison.saved]) {
+      if (side.status !== "available")
+        throw new Error("Expected globally available result");
+      expect(side.result.scenarios.conservative.status).toBe("unavailable");
+      expect(side.result.scenarios.expansion.status).toBe("available");
+      const input = independentInput(side.result.assumptions);
+      expect(side.result).toEqual(
+        analytics.calculatePersonalFcffDcfValuation({
+          ...input,
+          valuation: {
+            ...input.valuation!,
+            points: [
+              {
+                ...input.valuation!.points[0]!,
+                enterpriseValue: knownMoney("24000"),
+              },
+            ],
+          },
+        }),
+      );
+    }
+  });
+
+  it("memoizes only the saved evaluation across ordinary draft/status renders and invalidates on source, selection and eligibility replacement", () => {
+    const calculate = vi.spyOn(analytics, "calculatePersonalFcffDcfValuation");
+    const saved = canonicalAssumptions();
+    let props = comparedProps(saved);
+    const savedCalls = () =>
+      calculate.mock.calls.filter(([input]) => input.assumptions === saved)
+        .length;
+    const first = outcomeProps(props);
+    expect(savedCalls()).toBe(1);
+    const currentDraft = {
+      ...createPersonalFcffDcfAssumptionDraft(),
+      waccPercent: "13",
+    };
+    props = {
+      ...props,
+      selection: { ...props.selection! },
+      assumptionControl: { value: currentDraft, onChange: vi.fn() },
+      savedAssumptionsComparison: {
+        assumptions: saved,
+        currentDraftValid: true,
+      },
+      savedAssumptionsControls: <p>Saving assumptions</p>,
+    };
+    const edited = outcomeProps(props);
+    expect(savedCalls()).toBe(1);
+    expect(edited.saved).toEqual(first.saved);
+    expect(edited.current).not.toEqual(first.current);
+    props = {
+      ...props,
+      savedAssumptionsComparison: {
+        assumptions: saved,
+        currentDraftValid: false,
+      },
+    };
+    expect(outcomeProps(props).current.status).toBe("unavailable");
+    expect(savedCalls()).toBe(1);
+    const market = props.marketOverview!;
+    props = {
+      ...props,
+      marketOverview: {
+        ...market,
+        history: {
+          ...market.history,
+          bars: [{ ...market.history.bars[0]!, raw: ohlcv("50") }],
+        },
+      },
+    };
+    const replacement = outcomeProps(props);
+    expect(savedCalls()).toBe(2);
+    expect(replacement.saved).not.toEqual(first.saved);
+    props = {
+      ...props,
+      annualFinancials: structuredClone(props.annualFinancials),
+      valuationHistory: structuredClone(props.valuationHistory),
+    };
+    outcomeProps(props);
+    expect(savedCalls()).toBe(3);
+    props = {
+      ...props,
+      selection: { ...props.selection!, issuerName: "New exact selection" },
+    };
+    expect(outcomeProps(props).saved.status).toBe("unavailable");
+    expect(savedCalls()).toBe(4);
+    props = { ...props, savedAssumptionsComparison: undefined };
+    expect(findOutcome(renderTree(props))).toBeUndefined();
+    props = {
+      ...props,
+      savedAssumptionsComparison: {
+        assumptions: saved,
+        currentDraftValid: true,
+      },
+    };
+    outcomeProps(props);
+    expect(savedCalls()).toBe(5);
+    const replacedSaved = structuredClone(saved);
+    outcomeProps({
+      ...props,
+      savedAssumptionsComparison: {
+        assumptions: replacedSaved,
+        currentDraftValid: true,
+      },
+    });
+    expect(
+      calculate.mock.calls.filter(
+        ([input]) => input.assumptions === replacedSaved,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("never adds a saved calculation or comparison when the optional input is absent", () => {
+    const calculate = vi.spyOn(analytics, "calculatePersonalFcffDcfValuation");
+    expect(findOutcome(renderTree(defaultProps()))).toBeUndefined();
+    expect(calculate).toHaveBeenCalledTimes(1);
+  });
+});
+
+function canonicalAssumptions(
+  patch: Partial<PersonalFcffDcfAssumptions> = {},
+): PersonalFcffDcfAssumptions {
+  return {
+    forecastYears: 5,
+    taxShieldRatePercent: "21.0000",
+    waccPercent: "10.0000",
+    terminalGrowthPercent: "2.0000",
+    scenarios: scenarioInputs("0.0000", "5.0000", "10.0000"),
+    ...patch,
+  };
+}
+function scenarioInputs(conservative: string, base: string, expansion: string) {
+  return {
+    conservative: { annualFcfProxyGrowthPercent: conservative },
+    base: { annualFcfProxyGrowthPercent: base },
+    expansion: { annualFcfProxyGrowthPercent: expansion },
+  };
+}
+function comparedProps(
+  assumptions: PersonalFcffDcfAssumptions,
+  overrides: Partial<PersonalFcffDcfValuationProps> = {},
+): PersonalFcffDcfValuationProps {
+  return defaultProps({
+    savedAssumptionsComparison: { assumptions, currentDraftValid: true },
+    ...overrides,
+  });
+}
+function findOutcome(
+  node: React.ReactNode,
+): PersonalDcfOutcomeComparisonProps | undefined {
+  if (Array.isArray(node))
+    return (node as readonly React.ReactNode[])
+      .map((child) => findOutcome(child))
+      .find((value) => value !== undefined);
+  if (!React.isValidElement<{ children?: React.ReactNode }>(node))
+    return undefined;
+  if (node.type === PersonalDcfOutcomeComparison)
+    return node.props as PersonalDcfOutcomeComparisonProps;
+  return findOutcome(node.props.children);
+}
+function outcomeProps(props: PersonalFcffDcfValuationProps) {
+  const comparison = findOutcome(renderTree(props));
+  if (comparison === undefined)
+    throw new Error("Expected eligible saved outcome comparison");
+  return comparison;
+}
+// Independent fixed fixture values, not the child mapping functions or captured calls.
+function independentInput(
+  assumptions: PersonalFcffDcfAssumptions,
+): PersonalFcffDcfInput {
+  const security = identity();
+  return {
+    assumptions,
+    selection: security,
+    market: {
+      security,
+      range: "1y",
+      priceCurrency: "USD",
+      bars: [{ date: "2030-01-15", raw: { close: "100" } }],
+    },
+    valuation: {
+      security,
+      range: "1y",
+      asOf: "2030-01-15T22:00:00.000Z",
+      points: [
+        {
+          date: "2030-01-15",
+          enterpriseValue: knownMoney("15000"),
+          marketCapitalization: knownMoney("10000"),
+        },
+      ],
+    },
+    annuals: {
+      security,
+      asOf: "2030-01-15T21:00:00.000Z",
+      valueCurrency: "USD",
+      years: [
+        {
+          fiscalYear: 2029,
+          statementDate: "2029-12-31",
+          reported: {
+            free_cash_flow: knownAnnualCell("1000"),
+            interest_expense: knownAnnualCell("-100"),
+          },
+        },
+      ],
+    },
+  };
+}
+
 function render(props: PersonalFcffDcfValuationProps): string {
+  stateHarness.beginRender();
   return renderToStaticMarkup(<PersonalFcffDcfValuation {...props} />);
+}
+
+function renderTree(props: PersonalFcffDcfValuationProps) {
+  stateHarness.beginRender();
+  return PersonalFcffDcfValuation(props);
 }
 
 function changeControl(
@@ -688,7 +1227,7 @@ function changeControl(
   value: string,
 ): void {
   const input = findHostElement(
-    PersonalFcffDcfValuation(props),
+    renderTree(props),
     (element) => element.type === "input" && element.props.id === id,
   );
   const onChange = input?.props.onChange;
@@ -703,7 +1242,7 @@ function clickControl(
   label: string,
 ): void {
   const button = findHostElement(
-    PersonalFcffDcfValuation(props),
+    renderTree(props),
     (element) => element.type === "button" && element.props.children === label,
   );
   const onClick = button?.props.onClick;

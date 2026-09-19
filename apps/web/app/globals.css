@@ -2281,6 +2281,122 @@ h4,
   white-space: pre-wrap;
 }
 
+.dcf-outcome-comparison {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 18px;
+  gap: 12px;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.dcf-outcome-comparison > :is(h3, p) {
+  margin: 0;
+}
+
+.dcf-outcome-comparison h3 {
+  color: var(--navy);
+}
+
+.dcf-outcome-comparison-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.dcf-outcome-comparison
+  :is(.dcf-outcome-comparison-scroll, summary):focus-visible {
+  outline: 2px solid var(--mint-deep);
+  outline-offset: 3px;
+}
+
+.dcf-outcome-comparison table {
+  width: 100%;
+  min-width: 520px;
+  table-layout: fixed;
+}
+
+.dcf-outcome-comparison caption {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0 0 10px;
+  overflow: visible;
+  clip: auto;
+  color: var(--ink-soft);
+  text-align: left;
+  white-space: normal;
+}
+
+.dcf-outcome-comparison :is(th, td) {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dcf-outcome-comparison th:first-child {
+  width: 22%;
+}
+
+.dcf-outcome-comparison-cell {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.dcf-outcome-comparison-cell > strong {
+  color: var(--navy);
+  font-size: 0.94rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.dcf-outcome-comparison-provenance {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 60%);
+}
+
+.dcf-outcome-comparison-provenance summary {
+  cursor: pointer;
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.dcf-outcome-comparison-provenance dl {
+  display: grid;
+  margin: 12px 0 0;
+  gap: 10px;
+}
+
+.dcf-outcome-comparison-provenance dt {
+  font-weight: 700;
+}
+
+.dcf-outcome-comparison-provenance dd {
+  margin: 3px 0 0;
+}
+
+.dcf-outcome-comparison-provenance code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dcf-outcome-comparison-caveat {
+  padding: 10px 12px;
+  border-left: 3px solid var(--coral);
+  background: var(--coral-soft);
+}
+
 .personal-financial-screener input,
 .personal-financial-screener select {
   width: 100%;

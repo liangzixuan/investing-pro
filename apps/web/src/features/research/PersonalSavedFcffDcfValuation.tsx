@@ -46,7 +46,9 @@ export interface PersonalSavedDcfContext {
 }
 export interface PersonalSavedFcffDcfValuationProps extends Omit<
   PersonalFcffDcfValuationProps,
-  "assumptionControl" | "savedAssumptionsControls"
+  | "assumptionControl"
+  | "savedAssumptionsControls"
+  | "savedAssumptionsComparison"
 > {
   readonly savedContext: PersonalSavedDcfContext;
 }
@@ -143,13 +145,17 @@ export function PersonalSavedFcffDcfValuation({
     identity !== null &&
     samePersonalSavedDcfIdentity(selected.identity, identity);
   const assumptions = normalizeDraft(draft);
-  const comparison =
+  const comparedEntry =
     currentContext() &&
     visible.loaded &&
     exactSelected &&
     isPersonalSavedDcfSupportedEntry(selected)
-      ? compareAssumptionInputs(draft, selected.assumptions, assumptions)
+      ? selected
       : null;
+  const comparison =
+    comparedEntry === null
+      ? null
+      : compareAssumptionInputs(draft, comparedEntry.assumptions, assumptions);
   const eligible = identity !== null && context.watchlistBinding !== null;
   const hasCapacity =
     selected !== undefined ||
@@ -409,6 +415,14 @@ export function PersonalSavedFcffDcfValuation({
     <PersonalFcffDcfValuation
       {...sources}
       assumptionControl={{ value: draft, onChange: changeDraft }}
+      savedAssumptionsComparison={
+        comparedEntry === null
+          ? undefined
+          : {
+              assumptions: comparedEntry.assumptions,
+              currentDraftValid: assumptions !== null,
+            }
+      }
       savedAssumptionsControls={
         sources.selection === null ? undefined : (
           <PersonalSavedDcfAssumptionsControls

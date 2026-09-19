@@ -15,7 +15,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: reuse a manual peer group
+## Immediate delivery: compare current and saved DCF outcomes
+
+Compare Conservative, Base and Expansion scenario values using current inputs and
+explicitly loaded saved assumptions, without replacing the working draft. Both
+columns recalculate through the existing model using the same loaded financials,
+price history and valuation history. Keep reference dates, exact source operands,
+model version, warnings and each side's unavailable reasons inspectable.
+
+A complete invalid current draft withholds its values while a valid saved side can
+remain visible. Preserve the full identity and loaded-metadata lifetime rules,
+pending actions, newer edits and explicit source loading. Memoize the additional
+saved calculation across ordinary draft and action-status updates. No provider
+request, stored result, formula, schema or authentication change. See
+[Saved DCF assumptions](./PERSONAL_SAVED_DCF_ASSUMPTIONS.md).
+
+## Delivered: reuse a manual peer group
 
 Explicitly load, save, restore and clear one primary company with one to three
 ordered peers. Store complete identities and catalog provenance in a separate
@@ -751,14 +766,14 @@ independent so these limits do not block unrelated useful product improvements.
 
 ## Delivery order
 
-| Priority         | Deliverable                                                                                      | Dependency or reason                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| Now              | Save and explicitly restore one ordered manual peer group                                        | Preserve full identities, primary research, drafts and explicit source loads |
-| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps              |
-| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters   |
-| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                     |
-| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions          |
-| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                  |
+| Priority         | Deliverable                                                                                      | Dependency or reason                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Now              | Compare current and loaded saved DCF scenario values on the same loaded sources                  | Preserve the working draft, source provenance and unavailable states       |
+| Next independent | Improve repeatable research workflows and add metrics where verified inputs support a useful job | Prioritize useful outcomes while retaining explicit source gaps            |
+| Next             | Validate filing coverage, calendars, flow basis and revision selection before trailing periods   | Source observations alone do not prove four compatible standalone quarters |
+| As sources allow | Upcoming earnings, dividends, and news metadata                                                  | Need separately verified source coverage and entitlement                   |
+| As inputs allow  | Alerts and exports for delivered workflows                                                       | Depend on reliable events, delivery choices, and source permissions        |
+| Later            | Historical screening, automated filing breadth, many more filters/models, AI, strategy backtests | Require data and validation absent from the current product                |
 
 Preserve the broader roadmap as a backlog. Do not force alphabetic cycle
 completion when an independent useful feature can proceed. Refactor only

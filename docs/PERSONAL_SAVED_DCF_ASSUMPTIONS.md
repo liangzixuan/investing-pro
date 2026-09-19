@@ -24,9 +24,9 @@ requests without resetting the draft. Reload saved assumptions explicitly.
 
 After explicit Load, the current company's supported saved set appears beside
 all seven current inputs. The table shows the raw editor text, the canonical
-loaded saved values and units. It compares assumptions, not company value, and
-does not claim that a loaded set is the latest durable version; existing version
-checks still apply when saving or restoring.
+loaded saved values and units. This input table compares assumptions. The loaded
+set reflects the last successful explicit request; existing version checks still
+apply when saving or restoring.
 
 For a valid complete draft, the comparison counts differing values using the same
 exact normalization as Save. Decimal spellings such as 12.3 and 12.3000 match, as do
@@ -41,6 +41,42 @@ set without changing the draft. Context invalidation, conflicts or uncertain
 responses hide the comparison until an explicit successful reload. Missing,
 unsupported or different-identity sets are never presented as a current match.
 Rendering and updating the table introduces no settings or provider request.
+
+## Compare scenario values
+
+The **DCF outcome comparison** shows Conservative, Base and Expansion implied
+USD prices and their percentages versus the reference raw close for both current
+and loaded saved assumptions. Both columns recalculate from the same currently
+loaded financials, price history and valuation history. This lets you inspect the
+saved hypothesis while keeping your working draft. The saved record still contains
+only assumptions; these values reflect the data loaded now rather than the data
+available when those assumptions were saved.
+
+The comparison uses the existing model, rounding, raw-close bridge and scenario
+order. Whole invalid current drafts have no current numeric values, including when
+sources are missing. A valid saved side remains inspectable. Missing sources,
+identity or date mismatches and unavailable inputs retain their own reasons. A
+scenario without positive residual equity has no implied price; other available
+scenarios remain visible. No previous valid value or zero replaces a missing value.
+
+An available side supplies the common reference raw-close date, annual fiscal year
+and statement date, annual and valuation response times, formula version and five
+exact source operands. When both sides are unavailable, the view supplies no joined
+reference. Tax-shield assumptions can change the derived starting FCF proxy even
+though both sides use the same reported operands. Existing small WACC/terminal-rate
+gap and terminal-value concentration warnings remain visible for each relevant side.
+The mechanical FCF proxy and provider-most-recent history limits still apply.
+
+Pending actions preserve a valid loaded comparison. Save updates its saved side
+without replacing newer edits; Restore and Reset affect the current side. Clearing
+this company's saved set, conflicts, uncertain responses or invalidated
+company/session/watchlist context remove its saved comparison under the existing
+explicit-reload rules. Loading or
+replacing a research source updates both columns from the same new inputs. The
+comparison performs no source request or persistence, and equal displayed prices
+do not imply that the seven underlying assumptions are equal.
+
+## Input bounds and saved record
 
 The seven inputs are forecast years, tax shield, WACC, terminal growth and the
 conservative, base and expansion annual FCF-proxy growth rates. Forecast years

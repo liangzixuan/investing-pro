@@ -13,9 +13,13 @@ import {
   PERSONAL_FCFF_DCF_ROUNDING,
   type PersonalFcffDcfAssumptions,
 } from "@research-cockpit/personal-market-analytics";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
+import {
+  PersonalDcfOutcomeComparison,
+  type PersonalDcfOutcomeSide,
+} from "./PersonalDcfOutcomeComparison";
 
 export interface PersonalFcffDcfValuationProps {
   readonly annualFinancials: PersonalAnnualFinancialsDto | null;
@@ -29,6 +33,12 @@ export interface PersonalFcffDcfValuationProps {
   };
   readonly marketOverview: PersonalMarketOverviewDto | null;
   readonly savedAssumptionsControls?: ReactNode;
+  readonly savedAssumptionsComparison?:
+    | {
+        readonly assumptions: PersonalFcffDcfAssumptions;
+        readonly currentDraftValid: boolean;
+      }
+    | undefined;
   readonly selection: PersonalMarketSelection | null;
   readonly valuationHistory: PersonalValuationHistoryDto | null;
 }
@@ -60,6 +70,7 @@ export function PersonalFcffDcfValuation({
   assumptionControl,
   marketOverview,
   savedAssumptionsControls,
+  savedAssumptionsComparison,
   selection,
   valuationHistory,
 }: PersonalFcffDcfValuationProps) {
@@ -73,16 +84,70 @@ export function PersonalFcffDcfValuation({
   const draftIssue = assumptionDraftIssue(assumptionDraft);
   const assumptions =
     draftIssue === null ? materializeAssumptions(assumptionDraft) : null;
+  // Memoize the effective identity fields, even when a caller recreates its object.
+  // The tuple keeps absence distinct without inventing missing identity values.
+  const [
+    selected,
+    exchangeMic,
+    issuerId,
+    issuerName,
+    listingId,
+    securityName,
+    symbol,
+  ] =
+    selection === null
+      ? ([false, null, null, null, null, null, null] as const)
+      : ([
+          true,
+          selection.exchangeMic,
+          selection.issuerId,
+          selection.issuerName,
+          selection.listingId,
+          selection.securityName,
+          selection.symbol,
+        ] as const);
+  const sources = useMemo(
+    () => ({
+      annuals: mapAnnualFinancials(annualFinancials),
+      market: mapMarketOverview(marketOverview),
+      selection: selected
+        ? mapSelection({
+            country: "US",
+            exchangeMic,
+            issuerId,
+            issuerName,
+            listingId,
+            securityName,
+            symbol,
+          })
+        : null,
+      valuation: mapValuationHistory(valuationHistory),
+    }),
+    [
+      annualFinancials,
+      marketOverview,
+      valuationHistory,
+      selected,
+      exchangeMic,
+      issuerId,
+      issuerName,
+      listingId,
+      securityName,
+      symbol,
+    ],
+  );
   const result =
     selection === null || assumptions === null
       ? null
-      : calculateModel({
-          annuals: mapAnnualFinancials(annualFinancials),
-          assumptions,
-          market: mapMarketOverview(marketOverview),
-          selection: mapSelection(selection),
-          valuation: mapValuationHistory(valuationHistory),
-        });
+      : calculateModel({ ...sources, assumptions });
+  const savedAssumptions = savedAssumptionsComparison?.assumptions ?? null;
+  const savedResult = useMemo(
+    () =>
+      sources.selection === null || savedAssumptions === null
+        ? null
+        : calculateModel({ ...sources, assumptions: savedAssumptions }),
+    [sources, savedAssumptions],
+  );
 
   function updateCommon(
     key:
@@ -157,6 +222,21 @@ export function PersonalFcffDcfValuation({
             onScenarioGrowthChange={updateScenarioGrowth}
           />
           {savedAssumptionsControls}
+          {savedAssumptionsComparison === undefined ? null : (
+            <PersonalDcfOutcomeComparison
+              symbol={selection.symbol}
+              current={
+                savedAssumptionsComparison.currentDraftValid
+                  ? outcomeSide(result, selection.symbol)
+                  : {
+                      status: "unavailable",
+                      reason:
+                        "Finish entering a complete valid current draft within the displayed bounds, with ordered scenarios and WACC above terminal growth. No previous current value is retained.",
+                    }
+              }
+              saved={outcomeSide(savedResult, selection.symbol)}
+            />
+          )}
           {draftIssue !== null ? (
             <ReadinessState
               detail={draftIssue}
@@ -212,6 +292,39 @@ function calculateModel(
     if (error instanceof TypeError) return { status: "invalid_input" };
     throw error;
   }
+}
+
+function outcomeSide(
+  result: ViewResult | null,
+  symbol: string,
+): PersonalDcfOutcomeSide {
+  if (result === null)
+    return {
+      status: "unavailable",
+      reason:
+        "Choose a security and complete valid assumptions before comparing values.",
+    };
+  if (result.status === "invalid_input")
+    return {
+      status: "unavailable",
+      reason:
+        "The selected identity or loaded source data does not meet this model's input limits. No identity was shortened or substituted.",
+    };
+  if (result.status === "available")
+    return {
+      status: "available",
+      result,
+      smallRateGap: hasSmallRateGap(result),
+    };
+  const copy = unavailableCopy(result, symbol);
+  const missing =
+    result.missingAnnualInputs.length === 0
+      ? ""
+      : ` Missing annual inputs: ${result.missingAnnualInputs.map(annualInputLabel).join(", ")}.`;
+  return {
+    status: "unavailable",
+    reason: `${copy.title} ${copy.detail}${missing}`,
+  };
 }
 
 function SourceReadiness({
@@ -479,11 +592,15 @@ function ComputedAssumptions({ result }: { readonly result: AvailableResult }) {
   );
 }
 
-function RateGapWarning({ result }: { readonly result: AvailableResult }) {
+function hasSmallRateGap(result: AvailableResult): boolean {
   const gap =
     rateTenThousandths(result.assumptions.waccPercent) -
     rateTenThousandths(result.assumptions.terminalGrowthPercent);
-  return gap < 10_000 ? (
+  return gap < 10_000;
+}
+
+function RateGapWarning({ result }: { readonly result: AvailableResult }) {
+  return hasSmallRateGap(result) ? (
     <p className="fcff-dcf-rate-gap-warning" role="note">
       WACC is less than 1.00 percentage point above terminal growth. The
       Gordon-growth terminal value is valid but highly sensitive to small rate

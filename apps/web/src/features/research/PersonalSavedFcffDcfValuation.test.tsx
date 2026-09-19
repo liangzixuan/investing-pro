@@ -228,7 +228,9 @@ describe("saved DCF assumption controller", () => {
       ),
     );
     expect(view.controls.loaded).toBe(false);
+    expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
     expect(view.controls.comparison).toBeNull();
+    expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
     view.controls.onSave();
     view.controls.onRestore();
     view.controls.onClear(identity().listingId);
@@ -249,6 +251,9 @@ describe("saved DCF assumption controller", () => {
 
     const replayed = render();
     expect(replayed.draft).toEqual(beforeReplay.draft);
+    expect(replayed.dcf.savedAssumptionsComparison).toEqual(
+      beforeReplay.dcf.savedAssumptionsComparison,
+    );
     expect(replayed.controls).toMatchObject({ loaded: false, busy: false });
     replayed.controls.onLoad();
     expect(client.fetch).toHaveBeenCalledTimes(1);
@@ -279,6 +284,9 @@ describe("saved DCF assumption controller", () => {
       canSave: true,
       canRestore: true,
     });
+    expect(replayed.dcf.savedAssumptionsComparison?.assumptions).toBe(
+      beforeReplay.dcf.savedAssumptionsComparison?.assumptions,
+    );
     beforeReplay.controls.onLoad();
     beforeReplay.controls.onSave();
     beforeReplay.controls.onRestore();
@@ -331,6 +339,7 @@ describe("saved DCF assumption controller", () => {
         canRestore: false,
       });
       expect(replayed.draft).toEqual(retained.draft);
+      expect(replayed.dcf.savedAssumptionsComparison).toBeUndefined();
       invoke(retained.controls, action);
       busy.controls.onLoad();
       replayed.controls.onSave();
@@ -482,6 +491,10 @@ describe("saved DCF assumption controller", () => {
       createPersonalFcffDcfAssumptionDraft(saved.assumptions),
     );
     expect(render().controls.draftIsSaved).toBe(true);
+    expect(render().dcf.savedAssumptionsComparison).toEqual({
+      assumptions: saved.assumptions,
+      currentDraftValid: true,
+    });
     expect(client.put).not.toHaveBeenCalled();
   });
 
@@ -507,6 +520,11 @@ describe("saved DCF assumption controller", () => {
       );
       await flush();
       expect(render().draft).toEqual(changed);
+      expect(render().dcf.savedAssumptionsComparison).toEqual({
+        assumptions: entry(identity(), assumptions({ waccPercent: "16" }))
+          .assumptions,
+        currentDraftValid: true,
+      });
       expect(client.resolve).toHaveBeenCalledTimes(1);
       expect(client.put).not.toHaveBeenCalled();
     },
@@ -531,6 +549,7 @@ describe("saved DCF assumption controller", () => {
     expect(view.controls.canSave).toBe(false);
     expect(view.controls.canRestore).toBe(false);
     expect(view.controls.comparison).toBeNull();
+    expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
     view.controls.onClear(orphan.identity.listingId);
     await flush();
     expect(client.put).toHaveBeenCalledWith(
@@ -638,12 +657,14 @@ describe("saved DCF assumption controller", () => {
       client.put.mockReturnValue(pendingRecord.promise);
       client.resolve.mockReturnValue(pendingResolve.promise);
       client.fetch.mockClear();
+      const retainedOutcome = render().dcf.savedAssumptionsComparison;
       const retained = render().controls;
       invoke(retained, action);
       invoke(retained, action);
       const busy = render().controls;
       expect(busy.busy).toBe(true);
       expect(busy.comparison).toEqual(retained.comparison);
+      expect(render().dcf.savedAssumptionsComparison).toEqual(retainedOutcome);
       busy.onLoad();
       busy.onSave();
       busy.onRestore();
@@ -682,6 +703,7 @@ describe("saved DCF assumption controller", () => {
     expect(view.draft).toEqual(before.draft);
     expect(view.controls.loaded).toBe(false);
     expect(view.controls.comparison).toBeNull();
+    expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
     before.controls.onLoad();
     before.controls.onSave();
     before.controls.onRestore();
@@ -731,6 +753,7 @@ describe("saved DCF assumption controller", () => {
       expect(render().controls.loaded).toBe(false);
       expect(signal.aborted).toBe(true);
       expect(render().controls.comparison).toBeNull();
+      expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
       await load(record([entry(identity("new"))], 8));
       const afterNewLoad = render();
       pendingRecord.resolve(record([entry(identity("stale"))], 6));
@@ -801,6 +824,7 @@ describe("saved DCF assumption controller", () => {
       expect(render().draft).toEqual(returned.draft);
       expect(render().controls.loaded).toBe(false);
       expect(render().controls.comparison).toBeNull();
+      expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
       expect(
         client.fetch.mock.calls.length +
           client.put.mock.calls.length +
@@ -822,6 +846,7 @@ describe("saved DCF assumption controller", () => {
     expect(client.resolve).not.toHaveBeenCalled();
     expect(render().draft).toEqual(view.draft);
     expect(render().controls.comparison).toBeNull();
+    expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
   });
 
   it.each(["conflict", "unavailable", "invalid_response"] as const)(
@@ -836,6 +861,7 @@ describe("saved DCF assumption controller", () => {
       const failed = render();
       expect(failed.controls.loaded).toBe(false);
       expect(failed.controls.comparison).toBeNull();
+      expect(failed.dcf.savedAssumptionsComparison).toBeUndefined();
       expect(failed.controls.message).toMatch(/reload/i);
       expect(failed.draft.waccPercent).toBe("17.75");
       expect(client.fetch).toHaveBeenCalledTimes(1);
@@ -853,6 +879,7 @@ describe("saved DCF assumption controller", () => {
       expect(render().controls.loaded).toBe(false);
       expect(render().draft.waccPercent).toBe("17.75");
       expect(render().controls.comparison).toBeNull();
+      expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
       client.fetch.mockResolvedValue(record([], 4));
       render().controls.onLoad();
       await flush();
@@ -921,6 +948,7 @@ describe("saved DCF assumption controller", () => {
       const view = await load(record([entry(different)]));
       expect(view.controls.canRestore).toBe(false);
       expect(view.controls.comparison).toBeNull();
+      expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
       view.controls.onRestore();
       expect(client.resolve).not.toHaveBeenCalled();
       expect(view.controls.entries[0]?.isCurrentCompany).toBe(false);
@@ -934,6 +962,40 @@ describe("saved DCF assumption controller", () => {
 });
 
 describe("current and loaded saved input comparison", () => {
+  it("passes the stable loaded assumption reference through raw edits and pending metadata operations", async () => {
+    await load(record());
+    const loaded = render().dcf.savedAssumptionsComparison!;
+    expect(loaded.currentDraftValid).toBe(true);
+    expect(loaded.assumptions).toEqual(entry().assumptions);
+    edit({ waccPercent: "13.0000" });
+    expect(render().dcf.savedAssumptionsComparison?.assumptions).toBe(
+      loaded.assumptions,
+    );
+    edit({ waccPercent: "31" });
+    expect(render().dcf.savedAssumptionsComparison).toEqual({
+      assumptions: loaded.assumptions,
+      currentDraftValid: false,
+    });
+    expect(render().dcf.annualFinancials).toBeNull();
+    expect(render().dcf.marketOverview).toBeNull();
+    expect(render().dcf.valuationHistory).toBeNull();
+    const pending = deferred<SavedRecord>();
+    client.fetch.mockReturnValueOnce(pending.promise);
+    render().controls.onLoad();
+    expect(render().dcf.savedAssumptionsComparison?.assumptions).toBe(
+      loaded.assumptions,
+    );
+    pending.resolve(record());
+    await flush();
+    const replacement = render().dcf.savedAssumptionsComparison!;
+    expect(replacement.assumptions).toEqual(loaded.assumptions);
+    expect(replacement.assumptions).not.toBe(loaded.assumptions);
+    expect(replacement.currentDraftValid).toBe(false);
+    expect(client.fetch).toHaveBeenCalledTimes(2);
+    expect(client.put).not.toHaveBeenCalled();
+    expect(client.resolve).not.toHaveBeenCalled();
+  });
+
   it("keeps current comparison during reload and clearing another company, then uses only the returned record", async () => {
     const currentEntry = entry();
     const other = entry(identity("other"), assumptions({ waccPercent: "20" }));
@@ -1052,6 +1114,10 @@ describe("current and loaded saved input comparison", () => {
       edit(patch);
       const view = render();
       expect(view.controls.comparison?.changedCount).toBeNull();
+      expect(view.dcf.savedAssumptionsComparison).toEqual({
+        assumptions: entry().assumptions,
+        currentDraftValid: false,
+      });
       expect(view.controls.comparison?.rows).toHaveLength(7);
       expect(
         view.controls.comparison?.rows.every(
@@ -1071,6 +1137,8 @@ describe("current and loaded saved input comparison", () => {
 
   it("keeps the loaded saved side while Save is pending and then compares its acknowledgment with newer edits", async () => {
     await load(record());
+    const originalAssumptions =
+      render().dcf.savedAssumptionsComparison!.assumptions;
     const pending = deferred<SavedRecord>();
     client.put.mockReturnValue(pending.promise);
     edit({ waccPercent: "13" });
@@ -1088,6 +1156,9 @@ describe("current and loaded saved input comparison", () => {
       savedValue: "10.0000",
       state: "changed",
     });
+    expect(render().dcf.savedAssumptionsComparison?.assumptions).toBe(
+      originalAssumptions,
+    );
     pending.resolve({ version: 2, payload: submitted });
     await flush();
     expect(render().controls.comparison?.rows[2]).toMatchObject({
@@ -1096,6 +1167,11 @@ describe("current and loaded saved input comparison", () => {
       state: "changed",
     });
     expect(render().controls.comparison?.changedCount).toBe(1);
+    expect(render().dcf.savedAssumptionsComparison).toEqual({
+      assumptions: submitted.entries[0]!.assumptions,
+      currentDraftValid: true,
+    });
+    expect(render().draft.waccPercent).toBe("16");
     expect(client.fetch).toHaveBeenCalledTimes(1);
     expect(client.put).toHaveBeenCalledTimes(1);
   });
@@ -1129,6 +1205,8 @@ describe("current and loaded saved input comparison", () => {
     expect(render().controls.comparison?.rows).toHaveLength(7);
     await flush();
     expect(render().controls.comparison).toBeNull();
+    expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
+    expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
     expect(render().draft).toEqual(draftBeforeClear);
     expect(client.fetch).toHaveBeenCalledTimes(1);
     expect(client.resolve).toHaveBeenCalledTimes(2);
@@ -1140,6 +1218,7 @@ describe("current and loaded saved input comparison", () => {
     async (value) => {
       const view = await load(value);
       expect(view.controls.comparison).toBeNull();
+      expect(view.dcf.savedAssumptionsComparison).toBeUndefined();
     },
   );
 
@@ -1151,11 +1230,16 @@ describe("current and loaded saved input comparison", () => {
     };
     expect(render().controls.canRestore).toBe(false);
     expect(render().controls.comparison?.rows).toHaveLength(7);
+    expect(render().dcf.savedAssumptionsComparison).toEqual({
+      assumptions: entry().assumptions,
+      currentDraftValid: true,
+    });
     props = {
       ...props,
       savedContext: { ...props.savedContext, identity: null },
     };
     expect(render().controls.comparison).toBeNull();
+    expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
     props = {
       ...props,
       savedContext: {
@@ -1165,6 +1249,7 @@ describe("current and loaded saved input comparison", () => {
       },
     };
     expect(render().controls.comparison).toBeNull();
+    expect(render().dcf.savedAssumptionsComparison).toBeUndefined();
     expect(client.fetch).toHaveBeenCalledTimes(1);
     expect(client.put).not.toHaveBeenCalled();
     expect(client.resolve).not.toHaveBeenCalled();
