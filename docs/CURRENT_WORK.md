@@ -17,14 +17,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: bounded release capacity and measured priorities
+## Immediate delivery: consistent filing admission for SEC margins
 
-The accepted annual-trends release is
-`690c0c1565e698a4819f47a0c188e55247ca9f18`. First establish a reviewed release
-path beyond the existing a64 capacity, preserving every source, inventory and
-historical evidence check. Keep this maintenance outcome bounded and use the
-[release-classification guide](./RELEASE_CLASSIFICATION.md) for its independent
-preparation and verification. This is a prerequisite, not new product coverage.
+The accepted release-capacity source is
+`31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e`; the preceding accepted application is
+`690c0c1565e698a4819f47a0c188e55247ca9f18`. The bounded release path beyond a64 is
+complete. Keep the separate feature/generated closure and unchanged gates in the
+[release-classification guide](./RELEASE_CLASSIFICATION.md).
+
+The dated shared-core baseline now defines thirty metrics and records 47.68%
+usable eligible listing-metric pairs under its calendar-Frame/Q4 pilot policy.
+It does not close the canonical annual 90% goal. That measurement identified
+835 numeric net/operating/operating-cash-flow margin cells whose retained operands
+have different filing accessions. Make those ratios unavailable with inspectable
+inputs and a precise reason; update the engine and strict browser client together.
+Keep their numerical formulas, explicit source loading and saved criteria intact.
+See [SEC annual screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md).
 
 Then prioritize measured financial-data coverage and useful discovery inputs,
 followed by one daily SEC filing follow-up loop with reliable delivery. The

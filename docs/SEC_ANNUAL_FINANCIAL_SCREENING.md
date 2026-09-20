@@ -258,8 +258,9 @@ Choose the fields individually or in All metrics, then use filters, sorting,
 source details, comparison and explicit saved views. Existing presets and
 starters remain unchanged. Old twenty-six calculations and their relative order,
 including literal saved column lists, are preserved. Transport v14 coordinates
-twenty-eight fields and twenty-three Frames; formula-set1.7 and saved payload
-versions remain unchanged. Actual coverage and primary evidence are recorded
+twenty-eight fields and twenty-three Frames; these two fields originally left
+formula-set 1.7 and saved payload versions unchanged. The subsequent three-margin
+filing check advances the formula set to 1.8. Actual coverage and primary evidence are recorded
 in the release checkpoint; marginal coverage does not establish joint eligibility.
 
 ### Reported common-stock payments
@@ -292,7 +293,7 @@ twenty-four previous calculations and their relative order, Overview, Q4 balance
 starters and literal saved layouts remain unchanged. Loading an old view adds no
 field, request or write. The common-stock payment release introduced transport v13;
 current transport v14 also includes interest and income-tax cash payments.
-Formula-set1.7 and saved payload versions remain unchanged. Sparse exact
+These reported fields introduced no formula or saved-payload version change. Sparse exact
 concept coverage does not establish the roadmap's broader coverage gate.
 
 ### Reported investing and financing cash flows
@@ -667,7 +668,8 @@ the next explicit run can reuse the same cached SEC snapshot.
 
 The chosen basis also supplies the denominator of net margin, operating margin
 and operating cash flow margin, plus Gross profit / selected revenue (%).
-The original three margins' arithmetic and eligibility are unchanged. Equal reported
+The three margins retain their arithmetic and now require one filing accession
+across every retained numerator and selected-revenue reference. Equal reported
 amounts do not establish equivalent business definitions, and choosing the same
 concept does not establish sector or fiscal comparability.
 
@@ -683,10 +685,28 @@ taxonomy guidance, not authoritative accounting guidance.
 For default agreement screens, an absent concept is not zero. Present concepts
 must agree on amount and actual dates, and a failed source prevents a claim of
 agreement. In every basis, revenue must be positive and numerator/denominator
-periods must match exactly for a margin. Ratios reuse shared formula version
+periods and every retained filing accession must match exactly for a margin.
+Ratios reuse shared numerical formula version
 1.0.0, Decimal arithmetic and two-decimal half-up rounding. Raw reported
 amounts retain normalized decimal precision. Source references expose concept,
 filing accession and actual dates for each cell.
+
+Net margin, operating margin and operating cash flow margin return
+`filing_mismatch` when otherwise available, matching-period operands retain
+different accessions. This includes a non-first revenue reference in agreement
+mode. The ratio stays unknown while the reported inputs, exact values, dates and
+all filing links remain inspectable. Differing accessions alone do not prove
+incorrect amounts; the screen withholds an unreconciled combination instead of
+choosing a preferred filing or fetching replacements.
+
+For these three margins the reason precedence is unavailable revenue, unavailable
+numerator, `period_mismatch`, `filing_mismatch`, then `nonpositive_revenue`.
+Compatible zero or negative numerators, values above 100%, two-decimal half-up
+rounding and inclusive filter thresholds are unchanged. Source mismatch remains
+unknown in filtering; a separate false clause still makes the conjunction false.
+No new annual-duration, latest-filing or cross-company fiscal-alignment rule is
+implied. The strict browser decoder verifies these reasons, retained operands and
+the exact calculation together with the API's formula-set version.
 
 Existing four-field saved criteria remain valid and retain the agreement rule.
 The optional `revenueBasis` stores an explicit choice. Omitted-basis requests omit
@@ -717,7 +737,10 @@ The seven-clause limit is unchanged; the cash-difference percentage is an
 additional filter/sort choice. Older application versions
 cannot execute newly saved criteria containing these fields and reject them rather
 than drop a filter. The directly reported interest/tax payments, common-stock payments, activity cash flows, balance totals, cash and equity introduce no new
-formula; screen formula-set version 1.7.0 remains unchanged. It includes
+formula. Screen formula-set version 1.8.0 adds the three-margin filing-admission
+rule; transport 14.0.0 and saved payload versions stay unchanged. Reload an older
+open browser after the coordinated API/browser deployment: its pinned formula
+version will reject new responses. The formula set includes
 `operating_cash_flow_less_ppe_purchases_to_revenue_percent` version 1.0.0 with
 expression `(operating_cash_flow - ppe_purchases) / selected_revenue * 100`.
 Current-balance subtraction retains version 1.0.0 and its exact expression

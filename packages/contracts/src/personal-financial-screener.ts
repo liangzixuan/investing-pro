@@ -315,7 +315,7 @@ export interface PersonalFinancialScreenResponseDto {
   readonly offset: number;
   readonly limitApplied: number;
   readonly hasMore: boolean;
-  readonly formulaVersion: "1.7.0";
+  readonly formulaVersion: "1.8.0";
 }
 export interface PersonalFinancialSavedViewDto {
   readonly id: string;

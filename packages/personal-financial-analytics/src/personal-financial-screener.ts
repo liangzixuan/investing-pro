@@ -35,7 +35,7 @@ export const PERSONAL_FINANCIAL_SCREEN_LIMITS = Object.freeze({
   maximumCalendarYear: 2100,
 });
 
-export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.7.0" as const;
+export const PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION = "1.8.0" as const;
 
 export const PERSONAL_FINANCIAL_SCREEN_FORMULAS = Object.freeze({
   currentRatio: Object.freeze({
@@ -973,6 +973,12 @@ function margin(
     numerator.sources[0]!.endDate !== revenue.sources[0]!.endDate
   )
     return unavailable("percent", "period_mismatch", sources);
+  if (
+    sources.some(
+      (source) => source.accessionNumber !== sources[0]!.accessionNumber,
+    )
+  )
+    return unavailable("percent", "filing_mismatch", sources);
   const denominator = new ScreenDecimal(revenue.value);
   if (!denominator.gt(0))
     return unavailable("percent", "nonpositive_revenue", sources);

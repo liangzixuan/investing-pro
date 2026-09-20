@@ -57,6 +57,140 @@ import {
 
 describe("personal annual financial screen routes", () => {
   it.each([
+    ["netMargin", "NetIncomeLoss"],
+    ["operatingMargin", "OperatingIncomeLoss"],
+    ["operatingCashFlowMargin", "NetCashProvidedByUsedInOperatingActivities"],
+  ] as const)(
+    "retains mixed filing evidence for %s with exact coverage, unknown filtering and stable pages",
+    async (metric, numeratorConcept) => {
+      const provider = testProvider();
+      const original = snapshot();
+      provider.loadSnapshot.mockResolvedValue({
+        ...original,
+        frames: original.frames.map((frame) => ({
+          ...frame,
+          facts: frame.facts.flatMap((fact) =>
+            [1, 2, 3].map((issuer) => ({
+              ...fact,
+              cik: String(issuer).padStart(10, "0"),
+              accessionNumber:
+                frame.concept === numeratorConcept && issuer === 1
+                  ? "0000000001-26-000099"
+                  : fact.accessionNumber,
+              value:
+                frame.concept === numeratorConcept && issuer === 3
+                  ? "-100"
+                  : fact.value,
+            })),
+          ),
+        })),
+      });
+      const f = await readyApp(provider, 6);
+      const request = {
+        ...screenRequest(f.snapshotSha256),
+        criteria: {
+          ...screenRequest(f.snapshotSha256).criteria,
+          sort: { field: metric, direction: "desc" as const },
+        },
+        page: { offset: 0, limit: 10 },
+      };
+      const response = await screen(f.app, f.cookie, request);
+      expect(response.statusCode).toBe(200);
+      const body = response.json<PersonalFinancialScreenResponseDto>();
+      expect(body.formulaVersion).toBe("1.8.0");
+      expect(body.schemaVersion).toBe("14.0.0");
+      expect(body.metricCoverage[metric]).toEqual({ known: 4, unknown: 2 });
+      expect(
+        body.rows.map((row) => {
+          const cell = row.metrics[metric];
+          return cell.status === "available" ? cell.value : cell.reason;
+        }),
+      ).toEqual([
+        "10.00",
+        "10.00",
+        "-10.00",
+        "-10.00",
+        "filing_mismatch",
+        "filing_mismatch",
+      ]);
+      const mismatch = body.rows[4]!.metrics[metric];
+      expect(mismatch).toMatchObject({
+        status: "unavailable",
+        unit: "percent",
+        reason: "filing_mismatch",
+      });
+      expect(
+        mismatch.sources.map((source) => ({
+          concept: source.concept,
+          value: source.value,
+          accessionNumber: source.accessionNumber,
+        })),
+      ).toEqual([
+        {
+          concept: numeratorConcept,
+          value: "100",
+          accessionNumber: "0000000001-26-000099",
+        },
+        {
+          concept: "RevenueFromContractWithCustomerExcludingAssessedTax",
+          value: "1000",
+          accessionNumber: "0000000001-26-000001",
+        },
+      ]);
+      expect(body.rows[4]!.metrics.revenue).toMatchObject({
+        status: "available",
+        value: "1000",
+      });
+      const filtered = await screen(f.app, f.cookie, {
+        ...request,
+        criteria: {
+          ...request.criteria,
+          clauses: [{ field: metric, operator: "gte", value: "0" }],
+        },
+      });
+      expect(filtered.statusCode).toBe(200);
+      expect(filtered.json()).toMatchObject({
+        totalMatches: 2,
+        totalNonMatches: 2,
+        totalUnknown: 2,
+      });
+      const falseDominates = await screen(f.app, f.cookie, {
+        ...request,
+        criteria: {
+          ...request.criteria,
+          clauses: [
+            { field: metric, operator: "gte", value: "0" },
+            { field: "revenue", operator: "gte", value: "2000" },
+          ],
+        },
+      });
+      expect(falseDominates.statusCode).toBe(200);
+      expect(falseDominates.json()).toMatchObject({
+        totalMatches: 0,
+        totalNonMatches: 6,
+        totalUnknown: 0,
+      });
+      const page = await screen(f.app, f.cookie, {
+        ...request,
+        financialSnapshotSha256: body.financialSnapshotSha256,
+        page: { offset: 4, limit: 2 },
+      });
+      expect(page.statusCode).toBe(200);
+      expect(page.json<PersonalFinancialScreenResponseDto>().rows).toEqual(
+        body.rows.slice(4),
+      );
+      expect(provider.loadSnapshot).toHaveBeenCalledTimes(4);
+      for (let call = 1; call <= 4; call += 1)
+        expect(provider.loadSnapshot).toHaveBeenNthCalledWith(
+          call,
+          2025,
+          expect.any(AbortSignal),
+          false,
+        );
+      expect(f.vault.record).toBeUndefined();
+    },
+  );
+  it.each([
     ["investingCashFlow", "NetCashProvidedByUsedInInvestingActivities"],
     ["financingCashFlow", "NetCashProvidedByUsedInFinancingActivities"],
     ["commonDividendsPaid", "PaymentsOfDividendsCommonStock"],
@@ -541,7 +675,7 @@ describe("personal annual financial screen routes", () => {
         const body = first.json<PersonalFinancialScreenResponseDto>();
         expect(body).toMatchObject({
           schemaVersion: "14.0.0",
-          formulaVersion: "1.7.0",
+          formulaVersion: "1.8.0",
           priorCalendarYear: 2024,
           revenueBasis,
           totalMatches: 2,
@@ -792,7 +926,7 @@ describe("personal annual financial screen routes", () => {
         ).toEqual(expected);
         expect(result).toMatchObject({
           schemaVersion: "14.0.0",
-          formulaVersion: "1.7.0",
+          formulaVersion: "1.8.0",
           metricCoverage: {
             currentAssetsLessCurrentLiabilities: { known: 6, unknown: 0 },
           },
@@ -933,7 +1067,7 @@ describe("personal annual financial screen routes", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       instantQuarter: 4,
       totalMatches: 2,
       rows: [
@@ -1160,7 +1294,7 @@ describe("personal annual financial screen routes", () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toMatchObject({
         revenueBasis,
-        formulaVersion: "1.7.0",
+        formulaVersion: "1.8.0",
       });
       const cell =
         response.json<PersonalFinancialScreenResponseDto>().rows[0]!.metrics
@@ -1786,7 +1920,7 @@ describe("personal annual financial screen routes", () => {
     });
     expect(cashScreen.json()).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       totalMatches: 2,
     });
     const ratioScreen = await screen(f.app, f.cookie, {
@@ -1795,7 +1929,7 @@ describe("personal annual financial screen routes", () => {
     });
     expect(ratioScreen.json()).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       totalMatches: 2,
       metricCoverage: { grossMargin: { known: 2, unknown: 0 } },
       rows: [{ metrics: { grossMargin: { value: "10.00", unit: "percent" } } }],
@@ -1807,7 +1941,7 @@ describe("personal annual financial screen routes", () => {
     expect(incomeRatioScreen.statusCode).toBe(200);
     expect(incomeRatioScreen.json()).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       totalMatches: 2,
       metricCoverage: {
         operatingCashFlowToNetIncome: { known: 2, unknown: 0 },
@@ -2115,7 +2249,7 @@ describe("cash after PP&E / selected revenue route integration", () => {
       const body = response.json<PersonalFinancialScreenResponseDto>();
       expect(body).toMatchObject({
         schemaVersion: "14.0.0",
-        formulaVersion: "1.7.0",
+        formulaVersion: "1.8.0",
         revenueBasis,
         totalMatches: 2,
         totalUnknown: 0,
@@ -2360,7 +2494,7 @@ describe("reported total balances, cash and stockholders equity routes", () => {
           const body = first.json<PersonalFinancialScreenResponseDto>();
           expect(body).toMatchObject({
             schemaVersion: "14.0.0",
-            formulaVersion: "1.7.0",
+            formulaVersion: "1.8.0",
             totalMatches: 6,
             hasMore: true,
             metricCoverage: { [field]: { known: 6, unknown: 0 } },
@@ -2814,7 +2948,7 @@ describe("personal financial reusable saved views", () => {
     const body = after.json<PersonalFinancialScreenResponseDto>();
     expect(body.sources.length + body.priorRevenueSources.length).toBe(23);
     expect(body.schemaVersion).toBe("14.0.0");
-    expect(body.formulaVersion).toBe("1.7.0");
+    expect(body.formulaVersion).toBe("1.8.0");
     expect(f.provider.loadSnapshot).toHaveBeenCalledTimes(2);
     expect(f.vault.record).toBe(record);
   });
@@ -3120,7 +3254,7 @@ describe("personal financial screen saved-watchlist scope", () => {
     });
     expect(body).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       totalUniverse: 3,
       identityMatches: 3,
       totalMatches: 3,

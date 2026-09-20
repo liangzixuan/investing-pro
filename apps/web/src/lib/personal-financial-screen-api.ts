@@ -61,6 +61,15 @@ const percentMetrics: readonly PersonalFinancialScreenMetricDto[] = [
   "operatingCashFlowToNetIncome",
   "operatingCashFlowLessPpePurchasesMargin",
 ];
+const originalRevenueMargins = [
+  ["netMargin", "NetIncomeLoss", "netIncome"],
+  ["operatingMargin", "OperatingIncomeLoss", "operatingIncome"],
+  [
+    "operatingCashFlowMargin",
+    "NetCashProvidedByUsedInOperatingActivities",
+    "operatingCashFlow",
+  ],
+] as const;
 const frameStatuses = [
   "available",
   "not_covered",
@@ -446,7 +455,7 @@ function isResponse(
     (Object.hasOwn(value, "scope") &&
       (!watchlistResponseScope(value.scope) ||
         value.totalUniverse !== value.scope.listingIds.length)) ||
-    value.formulaVersion !== "1.7.0" ||
+    value.formulaVersion !== "1.8.0" ||
     value.instantQuarter !== 4 ||
     !sha(value.catalogSnapshotSha256) ||
     !sha(value.financialSnapshotSha256) ||
@@ -562,6 +571,9 @@ function isResponse(
         operatingCashFlowToNetIncome(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
         ) &&
+        originalMargins(
+          row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+        ) &&
         selectedRevenueSources(
           row.metrics as PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
           revenueBasis,
@@ -605,29 +617,21 @@ function selectedRevenueSources(
   if (basis === "agreement") return true;
   if (!cells.revenue.sources.every((source) => source.concept === basis))
     return false;
-  return (
-    [
-      ["netMargin", "NetIncomeLoss", "netIncome"],
-      ["operatingMargin", "OperatingIncomeLoss", "operatingIncome"],
-      [
-        "operatingCashFlowMargin",
-        "NetCashProvidedByUsedInOperatingActivities",
-        "operatingCashFlow",
-      ],
-    ] as const
-  ).every(([metric, numerator, numeratorMetric]) => {
-    const cell = cells[metric];
-    return (
-      cell.sources.every(
-        (source) => source.concept === basis || source.concept === numerator,
-      ) &&
-      (cell.status !== "available" ||
-        (cells.revenue.status === "available" &&
-          cells[numeratorMetric].status === "available" &&
-          cell.sources.some((source) => source.concept === basis) &&
-          cell.sources.some((source) => source.concept === numerator)))
-    );
-  });
+  return originalRevenueMargins.every(
+    ([metric, numerator, numeratorMetric]) => {
+      const cell = cells[metric];
+      return (
+        cell.sources.every(
+          (source) => source.concept === basis || source.concept === numerator,
+        ) &&
+        (cell.status !== "available" ||
+          (cells.revenue.status === "available" &&
+            cells[numeratorMetric].status === "available" &&
+            cell.sources.some((source) => source.concept === basis) &&
+            cell.sources.some((source) => source.concept === numerator)))
+      );
+    },
+  );
 }
 
 function revenueReference(
@@ -949,7 +953,11 @@ function cell(
       : null;
   const unit = percentMetrics.includes(metric) ? "percent" : "USD";
   const cashMargin = metric === "operatingCashFlowLessPpePurchasesMargin";
+  const originalMargin = originalRevenueMargins.some(
+    ([field]) => field === metric,
+  );
   const exactRatio =
+    originalMargin ||
     metric === "grossMargin" ||
     metric === "operatingCashFlowToNetIncome" ||
     cashMargin;
@@ -1031,6 +1039,7 @@ function cell(
     ![
       "grossProfit",
       "ppePurchases",
+      "operatingIncome",
       "operatingCashFlow",
       "investingCashFlow",
       "financingCashFlow",
@@ -1279,6 +1288,11 @@ function admittedSource(
   metric: PersonalFinancialScreenMetricDto,
   concept: (typeof concepts)[number],
 ): boolean {
+  const originalMargin = originalRevenueMargins.find(
+    ([field]) => field === metric,
+  );
+  if (originalMargin)
+    return concept === originalMargin[1] || member(revenueConcepts, concept);
   if (metric === "grossProfit") return concept === "GrossProfit";
   if (metric === "grossMargin")
     return concept === "GrossProfit" || member(revenueConcepts, concept);
@@ -1320,6 +1334,52 @@ function admittedSource(
     concept !== "PaymentsForRepurchaseOfCommonStock" &&
     concept !== "InterestPaidNet" &&
     concept !== "IncomeTaxesPaidNet"
+  );
+}
+
+/** Bind the original margins to complete operands and the engine's reason precedence. */
+function originalMargins(
+  cells: PersonalFinancialScreenResponseDto["rows"][number]["metrics"],
+): boolean {
+  return originalRevenueMargins.every(
+    ([metric, numeratorConcept, numeratorMetric]) => {
+      const revenue = cells.revenue;
+      const numerator = cells[numeratorMetric];
+      const ratio = cells[metric];
+      const sources = [...numerator.sources, ...revenue.sources];
+      if (
+        !numerator.sources.every(
+          (source) => source.concept === numeratorConcept,
+        ) ||
+        !sameSourceMultiset(sources, ratio.sources, annualSourceKey)
+      )
+        return false;
+      const unknown = (reason: string) =>
+        ratio.status === "unavailable" && ratio.reason === reason;
+      if (revenue.status === "unavailable") return unknown(revenue.reason);
+      if (numerator.status === "unavailable") return unknown(numerator.reason);
+      const first = sources[0]!;
+      if (
+        sources.some(
+          (source) =>
+            source.startDate !== first.startDate ||
+            source.endDate !== first.endDate,
+        )
+      )
+        return unknown("period_mismatch");
+      if (
+        sources.some(
+          (source) => source.accessionNumber !== first.accessionNumber,
+        )
+      )
+        return unknown("filing_mismatch");
+      const denominator = scaledDecimal(revenue.value);
+      if (denominator.coefficient <= 0n) return unknown("nonpositive_revenue");
+      return (
+        ratio.status === "available" &&
+        ratio.value === percentageValue(numerator.value, denominator)
+      );
+    },
   );
 }
 

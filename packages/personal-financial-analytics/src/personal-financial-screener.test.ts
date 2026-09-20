@@ -58,11 +58,7 @@ describe("SEC annual financial screener", () => {
       [company],
       snapshot({
         [REVENUE]: [fact(1, "300000000000000000000.00")],
-        Revenues: [
-          fact(1, "300000000000000000000", {
-            accessionNumber: "0000000001-26-000002",
-          }),
-        ],
+        Revenues: [fact(1, "300000000000000000000")],
         NetIncomeLoss: [fact(1, "100000000000000000000")],
         OperatingIncomeLoss: [fact(1, "50000000000000000000")],
         NetCashProvidedByUsedInOperatingActivities: [
@@ -102,7 +98,7 @@ describe("SEC annual financial screener", () => {
     );
     expect(result).toMatchObject({
       calendarYear: 2025,
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       catalogSnapshotSha256: CATALOG_DIGEST,
       financialSnapshotSha256: FINANCIAL_DIGEST,
     });
@@ -484,7 +480,7 @@ describe("reported gross profit screening", () => {
     ]);
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(() =>
       run([], { ...snapshot(), frames: snapshot().frames.slice(0, 7) }),
@@ -820,7 +816,7 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
   const derived = "operatingCashFlowLessPpePurchases";
 
   it("versions only the screen formula set and keeps existing ratio metadata", () => {
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.7.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.8.0");
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS[derived]).toEqual({
       formulaId: "operating_cash_flow_less_ppe_purchases",
       formulaVersion: "1.1.0",
@@ -1194,7 +1190,7 @@ describe("explicit financial-screen revenue basis", () => {
       const metrics = result.rows[0]!.metrics;
       expect(result).toMatchObject({
         revenueBasis: basis,
-        formulaVersion: "1.7.0",
+        formulaVersion: "1.8.0",
       });
       expect(metrics.revenue).toMatchObject({
         status: "available",
@@ -1442,7 +1438,7 @@ describe("gross profit / selected revenue", () => {
     expect(PERSONAL_FINANCIAL_SCREEN_FORMULAS.grossMargin).toEqual(
       PERSONAL_FINANCIAL_ANALYTICS_FORMULAS.grossMargin,
     );
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.7.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.8.0");
     for (const metric of [
       "netMargin",
       "operatingMargin",
@@ -1968,7 +1964,7 @@ describe("operating cash flow / net income", () => {
       formulaVersion: "1.0.0",
       expression: "operating_cash_flow / net_income * 100",
     });
-    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.7.0");
+    expect(PERSONAL_FINANCIAL_SCREEN_FORMULA_SET_VERSION).toBe("1.8.0");
     for (const prior of [
       "grossMargin",
       "netMargin",
@@ -2376,7 +2372,7 @@ describe("operating cash flow / net income", () => {
     },
   );
 
-  it("preserves all eleven prior cells and their coverage when the new filing guard is inapplicable", () => {
+  it("preserves ten compatible cells while net margin and cash conversion withhold mixed filings", () => {
     const input = snapshot({
       [REVENUE]: [fact(1, "100")],
       GrossProfit: [fact(1, "40")],
@@ -2447,16 +2443,16 @@ describe("operating cash flow / net income", () => {
       expected,
     ) as (keyof typeof expected)[]) {
       const [value, unit, sources] = expected[oldMetric];
-      expect(result.rows[0]!.metrics[oldMetric]).toEqual({
-        status: "available",
-        value,
-        unit,
-        sources,
-      });
-      expect(result.metricCoverage[oldMetric]).toEqual({
-        known: 1,
-        unknown: 0,
-      });
+      expect(result.rows[0]!.metrics[oldMetric]).toEqual(
+        oldMetric === "netMargin"
+          ? { status: "unavailable", reason: "filing_mismatch", unit, sources }
+          : { status: "available", value, unit, sources },
+      );
+      expect(result.metricCoverage[oldMetric]).toEqual(
+        oldMetric === "netMargin"
+          ? { known: 0, unknown: 1 }
+          : { known: 1, unknown: 0 },
+      );
     }
     expect(result.rows[0]!.metrics[metric]).toMatchObject({
       status: "unavailable",
@@ -2774,7 +2770,7 @@ describe("operating cash flow less PP&E purchases / selected revenue", () => {
     expect(
       validatePersonalFinancialScreenCriteria({
         ...filters,
-        formulaVersion: "1.7.0",
+        formulaVersion: "1.8.0",
       }),
     ).toBe(false);
     expect(
@@ -3090,6 +3086,312 @@ describe("operating cash flow less PP&E purchases / selected revenue", () => {
   });
 });
 
+describe("consistent filings for original three margins", () => {
+  const margins = [
+    ["netMargin", "netIncome", "NetIncomeLoss"],
+    ["operatingMargin", "operatingIncome", "OperatingIncomeLoss"],
+    [
+      "operatingCashFlowMargin",
+      "operatingCashFlow",
+      "NetCashProvidedByUsedInOperatingActivities",
+    ],
+  ] as const;
+  const otherFiling = "0000000001-26-000002";
+
+  for (const [metric, numerator, concept] of margins) {
+    describe(metric, () => {
+      function cells(
+        input: PersonalSecFinancialSnapshotDto,
+        revenueBasis: PersonalFinancialRevenueBasisDto = "agreement",
+      ) {
+        return run([identity("FILING", 1)], input, {
+          ...criteria(),
+          revenueBasis,
+        }).rows[0]!.metrics;
+      }
+      function input(value = "25") {
+        return snapshot({
+          [REVENUE]: [fact(1, "100")],
+          Revenues: [fact(1, "100.0")],
+          SalesRevenueNet: [fact(1, "100.00")],
+          [concept]: [fact(1, value)],
+        });
+      }
+
+      it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+        "preserves compatible %s arithmetic and withholds cross-operand filings without changing reported cells",
+        (revenueBasis) => {
+          const source = input();
+          const compatible = cells(source, revenueBasis);
+          expect(compatible[metric]).toEqual({
+            status: "available",
+            unit: "percent",
+            value: "25.00",
+            sources: [
+              ...compatible[numerator].sources,
+              ...compatible.revenue.sources,
+            ],
+          });
+          const mismatch = cells(
+            replaceFrame(source, concept, {
+              facts: [fact(1, "25", { accessionNumber: otherFiling })],
+            }),
+            revenueBasis,
+          );
+          expect(mismatch.revenue).toEqual(compatible.revenue);
+          expect(mismatch[numerator]).toMatchObject({
+            status: "available",
+            unit: "USD",
+            value: "25",
+          });
+          expect(mismatch[metric]).toEqual({
+            status: "unavailable",
+            unit: "percent",
+            reason: "filing_mismatch",
+            sources: [
+              ...mismatch[numerator].sources,
+              ...mismatch.revenue.sources,
+            ],
+          });
+          expect(mismatch[metric].sources[0]).toEqual({
+            concept,
+            accessionNumber: otherFiling,
+            startDate: "2025-01-01",
+            endDate: "2025-12-31",
+            value: "25",
+          });
+        },
+      );
+
+      for (const location of ["numerator", "revenue"] as const) {
+        it.each(PERSONAL_FINANCIAL_REVENUE_BASES)(
+          `checks non-first ${location} references under %s and retains original strings, order and multiplicity`,
+          (revenueBasis) => {
+            const selectedConcept =
+              location === "numerator"
+                ? concept
+                : revenueBasis === "agreement"
+                  ? REVENUE
+                  : revenueBasis;
+            const amount = location === "numerator" ? "25" : "100";
+            // Reverse provider input order deliberately. The existing engine's
+            // sorted source order is retained, including equivalent duplicates.
+            const source = replaceFrame(input(), selectedConcept, {
+              facts: [
+                fact(1, `${amount}.00`, { accessionNumber: otherFiling }),
+                fact(1, amount),
+                fact(1, amount),
+              ],
+            });
+            const before = JSON.stringify(source);
+            const result = cells(source, revenueBasis);
+            expect(result[numerator].status).toBe("available");
+            expect(result.revenue.status).toBe("available");
+            const changedOperand =
+              location === "numerator" ? result[numerator] : result.revenue;
+            expect(
+              changedOperand.sources
+                .filter((reference) => reference.concept === selectedConcept)
+                .map((reference) => [
+                  reference.accessionNumber,
+                  reference.value,
+                ]),
+            ).toEqual([
+              ["0000000001-26-000001", amount],
+              ["0000000001-26-000001", amount],
+              [otherFiling, `${amount}.00`],
+            ]);
+            expect(result[metric]).toEqual({
+              status: "unavailable",
+              reason: "filing_mismatch",
+              unit: "percent",
+              sources: [
+                ...result[numerator].sources,
+                ...result.revenue.sources,
+              ],
+            });
+            expect(JSON.stringify(source)).toBe(before);
+          },
+        );
+      }
+
+      it("checks the last agreeing revenue concept while explicit unaffected bases remain usable", () => {
+        const source = replaceFrame(input(), "SalesRevenueNet", {
+          facts: [fact(1, "100.00", { accessionNumber: otherFiling })],
+        });
+        const result = cells(source);
+        expect(result[metric]).toMatchObject({
+          status: "unavailable",
+          reason: "filing_mismatch",
+        });
+        expect(
+          result[metric].sources.map((reference) => reference.concept),
+        ).toEqual([concept, REVENUE, "Revenues", "SalesRevenueNet"]);
+        for (const revenueBasis of [REVENUE, "Revenues"] as const)
+          expect(cells(source, revenueBasis)[metric]).toMatchObject({
+            status: "available",
+            value: "25.00",
+          });
+      });
+
+      it("keeps revenue, numerator, period, filing and domain precedence for simultaneous defects", () => {
+        const source = snapshot({
+          [REVENUE]: [fact(1, "0")],
+          [concept]: [
+            fact(1, "25", {
+              startDate: "2025-01-02",
+              accessionNumber: otherFiling,
+            }),
+          ],
+        });
+        expect(cells(source)[metric]).toMatchObject({
+          reason: "period_mismatch",
+        });
+        expect(
+          cells(
+            replaceFrame(source, concept, {
+              facts: [fact(1, "25", { accessionNumber: otherFiling })],
+            }),
+          )[metric],
+        ).toMatchObject({ reason: "filing_mismatch" });
+        expect(
+          cells(replaceFrame(source, concept, { facts: [fact(1, "25")] }))[
+            metric
+          ],
+        ).toMatchObject({ reason: "nonpositive_revenue" });
+        expect(
+          cells(replaceFrame(source, concept, { facts: [] }))[metric],
+        ).toMatchObject({ reason: "missing" });
+        expect(
+          cells(replaceFrame(source, concept, { unknownCiks: [cik(1)] }))[
+            metric
+          ],
+        ).toMatchObject({ reason: "conflicting" });
+        const invalidNumerator = replaceFrame(source, concept, {
+          facts: [fact(1, "NaN")],
+        });
+        expect(cells(invalidNumerator)[metric]).toMatchObject({
+          reason: "invalid_value",
+        });
+        expect(
+          cells(replaceFrame(invalidNumerator, REVENUE, { facts: [] }))[metric],
+        ).toMatchObject({ reason: "missing" });
+        const failedNumerator = replaceFrame(source, concept, {
+          status: "upstream_unavailable",
+          facts: [],
+        });
+        expect(
+          cells(
+            replaceFrame(failedNumerator, REVENUE, {
+              facts: [fact(1, "0"), fact(1, "1")],
+            }),
+          )[metric],
+        ).toMatchObject({ reason: "conflicting" });
+        expect(
+          cells(
+            replaceFrame(invalidNumerator, REVENUE, {
+              status: "upstream_unavailable",
+              facts: [],
+            }),
+          )[metric],
+        ).toMatchObject({ reason: "source_unavailable" });
+      });
+
+      it("preserves shared-CIK coverage, three-valued filtering and stable paging", () => {
+        const companies = [
+          identity("MIXED", 1),
+          { ...identity("MIXED.B", 1), listingId: "listing-0000000001-b" },
+          identity("COMPATIBLE", 2),
+        ];
+        const source = snapshot({
+          [REVENUE]: [fact(1, "100"), fact(2, "100")],
+          [concept]: [
+            fact(1, "25", { accessionNumber: otherFiling }),
+            fact(2, "25"),
+          ],
+        });
+        const full = run(companies, source);
+        expect(full.rows[1]!.metrics[metric]).toEqual(
+          full.rows[2]!.metrics[metric],
+        );
+        expect(full.metricCoverage[metric]).toEqual({ known: 1, unknown: 2 });
+        const filtered = run(
+          companies,
+          source,
+          criteria([clause(metric, "gte", "25")]),
+        );
+        expect(filtered).toMatchObject({
+          totalMatches: 1,
+          totalUnknown: 2,
+          totalNonMatches: 0,
+        });
+        expect(filtered.rows.map((row) => row.identity.symbol)).toEqual([
+          "COMPATIBLE",
+        ]);
+        expect(
+          run(
+            companies,
+            source,
+            criteria([
+              clause(metric, "gte", "25"),
+              clause("revenue", "lte", "99"),
+            ]),
+          ),
+        ).toMatchObject({
+          totalMatches: 0,
+          totalUnknown: 0,
+          totalNonMatches: 3,
+        });
+        const pages = [0, 1, 2].map((offset) =>
+          run([...companies].reverse(), source, criteria(), {
+            offset,
+            limit: 1,
+          }),
+        );
+        expect(pages.flatMap((page) => page.rows)).toEqual(full.rows);
+        expect(
+          pages.every(
+            (page) =>
+              page.metricCoverage[metric].known === 1 &&
+              page.metricCoverage[metric].unknown === 2,
+          ),
+        ).toBe(true);
+      });
+    });
+  }
+
+  it.each([
+    ["1", "3", "33.33"],
+    ["1.005", "100", "1.01"],
+    ["-1.005", "100", "-1.01"],
+    ["-0", "100", "0.00"],
+    ["-0.000001", "100", "0.00"],
+    ["250", "100", "250.00"],
+    ["100000000000000000000", "300000000000000000000", "33.33"],
+  ])(
+    "retains all three margins' exact compatible %s / %s arithmetic as %s",
+    (amount, revenue, expected) => {
+      const result = run(
+        [identity("PRECISE", 1)],
+        snapshot({
+          [REVENUE]: [fact(1, revenue)],
+          NetIncomeLoss: [fact(1, amount)],
+          OperatingIncomeLoss: [fact(1, amount)],
+          NetCashProvidedByUsedInOperatingActivities: [fact(1, amount)],
+        }),
+      );
+      for (const [metric] of margins)
+        expect(result.rows[0]!.metrics[metric]).toMatchObject({
+          status: "available",
+          unit: "percent",
+          value: expected,
+        });
+      expect(result.formulaVersion).toBe("1.8.0");
+      expect(result.schemaVersion).toBe("14.0.0");
+    },
+  );
+});
+
 function run(
   identities: readonly PersonalSecurityMasterScreenRowDto[],
   input: PersonalSecFinancialSnapshotDto,
@@ -3264,7 +3566,7 @@ describe("reported investing and financing cash flows", () => {
     const result = run([identity("ACTIVITIES", 1)], snapshot());
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources.length + result.priorRevenueSources.length).toBe(23);
     for (const [metric, concept] of reported) {
@@ -3598,7 +3900,7 @@ describe("reported common dividends and common share repurchases", () => {
     const result = run([identity("PAYMENTS", 1)], snapshot());
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources.length + result.priorRevenueSources.length).toBe(23);
     for (const [metric, concept] of reported) {
@@ -3936,7 +4238,7 @@ describe("reported interest and income-tax cash payments", () => {
     const result = run([identity("PAYMENTS", 1)], snapshot());
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources.length + result.priorRevenueSources.length).toBe(23);
     for (const [metric, concept] of reported) {
@@ -4284,7 +4586,7 @@ describe("reported total assets and total liabilities", () => {
     ]);
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources.length + result.priorRevenueSources.length).toBe(23);
     for (const [metric, concept] of totals) {
@@ -4651,7 +4953,7 @@ describe("reported cash and stockholders equity", () => {
     ]);
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources.length + result.priorRevenueSources.length).toBe(23);
     for (const [metric, concept] of reported) {
@@ -5030,7 +5332,7 @@ describe("fixed Q4 current assets / current liabilities", () => {
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
       instantQuarter: 4,
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
     });
     expect(result.sources).toHaveLength(20);
     expect(result.rows[0]!.metrics.currentRatio).toEqual({
@@ -5392,7 +5694,7 @@ describe("fixed Q4 current assets less current liabilities", () => {
     const result = run([identity("BALANCE", 1)], input);
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       instantQuarter: 4,
     });
     expect(result.sources).toHaveLength(20);
@@ -5896,7 +6198,7 @@ describe("selected revenue year-over-year growth", () => {
     const cell = result.rows[0]!.metrics.revenueGrowth;
     expect(result).toMatchObject({
       schemaVersion: "14.0.0",
-      formulaVersion: "1.7.0",
+      formulaVersion: "1.8.0",
       calendarYear: 2025,
       priorCalendarYear: 2024,
     });

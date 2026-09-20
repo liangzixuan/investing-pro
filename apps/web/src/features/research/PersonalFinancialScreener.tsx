@@ -261,11 +261,11 @@ const formulas: Readonly<Record<PersonalFinancialScreenMetricDto, string>> = {
   incomeTaxesPaidNet:
     "Reported IncomeTaxesPaidNet in USD: cash income taxes paid to foreign, federal, state and local jurisdictions after refunds. Broader payments before refunds, refund components and accrued income-tax expense do not substitute. Independent of the revenue basis; inspect this amount's actual annual dates and filing.",
   netMargin:
-    "Net income / revenue × 100. Requires positive revenue and identical source periods.",
+    "Net income / revenue × 100. Requires positive revenue, identical source periods and one filing accession across every input reference.",
   operatingMargin:
-    "Operating income / revenue × 100. Requires positive revenue and identical source periods.",
+    "Operating income / revenue × 100. Requires positive revenue, identical source periods and one filing accession across every input reference.",
   operatingCashFlowMargin:
-    "Operating cash flow / revenue × 100. Requires positive revenue and identical source periods.",
+    "Operating cash flow / revenue × 100. Requires positive revenue, identical source periods and one filing accession across every input reference.",
   ppePurchases:
     "Reported cash payments to acquire property, plant and equipment in USD. Independent of the revenue basis; includes only this reported purchase concept.",
   operatingCashFlowLessPpePurchases:
@@ -3298,6 +3298,18 @@ function FinancialCellDetails({
           )}
         </>
       )}
+      {(metric === "netMargin" ||
+        metric === "operatingMargin" ||
+        metric === "operatingCashFlowMargin") &&
+        cell.status === "unavailable" &&
+        cell.reason === "filing_mismatch" && (
+          <p>
+            The inputs come from different filing accessions. The margin remains
+            unknown to avoid mixing filing versions, even when reported amounts
+            agree. This does not establish that the reported amounts are wrong.
+            All retained values, dates and filing references remain below.
+          </p>
+        )}
       {metric === "operatingCashFlowToNetIncome" && (
         <>
           <p>

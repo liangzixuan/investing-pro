@@ -3699,7 +3699,7 @@ describe("operating cash flow / net income decoding", () => {
       reason: "source_unavailable",
       sources: [],
     };
-    const payload = {
+    const payload = withOriginalMarginFixtures({
       ...result,
       rows: [
         {
@@ -3723,10 +3723,10 @@ describe("operating cash flow / net income decoding", () => {
       ],
       sources: result.sources.map((ref) =>
         PERSONAL_FINANCIAL_REVENUE_BASES.some((basis) => basis === ref.concept)
-          ? { ...ref, status: "upstream_unavailable" }
+          ? { ...ref, status: "upstream_unavailable" as const }
           : ref,
       ),
-    };
+    });
     fetchMock.mockResolvedValueOnce(json(payload));
     expect(
       (await screenPersonalFinancials(request(), signal())).rows[0]?.metrics
@@ -4308,7 +4308,7 @@ describe("operating cash flow less PP&E purchases / selected revenue decoding", 
     const result = cashResponse(op, ppe, difference);
     const row = result.rows[0]!;
     const sources = [...op.sources, ...ppe.sources, ...rev.sources];
-    return {
+    return withOriginalMarginFixtures({
       ...result,
       revenueBasis: basis,
       rows: [
@@ -4346,7 +4346,7 @@ describe("operating cash flow less PP&E purchases / selected revenue decoding", 
           },
         },
       ],
-    };
+    });
   };
   const decode = (result: PersonalFinancialScreenResponseDto) => {
     fetchMock.mockResolvedValueOnce(json(result));
@@ -5220,17 +5220,15 @@ describe("financial screen transport", () => {
               ],
             },
             ...Object.fromEntries(
-              ["netMargin", "operatingMargin", "operatingCashFlowMargin"].map(
-                (metric) => [
-                  metric,
-                  {
-                    status: "unavailable",
-                    unit: "percent",
-                    reason: "missing",
-                    sources: [],
-                  },
-                ],
-              ),
+              originalMarginFields.map(([metric, numerator]) => [
+                metric,
+                {
+                  status: "unavailable",
+                  unit: "percent",
+                  reason: "missing",
+                  sources: row.metrics[numerator].sources,
+                },
+              ]),
             ),
           },
         },
@@ -5448,7 +5446,7 @@ describe("financial screen transport", () => {
     } as const;
     const decoded = await screenPersonalFinancials(input, signal());
     expect(decoded.schemaVersion).toBe("14.0.0");
-    expect(decoded.formulaVersion).toBe("1.7.0");
+    expect(decoded.formulaVersion).toBe("1.8.0");
     expect(Object.keys(decoded.rows[0]!.metrics)).toEqual([
       "revenue",
       "grossProfit",
@@ -6581,6 +6579,479 @@ describe("saved financial criteria", () => {
   });
 });
 
+// These helpers update only unrelated legacy fixture fields before any tampering.
+// Dedicated original-margin tests below assert literal expected values/reasons.
+const originalMarginFields = [
+  ["netMargin", "netIncome", "NetIncomeLoss"],
+  ["operatingMargin", "operatingIncome", "OperatingIncomeLoss"],
+  [
+    "operatingCashFlowMargin",
+    "operatingCashFlow",
+    "NetCashProvidedByUsedInOperatingActivities",
+  ],
+] as const;
+function originalMarginFixture(
+  numerator: PersonalFinancialScreenAnnualCellDto,
+  revenue: PersonalFinancialScreenAnnualCellDto,
+): PersonalFinancialScreenAnnualCellDto {
+  const sources = [...numerator.sources, ...revenue.sources];
+  const unknown = (
+    reason: Extract<
+      PersonalFinancialScreenAnnualCellDto,
+      { status: "unavailable" }
+    >["reason"],
+  ): PersonalFinancialScreenAnnualCellDto => ({
+    status: "unavailable",
+    unit: "percent",
+    reason,
+    sources,
+  });
+  if (revenue.status === "unavailable") return unknown(revenue.reason);
+  if (numerator.status === "unavailable") return unknown(numerator.reason);
+  if (
+    sources.some(
+      (ref) =>
+        ref.startDate !== sources[0]!.startDate ||
+        ref.endDate !== sources[0]!.endDate,
+    )
+  )
+    return unknown("period_mismatch");
+  if (new Set(sources.map((ref) => ref.accessionNumber)).size !== 1)
+    return unknown("filing_mismatch");
+  if (Number(revenue.value) <= 0) return unknown("nonpositive_revenue");
+  const precision = Math.max(
+    ...[numerator.value, revenue.value].map(
+      (value) => value.split(".")[1]?.length ?? 0,
+    ),
+  );
+  const integer = (value: string) => {
+    const [whole, fraction = ""] = value.split(".");
+    return BigInt(`${whole}${fraction.padEnd(precision, "0")}`);
+  };
+  const top = integer(numerator.value) * 10_000n;
+  const bottom = integer(revenue.value);
+  const magnitude = top < 0n ? -top : top;
+  const rounded = (2n * magnitude + bottom) / (2n * bottom);
+  return {
+    status: "available",
+    unit: "percent",
+    sources,
+    value: `${top < 0n && rounded !== 0n ? "-" : ""}${rounded / 100n}.${String(rounded % 100n).padStart(2, "0")}`,
+  };
+}
+function withOriginalMarginFixtures(
+  result: PersonalFinancialScreenResponseDto,
+): PersonalFinancialScreenResponseDto {
+  return {
+    ...result,
+    rows: result.rows.map((row) => ({
+      ...row,
+      metrics: {
+        ...row.metrics,
+        ...Object.fromEntries(
+          originalMarginFields.map(([field, numerator]) => [
+            field,
+            originalMarginFixture(row.metrics[numerator], row.metrics.revenue),
+          ]),
+        ),
+      },
+    })),
+  };
+}
+
+describe("original revenue margin filing consistency", () => {
+  const mutableCopy = (result: PersonalFinancialScreenResponseDto) => {
+    const copy = structuredClone(result);
+    return {
+      ...copy,
+      rows: copy.rows.map((row) => ({ ...row, metrics: { ...row.metrics } })),
+    };
+  };
+  const unavailable = (
+    reason: Extract<
+      PersonalFinancialScreenAnnualCellDto,
+      { status: "unavailable" }
+    >["reason"],
+    sources: readonly PersonalFinancialScreenSourceRefDto[] = [],
+  ): Extract<
+    PersonalFinancialScreenAnnualCellDto,
+    { status: "unavailable" }
+  > => ({
+    status: "unavailable",
+    unit: "USD",
+    reason,
+    sources,
+  });
+  const operand = (
+    concept: PersonalFinancialScreenSourceRefDto["concept"],
+    value: string,
+  ): PersonalFinancialScreenAnnualCellDto => ({
+    status: "available",
+    unit: "USD",
+    value,
+    sources: [{ ...source(), concept, value }],
+  });
+  const make = (
+    field: (typeof originalMarginFields)[number][0],
+    numerator: PersonalFinancialScreenAnnualCellDto,
+    revenue: PersonalFinancialScreenAnnualCellDto,
+    expected:
+      | string
+      | {
+          reason: Extract<
+            PersonalFinancialScreenAnnualCellDto,
+            { status: "unavailable" }
+          >["reason"];
+        },
+    basis: PersonalFinancialRevenueBasisDto = "agreement",
+  ): PersonalFinancialScreenResponseDto => {
+    const result = responseWithBasis(basis);
+    const row = result.rows[0]!;
+    const missing = unavailable("missing");
+    const numeratorField = originalMarginFields.find(
+      ([id]) => id === field,
+    )![1];
+    const inputs = {
+      revenue,
+      netIncome: missing,
+      operatingIncome: missing,
+      operatingCashFlow: missing,
+      [numeratorField]: numerator,
+    };
+    const operating = inputs.operatingCashFlow;
+    const income = inputs.netIncome;
+    const sources = [...numerator.sources, ...revenue.sources];
+    const ratio: PersonalFinancialScreenAnnualCellDto =
+      typeof expected === "string"
+        ? { status: "available", unit: "percent", value: expected, sources }
+        : {
+            status: "unavailable",
+            unit: "percent",
+            reason: expected.reason,
+            sources,
+          };
+    const coherent = withOriginalMarginFixtures({
+      ...result,
+      rows: [
+        {
+          ...row,
+          metrics: {
+            ...row.metrics,
+            ...inputs,
+            grossProfit: missing,
+            ppePurchases: missing,
+            revenueGrowth: unavailableGrowth(revenue),
+            grossMargin: {
+              ...missing,
+              unit: "percent",
+              reason:
+                revenue.status === "unavailable" ? revenue.reason : "missing",
+              sources: revenue.sources,
+            },
+            operatingCashFlowLessPpePurchases: {
+              ...missing,
+              reason:
+                operating.status === "unavailable"
+                  ? operating.reason
+                  : "missing",
+              sources: operating.sources,
+            },
+            operatingCashFlowLessPpePurchasesMargin: cashMarginFixture(
+              operating,
+              missing,
+              revenue,
+            ),
+            operatingCashFlowToNetIncome: {
+              ...missing,
+              unit: "percent",
+              reason:
+                income.status === "unavailable"
+                  ? income.reason
+                  : operating.status === "unavailable"
+                    ? operating.reason
+                    : "missing",
+              sources: [...operating.sources, ...income.sources],
+            },
+          },
+        },
+      ],
+    });
+    return {
+      ...coherent,
+      rows: coherent.rows.map((item) => ({
+        ...item,
+        metrics: { ...item.metrics, [field]: ratio },
+      })),
+    };
+  };
+  const decode = (result: PersonalFinancialScreenResponseDto) => {
+    fetchMock.mockResolvedValueOnce(json(result));
+    return screenPersonalFinancials(
+      {
+        ...request(),
+        criteria: {
+          ...request().criteria,
+          revenueBasis: result.revenueBasis ?? "agreement",
+        },
+      },
+      signal(),
+    );
+  };
+  it.each(originalMarginFields)(
+    "checks %s exact signed values and rounding without changing the formula",
+    async (field, _numerator, concept) => {
+      for (const [top, bottom, expected] of [
+        ["0", "100", "0.00"],
+        ["-0.0049", "100", "0.00"],
+        ["1.005", "100", "1.01"],
+        ["-1.005", "100", "-1.01"],
+        ["1", "3", "33.33"],
+        ["250", "100", "250.00"],
+        ["9007199254740993.0001", "100", "9007199254740993.00"],
+      ] as const) {
+        const result = make(
+          field,
+          operand(concept, top),
+          operand("Revenues", bottom),
+          expected,
+        );
+        expect(await decode(result)).toEqual(result);
+        const forged = mutableCopy(result);
+        forged.rows[0]!.metrics[field] = {
+          ...forged.rows[0]!.metrics[field],
+          status: "available",
+          value: expected === "0.00" ? "-0.00" : `${expected}0`,
+        };
+        await expect(decode(forged)).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+      }
+    },
+  );
+  it.each(originalMarginFields)(
+    "requires every %s filing under all revenue bases while retaining exact operands",
+    async (field, _numerator, concept) => {
+      for (const basis of PERSONAL_FINANCIAL_REVENUE_BASES) {
+        const revenue = operand(
+          basis === "agreement" ? "Revenues" : basis,
+          "100",
+        );
+        const baseNumerator = operand(concept, "25");
+        const numerator = {
+          ...baseNumerator,
+          sources: baseNumerator.sources.map((ref) => ({
+            ...ref,
+            accessionNumber: "0000000001-25-000002",
+          })),
+        };
+        const result = make(
+          field,
+          numerator,
+          revenue,
+          { reason: "filing_mismatch" },
+          basis,
+        );
+        expect((await decode(result)).rows[0]!.metrics[field]).toEqual(
+          result.rows[0]!.metrics[field],
+        );
+        const forged = mutableCopy(result);
+        forged.rows[0]!.metrics[field] = {
+          status: "available",
+          unit: "percent",
+          value: "25.00",
+          sources: result.rows[0]!.metrics[field].sources,
+        };
+        await expect(decode(forged)).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+      }
+    },
+  );
+  it.each(originalMarginFields)(
+    "preserves %s multiplicity but rejects omitted, duplicated, substituted and unjustified evidence",
+    async (field, _numerator, concept) => {
+      const numerator = operand(concept, "25");
+      const revenue = operand("Revenues", "100");
+      const duplicateNumerator = {
+        ...numerator,
+        sources: Array.from({ length: 6 }, () => ({
+          ...numerator.sources[0]!,
+        })),
+      };
+      const duplicateRevenue = {
+        ...revenue,
+        sources: Array.from({ length: 6 }, () => ({ ...revenue.sources[0]! })),
+      };
+      const result = make(field, duplicateNumerator, duplicateRevenue, "25.00");
+      const reversed = mutableCopy(result);
+      reversed.rows[0]!.metrics[field] = {
+        ...reversed.rows[0]!.metrics[field],
+        sources: [...reversed.rows[0]!.metrics[field].sources].reverse(),
+      };
+      expect(await decode(reversed)).toEqual(reversed);
+      for (const corrupt of [
+        (refs: PersonalFinancialScreenSourceRefDto[]) => refs.slice(1),
+        (refs: PersonalFinancialScreenSourceRefDto[]) => [
+          ...refs.slice(1),
+          refs.at(-1)!,
+        ],
+        (refs: PersonalFinancialScreenSourceRefDto[]) =>
+          refs.map((ref, index) =>
+            index === 0 ? { ...ref, value: "26" } : ref,
+          ),
+        (refs: PersonalFinancialScreenSourceRefDto[]) =>
+          refs.map((ref, index) =>
+            index === 0 ? { ...ref, concept: "GrossProfit" as const } : ref,
+          ),
+      ]) {
+        const forged = mutableCopy(result);
+        forged.rows[0]!.metrics[field] = {
+          ...forged.rows[0]!.metrics[field],
+          sources: corrupt([...forged.rows[0]!.metrics[field].sources]),
+        };
+        await expect(decode(forged)).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+      }
+      const mismatchedRevenue = {
+        ...duplicateRevenue,
+        sources: duplicateRevenue.sources.map((ref, index) =>
+          index === 5
+            ? { ...ref, accessionNumber: "0000000001-25-000003" }
+            : ref,
+        ),
+      };
+      const mixed = make(field, duplicateNumerator, mismatchedRevenue, {
+        reason: "filing_mismatch",
+      });
+      expect(await decode(mixed)).toEqual(mixed);
+      const unjustified = make(field, numerator, revenue, {
+        reason: "filing_mismatch",
+      });
+      await expect(decode(unjustified)).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+    },
+  );
+  it.each(originalMarginFields)(
+    "checks %s unknown precedence and preserves existing period policy",
+    async (field, _numerator, concept) => {
+      const numerator = operand(concept, "25");
+      const otherFiling = {
+        ...numerator,
+        sources: numerator.sources.map((ref) => ({
+          ...ref,
+          accessionNumber: "0000000001-25-000002",
+        })),
+      };
+      const cases = [
+        [
+          unavailable("conflicting", numerator.sources),
+          unavailable("missing"),
+          "missing",
+        ],
+        [
+          unavailable("conflicting", numerator.sources),
+          operand("Revenues", "0"),
+          "conflicting",
+        ],
+        [
+          {
+            ...otherFiling,
+            sources: otherFiling.sources.map((ref) => ({
+              ...ref,
+              startDate: "2024-02-01",
+            })),
+          },
+          operand("Revenues", "0"),
+          "period_mismatch",
+        ],
+        [otherFiling, operand("Revenues", "0"), "filing_mismatch"],
+        [numerator, operand("Revenues", "0"), "nonpositive_revenue"],
+      ] as const;
+      for (const [top, bottom, reason] of cases) {
+        const result = make(field, top, bottom, { reason });
+        expect(await decode(result)).toEqual(result);
+        const forged = make(field, top, bottom, {
+          reason: reason === "missing" ? "conflicting" : "missing",
+        });
+        await expect(decode(forged)).rejects.toMatchObject({
+          code: "invalid_response",
+        });
+      }
+      // This slice adds filing admission, not the newer ratios' 335-day duration rule.
+      const period = { startDate: "2024-02-01", endDate: "2024-12-31" };
+      const short = make(
+        field,
+        {
+          ...numerator,
+          sources: numerator.sources.map((ref) => ({ ...ref, ...period })),
+        },
+        {
+          ...operand("Revenues", "100"),
+          sources: operand("Revenues", "100").sources.map((ref) => ({
+            ...ref,
+            ...period,
+          })),
+        },
+        "25.00",
+      );
+      expect(await decode(short)).toEqual(short);
+    },
+  );
+  it("rejects the previous formula version without changing the transport schema", async () => {
+    const result = response();
+    fetchMock.mockResolvedValueOnce(
+      json({ ...result, formulaVersion: "1.7.0" }),
+    );
+    await expect(
+      screenPersonalFinancials(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    expect(result.schemaVersion).toBe("14.0.0");
+    expect(result.formulaVersion).toBe("1.8.0");
+  });
+  it("rejects contradictory operating-income evidence even when the margin matches its declared value", async () => {
+    const numerator = operand("OperatingIncomeLoss", "200");
+    const revenue = operand("Revenues", "1000");
+    const inconsistent = make(
+      "operatingMargin",
+      {
+        ...numerator,
+        sources: numerator.sources.map((ref) => ({ ...ref, value: "999" })),
+      },
+      revenue,
+      "20.00",
+    );
+    await expect(decode(inconsistent)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    const inconsistentPeriod = make(
+      "operatingMargin",
+      {
+        ...numerator,
+        sources: [
+          ...numerator.sources,
+          { ...numerator.sources[0]!, startDate: "2024-02-01" },
+        ],
+      },
+      revenue,
+      { reason: "period_mismatch" },
+    );
+    await expect(decode(inconsistentPeriod)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    const impossibleReason = make(
+      "operatingMargin",
+      unavailable("period_mismatch", numerator.sources),
+      revenue,
+      { reason: "period_mismatch" },
+    );
+    await expect(decode(impossibleReason)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+});
+
 // Keep older, unrelated fixtures internally consistent when their original operands change.
 // New cash-margin arithmetic tests below supply literal expected values independently.
 function cashMarginFixture(
@@ -6798,7 +7269,7 @@ function growthResponse(
       ];
     }),
   );
-  return {
+  return withOriginalMarginFixtures({
     ...result,
     calendarYear: year,
     priorCalendarYear: year - 1,
@@ -6836,7 +7307,7 @@ function growthResponse(
         unknown: revenueGrowth.status === "unavailable" ? 1 : 0,
       },
     },
-  };
+  });
 }
 function incomeRatioOperand(
   concept: "NetIncomeLoss" | "NetCashProvidedByUsedInOperatingActivities",
@@ -6881,7 +7352,7 @@ function incomeRatioResponse(
     reason: "missing",
     sources: [],
   };
-  return {
+  return withOriginalMarginFixtures({
     ...result,
     rows: [
       {
@@ -6908,7 +7379,7 @@ function incomeRatioResponse(
         },
       },
     ],
-  };
+  });
 }
 function ratioResponse(
   revenue: PersonalFinancialScreenAnnualCellDto,
@@ -6935,7 +7406,7 @@ function ratioResponse(
           reason: expected.reason,
           sources,
         };
-  return {
+  return withOriginalMarginFixtures({
     ...result,
     rows: [
       {
@@ -6954,7 +7425,7 @@ function ratioResponse(
         },
       },
     ],
-  };
+  });
 }
 function cashRef(
   concept:
@@ -7008,7 +7479,7 @@ function cashResponse(
     typeof derived === "string"
       ? { status: "available", unit: "USD", value: derived, sources }
       : { status: "unavailable", unit: "USD", reason: derived.reason, sources };
-  return {
+  return withOriginalMarginFixtures({
     ...result,
     rows: [
       {
@@ -7038,7 +7509,7 @@ function cashResponse(
         },
       },
     ],
-  };
+  });
 }
 function instantOperand(
   concept: PersonalFinancialScreenInstantSourceRefDto["concept"],
@@ -7170,7 +7641,7 @@ function currentResponse(
   };
 }
 function response(): PersonalFinancialScreenResponseDto {
-  return {
+  return withOriginalMarginFixtures({
     schemaVersion: "14.0.0",
     catalogSnapshotSha256: sha("a"),
     financialSnapshotSha256: sha("b"),
@@ -7346,9 +7817,11 @@ function response(): PersonalFinancialScreenResponseDto {
                         ? "GrossProfit"
                         : metric === "netIncome"
                           ? "NetIncomeLoss"
-                          : metric === "operatingCashFlow"
-                            ? "NetCashProvidedByUsedInOperatingActivities"
-                            : "Revenues",
+                          : metric === "operatingIncome"
+                            ? "OperatingIncomeLoss"
+                            : metric === "operatingCashFlow"
+                              ? "NetCashProvidedByUsedInOperatingActivities"
+                              : "Revenues",
                   },
                 ],
               },
@@ -7373,8 +7846,8 @@ function response(): PersonalFinancialScreenResponseDto {
     offset: 0,
     limitApplied: 25,
     hasMore: false,
-    formulaVersion: "1.7.0",
-  };
+    formulaVersion: "1.8.0",
+  });
 }
 function responseWithBasis(
   basis: PersonalFinancialRevenueBasisDto,

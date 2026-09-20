@@ -1,12 +1,14 @@
 # Capability status
 
-Updated 2026-09-19. Accepted source:
+Updated 2026-09-20 UTC. Last accepted application source:
 `690c0c1565e698a4819f47a0c188e55247ca9f18` (annual business trends).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
 owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 owns full targets. Historical exit matrices and release claims remain unchanged.
 The workspace checkpoint and release handoff own actual runtime and acceptance
 receipts. Preparing a later change does not advance this accepted baseline.
+Release-capacity tooling was separately accepted at
+`31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e` without changing the running application.
 
 ## Delivered functionality and remaining targets
 
@@ -40,17 +42,36 @@ Feature details: [company research](./PERSONAL_COMPANY_RESEARCH.md),
 | Measure            | Recorded observation or delivered bound                                                                                                                                                   | What it does not establish                                                                                                                          |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Identity breadth   | Dated admitted snapshot: 3,227 listings against the at-least-3,000 objective                                                                                                              | Complete financial inputs or current provider coverage for every listing                                                                            |
-| Financial coverage | Shared 30-core registry / at least 500 securities / 90% known, non-stale eligible security-metric pairs remains open                                                                      | The 30 statement fields and 28 screen fields are different registries, not “28 of 30 completed”                                                     |
+| Financial coverage | Thirty definitions frozen; at least 500 securities / 90% known, non-stale canonical annual eligible pairs remains open                                                                    | The 30 statement fields and 28 screen fields are different registries, not “28 of 30 completed”                                                     |
 | Real SEC evidence  | September 17 measurement: 3,227 listings / 3,209 issuers over 23 Frames; interest payments known for 2,156 listings, tax payments for 2,129, both for 1,688; five primary filings sampled | Shared-core coverage, joint eligibility for other screens, the full 20-issuer/five-industry validation target or unchanged future observations      |
 | Starter screens    | Three explicitly sparse, editable examples against the initial target of 24; expansion toward 60 is conditional                                                                           | Non-sparse screens require at least 90% required-input knownness and at least 500 eligible securities; adding templates alone does not satisfy this |
 | Price and models   | 100-symbol history/action validation remains open; at least eight model families / twelve variants and independent golden-case breadth remain open                                        | A 10Y selector is not ten-year observed coverage; scenario controls are not independently justified model families                                  |
 | Portfolio bounds   | One USD portfolio; twenty registered identities, 250 activities and up to 100 CSV rows per import                                                                                         | Multi-account consolidation, tax accounting or complete corporate-action coverage                                                                   |
 | Daily reliability  | Seven-day alert-delivery soak and thirty-day personal-workflow soak remain open; no full app-wide p95 below two seconds or WCAG audit is claimed                                          | Short health samples, security-master search measurements or individual keyboard checks do not close these targets                                  |
 
+The September 20 UTC shared-core baseline froze thirty definitions and measured
+the retained September 11 catalog: 3,227 listings / 3,209 issuers. Of 96,810
+listing-metric pairs, 942 observed formula-domain cases were inapplicable;
+45,711 / 95,868 eligible pairs (47.68%) met the pilot rules. Seven core metrics
+lacked current SEC-screen mappings. Unknown, quarantined and unsupported pairs
+remained in the eligible denominator. Independent raw-data recounts reconciled
+all thirty state counts. The owner-local report and exact evidence are recorded
+in the workspace checkpoint, not distributed with the catalog.
+
+This is CY2025/Q4 fieldwise proxy coverage with declared 485-day current-operand
+and seven-day observation age tolerances, not latest fiscal-year or point-in-time
+coverage. The prior growth operand has its separate historical role. The retained
+catalog's expired historical fetch receipt does not establish a fresh universe or
+current entitlement. The 90% canonical annual gate and twenty-issuer/five-industry
+primary-filing validation remain open. A conservative same-filing overlay withheld
+835 otherwise numeric margin cells; different accessions alone do not prove
+incorrect arithmetic. Consistent engine/browser handling is the current repair,
+not a claim of new coverage.
+
 Known, unknown, stale, inapplicable, unsupported and quarantined results must keep
 their declared denominators. Required-input coverage for a complete research job
-is separate from per-field coverage. No fresh provider measurement was made for
-this scoreboard; dated observations retain their original scope.
+is separate from per-field coverage. Dated observations retain their original
+scope; the repair itself makes no new provider measurement.
 
 ## Verification is separate from breadth
 

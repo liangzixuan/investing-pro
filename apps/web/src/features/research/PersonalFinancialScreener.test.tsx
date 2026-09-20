@@ -4503,7 +4503,7 @@ describe("PersonalFinancialScreener", () => {
     expect(text(view)).toContain("Operating cash flow input");
     expect(text(view)).toContain("PP&E purchases input (subtracted)");
     expect(text(view)).toContain("Reported: 23.00002 USD");
-    expect(text(view)).toContain("Formula version 1.7.0");
+    expect(text(view)).toContain("Formula version 1.8.0");
     expect(
       elements(view).some(
         (element) =>
@@ -8005,7 +8005,7 @@ function response(offset = 0, count = 1): PersonalFinancialScreenResponseDto {
     priorCalendarYear: new Date().getUTCFullYear() - 2,
     fetchedAt: "2026-09-01T00:00:00.000Z",
     expiresAt: "2026-09-01T00:30:00.000Z",
-    formulaVersion: "1.7.0",
+    formulaVersion: "1.8.0",
     instantQuarter: 4,
     priorRevenueSources: PERSONAL_SEC_REVENUE_CONCEPTS.map((concept) => ({
       concept,
@@ -8222,3 +8222,83 @@ function activityCell(
     ],
   };
 }
+
+describe("original margin filing explanations", () => {
+  it.each([
+    ["netMargin", "Net margin", "NetIncomeLoss"],
+    ["operatingMargin", "Operating margin", "OperatingIncomeLoss"],
+    [
+      "operatingCashFlowMargin",
+      "Operating cash flow margin",
+      "NetCashProvidedByUsedInOperatingActivities",
+    ],
+  ] as const)(
+    "keeps %s source references inspectable without implying incorrect amounts or fetching again",
+    async (field, label, concept) => {
+      const result = response();
+      const refs = [
+        {
+          concept,
+          accessionNumber: "0000000001-26-000011",
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          value: "-25.1250",
+        },
+        {
+          concept: "Revenues" as const,
+          accessionNumber: "0000000001-26-000012",
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          value: "100.0000",
+        },
+      ];
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...result,
+        rows: result.rows.map((row) => ({
+          ...row,
+          metrics: {
+            ...row.metrics,
+            [field]: {
+              status: "unavailable",
+              unit: "percent",
+              reason: "filing_mismatch",
+              sources: refs,
+            },
+          },
+        })),
+      });
+      await mount();
+      submit(render());
+      await flush();
+      inspectCell(render(), label);
+      const opened = inspector(render())!;
+      expect(text(opened)).toContain(
+        "one filing accession across every input reference",
+      );
+      expect(text(opened)).toContain(
+        "The margin remains unknown to avoid mixing filing versions",
+      );
+      expect(text(opened)).toContain(
+        "This does not establish that the reported amounts are wrong",
+      );
+      expect(text(opened)).toContain("-25.1250");
+      expect(text(opened)).toContain("100.0000");
+      expect(text(opened)).toContain("2025-01-01");
+      expect(text(opened)).toContain("2025-12-31");
+      const filingLinks = elements(opened).filter((item) => item.type === "a");
+      expect(filingLinks).toHaveLength(2);
+      expect(filingLinks.map((item) => item.props.href)).toEqual([
+        "https://www.sec.gov/Archives/edgar/data/1/000000000126000011/0000000001-26-000011-index.html",
+        "https://www.sec.gov/Archives/edgar/data/1/000000000126000012/0000000001-26-000012-index.html",
+      ]);
+      expect(ratioCell(render(), label)?.props["aria-label"]).toContain(
+        "Unknown",
+      );
+      click(render(), "Close details");
+      change(render(), "Financial column view", "all");
+      expect(api.screenPersonalFinancials).toHaveBeenCalledOnce();
+      expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+      expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+    },
+  );
+});
