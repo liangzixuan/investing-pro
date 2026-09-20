@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-19 following the handover from **Investing Pro+** to
+Updated 2026-09-20 following the handover from **Investing Pro+** to
 **Investing Pro+ II**. Start here for active priorities and use the
 [capability scoreboard](./CAPABILITY_STATUS.md) for delivered functionality,
 dated coverage, verification limits and remaining targets. The
@@ -17,22 +17,29 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: consistent filing admission for SEC margins
+## Immediate delivery: explicitly loaded annual SEC research
 
-The accepted release-capacity source is
-`31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e`; the preceding accepted application is
-`690c0c1565e698a4819f47a0c188e55247ca9f18`. The bounded release path beyond a64 is
-complete. Keep the separate feature/generated closure and unchanged gates in the
+The accepted application is `e847b241a6706f6fcf8815923f7d16633989cf64`, which
+withholds SEC margin ratios whose retained operands have different filing
+accessions. The bounded release path beyond a64 is complete. Keep the separate
+feature/generated closure and unchanged gates in the
 [release-classification guide](./RELEASE_CLASSIFICATION.md).
 
 The dated shared-core baseline now defines thirty metrics and records 47.68%
 usable eligible listing-metric pairs under its calendar-Frame/Q4 pilot policy.
-It does not close the canonical annual 90% goal. That measurement identified
-835 numeric net/operating/operating-cash-flow margin cells whose retained operands
-have different filing accessions. Make those ratios unavailable with inspectable
-inputs and a precise reason; update the engine and strict browser client together.
-Keep their numerical formulas, explicit source loading and saved criteria intact.
-See [SEC annual screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md).
+It does not close the canonical annual 90% goal. The subsequent frozen
+twenty-issuer study admitted 22 primary-confirmed annual revenue/net-income pairs
+across nineteen issuers, with complete selected-accession evidence for all twenty
+reports. AVGO remained unavailable without NetIncomeLoss. This convenience-cohort
+proof supports a separate explicit-load product path; it is not universe coverage.
+
+Deliver that bounded path in company research's SEC evidence section. Select the
+observed annual target from current Submissions metadata before checking values,
+then inspect all three revenue bases separately with exact inputs and reasons.
+Keep selected completeness, annual pair validity and current utility distinct.
+Preserve source bounds, explicit load/refresh/cancel, full identity/session
+lifetimes and unchanged quarterly meaning. No new storage or historical picker.
+See [Observed annual SEC report](./PERSONAL_SEC_ANNUAL_EVIDENCE.md).
 
 Then prioritize measured financial-data coverage and useful discovery inputs,
 followed by one daily SEC filing follow-up loop with reliable delivery. The

@@ -67,6 +67,7 @@ import {
 } from "./PersonalManualPeerComparison";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
 import { PersonalSecQuarterlyEvidence } from "./PersonalSecQuarterlyEvidence";
+import { PersonalSecAnnualEvidence } from "./PersonalSecAnnualEvidence";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
@@ -2799,6 +2800,14 @@ export function SecurityDiscoveryWorkspace({
                 ),
                 sec: (
                   <>
+                    <PersonalSecAnnualEvidence
+                      catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+                      selection={marketSelection}
+                      enabled
+                      onSessionUnavailable={() =>
+                        withCurrentCompany(clearWorkspaceForSessionLoss)
+                      }
+                    />
                     <PersonalSecQuarterlyEvidence
                       catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
                       selection={marketSelection}

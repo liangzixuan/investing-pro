@@ -40,6 +40,10 @@ import {
   createSecPersonalQuarterlyEvidenceProvider,
   type PersonalSecQuarterlyEvidenceProvider,
 } from "./personal-sec-quarterly-evidence-provider";
+import {
+  createSecPersonalAnnualEvidenceProvider,
+  type PersonalSecAnnualEvidenceProvider,
+} from "./personal-sec-annual-evidence-provider";
 
 import {
   createSecPersonalFilingContextProvider,
@@ -239,6 +243,7 @@ async function preparePersonalWorkspaceConfiguredApp(
   let filingContextProvider: PersonalSecFilingContextProvider | undefined;
   let quarterlyEvidenceProvider:
     PersonalSecQuarterlyEvidenceProvider | undefined;
+  let annualEvidenceProvider: PersonalSecAnnualEvidenceProvider | undefined;
   try {
     const catalog = await loadPersonalSecurityMasterCatalog(
       snapshotPath,
@@ -257,6 +262,8 @@ async function preparePersonalWorkspaceConfiguredApp(
       createSecPersonalQuarterlyEvidenceProvider(secUserAgent);
     filingContextProvider =
       createSecPersonalFilingContextProvider(secUserAgent);
+    annualEvidenceProvider =
+      createSecPersonalAnnualEvidenceProvider(secUserAgent);
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
@@ -267,8 +274,10 @@ async function preparePersonalWorkspaceConfiguredApp(
       filingsProvider,
       quarterlyEvidenceProvider,
       filingContextProvider,
+      annualEvidenceProvider,
     );
   } catch (error) {
+    annualEvidenceProvider?.close();
     filingContextProvider?.close();
     quarterlyEvidenceProvider?.close();
     filingsProvider?.close();

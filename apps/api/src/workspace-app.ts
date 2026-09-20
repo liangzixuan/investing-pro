@@ -63,6 +63,11 @@ import {
   type PersonalSecQuarterlyEvidenceProvider,
 } from "./personal-sec-quarterly-evidence-provider";
 import { registerPersonalWorkspaceSecQuarterlyEvidenceRoutes } from "./workspace-sec-quarterly-evidence-routes";
+import {
+  createSecPersonalAnnualEvidenceProvider,
+  type PersonalSecAnnualEvidenceProvider,
+} from "./personal-sec-annual-evidence-provider";
+import { registerPersonalWorkspaceSecAnnualEvidenceRoutes } from "./workspace-sec-annual-evidence-routes";
 
 import {
   createSecPersonalFilingContextProvider,
@@ -86,6 +91,7 @@ export async function buildPersonalWorkspaceApp(
   filingsProvider: PersonalSecFilingsProvider = createSecPersonalFilingsProvider(),
   quarterlyEvidenceProvider: PersonalSecQuarterlyEvidenceProvider = createSecPersonalQuarterlyEvidenceProvider(),
   filingContextProvider: PersonalSecFilingContextProvider = createSecPersonalFilingContextProvider(),
+  annualEvidenceProvider: PersonalSecAnnualEvidenceProvider = createSecPersonalAnnualEvidenceProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -158,8 +164,12 @@ export async function buildPersonalWorkspaceApp(
               try {
                 filingContextProvider.close();
               } finally {
-                ownerSession.close();
-                done();
+                try {
+                  annualEvidenceProvider.close();
+                } finally {
+                  ownerSession.close();
+                  done();
+                }
               }
             }
           }
@@ -243,6 +253,13 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     quarterlyEvidenceProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceSecAnnualEvidenceRoutes(
+    app,
+    catalog,
+    annualEvidenceProvider,
     ownerSession,
     listenOptions,
   );

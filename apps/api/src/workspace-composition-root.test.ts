@@ -46,6 +46,7 @@ import { PERSONAL_WORKSPACE_MAIN_WATCHLIST_PATH } from "./workspace-watchlist-ro
 import { PERSONAL_MARKET_DATA_STATUS_PATH } from "./workspace-market-data-routes";
 import { PERSONAL_SEC_FILING_CONTEXT_PATH } from "./workspace-sec-filing-context-routes";
 import { PERSONAL_SEC_QUARTERLY_EVIDENCE_PATH } from "./workspace-sec-quarterly-evidence-routes";
+import { PERSONAL_SEC_ANNUAL_EVIDENCE_PATH } from "./workspace-sec-annual-evidence-routes";
 import {
   PERSONAL_SECURITY_MASTER_SCREEN_PATH,
   PERSONAL_WORKSPACE_SCREENER_SAVED_VIEWS_PATH,
@@ -464,6 +465,21 @@ describe("personal workspace composition root", () => {
     });
     expect(source).toHaveBeenCalledTimes(3);
     expect(context.payload).not.toContain("test@example.invalid");
+    const annualRequest = {
+      ...evidenceRequest,
+      url: PERSONAL_SEC_ANNUAL_EVIDENCE_PATH,
+    };
+    const annual = await configured.inject({
+      ...annualRequest,
+      headers: {
+        ...ownerHeaders(configuredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(annual.statusCode).toBe(200);
+    expect(source).toHaveBeenCalledTimes(5);
+    expect(annual.payload).not.toContain("test@example.invalid");
+    expect(annual.payload).not.toContain(token);
     vi.unstubAllGlobals();
     await closeTracked(configured);
 
@@ -510,6 +526,15 @@ describe("personal workspace composition root", () => {
     expect(unconfiguredEvidence.json()).toMatchObject({
       code: "not_configured",
     });
+    const unconfiguredAnnual = await unconfigured.inject({
+      ...annualRequest,
+      headers: {
+        ...ownerHeaders(unconfiguredCookie),
+        "content-type": "application/json",
+      },
+    });
+    expect(unconfiguredAnnual.statusCode).toBe(503);
+    expect(unconfiguredAnnual.json()).toMatchObject({ code: "not_configured" });
   }, 30_000);
 
   it("serves catalog screening plus restart-persistent typed watchlist and saved views", async () => {

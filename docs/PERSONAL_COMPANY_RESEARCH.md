@@ -8,13 +8,13 @@ company retained from another result page.
 
 Five sections organize the existing panels:
 
-| Section      | Existing capabilities                                                   |
-| ------------ | ----------------------------------------------------------------------- |
-| Price        | Quote, price history and market analytics                               |
-| Financials   | Annual trends and statements, quarterly statements, quality checks      |
-| Valuation    | Valuation history, historical multiples, DCF and reverse DCF            |
-| Peers        | Manual peer selection, metrics, annual quality checks and a saved group |
-| SEC evidence | Dated quarterly observations and primary-filing context                 |
+| Section      | Existing capabilities                                                     |
+| ------------ | ------------------------------------------------------------------------- |
+| Price        | Quote, price history and market analytics                                 |
+| Financials   | Annual trends and statements, quarterly statements, quality checks        |
+| Valuation    | Valuation history, historical multiples, DCF and reverse DCF              |
+| Peers        | Manual peer selection, metrics, annual quality checks and a saved group   |
+| SEC evidence | Observed annual report, quarterly observations and primary-filing context |
 
 The sections retain their existing data availability and explicit Load actions.
 Moving between sections does not request data or save anything. Loaded data and
@@ -40,10 +40,22 @@ results and comparison remain separate from company navigation. The comparison
 Research action verifies the current query, scope, snapshots and retained row
 before opening it; it does not perform a provider request or saved-data write.
 
-This view does not add financial metrics, provider coverage, a new company URL,
+Section navigation does not add financial metrics, provider coverage, a new company URL,
 browser storage or a saved layout. Local access and account behavior remain
 unchanged. Explicit source requests retain their existing freshness and
 availability limits; navigation is not a refresh.
+
+## Inspect an observed annual SEC report
+
+In **SEC evidence**, explicitly load the observed annual report for the selected
+company. The target comes from current SEC Submissions before checking its values.
+Inspect three separate revenue bases with signed net income, exact source inputs
+and unavailable reasons. Selected-set completeness, valid annual pairs and the
+485-day current-utility window remain distinct. Refresh retires the old result;
+Cancel and company/session changes prevent late responses from restoring it.
+See [Observed annual SEC report](./PERSONAL_SEC_ANNUAL_EVIDENCE.md) for the source
+bounds, formulas and limits. This action does not load quarterly evidence or
+change saved research.
 
 ## Inspect annual business trends
 

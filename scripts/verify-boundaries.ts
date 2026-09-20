@@ -5219,6 +5219,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-owner-account.ts",
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-sec-annual-evidence-provider.ts",
     "apps/api/src/personal-sec-filing-context-parser.ts",
     "apps/api/src/personal-sec-filing-context-provider.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
@@ -5241,6 +5242,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-server.ts",
     "apps/api/src/workspace-watchlist-filings-routes.ts",
     "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+    "apps/api/src/workspace-sec-annual-evidence-routes.ts",
     "apps/api/src/workspace-sec-filing-context-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
     "apps/api/src/workspace-portfolio-routes.ts",
@@ -5773,6 +5775,59 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scripts/verify-boundaries.ts: SEC quarterly evidence provider boundary classifier regressed",
     );
   }
+  const annualProvider =
+    runtimeSources.get(
+      "apps/api/src/personal-sec-annual-evidence-provider.ts",
+    ) ?? "";
+  const annualMutations = [
+    annualProvider.replace(
+      "data.sec.gov/api/xbrl/companyfacts",
+      "unreviewed.example/facts",
+    ),
+    annualProvider.replace(
+      "data.sec.gov/submissions",
+      "unreviewed.example/submissions",
+    ),
+    annualProvider.replace(
+      "maximumBytes: LIMITS.responseBytes",
+      "maximumBytes: Number.POSITIVE_INFINITY",
+    ),
+    annualProvider.replace(
+      "scheduler: this.#scheduler,",
+      "scheduler: unreviewedScheduler,",
+    ),
+    annualProvider.replace(
+      "normalizePersonalSecCompanyFacts(value, cik)",
+      "normalizePersonalSecCompanyFacts(value, unreviewedCik)",
+    ),
+    annualProvider.replace(
+      "normalizePersonalSecSubmissions(value, cik)",
+      "normalizePersonalSecSubmissions(value, unreviewedCik)",
+    ),
+    annualProvider.replace("this.#active?.abort()", "void this.#active"),
+    annualProvider.replace('if (this.#active !== undefined) fail("busy");', ""),
+    annualProvider.replace(
+      "getPersonalSecAnnualRefusalReason({",
+      "unreviewedRefusalReason({",
+    ),
+    annualProvider.replace(
+      "const bytes = await fetchPersonalSecSourceBytes({",
+      "void this.#fetch(sourceUrl);\n      const bytes = await fetchPersonalSecSourceBytes({",
+    ),
+    `${annualProvider}\nvoid globalThis.fetch(unreviewedUrl);`,
+    `${annualProvider}\nvoid this.#load(unreviewedUrl, signal, normalize, capture);`,
+  ];
+  if (
+    personalSecAnnualEvidenceProviderViolation(annualProvider) !== null ||
+    annualMutations.some(
+      (changed) =>
+        changed === annualProvider ||
+        personalSecAnnualEvidenceProviderViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: SEC annual evidence provider boundary classifier regressed",
+    );
   const contextParser =
     runtimeSources.get("apps/api/src/personal-sec-filing-context-parser.ts") ??
     "";
@@ -5863,6 +5918,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== secProviderPath &&
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+        path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
@@ -5886,6 +5942,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       if (
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+        path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         content.includes("data.sec.gov/submissions")
       ) {
@@ -5899,7 +5956,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       !personalMarketDataIsTestSource(path) &&
       (content.includes("PERSONAL_SEC_USER_AGENT") ||
         collectModuleSpecifiers(content).some((specifier) =>
-          /personal-sec-(?:(?:financial|filings|quarterly-evidence|filing-context)-provider|filing-context-parser)/u.test(
+          /personal-sec-(?:(?:financial|filings|quarterly-evidence|annual-evidence|filing-context)-provider|filing-context-parser)/u.test(
             specifier,
           ),
         ))
@@ -6955,6 +7012,7 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== secProviderPath &&
       path !== "apps/api/src/personal-sec-filings-provider.ts" &&
       path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
+      path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
       path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
@@ -6966,9 +7024,11 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === secProviderPath ||
         path === "apps/api/src/personal-sec-filings-provider.ts" ||
         path === "apps/api/src/personal-sec-quarterly-evidence-provider.ts" ||
+        path === "apps/api/src/personal-sec-annual-evidence-provider.ts" ||
         path === "apps/api/src/personal-sec-filing-context-provider.ts" ||
         path === "apps/api/src/workspace-sec-filing-context-routes.ts" ||
         path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
+        path === "apps/api/src/workspace-sec-annual-evidence-routes.ts" ||
         path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
         path === "apps/api/src/workspace-financial-screen-routes.ts" ||
         path === "apps/api/src/workspace-saved-dcf-routes.ts" ||
@@ -7001,6 +7061,10 @@ function personalMarketDataRuntimeBoundaryViolation(
       "",
   );
   if (quarterlyViolation !== null) return quarterlyViolation;
+  const annualViolation = personalSecAnnualEvidenceProviderViolation(
+    sources.get("apps/api/src/personal-sec-annual-evidence-provider.ts") ?? "",
+  );
+  if (annualViolation !== null) return annualViolation;
   const parserViolation = personalSecFilingContextParserViolation(
     sources.get("apps/api/src/personal-sec-filing-context-parser.ts") ?? "",
   );
@@ -7261,6 +7325,84 @@ function personalSecFilingContextProviderViolation(
   };
   visit(source);
   return invalid || urls.size !== 0 ? message : null;
+}
+
+function personalSecAnnualEvidenceProviderViolation(
+  content: string,
+): string | null {
+  const message =
+    "SEC annual evidence must use only the reviewed bounded two-source transport, normalization and refusal guards";
+  if (
+    JSON.stringify(collectModuleSpecifiers(content)) !==
+    JSON.stringify([
+      "node:crypto",
+      "@research-cockpit/contracts",
+      "@research-cockpit/personal-financial-analytics",
+      "./personal-sec-quarterly-evidence-provider",
+      "./personal-sec-request-scheduler",
+    ])
+  )
+    return message;
+  const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+  const required = [
+    'fetchPersonalSecSourceBytes({sourceUrl,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,signal,maximumBytes:LIMITS.responseBytes,accept:"application/json"})',
+    "normalize(parsePersonalSecSourceJson(decodePersonalSecSourceUtf8(bytes)))",
+    "normalizePersonalSecCompanyFacts(value,cik)",
+    "normalizePersonalSecSubmissions(value,cik)",
+    "selectPersonalSecAnnualTarget(filings,cutoffAt,submissions.source.fetchedAt!)",
+    "getPersonalSecAnnualRefusalReason({generation:boundGeneration,target,coverage:preliminaryCoverage})",
+    "resolution:resolvePersonalSecAnnualEvidence(input)",
+    "this.#active?.abort()",
+    'if(this.#active!==undefined)fail("busy");',
+    'if(controller.signal.aborted||this.#closed)fail("aborted");',
+    "!isPersonalSecClock(now)||now.getTime()<lastTime",
+  ];
+  if (required.some((anchor) => !compact.includes(anchor))) return message;
+  const source = ts.createSourceFile(
+    "sec-annual.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const urls = new Set([
+    "`https://data.sec.gov/submissions/CIK${cik}.json`",
+    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
+  ]);
+  let invalid = false;
+  let transports = 0;
+  let loads = 0;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /https?:\/\//iu.test(node.head.text) &&
+      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression.getText(source);
+      if (callee === "fetchPersonalSecSourceBytes") transports += 1;
+      if (callee === "this.#load") loads += 1;
+      if (
+        callee === "fetch" ||
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || transports !== 1 || loads !== 2 || urls.size !== 0
+    ? message
+    : null;
 }
 
 function personalSecQuarterlyEvidenceProviderViolation(
@@ -8626,6 +8768,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
+      "apps/api/src/workspace-sec-annual-evidence-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
       "apps/api/src/workspace-sec-filing-context-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot"],
     ],
@@ -8737,6 +8883,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-sec-annual-evidence-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -13821,6 +13975,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-sec-annual-evidence-routes.test.ts",
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [

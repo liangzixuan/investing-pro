@@ -1,7 +1,7 @@
 # Capability status
 
 Updated 2026-09-20 UTC. Last accepted application source:
-`690c0c1565e698a4819f47a0c188e55247ca9f18` (annual business trends).
+`e847b241a6706f6fcf8815923f7d16633989cf64` (consistent SEC margin filing admission).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
 owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 owns full targets. Historical exit matrices and release claims remain unchanged.
@@ -65,8 +65,23 @@ catalog's expired historical fetch receipt does not establish a fresh universe o
 current entitlement. The 90% canonical annual gate and twenty-issuer/five-industry
 primary-filing validation remain open. A conservative same-filing overlay withheld
 835 otherwise numeric margin cells; different accessions alone do not prove
-incorrect arithmetic. Consistent engine/browser handling is the current repair,
-not a claim of new coverage.
+incorrect arithmetic. Consistent engine/browser withholding is delivered at
+e847b241 with exact inputs and reasons. This repair is not new coverage.
+
+A later frozen convenience-cohort study independently inspected twenty annual
+primary filings across five groups. The selected-report prototype retained every
+selected-accession observation for all twenty targets and admitted 22
+primary-confirmed revenue/net-income pairs across nineteen issuers; AVGO lacked
+NetIncomeLoss and remained unavailable. The original bounded quarterly projection
+and its strict zero-of-twenty annual outcome were preserved. These are different
+declared evidence sets, not a relaxed interpretation of the original result.
+
+The [annual SEC research view](./PERSONAL_SEC_ANNUAL_EVIDENCE.md) is the next
+explicit-load integration of this proof. Its source preparation does not establish
+release acceptance. The study does not close canonical annual 90% coverage,
+representative issuer coverage, validation of all thirty shared-core metrics or
+standalone-quarter/TTM admission. Its frozen observation is not a fresh provider
+measurement for future loads.
 
 Known, unknown, stale, inapplicable, unsupported and quarantined results must keep
 their declared denominators. Required-input coverage for a complete research job
@@ -75,7 +90,7 @@ scope; the repair itself makes no new provider measurement.
 
 ## Verification is separate from breadth
 
-Release `690c0c1` passed 100 focused tests; 7,660 Vitest plus ten worker tests
+The earlier annual-trend release `690c0c1` passed 100 focused tests; 7,660 Vitest plus ten worker tests
 (7,670 total), nine existing skips, 25 typechecks, 24 builds and all five required
 jobs across four applicable hosted workflows. Seven source-bound synthetic Brave
 groups covered populated annual trends; five limited live groups covered
