@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "caseNumber": 68,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "eef31e3329f0caa81875ab443f9506e2d4f4e535",
+  "featureRevision": "6f9a82f5a62fa0aafe361f3cd2ac107cf9cac28e",
+  "featureCount": 237,
+  "closureCount": 238,
+  "featureChanges": [
+    {
+      "path": "apps/api/native/personal-desktop-notification.ps1",
+      "status": "A"
+    },
+    { "path": "apps/api/src/copy-validators.ts", "status": "M" },
+    {
+      "path": "apps/api/src/personal-desktop-notifications.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/personal-desktop-notifications.ts", "status": "A" },
+    {
+      "path": "apps/api/src/personal-filing-monitor-schedule.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/personal-filing-monitor.test.ts", "status": "A" },
+    { "path": "apps/api/src/personal-filing-monitor.ts", "status": "A" },
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    { "path": "apps/api/src/workspace-composition-root.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-filing-monitor-lifecycle.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-filing-monitor-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-filing-monitor-routes.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-watchlist-filings-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFilingMonitor.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFilingMonitor.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-filing-monitor-api.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-filing-monitor-api.ts",
+      "status": "A"
+    },
+    { "path": "docs/CAPABILITY_STATUS.md", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_FILING_MONITOR.md", "status": "A" },
+    { "path": "docs/WATCHLIST_SEC_FILINGS.md", "status": "M" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-watchlist-filing-monitor.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka68.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka68.json",
+  "presentation": {
+    "featureDescription": "opt-in daily SEC filing monitor",
+    "closureDescription": "generated routing closure for daily SEC filing monitoring",
+    "inventoryDescription": "reviewed monitor contracts, encrypted inbox, scheduler, native notifications, strict client, controls, tests and documentation",
+    "testBinding": "dailyfilingmonitor",
+    "routingDescription": "daily SEC filing monitoring preserves bounded acquisition and explicit notification consent",
+    "summaryDescription": "follow new SEC accessions with a durable inbox and generic Windows notices while the local API runs"
+  }
+}
