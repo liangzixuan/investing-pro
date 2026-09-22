@@ -8,10 +8,13 @@ const SOURCE_DIRECTORY = resolve(import.meta.dirname);
 const WORKSPACE_ENTRY = resolve(SOURCE_DIRECTORY, "workspace-server.ts");
 
 describe("personal workspace startup static graph", () => {
-  it("combines only catalog, vault, owner-session, market-data, SEC evidence and shared scheduling, and loopback modules", async () => {
+  it("combines the reviewed local workspace, SEC monitor and desktop notification modules", async () => {
     const graph = await staticGraph(WORKSPACE_ENTRY);
     expect([...graph.files].sort()).toEqual([
       "listen-options.ts",
+      "personal-desktop-notifications.ts",
+      "personal-filing-monitor-schedule.ts",
+      "personal-filing-monitor.ts",
       "personal-market-data-provider.ts",
       "personal-owner-account-credentials.ts",
       "personal-owner-account.ts",
@@ -32,6 +35,7 @@ describe("personal workspace startup static graph", () => {
       "vault-composition-root.ts",
       "workspace-app.ts",
       "workspace-composition-root.ts",
+      "workspace-filing-monitor-routes.ts",
       "workspace-financial-screen-routes.ts",
       "workspace-market-data-routes.ts",
       "workspace-portfolio-routes.ts",
@@ -61,6 +65,7 @@ describe("personal workspace startup static graph", () => {
       "node:crypto",
       "node:fs",
       "node:fs/promises",
+      "node:os",
       "node:path",
       "node:perf_hooks",
       "node:url",
@@ -78,6 +83,7 @@ describe("personal workspace startup static graph", () => {
       expect([...graph.files]).not.toContain(forbiddenFile);
     }
     expect([...graph.processFiles].sort()).toEqual([
+      "personal-desktop-notifications.ts",
       "personal-owner-account.ts",
       "personal-sec-filing-context-parser.ts",
       "workspace-server.ts",

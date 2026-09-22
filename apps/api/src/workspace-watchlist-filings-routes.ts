@@ -40,7 +40,7 @@ const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const DAY_MS = 86_400_000;
 
-class WatchlistSelectionError extends Error {
+export class WatchlistSelectionError extends Error {
   constructor(readonly status: 400 | 404 | 409) {
     super("The saved watchlist selection is unavailable.");
   }
@@ -192,7 +192,7 @@ function isFilingsRequest(
   );
 }
 
-function readBoundWatchlist(
+export function readBoundWatchlist(
   vault: LocalResearchVault,
   catalog: PersonalSecurityMasterCatalog,
   request: PersonalWatchlistFilingsRequestDto,
@@ -219,7 +219,7 @@ function readBoundWatchlist(
   return record.payload;
 }
 
-function resolveSelectedListings(
+export function resolveSelectedListings(
   catalog: PersonalSecurityMasterCatalog,
   watchlist: MainWatchlistPayload,
   request: PersonalWatchlistFilingsRequestDto,
@@ -255,7 +255,7 @@ function resolveSelectedListings(
   return listingsByCik;
 }
 
-function assembleResponse(
+export function assembleResponse(
   request: PersonalWatchlistFilingsRequestDto,
   totalWatchlistListings: number,
   listingsByCik: ReadonlyMap<

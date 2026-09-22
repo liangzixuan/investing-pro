@@ -1,7 +1,7 @@
 # Capability status
 
-Updated 2026-09-20 UTC. Last accepted application source:
-`e847b241a6706f6fcf8815923f7d16633989cf64` (consistent SEC margin filing admission).
+Updated 2026-09-22 UTC. Accepted application baseline for the current feature:
+`eef31e3329f0caa81875ab443f9506e2d4f4e535` (explicit annual SEC research).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
 owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 owns full targets. Historical exit matrices and release claims remain unchanged.
@@ -9,6 +9,12 @@ The workspace checkpoint and release handoff own actual runtime and acceptance
 receipts. Preparing a later change does not advance this accepted baseline.
 Release-capacity tooling was separately accepted at
 `31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e` without changing the running application.
+
+The active delivery is the [daily SEC filing monitor](./PERSONAL_FILING_MONITOR.md):
+explicit opt-in, encrypted inbox, bounded daily/restart checks and generic Windows
+notices. The standalone native feasibility result does not establish the complete
+workflow or its release acceptance. Source-backed financial coverage remains open;
+this delivery does not change its denominator or accepted metric definitions.
 
 ## Delivered functionality and remaining targets
 

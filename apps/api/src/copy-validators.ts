@@ -27,10 +27,14 @@ const validatorNames = [
 const workerSourceDirectory = resolve(apiDirectory, "workers");
 const workerOutputDirectory = resolve(apiDirectory, "dist/workers");
 const workerName = "personal_sec_filing_context.py";
+const notificationSourceDirectory = resolve(apiDirectory, "native");
+const notificationOutputDirectory = resolve(apiDirectory, "dist/native");
+const notificationName = "personal-desktop-notification.ps1";
 
 await rm(outputDirectory, { force: true, recursive: true });
 await mkdir(outputDirectory, { recursive: true });
 await mkdir(workerOutputDirectory, { recursive: true });
+await mkdir(notificationOutputDirectory, { recursive: true });
 await Promise.all([
   ...validatorNames.map((name) =>
     copyFile(
@@ -41,6 +45,10 @@ await Promise.all([
   copyFile(
     resolve(workerSourceDirectory, workerName),
     resolve(workerOutputDirectory, `${workerName}.pending`),
+  ),
+  copyFile(
+    resolve(notificationSourceDirectory, notificationName),
+    resolve(notificationOutputDirectory, `${notificationName}.pending`),
   ),
 ]);
 if (
@@ -60,6 +68,10 @@ await Promise.all([
   rename(
     resolve(workerOutputDirectory, `${workerName}.pending`),
     resolve(workerOutputDirectory, workerName),
+  ),
+  rename(
+    resolve(notificationOutputDirectory, `${notificationName}.pending`),
+    resolve(notificationOutputDirectory, notificationName),
   ),
 ]);
 

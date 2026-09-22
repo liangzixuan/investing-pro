@@ -1004,4 +1004,5 @@ export * from "./personal-financial-comparison-selection";
 export * from "./personal-saved-dcf-assumptions";
 export * from "./personal-saved-manual-peer-group";
 export * from "./personal-watchlist-filings";
+export * from "./personal-watchlist-filing-monitor";
 export * from "./personal-sec-annual-evidence";

@@ -71,6 +71,7 @@ import { PersonalSecAnnualEvidence } from "./PersonalSecAnnualEvidence";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
+import { PersonalFilingMonitor } from "./PersonalFilingMonitor";
 import { PersonalPortfolio } from "./PersonalPortfolio";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
 import {
@@ -2834,6 +2835,19 @@ export function SecurityDiscoveryWorkspace({
               }
               onOpenResearch={(selection) =>
                 selectMarketSecurity(selection, "filings")
+              }
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
+            />
+            <PersonalFilingMonitor
+              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+              watchlistVersion={workspace.version}
+              memberships={workspace.watchlist.memberships}
+              enabled={
+                workspace.watchlistAvailable &&
+                workspace.version > 0 &&
+                !snapshotChanged &&
+                watchlistState !== "saving" &&
+                !reconciling
               }
               onSessionUnavailable={clearWorkspaceForSessionLoss}
             />

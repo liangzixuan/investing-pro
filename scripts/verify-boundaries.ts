@@ -5215,6 +5215,9 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const expectedFiles = [
     "apps/api/src/listen-options.ts",
     providerPath,
+    "apps/api/src/personal-desktop-notifications.ts",
+    "apps/api/src/personal-filing-monitor.ts",
+    "apps/api/src/personal-filing-monitor-schedule.ts",
     "apps/api/src/personal-owner-account-credentials.ts",
     "apps/api/src/personal-owner-account.ts",
     "apps/api/src/personal-owner-session-routes.ts",
@@ -5235,6 +5238,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-app.ts",
     "apps/api/src/workspace-composition-root.ts",
     "apps/api/src/workspace-financial-screen-routes.ts",
+    "apps/api/src/workspace-filing-monitor-routes.ts",
     "apps/api/src/workspace-saved-dcf-routes.ts",
     "apps/api/src/workspace-saved-manual-peer-routes.ts",
     marketRoutesPath,
@@ -5259,6 +5263,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "node:crypto",
     "node:fs",
     "node:fs/promises",
+    "node:os",
     "node:path",
     "node:perf_hooks",
     "node:url",
@@ -5308,18 +5313,51 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   if (
     JSON.stringify([...processFiles].sort()) !==
     JSON.stringify([
+      "apps/api/src/personal-desktop-notifications.ts",
       "apps/api/src/personal-owner-account.ts",
       "apps/api/src/personal-sec-filing-context-parser.ts",
       entry,
     ])
   ) {
     found.push(
-      `${entry}: only the server, owner-account file adapter, and isolated filing parser may read their reviewed process state`,
+      `${entry}: only the server, owner-account adapter, filing parser and desktop adapter may read their reviewed process state`,
     );
   }
   const marketDataViolation =
     personalMarketDataRuntimeBoundaryViolation(runtimeSources);
   if (marketDataViolation !== null) found.push(marketDataViolation);
+  const desktopHelper = await readFile(
+    resolvePath(root, "apps/api/native/personal-desktop-notification.ps1"),
+    "utf8",
+  );
+  const desktopSource =
+    runtimeSources.get("apps/api/src/personal-desktop-notifications.ts") ?? "";
+  if (
+    personalDesktopNotificationBoundaryViolation(
+      desktopSource,
+      desktopHelper,
+    ) !== null ||
+    personalDesktopNotificationBoundaryViolation(
+      `${desktopSource}\nimport "node:http";`,
+      desktopHelper,
+    ) === null ||
+    personalDesktopNotificationBoundaryViolation(
+      desktopSource.replace("shell: false", "shell: true"),
+      desktopHelper,
+    ) === null ||
+    personalDesktopNotificationBoundaryViolation(
+      desktopSource.replace('"cancel\\n"', '"other\\n"'),
+      desktopHelper,
+    ) === null ||
+    personalDesktopNotificationBoundaryViolation(
+      desktopSource,
+      `${desktopHelper}\nStart-Process unexpected`,
+    ) === null
+  ) {
+    found.push(
+      "desktop notification adapter/helper must retain their reviewed fixed process and callback boundary",
+    );
+  }
   found.push(...(await personalMarketDataRepositoryBoundaryViolations()));
 
   const mutate = (path: string, transform: (source: string) => string) => {
@@ -6978,9 +7016,10 @@ function personalMarketDataRuntimeBoundaryViolation(
         /^(?:node:)?child_process$/u.test(specifier),
       ) &&
       path !== "apps/api/src/personal-sec-filing-context-parser.ts" &&
+      path !== "apps/api/src/personal-desktop-notifications.ts" &&
       path !== "apps/api/src/personal-owner-account.ts"
     )
-      return `${path}: only the isolated filing-context parser and fixed owner-account ACL adapter may spawn a process in this graph`;
+      return `${path}: only the isolated filing parser, desktop notification adapter and owner-account ACL adapter may spawn a process in this graph`;
     if (
       modules.includes("./personal-owner-account") &&
       path !== "apps/api/src/workspace-composition-root.ts"
@@ -7030,6 +7069,8 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
         path === "apps/api/src/workspace-sec-annual-evidence-routes.ts" ||
         path === "apps/api/src/workspace-watchlist-filings-routes.ts" ||
+        path === "apps/api/src/workspace-filing-monitor-routes.ts" ||
+        path === "apps/api/src/personal-filing-monitor.ts" ||
         path === "apps/api/src/workspace-financial-screen-routes.ts" ||
         path === "apps/api/src/workspace-saved-dcf-routes.ts" ||
         path === "apps/api/src/workspace-saved-manual-peer-routes.ts") &&
@@ -7075,6 +7116,23 @@ function personalMarketDataRuntimeBoundaryViolation(
   if (contextViolation !== null) return contextViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
+}
+
+function personalDesktopNotificationBoundaryViolation(
+  adapter: string,
+  helper: string,
+): string | null {
+  // These reviewed sources fix the executable, packaged helper, generic notice,
+  // minimal environment, owned-child cancellation and bounded callback protocol.
+  // A change to this process capability requires a fresh source review.
+  const digest = (source: string) =>
+    createHash("sha256").update(source.replaceAll("\r\n", "\n")).digest("hex");
+  return digest(adapter) ===
+    "37adb02700d03f976dc1a1f495f059b2afd6b8531949e9f430b4979011367dae" &&
+    digest(helper) ===
+      "86c226d22269051d81cb3e72d8fb1ee6f937c49a7e85f29e44d45478120c8c2d"
+    ? null
+    : "desktop notification sources changed outside their reviewed process boundary";
 }
 
 function personalOwnerAccountCredentialsViolation(
@@ -8762,6 +8820,18 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     [
       "apps/api/src/workspace-watchlist-filings-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+    ],
+    [
+      "apps/api/src/workspace-filing-monitor-lifecycle.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
+      "apps/api/src/personal-filing-monitor.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+    ],
+    [
+      "apps/api/src/personal-filing-monitor.ts",
+      ["type PersonalSecurityMasterCatalog"],
     ],
     [
       "apps/api/src/workspace-sec-quarterly-evidence-routes.test.ts",
@@ -14059,6 +14129,39 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     ["apps/api/src/workspace-composition-root.ts", ["LocalResearchVault"]],
+    [
+      "apps/api/src/workspace-filing-monitor-lifecycle.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-filing-monitor-routes.ts",
+      ["LocalResearchVaultError"],
+    ],
+    [
+      "apps/api/src/workspace-filing-monitor-routes.test.ts",
+      ["LocalResearchVaultError"],
+    ],
+    [
+      "apps/api/src/personal-filing-monitor.test.ts",
+      [
+        "LOCAL_RESEARCH_VAULT_PROFILE",
+        "LocalResearchVault",
+        "LocalResearchVaultError",
+        "WINDOWS_OWNER_ONLY_ACL_RECEIPT_PROFILE",
+        "type LocalResearchRecord",
+        "type PutLocalResearchRecordCommand",
+        "type WindowsOwnerOnlyAclPort",
+      ],
+    ],
+    [
+      "apps/api/src/personal-filing-monitor.ts",
+      [
+        "LocalResearchVaultError",
+        "type JsonValue",
+        "type LocalResearchRecord",
+        "type LocalResearchVault",
+      ],
+    ],
     [
       "apps/api/src/workspace-watchlist-routes.ts",
       ["LocalResearchVaultError", "type JsonValue", "type LocalResearchVault"],

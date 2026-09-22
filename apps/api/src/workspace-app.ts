@@ -54,6 +54,9 @@ import { registerPersonalSavedDcfRoutes } from "./workspace-saved-dcf-routes";
 import { registerPersonalSavedManualPeerRoutes } from "./workspace-saved-manual-peer-routes";
 import { registerPersonalWorkspacePortfolioRoutes } from "./workspace-portfolio-routes";
 import { registerPersonalWorkspaceWatchlistFilingsRoutes } from "./workspace-watchlist-filings-routes";
+import type { PersonalFilingMonitor } from "./personal-filing-monitor";
+import type { PersonalDesktopNotifications } from "./personal-desktop-notifications";
+import { registerPersonalWorkspaceFilingMonitorRoutes } from "./workspace-filing-monitor-routes";
 import {
   createSecPersonalFilingsProvider,
   type PersonalSecFilingsProvider,
@@ -92,6 +95,8 @@ export async function buildPersonalWorkspaceApp(
   quarterlyEvidenceProvider: PersonalSecQuarterlyEvidenceProvider = createSecPersonalQuarterlyEvidenceProvider(),
   filingContextProvider: PersonalSecFilingContextProvider = createSecPersonalFilingContextProvider(),
   annualEvidenceProvider: PersonalSecAnnualEvidenceProvider = createSecPersonalAnnualEvidenceProvider(),
+  filingMonitor?: PersonalFilingMonitor,
+  desktopNotifications?: PersonalDesktopNotifications,
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -145,30 +150,41 @@ export async function buildPersonalWorkspaceApp(
       .header("Vary", "Origin");
     return payload;
   });
-  app.addHook("onClose", (_instance, done) => {
+  app.addHook("onReady", (done) => {
+    filingMonitor?.start();
+    done();
+  });
+  app.addHook("onClose", async () => {
     try {
-      vault.close();
+      await filingMonitor?.close();
     } finally {
       try {
-        marketDataProvider.close();
+        await desktopNotifications?.close();
       } finally {
         try {
-          financialProvider.close();
+          vault.close();
         } finally {
           try {
-            filingsProvider.close();
+            marketDataProvider.close();
           } finally {
             try {
-              quarterlyEvidenceProvider.close();
+              financialProvider.close();
             } finally {
               try {
-                filingContextProvider.close();
+                filingsProvider.close();
               } finally {
                 try {
-                  annualEvidenceProvider.close();
+                  quarterlyEvidenceProvider.close();
                 } finally {
-                  ownerSession.close();
-                  done();
+                  try {
+                    filingContextProvider.close();
+                  } finally {
+                    try {
+                      annualEvidenceProvider.close();
+                    } finally {
+                      ownerSession.close();
+                    }
+                  }
                 }
               }
             }
@@ -249,6 +265,14 @@ export async function buildPersonalWorkspaceApp(
     ownerSession,
     listenOptions,
   );
+  if (filingMonitor !== undefined) {
+    registerPersonalWorkspaceFilingMonitorRoutes(
+      app,
+      filingMonitor,
+      ownerSession,
+      listenOptions,
+    );
+  }
   registerPersonalWorkspaceSecQuarterlyEvidenceRoutes(
     app,
     catalog,

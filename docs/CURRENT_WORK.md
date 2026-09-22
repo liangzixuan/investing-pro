@@ -1,7 +1,6 @@
 # Current work
 
-Updated 2026-09-20 following the handover from **Investing Pro+** to
-**Investing Pro+ II**. Start here for active priorities and use the
+Updated 2026-09-22. Start here for active priorities and use the
 [capability scoreboard](./CAPABILITY_STATUS.md) for delivered functionality,
 dated coverage, verification limits and remaining targets. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
@@ -17,11 +16,32 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: explicitly loaded annual SEC research
+## Immediate delivery: daily SEC filing follow-up
 
-The accepted application is `e847b241a6706f6fcf8815923f7d16633989cf64`, which
-withholds SEC margin ratios whose retained operands have different filing
-accessions. The bounded release path beyond a64 is complete. Keep the separate
+Implement one explicitly enabled daily monitor for up to 20 saved listings,
+with an encrypted filing inbox and separately opted-in Windows desktop notices.
+Use the existing bounded SEC provider and exact saved identities. Seed each
+issuer from its first complete observation, then detect new accessions. Preserve
+manual checks, quiet hours, explicit coverage gaps, finite retention, restart
+catch-up and uncertain delivery without duplicate dispatch. Stop background work
+before closing the vault. See [Daily SEC filing monitor](./PERSONAL_FILING_MONITOR.md).
+
+The native notification feasibility attempt received a Windows Forms shown
+callback and exited cleanly. Packaged application integration, the complete
+workflow and release acceptance require their own verification. The saved
+development heartbeat does not implement product scheduling.
+
+The shared-core coverage goal remains open. The later source study and definition
+decision retained strict physical PP&E treatment; adding a broader software
+spending measure would change the metric. Defer further small manual filing
+batches while delivering this daily follow-up loop. Saved handoffs preserve
+the dated measurements and exclusions; this feature does not increase coverage.
+
+## Delivered: explicitly loaded annual SEC research
+
+The accepted application baseline is `eef31e3329f0caa81875ab443f9506e2d4f4e535`,
+which adds explicit annual SEC research and preserves same-filing SEC margin
+admission. The bounded release path beyond a64 is complete. Keep the separate
 feature/generated closure and unchanged gates in the
 [release-classification guide](./RELEASE_CLASSIFICATION.md).
 
@@ -33,7 +53,7 @@ across nineteen issuers, with complete selected-accession evidence for all twent
 reports. AVGO remained unavailable without NetIncomeLoss. This convenience-cohort
 proof supports a separate explicit-load product path; it is not universe coverage.
 
-Deliver that bounded path in company research's SEC evidence section. Select the
+That bounded path is available in company research's SEC evidence section. Select the
 observed annual target from current Submissions metadata before checking values,
 then inspect all three revenue bases separately with exact inputs and reasons.
 Keep selected completeness, annual pair validity and current utility distinct.
@@ -41,8 +61,8 @@ Preserve source bounds, explicit load/refresh/cancel, full identity/session
 lifetimes and unchanged quarterly meaning. No new storage or historical picker.
 See [Observed annual SEC report](./PERSONAL_SEC_ANNUAL_EVIDENCE.md).
 
-Then prioritize measured financial-data coverage and useful discovery inputs,
-followed by one daily SEC filing follow-up loop with reliable delivery. The
+Prioritize measured financial-data coverage and useful discovery inputs alongside
+the current daily SEC filing follow-up loop. The
 [scoreboard](./CAPABILITY_STATUS.md#approved-delivery-order) separates delivered
 features from unclosed goals. Do not equate more fields, templates, tests or
 releases with usable coverage, and do not prioritize another DCF display slice

@@ -12,8 +12,9 @@ The view uses the SEC's public [submissions API](https://www.sec.gov/search-fili
 `https://data.sec.gov/submissions/CIK##########.json`. It needs no subscription or
 API key. Set the existing server-only `PERSONAL_SEC_USER_AGENT` to an application
 name and real contact email, as in the [workspace startup example](../README.md).
-The same setting enables annual financial screening. Neither feature loads SEC
-data on application startup.
+The same setting enables annual financial screening. These manual views do not
+load SEC data on startup. The separate [daily monitor](./PERSONAL_FILING_MONITOR.md)
+can check in the background after an explicit saved opt-in.
 
 The SEC requires an identifying User-Agent and limits aggregate traffic to 10
 requests per second. See its [developer guidance](https://www.sec.gov/about/developer-resources)
@@ -60,6 +61,8 @@ local bound.
 - Source requests use fixed SEC URLs, declared contact headers, omitted
   credentials, no cache/referrer, and rejected redirects. There are no retries,
   background polling, older-file traversal, document downloads, or news feeds.
+  These limits describe the manual view. The opt-in daily monitor has its own
+  documented schedule, encrypted retention and bounded busy-provider retries.
   Source links are reconstructed using the SEC's documented filing-index URL
   convention; upstream document filenames or arbitrary URLs are never followed.
 - Filing metadata stays in the active operation and browser view. No raw SEC
@@ -79,7 +82,7 @@ No live SEC request or owner-catalog coverage measurement is recorded at the
 start of this slice. Contact/startup configuration is needed for live validation.
 Synthetic tests prove behavior for their fixtures, not real-market coverage.
 
-Cycle 3l remains partial. Upcoming earnings, dividends, permitted news,
-estimates, ownership events, transcripts, and persistent alerts still need
-their respective sources and implementation. Holdings and portfolio analysis
-remain a separate next milestone.
+Cycle 3l remains partial. The separate daily monitor adds persistent follow-up
+for filed SEC records. Upcoming earnings, dividends, permitted news, estimates,
+ownership events and transcripts still need their respective sources and
+implementation. Holdings and portfolio analysis remain a separate milestone.

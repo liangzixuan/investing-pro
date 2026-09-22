@@ -28,6 +28,14 @@ import {
 } from "./vault-composition-root";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
 import {
+  createPersonalFilingMonitor,
+  type PersonalFilingMonitor,
+} from "./personal-filing-monitor";
+import {
+  createPersonalDesktopNotifications,
+  type PersonalDesktopNotifications,
+} from "./personal-desktop-notifications";
+import {
   createSecPersonalFinancialProvider,
   type PersonalSecFinancialProvider,
   PERSONAL_SEC_USER_AGENT,
@@ -244,6 +252,8 @@ async function preparePersonalWorkspaceConfiguredApp(
   let quarterlyEvidenceProvider:
     PersonalSecQuarterlyEvidenceProvider | undefined;
   let annualEvidenceProvider: PersonalSecAnnualEvidenceProvider | undefined;
+  let filingMonitor: PersonalFilingMonitor | undefined;
+  let desktopNotifications: PersonalDesktopNotifications | undefined;
   try {
     const catalog = await loadPersonalSecurityMasterCatalog(
       snapshotPath,
@@ -264,6 +274,13 @@ async function preparePersonalWorkspaceConfiguredApp(
       createSecPersonalFilingContextProvider(secUserAgent);
     annualEvidenceProvider =
       createSecPersonalAnnualEvidenceProvider(secUserAgent);
+    desktopNotifications = createPersonalDesktopNotifications();
+    filingMonitor = createPersonalFilingMonitor({
+      catalog,
+      vault,
+      provider: filingsProvider,
+      notifications: desktopNotifications,
+    });
     return await buildPersonalWorkspaceApp(
       catalog,
       vault,
@@ -275,16 +292,26 @@ async function preparePersonalWorkspaceConfiguredApp(
       quarterlyEvidenceProvider,
       filingContextProvider,
       annualEvidenceProvider,
+      filingMonitor,
+      desktopNotifications,
     );
   } catch (error) {
-    annualEvidenceProvider?.close();
-    filingContextProvider?.close();
-    quarterlyEvidenceProvider?.close();
-    filingsProvider?.close();
-    financialProvider?.close();
-    marketDataProvider?.close();
-    vault?.close();
-    ownerSession.close();
+    try {
+      await filingMonitor?.close();
+    } finally {
+      try {
+        await desktopNotifications?.close();
+      } finally {
+        annualEvidenceProvider?.close();
+        filingContextProvider?.close();
+        quarterlyEvidenceProvider?.close();
+        filingsProvider?.close();
+        financialProvider?.close();
+        marketDataProvider?.close();
+        vault?.close();
+        ownerSession.close();
+      }
+    }
     if (error instanceof PersonalWorkspaceApiCompositionError) throw error;
     throw new PersonalWorkspaceApiCompositionError(
       "PERSONAL_WORKSPACE_UNAVAILABLE",
