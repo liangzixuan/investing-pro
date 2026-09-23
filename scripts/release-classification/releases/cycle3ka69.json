@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "caseNumber": 69,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "88976d32c264928a798480cfb0ea7151c9b306f4",
+  "featureRevision": "9c3dc5fe29947c134289e402e1ae5da289a249c0",
+  "featureCount": 239,
+  "closureCount": 240,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/research/PersonalPriceValuationScreen.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPriceValuationScreen.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-price-valuation-screen.css",
+      "status": "A"
+    },
+    { "path": "docs/CAPABILITY_STATUS.md", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRICE_VALUATION_SCREEN.md", "status": "A" },
+    {
+      "path": "packages/personal-market-analytics/src/index.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-market-analytics/src/personal-price-valuation-screen.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-market-analytics/src/personal-price-valuation-screen.ts",
+      "status": "A"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka69.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka69.json",
+  "presentation": {
+    "featureDescription": "explicit watchlist price and valuation screen",
+    "closureDescription": "generated routing closure for watchlist price and valuation screening",
+    "inventoryDescription": "reviewed exact-decimal screening engine, explicit sequential loader, context guards, dated results, research navigation, tests and documentation",
+    "testBinding": "watchlistpricevaluation",
+    "routingDescription": "watchlist price and valuation screening preserves explicit bounded acquisition and active-session retention",
+    "summaryDescription": "filter selected saved listings by dated raw close and provider P/E and P/B, with unknown values visible"
+  }
+}
