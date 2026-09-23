@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "caseNumber": 71,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "0c1a4889aa322e8ea9d846b2c0c0e8bf93e529b5",
+  "featureRevision": "a7643955290eb5f407070bcea8d2adb3bcbd87fe",
+  "featureCount": 243,
+  "closureCount": 244,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-sec-filing-context-parser.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/workers/personal_sec_filing_context.py",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_SEC_FILING_CONTEXT.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka71.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka71.json",
+  "presentation": {
+    "featureDescription": "shared case-sensitive SEC namespace declaration support",
+    "closureDescription": "generated routing closure for shared SEC namespace support",
+    "inventoryDescription": "shared parser, namespace regression tests and documentation",
+    "testBinding": "secnamespace",
+    "routingDescription": "exact namespace declarations preserve scoped QName identity and existing parser limits",
+    "summaryDescription": "parse quoted mixed-case namespace declarations across issuers without changing financial admission"
+  }
+}
