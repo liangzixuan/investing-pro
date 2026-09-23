@@ -54,6 +54,7 @@ import type { PersonalSecQuarterlyEvidenceProps } from "./PersonalSecQuarterlyEv
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
 import type { PersonalWatchlistFilingsProps } from "./PersonalWatchlistFilings";
+import type { PersonalPriceValuationScreenProps } from "./PersonalPriceValuationScreen";
 import type { PersonalPortfolioProps } from "./PersonalPortfolio";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
 
@@ -216,6 +217,7 @@ const componentMocks = vi.hoisted(() => ({
   StockScreener: () => null,
   FinancialScreener: () => null,
   WatchlistFilings: () => null,
+  PriceValuationScreen: () => null,
   Portfolio: () => null,
   ValuationHistory: () => null,
 }));
@@ -344,6 +346,9 @@ vi.mock("./PersonalFinancialScreener", () => ({
 }));
 vi.mock("./PersonalWatchlistFilings", () => ({
   PersonalWatchlistFilings: componentMocks.WatchlistFilings,
+}));
+vi.mock("./PersonalPriceValuationScreen", () => ({
+  PersonalPriceValuationScreen: componentMocks.PriceValuationScreen,
 }));
 vi.mock("./PersonalPortfolio", () => ({
   PersonalPortfolio: componentMocks.Portfolio,
@@ -688,6 +693,131 @@ describe("SecurityDiscoveryWorkspace", () => {
       }).props.value,
     ).toBe("Keep this unsaved research note");
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("keeps price-screen Research and Back local and preserves the mounted screen and note drafts", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    editWatchlistNote("lst-syn-00001", "Keep this draft");
+    const dom = companyFocusDocument("personal-price-valuation-screen-title");
+    const original = requirePriceScreen(renderWorkspace());
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    original.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    await flushPromises();
+    const company = requireCompanyResearch(renderWorkspace());
+    expect(company.props.selection?.listingId).toBe("lst-syn-00001");
+    expect(company.props.activeSection).toBe("price");
+    expect(company.props.backLabel).toBe("Back to price and valuation screen");
+    expect(dom.company.focus).toHaveBeenCalledOnce();
+    company.props.onBack();
+    await flushPromises();
+    const returned = renderWorkspace();
+    expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(requirePriceScreen(returned).key).toBe(original.key);
+    expect(requirePriceScreen(returned).props.memberships).toBe(
+      original.props.memberships,
+    );
+    expect(watchlistNote(returned, "lst-syn-00001").props.value).toBe(
+      "Keep this draft",
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+  });
+
+  it("rejects forged price-screen identities and retired result callbacks, including queued focus", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-price-valuation-screen-title");
+    const screen = requirePriceScreen(renderWorkspace());
+    const trigger = dom.trigger as unknown as HTMLButtonElement;
+    screen.props.onOpenResearch(
+      {
+        ...record.payload.memberships[0]!,
+        shareClassId: "changed-share-class",
+      },
+      trigger,
+      () => true,
+    );
+    screen.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      trigger,
+      () => false,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    let current = true;
+    screen.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      trigger,
+      () => current,
+    );
+    current = false;
+    await flushPromises();
+    expect(dom.company.focus).not.toHaveBeenCalled();
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(dom.origin.focus).toHaveBeenCalledOnce();
+  });
+
+  it("retires price-screen Research across a watchlist save and an owner-session replacement", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const pending = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(pending.promise);
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-price-valuation-screen-title");
+    const old = requirePriceScreen(renderWorkspace());
+    editWatchlistNote("lst-syn-00001", "New note");
+    requireButton(
+      watchlistRow(renderWorkspace(), "lst-syn-00001"),
+      "Save note",
+    ).props.onClick();
+    expect(requirePriceScreen(renderWorkspace()).props.enabled).toBe(false);
+    old.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    pending.resolve({
+      version: 8,
+      payload: apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1],
+    });
+    await flushPromises();
+    old.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    const latest = requirePriceScreen(renderWorkspace());
+    expect(latest.props.watchlistVersion).toBe(8);
+    await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    await activateWorkspace();
+    latest.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
   });
 
   it("returns focus to the live search trigger, then falls back to its heading if that trigger disappears", async () => {
@@ -4024,6 +4154,10 @@ describe("My Watchlist navigation", () => {
     expect(financial.props.watchlistVersion).toBe(7);
     expect(filings.props.memberships).toBe(record.payload.memberships);
     expect(filings.props.watchlistVersion).toBe(7);
+    const priceScreen = requirePriceScreen(view);
+    expect(priceScreen.props.memberships).toBe(record.payload.memberships);
+    expect(priceScreen.props.watchlistVersion).toBe(7);
+    expect(priceScreen.props.enabled).toBe(true);
     expect(watchlistRowIds(view)).toEqual(["lst-syn-00300"]);
     const peers = requireManualPeerComparison(view).props.candidates;
     expect(peers).toHaveLength(250);
@@ -5103,7 +5237,14 @@ describe("Sequential My Watchlist research", () => {
     expect(requireCompanyNavigation(renderWorkspace()).props.position).toBe(2);
   });
 
-  it.each(["search", "catalog", "financials", "filings", "portfolio"] as const)(
+  it.each([
+    "search",
+    "catalog",
+    "financials",
+    "filings",
+    "portfolio",
+    "priceScreen",
+  ] as const)(
     "clears the cohort before the same-company early return from %s Research",
     async (origin) => {
       const record = watchlistRecord(2);
@@ -5143,6 +5284,16 @@ describe("Sequential My Watchlist research", () => {
       if (origin === "portfolio")
         findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!
           .props.onOpenResearch!(identity);
+      if (origin === "priceScreen") {
+        const dom = companyFocusDocument(
+          "personal-price-valuation-screen-title",
+        );
+        requirePriceScreen(view).props.onOpenResearch(
+          identity,
+          dom.trigger as unknown as HTMLButtonElement,
+          () => true,
+        );
+      }
       old.props.onNext();
       const current = renderWorkspace();
       expect(findCompanyNavigation(current)).toBeUndefined();
@@ -6760,6 +6911,16 @@ function requireCompanyResearch(value: unknown) {
   if (company === undefined)
     throw new Error("Expected company research workspace.");
   return company;
+}
+
+function requirePriceScreen(value: unknown) {
+  const screen = findElement<PersonalPriceValuationScreenProps>(
+    value,
+    componentMocks.PriceValuationScreen,
+  );
+  if (screen === undefined)
+    throw new Error("Expected price and valuation screen.");
+  return screen;
 }
 
 function companyFocusDocument(triggerHeadingId: string) {

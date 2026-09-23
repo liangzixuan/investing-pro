@@ -16,9 +16,24 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: daily SEC filing follow-up
+## Immediate delivery: watchlist price and valuation screen
 
-Implement one explicitly enabled daily monitor for up to 20 saved listings,
+Select up to twenty saved listings and explicitly load dated closing prices and
+provider P/E and P/B values, then filter and sort the loaded rows locally. Require
+a raw close on each listing's latest returned valuation date; show missing data,
+signed ratios, observation dates and calendar age without inventing a freshness
+classification. Keep Research/Back navigation and the loaded screen together.
+See [Watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md).
+
+This bounded screen reuses the existing market and daily-valuation routes. It
+does not join the SEC financial screen, expand universe coverage, save results or
+establish point-in-time history. Preserve explicit acquisition, provider limits,
+full saved identities and session lifetime. Release acceptance is still pending.
+
+## Delivered: daily SEC filing follow-up
+
+The accepted application baseline is `88976d32c264928a798480cfb0ea7151c9b306f4`.
+It adds one explicitly enabled daily monitor for up to 20 saved listings,
 with an encrypted filing inbox and separately opted-in Windows desktop notices.
 Use the existing bounded SEC provider and exact saved identities. Seed each
 issuer from its first complete observation, then detect new accessions. Preserve
@@ -26,21 +41,23 @@ manual checks, quiet hours, explicit coverage gaps, finite retention, restart
 catch-up and uncertain delivery without duplicate dispatch. Stop background work
 before closing the vault. See [Daily SEC filing monitor](./PERSONAL_FILING_MONITOR.md).
 
-The native notification feasibility attempt received a Windows Forms shown
-callback and exited cleanly. Packaged application integration, the complete
-workflow and release acceptance require their own verification. The saved
-development heartbeat does not implement product scheduling.
+The release passed isolated native and hosted verification, synthetic Brave
+checks and limited configured-app checks. A separate synthetic configured run
+received a Windows Forms shown callback and verified encrypted restart and
+acknowledgment. Live QA left the owner's monitor off and made no SEC acquisition.
+The seven-day delivery soak remains open. The saved development heartbeat does
+not implement product scheduling.
 
 The shared-core coverage goal remains open. The later source study and definition
 decision retained strict physical PP&E treatment; adding a broader software
 spending measure would change the metric. Defer further small manual filing
-batches while delivering this daily follow-up loop. Saved handoffs preserve
+batches while delivering useful discovery inputs. Saved handoffs preserve
 the dated measurements and exclusions; this feature does not increase coverage.
 
 ## Delivered: explicitly loaded annual SEC research
 
-The accepted application baseline is `eef31e3329f0caa81875ab443f9506e2d4f4e535`,
-which adds explicit annual SEC research and preserves same-filing SEC margin
+Release `eef31e3329f0caa81875ab443f9506e2d4f4e535`
+added explicit annual SEC research and preserves same-filing SEC margin
 admission. The bounded release path beyond a64 is complete. Keep the separate
 feature/generated closure and unchanged gates in the
 [release-classification guide](./RELEASE_CLASSIFICATION.md).
@@ -62,7 +79,7 @@ lifetimes and unchanged quarterly meaning. No new storage or historical picker.
 See [Observed annual SEC report](./PERSONAL_SEC_ANNUAL_EVIDENCE.md).
 
 Prioritize measured financial-data coverage and useful discovery inputs alongside
-the current daily SEC filing follow-up loop. The
+the delivered daily SEC filing follow-up loop. The
 [scoreboard](./CAPABILITY_STATUS.md#approved-delivery-order) separates delivered
 features from unclosed goals. Do not equate more fields, templates, tests or
 releases with usable coverage, and do not prioritize another DCF display slice

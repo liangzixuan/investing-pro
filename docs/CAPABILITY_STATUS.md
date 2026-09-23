@@ -1,7 +1,7 @@
 # Capability status
 
-Updated 2026-09-22 UTC. Accepted application baseline for the current feature:
-`eef31e3329f0caa81875ab443f9506e2d4f4e535` (explicit annual SEC research).
+Updated 2026-09-23 UTC. Accepted application baseline for the current feature:
+`88976d32c264928a798480cfb0ea7151c9b306f4` (daily SEC filing monitor).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
 owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 owns full targets. Historical exit matrices and release claims remain unchanged.
@@ -10,11 +10,13 @@ receipts. Preparing a later change does not advance this accepted baseline.
 Release-capacity tooling was separately accepted at
 `31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e` without changing the running application.
 
-The active delivery is the [daily SEC filing monitor](./PERSONAL_FILING_MONITOR.md):
-explicit opt-in, encrypted inbox, bounded daily/restart checks and generic Windows
-notices. The standalone native feasibility result does not establish the complete
-workflow or its release acceptance. Source-backed financial coverage remains open;
-this delivery does not change its denominator or accepted metric definitions.
+The active delivery is a [watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
+for up to twenty selected saved listings, using explicitly loaded dated raw closes
+and provider P/E and P/B. Preparation is not release acceptance. The daily SEC
+filing monitor is delivered with an encrypted inbox, bounded daily/restart checks
+and separately opted-in generic Windows notices; its seven-day delivery soak
+remains open. Source-backed financial coverage remains open. Neither outcome
+changes its denominator or accepted metric definitions.
 
 ## Delivered functionality and remaining targets
 
@@ -31,7 +33,7 @@ scope. Test and release counts are supporting evidence, not capability coverage.
 | Screen for ideas                 | 28 SEC annual/Q4 fields, filters, sort/paging, coverage/source inspection, watchlist scope, three sparse starter screens and saved criteria/columns                                                                              | Integrated price/valuation filters, shared-core coverage gate, starter breadth and look-ahead-safe historical screens                                                  |
 | Compare and value companies      | One primary plus up to three manual peers; 15 measures and twelve annual quality checks; saved/reordered groups; P/E/P/B bands; mechanical unlevered-FCF-proxy forward/reverse DCF, scenarios, sensitivity and saved assumptions | Automatic/sector-relative peers, direct audited FCFF inputs, additional justified model families, independent golden-case breadth and point-in-time fair-value history |
 | Track holdings                   | One encrypted USD portfolio, transactions/CSV import, FIFO/opening-pool estimates, manual splits, allocation, historical values and endpoint/Modified Dietz/EOD-linked returns                                                   | Multiple portfolios, XIRR, benchmarks, broader corporate actions/FX and owner recovery validation; EOD-linked returns do not establish measured intraday TWR           |
-| Follow changes                   | Explicit recent SEC-filing checks for selected watchlist companies                                                                                                                                                               | Upcoming calendars/news, estimates/revisions/ownership/transcripts as sources permit; persistent monitoring and delivered notifications                                |
+| Follow changes                   | Explicit recent SEC-filing checks plus an opt-in daily monitor, encrypted inbox and generic Windows notices                                                                                                                      | Upcoming calendars/news, estimates/revisions/ownership/transcripts as sources permit; seven-day alert delivery soak                                                    |
 | Reuse or share research          | Saved notes, up to twenty named financial views, saved comparison/peer groups and company DCF assumptions                                                                                                                        | General saved-widget layouts and evidence-bearing CSV/JSON/PDF/XLSX reports; saved definitions do not preserve result snapshots                                        |
 | Depend on daily operation        | Local-access mode, encrypted storage, isolated releases/rollback, focused keyboard/narrow-layout checks and extensive verification                                                                                               | Installable PWA/offline mode, full WCAG 2.2 AA audit, app-wide latency acceptance, owner backup/restore drill and 30-day workflow soak                                 |
 | Ask questions or test strategies | Deterministic research/evidence foundations; no end-user AI or strategy workflow                                                                                                                                                 | Opt-in cited AI and original point-in-time, cost-aware, reproducible strategy research                                                                                 |
@@ -82,9 +84,8 @@ NetIncomeLoss and remained unavailable. The original bounded quarterly projectio
 and its strict zero-of-twenty annual outcome were preserved. These are different
 declared evidence sets, not a relaxed interpretation of the original result.
 
-The [annual SEC research view](./PERSONAL_SEC_ANNUAL_EVIDENCE.md) is the next
-explicit-load integration of this proof. Its source preparation does not establish
-release acceptance. The study does not close canonical annual 90% coverage,
+The [annual SEC research view](./PERSONAL_SEC_ANNUAL_EVIDENCE.md) delivers the
+bounded explicit-load integration of this proof. The study does not close canonical annual 90% coverage,
 representative issuer coverage, validation of all thirty shared-core metrics or
 standalone-quarter/TTM admission. Its frozen observation is not a fresh provider
 measurement for future loads.
@@ -124,9 +125,10 @@ threshold evaluator likewise provides no background delivery.
    measure eligible security/metric and complete-job coverage, and independently
    validate the declared issuer cohort. Prioritize useful price/valuation
    screening and source-backed quarterly/TTM admission over count-only expansion.
-3. Close one daily filing follow-up loop using existing SEC metadata: opt-in
-   scheduling, restart-safe refresh, change detection, notifications and
-   duplicate-safe receipts. Add useful outputs only within retention/export rights.
+3. The daily filing follow-up loop is delivered: opt-in scheduling, restart
+   catch-up, accession detection, an encrypted inbox and generic Windows notices.
+   Preserve its delivery uncertainty and duplicate guards; the seven-day soak is
+   still open. Add outputs only within retention/export rights.
 4. Expand models, peers and portfolio features according to actual use and
    verified inputs. Keep AI, backtests and broader event feeds behind their source
    prerequisites. Another DCF display increment is lower priority than these gaps.

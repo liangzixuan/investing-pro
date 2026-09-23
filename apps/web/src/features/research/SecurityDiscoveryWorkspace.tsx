@@ -71,6 +71,7 @@ import { PersonalSecAnnualEvidence } from "./PersonalSecAnnualEvidence";
 import { PersonalStockScreener } from "./PersonalStockScreener";
 import { PersonalFinancialScreener } from "./PersonalFinancialScreener";
 import { PersonalWatchlistFilings } from "./PersonalWatchlistFilings";
+import { PersonalPriceValuationScreen } from "./PersonalPriceValuationScreen";
 import { PersonalFilingMonitor } from "./PersonalFilingMonitor";
 import { PersonalPortfolio } from "./PersonalPortfolio";
 import { PersonalValuationHistory } from "./PersonalValuationHistory";
@@ -138,7 +139,13 @@ interface WorkspaceManualPeerState extends PersonalManualPeerState {
 }
 
 type CompanyResearchOrigin =
-  "search" | "catalog" | "financials" | "portfolio" | "filings" | "watchlist";
+  | "search"
+  | "catalog"
+  | "financials"
+  | "portfolio"
+  | "filings"
+  | "watchlist"
+  | "priceScreen";
 
 const COMPANY_RESEARCH_ORIGINS: Readonly<
   Record<CompanyResearchOrigin, Readonly<{ label: string; headingId: string }>>
@@ -161,6 +168,10 @@ const COMPANY_RESEARCH_ORIGINS: Readonly<
     headingId: "watchlist-filings-title",
   },
   watchlist: { label: "Back to My Watchlist", headingId: "watchlist-title" },
+  priceScreen: {
+    label: "Back to price and valuation screen",
+    headingId: "personal-price-valuation-screen-title",
+  },
 };
 
 type RequestState = "idle" | "loading" | "saving";
@@ -594,6 +605,32 @@ export function SecurityDiscoveryWorkspace({
       .some((member) => companyResearchIdentityKey(member) === identityKey);
   }
 
+  function openPriceScreenResearch(
+    membership: PersonalWatchlistMembership,
+    trigger: HTMLButtonElement,
+    isCurrentResult: () => boolean,
+  ) {
+    const identityKey = companyResearchIdentityKey(membership);
+    const isCurrent = () =>
+      isCurrentResult() &&
+      workspace !== null &&
+      workspace === watchlistView.current.workspace &&
+      renderedWatchlistVersion === workspace.version &&
+      workspace.watchlistAvailable &&
+      hasCurrentWatchlistSnapshot(workspace) &&
+      !watchlistView.current.saving &&
+      !watchlistView.current.reconciling &&
+      workspace.watchlist.memberships.some(
+        (member) => companyResearchIdentityKey(member) === identityKey,
+      );
+    if (!isCurrent()) return;
+    selectMarketSecurity(membership, "priceScreen", undefined, {
+      headingId: COMPANY_RESEARCH_ORIGINS.priceScreen.headingId,
+      trigger,
+      isCurrent,
+    });
+  }
+
   const handleOwnerActivityChange = useCallback(
     (start: OwnerSessionActivityStart | null) => {
       ownerActivityStart.current = start;
@@ -893,11 +930,13 @@ export function SecurityDiscoveryWorkspace({
     admittedResult?:
       | PersonalSecurityMasterSearchResultDto
       | PersonalSecurityMasterScreenRowDto,
+    explicitOrigin?: CompanyOriginTarget,
   ) {
     if (
       workspace === null ||
       renderedWorkspaceEpoch !== workspaceEpoch.current ||
-      !workspaceActivityReady.current
+      !workspaceActivityReady.current ||
+      explicitOrigin?.isCurrent?.() === false
     )
       return;
     const identity = portfolioIdentity(membership);
@@ -950,7 +989,7 @@ export function SecurityDiscoveryWorkspace({
     const headingId = COMPANY_RESEARCH_ORIGINS[origin].headingId;
     const active =
       typeof document === "undefined" ? null : document.activeElement;
-    companyOriginTarget.current = {
+    companyOriginTarget.current = explicitOrigin ?? {
       headingId,
       ...(origin === "watchlist"
         ? { isCurrent: () => isCurrentWatchlistOrigin(identityKey) }
@@ -2550,6 +2589,24 @@ export function SecurityDiscoveryWorkspace({
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
               snapshot={workspace.snapshot}
+            />
+
+            <PersonalPriceValuationScreen
+              key={`price-screen-${workspace.snapshot.snapshotSha256}-${renderedWorkspaceEpoch}`}
+              catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
+              watchlistVersion={workspace.version}
+              memberships={workspace.watchlist.memberships}
+              enabled={
+                workspace.watchlistAvailable &&
+                workspace.version > 0 &&
+                !snapshotChanged &&
+                watchlistState !== "saving" &&
+                !reconciling
+              }
+              providerStatus={marketDataStatus}
+              onActivityStart={handleFinancialActivityStart}
+              onSessionUnavailable={clearWorkspaceForSessionLoss}
+              onOpenResearch={openPriceScreenResearch}
             />
 
             <PersonalPortfolio

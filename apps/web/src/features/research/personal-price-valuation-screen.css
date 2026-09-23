@@ -1,0 +1,77 @@
+.personal-price-valuation-screen {
+  display: grid;
+  gap: 1rem;
+}
+.personal-price-valuation-screen fieldset {
+  min-width: 0;
+  border: 1px solid var(--border, #d2d8d5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.personal-price-valuation-screen label {
+  display: grid;
+  gap: 0.35rem;
+}
+.personal-price-valuation-screen input:not([type="checkbox"]),
+.personal-price-valuation-screen select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.45rem;
+  font: inherit;
+}
+.price-screen-selection {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 0.6rem;
+}
+.price-screen-selection label {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+}
+.personal-price-valuation-screen small {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+.price-screen-actions,
+.personal-price-valuation-screen nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+.price-screen-bounds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.price-screen-bounds > div {
+  display: grid;
+  gap: 0.5rem;
+}
+.price-screen-table {
+  max-width: 100%;
+  overflow: auto;
+}
+.price-screen-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.price-screen-table th,
+.price-screen-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.65rem;
+  border-bottom: 1px solid var(--border, #d2d8d5);
+}
+.price-screen-table caption {
+  text-align: left;
+  padding-bottom: 0.5rem;
+}
+.personal-price-valuation-screen :focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
