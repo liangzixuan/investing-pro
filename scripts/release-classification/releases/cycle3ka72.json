@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "caseNumber": 72,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "42b2b6d3f57fd85d440c5bc99e0053fa329fd917",
+  "featureRevision": "45bb14e24806aef7fe9a3a10d7e354efba976487",
+  "featureCount": 245,
+  "closureCount": 246,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-sec-filing-context-parser.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/workers/personal_sec_filing_context.py",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecFilingContext.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecFilingContext.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-sec-filing-context-api.test.ts",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_SEC_FILING_CONTEXT.md", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-sec-filing-context.ts",
+      "status": "M"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka72.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka72.json",
+  "presentation": {
+    "featureDescription": "512-candidate filing inspection and bounded reference navigation",
+    "closureDescription": "generated routing closure for expanded filing inspections",
+    "inventoryDescription": "shared candidate limit, exact UTF-8 output, paged inspection, tests and documentation",
+    "testBinding": "seccandidatecapacity",
+    "routingDescription": "complete selected-concept inventories retain independent byte and time bounds",
+    "summaryDescription": "inspect up to 512 selected-concept facts with exact UTF-8 output and paged references, financial admission remains unchanged"
+  }
+}
