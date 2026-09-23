@@ -1,7 +1,7 @@
 # Capability status
 
 Updated 2026-09-23 UTC. Accepted application baseline for the current feature:
-`88976d32c264928a798480cfb0ea7151c9b306f4` (daily SEC filing monitor).
+`709eeca839980b56f0aa729c9e8d1eb26204ba24` (watchlist price and valuation screen).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
 owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
 owns full targets. Historical exit matrices and release claims remain unchanged.
@@ -10,9 +10,11 @@ receipts. Preparing a later change does not advance this accepted baseline.
 Release-capacity tooling was separately accepted at
 `31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e` without changing the running application.
 
-The active delivery is a [watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
-for up to twenty selected saved listings, using explicitly loaded dated raw closes
-and provider P/E and P/B. Preparation is not release acceptance. The daily SEC
+The delivered [watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
+uses explicitly loaded dated raw closes and provider P/E and P/B for up to twenty
+selected saved listings. The active extension selects a separate cohort directly
+from SEC financial results without watchlist saves. Preparation is not release
+acceptance. The daily SEC
 filing monitor is delivered with an encrypted inbox, bounded daily/restart checks
 and separately opted-in generic Windows notices; its seven-day delivery soak
 remains open. Source-backed financial coverage remains open. Neither outcome
@@ -30,7 +32,7 @@ scope. Test and release counts are supporting evidence, not capability coverage.
 | Find and organize companies      | Admitted U.S. common-stock/ADR catalog, search, one encrypted watchlist, shared notes, ordering/filtering/paging and sequential research navigation                                                                              | Catalog refresh breadth, multiple lists, tags, watchlist import/export                                                                                                 |
 | Inspect prices                   | Explicit Tiingo quote/history loads, six ranges, raw/adjusted charts and action observations, price analytics, shared-date company comparison                                                                                    | Declared 100-symbol validation, independent corporate-action reconciliation, broader benchmark/technical analysis                                                      |
 | Understand financials            | Up to ten annual years and sixteen quarters, 30 reported fields, derived metrics, annual trend chart/exact table, SEC observations and filing-context inspection                                                                 | Admitted standalone quarters/TTM, revision selection, point-in-time history and independently validated shared core metrics                                            |
-| Screen for ideas                 | 28 SEC annual/Q4 fields, filters, sort/paging, coverage/source inspection, watchlist scope, three sparse starter screens and saved criteria/columns                                                                              | Integrated price/valuation filters, shared-core coverage gate, starter breadth and look-ahead-safe historical screens                                                  |
+| Screen for ideas                 | 28 SEC annual/Q4 fields, filters, sort/paging, coverage/source inspection, watchlist scope, three sparse starter screens and saved criteria/columns; separate dated price/P/E/P/B screen for up to twenty saved listings         | Financial-result price/valuation integration, whole-universe joins, shared-core coverage gate, starter breadth and look-ahead-safe historical screens                  |
 | Compare and value companies      | One primary plus up to three manual peers; 15 measures and twelve annual quality checks; saved/reordered groups; P/E/P/B bands; mechanical unlevered-FCF-proxy forward/reverse DCF, scenarios, sensitivity and saved assumptions | Automatic/sector-relative peers, direct audited FCFF inputs, additional justified model families, independent golden-case breadth and point-in-time fair-value history |
 | Track holdings                   | One encrypted USD portfolio, transactions/CSV import, FIFO/opening-pool estimates, manual splits, allocation, historical values and endpoint/Modified Dietz/EOD-linked returns                                                   | Multiple portfolios, XIRR, benchmarks, broader corporate actions/FX and owner recovery validation; EOD-linked returns do not establish measured intraday TWR           |
 | Follow changes                   | Explicit recent SEC-filing checks plus an opt-in daily monitor, encrypted inbox and generic Windows notices                                                                                                                      | Upcoming calendars/news, estimates/revisions/ownership/transcripts as sources permit; seven-day alert delivery soak                                                    |

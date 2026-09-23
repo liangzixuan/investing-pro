@@ -1,9 +1,22 @@
-# Watchlist price and valuation screen
+# Price and valuation screening
 
 Select up to twenty listings from My Watchlist, then explicitly load their dated
 closing prices and provider P/E and P/B values. Filter or sort those observations
 locally and open a company for research. Back returns to the screen without
 discarding its loaded rows or filter draft.
+
+The SEC financial screener also offers a separate selection of up to twenty
+result listings. Select them across result pages, then load prices and valuation
+for that cohort without saving it to My Watchlist. This selection is independent
+of the existing three-issuer financial comparison. Changing the cohort clears its
+market observations; loading remains an explicit action.
+
+The selected SEC rows retain their financial values and source inspectors. Their
+annual/Q4 periods, applied criteria and snapshot metadata describe the financial
+screen. Each market observation has its own date. Provider P/E and P/B are not
+calculated from those SEC rows and do not establish a common earnings period.
+Market filter results and known/unknown counts cover the selected cohort only,
+not every match in the financial screen or the full catalog.
 
 ## Dates and values
 
@@ -61,6 +74,17 @@ abort pending work and retire stale results and callbacks. The existing routes
 resolve catalog identity; they do not validate a remote watchlist version on
 every acquisition. The client retires work when it observes a changed context.
 
+For a financial-result cohort, the client also binds the financial snapshot,
+normalized criteria, annual/instant periods, revenue basis, formula version,
+scope, fetch/expiry metadata and complete retained identities. Editing criteria,
+running or refreshing the screen, an unsuccessful page load, or a changed source
+context clears the cohort and retires its pending work and callbacks. Compatible
+result paging preserves the selected rows and completed market observations.
+While paging, market actions pause and pending acquisition is aborted; resuming
+does not retry it automatically. Display-column changes keep the selection.
+The market routes validate catalog identity, not the remote financial-result
+version; invalidation follows context changes observed by the client.
+
 Only the narrow screen projection remains in active-session memory. The screen
 does not save source histories, results or criteria to the vault or browser
 storage, export provider values or change saved records. Tiingo attribution and
@@ -68,7 +92,7 @@ the existing source retention boundaries apply.
 
 ## Scope and verification
 
-This is a selected-watchlist screen separate from SEC annual financial screening.
+The financial-result extension is a bounded second stage after SEC screening.
 It does not supply a whole-universe price/valuation join, broader price/action
 validation, standalone-quarter or TTM admission, historical strategy testing or
 new financial coverage. Configured Tiingo status does not prove every required
@@ -80,3 +104,6 @@ selection, interrupted requests, changed identities, stale callbacks and focus,
 explicit IO, memory retention, and Research/Back. Synthetic browser checks must
 cover keyboard use and a narrow viewport. The normal isolated native and hosted
 release gates remain required; see the workspace checkpoint for actual results.
+The financial-result extension also requires cross-page selection, retained SEC
+source inspection, compatible-page suspension/resumption and invalidation during
+either market acquisition step. Its release acceptance is pending.

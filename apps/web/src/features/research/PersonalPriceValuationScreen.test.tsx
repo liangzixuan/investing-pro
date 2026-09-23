@@ -127,12 +127,19 @@ vi.mock("../../lib/personal-workspace-api", async () => ({
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import {
   PersonalPriceValuationScreen,
+  PersonalPriceValuationCohortScreen,
+  type PersonalPriceValuationCohortScreenProps,
   type PersonalPriceValuationScreenProps,
 } from "./PersonalPriceValuationScreen";
 
 let props: PersonalPriceValuationScreenProps;
+type CohortIdentity = ReturnType<typeof identity> & {
+  readonly sourceRow: string;
+};
+let cohortProps: PersonalPriceValuationCohortScreenProps<CohortIdentity> | null;
 beforeEach(() => {
   harness.reset();
+  cohortProps = null;
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-23T12:00:00.000Z"));
   api.fetchPersonalMarketOverview
@@ -843,9 +850,310 @@ describe("PersonalPriceValuationScreen", () => {
   });
 });
 
+describe("PersonalPriceValuationCohortScreen", () => {
+  beforeEach(() => {
+    cohortProps = {
+      ...props,
+      contextKey: "financial-snapshot/criteria/annual",
+      identities: ["AAA", "BBB"].map((symbol) => ({
+        ...identity(symbol),
+        sourceRow: `financial-${symbol}`,
+      })),
+      headingId: "financial-cohort-market-title",
+      title: "Selected financial results: price and valuation",
+      onOpenResearch: vi.fn(),
+    };
+  });
+
+  it("uses every supplied identity without a second picker or automatic load", async () => {
+    const tree = render();
+    expect(checks(tree)).toHaveLength(0);
+    expect(text(tree)).not.toContain("Search saved companies");
+    expect(text(tree)).toContain(
+      "only the 2 selected financial-result listings",
+    );
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    click(render(), "Load prices and valuation");
+    await flush();
+    expect(resultRows()).toHaveLength(2);
+    expect(api.fetchPersonalMarketOverview.mock.calls[0]![0]).toMatchObject({
+      symbol: "AAA",
+    });
+    expect(api.fetchPersonalMarketOverview.mock.calls[1]![0]).toMatchObject({
+      symbol: "BBB",
+    });
+    expect(api.fetchPersonalValuationHistory).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the requested heading and preserves the public watchlist heading", () => {
+    const tree = render();
+    expect(
+      elements(tree).find((item) => item.type === "section")?.props[
+        "aria-labelledby"
+      ],
+    ).toBe("financial-cohort-market-title");
+    expect(elements(tree).find((item) => item.type === "h2")?.props.id).toBe(
+      "financial-cohort-market-title",
+    );
+    expect(text(tree)).toContain(
+      "Selected financial results: price and valuation",
+    );
+    cohortProps = null;
+    const watchlist = render();
+    expect(
+      elements(watchlist).find((item) => item.type === "h2")?.props.id,
+    ).toBe("personal-price-valuation-screen-title");
+    expect(checks(watchlist)).toHaveLength(2);
+  });
+
+  it("allows exactly20 controlled identities with at most40 local calls", async () => {
+    cohortProps = {
+      ...cohortProps!,
+      identities: Array.from({ length: 20 }, (_, i) => ({
+        ...identity(`X${i}`),
+        sourceRow: `row-${i}`,
+      })),
+    };
+    render();
+    click(render(), "Load prices and valuation");
+    await flush(180);
+    expect(resultRows()).toHaveLength(20);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(20);
+    expect(api.fetchPersonalValuationHistory).toHaveBeenCalledTimes(20);
+  });
+
+  it.each(["over_limit", "duplicate", "empty"] as const)(
+    "refuses %s controlled inputs without truncation or acquisition",
+    (kind) => {
+      const original = cohortProps!.identities[0]!;
+      const identities =
+        kind === "over_limit"
+          ? Array.from({ length: 21 }, (_, i) => ({
+              ...identity(`X${i}`),
+              sourceRow: `row-${i}`,
+            }))
+          : kind === "duplicate"
+            ? [original, { ...original }]
+            : [];
+      cohortProps = { ...cohortProps!, identities };
+      render();
+      const tree = render();
+      expect(button(tree, "Load prices and valuation").props.disabled).toBe(
+        true,
+      );
+      if (kind !== "empty")
+        expect(text(tree)).toContain("at most 20 unique listing identities");
+      click(tree, "Load prices and valuation");
+      expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      expect(cohortProps.identities).toEqual(identities);
+    },
+  );
+
+  it.each([
+    "country",
+    "exchangeMic",
+    "issuerName",
+    "listingId",
+    "securityName",
+    "symbol",
+    "sourceRow",
+  ] as const)(
+    "retires rows and handlers when captured identity field %s changes",
+    async (field) => {
+      render();
+      click(render(), "Load prices and valuation");
+      await flush();
+      const old = render();
+      expect(resultRows()).toHaveLength(2);
+      cohortProps = {
+        ...cohortProps!,
+        identities: cohortProps!.identities.map((item, index) =>
+          index === 0 ? { ...item, [field]: `${item[field]}-changed` } : item,
+        ),
+      };
+      expect(text(render(false))).not.toContain("101.5");
+      render();
+      click(old, "Load prices and valuation");
+      await flush();
+      expect(resultRows()).toHaveLength(0);
+      expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("rejects old context completions even after A-to-B-to-A before effects", async () => {
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview.mockImplementationOnce(
+      () => pending.promise,
+    );
+    render();
+    click(render(), "Load prices and valuation");
+    const original = cohortProps!;
+    cohortProps = { ...original, contextKey: "different-criteria" };
+    render(false);
+    cohortProps = original;
+    render(false);
+    pending.resolve(overview("AAA"));
+    await flush();
+    render();
+    expect(resultRows()).toHaveLength(0);
+    expect(api.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+  });
+
+  it("suspends a partial batch, preserves complete rows and filters, and ignores late response after resume", async () => {
+    const pending = deferred<PersonalMarketOverviewDto>();
+    api.fetchPersonalMarketOverview
+      .mockResolvedValueOnce(overview("AAA"))
+      .mockImplementationOnce(() => pending.promise);
+    render();
+    changeAria("Price (USD) minimum", "50");
+    click(render(), "Load prices and valuation");
+    await flush();
+    const old = render();
+    expect(text(row("AAA"))).toContain("101.5");
+    cohortProps = { ...cohortProps!, suspended: true };
+    render();
+    expect(
+      (api.fetchPersonalMarketOverview.mock.calls[1]![1] as AbortSignal)
+        .aborted,
+    ).toBe(true);
+    expect(text(row("AAA"))).toContain("101.5");
+    expect(text(row("BBB"))).toContain("Paused before this row completed");
+    expect(button(render(), "Load prices and valuation").props.disabled).toBe(
+      true,
+    );
+    changeAria("Price (USD) minimum", "999");
+    cohortProps = {
+      ...cohortProps,
+      suspended: false,
+      identities: cohortProps.identities.map((item) => ({ ...item })),
+    };
+    render();
+    pending.resolve(overview("BBB"));
+    await flush();
+    expect(api.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+    expect(
+      elements(render()).find(
+        (item) => item.props["aria-label"] === "Price (USD) minimum",
+      )?.props.value,
+    ).toBe("50");
+    expect(text(row("AAA"))).toContain("101.5");
+    expect(text(row("BBB"))).not.toContain("101.5");
+    click(old, "Cancel load");
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+    click(render(), "Load prices and valuation");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(4);
+    expect(text(row("BBB"))).toContain("101.5");
+  });
+
+  it("holds a late valuation and does not resurrect pre-suspension Load handlers", async () => {
+    const pending = deferred<PersonalValuationHistoryDto>();
+    api.fetchPersonalValuationHistory.mockImplementationOnce(
+      () => pending.promise,
+    );
+    render();
+    const old = render();
+    click(old, "Load prices and valuation");
+    await flush();
+    cohortProps = { ...cohortProps!, suspended: true };
+    render(false);
+    pending.resolve(valuation("AAA"));
+    await flush();
+    render();
+    cohortProps = { ...cohortProps, suspended: false };
+    render();
+    click(old, "Load prices and valuation");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(text(row("AAA"))).not.toContain("101.5");
+  });
+
+  it("mounts suspended, resumes without IO and loads only through a fresh explicit handler", async () => {
+    cohortProps = { ...cohortProps!, suspended: true };
+    const old = render();
+    click(old, "Load prices and valuation");
+    cohortProps = { ...cohortProps, suspended: false };
+    render();
+    click(old, "Load prices and valuation");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    click(render(), "Load prices and valuation");
+    await flush();
+    expect(resultRows()).toHaveLength(2);
+  });
+
+  it("preserves full generic Research identity but retires old focus guards on suspension", async () => {
+    render();
+    click(render(), "Load prices and valuation");
+    await flush();
+    const origin = fakeButton();
+    const action = button(render(), "Research AAA");
+    (
+      action.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+      }) => void
+    )({ currentTarget: origin });
+    const calls = vi.mocked(cohortProps!.onOpenResearch).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![0]).toEqual(cohortProps!.identities[0]);
+    const guard = calls[0]![2];
+    expect(guard()).toBe(true);
+    cohortProps = {
+      ...cohortProps!,
+      identities: cohortProps!.identities.map((item) => ({ ...item })),
+    };
+    render();
+    expect(guard()).toBe(true);
+    cohortProps = { ...cohortProps, suspended: true };
+    render();
+    expect(guard()).toBe(false);
+    cohortProps = { ...cohortProps, suspended: false };
+    render();
+    expect(guard()).toBe(false);
+    (
+      action.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+      }) => void
+    )({ currentTarget: origin });
+    expect(calls).toHaveLength(1);
+    expect(resultRows()).toHaveLength(2);
+  });
+
+  it("does not restore retired context data when a suspended cohort resumes", async () => {
+    render();
+    click(render(), "Load prices and valuation");
+    await flush();
+    cohortProps = {
+      ...cohortProps!,
+      suspended: true,
+      contextKey: "refreshed-financial-snapshot",
+    };
+    render();
+    cohortProps = { ...cohortProps, suspended: false };
+    render();
+    expect(resultRows()).toHaveLength(0);
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not resurrect controlled handlers after StrictMode effect replay", async () => {
+    render();
+    const old = render();
+    harness.replay();
+    click(old, "Load prices and valuation");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    click(render(), "Load prices and valuation");
+    await flush();
+    expect(resultRows()).toHaveLength(2);
+  });
+});
+
 function render(effects = true) {
   harness.begin();
-  const tree = PersonalPriceValuationScreen(props);
+  const tree =
+    cohortProps === null
+      ? PersonalPriceValuationScreen(props)
+      : PersonalPriceValuationCohortScreen(cohortProps);
   if (effects) harness.effects();
   return tree;
 }

@@ -85,6 +85,24 @@ keyboard accessible. Changing columns, criteria or results closes old inspection
 owner/session loss clears private results. Display preferences do not count as
 owner-session activity or modify provider cache expiry.
 
+### Screen selected results by price and valuation
+
+Select up to twenty listings across compatible financial-result pages, then
+explicitly load their dated raw closing prices and provider P/E and P/B. No
+watchlist save is required. This market cohort is separate from the three-issuer
+comparison below. Its counts cover only the selected listings.
+
+The selected financial rows retain their values and source inspectors, including
+their actual annual periods and Q4 balance dates. Market observations have separate
+dates, and provider ratios are not calculated from the displayed SEC financials.
+Research/Back retains both stages and their drafts without fetching again.
+
+Compatible paging keeps the cohort and completed market rows, while suspending
+market actions and aborting any unfinished load. Criteria changes, rerun, refresh,
+failed paging or changed source context retire the cohort. Loading never resumes
+automatically. See [Price and valuation screening](./PERSONAL_PRICE_VALUATION_SCREEN.md)
+for exact-date matching, signed values, unknowns, limits and verification status.
+
 ### Compare a shortlist
 
 Use **Research SYMBOL** in a comparison column to open that exact company in

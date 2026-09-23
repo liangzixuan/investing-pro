@@ -37,6 +37,7 @@ import {
 } from "@/lib/personal-workspace-api";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import { PersonalComparisonPrices } from "./PersonalComparisonPrices";
+import { PersonalPriceValuationCohortScreen } from "./PersonalPriceValuationScreen";
 import { samePersonalFinancialComparisonMembers } from "@/lib/personal-financial-comparison-selection-api";
 import { usePersonalFinancialComparisonSelection } from "./usePersonalFinancialComparisonSelection";
 
@@ -160,6 +161,71 @@ interface FinancialComparisonSelection {
   readonly key: string;
   readonly rows: readonly PersonalFinancialScreenRowDto[];
   readonly open: boolean;
+}
+// Page position is intentionally absent: only one unchanged result set can
+// retain candidates across pages. Sorted object keys avoid JSON property-order
+// differences masquerading as a changed decoded financial row.
+function canonicalFinancialValue(value: unknown): string {
+  if (Array.isArray(value))
+    return `[${value.map(canonicalFinancialValue).join(",")}]`;
+  if (value !== null && typeof value === "object")
+    return `{${Object.entries(value)
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+      .map(
+        ([key, item]) =>
+          `${JSON.stringify(key)}:${canonicalFinancialValue(item)}`,
+      )
+      .join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
+function priceResultMetadata(response: PersonalFinancialScreenResponseDto) {
+  return {
+    schemaVersion: response.schemaVersion,
+    catalogSnapshotSha256: response.catalogSnapshotSha256,
+    financialSnapshotSha256: response.financialSnapshotSha256,
+    calendarYear: response.calendarYear,
+    priorCalendarYear: response.priorCalendarYear,
+    instantQuarter: response.instantQuarter,
+    revenueBasis: response.revenueBasis ?? "agreement",
+    formulaVersion: response.formulaVersion,
+    scope: response.scope ?? null,
+    fetchedAt: response.fetchedAt,
+    expiresAt: response.expiresAt,
+    sources: response.sources,
+    priorRevenueSources: response.priorRevenueSources,
+    totalUniverse: response.totalUniverse,
+    identityMatches: response.identityMatches,
+    totalMatches: response.totalMatches,
+    totalNonMatches: response.totalNonMatches,
+    totalUnknown: response.totalUnknown,
+    metricCoverage: response.metricCoverage,
+  };
+}
+function priceResultKey(
+  response: PersonalFinancialScreenResponseDto,
+  criteria: PersonalFinancialScreenCriteriaDto,
+) {
+  return canonicalFinancialValue([
+    priceResultMetadata(response),
+    {
+      ...criteria,
+      identityText: criteria.identityText.trim().normalize("NFC"),
+    },
+  ]);
+}
+interface FinancialPriceCohort {
+  readonly key: string;
+  readonly context: string;
+  readonly session: number;
+  readonly generation: number;
+  readonly metadata: ReturnType<typeof priceResultMetadata>;
+  readonly criteria: PersonalFinancialScreenCriteriaDto;
+  readonly rows: readonly PersonalFinancialScreenRowDto[];
+}
+interface FinancialPriceInspection {
+  readonly cohort: FinancialPriceCohort;
+  readonly row: PersonalFinancialScreenRowDto;
+  readonly metric: PersonalFinancialScreenMetricDto;
 }
 function comparisonKey(
   response: PersonalFinancialScreenResponseDto,
@@ -510,6 +576,11 @@ export interface PersonalFinancialScreenerProps {
   readonly canAddToWatchlist: boolean;
   readonly onAddToWatchlist: (row: PersonalSecurityMasterScreenRowDto) => void;
   readonly onOpenResearch: (row: PersonalSecurityMasterScreenRowDto) => void;
+  readonly onOpenPriceResearch?: (
+    row: PersonalSecurityMasterScreenRowDto,
+    origin: HTMLButtonElement,
+    isCurrent: () => boolean,
+  ) => void;
   readonly onSessionUnavailable: () => void;
   readonly onActivityStart: OwnerSessionActivityStart;
   readonly savedListingIds: ReadonlySet<string>;
@@ -541,6 +612,7 @@ export function PersonalFinancialScreener({
   canAddToWatchlist,
   onAddToWatchlist,
   onOpenResearch,
+  onOpenPriceResearch,
   onSessionUnavailable,
   onActivityStart,
   savedListingIds,
@@ -604,6 +676,21 @@ export function PersonalFinancialScreener({
   const currentComparison = useRef(comparison);
   currentComparison.current = comparison;
   const comparisonPriceEpoch = useRef(0);
+  const [priceCohort, setPriceCohort] = useState<FinancialPriceCohort | null>(
+    null,
+  );
+  const currentPriceCohort = useRef(priceCohort);
+  currentPriceCohort.current = priceCohort;
+  const priceCohortGeneration = useRef(0);
+  const priceActionEpoch = useRef(0);
+  const pricePaging = useRef(false);
+  const [priceInspection, setPriceInspection] =
+    useState<FinancialPriceInspection | null>(null);
+  const currentPriceInspection = useRef(priceInspection);
+  currentPriceInspection.current = priceInspection;
+  const priceInspectionTrigger = useRef<HTMLButtonElement | null>(null);
+  const priceInspectionHeading = useRef<HTMLHeadingElement | null>(null);
+  const priceCohortHeading = useRef<HTMLHeadingElement | null>(null);
   const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
   const shortlistHeading = useRef<HTMLHeadingElement | null>(null);
   const comparisonButton = useRef<HTMLButtonElement | null>(null);
@@ -750,6 +837,7 @@ export function PersonalFinancialScreener({
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
     clearComparison();
+    clearPriceCohort();
     currentResponse.current = null;
     setResponse(null);
     setRunning(false);
@@ -775,6 +863,9 @@ export function PersonalFinancialScreener({
       currentInspection.current = null;
       currentResponse.current = null;
       currentComparison.current = null;
+      currentPriceCohort.current = null;
+      currentPriceInspection.current = null;
+      priceActionEpoch.current += 1;
     };
     // The snapshot/session boundary owns all in-memory results and pending operations.
   }, [snapshot.snapshotSha256, enabled]);
@@ -787,6 +878,163 @@ export function PersonalFinancialScreener({
   useEffect(() => {
     if (comparison?.open) focusFinancialControl(comparisonHeading.current);
   }, [comparison?.open]);
+
+  useEffect(() => {
+    if (
+      priceInspection !== null &&
+      priceInspection === currentPriceInspection.current &&
+      priceInspection.cohort === currentPriceCohort.current &&
+      currentVisibleMetrics.current.includes(priceInspection.metric) &&
+      !pricePaging.current
+    )
+      focusFinancialControl(priceInspectionHeading.current);
+  }, [priceInspection]);
+
+  const renderedPriceAction = priceActionEpoch.current;
+  function priceCohortIsCurrent(selected: FinancialPriceCohort | null) {
+    return (
+      selected !== null &&
+      enabled &&
+      selected === currentPriceCohort.current &&
+      selected.session === epoch.current &&
+      selected.context === activeScreenContext.current &&
+      screenContext === activeScreenContext.current &&
+      renderedPriceAction === priceActionEpoch.current &&
+      !pricePaging.current &&
+      response !== null &&
+      response === currentResponse.current &&
+      selected.key === priceResultKey(response, criteria)
+    );
+  }
+  function clearPriceInspection() {
+    currentPriceInspection.current = null;
+    setPriceInspection(null);
+    priceInspectionTrigger.current = null;
+  }
+  function clearPriceCohort() {
+    priceActionEpoch.current += 1;
+    priceCohortGeneration.current += 1;
+    pricePaging.current = false;
+    currentPriceCohort.current = null;
+    setPriceCohort(null);
+    clearPriceInspection();
+  }
+  function selectForPriceScreen(
+    selectedResponse: PersonalFinancialScreenResponseDto,
+    listingId: string,
+  ) {
+    if (
+      !enabled ||
+      screenContext !== activeScreenContext.current ||
+      selectedResponse !== currentResponse.current ||
+      pricePaging.current ||
+      renderedPriceAction !== priceActionEpoch.current
+    )
+      return;
+    const selected = currentPriceCohort.current;
+    if (selected !== null && !priceCohortIsCurrent(selected)) return;
+    const row = selectedResponse.rows.find(
+      (candidate) => candidate.identity.listingId === listingId,
+    );
+    if (
+      row === undefined ||
+      (selected?.rows.length ?? 0) >= 20 ||
+      selected?.rows.some(
+        (candidate) => candidate.identity.listingId === listingId,
+      )
+    )
+      return;
+    const next: FinancialPriceCohort = {
+      key: priceResultKey(selectedResponse, criteria),
+      context: screenContext,
+      session: epoch.current,
+      generation: ++priceCohortGeneration.current,
+      metadata: priceResultMetadata(selectedResponse),
+      criteria: {
+        ...criteria,
+        identityText: criteria.identityText.trim().normalize("NFC"),
+      },
+      rows: [...(selected?.rows ?? []), row],
+    };
+    priceActionEpoch.current += 1;
+    clearPriceInspection();
+    currentPriceCohort.current = next;
+    setPriceCohort(next);
+  }
+  function removePriceCandidate(
+    selected: FinancialPriceCohort,
+    listingId?: string,
+  ) {
+    if (!priceCohortIsCurrent(selected)) return;
+    const rows =
+      listingId === undefined
+        ? []
+        : selected.rows.filter((row) => row.identity.listingId !== listingId);
+    if (rows.length === selected.rows.length) return;
+    flushSync(() => {
+      clearPriceInspection();
+      priceActionEpoch.current += 1;
+      const next =
+        rows.length === 0
+          ? null
+          : { ...selected, rows, generation: ++priceCohortGeneration.current };
+      currentPriceCohort.current = next;
+      setPriceCohort(next);
+    });
+    focusFinancialControl(
+      rows.length === 0 ? resultsHeading.current : priceCohortHeading.current,
+    );
+  }
+  function inspectPriceCandidate(
+    selected: FinancialPriceCohort,
+    row: PersonalFinancialScreenRowDto,
+    metric: PersonalFinancialScreenMetricDto,
+    trigger: HTMLButtonElement | null,
+  ) {
+    if (
+      !priceCohortIsCurrent(selected) ||
+      !selected.rows.includes(row) ||
+      !currentVisibleMetrics.current.includes(metric)
+    )
+      return;
+    priceInspectionTrigger.current = trigger;
+    const next = { cohort: selected, row, metric };
+    currentPriceInspection.current = next;
+    setPriceInspection(next);
+  }
+  function closePriceInspection() {
+    if (
+      priceInspection === null ||
+      priceInspection !== currentPriceInspection.current ||
+      !priceCohortIsCurrent(priceInspection.cohort)
+    )
+      return;
+    const trigger = priceInspectionTrigger.current;
+    flushSync(() => clearPriceInspection());
+    if (trigger?.isConnected) focusFinancialControl(trigger);
+    else focusFinancialControl(priceCohortHeading.current);
+  }
+  function openPriceResearch(
+    identity: PersonalSecurityMasterScreenRowDto,
+    trigger: HTMLButtonElement,
+    childIsCurrent: () => boolean,
+  ) {
+    const selected = priceCohort;
+    const row = selected?.rows.find(
+      (candidate) =>
+        canonicalFinancialValue(candidate.identity) ===
+        canonicalFinancialValue(identity),
+    );
+    const isCurrent = () =>
+      childIsCurrent() &&
+      row !== undefined &&
+      priceCohortIsCurrent(selected) &&
+      selected?.rows.includes(row) === true;
+    if (!isCurrent() || row === undefined) return;
+    if (onOpenPriceResearch)
+      onOpenPriceResearch(row.identity, trigger, isCurrent);
+    else onOpenResearch(row.identity);
+  }
 
   function updateComparison(next: FinancialComparisonSelection | null) {
     const previous = currentComparison.current;
@@ -926,6 +1174,7 @@ export function PersonalFinancialScreener({
     const ordered = orderedMetrics(next);
     if (ordered.length === 0) return;
     clearInspection();
+    clearPriceInspection();
     currentVisibleMetrics.current = ordered;
     setVisibleMetrics(ordered);
   }
@@ -989,6 +1238,7 @@ export function PersonalFinancialScreener({
     setVisibleMetrics(orderedMetrics(columnViews.overview.metrics));
     clearInspection();
     clearComparison();
+    clearPriceCohort();
     currentResponse.current = null;
     setResponse(null);
     setCriteria(defaultCriteria());
@@ -1015,6 +1265,7 @@ export function PersonalFinancialScreener({
     setRunning(false);
     clearInspection();
     clearComparison();
+    clearPriceCohort();
     currentResponse.current = null;
     setResponse(null);
     setMessage(nextMessage);
@@ -1182,7 +1433,10 @@ export function PersonalFinancialScreener({
 
   async function runScreen(offset = 0, refresh = false, paginate = false) {
     if (!canRun || screenContext !== activeScreenContext.current) return;
-    if (!paginate || refresh) clearComparison();
+    if (!paginate || refresh) {
+      clearComparison();
+      clearPriceCohort();
+    }
     const normalized = {
       ...criteria,
       identityText: criteria.identityText.trim().normalize("NFC"),
@@ -1203,6 +1457,10 @@ export function PersonalFinancialScreener({
     const financialSnapshotSha256 =
       paginate && !refresh ? (response?.financialSnapshotSha256 ?? null) : null;
     const retainedComparison = paginate ? currentComparison.current : null;
+    const retainedPriceCohort = paginate ? currentPriceCohort.current : null;
+    priceActionEpoch.current += 1;
+    pricePaging.current = paginate;
+    clearPriceInspection();
     const requestedScope: PersonalFinancialScreenWatchlistScopeDto | undefined =
       scope === "watchlist"
         ? {
@@ -1269,6 +1527,21 @@ export function PersonalFinancialScreener({
         retainedComparison.key !== comparisonKey(result, normalized)
       )
         clearComparison();
+      if (
+        retainedPriceCohort !== null &&
+        (retainedPriceCohort.key !== priceResultKey(result, normalized) ||
+          result.rows.some((row) => {
+            const previous = retainedPriceCohort.rows.find(
+              (candidate) =>
+                candidate.identity.listingId === row.identity.listingId,
+            );
+            return (
+              previous !== undefined &&
+              canonicalFinancialValue(previous) !== canonicalFinancialValue(row)
+            );
+          }))
+      )
+        clearPriceCohort();
       setCriteria(normalized);
       currentResponse.current = result;
       setResponse(result);
@@ -1291,6 +1564,7 @@ export function PersonalFinancialScreener({
       }
       clearInspection();
       clearComparison();
+      clearPriceCohort();
       currentResponse.current = null;
       setResponse(null);
       if (
@@ -1311,6 +1585,7 @@ export function PersonalFinancialScreener({
     } finally {
       if (session === epoch.current && operation === screenEpoch.current) {
         screenController.current = null;
+        pricePaging.current = false;
         setRunning(false);
       }
     }
@@ -2230,6 +2505,10 @@ export function PersonalFinancialScreener({
           }
           onCloseInspection={closeInspection}
           comparison={comparison}
+          priceRows={priceCohort?.rows ?? []}
+          onSelectForPriceScreen={(listingId) =>
+            selectForPriceScreen(response, listingId)
+          }
           priceContextKey={JSON.stringify([
             comparison?.key,
             comparisonPriceEpoch.current,
@@ -2261,6 +2540,242 @@ export function PersonalFinancialScreener({
           }
         />
       )}
+      {priceCohort !== null &&
+        enabled &&
+        priceCohort.context === screenContext &&
+        priceCohort.session === epoch.current && (
+          <section
+            aria-labelledby="financial-price-candidates-title"
+            className="financial-screen-comparison"
+          >
+            <h3
+              id="financial-price-candidates-title"
+              ref={priceCohortHeading}
+              tabIndex={-1}
+            >
+              Selected financial results ({priceCohort.rows.length}/20)
+            </h3>
+            <p className="market-scope-note">
+              Select listings across compatible result pages. This selection is
+              separate from the three-company comparison and does not save
+              anything to My Watchlist. Changing this selection clears its
+              market observations.
+            </p>
+            <p className="financial-screen-applied-criteria">
+              Applied financial filters:{" "}
+              {priceCohort.criteria.clauses.length === 0
+                ? "None"
+                : priceCohort.criteria.clauses
+                    .map(
+                      (clause) =>
+                        `${labels[clause.field]} ${clause.operator === "gte" ? "≥" : "≤"} ${clause.value}`,
+                    )
+                    .join("; ")}
+              . Identity filter: {priceCohort.criteria.identityText || "None"}.
+              Sort: {priceCohort.criteria.sort.field}{" "}
+              {priceCohort.criteria.sort.direction}.
+            </p>
+            <p className="market-scope-note">
+              SEC calendar selection {priceCohort.metadata.calendarYear}; prior
+              revenue {priceCohort.metadata.priorCalendarYear}; Q
+              {priceCohort.metadata.instantQuarter} balances. Revenue basis:{" "}
+              {revenueBasisLabels[priceCohort.metadata.revenueBasis]}. Fetched{" "}
+              {priceCohort.metadata.fetchedAt}; cache expires{" "}
+              {priceCohort.metadata.expiresAt}. Values below retain their actual
+              source periods. Market dates are separate; provider P/E and P/B
+              are not calculated from these SEC values.
+            </p>
+            <details className="financial-screen-source-details">
+              <summary>Selected financial-result context</summary>
+              <p>
+                Scope:{" "}
+                {priceCohort.metadata.scope === null
+                  ? "Catalog"
+                  : `My Watchlist version ${String(priceCohort.metadata.scope.watchlistVersion)}`}
+                . Formula version {priceCohort.metadata.formulaVersion}.
+                Financial screen matches: {priceCohort.metadata.totalMatches}.
+              </p>
+              <p className="financial-screen-digests">
+                Catalog: {priceCohort.metadata.catalogSnapshotSha256}
+                <br />
+                Financial data: {priceCohort.metadata.financialSnapshotSha256}
+              </p>
+            </details>
+            <fieldset
+              disabled={running || pricePaging.current}
+              style={{ minWidth: 0 }}
+            >
+              <legend>Retained SEC values and source details</legend>
+              <button
+                className="secondary-action compact-action"
+                type="button"
+                onClick={() => removePriceCandidate(priceCohort)}
+              >
+                Clear price-screen selection
+              </button>
+              <div
+                className="personal-stock-screener-table-wrap"
+                role="region"
+                aria-label="Selected financial results table"
+                tabIndex={0}
+              >
+                <table className="financial-screen-table">
+                  <caption>
+                    Selected listings retain all financial fields. Display
+                    columns choose which fields are shown.
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Listing</th>
+                      {visibleMetrics.map((metric) => (
+                        <th scope="col" key={metric}>
+                          {labels[metric]}
+                        </th>
+                      ))}
+                      <th scope="col">Selection</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceCohort.rows.map((row) => (
+                      <tr key={row.identity.listingId}>
+                        <th scope="row">
+                          <strong>{row.identity.symbol}</strong>
+                          <br />
+                          {row.identity.issuerName}
+                          <br />
+                          <small>
+                            {row.identity.exchangeMic} · {row.identity.cik}
+                            <br />
+                            {row.identity.securityName} ·{" "}
+                            {row.identity.shareClassName}
+                          </small>
+                        </th>
+                        {visibleMetrics.map((metric) => (
+                          <td key={metric}>
+                            <FinancialCell
+                              cell={row.metrics[metric]}
+                              metric={metric}
+                              symbol={row.identity.symbol}
+                              inspectorId="financial-price-source-inspector"
+                              expanded={
+                                priceInspection?.cohort === priceCohort &&
+                                priceInspection.row === row &&
+                                priceInspection.metric === metric
+                              }
+                              onInspect={(trigger) =>
+                                inspectPriceCandidate(
+                                  priceCohort,
+                                  row,
+                                  metric,
+                                  trigger,
+                                )
+                              }
+                            />
+                            <FinancialCellDates cell={row.metrics[metric]} />
+                          </td>
+                        ))}
+                        <td>
+                          <button
+                            className="secondary-action compact-action"
+                            type="button"
+                            onClick={() =>
+                              removePriceCandidate(
+                                priceCohort,
+                                row.identity.listingId,
+                              )
+                            }
+                          >
+                            Remove {row.identity.symbol} from price screen
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </fieldset>
+            {priceInspection !== null &&
+              priceInspection.cohort === priceCohort &&
+              !running &&
+              !pricePaging.current &&
+              currentVisibleMetrics.current.includes(
+                priceInspection.metric,
+              ) && (
+                <section
+                  id="financial-price-source-inspector"
+                  className="financial-screen-source-inspector"
+                  aria-labelledby="financial-price-source-title"
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      closePriceInspection();
+                    }
+                  }}
+                >
+                  <header className="financial-screen-inspector-header">
+                    <h4
+                      id="financial-price-source-title"
+                      tabIndex={-1}
+                      ref={priceInspectionHeading}
+                    >
+                      {priceInspection.row.identity.symbol}{" "}
+                      {labels[priceInspection.metric]} source details
+                    </h4>
+                    <button
+                      className="secondary-action compact-action"
+                      type="button"
+                      onClick={closePriceInspection}
+                    >
+                      Close selected source details
+                    </button>
+                  </header>
+                  <p>
+                    {priceInspection.row.identity.issuerName} ·{" "}
+                    {priceInspection.row.identity.exchangeMic} ·{" "}
+                    {priceInspection.row.identity.cik}
+                  </p>
+                  <FinancialCellDetails
+                    cell={priceInspection.row.metrics[priceInspection.metric]}
+                    metric={priceInspection.metric}
+                    cik={priceInspection.row.identity.cik}
+                    revenueBasis={priceCohort.metadata.revenueBasis}
+                    revenueUnresolved={
+                      priceInspection.row.metrics.revenue.status ===
+                      "unavailable"
+                    }
+                    cashMarginInputs={priceInspection.row.metrics}
+                  />
+                </section>
+              )}
+            <PersonalPriceValuationCohortScreen
+              catalogSnapshotSha256={priceCohort.metadata.catalogSnapshotSha256}
+              contextKey={JSON.stringify([
+                priceCohort.key,
+                priceCohort.context,
+                priceCohort.session,
+                priceCohort.generation,
+              ])}
+              identities={priceCohort.rows.map((row) => row.identity)}
+              enabled={enabled}
+              suspended={running || pricePaging.current}
+              providerStatus={marketDataStatus}
+              headingId="financial-price-valuation-screen-title"
+              title="Price and valuation of selected financial results"
+              onActivityStart={() => {
+                if (!priceCohortIsCurrent(priceCohort)) return undefined;
+                const complete = onActivityStart();
+                return complete === undefined
+                  ? undefined
+                  : () => priceCohortIsCurrent(priceCohort) && complete();
+              }}
+              onSessionUnavailable={() => {
+                if (priceCohortIsCurrent(priceCohort)) clearSession();
+              }}
+              onOpenResearch={openPriceResearch}
+            />
+          </section>
+        )}
       <fieldset
         className="financial-screen-saved"
         disabled={!enabled || savedBusy}
@@ -2389,6 +2904,8 @@ function FinancialResults({
   onInspect,
   onCloseInspection,
   comparison,
+  priceRows,
+  onSelectForPriceScreen,
   priceContextKey,
   marketDataStatus,
   pricesEnabled,
@@ -2422,6 +2939,8 @@ function FinancialResults({
   ) => void;
   readonly onCloseInspection: () => void;
   readonly comparison: FinancialComparisonSelection | null;
+  readonly priceRows: readonly PersonalFinancialScreenRowDto[];
+  readonly onSelectForPriceScreen: (listingId: string) => void;
   readonly priceContextKey: string;
   readonly marketDataStatus: PersonalMarketDataStatusDto | null;
   readonly pricesEnabled: boolean;
@@ -2973,6 +3492,30 @@ function FinancialResults({
                     <button
                       className="secondary-action compact-action"
                       type="button"
+                      disabled={
+                        running ||
+                        priceRows.length >= 20 ||
+                        priceRows.some(
+                          (selected) =>
+                            selected.identity.listingId ===
+                            row.identity.listingId,
+                        )
+                      }
+                      onClick={() =>
+                        onSelectForPriceScreen(row.identity.listingId)
+                      }
+                    >
+                      {priceRows.some(
+                        (selected) =>
+                          selected.identity.listingId ===
+                          row.identity.listingId,
+                      )
+                        ? `Selected ${row.identity.symbol} for price screen`
+                        : `Select ${row.identity.symbol} for price screen`}
+                    </button>
+                    <button
+                      className="secondary-action compact-action"
+                      type="button"
                       disabled={running}
                       onClick={() => onOpenResearch(row.identity.listingId)}
                     >
@@ -3079,11 +3622,13 @@ function FinancialCell({
   symbol,
   expanded,
   onInspect,
+  inspectorId = "financial-screen-source-inspector",
 }: {
   readonly cell: PersonalFinancialScreenCellDto;
   readonly metric: PersonalFinancialScreenMetricDto;
   readonly symbol: string;
   readonly expanded: boolean;
+  readonly inspectorId?: string;
   readonly onInspect: (trigger: HTMLButtonElement | null) => void;
 }) {
   const display =
@@ -3110,7 +3655,7 @@ function FinancialCell({
       type="button"
       aria-label={`${symbol} ${labels[metric]}: ${display}. Show source details`}
       aria-expanded={expanded}
-      aria-controls={expanded ? "financial-screen-source-inspector" : undefined}
+      aria-controls={expanded ? inspectorId : undefined}
       onFocus={(event) => scrollFinancialValueIntoView(event.currentTarget)}
       onClick={(event) => onInspect(event?.currentTarget ?? null)}
     >

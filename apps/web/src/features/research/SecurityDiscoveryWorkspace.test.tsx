@@ -730,6 +730,90 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).toEqual(calls);
   });
 
+  it("opens an unsaved financial price result and returns to its retained screen without IO", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    editWatchlistNote("lst-syn-00001", "Keep the unsaved note");
+    const dom = companyFocusDocument("personal-financial-screener-title");
+    const financial = requireFinancialScreener(renderWorkspace());
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    financial.props.onOpenPriceResearch!(
+      screenRow(),
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    await flushPromises();
+    const company = requireCompanyResearch(renderWorkspace());
+    expect(company.props.selection?.listingId).toBe("lst-screen");
+    expect(company.props.activeSection).toBe("price");
+    expect(company.props.backLabel).toBe(
+      "Back to financial price and valuation screen",
+    );
+    expect(dom.company.focus).toHaveBeenCalledOnce();
+    expect(requireCompanyWatchlistAction(renderWorkspace()).props.saved).toBe(
+      false,
+    );
+    company.props.onBack();
+    await flushPromises();
+    expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(requireFinancialScreener(renderWorkspace()).key).toBe(financial.key);
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      "Keep the unsaved note",
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+  });
+
+  it("rejects retired financial price results and abandons their queued focus", async () => {
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-financial-screener-title");
+    const financial = requireFinancialScreener(renderWorkspace());
+    const trigger = dom.trigger as unknown as HTMLButtonElement;
+    financial.props.onOpenPriceResearch!(screenRow(), trigger, () => false);
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    let current = true;
+    financial.props.onOpenPriceResearch!(screenRow(), trigger, () => current);
+    current = false;
+    await flushPromises();
+    expect(dom.company.focus).not.toHaveBeenCalled();
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    await flushPromises();
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(dom.origin.focus).toHaveBeenCalledOnce();
+    await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    await activateWorkspace();
+    financial.props.onOpenPriceResearch!(screenRow(), trigger, () => true);
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+  });
+
+  it("does not require an available watchlist to research a financial price result", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+      new Error("unavailable"),
+    );
+    await activateWorkspace();
+    const dom = companyFocusDocument("personal-financial-screener-title");
+    requireFinancialScreener(renderWorkspace()).props.onOpenPriceResearch!(
+      screenRow(),
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+    );
+    await flushPromises();
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-screen");
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+  });
+
   it("rejects forged price-screen identities and retired result callbacks, including queued focus", async () => {
     const record = watchlistRecord(1);
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);

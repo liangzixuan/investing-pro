@@ -145,7 +145,8 @@ type CompanyResearchOrigin =
   | "portfolio"
   | "filings"
   | "watchlist"
-  | "priceScreen";
+  | "priceScreen"
+  | "financialPriceScreen";
 
 const COMPANY_RESEARCH_ORIGINS: Readonly<
   Record<CompanyResearchOrigin, Readonly<{ label: string; headingId: string }>>
@@ -171,6 +172,10 @@ const COMPANY_RESEARCH_ORIGINS: Readonly<
   priceScreen: {
     label: "Back to price and valuation screen",
     headingId: "personal-price-valuation-screen-title",
+  },
+  financialPriceScreen: {
+    label: "Back to financial price and valuation screen",
+    headingId: "personal-financial-screener-title",
   },
 };
 
@@ -631,6 +636,27 @@ export function SecurityDiscoveryWorkspace({
     });
   }
 
+  function openFinancialPriceScreenResearch(
+    row: PersonalSecurityMasterScreenRowDto,
+    trigger: HTMLButtonElement,
+    isCurrentResult: () => boolean,
+  ) {
+    const isCurrent = () =>
+      isCurrentResult() &&
+      workspace !== null &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      workspaceActivityReady.current &&
+      researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current &&
+      workspace.snapshot.snapshotSha256 ===
+        watchlistView.current.workspace?.snapshot.snapshotSha256;
+    if (!isCurrent()) return;
+    selectMarketSecurity(row, "financialPriceScreen", row, {
+      headingId: COMPANY_RESEARCH_ORIGINS.financialPriceScreen.headingId,
+      trigger,
+      isCurrent,
+    });
+  }
+
   const handleOwnerActivityChange = useCallback(
     (start: OwnerSessionActivityStart | null) => {
       ownerActivityStart.current = start;
@@ -945,7 +971,8 @@ export function SecurityDiscoveryWorkspace({
       admittedResult !== undefined &&
         (origin === "search" ||
           origin === "catalog" ||
-          origin === "financials") &&
+          origin === "financials" ||
+          origin === "financialPriceScreen") &&
         companyResearchIdentityKey(admittedResult) === identityKey &&
         workspace === watchlistView.current.workspace &&
         renderedWatchlistVersion === workspace.version &&
@@ -2586,6 +2613,7 @@ export function SecurityDiscoveryWorkspace({
               onOpenResearch={(selection) =>
                 selectMarketSecurity(selection, "financials", selection)
               }
+              onOpenPriceResearch={openFinancialPriceScreenResearch}
               onSessionUnavailable={clearWorkspaceForSessionLoss}
               savedListingIds={savedListingIds}
               snapshot={workspace.snapshot}

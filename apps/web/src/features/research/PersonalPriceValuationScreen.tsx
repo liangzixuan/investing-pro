@@ -8,6 +8,7 @@ import {
   type PersonalPriceValuationScreenRow,
   type PersonalPriceValuationScreenMetric,
   type PersonalPriceValuationScreenCriteria,
+  type PersonalPriceValuationScreenIdentity,
 } from "@research-cockpit/personal-market-analytics";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -33,6 +34,26 @@ export interface PersonalPriceValuationScreenProps {
     origin: HTMLButtonElement,
     isCurrent: () => boolean,
   ) => void;
+}
+
+export interface PersonalPriceValuationCohortScreenProps<
+  T extends PersonalPriceValuationScreenIdentity,
+> {
+  readonly catalogSnapshotSha256: `sha256:${string}`;
+  readonly contextKey: string;
+  readonly identities: readonly T[];
+  readonly enabled: boolean;
+  readonly suspended?: boolean;
+  readonly providerStatus: PersonalMarketDataStatusDto | null;
+  readonly onActivityStart: OwnerSessionActivityStart;
+  readonly onSessionUnavailable: () => void;
+  readonly onOpenResearch: (
+    identity: T,
+    origin: HTMLButtonElement,
+    isCurrent: () => boolean,
+  ) => void;
+  readonly headingId: string;
+  readonly title: string;
 }
 
 const metrics = ["rawClose", "priceToEarnings", "priceToBook"] as const;
@@ -84,10 +105,44 @@ const reasonText = {
 export function PersonalPriceValuationScreen(
   props: PersonalPriceValuationScreenProps,
 ) {
-  const { memberships, enabled, providerStatus } = props;
+  return usePriceValuationScreen({
+    ...props,
+    identities: props.memberships,
+    contextKey: JSON.stringify(["watchlist", props.watchlistVersion]),
+    headingId: "personal-price-valuation-screen-title",
+    title: "Price and valuation screen",
+    selectionMode: "watchlist",
+  });
+}
+
+export function PersonalPriceValuationCohortScreen<
+  T extends PersonalPriceValuationScreenIdentity,
+>(props: PersonalPriceValuationCohortScreenProps<T>) {
+  return usePriceValuationScreen({ ...props, selectionMode: "cohort" });
+}
+
+function usePriceValuationScreen<
+  T extends PersonalPriceValuationScreenIdentity,
+>(
+  props: PersonalPriceValuationCohortScreenProps<T> & {
+    readonly selectionMode: "watchlist" | "cohort";
+  },
+) {
+  const {
+    identities: memberships,
+    enabled,
+    providerStatus,
+    suspended = false,
+  } = props;
+  const controlled = props.selectionMode === "cohort";
+  const initialMessage = controlled
+    ? "Load prices and valuation for the selected cohort."
+    : "Select saved companies, then load prices and valuation.";
   const key = JSON.stringify([
     props.catalogSnapshotSha256,
-    props.watchlistVersion,
+    props.contextKey,
+    props.selectionMode,
+    props.headingId,
     memberships,
     enabled,
     providerStatus,
@@ -96,9 +151,12 @@ export function PersonalPriceValuationScreen(
   if (context.current.key !== key)
     context.current = { key, version: context.current.version + 1 };
   const version = context.current.version;
-  const incarnation = useRef({ version, token: Symbol() });
-  if (incarnation.current.version !== version)
-    incarnation.current = { version, token: Symbol() };
+  const incarnation = useRef({ version, suspended, token: Symbol() });
+  if (
+    incarnation.current.version !== version ||
+    incarnation.current.suspended !== suspended
+  )
+    incarnation.current = { version, suspended, token: Symbol() };
   const token = incarnation.current.token;
   const mounted = useRef(false);
   const epoch = useRef(0);
@@ -117,7 +175,7 @@ export function PersonalPriceValuationScreen(
     busy: false,
     rows: [],
     messages: {},
-    message: "Select saved companies, then load prices and valuation.",
+    message: initialMessage,
   });
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -126,7 +184,11 @@ export function PersonalPriceValuationScreen(
     PersonalPriceValuationScreenCriteria["sort"]
   >({ field: "symbol", direction: "asc" });
   const [view, setView] = useState<View>("all");
-  const selectedIds = selected.version === version ? selected.ids : [];
+  const selectedIds = controlled
+    ? memberships.map((item) => item.listingId)
+    : selected.version === version
+      ? selected.ids
+      : [];
   const visible =
     state.version === version
       ? state
@@ -135,21 +197,25 @@ export function PersonalPriceValuationScreen(
           rows: [],
           messages: {},
           busy: false,
-          message: "Select saved companies, then load prices and valuation.",
+          message: initialMessage,
         };
   const current = () =>
     mounted.current &&
     enabled &&
+    !suspended &&
     context.current.version === version &&
     incarnation.current.token === token;
   const uniqueMemberships =
     new Set(memberships.map((item) => item.listingId)).size ===
     memberships.length;
   const configured = providerStatus?.status === "configured";
+  const validCohort =
+    uniqueMemberships && (!controlled || memberships.length <= 20);
   const canLoad =
     enabled &&
+    !suspended &&
     configured &&
-    uniqueMemberships &&
+    validCohort &&
     selectedIds.length > 0 &&
     selectedIds.length <= 20;
 
@@ -158,7 +224,10 @@ export function PersonalPriceValuationScreen(
     epoch.current += 1;
     controller.current?.abort();
     controller.current = null;
-    selection.current = { version, ids: [] };
+    selection.current = {
+      version,
+      ids: controlled ? memberships.map((item) => item.listingId) : [],
+    };
     setSelected({ version, ids: [] });
     setState({
       version,
@@ -166,18 +235,45 @@ export function PersonalPriceValuationScreen(
       busy: false,
       rows: [],
       messages: {},
-      message: "Select saved companies, then load prices and valuation.",
+      message: initialMessage,
     });
     setQuery("");
     setPage(0);
     return () => {
       mounted.current = false;
-      incarnation.current = { version, token: Symbol() };
+      incarnation.current = { version, suspended, token: Symbol() };
       epoch.current += 1;
       controller.current?.abort();
       controller.current = null;
     };
   }, [version]);
+
+  useEffect(() => {
+    if (!suspended) return;
+    epoch.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+    setState((prior) =>
+      prior.version !== version
+        ? prior
+        : {
+            ...prior,
+            epoch: epoch.current,
+            busy: false,
+            messages: Object.fromEntries(
+              Object.entries(prior.messages).map(([id, message]) => [
+                id,
+                message.startsWith("Waiting") || message.startsWith("Loading")
+                  ? "Paused before this row completed. Load again when the cohort is ready."
+                  : message,
+              ]),
+            ),
+            message: prior.busy
+              ? "Load paused. Completed rows remain; unfinished rows are unknown."
+              : prior.message,
+          },
+    );
+  }, [version, suspended]);
 
   const candidates = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("en-US");
@@ -219,6 +315,7 @@ export function PersonalPriceValuationScreen(
   function select(id: string, checked: boolean) {
     if (
       !current() ||
+      controlled ||
       !uniqueMemberships ||
       !memberships.some((item) => item.listingId === id)
     )
@@ -280,6 +377,7 @@ export function PersonalPriceValuationScreen(
       !canLoad ||
       visible.epoch !== epoch.current ||
       controller.current !== null ||
+      selection.current.version !== version ||
       JSON.stringify(selection.current.ids) !== JSON.stringify(selectedIds)
     )
       return;
@@ -313,8 +411,9 @@ export function PersonalPriceValuationScreen(
         busy: false,
         rows: [],
         messages: {},
-        message:
-          "Saved identities could not be used for this screen. Reload the watchlist.",
+        message: controlled
+          ? "Selected identities could not be used for this screen. Refresh the financial results."
+          : "Saved identities could not be used for this screen. Reload the watchlist.",
       });
       return;
     }
@@ -352,7 +451,7 @@ export function PersonalPriceValuationScreen(
       },
       U,
     >(
-      identity: PersonalWatchlistMembership,
+      identity: PersonalPriceValuationScreenIdentity,
       fetcher: (
         input: { listingId: string; symbol: string; range: "1m" },
         signal: AbortSignal,
@@ -508,17 +607,20 @@ export function PersonalPriceValuationScreen(
   return (
     <section
       className="personal-price-valuation-screen"
-      aria-labelledby="personal-price-valuation-screen-title"
+      aria-labelledby={props.headingId}
       aria-busy={visible.busy}
     >
-      <h2 id="personal-price-valuation-screen-title" tabIndex={-1}>
-        Price and valuation screen
+      <h2 id={props.headingId} tabIndex={-1}>
+        {props.title}
       </h2>
       <p className="market-scope-note">
-        Choose up to 20 saved listings. Load pairs the raw USD end-of-day close
-        with P/E and P/B on the latest valuation date returned by Tiingo. No
-        older pair is substituted. Companies can have different dates; age is
-        measured against the frozen UTC load date, with no freshness cutoff.
+        {controlled
+          ? `This screen covers only the ${memberships.length} selected financial-result listings. `
+          : "Choose up to 20 saved listings. "}
+        Load pairs the raw USD end-of-day close with P/E and P/B on the latest
+        valuation date returned by Tiingo. No older pair is substituted.
+        Companies can have different dates; age is measured against the frozen
+        UTC load date, with no freshness cutoff.
       </p>
       <p className="market-scope-note">
         Tiingo · active-session memory only · no export or saved screen. Loading
@@ -533,84 +635,94 @@ export function PersonalPriceValuationScreen(
             : "Provider status is unavailable. Revalidate the workspace."}
         </p>
       )}
-      {!uniqueMemberships && (
+      {!validCohort && (
         <p role="alert">
-          Saved membership identities are inconsistent. Reload the watchlist.
+          {controlled
+            ? "The cohort must contain at most 20 unique listing identities. Refresh the financial selection."
+            : "Saved membership identities are inconsistent. Reload the watchlist."}
         </p>
       )}
-      <fieldset disabled={!enabled || !uniqueMemberships}>
-        <legend>Select saved companies ({selectedIds.length}/20)</legend>
-        <label>
-          Search saved companies
-          <input
-            type="search"
-            maxLength={128}
-            value={query}
-            onChange={(event) => {
-              if (current()) {
-                setQuery(event.target.value.normalize("NFC").slice(0, 128));
-                setPage(0);
-              }
-            }}
-          />
-        </label>
-        <p>
-          {memberships.length} saved listings · {candidates.length} search
-          results
+      {suspended && (
+        <p role="note">
+          Market actions are paused while the financial-result context is being
+          checked. Completed rows and filters are retained.
         </p>
-        <div className="price-screen-selection">
-          {candidates
-            .slice(activePage * 50, activePage * 50 + 50)
-            .map((item) => (
-              <label key={item.listingId}>
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${item.symbol} · ${item.exchangeMic}`}
-                  checked={selectedIds.includes(item.listingId)}
-                  disabled={
-                    !selectedIds.includes(item.listingId) &&
-                    selectedIds.length >= 20
-                  }
-                  onChange={(event) =>
-                    select(item.listingId, event.target.checked)
-                  }
-                />
-                <span>
-                  {item.symbol} · {item.exchangeMic}
-                  <small>{item.issuerName}</small>
-                </span>
-              </label>
-            ))}
-        </div>
-        {candidates.length === 0 && (
-          <p>No saved companies match this search.</p>
-        )}
-        {pageCount > 1 && (
-          <nav aria-label="Saved company selection pages">
-            <button
-              type="button"
-              disabled={activePage === 0}
-              onClick={() => {
-                if (current()) setPage(activePage - 1);
+      )}
+      {!controlled && (
+        <fieldset disabled={!enabled || !uniqueMemberships}>
+          <legend>Select saved companies ({selectedIds.length}/20)</legend>
+          <label>
+            Search saved companies
+            <input
+              type="search"
+              maxLength={128}
+              value={query}
+              onChange={(event) => {
+                if (current()) {
+                  setQuery(event.target.value.normalize("NFC").slice(0, 128));
+                  setPage(0);
+                }
               }}
-            >
-              Previous companies
-            </button>
-            <span>
-              Page {activePage + 1} of {pageCount}
-            </span>
-            <button
-              type="button"
-              disabled={activePage + 1 === pageCount}
-              onClick={() => {
-                if (current()) setPage(activePage + 1);
-              }}
-            >
-              Next companies
-            </button>
-          </nav>
-        )}
-      </fieldset>
+            />
+          </label>
+          <p>
+            {memberships.length} saved listings · {candidates.length} search
+            results
+          </p>
+          <div className="price-screen-selection">
+            {candidates
+              .slice(activePage * 50, activePage * 50 + 50)
+              .map((item) => (
+                <label key={item.listingId}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${item.symbol} · ${item.exchangeMic}`}
+                    checked={selectedIds.includes(item.listingId)}
+                    disabled={
+                      !selectedIds.includes(item.listingId) &&
+                      selectedIds.length >= 20
+                    }
+                    onChange={(event) =>
+                      select(item.listingId, event.target.checked)
+                    }
+                  />
+                  <span>
+                    {item.symbol} · {item.exchangeMic}
+                    <small>{item.issuerName}</small>
+                  </span>
+                </label>
+              ))}
+          </div>
+          {candidates.length === 0 && (
+            <p>No saved companies match this search.</p>
+          )}
+          {pageCount > 1 && (
+            <nav aria-label="Saved company selection pages">
+              <button
+                type="button"
+                disabled={activePage === 0}
+                onClick={() => {
+                  if (current()) setPage(activePage - 1);
+                }}
+              >
+                Previous companies
+              </button>
+              <span>
+                Page {activePage + 1} of {pageCount}
+              </span>
+              <button
+                type="button"
+                disabled={activePage + 1 === pageCount}
+                onClick={() => {
+                  if (current()) setPage(activePage + 1);
+                }}
+              >
+                Next companies
+              </button>
+            </nav>
+          )}
+        </fieldset>
+      )}
       <div className="price-screen-actions">
         <button
           type="button"
@@ -625,14 +737,14 @@ export function PersonalPriceValuationScreen(
         <button
           type="button"
           className="secondary-action"
-          disabled={!visible.busy}
+          disabled={suspended || !visible.busy}
           onClick={cancel}
         >
           Cancel load
         </button>
       </div>
       <p role="status">{visible.message}</p>
-      <fieldset disabled={!enabled}>
+      <fieldset disabled={!enabled || suspended}>
         <legend>Filter loaded values</legend>
         <p>
           Bounds are inclusive. Enter exact decimals, including zero or negative
@@ -741,7 +853,7 @@ export function PersonalPriceValuationScreen(
         Show rows
         <select
           value={view}
-          disabled={criteria === null}
+          disabled={!enabled || suspended || criteria === null}
           onChange={(event) => {
             const next = event.target.value;
             if (
@@ -827,7 +939,7 @@ export function PersonalPriceValuationScreen(
                 <td>
                   <button
                     type="button"
-                    disabled={!enabled || visible.busy}
+                    disabled={!enabled || suspended || visible.busy}
                     onClick={(event) =>
                       research(row.identity.listingId, event.currentTarget)
                     }
@@ -852,7 +964,7 @@ export function PersonalPriceValuationScreen(
   );
 }
 
-function marketIdentity(member: PersonalWatchlistMembership) {
+function marketIdentity(member: PersonalPriceValuationScreenIdentity) {
   return {
     country: member.country,
     exchangeMic: member.exchangeMic,

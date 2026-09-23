@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-22. Start here for active priorities and use the
+Updated 2026-09-23 UTC. Start here for active priorities and use the
 [capability scoreboard](./CAPABILITY_STATUS.md) for delivered functionality,
 dated coverage, verification limits and remaining targets. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
@@ -16,7 +16,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: watchlist price and valuation screen
+## Immediate delivery: financial-result price and valuation screen
+
+Select up to twenty listings from SEC financial results across pages, then
+explicitly load and screen their dated prices and provider P/E and P/B. Keep the
+financial criteria, historical periods and source details alongside the selected
+market cohort. This uses the same acquisition, date matching and exact-decimal
+screen as My Watchlist, without requiring a watchlist save. Preserve results and
+filter drafts through Research/Back and retire them when their source context
+changes. See [Price and valuation screening](./PERSONAL_PRICE_VALUATION_SCREEN.md).
+
+This is a bounded selection from an already run financial screen. Market counts
+describe only the selected listings; provider ratios do not acquire a common SEC
+earnings period. Whole-universe joins and admitted TTM remain open. Release
+acceptance for this extension is pending.
+
+## Delivered: watchlist price and valuation screen
 
 Select up to twenty saved listings and explicitly load dated closing prices and
 provider P/E and P/B values, then filter and sort the loaded rows locally. Require
@@ -28,12 +43,15 @@ See [Watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
 This bounded screen reuses the existing market and daily-valuation routes. It
 does not join the SEC financial screen, expand universe coverage, save results or
 establish point-in-time history. Preserve explicit acquisition, provider limits,
-full saved identities and session lifetime. Release acceptance is still pending.
+full saved identities and session lifetime. Release
+`709eeca839980b56f0aa729c9e8d1eb26204ba24` passed isolated native and required hosted
+checks, synthetic Brave cases and limited configured-app checks. Populated cases
+used synthetic data; live QA made no provider requests or owner-record writes.
 
 ## Delivered: daily SEC filing follow-up
 
-The accepted application baseline is `88976d32c264928a798480cfb0ea7151c9b306f4`.
-It adds one explicitly enabled daily monitor for up to 20 saved listings,
+Release `88976d32c264928a798480cfb0ea7151c9b306f4` added one explicitly enabled
+daily monitor for up to 20 saved listings,
 with an encrypted filing inbox and separately opted-in Windows desktop notices.
 Use the existing bounded SEC provider and exact saved identities. Seed each
 issuer from its first complete observation, then detect new accessions. Preserve

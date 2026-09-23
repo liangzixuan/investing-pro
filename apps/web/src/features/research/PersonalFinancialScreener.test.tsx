@@ -122,6 +122,9 @@ vi.mock("react", async (original) => ({
 vi.mock("react-dom", () => ({
   flushSync: <T,>(callback: () => T) => harness.flushSync(callback),
 }));
+vi.mock("./PersonalPriceValuationScreen", () => ({
+  PersonalPriceValuationCohortScreen: () => null,
+}));
 vi.mock("./PersonalComparisonPrices", () => ({
   PersonalComparisonPrices: () => null,
 }));
@@ -146,6 +149,11 @@ import {
   type PersonalFinancialScreenerProps,
 } from "./PersonalFinancialScreener";
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
+import {
+  PersonalPriceValuationCohortScreen,
+  type PersonalPriceValuationCohortScreenProps,
+} from "./PersonalPriceValuationScreen";
+import type { PersonalSecurityMasterScreenRowDto } from "@research-cockpit/contracts";
 import {
   PersonalComparisonPrices,
   type PersonalComparisonPricesProps,
@@ -8301,4 +8309,434 @@ describe("original margin filing explanations", () => {
       expect(props.onAddToWatchlist).not.toHaveBeenCalled();
     },
   );
+});
+
+function priceCohortProps(value = render()) {
+  return elements(value).find(
+    (item) => item.type === PersonalPriceValuationCohortScreen,
+  )?.props as unknown as
+    | PersonalPriceValuationCohortScreenProps<PersonalSecurityMasterScreenRowDto>
+    | undefined;
+}
+function priceCandidates(value = render()) {
+  return elements(value).find(
+    (item) =>
+      item.props["aria-labelledby"] === "financial-price-candidates-title",
+  );
+}
+function selectedSourceInspector(value = render()) {
+  return elements(value).find(
+    (item) => item.props.id === "financial-price-source-inspector",
+  );
+}
+async function selectedPriceFixture(count = 26) {
+  api.screenPersonalFinancials.mockResolvedValueOnce(
+    comparisonResponse(0, count),
+  );
+  await mount();
+  submit(render());
+  await flush();
+  click(render(), "Select CMP0 for price screen");
+  return priceCohortProps()!;
+}
+function openSelectedSource(
+  label = "Revenue",
+  trigger: HTMLButtonElement | null = null,
+) {
+  const cell = ratioCell(priceCandidates(), label, "CMP0");
+  expect(cell).toBeDefined();
+  (
+    cell!.props.onClick as (event: {
+      currentTarget: HTMLButtonElement | null;
+    }) => void
+  )({ currentTarget: trigger });
+  return selectedSourceInspector()!;
+}
+
+describe("financial-result price and valuation cohort", () => {
+  it("retains full SEC candidates and original source details across compatible pages without saving", async () => {
+    const first = await selectedPriceFixture();
+    api.screenPersonalFinancials.mockResolvedValueOnce(
+      comparisonResponse(25, 26),
+    );
+    click(render(), "Next financial page");
+    await flush();
+    const retained = priceCohortProps()!;
+    expect(retained.contextKey).toBe(first.contextKey);
+    expect(retained.identities).toEqual(first.identities);
+    expect(retained.enabled).toBe(true);
+    expect(retained.suspended).toBe(false);
+    expect(text(priceCandidates())).toContain("SEC calendar selection");
+    expect(text(priceCandidates())).toContain(
+      "provider P/E and P/B are not calculated from these SEC values",
+    );
+    const source = openSelectedSource();
+    expect(text(source)).toContain("2024-01-01");
+    expect(text(source)).toContain("2024-12-31");
+    expect(
+      elements(source).some(
+        (item) =>
+          item.type === "a" &&
+          String(item.props.href).includes("0000000001-25-000001-index.html"),
+      ),
+    ).toBe(true);
+    click(render(), "Close selected source details");
+    click(render(), "Select CMP25 for price screen");
+    expect(
+      priceCohortProps()!.identities.map((identity) => identity.symbol),
+    ).toEqual(["CMP0", "CMP25"]);
+    expect(api.screenPersonalFinancials).toHaveBeenCalledTimes(2);
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+    expect(api.savePersonalFinancialSavedViews).not.toHaveBeenCalled();
+    expect(
+      comparisonApi.savePersonalFinancialComparisonSelection,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("suspends a mounted cohort during paging and retires captured callbacks before and after resume", async () => {
+    props = { ...props, onOpenPriceResearch: vi.fn() };
+    const first = await selectedPriceFixture();
+    const complete = first.onActivityStart()!;
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    const staleSelect = button(render(), "Select CMP1 for price screen").props
+      .onClick!;
+    click(render(), "Next financial page");
+    staleSelect();
+    const suspended = priceCohortProps()!;
+    expect(suspended.contextKey).toBe(first.contextKey);
+    expect(suspended.identities).toEqual(first.identities);
+    expect(suspended.enabled).toBe(true);
+    expect(suspended.suspended).toBe(true);
+    expect(suspended.onActivityStart()).toBeUndefined();
+    expect(complete()).toBe(false);
+    first.onOpenResearch(
+      first.identities[0]!,
+      {} as HTMLButtonElement,
+      () => true,
+    );
+    first.onSessionUnavailable();
+    expect(props.onOpenPriceResearch).not.toHaveBeenCalled();
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+    pending.resolve(comparisonResponse(25, 26));
+    await flush();
+    const resumed = priceCohortProps()!;
+    expect(resumed.contextKey).toBe(first.contextKey);
+    expect(resumed.suspended).toBe(false);
+    first.onOpenResearch(
+      first.identities[0]!,
+      {} as HTMLButtonElement,
+      () => true,
+    );
+    expect(props.onOpenPriceResearch).not.toHaveBeenCalled();
+    resumed.onOpenResearch(
+      resumed.identities[0]!,
+      {} as HTMLButtonElement,
+      () => true,
+    );
+    expect(props.onOpenPriceResearch).toHaveBeenCalledOnce();
+    const guard = vi.mocked(props.onOpenPriceResearch!).mock.calls[0]![2];
+    expect(guard()).toBe(true);
+    click(render(), "Clear price-screen selection");
+    expect(guard()).toBe(false);
+  });
+
+  it("caps at twenty listings independently of three distinct comparison issuers and rejects stale selectors", async () => {
+    api.screenPersonalFinancials.mockResolvedValueOnce(response(0, 26));
+    await mount();
+    submit(render());
+    await flush();
+    const oldSelector = button(render(), "Select ONE for price screen").props
+      .onClick!;
+    oldSelector();
+    oldSelector();
+    for (let index = 1; index < 20; index += 1)
+      click(render(), `Select ONE${String(index)} for price screen`);
+    expect(priceCohortProps()!.identities).toHaveLength(20);
+    expect(
+      button(render(), "Select ONE20 for price screen").props.disabled,
+    ).toBe(true);
+    click(render(), "Select ONE20 for price screen");
+    expect(priceCohortProps()!.identities).toHaveLength(20);
+    click(render(), "Select ONE for comparison");
+    expect(text(render())).toContain("Selected ONE for comparison");
+    expect(button(render(), "Select ONE1 for comparison").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Remove ONE1 from price screen");
+    expect(priceCohortProps()!.identities).toHaveLength(19);
+    click(render(), "Select ONE20 for price screen");
+    expect(priceCohortProps()!.identities).toHaveLength(20);
+    expect(text(render())).toContain("Selected ONE for comparison");
+  });
+
+  it("keeps the cohort across display changes and harmless JSON property reordering", async () => {
+    const first = await selectedPriceFixture();
+    change(render(), "Financial column view", "cashFlow");
+    expect(priceCohortProps()!.contextKey).toBe(first.contextKey);
+    const next = comparisonResponse(25, 26);
+    const repeated = comparisonResponse(0, 26).rows[0]!;
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...next,
+      rows: [
+        {
+          metrics: repeated.metrics,
+          identity: Object.fromEntries(
+            Object.entries(repeated.identity).reverse(),
+          ) as unknown as PersonalSecurityMasterScreenRowDto,
+        },
+      ],
+    });
+    click(render(), "Next financial page");
+    await flush();
+    expect(priceCohortProps()!.contextKey).toBe(first.contextKey);
+    expect(text(priceCandidates())).toContain("Operating cash flow");
+    expect(text(priceCandidates())).not.toContain("Net margin");
+  });
+
+  it.each([
+    ["catalog", { catalogSnapshotSha256: sha("c") }],
+    ["financial snapshot", { financialSnapshotSha256: sha("d") }],
+    ["year", { calendarYear: 2024 }],
+    ["prior year", { priorCalendarYear: 2022 }],
+    ["basis", { revenueBasis: "Revenues" }],
+    ["fetch time", { fetchedAt: "2026-09-01T00:01:00.000Z" }],
+    ["expiry", { expiresAt: "2026-09-01T00:31:00.000Z" }],
+    [
+      "coverage",
+      {
+        metricCoverage: {
+          ...response(0, 26).metricCoverage,
+          revenue: { known: 25, unknown: 1 },
+        },
+      },
+    ],
+    [
+      "source status",
+      {
+        sources: response(0, 26).sources.map((source, index) =>
+          index === 0 ? { ...source, status: "unavailable" } : source,
+        ),
+      },
+    ],
+    [
+      "prior source",
+      { priorRevenueSources: response(0, 26).priorRevenueSources.slice(1) },
+    ],
+    ["match count", { totalMatches: 25 }],
+    [
+      "scope",
+      {
+        scope: {
+          kind: "watchlist",
+          watchlistVersion: 2,
+          listingIds: ["listing-0"],
+          totalWatchlistListings: 1,
+        },
+      },
+    ],
+  ])(
+    "retires the cohort when paged %s metadata changes",
+    async (_label, update) => {
+      const previous = await selectedPriceFixture();
+      api.screenPersonalFinancials.mockResolvedValueOnce({
+        ...comparisonResponse(25, 26),
+        ...update,
+      });
+      click(render(), "Next financial page");
+      await flush();
+      expect(priceCohortProps()).toBeUndefined();
+      expect(previous.onActivityStart()).toBeUndefined();
+    },
+  );
+
+  it.each([
+    "cik",
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "listingId",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)(
+    "rejects forged Research %s without dropping full SEC identity",
+    async (field) => {
+      props = { ...props, onOpenPriceResearch: vi.fn() };
+      const cohort = await selectedPriceFixture();
+      const identity = cohort.identities[0]!;
+      cohort.onOpenResearch(
+        { ...identity, [field]: "different" },
+        {} as HTMLButtonElement,
+        () => true,
+      );
+      expect(props.onOpenPriceResearch).not.toHaveBeenCalled();
+      cohort.onOpenResearch(identity, {} as HTMLButtonElement, () => false);
+      expect(props.onOpenPriceResearch).not.toHaveBeenCalled();
+      cohort.onOpenResearch(identity, {} as HTMLButtonElement, () => true);
+      expect(props.onOpenPriceResearch).toHaveBeenCalledOnce();
+      expect(props.onOpenPriceResearch).toHaveBeenCalledWith(
+        identity,
+        expect.anything(),
+        expect.anything(),
+      );
+      expect(
+        typeof vi.mocked(props.onOpenPriceResearch!).mock.calls[0]![2],
+      ).toBe("function");
+    },
+  );
+
+  it.each([
+    "cik",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+    "metric",
+    "source",
+  ])("retires a repeated selected listing with changed %s", async (field) => {
+    await selectedPriceFixture();
+    const prior = comparisonResponse(0, 26).rows[0]!;
+    const row =
+      field === "metric"
+        ? {
+            ...prior,
+            metrics: {
+              ...prior.metrics,
+              revenue: { ...prior.metrics.revenue, value: "999" },
+            },
+          }
+        : field === "source"
+          ? {
+              ...prior,
+              metrics: {
+                ...prior.metrics,
+                revenue: { ...prior.metrics.revenue, sources: [] },
+              },
+            }
+          : { ...prior, identity: { ...prior.identity, [field]: "changed" } };
+    api.screenPersonalFinancials.mockResolvedValueOnce({
+      ...comparisonResponse(25, 26),
+      rows: [row],
+    });
+    click(render(), "Next financial page");
+    await flush();
+    expect(priceCohortProps()).toBeUndefined();
+  });
+
+  it("clears the cohort on a failed page and ignores delayed completion after criteria change", async () => {
+    await selectedPriceFixture();
+    api.screenPersonalFinancials.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("provider_unavailable"),
+    );
+    click(render(), "Next financial page");
+    await flush();
+    expect(priceCohortProps()).toBeUndefined();
+    api.screenPersonalFinancials.mockResolvedValueOnce(
+      comparisonResponse(0, 26),
+    );
+    submit(render());
+    await flush();
+    click(render(), "Select CMP0 for price screen");
+    const pending = deferred<PersonalFinancialScreenResponseDto>();
+    api.screenPersonalFinancials.mockReturnValueOnce(pending.promise);
+    click(render(), "Next financial page");
+    const signal = api.screenPersonalFinancials.mock.calls.at(
+      -1,
+    )?.[1] as AbortSignal;
+    click(render(), "Reset financial criteria");
+    expect(signal.aborted).toBe(true);
+    pending.resolve(comparisonResponse(25, 26));
+    await flush();
+    expect(priceCohortProps()).toBeUndefined();
+    expect(text(render())).not.toContain("Select CMP25 for price screen");
+  });
+
+  it.each([
+    "rerun",
+    "refresh",
+    "criteria",
+    "starter",
+    "catalog",
+    "session",
+    "workspace",
+    "scope",
+  ])("retires a selected cohort and callbacks on %s", async (action) => {
+    const previous = await selectedPriceFixture();
+    const oldSelect = button(render(), "Select CMP1 for price screen").props
+      .onClick!;
+    if (action === "rerun") submit(render());
+    else if (action === "refresh") click(render(), "Refresh SEC data");
+    else if (action === "criteria") click(render(), "Reset financial criteria");
+    else if (action === "starter")
+      click(render(), "Apply Growth with cash after PP&E");
+    else if (action === "catalog")
+      props = {
+        ...props,
+        snapshot: { ...props.snapshot, snapshotSha256: sha("c") },
+      };
+    else if (action === "session") props = { ...props, disabled: true };
+    else if (action === "workspace")
+      props = { ...props, workspaceReady: false };
+    else change(render(), "Financial screen scope", "watchlist");
+    render();
+    oldSelect();
+    expect(priceCohortProps()).toBeUndefined();
+    expect(previous.onActivityStart()).toBeUndefined();
+    await flush();
+    expect(priceCohortProps()).toBeUndefined();
+  });
+
+  it("rejects stale source close callbacks and clears source focus on display or page change", async () => {
+    await selectedPriceFixture();
+    openSelectedSource();
+    const closeOld = button(render(), "Close selected source details").props
+      .onClick!;
+    openSelectedSource("Net income");
+    closeOld();
+    expect(text(selectedSourceInspector())).toContain(
+      "Net income source details",
+    );
+    change(render(), "Financial column view", "cashFlow");
+    expect(selectedSourceInspector()).toBeUndefined();
+    closeOld();
+    expect(selectedSourceInspector()).toBeUndefined();
+    openSelectedSource("Operating cash flow");
+    api.screenPersonalFinancials.mockResolvedValueOnce(
+      comparisonResponse(25, 26),
+    );
+    click(render(), "Next financial page");
+    expect(selectedSourceInspector()).toBeUndefined();
+    await flush();
+    expect(selectedSourceInspector()).toBeUndefined();
+    expect(priceCohortProps()).toBeDefined();
+  });
+
+  it("retains catalog-selected candidates on unrelated watchlist changes and uses the isolated Research fallback", async () => {
+    const previous = await selectedPriceFixture();
+    props = {
+      ...props,
+      watchlistVersion: 99,
+      watchlistAvailable: true,
+      watchlistMemberships: [],
+    };
+    render();
+    const current = priceCohortProps()!;
+    expect(current.contextKey).toBe(previous.contextKey);
+    current.onOpenResearch(
+      current.identities[0]!,
+      {} as HTMLButtonElement,
+      () => true,
+    );
+    expect(props.onOpenResearch).toHaveBeenCalledWith(current.identities[0]);
+  });
 });
