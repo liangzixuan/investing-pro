@@ -61,6 +61,20 @@ strings retain at most 64 characters. The entity scheme must be exactly
 Supported US-GAAP namespace dates are calendar-valid years 2009–2099. These
 checks establish bounded correspondence, not full taxonomy or DTS validation.
 
+Quoted namespace declarations support bounded ASCII prefixes and preserve their
+case-sensitive spelling.
+For example, a quoted `xmlns:Taxonomy` declaration can bind a fact name such as
+`Taxonomy:Revenues`; a differently cased `taxonomy:Revenues` remains unbound
+unless separately declared. Nested declarations apply only within their scope.
+This is one shared parsing rule for all issuers, with no ticker-specific aliases.
+
+The supported subset still refuses duplicate or case-colliding declaration
+attributes on one element, uppercase `XMLNS`, unquoted declarations, invalid
+reserved namespace bindings and mixed-case element prefixes. It preserves the
+existing canonical spelling checks for XBRL element and attribute names. Broader
+namespace support does not classify fiscal quarters or admit TTM values, and
+the document, candidate and output limits remain unchanged.
+
 ## Explain unresolved references
 
 Partial Cycle 3h-a12 adds **Why this value remains unresolved** when retained

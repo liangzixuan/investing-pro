@@ -16,7 +16,21 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: financial-result price and valuation screen
+## Immediate delivery: shared SEC namespace support
+
+Preserve exact namespace-prefix spelling in the common primary-filing parser,
+including mixed-case declarations used by QName-valued fields. Test the rule
+with generic adversarial fixtures and the retained Microsoft and Oracle filings;
+company names identify regression examples, never parser branches. Keep lexical
+scope, case-mismatch refusals and existing resource limits. See
+[filing context](./PERSONAL_SEC_FILING_CONTEXT.md).
+
+Complete parsing is a prerequisite for financial interpretation. This change
+does not admit standalone quarters, extend fiscal-calendar rules or calculate
+TTM. The preceding Moderna result was one offline filing proof, without product
+integration. Release acceptance for the shared parser change is pending.
+
+## Delivered: financial-result price and valuation screen
 
 Select up to twenty listings from SEC financial results across pages, then
 explicitly load and screen their dated prices and provider P/E and P/B. Keep the
@@ -29,7 +43,9 @@ changes. See [Price and valuation screening](./PERSONAL_PRICE_VALUATION_SCREEN.m
 This is a bounded selection from an already run financial screen. Market counts
 describe only the selected listings; provider ratios do not acquire a common SEC
 earnings period. Whole-universe joins and admitted TTM remain open. Release
-acceptance for this extension is pending.
+`0c1a4889aa322e8ea9d846b2c0c0e8bf93e529b5` passed isolated native and required
+hosted checks, synthetic Brave cases and limited configured-app checks. Live QA
+made no provider requests or owner-record writes.
 
 ## Delivered: watchlist price and valuation screen
 

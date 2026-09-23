@@ -189,29 +189,30 @@ class Document(HTMLParser):
         attribute_names, unquoted_attributes = raw_attributes(raw_start, raw_tag.end())
         if len(attribute_names) != len(attributes):
             fail()
-        attrs = {}
+        attrs, declarations = {}, []
         for (key, value), raw_key in zip(attributes, attribute_names):
             if key in attrs:
                 fail()
             if raw_key.lower() != key:
                 fail()
-            if (key == "xmlns" or key.startswith("xmlns:")) and (raw_key != key or raw_key in unquoted_attributes):
-                fail("invalid_namespace")
             attrs[key] = "" if value is None else value
+            if key == "xmlns" or key.startswith("xmlns:"):
+                # HTMLParser normalizes attribute names; QName values do not.
+                # Recover only the quoted declaration's exact raw prefix while
+                # keeping the normalized duplicate/collision guard above.
+                if raw_key in unquoted_attributes or (raw_key != "xmlns" and not raw_key.startswith("xmlns:")):
+                    fail("invalid_namespace")
+                prefix = raw_key.partition(":")[2]
+                if raw_key != "xmlns" and not ID.fullmatch(prefix):
+                    fail("invalid_namespace")
+                declarations.append((prefix, attrs[key]))
         inherited = self.stack[-1][1] if self.stack else {"xml": XML}
         namespaces = inherited
-        declarations = [(key, value) for key, value in attrs.items() if key == "xmlns" or key.startswith("xmlns:")]
         if declarations:
             namespaces = dict(inherited)
-            # HTMLParser lowercases names. Reject case-sensitive namespace declarations
-            # it cannot preserve, instead of silently conflating XML prefixes.
-            for prefix in re.findall(r"\bxmlns:([^\s=]+)\s*=", self.get_starttag_text() or ""):
-                if prefix != prefix.lower():
-                    fail("invalid_namespace")
-            for key, value in declarations:
-                prefix = key.partition(":")[2]
+            for prefix, value in declarations:
                 bounded(value)
-                if (prefix == "xml" and value != XML) or prefix == "xmlns" or value == "http://www.w3.org/2000/xmlns/" or (value == XML and prefix != "xml"):
+                if (prefix.lower() == "xml" and (prefix != "xml" or value != XML)) or prefix.lower() == "xmlns" or value == "http://www.w3.org/2000/xmlns/" or (value == XML and prefix != "xml") or (prefix and not value):
                     fail("invalid_namespace")
                 namespaces[prefix] = value
             if len(namespaces) > 256:

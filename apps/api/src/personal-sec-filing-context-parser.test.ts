@@ -810,6 +810,266 @@ function metadataDocument(
   );
 }
 
+describe("case-sensitive namespace declaration prefixes", () => {
+  it.each(["nonNumeric", "Taxonomy", "_Tax.V2-"])(
+    "accepts an unused quoted ASCII prefix %s without changing evidence",
+    async (prefix) => {
+      const html = document().replace(
+        "<html ",
+        `<html xmlns:${prefix}='urn:synthetic:unused' `,
+      );
+      expect(await parse(html)).toEqual(await parse(document()));
+    },
+  );
+
+  it("preserves exact mixed-case concept, transform and unit QName spellings", async () => {
+    const html = document(fact("1,000", 'format="Format:num-dot-decimal"'))
+      .replaceAll("us-gaap:", "Tax:")
+      .replace("xmlns:us-gaap=", "xmlns:Tax=")
+      .replace("xmlns:ixt=", "xmlns:Format=")
+      .replaceAll("iso4217:", "Money:")
+      .replace("xmlns:iso4217=", "xmlns:Money=");
+    const result = await parse(html, { value: "1000" });
+    expect(result.status).toBe("matched");
+    expect(result.candidates[0]).toMatchObject({
+      concept: {
+        raw: "Tax:Revenues",
+        namespace: "http://fasb.org/us-gaap/2025",
+        localName: "Revenues",
+      },
+      format: {
+        raw: "Format:num-dot-decimal",
+        namespace: "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+        localName: "num-dot-decimal",
+      },
+      unitMeasures: [
+        {
+          raw: "Money:USD",
+          namespace: "http://www.xbrl.org/2003/iso4217",
+          localName: "USD",
+        },
+      ],
+      rawText: "1,000",
+      value: "1000",
+    });
+  });
+
+  it("preserves exact dimension and member bindings without admitting dimensional facts", async () => {
+    const ctx = context(
+      "c",
+      "2025-01-01",
+      "2025-03-31",
+      "42",
+      '<xbrli:segment><xbrldi:explicitMember xmlns:Axis="urn:synthetic:axis" xmlns:Member="urn:synthetic:member" dimension="Axis:Product">Member:All</xbrldi:explicitMember></xbrli:segment>',
+    );
+    const result = await parse(document(fact(), ctx));
+    expect(result.reason).toBe("unsupported_dimensions");
+    expect(result.candidates[0]?.dimensions).toEqual([
+      {
+        kind: "explicit",
+        dimension: {
+          raw: "Axis:Product",
+          namespace: "urn:synthetic:axis",
+          localName: "Product",
+        },
+        member: {
+          raw: "Member:All",
+          namespace: "urn:synthetic:member",
+          localName: "All",
+        },
+        typedText: null,
+      },
+    ]);
+  });
+
+  it("retains an exact typed-dimension prefix while keeping typed scope unsupported", async () => {
+    const ctx = context(
+      "c",
+      "2025-01-01",
+      "2025-03-31",
+      "42",
+      '<xbrli:segment><xbrldi:typedMember xmlns:Axis="urn:synthetic:axis" dimension="Axis:Product"><span>Product text</span></xbrldi:typedMember></xbrli:segment>',
+    );
+    const result = await parse(document(fact(), ctx));
+    expect(result.reason).toBe("unsupported_dimensions");
+    expect(result.candidates[0]?.dimensions[0]).toMatchObject({
+      kind: "typed",
+      dimension: {
+        raw: "Axis:Product",
+        namespace: "urn:synthetic:axis",
+        localName: "Product",
+      },
+      typedText: "Product text",
+    });
+  });
+
+  it("resolves metadata concepts and date transforms with exact mixed-case prefixes", async () => {
+    const html = metadataDocument(
+      metadataFact(
+        "DocumentPeriodEndDate",
+        "March 31, 2025",
+        'format="DateFormat:date-monthname-day-year-en"',
+      ),
+    )
+      .replaceAll("dei:", "Reporting:")
+      .replace("xmlns:dei=", "xmlns:Reporting=")
+      .replace("xmlns:ixt=", "xmlns:DateFormat=");
+    const result = await parse(html);
+    expect(result.status).toBe("matched");
+    expect(result.reportingMetadata.observations[0]).toMatchObject({
+      concept: {
+        raw: "Reporting:DocumentPeriodEndDate",
+        namespace: PERSONAL_SEC_FILING_DEI_NAMESPACES[1],
+        localName: "DocumentPeriodEndDate",
+      },
+      format: {
+        raw: "DateFormat:date-monthname-day-year-en",
+        namespace: "http://www.xbrl.org/inlineXBRL/transformation/2020-02-12",
+      },
+      value: "2025-03-31",
+    });
+  });
+
+  it.each(["concept", "format", "unit", "metadata"] as const)(
+    "keeps a wrong-case %s QName prefix unbound",
+    async (kind) => {
+      let html = document();
+      if (kind === "concept")
+        html = html.replace("xmlns:us-gaap=", "xmlns:US-GAAP=");
+      if (kind === "format")
+        html = document(fact("100", 'format="ixt:num-dot-decimal"')).replace(
+          "xmlns:ixt=",
+          "xmlns:Ixt=",
+        );
+      if (kind === "unit")
+        html = html.replace("xmlns:iso4217=", "xmlns:ISO4217=");
+      if (kind === "metadata")
+        html = metadataDocument().replace("xmlns:dei=", "xmlns:DEI=");
+      const result = await parse(html);
+      if (kind === "metadata") {
+        expect(result.status).toBe("matched");
+        expect(
+          result.reportingMetadata.observations[0]?.concept.namespace,
+        ).toBeNull();
+        expect(result.reportingMetadata.observations[0]?.issues).toContain(
+          "invalid_namespace",
+        );
+      } else {
+        expect(result.status).toBe("unsupported");
+        const candidate = result.candidates[0];
+        expect(
+          kind === "concept"
+            ? candidate?.concept.namespace
+            : kind === "format"
+              ? candidate?.format?.namespace
+              : candidate?.unitMeasures[0]?.namespace,
+        ).toBeNull();
+        expect(result.correspondingCandidateLocators).toEqual([]);
+      }
+    },
+  );
+
+  it("does not case-fold dimension or member QName values", async () => {
+    const ctx = context(
+      "c",
+      "2025-01-01",
+      "2025-03-31",
+      "42",
+      '<xbrli:segment><xbrldi:explicitMember xmlns:Axis="urn:axis" xmlns:Member="urn:member" dimension="axis:Product">member:All</xbrldi:explicitMember></xbrli:segment>',
+    );
+    const result = await parse(document(fact(), ctx));
+    expect(result.reason).toBe("unsupported_dimensions");
+    expect(result.candidates[0]?.dimensions[0]?.dimension.namespace).toBeNull();
+    expect(result.candidates[0]?.dimensions[0]?.member?.namespace).toBeNull();
+  });
+
+  it("restores exact parent bindings after a nested rebind", async () => {
+    const scopedFact = fact().replace("us-gaap:", "Tax:");
+    const html = document(
+      scopedFact +
+        `<div xmlns:Tax="urn:synthetic:other">${scopedFact}</div>` +
+        scopedFact,
+    ).replace("xmlns:us-gaap=", "xmlns:Tax=");
+    const result = await parse(html);
+    expect(result.reason).toBe("invalid_namespace");
+    expect(
+      result.candidates.map((candidate) => candidate.concept.namespace),
+    ).toEqual([
+      "http://fasb.org/us-gaap/2025",
+      "urn:synthetic:other",
+      "http://fasb.org/us-gaap/2025",
+    ]);
+    expect(result.correspondingCandidateLocators).toHaveLength(2);
+  });
+
+  it("keeps differently cased nested bindings distinct", async () => {
+    const scopedFact = fact().replace("us-gaap:", "Tax:");
+    const html = document(
+      `<div xmlns:tax="urn:synthetic:other">${scopedFact}</div>` + scopedFact,
+    ).replace("xmlns:us-gaap=", "xmlns:Tax=");
+    const result = await parse(html);
+    expect(result.status).toBe("matched");
+    expect(result.candidates).toHaveLength(2);
+    expect(
+      result.candidates.every(
+        (candidate) =>
+          candidate.concept.namespace === "http://fasb.org/us-gaap/2025",
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    'xmlns:Tax="urn:first" xmlns:Tax="urn:second"',
+    'xmlns:Tax="urn:first" xmlns:tax="urn:second"',
+    'xmlns:tax="urn:first" xmlns:TAX="urn:second"',
+  ])("refuses normalized same-tag collisions: %s", async (declarations) => {
+    expect(
+      await parse(document().replace("<html ", `<html ${declarations} `)),
+    ).toEqual(emptyResult("invalid_document"));
+  });
+
+  it.each([
+    'xmlns:="urn:test"',
+    'xmlns:9Tax="urn:test"',
+    'xmlns:Tax:More="urn:test"',
+    'xmlns:T\u00e1x="urn:test"',
+    'XMLNS:Tax="urn:test"',
+    'Xmlns:Tax="urn:test"',
+    "xmlns:Tax=urn:test",
+    "xmlns:Tax",
+    'xmlns:Tax=""',
+    'xmlns:xml="urn:test"',
+    'xmlns:XML="http://www.w3.org/XML/1998/namespace"',
+    'xmlns:Xml="urn:test"',
+    'xmlns:XMLNS="urn:test"',
+    'xmlns:other="http://www.w3.org/XML/1998/namespace"',
+    'xmlns:other="http://www.w3.org/2000/xmlns/"',
+    `xmlns:${"T".repeat(257)}="urn:test"`,
+  ])("refuses unsupported declaration grammar: %s", async (declaration) => {
+    expect(
+      await parse(document().replace("<html ", `<html ${declaration} `)),
+    ).toEqual(emptyResult("invalid_namespace"));
+  });
+
+  it("preserves the exact xml binding and default namespace undeclaration", async () => {
+    const html = document(
+      `<div xmlns="" xmlns:xml="http://www.w3.org/XML/1998/namespace">${fact()}</div>`,
+    );
+    expect((await parse(html)).status).toBe("matched");
+  });
+
+  it.each([
+    '<IX:nonFraction xmlns:IX="http://www.xbrl.org/2013/inlineXBRL" name="us-gaap:Revenues" contextRef="c" unitRef="u" decimals="0">100</IX:nonFraction>',
+    fact().replace("</ix:nonFraction>", "</IX:nonFraction>"),
+    fact().replace("</ix:nonFraction>", "</other:nonFraction>"),
+  ])("does not relax element prefix start/end matching: %s", async (row) => {
+    const result = await parse(document(row));
+    expect(result.status).toBe("unsupported");
+    expect(["invalid_namespace", "invalid_document"]).toContain(result.reason);
+    expect(result.candidates).toEqual([]);
+  });
+});
+
 describe("filing DEI reporting metadata real isolated worker", () => {
   const dateFormat = 'format="ixt:date-monthname-day-year-en"';
 
