@@ -267,7 +267,7 @@ class Document(HTMLParser):
                 fail("context_limit" if is_context else "unit_limit")
             collection[identifier] = node
         if is_fact:
-            if len(self.facts) >= 100:
+            if len(self.facts) >= 512:
                 fail("candidate_limit")
             self.facts.append(node)
         if is_metadata and self.metadata_limit is None:
@@ -665,7 +665,7 @@ def main():
     output = json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")) + "\n"
     if len(output.encode("utf-8")) > OUTPUT_BYTES:
         output = json.dumps(global_failure("output_limit"), separators=(",", ":")) + "\n"
-    sys.stdout.write(output)
+    sys.stdout.buffer.write(output.encode("utf-8"))
 
 
 if __name__ == "__main__":

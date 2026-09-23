@@ -61,6 +61,7 @@ const outcome = {
     "No corresponding fact found in the supported projection",
   unsupported: "Correspondence could not be established",
 } as const;
+const inspectionPageSize = 10;
 
 export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
   const {
@@ -80,6 +81,9 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
   const [isError, setIsError] = useState(false);
   const [page, setPage] = useState(0);
   const [candidateNavigation, setCandidateNavigation] = useState(0);
+  const [explanationPages, setExplanationPages] = useState<
+    ReadonlyMap<string, number>
+  >(new Map());
   const context = JSON.stringify([
     catalogSnapshotSha256,
     selection,
@@ -158,6 +162,7 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
     setPage(0);
     pendingCandidate.current = null;
     setCandidateNavigation(0);
+    setExplanationPages(new Map());
     setMessage(nextMessage);
     setIsError(false);
   }
@@ -248,25 +253,41 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
   const inspection = currentContext ? (result?.inspection ?? null) : null;
   const isRunning = currentContext && running;
   const candidateViewEpoch = epoch.current;
+  function canNavigate() {
+    return (
+      mounted.current &&
+      activeContext.current === context &&
+      epoch.current === candidateViewEpoch &&
+      currentContext &&
+      inspection?.status === "available"
+    );
+  }
   function inspectCandidate(locator: string) {
-    if (
-      activeContext.current !== context ||
-      epoch.current !== candidateViewEpoch ||
-      !currentContext ||
-      inspection?.status !== "available"
-    )
-      return;
+    if (!canNavigate() || inspection?.status !== "available") return;
     const index = inspection.analysis.candidates.findIndex(
       (row) => row.locator === locator,
     );
     if (index < 0) return;
     pendingCandidate.current = locator;
-    setPage(Math.floor(index / 10));
+    setPage(Math.floor(index / inspectionPageSize));
     setCandidateNavigation((current) => current + 1);
   }
   function changeCandidatePage(nextPage: number) {
+    if (!canNavigate()) return;
     pendingCandidate.current = null;
     setPage(nextPage);
+  }
+  function changeExplanationPage(key: string, nextPage: number) {
+    if (!canNavigate()) return;
+    pendingCandidate.current = null;
+    setExplanationPages((previous) =>
+      key === "groups"
+        ? new Map([
+            ["groups", nextPage],
+            ["excluded", previous.get("excluded") ?? 0],
+          ])
+        : new Map(previous).set(key, nextPage),
+    );
   }
   function registerCandidateDetails(
     locator: string,
@@ -380,6 +401,8 @@ export function PersonalSecFilingContext(props: PersonalSecFilingContextProps) {
           onPageChange={changeCandidatePage}
           onInspectCandidate={inspectCandidate}
           onCandidateDetails={registerCandidateDetails}
+          explanationPages={explanationPages}
+          onExplanationPageChange={changeExplanationPage}
         />
       )}
       <p className="sec-quarterly-caveat">
@@ -399,6 +422,8 @@ function InspectionResult({
   onPageChange,
   onInspectCandidate,
   onCandidateDetails,
+  explanationPages,
+  onExplanationPageChange,
 }: {
   readonly inspection: Extract<
     PersonalSecFilingContextInspectionDto,
@@ -411,9 +436,11 @@ function InspectionResult({
     locator: string,
     element: HTMLDetailsElement | null,
   ) => void;
+  readonly explanationPages: ReadonlyMap<string, number>;
+  readonly onExplanationPageChange: (key: string, page: number) => void;
 }) {
   const { analysis, observation } = inspection;
-  const size = 10;
+  const size = inspectionPageSize;
   const rows = analysis.candidates.slice(page * size, (page + 1) * size);
   return (
     <>
@@ -440,6 +467,8 @@ function InspectionResult({
         <UnresolvedValueExplanation
           analysis={analysis}
           onInspectCandidate={onInspectCandidate}
+          pages={explanationPages}
+          onPageChange={onExplanationPageChange}
         />
       ) : null}
       <ReportingMetadata
@@ -561,36 +590,13 @@ function InspectionResult({
           </table>
         </div>
       )}
-      {analysis.candidates.length > 0 ? (
-        <div className="sec-quarterly-actions">
-          <p role="status">
-            {page * size + 1} –{" "}
-            {Math.min((page + 1) * size, analysis.candidates.length)} of{" "}
-            {analysis.candidates.length} filing candidates
-          </p>
-          {analysis.candidates.length > size ? (
-            <nav
-              aria-label="Filing candidate pages"
-              className="sec-quarterly-actions"
-            >
-              <button
-                type="button"
-                disabled={page === 0}
-                onClick={() => onPageChange(Math.max(0, page - 1))}
-              >
-                Previous filing candidates
-              </button>
-              <button
-                type="button"
-                disabled={(page + 1) * size >= analysis.candidates.length}
-                onClick={() => onPageChange(page + 1)}
-              >
-                Next filing candidates
-              </button>
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
+      <InspectionPages
+        count={analysis.candidates.length}
+        page={page}
+        label="filing candidates"
+        navigationLabel="Filing candidate pages"
+        onPageChange={onPageChange}
+      />
     </>
   );
 }
@@ -658,12 +664,16 @@ function scopeSummary(candidate: PersonalSecFilingContextCandidateDto): string {
 function UnresolvedValueExplanation({
   analysis,
   onInspectCandidate,
+  pages,
+  onPageChange,
 }: {
   readonly analysis: Extract<
     PersonalSecFilingContextInspectionDto,
     { status: "available" }
   >["analysis"];
   readonly onInspectCandidate: (locator: string) => void;
+  readonly pages: ReadonlyMap<string, number>;
+  readonly onPageChange: (key: string, page: number) => void;
 }) {
   const excluded = analysis.candidates.filter(
     (row) =>
@@ -693,6 +703,8 @@ function UnresolvedValueExplanation({
   const scopeCounts = new Map<string, number>();
   for (const group of groups.values())
     scopeCounts.set(group.scope, (scopeCounts.get(group.scope) ?? 0) + 1);
+  const groupPage = pages.get("groups") ?? 0;
+  const excludedPage = pages.get("excluded") ?? 0;
   return (
     <section
       className="sec-filing-explanation"
@@ -709,28 +721,38 @@ function UnresolvedValueExplanation({
           ? `${analysis.correspondingCandidateLocators.length} corresponding ${analysis.correspondingCandidateLocators.length === 1 ? "reference is" : "references are"} also retained; a clean candidate cannot establish a match while relevant uncertainty remains.`
           : "No corresponding reference resolves these issues; a clean candidate cannot establish a match while relevant uncertainty remains."}
       </p>
-      {[...groups].map(([key, group]) => (
-        <details key={key} className="sec-quarterly-row-details">
-          <summary>
-            {group.issues.map((issue) => issueExplanation[issue]).join("; ")} ·{" "}
-            {group.scope}
-            {(scopeCounts.get(group.scope) ?? 0) > 1
-              ? ` · First reference ${group.rows[0]?.locator ?? "unresolved"}`
-              : null}{" "}
-            · {group.rows.length}{" "}
-            {group.rows.length === 1 ? "reference" : "references"}
-          </summary>
-          <ul>
-            {group.rows.map((row) => (
-              <ExplanationReference
-                key={row.locator}
-                candidate={row}
-                onInspectCandidate={onInspectCandidate}
-              />
-            ))}
-          </ul>
-        </details>
-      ))}
+      {[...groups]
+        .slice(
+          groupPage * inspectionPageSize,
+          (groupPage + 1) * inspectionPageSize,
+        )
+        .map(([key, group], index) => (
+          <details key={key} className="sec-quarterly-row-details">
+            <summary>
+              {group.issues.map((issue) => issueExplanation[issue]).join("; ")}{" "}
+              · {group.scope}
+              {(scopeCounts.get(group.scope) ?? 0) > 1
+                ? ` · First reference ${group.rows[0]?.locator ?? "unresolved"}`
+                : null}{" "}
+              · {group.rows.length}{" "}
+              {group.rows.length === 1 ? "reference" : "references"}
+            </summary>
+            <ExplanationReferences
+              rows={group.rows}
+              page={pages.get(key) ?? 0}
+              label={`unresolved group ${groupPage * inspectionPageSize + index + 1} references`}
+              onPageChange={(nextPage) => onPageChange(key, nextPage)}
+              onInspectCandidate={onInspectCandidate}
+            />
+          </details>
+        ))}
+      <InspectionPages
+        count={groups.size}
+        page={groupPage}
+        label="unresolved groups"
+        navigationLabel="Unresolved group pages"
+        onPageChange={(nextPage) => onPageChange("groups", nextPage)}
+      />
       {excluded.length > 0 ? (
         <details className="sec-quarterly-row-details">
           <summary>
@@ -741,18 +763,110 @@ function UnresolvedValueExplanation({
             period mismatch. Their other issues remain listed; exclusion does
             not verify their context scope.
           </p>
-          <ul>
-            {excluded.map((row) => (
-              <ExplanationReference
-                key={row.locator}
-                candidate={row}
-                onInspectCandidate={onInspectCandidate}
-              />
-            ))}
-          </ul>
+          <ExplanationReferences
+            rows={excluded}
+            page={excludedPage}
+            label="excluded references"
+            onPageChange={(nextPage) => onPageChange("excluded", nextPage)}
+            onInspectCandidate={onInspectCandidate}
+          />
         </details>
       ) : null}
     </section>
+  );
+}
+
+function InspectionPages({
+  count,
+  page,
+  label,
+  navigationLabel,
+  onPageChange,
+}: {
+  readonly count: number;
+  readonly page: number;
+  readonly label: string;
+  readonly navigationLabel: string;
+  readonly onPageChange: (page: number) => void;
+}) {
+  if (count === 0) return null;
+  const last = Math.ceil(count / inspectionPageSize) - 1;
+  return (
+    <div className="sec-quarterly-actions">
+      <p role="status">
+        {page * inspectionPageSize + 1} –{" "}
+        {Math.min((page + 1) * inspectionPageSize, count)} of {count} {label}
+      </p>
+      {last > 0 ? (
+        <nav aria-label={navigationLabel} className="sec-quarterly-actions">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => onPageChange(0)}
+          >
+            First {label}
+          </button>
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => onPageChange(Math.max(0, page - 1))}
+          >
+            Previous {label}
+          </button>
+          <button
+            type="button"
+            disabled={page === last}
+            onClick={() => onPageChange(Math.min(last, page + 1))}
+          >
+            Next {label}
+          </button>
+          <button
+            type="button"
+            disabled={page === last}
+            onClick={() => onPageChange(last)}
+          >
+            Last {label}
+          </button>
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+
+function ExplanationReferences({
+  rows,
+  page,
+  label,
+  onPageChange,
+  onInspectCandidate,
+}: {
+  readonly rows: readonly PersonalSecFilingContextCandidateDto[];
+  readonly page: number;
+  readonly label: string;
+  readonly onPageChange: (page: number) => void;
+  readonly onInspectCandidate: (locator: string) => void;
+}) {
+  return (
+    <>
+      <ul>
+        {rows
+          .slice(page * inspectionPageSize, (page + 1) * inspectionPageSize)
+          .map((row) => (
+            <ExplanationReference
+              key={row.locator}
+              candidate={row}
+              onInspectCandidate={onInspectCandidate}
+            />
+          ))}
+      </ul>
+      <InspectionPages
+        count={rows.length}
+        page={page}
+        label={label}
+        navigationLabel={`${label} pages`}
+        onPageChange={onPageChange}
+      />
+    </>
   );
 }
 

@@ -55,6 +55,208 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalSecFilingContext", () => {
+  it.each(["one group", "many groups", "exclusions"] as const)(
+    "bounds the rendered reference controls for 120 references in %s",
+    async (kind) => {
+      const rows = Array.from({ length: 120 }, (_, index) => {
+        const row = scopeCandidate(
+          index + 2,
+          [
+            kind === "exclusions"
+              ? "period_mismatch"
+              : "unsupported_dimensions",
+          ],
+          kind === "many groups" ? "typed" : undefined,
+        );
+        return kind === "many groups"
+          ? {
+              ...row,
+              dimensions: row.dimensions.map((dimension) => ({
+                ...dimension,
+                typedText: `Scope ${index}`,
+              })),
+            }
+          : row;
+      });
+      api.fetchPersonalSecFilingContext.mockResolvedValue(
+        scopeResponse(
+          kind === "exclusions"
+            ? [scopeCandidate(122, ["unsupported_dimensions"]), ...rows]
+            : rows,
+        ),
+      );
+      render();
+      await flush();
+      const view = render();
+      expect(
+        elements(view).filter(
+          (element) =>
+            element.type === "button" &&
+            text(element).startsWith("Inspect reference "),
+        ).length,
+      ).toBeLessThanOrEqual(11);
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+    },
+  );
+  it.each(["one group", "many groups", "exclusions"] as const)(
+    "reaches the final retained candidate through paged %s and focuses it once",
+    async (kind) => {
+      api.fetchPersonalSecFilingContext.mockResolvedValue(
+        largeScopeResponse(kind),
+      );
+      render();
+      await flush();
+      if (kind === "one group")
+        click(render(), "Last unresolved group 1 references");
+      if (kind === "many groups") click(render(), "Last unresolved groups");
+      if (kind === "exclusions") click(render(), "Last excluded references");
+      const end = render();
+      expect(
+        button(end, "Inspect reference /elements/512").props.disabled,
+      ).not.toBe(true);
+      expect(text(end)).toContain("512 retained candidates");
+      expect(text(end)).toContain("Correspondence could not be established");
+      click(end, "Inspect reference /elements/512");
+      const last = render(false);
+      expect(text(last)).toContain("511 – 512 of 512 filing candidates");
+      const summary = { focus: vi.fn(), scrollIntoView: vi.fn() };
+      const target = { open: false, querySelector: vi.fn(() => summary) };
+      const details = elements(last).find(
+        (element) =>
+          element.type === "details" &&
+          typeof element.props.ref === "function" &&
+          text(element).includes("Document element /elements/512"),
+      );
+      expect(details).toBeDefined();
+      (details!.props.ref as (value: unknown) => void)(target);
+      harness.effects();
+      expect(target.open).toBe(true);
+      expect(summary.focus).toHaveBeenCalledOnce();
+      expect(summary.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      target.open = false;
+      click(render(), "First filing candidates");
+      expect(text(render())).toContain("1 – 10 of 512 filing candidates");
+      click(render(), "Last filing candidates");
+      expect(text(render())).toContain("511 – 512 of 512 filing candidates");
+      expect(target.open).toBe(false);
+      expect(summary.focus).toHaveBeenCalledOnce();
+      expect(button(render(), "Next filing candidates").props.disabled).toBe(
+        true,
+      );
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+    },
+  );
+  it("bounds every visible group and resets its reference page when changing group pages", async () => {
+    const rows = Array.from({ length: 121 }, (_, index) => {
+      const row = scopeCandidate(
+        index + 2,
+        ["unsupported_dimensions"],
+        "typed",
+      );
+      return {
+        ...row,
+        dimensions: row.dimensions.map((dimension) => ({
+          ...dimension,
+          typedText: `Group ${Math.floor(index / 11)}`,
+        })),
+      };
+    });
+    api.fetchPersonalSecFilingContext.mockResolvedValue(scopeResponse(rows));
+    render();
+    await flush();
+    expect(
+      elements(render()).filter(
+        (element) =>
+          element.type === "button" &&
+          text(element).startsWith("Inspect reference "),
+      ),
+    ).toHaveLength(100);
+    expect(text(render())).toContain("1 – 10 of 11 unresolved groups");
+    click(render(), "Last unresolved group 1 references");
+    expect(text(render())).toContain(
+      "11 – 11 of 11 unresolved group 1 references",
+    );
+    click(render(), "Next unresolved groups");
+    expect(text(render())).toContain("11 – 11 of 11 unresolved groups");
+    expect(button(render(), "Next unresolved groups").props.disabled).toBe(
+      true,
+    );
+    click(render(), "Previous unresolved groups");
+    expect(text(render())).toContain(
+      "1 – 10 of 11 unresolved group 1 references",
+    );
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledOnce();
+  });
+  it.each([
+    "observation",
+    "catalog",
+    "session",
+    "source generation",
+    "request token",
+    "unmount",
+  ])(
+    "retires large-list page and jump handlers after %s changes",
+    async (kind) => {
+      api.fetchPersonalSecFilingContext.mockResolvedValue(
+        largeScopeResponse("many groups"),
+      );
+      render();
+      await flush();
+      const old = render();
+      if (kind === "observation")
+        props = { ...props, observation: { ...observation(), value: "50" } };
+      if (kind === "catalog")
+        props = { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` };
+      if (kind === "session") props = { ...props, enabled: false };
+      if (kind === "source generation")
+        props = { ...props, responseGeneration: 2 };
+      if (kind === "request token") props = { ...props, requestToken: 2 };
+      if (kind === "unmount") harness.unmount();
+      else render(false);
+      click(old, "Last unresolved groups");
+      click(old, "Last filing candidates");
+      click(old, "Inspect reference /elements/2");
+      if (kind !== "unmount") {
+        harness.effects();
+        await flush();
+        expect(text(render())).not.toContain("511 – 512");
+        expect(text(render())).not.toContain(
+          "511 – 511 of 511 unresolved groups",
+        );
+      }
+      expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledTimes(
+        kind === "request token" ? 2 : 1,
+      );
+    },
+  );
+  it("resets large reference pages on refresh and ignores retained handlers across effect replay", async () => {
+    api.fetchPersonalSecFilingContext.mockResolvedValue(
+      largeScopeResponse("one group"),
+    );
+    render();
+    await flush();
+    click(render(), "Last unresolved group 1 references");
+    const old = render();
+    expect(text(old)).toContain(
+      "511 – 511 of 511 unresolved group 1 references",
+    );
+    click(old, "Refresh filing inspection");
+    click(old, "Last unresolved group 1 references");
+    await flush();
+    expect(text(render())).toContain(
+      "1 – 10 of 511 unresolved group 1 references",
+    );
+    const beforeReplay = render();
+    harness.strictReplay();
+    click(beforeReplay, "Last unresolved group 1 references");
+    click(beforeReplay, "Inspect reference /elements/2");
+    await flush();
+    expect(text(render())).toContain(
+      "1 – 10 of 511 unresolved group 1 references",
+    );
+    expect(text(render())).toContain("1 – 10 of 512 filing candidates");
+    expect(api.fetchPersonalSecFilingContext).toHaveBeenCalledTimes(3);
+  });
   it("shows all four declared fields and references separately from the actual fact period", async () => {
     render();
     await flush();
@@ -733,6 +935,7 @@ describe("PersonalSecFilingContext", () => {
     );
     render();
     await flush();
+    click(render(), "Last unresolved group 1 references");
     click(render(), "Inspect reference /elements/12");
     const later = render(false);
     expect(text(later)).toContain("11 – 12 of 12 filing candidates");
@@ -1332,6 +1535,55 @@ function scopeResponse(
         reason: blocker?.issues[0] ?? "unsupported_dimensions",
         candidates: [candidate(), ...rows],
         correspondingCandidateLocators: [candidate().locator],
+      },
+    },
+  };
+}
+
+function largeScopeResponse(kind: "one group" | "many groups" | "exclusions") {
+  const value = scopeResponse(
+    Array.from({ length: 511 }, (_, index) => {
+      const row = scopeCandidate(
+        index + 2,
+        [
+          kind === "exclusions" && index > 0
+            ? "period_mismatch"
+            : "unsupported_dimensions",
+        ],
+        kind === "many groups" ? "typed" : undefined,
+      );
+      return kind === "many groups"
+        ? {
+            ...row,
+            dimensions: row.dimensions.map((dimension) => ({
+              ...dimension,
+              typedText: `Group ${index}`,
+            })),
+          }
+        : kind === "exclusions" && index > 0
+          ? { ...row, startDate: "2025-04-01", endDate: "2025-06-30" }
+          : row;
+    }),
+  );
+  if (value.inspection.status !== "available") throw new Error();
+  const metadata = value.inspection.analysis.reportingMetadata;
+  return {
+    ...value,
+    inspection: {
+      ...value.inspection,
+      analysis: {
+        ...value.inspection.analysis,
+        reportingMetadata: {
+          ...metadata,
+          observations: metadata.observations.map((row, index) => ({
+            ...row,
+            locator: `/elements/${2000 + index}`,
+          })),
+          fields: metadata.fields.map((field, index) => ({
+            ...field,
+            observationLocators: [`/elements/${2000 + index}`],
+          })),
+        },
       },
     },
   };

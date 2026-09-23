@@ -16,7 +16,22 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: shared SEC namespace support
+## Immediate delivery: larger complete filing-context inspections
+
+Raise the shared selected-concept ceiling to 512 candidates while retaining the
+1 MiB worker-output limit, ten-second worker deadline and 32 MiB document limit.
+These remain independent bounds: a document below the count ceiling can still
+exceed the byte or time budget. Refuse incomplete results rather than dropping
+late, hidden, dimensioned or comparative references to fit.
+
+Verify retained AMGN and GILD filings through the production worker, API wrapper
+and strict browser decoder, with MSFT and ORCL as controls. Measure output bytes
+and elapsed worker lifetime. Keep independent XML and Company Facts comparison
+separate from correspondence status. Page large reference lists without changing
+source membership, exact source jumps or selection/lifetime guards. Release
+acceptance is pending. See [filing context](./PERSONAL_SEC_FILING_CONTEXT.md).
+
+## Delivered: shared SEC namespace support
 
 Preserve exact namespace-prefix spelling in the common primary-filing parser,
 including mixed-case declarations used by QName-valued fields. Test the rule
@@ -28,7 +43,10 @@ scope, case-mismatch refusals and existing resource limits. See
 Complete parsing is a prerequisite for financial interpretation. This change
 does not admit standalone quarters, extend fiscal-calendar rules or calculate
 TTM. The preceding Moderna result was one offline filing proof, without product
-integration. Release acceptance for the shared parser change is pending.
+integration. Release `42b2b6d3f57fd85d440c5bc99e0053fa329fd917` passed native and
+all five required hosted jobs. Retained Microsoft and Oracle checks reconciled
+146 facts, 565 contexts, 13 units, eight metadata records and twelve Company Facts
+records. These examples establish the tested shared rule, not universal coverage.
 
 ## Delivered: financial-result price and valuation screen
 

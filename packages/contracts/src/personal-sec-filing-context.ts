@@ -26,7 +26,7 @@ export const PERSONAL_SEC_FILING_CONTEXT_LIMITS = Object.freeze({
   attributesPerElement: 64,
   contexts: 20_000,
   units: 5_000,
-  candidates: 100,
+  candidates: 512,
   dimensionsPerContext: 32,
   unitMeasures: 32,
   identifierCharacters: 256,

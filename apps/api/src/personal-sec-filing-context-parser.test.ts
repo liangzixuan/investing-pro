@@ -733,12 +733,98 @@ describe("selected SEC filing context real isolated worker", () => {
     }
   });
 
-  it("accepts the candidate cap and rejects the next row without any prefix", async () => {
-    expect(
-      (await parse(document(fact().repeat(LIMITS.candidates)))).candidates,
-    ).toHaveLength(LIMITS.candidates);
-    expect(await parse(document(fact().repeat(LIMITS.candidates + 1)))).toEqual(
+  it.each([100, 101, 512])(
+    "retains all %i selected facts and their corresponding locators in source order",
+    async (count) => {
+      const ids = Array.from({ length: count }, (_, index) => `fact-${index}`);
+      const result = await parse(
+        document(ids.map((id) => fact("100", `id="${id}"`)).join("")),
+      );
+      expect(result.status).toBe("matched");
+      expect(result.candidates.map((row) => row.factId)).toEqual(ids);
+      expect(result.correspondingCandidateLocators).toEqual(
+        result.candidates.map((row) => row.locator),
+      );
+      expect(new Set(result.correspondingCandidateLocators).size).toBe(count);
+      expect(Object.isFrozen(result.candidates)).toBe(true);
+      expect(Object.isFrozen(result.candidates[count - 1])).toBe(true);
+    },
+  );
+
+  it("rejects the 513th selected fact without retaining any prefix", async () => {
+    expect(LIMITS.candidates).toBe(512);
+    expect(await parse(document(fact().repeat(513)))).toEqual(
       emptyResult("candidate_limit"),
+    );
+  });
+
+  it("retains a conflicting value in the 512th row instead of returning the earlier match", async () => {
+    const result = await parse(
+      document(
+        fact().repeat(511) +
+          fact("100.0000000000000000001", 'id="late-conflict"'),
+      ),
+    );
+    expect(result.status).toBe("ambiguous");
+    expect(result.candidates).toHaveLength(512);
+    expect(result.correspondingCandidateLocators).toHaveLength(512);
+    expect(result.candidates[511]).toMatchObject({
+      factId: "late-conflict",
+      value: "100.0000000000000000001",
+      issues: [],
+    });
+  });
+
+  it("rejects malformed markup after 512 otherwise valid rows without a partial result", async () => {
+    expect(await parse(document(fact().repeat(512) + "<div></span>"))).toEqual(
+      emptyResult("invalid_document"),
+    );
+  });
+
+  it("enforces the global byte cap below the candidate ceiling when dimensions expand each row", async () => {
+    const namespace = `urn:${"a".repeat(236)}`;
+    const segment = `<xbrli:segment xmlns:axis="${namespace}">${Array.from({ length: 32 }, (_, index) => `<xbrldi:explicitMember dimension="axis:Axis${index}">axis:Member${index}</xbrldi:explicitMember>`).join("")}</xbrli:segment>`;
+    const contexts = context("c", undefined, undefined, undefined, segment);
+    const single = await parse(document(fact(), contexts));
+    expect(single.candidates[0]?.dimensions).toHaveLength(32);
+    expect(single.candidates[0]?.dimensions[31]?.dimension.namespace).toBe(
+      namespace,
+    );
+    expect(single.reason).toBe("unsupported_dimensions");
+    expect(await parse(document(fact().repeat(128), contexts))).toEqual(
+      emptyResult("output_limit"),
+    );
+  });
+
+  it("keeps 511 facts and forty metadata observations at the exact total byte cap, then fails empty one byte over", async () => {
+    const metadata = metadataFact().repeat(40);
+    const makeDocument = (rows: string) =>
+      metadataDocument(metadata).replace(fact(), rows);
+    const baseline = await parse(makeDocument(fact().repeat(511)));
+    expect(baseline.candidates).toHaveLength(511);
+    expect(baseline.reportingMetadata.observations).toHaveLength(40);
+    // These fixtures are ASCII, so JSON.stringify and the worker's ASCII encoding
+    // have the same byte length. The worker appends one newline.
+    const remaining =
+      LIMITS.workerOutputBytes -
+      1 -
+      Buffer.byteLength(JSON.stringify(baseline), "utf8");
+    const perRow = Math.floor(remaining / 511);
+    const remainder = remaining % 511;
+    expect(perRow).toBeGreaterThan(0);
+    expect(perRow + 4).toBeLessThanOrEqual(LIMITS.rawTextCharacters);
+    const rows = Array.from({ length: 511 }, (_, index) =>
+      fact(" ".repeat(perRow + (index < remainder ? 1 : 0)) + "100"),
+    ).join("");
+    const exact = await parse(makeDocument(rows));
+    expect(exact.status).toBe("matched");
+    expect(exact.candidates).toHaveLength(511);
+    expect(exact.reportingMetadata.observations).toHaveLength(40);
+    expect(Buffer.byteLength(JSON.stringify(exact), "utf8") + 1).toBe(
+      LIMITS.workerOutputBytes,
+    );
+    expect(await parse(makeDocument(rows.replace(">", "> ")))).toEqual(
+      emptyResult("output_limit"),
     );
   });
 
@@ -1646,6 +1732,14 @@ describe("asynchronous filing worker boundary", () => {
     cik: "0000000042",
     selection,
   };
+
+  it("rejects an otherwise consistent 513-row projection from the child process", async () => {
+    const valid = await parse();
+    const script = `process.stdin.resume();process.stdin.on("end",()=>{const result=${JSON.stringify(valid)};const first=result.candidates[0];result.candidates=Array.from({length:513},(_,index)=>({...first,locator:"/elements/"+(1000+index)}));result.correspondingCandidateLocators=result.candidates.map(row=>row.locator);process.stdout.write(JSON.stringify(result))})`;
+    await expect(
+      alternateWorker(script).value.parse(input),
+    ).rejects.toMatchObject({ code: "invalid_output" });
+  });
 
   it.each([
     ["wrong normalized date", 'row.value="2026-07-01";field.value=row.value'],

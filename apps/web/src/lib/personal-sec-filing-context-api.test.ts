@@ -660,6 +660,180 @@ function patchMetadataRow(
 }
 
 describe("filing-context browser decoder", () => {
+  it.each([100, 101, 512])(
+    "retains all %i candidates and exact corresponding references",
+    async (count) => {
+      const value = largeCandidateResponse(count);
+      fetchMock.mockResolvedValue(json(value));
+      const result = await fetchPersonalSecFilingContext(request(), signal());
+      expect(result).toEqual(value);
+      if (result.inspection.status !== "available") throw new Error();
+      const analysis = result.inspection.analysis;
+      expect(analysis.candidates).toHaveLength(count);
+      expect(analysis.correspondingCandidateLocators.at(-1)).toBe(
+        `/elements/${1000 + count - 1}`,
+      );
+      expect(Object.isFrozen(analysis.candidates.at(-1))).toBe(true);
+      expect(Object.isFrozen(analysis.correspondingCandidateLocators)).toBe(
+        true,
+      );
+      expect(fetchMock).toHaveBeenCalledOnce();
+    },
+  );
+  it("rejects an otherwise complete 513-candidate response without accepting a prefix", async () => {
+    fetchMock.mockResolvedValue(json(largeCandidateResponse(513)));
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("retains an exact conflict at candidate 512 and rejects a forged matching conclusion", async () => {
+    const value = largeCandidateResponse(512);
+    if (value.inspection.status !== "available") throw new Error();
+    const rows = value.inspection.analysis.candidates.map((row, index) =>
+      index === 511
+        ? { ...row, rawText: "12.5", sign: "-", value: "-12.5" }
+        : row,
+    );
+    const conflicted = {
+      ...value,
+      inspection: {
+        ...value.inspection,
+        analysis: {
+          ...value.inspection.analysis,
+          status: "ambiguous",
+          candidates: rows,
+        },
+      },
+    };
+    fetchMock.mockResolvedValueOnce(json(conflicted));
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).resolves.toEqual(conflicted);
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...conflicted,
+        inspection: {
+          ...conflicted.inspection,
+          analysis: { ...conflicted.inspection.analysis, status: "matched" },
+        },
+      }),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("keeps a late unresolved reference ahead of 511 clean values", async () => {
+    const value = largeCandidateResponse(512);
+    if (value.inspection.status !== "available") throw new Error();
+    const rows = value.inspection.analysis.candidates.map((row, index) =>
+      index === 511
+        ? { ...row, value: null, issues: ["unsupported_transform"] }
+        : row,
+    );
+    const held = {
+      ...value,
+      inspection: {
+        ...value.inspection,
+        analysis: {
+          ...value.inspection.analysis,
+          status: "unsupported",
+          reason: "unsupported_transform",
+          candidates: rows,
+          correspondingCandidateLocators: rows
+            .slice(0, -1)
+            .map((row) => row.locator),
+        },
+      },
+    };
+    fetchMock.mockResolvedValueOnce(json(held));
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).resolves.toEqual(held);
+    fetchMock.mockResolvedValueOnce(
+      json({
+        ...held,
+        inspection: {
+          ...held.inspection,
+          analysis: {
+            ...held.inspection.analysis,
+            status: "matched",
+            reason: null,
+          },
+        },
+      }),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it.each([
+    "bad final identifier",
+    "duplicate final locator",
+    "missing final reference",
+    "reordered final references",
+  ])("rejects %s beyond the former 100-row boundary", async (kind) => {
+    const value = largeCandidateResponse(512);
+    if (value.inspection.status !== "available") throw new Error();
+    const analysis = value.inspection.analysis;
+    const candidates = analysis.candidates.map((row, index) =>
+      index !== 511
+        ? row
+        : kind === "bad final identifier"
+          ? { ...row, contextId: "invalid context id" }
+          : kind === "duplicate final locator"
+            ? { ...row, locator: analysis.candidates[0]!.locator }
+            : row,
+    );
+    const refs = [...analysis.correspondingCandidateLocators];
+    if (kind === "missing final reference") refs.pop();
+    if (kind === "reordered final references")
+      [refs[510], refs[511]] = [refs[511]!, refs[510]!];
+    fetchMock.mockResolvedValue(
+      json({
+        ...value,
+        inspection: {
+          ...value.inspection,
+          analysis: {
+            ...analysis,
+            candidates,
+            correspondingCandidateLocators: refs,
+          },
+        },
+      }),
+    );
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("preserves the 2 MiB HTTP envelope bound even when candidate count is allowed", async () => {
+    const value = largeCandidateResponse(512);
+    if (value.inspection.status !== "available") throw new Error();
+    const expanded = {
+      ...value,
+      inspection: {
+        ...value.inspection,
+        analysis: {
+          ...value.inspection.analysis,
+          candidates: value.inspection.analysis.candidates.map((row) => ({
+            ...row,
+            rawText: row.rawText.padStart(4096, " "),
+          })),
+        },
+      },
+    };
+    expect(
+      expanded.inspection.analysis.candidates.every(
+        (row) => row.rawText.length === 4096,
+      ),
+    ).toBe(true);
+    expect(
+      new TextEncoder().encode(JSON.stringify(expanded)).byteLength,
+    ).toBeGreaterThan(2 * 1024 * 1024);
+    fetchMock.mockResolvedValue(json(expanded));
+    await expect(
+      fetchPersonalSecFilingContext(request(), signal()),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
   it("sends only the URL-free selection through authenticated POST and freezes exact evidence", async () => {
     fetchMock.mockResolvedValue(json(response()));
     const controller = new AbortController();
@@ -1140,6 +1314,30 @@ function observation(): PersonalSecQuarterlyObservationDto {
     },
   };
 }
+function largeCandidateResponse(
+  count: number,
+): PersonalSecFilingContextResponseDto {
+  const value = response();
+  if (value.inspection.status !== "available") throw new Error();
+  const candidates = Array.from({ length: count }, (_, index) => ({
+    ...candidate(),
+    locator: `/elements/${1000 + index}`,
+    factId: `fact-${index}`,
+    contextId: `context-${index}`,
+  }));
+  return {
+    ...value,
+    inspection: {
+      ...value.inspection,
+      analysis: {
+        ...value.inspection.analysis,
+        candidates,
+        correspondingCandidateLocators: candidates.map((row) => row.locator),
+      },
+    },
+  };
+}
+
 function candidate(): PersonalSecFilingContextCandidateDto {
   return {
     locator: "/elements/1",

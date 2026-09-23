@@ -72,8 +72,7 @@ The supported subset still refuses duplicate or case-colliding declaration
 attributes on one element, uppercase `XMLNS`, unquoted declarations, invalid
 reserved namespace bindings and mixed-case element prefixes. It preserves the
 existing canonical spelling checks for XBRL element and attribute names. Broader
-namespace support does not classify fiscal quarters or admit TTM values, and
-the document, candidate and output limits remain unchanged.
+namespace support does not classify fiscal quarters or admit TTM values.
 
 ## Explain unresolved references
 
@@ -86,6 +85,13 @@ control changes the candidate page when needed, opens the disclosure and moves
 keyboard focus to it. It does not reload source data. Later ordinary paging does
 not replay a prior jump; refresh, cancellation and selection changes clear the
 inspection and its pending navigation.
+
+Candidate rows, unresolved groups, each group's references and excluded references
+page in sets of ten. First and Last controls make later source references
+reachable without stepping through every page. Counts describe the full retained
+result; pagination changes only what is rendered. Changing the group page resets
+its reference subpages. A source jump still opens and focuses the exact candidate,
+including the final candidate page, without another source request.
 
 The grouping uses the existing validated response and preserves its numeric
 decision. The parser currently excludes a numeric row from uncertainty if its
@@ -198,8 +204,11 @@ validated media type and UTF-8 encoding.
 A separate asynchronous process uses fixed arguments, no shell and a hidden
 window on Windows. Input, output and error streams are bounded; the worker has
 a 10-second deadline and a 1 MiB structured-output limit. Parsing is limited to
-one million elements, depth 256, 20,000 contexts, 5,000 units and 100 candidate
-facts. Metadata has a separate 40-candidate and 128 KiB structured-output budget.
+one million elements, depth 256, 20,000 contexts, 5,000 units and 512 candidate
+facts for the selected concept. The count ceiling does not guarantee that every
+document fits the independent byte and time bounds. Late, hidden, dimensioned
+and comparative references are retained; the parser does not discard them to
+fit. Metadata has a separate 40-candidate and 128 KiB structured-output budget.
 A metadata limit clears the whole metadata projection and reports it as limited,
 while preserving an independently complete numeric comparison. Global malformed
 document, process and output failures clear all projections. A global limit never
@@ -215,7 +224,7 @@ Synthetic tests exercise exact large, negative and zero values, scale/sign,
 different periods with the same end date, duplicate and conflicting references,
 entity/namespace spoofing, dimensions, unsupported constructs, source and parser
 limits, runtime failure, cancellation and stale requests. Real-worker integration
-and external Chrome desktop/mobile/keyboard QA are required release checks.
+and external Brave desktop/mobile/keyboard QA are required release checks.
 Metadata acceptance covers comparative dates, three- and nine-month selections,
 non-calendar fiscal years, amendments, identical/conflicting references, missing
 fields, spoofed namespaces, malformed scope and metadata limits without extra
