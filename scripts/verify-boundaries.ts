@@ -5226,8 +5226,13 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-sec-filing-context-parser.ts",
     "apps/api/src/personal-sec-filing-context-provider.ts",
     "apps/api/src/personal-sec-filings-provider.ts",
+    "apps/api/src/personal-sec-primary-document.ts",
+    "apps/api/src/personal-sec-quarter-assessment-company-facts.ts",
+    "apps/api/src/personal-sec-quarter-assessment-provider.ts",
+    "apps/api/src/personal-sec-quarter-operation.ts",
     "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
     "apps/api/src/personal-sec-request-scheduler.ts",
+    "apps/api/src/personal-sec-source-json.ts",
     secProviderPath,
     "apps/api/src/personal-security-master-routes.ts",
     "apps/api/src/personal-vault-routes.ts",
@@ -5248,6 +5253,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-sec-quarterly-evidence-routes.ts",
     "apps/api/src/workspace-sec-annual-evidence-routes.ts",
     "apps/api/src/workspace-sec-filing-context-routes.ts",
+    "apps/api/src/workspace-sec-quarter-assessment-routes.ts",
     "apps/api/src/workspace-watchlist-routes.ts",
     "apps/api/src/workspace-portfolio-routes.ts",
   ].sort();
@@ -5881,6 +5887,20 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     contextParser.replace("stdoutBytes > LIMITS.workerOutputBytes", "false"),
     contextParser.replace("LIMITS.workerTimeoutMs", "100_000"),
     contextParser.replace('child.kill("SIGKILL")', 'child.kill("SIGTERM")'),
+    contextParser.replace(
+      "this.#run(stdin, signal, true,",
+      "this.#run(stdin, signal, false,",
+    ),
+    contextParser.replace("result.documentSha256 !== documentSha256", "false"),
+    contextParser.replace(
+      "result.selection.accessionNumber !== selection.accessionNumber",
+      "false",
+    ),
+    contextParser.replace("!waitForClose || closed", "true"),
+    contextParser.replace(
+      "if (this.#active?.child === child) this.#active = undefined;",
+      "this.#active = undefined;",
+    ),
     `${contextParser}\nvoid process.env.UNREVIEWED;`,
     contextParser.replace(
       "spawn, type ChildProcessWithoutNullStreams",
@@ -5902,13 +5922,18 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "data.sec.gov/api/xbrl/companyfacts",
       "unreviewed.example/facts",
     ),
-    contextProvider.replace("selectedPrimaryDocument(", "unsafeDocument("),
+    contextProvider.replace(
+      "selectedPersonalSecPrimaryDocument(",
+      "unsafeDocument(",
+    ),
     `${contextProvider}\nvoid fetch("https://unreviewed.example");`,
   ];
   if (
     personalSecFilingContextParserViolation(contextParser) !== null ||
     parserMutations.some(
-      (changed) => personalSecFilingContextParserViolation(changed) === null,
+      (changed) =>
+        changed === contextParser ||
+        personalSecFilingContextParserViolation(changed) === null,
     )
   )
     found.push(
@@ -5917,12 +5942,230 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   if (
     personalSecFilingContextProviderViolation(contextProvider) !== null ||
     contextMutations.some(
-      (changed) => personalSecFilingContextProviderViolation(changed) === null,
+      (changed) =>
+        changed === contextProvider ||
+        personalSecFilingContextProviderViolation(changed) === null,
     )
   )
     found.push(
       "scripts/verify-boundaries.ts: filing-context source binding classifier regressed",
     );
+  const quarterCases: readonly [string, string, string][] = [
+    [
+      "personal-sec-primary-document.ts",
+      "accessionNumber[index] !== accession",
+      "false",
+    ],
+    [
+      "personal-sec-primary-document.ts",
+      "accessionNumber.length !== primaryDocument.length",
+      "false",
+    ],
+    ["personal-sec-primary-document.ts", 'basename.includes("..")', "false"],
+    [
+      "personal-sec-primary-document.ts",
+      "[A-Za-z0-9._-]*",
+      "[A-Za-z0-9._:/?-]*",
+    ],
+    [
+      "personal-sec-primary-document.ts",
+      "selected !== null && selected !== basename",
+      "false",
+    ],
+    [
+      "personal-sec-source-json.ts",
+      "assertPersonalSecJsonUniqueKeys(text);",
+      "",
+    ],
+    [
+      "personal-sec-quarter-assessment-company-facts.ts",
+      "rawBytes.byteLength > limits.companyFactsBytes",
+      "false",
+    ],
+    [
+      "personal-sec-quarter-assessment-company-facts.ts",
+      'sourceCik.padStart(10, "0") !== cik',
+      "false",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "data.sec.gov/submissions",
+      "unreviewed.example/submissions",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "data.sec.gov/api/xbrl/companyfacts",
+      "unreviewed.example/facts",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "www.sec.gov/Archives/edgar/data",
+      "unreviewed.example/document",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      ".update(bytes)",
+      ".update(decodePersonalSecSourceUtf8(bytes))",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "!isPersonalSecQuarterEvidence(evidence)",
+      "false",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      'primary.status !== "complete"',
+      "false",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "filing.reportDate !== selection.reportDate",
+      "false",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "sources.length >= LIMITS.sourceGets",
+      "false",
+    ],
+    ["personal-sec-quarter-assessment-provider.ts", "totalBytes >", "0 >"],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "LIMITS.primaryBytes",
+      "Number.POSITIVE_INFINITY",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "await this.#scheduler.wait(signal);",
+      "",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "const primary = await this.#parser.parseAccessionEvidence(",
+      "const primary = await Promise.race([this.#parser.parseAccessionEvidence(",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      "readonly fetch?:",
+      "readonly alternateUrl?: string; readonly fetch?:",
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      'if (this.#active !== undefined) fail("busy");',
+      "",
+    ],
+    [
+      "personal-sec-quarter-operation.ts",
+      "PERSONAL_SEC_QUARTER_ASSESSMENT_LIMITS.operationDeadlineMs",
+      "600_000",
+    ],
+    ["personal-sec-quarter-operation.ts", "now - this.#started >=", "0 >"],
+    [
+      "personal-sec-quarter-operation.ts",
+      'signal?.addEventListener("abort", this.#abort, { once: true });',
+      "",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "!isPersonalSecQuarterAssessmentRequest(request.body)",
+      "false",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "body.catalogSnapshotSha256 !== catalog.snapshotSha256",
+      "false",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "candidate.listingId === body.listingId",
+      "true",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "cik: listing.cik",
+      "cik: body.cik",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "PERSONAL_SEC_QUARTER_ASSESSMENT_PATH,\n      );",
+      '"/unreviewed",\n      );',
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "operation.check();\n          if (!authorized(request))",
+      "operation.check();\n          if (false)",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "!isPersonalSecQuarterAssessmentResponse(response, body)",
+      "false",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "digest !== assessment.bundleId",
+      "false",
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      "PERSONAL_SEC_QUARTER_ASSESSMENT_LIMITS.finalResponseBytes",
+      "Number.POSITIVE_INFINITY",
+    ],
+    [
+      "workspace-composition-root.ts",
+      "parser: primaryParser",
+      "parser: createPersonalSecFilingContextParser()",
+    ],
+  ];
+  if (personalSecQuarterAssessmentBoundaryViolation(runtimeSources) !== null)
+    found.push(
+      "scripts/verify-boundaries.ts: quarter-assessment source classifier baseline regressed",
+    );
+  for (const [index, [file, before, after]] of quarterCases.entries()) {
+    const path = `apps/api/src/${file}`;
+    const original = (runtimeSources.get(path) ?? "").replaceAll("\r\n", "\n");
+    const changed = original.replace(before, after);
+    const altered = new Map(runtimeSources);
+    altered.set(path, changed);
+    if (
+      changed === original ||
+      personalSecQuarterAssessmentBoundaryViolation(altered) === null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: quarter-assessment negative source case ${String(index + 1)} regressed`,
+      );
+  }
+  for (const file of [
+    "personal-sec-primary-document.ts",
+    "personal-sec-source-json.ts",
+    "personal-sec-quarter-operation.ts",
+  ]) {
+    if (
+      personalMarketDataRuntimeBoundaryViolation(
+        mutate(
+          `apps/api/src/${file}`,
+          (content) => `${content}\nvoid globalThis.fetch(unreviewedUrl);`,
+        ),
+      ) === null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: ${file} must not acquire sources`,
+      );
+  }
+  for (const file of [
+    "personal-sec-quarter-assessment-provider",
+    "personal-sec-quarter-operation",
+    "personal-sec-primary-document",
+    "personal-sec-source-json",
+    "personal-sec-quarter-assessment-company-facts",
+  ]) {
+    if (
+      !personalMarketDataWebViolation(
+        `import { unreviewed } from "../../../api/src/${file}";`,
+      )
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: browser SEC private import ${file} classifier regressed`,
+      );
+  }
   return found;
 }
 
@@ -5958,6 +6201,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
+        path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
@@ -5982,6 +6226,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
+        path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         content.includes("data.sec.gov/submissions")
       ) {
         found.push(
@@ -5993,11 +6238,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
       path.startsWith("apps/web/") &&
       !personalMarketDataIsTestSource(path) &&
       (content.includes("PERSONAL_SEC_USER_AGENT") ||
-        collectModuleSpecifiers(content).some((specifier) =>
-          /personal-sec-(?:(?:financial|filings|quarterly-evidence|annual-evidence|filing-context)-provider|filing-context-parser)/u.test(
-            specifier,
-          ),
-        ))
+        collectModuleSpecifiers(content).some(personalSecPrivateRuntimeImport))
     ) {
       found.push(
         `${path}: the browser must not import SEC providers or their declared user-agent configuration`,
@@ -7053,6 +7294,7 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
       path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
       path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
+      path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
       return `${path}: only the reviewed Tiingo and SEC providers may use the API runtime fetch capability`;
@@ -7065,6 +7307,8 @@ function personalMarketDataRuntimeBoundaryViolation(
         path === "apps/api/src/personal-sec-quarterly-evidence-provider.ts" ||
         path === "apps/api/src/personal-sec-annual-evidence-provider.ts" ||
         path === "apps/api/src/personal-sec-filing-context-provider.ts" ||
+        path === "apps/api/src/personal-sec-quarter-assessment-provider.ts" ||
+        path === "apps/api/src/workspace-sec-quarter-assessment-routes.ts" ||
         path === "apps/api/src/workspace-sec-filing-context-routes.ts" ||
         path === "apps/api/src/workspace-sec-quarterly-evidence-routes.ts" ||
         path === "apps/api/src/workspace-sec-annual-evidence-routes.ts" ||
@@ -7114,6 +7358,9 @@ function personalMarketDataRuntimeBoundaryViolation(
     sources.get("apps/api/src/personal-sec-filing-context-provider.ts") ?? "",
   );
   if (contextViolation !== null) return contextViolation;
+  const quarterViolation =
+    personalSecQuarterAssessmentBoundaryViolation(sources);
+  if (quarterViolation !== null) return quarterViolation;
   const routesViolation = personalMarketDataRoutesViolation(routes);
   return routesViolation === null ? null : `${routesPath}: ${routesViolation}`;
 }
@@ -7237,6 +7484,7 @@ function personalSecFilingContextParserViolation(
     JSON.stringify(collectModuleSpecifiers(content)) !==
     JSON.stringify([
       "node:child_process",
+      "node:crypto",
       "node:url",
       "@research-cockpit/contracts",
     ])
@@ -7245,6 +7493,7 @@ function personalSecFilingContextParserViolation(
   const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
   const required = [
     'import{spawn,typeChildProcessWithoutNullStreams}from"node:child_process";',
+    'import{createHash}from"node:crypto";',
     'constWORKER=fileURLToPath(newURL("../workers/personal_sec_filing_context.py",import.meta.url))',
     'this.#spawn(process.platform==="win32"?"python":"python3",["-I","-S","-B",WORKER],{shell:false,windowsHide:true,stdio:["pipe","pipe","pipe"],env:workerEnvironment(),cwd:fileURLToPath(newURL("../workers/",import.meta.url))})',
     'setTimeout(()=>fail("timeout"),LIMITS.workerTimeoutMs)',
@@ -7253,6 +7502,21 @@ function personalSecFilingContextParserViolation(
     "stderrBytes>LIMITS.workerStderrBytes",
     "stdin.byteLength>LIMITS.workerInputBytes",
     "input.document.byteLength>LIMITS.documentBytes",
+    'createHash("sha256").update(document).digest("hex")',
+    'mode:"accession_evidence"',
+    "this.#run(stdin,signal,true,",
+    "assertPersonalSecJsonUniqueKeys(text)",
+    "!isPersonalSecQuarterPrimaryEvidence(result)",
+    "result.documentSha256!==documentSha256",
+    "result.documentBytes!==documentBytes",
+    "result.cik!==cik",
+    "result.selection.accessionNumber!==selection.accessionNumber",
+    "result.selection.form!==selection.form",
+    "result.selection.filedDate!==selection.filedDate",
+    "result.selection.reportDate!==selection.reportDate",
+    "if(!waitForClose||closed)reject(newPersonalSecFilingContextParserError(code))",
+    "if(waitForClose&&failure!==undefined)reject(newPersonalSecFilingContextParserError(failure))",
+    "if(this.#active?.child===child)this.#active=undefined",
     "this.#active?.abort()",
     'signal?.addEventListener("abort",abort,{once:true})',
     'signal?.removeEventListener("abort",abort)',
@@ -7322,6 +7586,7 @@ function personalSecFilingContextProviderViolation(
     JSON.stringify(collectModuleSpecifiers(content)) !==
     JSON.stringify([
       "node:crypto",
+      "./personal-sec-primary-document",
       "@research-cockpit/contracts",
       "./personal-sec-filing-context-parser",
       "./personal-sec-quarterly-evidence-provider",
@@ -7337,10 +7602,9 @@ function personalSecFilingContextProviderViolation(
     "normalizePersonalSecSubmissions(rawSubmissions,cik)",
     "filing.form!==selected.form",
     "filing.filedDate!==selected.filedDate",
-    "selectedPrimaryDocument(rawSubmissions,selected.accessionNumber)",
+    "selectedPersonalSecPrimaryDocument(rawSubmissions,selected.accessionNumber)",
     "PERSONAL_SEC_FILING_CONTEXT_LIMITS.documentBytes",
     "fetchPersonalSecSourceBytes({sourceUrl,signal,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,",
-    'basename.includes("..")',
     "this.#active?.abort()",
     "this.#parser.close()",
     "this.#parser.parse({document,cik,selection},controller.signal)",
@@ -7383,6 +7647,248 @@ function personalSecFilingContextProviderViolation(
   };
   visit(source);
   return invalid || urls.size !== 0 ? message : null;
+}
+
+function personalSecQuarterAssessmentBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const message =
+    "SEC quarter assessment must retain its exact catalog-bound three-source acquisition, complete evidence and owned-worker lifecycle";
+  const rules: readonly [string, readonly string[], readonly string[]][] = [
+    [
+      "personal-sec-primary-document.ts",
+      [],
+      [
+        "!record(value)||!record(value.filings)||!record(value.filings.recent)",
+        "!Array.isArray(accessionNumber)||!Array.isArray(primaryDocument)||accessionNumber.length!==primaryDocument.length",
+        "if(accessionNumber[index]!==accession)continue;",
+        'typeofbasename!=="string"||basename.length>255||basename.includes("..")',
+        String.raw`!/^[A-Za-z0-9][A-Za-z0-9._-]*\.(?:htm|html|xhtml|xml)$/iu.test(basename)`,
+        "if(selected!==null&&selected!==basename)returnnull;",
+        "selected=basename;",
+      ],
+    ],
+    [
+      "personal-sec-source-json.ts",
+      [
+        "@research-cockpit/contracts",
+        "./personal-sec-quarterly-evidence-provider",
+      ],
+      [
+        "assertPersonalSecJsonUniqueKeys(text);returnparsePersonalSecSourceJson(text);",
+      ],
+    ],
+    [
+      "personal-sec-quarter-assessment-company-facts.ts",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "./personal-sec-quarterly-evidence-provider",
+        "./personal-sec-source-json",
+        "./personal-sec-source-json",
+      ],
+      [
+        "rawBytes.byteLength>limits.companyFactsBytes",
+        "constbytes=Uint8Array.from(rawBytes)",
+        "parsePersonalSecSourceJsonStrict(text)",
+        'sourceCik.padStart(10,"0")!==cik',
+        "PERSONAL_SEC_QUARTERLY_CONCEPTS.entries()",
+        'createHash("sha256").update(bytes).digest("hex")',
+      ],
+    ],
+    [
+      "personal-sec-quarter-operation.ts",
+      ["node:perf_hooks", "@research-cockpit/contracts"],
+      [
+        "monotonicNow:()=>number=()=>performance.now()",
+        'signal?.addEventListener("abort",this.#abort,{once:true})',
+        "if(signal?.aborted)this.#abort()",
+        "setTimeout(()=>{this.#expired=true;this.#controller.abort();},PERSONAL_SEC_QUARTER_ASSESSMENT_LIMITS.operationDeadlineMs)",
+        "!Number.isFinite(now)||now<this.#last",
+        "now-this.#started>=PERSONAL_SEC_QUARTER_ASSESSMENT_LIMITS.operationDeadlineMs",
+        'if(this.#expired)thrownewPersonalSecQuarterOperationError("operation_deadline")',
+        'if(this.#disposed||this.#controller.signal.aborted)thrownewPersonalSecQuarterOperationError("aborted")',
+        "clearTimeout(this.#timer)",
+        'this.#parent?.removeEventListener("abort",this.#abort)',
+      ],
+    ],
+    [
+      "personal-sec-quarter-assessment-provider.ts",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-financial-analytics",
+        "./personal-sec-filing-context-parser",
+        "./personal-sec-primary-document",
+        "./personal-sec-quarter-assessment-company-facts",
+        "./personal-sec-quarter-operation",
+        "./personal-sec-quarterly-evidence-provider",
+        "./personal-sec-request-scheduler",
+        "./personal-sec-source-json",
+      ],
+      [
+        "this.#userAgent=isPersonalSecUserAgent(userAgent)?userAgent:undefined",
+        "this.#fetch=dependencies.fetch??globalThis.fetch",
+        "!isPersonalSecQuarterAssessmentTarget(requestedTarget)||!isPersonalSecQuarterAssessmentSelection(requestedSelection)",
+        'if(this.#active!==undefined)fail("busy")',
+        "security:Object.freeze({...requestedTarget.security})",
+        "constselection=Object.freeze({...requestedSelection})",
+        "constcik=target.security.cik",
+        "newPersonalSecQuarterOperation(controller.signal,this.#monotonicNow)",
+        'signal?.addEventListener("abort",abort,{once:true})',
+        "operation.check();awaitthis.#scheduler.wait(signal);operation.check();",
+        'signal:operation.signal,maximumBytes:primary?LIMITS.primaryBytes:id==="submissions"?LIMITS.submissionsBytes:LIMITS.companyFactsBytes',
+        "totalBytes+=bytes.byteLength",
+        "sources.length>=LIMITS.sourceGets||totalBytes>LIMITS.submissionsBytes+LIMITS.companyFactsBytes+LIMITS.primaryBytes",
+        'createHash("sha256").update(bytes).digest("hex")',
+        "id,sourceUrl,sha256,bytes:bytes.byteLength,retrievalStartedAt,retrievalCompletedAt",
+        'selection.form==="10-Q/A"||selection.reportDate===null',
+        "normalizePersonalSecSubmissions(raw,cik)",
+        "current.filings.get(selection.accessionNumber)",
+        "filing.form!==selection.form||filing.filedDate!==selection.filedDate||filing.reportDate!==selection.reportDate",
+        "selectedPersonalSecPrimaryDocument(raw,selection.accessionNumber)",
+        "constprimary=awaitthis.#parser.parseAccessionEvidence({document,cik,selection},operation.signal);operation.check();",
+        'if(primary.status!=="complete")returnunavailable(primary.reason??"invalid_output")',
+        'if(!isPersonalSecQuarterEvidence(evidence))returnunavailable("invalid_evidence_graph")',
+        "assessPersonalSecQuarterEvidence({cik,selection,sources,evidence})",
+        "personalSecQuarterBundlePayload(target,selection,sources)",
+        'Buffer.byteLength(serialized,"utf8")>LIMITS.finalResponseBytes',
+        'finally{operation.dispose();signal?.removeEventListener("abort",abort);if(this.#active===controller)this.#active=undefined;}',
+        "this.#active?.abort();this.#parser.close();",
+      ],
+    ],
+    [
+      "workspace-sec-quarter-assessment-routes.ts",
+      [
+        "node:crypto",
+        "@research-cockpit/contracts",
+        "@research-cockpit/personal-security-master",
+        "fastify",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+        "./personal-sec-quarter-assessment-provider",
+        "./personal-sec-quarter-operation",
+      ],
+      [
+        'PERSONAL_SEC_QUARTER_ASSESSMENT_PATH="/v1/personal-filing/workspace/sec-quarter-assessment"asconst',
+        'newTextDecoder("utf-8",{fatal:true}).decode(body)',
+        "assertPersonalSecJsonUniqueKeys(text)",
+        "authorizePersonalJsonRouteRequest(request,ownerSession,listenOptions,PERSONAL_SEC_QUARTER_ASSESSMENT_PATH)",
+        "!isPersonalSecQuarterAssessmentRequest(request.body)",
+        "body.catalogSnapshotSha256!==catalog.snapshotSha256",
+        "candidate.listingId===body.listingId&&candidate.symbol===body.symbol",
+        "catalogSnapshotSha256:catalog.snapshotSha256,security:{country:listing.country,exchangeMic:listing.exchangeMic,issuerId:listing.issuerId,issuerName:listing.issuerName,listingId:listing.listingId,securityName:listing.securityName,symbol:listing.symbol,cik:listing.cik}",
+        'request.raw.once("aborted",abort);reply.raw.once("close",abort)',
+        "constassessment=awaitprovider.assess(target,body.selection,operation.signal);if(controller.signal.aborted)return;operation.check();if(!authorized(request))returnsendPersonalOwnerSessionProblem(reply,request);",
+        "!isPersonalSecQuarterAssessmentResponse(response,body)",
+        "personalSecQuarterBundlePayload(target,body.selection,assessment.sources)",
+        "digest!==assessment.bundleId",
+        'Buffer.byteLength(serialized,"utf8")>PERSONAL_SEC_QUARTER_ASSESSMENT_LIMITS.finalResponseBytes',
+        'if(!authorized(request))returnsendPersonalOwnerSessionProblem(reply,request);returnreply.type("application/json;charset=utf-8").send(serialized)',
+        'finally{operation.dispose();request.raw.off("aborted",abort);reply.raw.off("close",abort);}',
+      ],
+    ],
+  ];
+  for (const [file, imports, anchors] of rules) {
+    const content = sources.get(`apps/api/src/${file}`) ?? "";
+    const compact = content.replace(/\s+/gu, "").replace(/,(?=[\]})])/gu, "");
+    if (
+      JSON.stringify(collectModuleSpecifiers(content)) !==
+        JSON.stringify(imports) ||
+      anchors.some((anchor) => !compact.includes(anchor))
+    )
+      return message;
+  }
+  const provider =
+    sources.get("apps/api/src/personal-sec-quarter-assessment-provider.ts") ??
+    "";
+  const source = ts.createSourceFile(
+    "quarter-provider.ts",
+    provider,
+    ts.ScriptTarget.Latest,
+    true,
+  );
+  const urls = new Set([
+    "`https://data.sec.gov/submissions/CIK${cik}.json`",
+    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
+    '`https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u,"")}/${selection.accessionNumber.replaceAll("-","")}/${primaryDocument}`',
+  ]);
+  const calls = new Map([
+    ["fetchPersonalSecSourceBytes", 0],
+    ["get", 0],
+    ["this.#parser.parseAccessionEvidence", 0],
+    ["projectPersonalSecQuarterCompanyFacts", 0],
+    ["assessPersonalSecQuarterEvidence", 0],
+  ]);
+  let invalid = false;
+  let dependencies = 0;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /https?:\/\//iu.test(node.head.text) &&
+      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (
+      ts.isInterfaceDeclaration(node) &&
+      node.name.text === "SecPersonalQuarterAssessmentDependencies"
+    ) {
+      dependencies++;
+      if (
+        JSON.stringify(
+          node.members.map((member) => member.name?.getText(source)),
+        ) !==
+        JSON.stringify(["fetch", "now", "monotonicNow", "scheduler", "parser"])
+      )
+        invalid = true;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression.getText(source);
+      if (calls.has(callee)) calls.set(callee, calls.get(callee)! + 1);
+      if (
+        callee === "fetch" ||
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (
+    invalid ||
+    urls.size !== 0 ||
+    dependencies !== 1 ||
+    JSON.stringify([...calls.values()]) !== JSON.stringify([1, 3, 1, 1, 1])
+  )
+    return message;
+  const composition = (
+    sources.get("apps/api/src/workspace-composition-root.ts") ?? ""
+  )
+    .replace(/\s+/gu, "")
+    .replace(/,(?=[\]})])/gu, "");
+  if (
+    !composition.includes(
+      "constprimaryParser=createPersonalSecFilingContextParser();",
+    ) ||
+    !composition.includes(
+      "filingContextProvider=createSecPersonalFilingContextProvider(secUserAgent,{parser:primaryParser})",
+    ) ||
+    !composition.includes(
+      "quarterAssessmentProvider=createSecPersonalQuarterAssessmentProvider(secUserAgent,{parser:primaryParser})",
+    ) ||
+    composition.split("createPersonalSecFilingContextParser(").length !== 2
+  )
+    return message;
+  return null;
 }
 
 function personalSecAnnualEvidenceProviderViolation(
@@ -8511,8 +9017,15 @@ function personalMarketDataWebViolation(content: string): boolean {
     collectModuleSpecifiers(content).some(
       (specifier) =>
         specifier.includes("personal-market-data-provider") ||
+        personalSecPrivateRuntimeImport(specifier) ||
         /(?:^|[/@-])tiingo(?:[/@-]|$)/iu.test(specifier),
     )
+  );
+}
+
+function personalSecPrivateRuntimeImport(specifier: string): boolean {
+  return /personal-sec-(?:(?:financial|filings|quarterly-evidence|annual-evidence|filing-context|quarter-assessment)-provider|filing-context-parser|quarter-operation|primary-document|source-json|quarter-assessment-company-facts)/u.test(
+    specifier,
   );
 }
 
@@ -8846,6 +9359,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
+      "apps/api/src/workspace-sec-quarter-assessment-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
+      "apps/api/src/personal-sec-quarter-assessment-integration.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
       "apps/api/src/workspace-portfolio-routes.test.ts",
       ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
@@ -8969,6 +9490,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-sec-filing-context-routes.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/workspace-sec-quarter-assessment-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
@@ -14053,6 +14582,14 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-sec-filing-context-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-sec-quarter-assessment-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/personal-sec-quarter-assessment-integration.test.ts",
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [
