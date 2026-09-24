@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "caseNumber": 73,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "139b3bcae39d2136e4206e43e86a5f3126930fac",
+  "featureRevision": "67f23b199e54e673336e811c042031f96c4ec72b",
+  "featureCount": 247,
+  "closureCount": 248,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/LocalWorkspaceAccessPanel.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/LocalWorkspaceAccessPanel.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka73.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka73.json",
+  "presentation": {
+    "featureDescription": "Discover section navigation and compact workspace presentation",
+    "closureDescription": "generated routing closure for Discover presentation",
+    "inventoryDescription": "scoped workspace styles, section navigation, local status, tests and documentation",
+    "testBinding": "bootstrapdiscover",
+    "routingDescription": "presentation preserves existing source requests, saved records and workspace lifetimes",
+    "summaryDescription": "make Discover search and sections easier to reach while preserving watchlist notes, paging and explicit actions"
+  }
+}
