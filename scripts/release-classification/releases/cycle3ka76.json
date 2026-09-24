@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "caseNumber": 76,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "abac1ab0881caa29ece8c8e0082366a975c5d38d",
+  "featureRevision": "b857460cac5721bca8da95332cc7bc2012e2dd8a",
+  "featureCount": 253,
+  "closureCount": 254,
+  "featureChanges": [{ "path": "scripts/verify-boundaries.ts", "status": "M" }],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka76.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka76.json",
+  "presentation": {
+    "featureDescription": "selected-quarter boundary integration recovery",
+    "closureDescription": "generated routing closure for selected-quarter boundary recovery",
+    "inventoryDescription": "exact selected-quarter imports and runtime source predicates in the shared boundary guard",
+    "testBinding": "secquarterboundaryrecovery",
+    "routingDescription": "boundary integration preserves exact source and capability restrictions",
+    "summaryDescription": "complete strict boundary integration for selected-quarter assessment"
+  }
+}
