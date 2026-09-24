@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "caseNumber": 77,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "b4bf92a35f3ccbd32b24b7c07d194f69558fb35e",
+  "featureRevision": "65babfab7b34447c8e8feaeeb23ad7962e164ef2",
+  "featureCount": 255,
+  "closureCount": 256,
+  "featureChanges": [
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka77.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka77.json",
+  "presentation": {
+    "featureDescription": "selected-quarter startup graph expectation recovery",
+    "closureDescription": "generated routing closure for exact startup graph test recovery",
+    "inventoryDescription": "exact startup module expectation for the six reviewed SEC quarter and helper files",
+    "testBinding": "secquarterstaticgraphrecovery",
+    "routingDescription": "startup graph test preserves exact module set and forbidden entry exclusions",
+    "summaryDescription": "align the exact startup graph expectation with reviewed selected-quarter modules"
+  }
+}
