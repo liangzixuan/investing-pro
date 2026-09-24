@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "caseNumber": 75,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "6c48826daed3448a0171899ef9f21b1fcb1617f1",
+  "featureRevision": "d0aa40f0d4f55a1a939e983cb2d529fa32ea16af",
+  "featureCount": 251,
+  "closureCount": 252,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-sec-filing-context-parser.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-filing-context-parser.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-sec-filing-context-provider.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/personal-sec-primary-document.ts", "status": "A" },
+    {
+      "path": "apps/api/src/personal-sec-quarter-assessment-company-facts.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/personal-sec-quarter-assessment-company-facts.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/personal-sec-quarter-assessment-integration.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/personal-sec-quarter-assessment-provider.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/personal-sec-quarter-assessment-provider.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/personal-sec-quarter-operation.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/personal-sec-quarter-operation.ts", "status": "A" },
+    {
+      "path": "apps/api/src/personal-sec-quarterly-evidence-provider.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/personal-sec-source-json.ts", "status": "A" },
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    { "path": "apps/api/src/workspace-composition-root.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-sec-quarter-assessment-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-sec-quarter-assessment-routes.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/workers/personal_sec_filing_context.py",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecQuarterAssessment.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecQuarterAssessment.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecQuarterlyEvidence.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalSecQuarterlyEvidence.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-sec-quarter-assessment-api.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-sec-quarter-assessment-api.ts",
+      "status": "A"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_SEC_QUARTER_ASSESSMENT.md", "status": "A" },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/README.md",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/company-facts.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/filing.xhtml.txt",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/large-response.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/partial-response.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/request.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/submissions.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/supported-response.json",
+      "status": "A"
+    },
+    {
+      "path": "fixtures/synthetic/sec-quarter-assessment/zero-response.json",
+      "status": "A"
+    },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-sec-quarter-assessment-evidence.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-quarter-assessment-result.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-quarter-assessment-validation.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-quarter-assessment.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-quarter-assessment.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-source-json.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-sec-source-json.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/index.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-sec-quarter-assessment.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-sec-quarter-assessment.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-sec-quarter-profiles.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/personal-sec-quarter-profiles.ts",
+      "status": "A"
+    }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka75.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka75.json",
+  "presentation": {
+    "featureDescription": "selected standalone-quarter SEC assessment",
+    "closureDescription": "generated routing closure for selected-quarter assessment",
+    "inventoryDescription": "complete source populations, finite quarter profiles, explicit assessment, strict graph validation, synthetic fixtures and tests",
+    "testBinding": "secquarterassessment",
+    "routingDescription": "assessment preserves exact selection and source binding, resource refusals and unavailable TTM",
+    "summaryDescription": "assess one selected as-filed quarter with source-derived metric support and explicit holds"
+  }
+}
