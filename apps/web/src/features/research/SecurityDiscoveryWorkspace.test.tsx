@@ -365,7 +365,10 @@ vi.mock("./LocalWorkspaceAccessPanel", () => ({
 
 afterEach(() => vi.unstubAllGlobals());
 
+let deferWorkspaceEffects = false;
+
 beforeEach(() => {
+  deferWorkspaceEffects = false;
   hookHarness.reset();
   for (const mock of Object.values(apiMocks)) mock.mockReset();
   for (const mock of Object.values(peerApiMocks)) mock.mockReset();
@@ -399,7 +402,7 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
-  it("exposes the eight workspace destinations only while loaded and focuses them without data or draft changes", async () => {
+  it("exposes five task views only while loaded and preserves mounted screens without requests", async () => {
     expect(
       findAllElements(renderWorkspace(), "nav").some(
         (element) => element.props["aria-label"] === "Workspace sections",
@@ -409,45 +412,63 @@ describe("SecurityDiscoveryWorkspace", () => {
       watchlistRecord(2),
     );
     await activateWorkspace();
-    editWatchlistNote("lst-syn-00001", "Keep the current note draft");
     const before = renderWorkspace();
-    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    const labels = [
+      "Discover",
+      "Screens",
+      "Watchlist",
+      "Portfolio",
+      "Updates",
+    ] as const;
+    const taskIds = [
+      "discover",
+      "screens",
+      "watchlist",
+      "portfolio",
+      "updates",
+    ];
     const navigation = requireElementByProps(before, {
       "aria-label": "Workspace sections",
     });
-    const links = findAllElements(navigation, "a");
-    expect(links.map((link) => [link.props.href, textContent(link)])).toEqual([
-      ["#search-title", "Discover"],
-      ["#personal-financial-screener-title", "Screens"],
-      ["#watchlist-title", "Watchlist"],
-      ["#personal-portfolio-title", "Portfolio"],
-      ["#watchlist-filings-title", "Updates"],
-      ["#personal-stock-screener-title", "Catalog screen"],
-      ["#personal-price-valuation-screen-title", "Price and valuation"],
-      ["#filing-monitor-title", "Daily filing monitor"],
+    expect(findAllElements(navigation, "button").map(textContent)).toEqual(
+      labels,
+    );
+    expect(
+      taskIds.filter((task) => !deskView(before, task).props.hidden),
+    ).toEqual(["discover"]);
+    expect(deskView(before, "research").props.hidden).toBe(true);
+    const mounted = taskIds.map((task) => [
+      deskView(before, task).type,
+      deskView(before, task).key,
     ]);
-    for (const link of links) {
-      const targetId = String(link.props.href).slice(1);
-      const dom = workspaceSectionDocument(targetId);
-      workspaceSectionLink(before, targetId).props.onClick(dom.event());
-      expect(dom.target.tabIndex).toBe(-1);
-      expect(dom.target.focus).toHaveBeenCalledExactlyOnceWith({
-        preventScroll: true,
-      });
-      expect(dom.preventDefault).not.toHaveBeenCalled();
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    for (const label of labels) {
+      const after = chooseDeskTask(label);
+      expect(
+        taskIds.filter((task) => !deskView(after, task).props.hidden),
+      ).toEqual([label.toLowerCase()]);
+      expect(
+        taskIds.map((task) => [
+          deskView(after, task).type,
+          deskView(after, task).key,
+        ]),
+      ).toEqual(mounted);
+      expect(requirePriceScreen(after).key).toBe(
+        requirePriceScreen(before).key,
+      );
+      expect(requireCompanyResearch(after).key).toBe(
+        requireCompanyResearch(before).key,
+      );
+      expect(
+        (deskTask(after, label).props as { "aria-current"?: string })[
+          "aria-current"
+        ],
+      ).toBe("page");
     }
-    const after = renderWorkspace();
-    expect(requirePriceScreen(after).key).toBe(requirePriceScreen(before).key);
-    expect(requireCompanyResearch(after).key).toBe(
-      requireCompanyResearch(before).key,
-    );
-    expect(watchlistNote(after, "lst-syn-00001").props.value).toBe(
-      "Keep the current note draft",
-    );
     expect(
       Object.values(apiMocks).map((mock) => mock.mock.calls.length),
     ).toEqual(calls);
-    await requireOwnerSession(after).props.onSessionChange(
+    await requireOwnerSession(renderWorkspace()).props.onSessionChange(
       false,
       new AbortController().signal,
     );
@@ -470,8 +491,8 @@ describe("SecurityDiscoveryWorkspace", () => {
     "hidden page",
   ] as const)("refuses a workspace jump with %s", async (condition) => {
     await activateWorkspace();
-    const link = workspaceSectionLink(renderWorkspace(), "search-title");
-    const dom = workspaceSectionDocument("search-title");
+    const link = workspaceSectionLink(renderWorkspace(), "discover-title");
+    const dom = workspaceSectionDocument("discover-title");
     if (condition === "missing target") dom.state.missing = true;
     if (condition === "foreign target") dom.state.contains = false;
     if (condition === "detached target") dom.target.isConnected = false;
@@ -482,48 +503,50 @@ describe("SecurityDiscoveryWorkspace", () => {
     if (condition === "css-hidden link") dom.state.linkBox = false;
     if (condition === "hidden page") dom.state.visible = false;
     link.props.onClick(dom.event());
+    void renderWorkspace();
+    await flushPromises();
     expect(dom.target.focus).not.toHaveBeenCalled();
-    expect(dom.preventDefault).toHaveBeenCalledOnce();
   });
 
-  it.each(["metaKey", "ctrlKey", "shiftKey", "altKey", "button"] as const)(
-    "leaves modified workspace navigation native for %s",
-    async (modifier) => {
-      await activateWorkspace();
-      const dom = workspaceSectionDocument("search-title");
-      const event = dom.event();
-      if (modifier === "button") event.button = 1;
-      else event[modifier] = true;
-      workspaceSectionLink(renderWorkspace(), "search-title").props.onClick(
-        event,
-      );
-      expect(dom.target.focus).not.toHaveBeenCalled();
-      expect(dom.preventDefault).not.toHaveBeenCalled();
-    },
-  );
-
-  it("retires captured section links across workspace loss and replacement", async () => {
+  it("uses a task button and waits for the chosen view to commit before focusing its heading", async () => {
     await activateWorkspace();
-    const old = workspaceSectionLink(renderWorkspace(), "search-title");
+    const dom = workspaceSectionDocument("discover-title");
+    const action = workspaceSectionLink(renderWorkspace(), "discover-title");
+    expect(action.type).toBe("button");
+    expect((action.props as { type?: string }).type).toBe("button");
+    expect((action.props as { href?: string }).href).toBeUndefined();
+    action.props.onClick(dom.event());
+    expect(dom.target.focus).not.toHaveBeenCalled();
+    void renderWorkspace();
+    expect(dom.target.focus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(dom.target.tabIndex).toBe(-1);
+    expect(dom.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it("retires captured task buttons across workspace loss and replacement", async () => {
+    await activateWorkspace();
+    const old = workspaceSectionLink(renderWorkspace(), "discover-title");
     await requireOwnerSession(renderWorkspace()).props.onSessionChange(
       false,
       new AbortController().signal,
     );
     await activateWorkspace();
-    const dom = workspaceSectionDocument("search-title");
+    const dom = workspaceSectionDocument("discover-title");
     old.props.onClick(dom.event());
     expect(dom.target.focus).not.toHaveBeenCalled();
-    expect(dom.preventDefault).toHaveBeenCalledOnce();
-    workspaceSectionLink(renderWorkspace(), "search-title").props.onClick(
+    workspaceSectionLink(renderWorkspace(), "discover-title").props.onClick(
       dom.event(),
     );
+    void renderWorkspace();
     expect(dom.target.focus).toHaveBeenCalledOnce();
   });
 
   it("groups company panels into five stable sections without fetching on navigation or return", async () => {
     await activateWorkspace();
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.marketDataStatus).toEqual(marketStatus());
@@ -609,6 +632,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       expect(findElement(view, componentMocks.Portfolio)).toBeDefined();
     }
     requireCompanyResearch(view).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(requireCompanyResearch(renderWorkspace()).props.selection).toEqual(
       company.props.selection,
@@ -641,9 +665,10 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(history).not.toBeNull();
     requireCompanyResearch(view).props.onSectionChange("valuation");
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     findElement<PersonalPortfolioProps>(
-      renderWorkspace(),
+      chooseDeskTask("Portfolio"),
       componentMocks.Portfolio,
     )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
     view = renderWorkspace();
@@ -693,8 +718,10 @@ describe("SecurityDiscoveryWorkspace", () => {
     const oldAnnual = requireAnnualFinancials(view);
     oldAnnual.props.onLoad();
     const signal = apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]![1];
-    findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
-      .onOpenResearch!({
+    findElement<PersonalPortfolioProps>(
+      chooseDeskTask("Portfolio"),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!({
       ...searchResult("ZERO", "lst-zero"),
       shareClassId: "changed-share-class",
     });
@@ -729,7 +756,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     )!;
     oldCompany.props.onClear();
     findElement<PersonalPortfolioProps>(
-      renderWorkspace(),
+      chooseDeskTask("Portfolio"),
       componentMocks.Portfolio,
     )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
     oldAnnual.props.onLoad();
@@ -752,7 +779,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     "records the explicit %s origin",
     async (origin, label, section) => {
       await activateWorkspace();
-      const view = renderWorkspace();
+      const view = chooseResearchOrigin(origin);
       const identity = searchResult("ZERO", "lst-zero");
       if (origin === "catalog")
         requireStockScreener(view).props.onOpenResearch(screenRow());
@@ -793,12 +820,10 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     const dom = companyFocusDocument("watchlist-title");
     const view = renderWorkspace();
-    requireElementByProps<{
-      onChange: (event: { target: { value: string } }) => void;
-    }>(view, { id: "note-lst-zero" }).props.onChange({
+    watchlistNote(view, "lst-zero").props.onChange({
       target: { value: "Keep this unsaved research note" },
     });
-    requireElementByProps<{ onClick: () => void }>(view, {
+    requireElementByProps<{ onClick: () => void }>(renderWorkspace(), {
       "aria-label": "Research ZERO",
     }).props.onClick();
     await flushPromises();
@@ -806,6 +831,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(company.props.backLabel).toBe("Back to My Watchlist");
     expect(company.props.selection?.listingId).toBe("lst-zero");
     company.props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
     expect(
@@ -822,7 +848,9 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     editWatchlistNote("lst-syn-00001", "Keep this draft");
     const dom = companyFocusDocument("personal-price-valuation-screen-title");
-    const original = requirePriceScreen(renderWorkspace());
+    const original = requirePriceScreen(
+      chooseDeskScreen("Price and valuation"),
+    );
     const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
     original.props.onOpenResearch(
       record.payload.memberships[0]!,
@@ -836,6 +864,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(company.props.backLabel).toBe("Back to price and valuation screen");
     expect(dom.company.focus).toHaveBeenCalledOnce();
     company.props.onBack();
+    void renderWorkspace();
     await flushPromises();
     const returned = renderWorkspace();
     expect(dom.trigger.focus).toHaveBeenCalledOnce();
@@ -857,7 +886,9 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     editWatchlistNote("lst-syn-00001", "Keep the unsaved note");
     const dom = companyFocusDocument("personal-financial-screener-title");
-    const financial = requireFinancialScreener(renderWorkspace());
+    const financial = requireFinancialScreener(
+      chooseDeskScreen("Financial screen"),
+    );
     const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
     financial.props.onOpenPriceResearch!(
       screenRow(),
@@ -876,6 +907,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       false,
     );
     company.props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledOnce();
     expect(requireFinancialScreener(renderWorkspace()).key).toBe(financial.key);
@@ -887,10 +919,79 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).toEqual(calls);
   });
 
+  it.each(["watchlist", "financial"] as const)(
+    "focuses %s price Research after expected origin hiding, then restores its visible trigger",
+    async (origin) => {
+      const record = watchlistRecord(1);
+      apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      await activateWorkspace();
+      const view = chooseDeskScreen(
+        origin === "watchlist" ? "Price and valuation" : "Financial screen",
+      );
+      const dom = companyFocusDocument(
+        origin === "watchlist"
+          ? "personal-price-valuation-screen-title"
+          : "personal-financial-screener-title",
+      );
+      let hidden = false;
+      let sourceCurrent = true;
+      const visibleGuard = () => sourceCurrent && !hidden;
+      const handoffGuard = () => sourceCurrent;
+      if (origin === "watchlist")
+        requirePriceScreen(view).props.onOpenResearch(
+          record.payload.memberships[0]!,
+          dom.trigger as unknown as HTMLButtonElement,
+          visibleGuard,
+          handoffGuard,
+        );
+      else
+        requireFinancialScreener(view).props.onOpenPriceResearch!(
+          screenRow(),
+          dom.trigger as unknown as HTMLButtonElement,
+          visibleGuard,
+          handoffGuard,
+        );
+      hidden = true;
+      const company = requireCompanyResearch(renderWorkspace());
+      expect(dom.company.focus).toHaveBeenCalledOnce();
+      expect(deskView(renderWorkspace(), "screens").props.hidden).toBe(true);
+      company.props.onBack();
+      hidden = false;
+      void renderWorkspace();
+      expect(dom.trigger.focus).toHaveBeenCalledOnce();
+      expect(dom.origin.focus).not.toHaveBeenCalled();
+      // A fresh handoff whose source retires before commit must never focus.
+      dom.company.focus.mockClear();
+      const current = renderWorkspace();
+      if (origin === "watchlist")
+        requirePriceScreen(current).props.onOpenResearch(
+          record.payload.memberships[0]!,
+          dom.trigger as unknown as HTMLButtonElement,
+          visibleGuard,
+          handoffGuard,
+        );
+      else
+        requireFinancialScreener(current).props.onOpenPriceResearch!(
+          screenRow(),
+          dom.trigger as unknown as HTMLButtonElement,
+          visibleGuard,
+          handoffGuard,
+        );
+      hidden = true;
+      sourceCurrent = false;
+      void renderWorkspace();
+      expect(dom.company.focus).not.toHaveBeenCalled();
+      expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+      expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    },
+  );
+
   it("rejects retired financial price results and abandons their queued focus", async () => {
     await activateWorkspace();
     const dom = companyFocusDocument("personal-financial-screener-title");
-    const financial = requireFinancialScreener(renderWorkspace());
+    const financial = requireFinancialScreener(
+      chooseDeskScreen("Financial screen"),
+    );
     const trigger = dom.trigger as unknown as HTMLButtonElement;
     financial.props.onOpenPriceResearch!(screenRow(), trigger, () => false);
     expect(
@@ -899,9 +1000,12 @@ describe("SecurityDiscoveryWorkspace", () => {
     let current = true;
     financial.props.onOpenPriceResearch!(screenRow(), trigger, () => current);
     current = false;
+    void renderWorkspace();
     await flushPromises();
+    dom.origin.focus.mockClear();
     expect(dom.company.focus).not.toHaveBeenCalled();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).not.toHaveBeenCalled();
     expect(dom.origin.focus).toHaveBeenCalledOnce();
@@ -922,7 +1026,8 @@ describe("SecurityDiscoveryWorkspace", () => {
     );
     await activateWorkspace();
     const dom = companyFocusDocument("personal-financial-screener-title");
-    requireFinancialScreener(renderWorkspace()).props.onOpenPriceResearch!(
+    requireFinancialScreener(chooseDeskScreen("Financial screen")).props
+      .onOpenPriceResearch!(
       screenRow(),
       dom.trigger as unknown as HTMLButtonElement,
       () => true,
@@ -940,7 +1045,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
     await activateWorkspace();
     const dom = companyFocusDocument("personal-price-valuation-screen-title");
-    const screen = requirePriceScreen(renderWorkspace());
+    const screen = requirePriceScreen(chooseDeskScreen("Price and valuation"));
     const trigger = dom.trigger as unknown as HTMLButtonElement;
     screen.props.onOpenResearch(
       {
@@ -965,9 +1070,12 @@ describe("SecurityDiscoveryWorkspace", () => {
       () => current,
     );
     current = false;
+    void renderWorkspace();
     await flushPromises();
+    dom.origin.focus.mockClear();
     expect(dom.company.focus).not.toHaveBeenCalled();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).not.toHaveBeenCalled();
     expect(dom.origin.focus).toHaveBeenCalledOnce();
@@ -982,10 +1090,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     const dom = companyFocusDocument("personal-price-valuation-screen-title");
     const old = requirePriceScreen(renderWorkspace());
     editWatchlistNote("lst-syn-00001", "New note");
-    requireButton(
-      watchlistRow(renderWorkspace(), "lst-syn-00001"),
-      "Save note",
-    ).props.onClick();
+    watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
     expect(requirePriceScreen(renderWorkspace()).props.enabled).toBe(false);
     old.props.onOpenResearch(
       record.payload.memberships[0]!,
@@ -1034,12 +1139,15 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(requireCompanyResearch(renderWorkspace()).props.backLabel).toBe(
       "Back to search results",
     );
+    dom.origin.focus.mockClear();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
     expect(dom.trigger.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
     dom.trigger.isConnected = false;
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.origin.focus).toHaveBeenCalledTimes(1);
     expect(dom.origin.tabIndex).toBe(-1);
@@ -1055,13 +1163,15 @@ describe("SecurityDiscoveryWorkspace", () => {
           : "personal-financial-screener-title",
       );
       findElement<PersonalFinancialScreenerProps>(
-        renderWorkspace(),
+        chooseDeskScreen("Financial screen"),
         componentMocks.FinancialScreener,
       )!.props.onOpenResearch(screenRow());
       await flushPromises();
       if (state === "hidden") dom.trigger.visible = false;
       if (state === "disabled") dom.trigger.disabled = true;
+      dom.origin.focus.mockClear();
       requireCompanyResearch(renderWorkspace()).props.onBack();
+      void renderWorkspace();
       await flushPromises();
       expect(dom.trigger.focus).not.toHaveBeenCalled();
       expect(dom.origin.focus).toHaveBeenCalledTimes(1);
@@ -1072,18 +1182,19 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     const dom = companyFocusDocument("personal-financial-screener-title");
     findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!.props.onOpenResearch(screenRow());
     await flushPromises();
     const oldBack = requireCompanyResearch(renderWorkspace()).props.onBack;
     findElement<PersonalPortfolioProps>(
-      renderWorkspace(),
+      chooseDeskTask("Portfolio"),
       componentMocks.Portfolio,
     )!.props.onOpenResearch!(screenRow());
     await flushPromises();
     dom.getElementById.mockClear();
     oldBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.getElementById).toHaveBeenCalledWith("personal-portfolio-title");
     expect(dom.getElementById).not.toHaveBeenCalledWith(
@@ -1095,11 +1206,15 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     const dom = companyFocusDocument("personal-financial-screener-title");
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
+    dom.origin.focus.mockClear();
+    deferWorkspaceEffects = true;
     financial.props.onOpenResearch(screenRow());
     requireCompanyResearch(renderWorkspace()).props.onClear();
+    void renderWorkspace();
+    commitWorkspaceEffects();
     await flushPromises();
     expect(dom.company.focus).not.toHaveBeenCalled();
     expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
@@ -1107,11 +1222,18 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       requireCompanyResearch(renderWorkspace()).props.selection,
     ).toBeNull();
-    financial.props.onOpenResearch(screenRow());
+    requireFinancialScreener(
+      chooseDeskScreen("Financial screen"),
+    ).props.onOpenResearch(screenRow());
+    void renderWorkspace();
     await flushPromises();
+    dom.origin.focus.mockClear();
+    deferWorkspaceEffects = true;
     const staleCompany = requireCompanyResearch(renderWorkspace());
     staleCompany.props.onBack();
     financial.props.onSessionUnavailable();
+    void renderWorkspace();
+    commitWorkspaceEffects();
     await flushPromises();
     expect(dom.trigger.focus).not.toHaveBeenCalled();
     expect(dom.origin.focus).not.toHaveBeenCalled();
@@ -1126,7 +1248,7 @@ describe("SecurityDiscoveryWorkspace", () => {
   it("passes saved membership and version to financials and updates them after a watchlist save", async () => {
     await activateWorkspace();
     let financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.watchlistVersion).toBe(0);
@@ -1136,7 +1258,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(saving.promise);
     financial.props.onAddToWatchlist(screenRow());
     financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.watchlistAvailable).toBe(false);
@@ -1144,7 +1266,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     saving.resolve({ version: 1, payload });
     await flushPromises();
     financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.watchlistVersion).toBe(1);
@@ -1158,7 +1280,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     );
     await activateWorkspace();
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.watchlistAvailable).toBe(false);
@@ -1181,7 +1303,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     });
     await activateWorkspace();
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     )!;
     expect(financial.props.watchlistVersion).toBe(4);
@@ -1245,7 +1367,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     const start = vi.fn(() => complete);
     owner.props.onActivityHandlerChange?.(start);
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     );
     financial?.props.onOpenResearch(screenRow());
@@ -1268,7 +1390,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       start,
     );
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     );
     const obsoleteActivity = financial?.props.onActivityStart();
@@ -1281,7 +1403,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(obsoleteActivity?.()).toBe(false);
     expect(complete).not.toHaveBeenCalled();
     const current = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     );
     expect(current?.props.onActivityStart()?.()).toBe(true);
@@ -1292,7 +1414,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     const owner = requireOwnerSession(renderWorkspace());
     const financial = findElement<PersonalFinancialScreenerProps>(
-      renderWorkspace(),
+      chooseDeskScreen("Financial screen"),
       componentMocks.FinancialScreener,
     );
     expect(financial?.props.onActivityStart()).toBeUndefined();
@@ -1310,7 +1432,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     const rendered = renderWorkspace();
 
     expect(textContent(rendered)).toContain("Security discovery locked");
-    expect(textContent(rendered)).toContain("No browser storage");
+    expect(textContent(rendered)).toContain("Personal investment research");
     expect(apiMocks.fetchPersonalSecurityMasterStatus).not.toHaveBeenCalled();
     expect(apiMocks.fetchMainPersonalWatchlist).not.toHaveBeenCalled();
     expect(findOwnerSession(rendered)).toBeDefined();
@@ -1334,8 +1456,7 @@ describe("SecurityDiscoveryWorkspace", () => {
 
   it("places the local screener in discovery and routes exact rows to research and My Watchlist", async () => {
     await activateWorkspace();
-    let rendered = renderWorkspace();
-    const screener = requireStockScreener(rendered);
+    const screener = requireStockScreener(chooseDeskScreen("Catalog screen"));
     const row = screenRow();
 
     expect(screener.props.snapshot.snapshotSha256).toBe(
@@ -1345,14 +1466,16 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(screener.props.canAddToWatchlist).toBe(true);
 
     screener.props.onOpenResearch(row);
-    rendered = renderWorkspace();
+    let rendered = renderWorkspace();
     expect(requireMarketOverview(rendered).props.selection).toMatchObject({
       issuerId: "iss-screen",
       listingId: "lst-screen",
       symbol: "SCRN",
     });
 
-    requireStockScreener(rendered).props.onAddToWatchlist(row);
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onAddToWatchlist(row);
     await flushPromises();
     rendered = renderWorkspace();
     expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledWith(
@@ -1381,7 +1504,9 @@ describe("SecurityDiscoveryWorkspace", () => {
         componentMocks.Portfolio,
       );
     expect(getPanel()?.props.selectedListing).toBeNull();
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(screenRow());
     const panel = getPanel();
     expect(panel?.props.enabled).toBe(true);
     expect(panel?.props.catalogSnapshotSha256).toBe(snapshot().snapshotSha256);
@@ -1402,14 +1527,16 @@ describe("SecurityDiscoveryWorkspace", () => {
   it("binds filing checks to the saved watchlist and clears them after session loss", async () => {
     await activateWorkspace();
     let panel = findElement<PersonalWatchlistFilingsProps>(
-      renderWorkspace(),
+      chooseResearchOrigin("filings"),
       componentMocks.WatchlistFilings,
     );
     expect(panel?.props.enabled).toBe(false);
-    requireStockScreener(renderWorkspace()).props.onAddToWatchlist(screenRow());
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onAddToWatchlist(screenRow());
     await flushPromises();
     panel = findElement<PersonalWatchlistFilingsProps>(
-      renderWorkspace(),
+      chooseResearchOrigin("filings"),
       componentMocks.WatchlistFilings,
     );
     expect(panel?.props.enabled).toBe(true);
@@ -1444,7 +1571,9 @@ describe("SecurityDiscoveryWorkspace", () => {
           component,
         );
       expect(getPanel()?.props.selection).toBeNull();
-      requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+      requireStockScreener(
+        chooseDeskScreen("Catalog screen"),
+      ).props.onOpenResearch(screenRow());
       const panel = getPanel();
       expect(panel?.props.enabled).toBe(true);
       expect(panel?.props.catalogSnapshotSha256).toBe(
@@ -1472,7 +1601,9 @@ describe("SecurityDiscoveryWorkspace", () => {
     "removes SEC %s evidence immediately on session loss and revalidates its catalog context",
     async (_kind, component) => {
       await activateWorkspace();
-      requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+      requireStockScreener(
+        chooseDeskScreen("Catalog screen"),
+      ).props.onOpenResearch(screenRow());
       const panel = findElement<PersonalSecQuarterlyEvidenceProps>(
         renderWorkspace(),
         component,
@@ -1500,7 +1631,7 @@ describe("SecurityDiscoveryWorkspace", () => {
 
   it("routes annual financial screen identities and clears discovery after session loss", async () => {
     await activateWorkspace();
-    let rendered = renderWorkspace();
+    let rendered = chooseDeskScreen("Financial screen");
     const financial = findElement<PersonalFinancialScreenerProps>(
       rendered,
       componentMocks.FinancialScreener,
@@ -1541,7 +1672,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).resolves.toBe(true);
     rendered = renderWorkspace();
 
-    expect(textContent(rendered)).toContain("Discover companies");
+    expect(textContent(rendered)).toContain("Discover");
     expect(textContent(rendered)).toContain(
       "Security search is still available, but watchlist changes are disabled",
     );
@@ -1656,7 +1787,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     await flushPromises();
     rendered = renderWorkspace();
 
-    requireButton(rendered, "View market").props.onClick();
+    requireButton(rendered, "Research").props.onClick();
     rendered = renderWorkspace();
     market = requireMarketOverview(rendered);
     expect(market.props.selection).toMatchObject({
@@ -3057,6 +3188,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       ),
     ).toBe(true);
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(requireCompanyResearch(renderWorkspace()).props.activeSection).toBe(
       "peers",
@@ -3399,16 +3531,13 @@ describe("SecurityDiscoveryWorkspace", () => {
       pendingValuation.promise,
     );
     requireManualPeerComparison(rendered).props.onLoadPeerData("lst-peer");
-    rendered = renderWorkspace();
+    void renderWorkspace();
     const annualSignal =
       apiMocks.fetchPersonalAnnualFinancials.mock.calls.at(-1)?.[1];
     const valuationSignal =
       apiMocks.fetchPersonalValuationHistory.mock.calls.at(-1)?.[1];
 
-    const viewButtons = findAllElements(rendered, "button").filter(
-      (button) => textContent(button) === "View market",
-    ) as React.ReactElement<{ onClick: () => void }>[];
-    viewButtons[1]?.props.onClick();
+    void selectExistingSearchResult(1);
     expect(annualSignal?.aborted).toBe(true);
     expect(valuationSignal?.aborted).toBe(true);
     pendingAnnual.resolve(annualFinancials("lst-peer", "PEER"));
@@ -3601,7 +3730,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(requireAnnualFinancials(rendered).props.errorCode).toBe(
       "not_entitled",
     );
-    expect(textContent(rendered)).toContain("Discover companies");
+    expect(textContent(rendered)).toContain("Discover");
     expect(findOwnerSession(rendered)).toBeDefined();
   });
 
@@ -3622,13 +3751,10 @@ describe("SecurityDiscoveryWorkspace", () => {
     let rendered: React.ReactNode = await searchAndSelectMarket("PAIR");
 
     requireAnnualFinancials(rendered).props.onLoad();
-    rendered = renderWorkspace();
+    void renderWorkspace();
     const firstSignal =
       apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]?.[1];
-    const viewButtons = findAllElements(rendered, "button").filter(
-      (button) => textContent(button) === "View market",
-    ) as React.ReactElement<{ onClick: () => void }>[];
-    viewButtons[1]?.props.onClick();
+    void selectExistingSearchResult(1);
     expect(firstSignal?.aborted).toBe(true);
 
     first.resolve(annualFinancials("lst-zero", "ZERO"));
@@ -3697,13 +3823,10 @@ describe("SecurityDiscoveryWorkspace", () => {
     let rendered: React.ReactNode = await searchAndSelectMarket("PAIR");
 
     requireQuarterlyFinancials(rendered).props.onLoad();
-    rendered = renderWorkspace();
+    void renderWorkspace();
     const firstSignal =
       apiMocks.fetchPersonalQuarterlyFinancials.mock.calls[0]?.[1];
-    const viewButtons = findAllElements(rendered, "button").filter(
-      (button) => textContent(button) === "View market",
-    ) as React.ReactElement<{ onClick: () => void }>[];
-    viewButtons[1]?.props.onClick();
+    void selectExistingSearchResult(1);
     expect(firstSignal?.aborted).toBe(true);
 
     first.resolve(quarterlyFinancials("lst-zero", "ZERO"));
@@ -3774,7 +3897,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     });
     await flushPromises();
     rendered = renderWorkspace();
-    requireButton(rendered, "View market").props.onClick();
+    requireButton(rendered, "Research").props.onClick();
     rendered = renderWorkspace();
 
     requireMarketOverview(rendered).props.onLoad("1y");
@@ -3815,13 +3938,13 @@ describe("SecurityDiscoveryWorkspace", () => {
     await flushPromises();
     rendered = renderWorkspace();
     const viewButtons = findAllElements(rendered, "button").filter(
-      (button) => textContent(button) === "View market",
+      (button) => textContent(button) === "Research",
     ) as React.ReactElement<{ onClick: () => void }>[];
     viewButtons[0]?.props.onClick();
     rendered = renderWorkspace();
     requireMarketOverview(rendered).props.onLoad("1y");
 
-    viewButtons[1]?.props.onClick();
+    void selectExistingSearchResult(1);
     first.resolve(marketOverview());
     await flushPromises();
     rendered = renderWorkspace();
@@ -3834,7 +3957,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(market.props.overview).toBeNull();
   });
 
-  it("persists reordering, inline notes, and removal", async () => {
+  it("persists reordering, explicitly opened notes, and removal", async () => {
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
       id: "main",
       version: 4,
@@ -3851,7 +3974,7 @@ describe("SecurityDiscoveryWorkspace", () => {
       },
     });
     await activateWorkspace();
-    let rendered = renderWorkspace();
+    let rendered = chooseDeskTask("Watchlist");
 
     requireElementByProps<{ onClick: () => void }>(rendered, {
       "aria-label": "Move TWO up",
@@ -3864,9 +3987,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).toEqual(["TWO", "ONE"]);
 
     rendered = renderWorkspace();
-    const note = requireElementByProps<{
-      onChange: (event: { target: { value: string } }) => void;
-    }>(rendered, { id: "note-lst-two" });
+    const note = watchlistNote(rendered, "lst-two");
     note.props.onChange({ target: { value: "  Watch margins  " } });
     rendered = renderWorkspace();
     requireButton(rendered, "Save note").props.onClick();
@@ -3915,11 +4036,9 @@ describe("SecurityDiscoveryWorkspace", () => {
     let rendered = renderWorkspace();
 
     expect(requireButton(rendered, "Remove").props.disabled).toBe(true);
-    expect(
-      requireElementByProps<{ disabled?: boolean }>(rendered, {
-        id: "note-lst-retained",
-      }).props.disabled,
-    ).toBe(true);
+    expect(watchlistAction(rendered, "Edit note for OLD").props.disabled).toBe(
+      true,
+    );
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
 
     requireButton(rendered, "Reconcile watchlist").props.onClick();
@@ -3975,9 +4094,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     );
     await activateWorkspace();
     let rendered = renderWorkspace();
-    requireElementByProps<{
-      onChange: (event: { target: { value: string } }) => void;
-    }>(rendered, { id: "note-lst-one" }).props.onChange({
+    watchlistNote(rendered, "lst-one").props.onChange({
       target: { value: "  Unsaved margin note  " },
     });
     rendered = renderWorkspace();
@@ -4021,7 +4138,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     let rendered = renderWorkspace();
 
-    requireButton(rendered, "Save note").props.onClick();
+    watchlistSave(rendered, "lst-one").props.onClick();
     rendered = renderWorkspace();
 
     expect(
@@ -4118,7 +4235,7 @@ describe("SecurityDiscoveryWorkspace", () => {
   it("clears private results synchronously when the owner session ends", async () => {
     await activateWorkspace();
     let rendered = renderWorkspace();
-    expect(textContent(rendered)).toContain("Discover companies");
+    expect(textContent(rendered)).toContain("Discover");
     requireElementByProps<{
       onChange: (event: { target: { value: string } }) => void;
     }>(rendered, { id: "security-query" }).props.onChange({
@@ -4148,6 +4265,361 @@ describe("SecurityDiscoveryWorkspace", () => {
         id: "security-query",
       }).props.value,
     ).toBe("");
+  });
+});
+
+describe("Research Desk task and editor lifetimes", () => {
+  it("keeps every screening and update capability mounted while switching explicit subviews without IO", async () => {
+    await activateWorkspace();
+    const initial = renderWorkspace();
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    void chooseDeskTask("Screens");
+    for (const [label, id] of [
+      ["Catalog screen", "desk-screen-catalog"],
+      ["Financial screen", "desk-screen-financial"],
+      ["Price and valuation", "desk-screen-price"],
+    ] as const) {
+      const action = requireButton(
+        renderWorkspace(),
+        label,
+      ) as React.ReactElement<{
+        onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+      }>;
+      action.props.onClick(deskNavigationEvent());
+      const next = renderWorkspace();
+      expect(
+        requireElementByProps<{ hidden: boolean }>(next, { id }).props.hidden,
+      ).toBe(false);
+      expect(requireFinancialScreener(next).key).toBe(
+        requireFinancialScreener(initial).key,
+      );
+      expect(requirePriceScreen(next).key).toBe(
+        requirePriceScreen(initial).key,
+      );
+    }
+    void chooseDeskTask("Updates");
+    for (const [label, id] of [
+      ["Recent filings", "desk-update-filings"],
+      ["Daily filing monitor", "desk-update-monitor"],
+    ] as const) {
+      const action = requireButton(
+        renderWorkspace(),
+        label,
+      ) as React.ReactElement<{
+        onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+      }>;
+      action.props.onClick(deskNavigationEvent());
+      expect(
+        requireElementByProps<{ hidden: boolean }>(renderWorkspace(), { id })
+          .props.hidden,
+      ).toBe(false);
+    }
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("retains raw drafts after closing the one editor and changing task views", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(2),
+    );
+    await activateWorkspace();
+    let view = chooseDeskTask("Watchlist");
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    expect(findAllElements(view, "textarea")).toHaveLength(0);
+    watchlistAction(view, "Edit note for SYN00001").props.onClick();
+    view = renderWorkspace();
+    expect(findAllElements(view, "textarea")).toHaveLength(1);
+    const raw = "  First draft\nKeep exact spacing  ";
+    watchlistNote(view, "lst-syn-00001").props.onChange({
+      target: { value: raw },
+    });
+    requireElementByProps<{ onClick: () => void }>(renderWorkspace(), {
+      "aria-label": "Close note editor",
+    }).props.onClick();
+    expect(findAllElements(renderWorkspace(), "textarea")).toHaveLength(0);
+    void chooseDeskTask("Screens");
+    void chooseDeskTask("Portfolio");
+    view = chooseDeskTask("Watchlist");
+    expect(findAllElements(view, "textarea")).toHaveLength(0);
+    expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(raw);
+    watchlistNote(renderWorkspace(), "lst-syn-00002").props.onChange({
+      target: { value: "Second draft" },
+    });
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
+      raw,
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+  });
+
+  it("refuses hidden and retired row actions and a close callback from an older editor", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(2),
+    );
+    await activateWorkspace();
+    const original = chooseDeskTask("Watchlist");
+    const edit = requireElementByProps<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>(original, {
+      "aria-label": "Edit note for SYN00001",
+    });
+    const research = requireElementByProps<{ onClick: () => void }>(original, {
+      "aria-label": "Research SYN00001",
+    });
+    void chooseDeskTask("Discover");
+    edit.props.onClick(deskNavigationEvent());
+    research.props.onClick();
+    expect(findAllElements(renderWorkspace(), "textarea")).toHaveLength(0);
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    void chooseDeskTask("Watchlist");
+    edit.props.onClick(deskNavigationEvent());
+    research.props.onClick();
+    expect(findAllElements(renderWorkspace(), "textarea")).toHaveLength(0);
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    watchlistAction(
+      renderWorkspace(),
+      "Edit note for SYN00001",
+    ).props.onClick();
+    const closeFirst = requireElementByProps<{ onClick: () => void }>(
+      renderWorkspace(),
+      { "aria-label": "Close note editor" },
+    );
+    watchlistAction(
+      renderWorkspace(),
+      "Edit note for SYN00002",
+    ).props.onClick();
+    closeFirst.props.onClick();
+    expect(
+      requireElementByProps(renderWorkspace(), { id: "note-lst-syn-00002" }),
+    ).toBeDefined();
+    expect(findAllElements(renderWorkspace(), "textarea")).toHaveLength(1);
+    watchlistAction(
+      renderWorkspace(),
+      "Edit note for SYN00001",
+    ).props.onClick();
+    closeFirst.props.onClick();
+    expect(
+      requireElementByProps(renderWorkspace(), { id: "note-lst-syn-00001" }),
+    ).toBeDefined();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("shows the selected off-page company in a bounded context list and preserves the filtered Watchlist Back target", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(120),
+    );
+    await activateWorkspace();
+    void chooseDeskTask("Watchlist");
+    void filterWatchlist("  SYN  ");
+    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    const dom = companyFocusDocument("watchlist-title");
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
+    let view = renderWorkspace();
+    expect(deskView(view, "research").props.hidden).toBe(false);
+    expect(deskView(view, "watchlist").props.hidden).toBe(true);
+    const context = requireElementByProps(view, { id: "desk-company-context" });
+    const companies = findAllElements(context, "button").filter((button) =>
+      String(button.props["aria-label"]).endsWith(" from company list"),
+    );
+    expect(companies).toHaveLength(50);
+    expect(companies[0]!.props["aria-label"]).toBe(
+      "Research SYN00051 from company list",
+    );
+    expect(companies[0]!.props["aria-current"]).toBe("true");
+    const next = requireElementByProps<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>(context, { "aria-label": "Research SYN00052 from company list" });
+    next.props.onClick(deskNavigationEvent());
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).props.selection?.listingId).toBe(
+      "lst-syn-00052",
+    );
+    expect(requireCompanyNavigation(view).props.position).toBe(52);
+    requireCompanyResearch(view).props.onBack();
+    view = renderWorkspace();
+    await flushPromises();
+    expect(deskView(view, "watchlist").props.hidden).toBe(false);
+    expect(watchlistFilter(view).props.value).toBe("  SYN  ");
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+  });
+
+  it("retires context selection across company A-to-B-to-A, list-page changes and session replacement", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValue(watchlistRecord(120));
+    await activateWorkspace();
+    void chooseDeskTask("Watchlist");
+    watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+    const original = renderWorkspace();
+    const button = (view: unknown, label: string) =>
+      requireElementByProps<{
+        onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+      }>(view, { "aria-label": label });
+    const oldSecond = button(original, "Research SYN00002 from company list");
+    oldSecond.props.onClick(deskNavigationEvent());
+    button(
+      renderWorkspace(),
+      "Research SYN00001 from company list",
+    ).props.onClick(deskNavigationEvent());
+    oldSecond.props.onClick(deskNavigationEvent());
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-syn-00001");
+    const currentSecond = button(
+      renderWorkspace(),
+      "Research SYN00002 from company list",
+    );
+    const nextPage = requireButton(
+      renderWorkspace(),
+      "Next companies",
+    ) as React.ReactElement<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>;
+    nextPage.props.onClick(deskNavigationEvent());
+    void renderWorkspace();
+    currentSecond.props.onClick(deskNavigationEvent());
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-syn-00001");
+    const offPage = button(
+      renderWorkspace(),
+      "Research SYN00051 from company list",
+    );
+    await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    await activateWorkspace();
+    offPage.props.onClick(deskNavigationEvent());
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("opens a saved identity from the second context page without requiring it on the hidden Watchlist page", async () => {
+    const record = watchlistRecord(120);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    await searchAndSelectMarket("ZERO");
+    const dom = companyFocusDocument("watchlist-title");
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    expect(findCompanyNavigation(renderWorkspace())).toBeUndefined();
+    const next = requireButton(
+      renderWorkspace(),
+      "Next companies",
+    ) as React.ReactElement<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>;
+    next.props.onClick(deskNavigationEvent());
+    const context = renderWorkspace();
+    const selected = requireElementByProps<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>(context, { "aria-label": "Research SYN00051 from company list" });
+    selected.props.onClick(deskNavigationEvent());
+    const researched = renderWorkspace();
+    expect(requireCompanyResearch(researched).props.selection?.listingId).toBe(
+      "lst-syn-00051",
+    );
+    expect(requireCompanyNavigation(researched).props.position).toBe(51);
+    expect(watchlistRowIds(researched)).toEqual(watchlistIds(1, 50));
+    dom.origin.focus.mockClear();
+    requireCompanyResearch(researched).props.onBack();
+    const returned = renderWorkspace();
+    expect(deskView(returned, "watchlist").props.hidden).toBe(false);
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(dom.origin.focus).toHaveBeenCalledOnce();
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+  });
+
+  it("retires context identities after conflict replacement and admits only a fresh full-identity cohort", async () => {
+    const original = watchlistRecord(2);
+    const latest = watchlistRecord(2, 8);
+    latest.payload.memberships[1] = {
+      ...latest.payload.memberships[1]!,
+      securityName: "Replacement class",
+      shareClassId: "share-new",
+    };
+    apiMocks.fetchMainPersonalWatchlist
+      .mockResolvedValueOnce(original)
+      .mockResolvedValueOnce(latest);
+    apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("conflict"),
+    );
+    await activateWorkspace();
+    watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+    const before = renderWorkspace();
+    const oldSecond = requireElementByProps<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>(before, { "aria-label": "Research SYN00002 from company list" });
+    const note = requireCompanyNote(before);
+    note.props.onChange("Retained conflict draft");
+    note.props.onSave();
+    oldSecond.props.onClick(deskNavigationEvent());
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-syn-00001");
+    await flushPromises(12);
+    oldSecond.props.onClick(deskNavigationEvent());
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
+    ).toBe("lst-syn-00001");
+    expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
+      "Retained conflict draft",
+    );
+    watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+    const fresh = requireElementByProps<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>(renderWorkspace(), {
+      "aria-label": "Research SYN00002 from company list",
+    });
+    fresh.props.onClick(deskNavigationEvent());
+    const admitted = requireCompanyResearch(renderWorkspace());
+    expect(admitted.props.selection).toMatchObject({
+      listingId: "lst-syn-00002",
+      securityName: "Replacement class",
+    });
+    expect(admitted.key).toContain("share-new");
+    expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("retires queued task focus when another task or the session wins before commit", async () => {
+    await activateWorkspace();
+    const dom = workspaceSectionDocument("watchlist-title");
+    const action = deskTask(
+      renderWorkspace(),
+      "Watchlist",
+    ) as React.ReactElement<{
+      onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+    }>;
+    action.props.onClick(dom.event());
+    void renderWorkspace(undefined, { commitEffects: false });
+    const oldEffects = hookHarness.takePendingEffects();
+    deferWorkspaceEffects = true;
+    void chooseDeskTask("Discover");
+    oldEffects.forEach((effect) => effect());
+    expect(dom.target.focus).not.toHaveBeenCalled();
+    const current = deskTask(renderWorkspace(), "Watchlist") as typeof action;
+    current.props.onClick(dom.event());
+    await requireOwnerSession(
+      renderWorkspace(undefined, { commitEffects: false }),
+    ).props.onSessionChange(false, new AbortController().signal);
+    hookHarness.commitEffects();
+    expect(dom.target.focus).not.toHaveBeenCalled();
   });
 });
 
@@ -4187,12 +4659,14 @@ describe("My Watchlist navigation", () => {
     await activateWorkspace();
     const view = renderWorkspace();
     expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
-    expect(findAllElements(view, "textarea")).toHaveLength(50);
+    expect(findAllElements(view, "textarea")).toHaveLength(0);
     expect(textContent(view)).toMatch(/10,?000/u);
     expect(textContent(view)).toMatch(/Page\s+1\s+of\s+200/u);
     const filtered = filterWatchlist("SYN10000");
     expect(watchlistRowIds(filtered)).toEqual(["lst-syn-10000"]);
-    expect(findAllElements(filtered, "textarea")).toHaveLength(1);
+    expect(findAllElements(filtered, "textarea")).toHaveLength(0);
+    watchlistNote(filtered, "lst-syn-10000");
+    expect(findAllElements(renderWorkspace(), "textarea")).toHaveLength(1);
   });
 
   it("matches ticker and canonically equivalent company text case-insensitively without searching notes or rewriting identities", async () => {
@@ -4257,14 +4731,12 @@ describe("My Watchlist navigation", () => {
     const dom = companyFocusDocument("watchlist-title");
     void filterWatchlist(" SYN ");
     watchlistPageButton(renderWorkspace(), "Next").props.onClick();
-    const jump = requireElementByProps<{ href: string; onClick?: unknown }>(
-      renderWorkspace(),
-      { href: "#watchlist-title" },
-    );
+    const jump = deskTask(renderWorkspace(), "Watchlist");
     expect(typeof jump.props.onClick).toBe("function");
     watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
     await flushPromises();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     const view = renderWorkspace();
     expect(watchlistFilter(view).props.value).toBe(" SYN ");
@@ -4278,19 +4750,17 @@ describe("My Watchlist navigation", () => {
       expect(mock).not.toHaveBeenCalled();
   });
 
-  it("provides a fragment link with guarded focus to the heading only while the section exists", async () => {
+  it("provides a Watchlist task control and focusable heading only while the workspace exists", async () => {
     expect(
-      findAllElements(renderWorkspace(), "a").some(
-        (a) => a.props.href === "#watchlist-title",
+      findAllElements(renderWorkspace(), "button").some(
+        (button) => textContent(button) === "Watchlist",
       ),
     ).toBe(false);
     await activateWorkspace();
     const view = renderWorkspace();
-    const link = requireElementByProps<{ onClick?: unknown }>(view, {
-      href: "#watchlist-title",
-    });
-    expect(link.type).toBe("a");
-    expect(typeof link.props.onClick).toBe("function");
+    const control = deskTask(view, "Watchlist");
+    expect(control.type).toBe("button");
+    expect(typeof control.props.onClick).toBe("function");
     const heading = requireElementByProps<{ tabIndex: number }>(view, {
       id: "watchlist-title",
     });
@@ -4314,6 +4784,7 @@ describe("My Watchlist navigation", () => {
     watchlistPageButton(renderWorkspace(), "Next").props.onClick();
     watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     const view = renderWorkspace();
     expect(watchlistNote(view, "lst-syn-00051").props.value).toBe(
@@ -4321,10 +4792,7 @@ describe("My Watchlist navigation", () => {
     );
     expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
-    requireButton(
-      watchlistRow(view, "lst-syn-00051"),
-      "Save note",
-    ).props.onClick();
+    watchlistSave(view, "lst-syn-00051").props.onClick();
     await flushPromises();
     const [version, payload] =
       apiMocks.saveMainPersonalWatchlist.mock.calls[0]!;
@@ -4489,13 +4957,14 @@ describe("My Watchlist navigation", () => {
       const row = watchlistRow(old, "lst-syn-00001");
       const note = watchlistNote(old, "lst-syn-00001");
       editWatchlistNote("lst-syn-00001", "Current draft");
-      requireButton(
-        watchlistRow(renderWorkspace(), "lst-syn-00001"),
-        "Save note",
-      ).props.onClick();
+      watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
       await flushPromises();
       for (const button of findAllElements(row, "button"))
-        (button.props.onClick as () => void)();
+        (
+          button.props.onClick as (
+            event: React.MouseEvent<HTMLButtonElement>,
+          ) => void
+        )(deskNavigationEvent());
       note.props.onChange({ target: { value: "Stale overwrite" } });
       const view = renderWorkspace();
       expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
@@ -4519,32 +4988,37 @@ describe("My Watchlist navigation", () => {
     const row = watchlistRow(renderWorkspace(), "lst-syn-00001");
     watchlistPageButton(renderWorkspace(), "Next").props.onClick();
     for (const button of findAllElements(row, "button"))
-      (button.props.onClick as () => void)();
+      (
+        button.props.onClick as (
+          event: React.MouseEvent<HTMLButtonElement>,
+        ) => void
+      )(deskNavigationEvent());
     let view = renderWorkspace();
     expect(requireCompanyResearch(view).props.selection).toBeNull();
     const second = watchlistRow(view, "lst-syn-00051");
     watchlistFilter(view).props.onChange({ target: { value: "SYN00120" } });
     for (const button of findAllElements(second, "button"))
-      (button.props.onClick as () => void)();
+      (
+        button.props.onClick as (
+          event: React.MouseEvent<HTMLButtonElement>,
+        ) => void
+      )(deskNavigationEvent());
     view = renderWorkspace();
     expect(requireCompanyResearch(view).props.selection).toBeNull();
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
   });
 
-  it("cancels queued Research focus when its origin is filtered out before the microtask runs", async () => {
+  it("cancels queued Research focus when its origin is filtered out before the view commits", async () => {
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
       watchlistRecord(2),
     );
     await activateWorkspace();
     const dom = companyFocusDocument("watchlist-title");
-    const pending: Array<() => void> = [];
-    vi.stubGlobal("queueMicrotask", (callback: () => void) =>
-      pending.push(callback),
-    );
+    deferWorkspaceEffects = true;
     const view = renderWorkspace();
     watchlistAction(view, "Research SYN00001").props.onClick();
     watchlistFilter(view).props.onChange({ target: { value: "SYN00002" } });
-    pending.forEach((callback) => callback());
+    commitWorkspaceEffects();
     expect(dom.company.focus).not.toHaveBeenCalled();
     expect(dom.trigger.focus).not.toHaveBeenCalled();
     expect(
@@ -4568,12 +5042,13 @@ describe("My Watchlist navigation", () => {
         .mockResolvedValueOnce(latest);
       await activateWorkspace();
       const dom = companyFocusDocument("watchlist-title");
+      if (change === "identity" || change === "remove")
+        watchlistNote(renderWorkspace(), "lst-syn-00001");
       watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
       await flushPromises();
-      const pending: Array<() => void> = [];
-      vi.stubGlobal("queueMicrotask", (callback: () => void) =>
-        pending.push(callback),
-      );
+      void renderWorkspace();
+      dom.origin.focus.mockClear();
+      deferWorkspaceEffects = true;
       requireCompanyResearch(renderWorkspace()).props.onBack();
       if (change === "page")
         watchlistPageButton(renderWorkspace(), "Next").props.onClick();
@@ -4582,10 +5057,7 @@ describe("My Watchlist navigation", () => {
         apiMocks.saveMainPersonalWatchlist.mockRejectedValueOnce(
           new PersonalWorkspaceApiError("conflict"),
         );
-        requireButton(
-          watchlistRow(renderWorkspace(), "lst-syn-00001"),
-          "Save note",
-        ).props.onClick();
+        watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
         await flushPromises();
       }
       if (change === "session")
@@ -4594,7 +5066,7 @@ describe("My Watchlist navigation", () => {
           new AbortController().signal,
         );
       void renderWorkspace();
-      pending.forEach((callback) => callback());
+      commitWorkspaceEffects();
       expect(dom.trigger.isConnected).toBe(true);
       expect(dom.trigger.focus).not.toHaveBeenCalled();
       if (change === "session") expect(dom.origin.focus).not.toHaveBeenCalled();
@@ -4616,7 +5088,11 @@ describe("My Watchlist navigation", () => {
       new AbortController().signal,
     );
     for (const button of findAllElements(row, "button"))
-      (button.props.onClick as () => void)();
+      (
+        button.props.onClick as (
+          event: React.MouseEvent<HTMLButtonElement>,
+        ) => void
+      )(deskNavigationEvent());
     oldNote.props.onChange({ target: { value: "Must not reappear" } });
     await ending;
     expect(watchlistRowIds(renderWorkspace())).toEqual([]);
@@ -4689,10 +5165,7 @@ describe("Shared company research notes", () => {
       const view = renderWorkspace();
       const company = requireCompanyNote(view);
       const row = watchlistNote(view, "lst-syn-00001");
-      const rowSave = requireButton(
-        watchlistRow(view, "lst-syn-00001"),
-        "Save note",
-      );
+      const rowSave = watchlistSave(renderWorkspace(), "lst-syn-00001");
       row.props.onChange({ target: { value: "  Save exactly this  " } });
       if (origin === "company") company.props.onSave();
       else rowSave.props.onClick();
@@ -4830,10 +5303,7 @@ describe("Shared company research notes", () => {
     const oldView = renderWorkspace();
     const old = requireCompanyNote(oldView);
     const oldRow = watchlistNote(oldView, "lst-syn-00001");
-    const oldRowSave = requireButton(
-      watchlistRow(oldView, "lst-syn-00001"),
-      "Save note",
-    );
+    const oldRowSave = watchlistSave(oldView, "lst-syn-00001");
     old.props.onChange("  Keep the unsaved thesis  ");
     old.props.onSave();
     await flushPromises(12);
@@ -4921,10 +5391,7 @@ describe("Shared company research notes", () => {
       expect(textContent(renderWorkspace())).toMatch(
         /unsaved research notes.*(?:removed|changed).*discarded/iu,
       );
-      requireButton(
-        watchlistRow(renderWorkspace(), "lst-syn-00002"),
-        "Save note",
-      ).props.onClick();
+      watchlistSave(renderWorkspace(), "lst-syn-00002").props.onClick();
       await flushPromises(12);
       old.props.onChange("Still retired after re-add");
       old.props.onSave();
@@ -5066,10 +5533,7 @@ describe("Company research note lifecycle", () => {
       expect(requireCompanyNote(view).props.message).toMatch(
         /2,000|control|invalid/iu,
       );
-      requireButton(
-        watchlistRow(view, "lst-syn-00001"),
-        "Save note",
-      ).props.onClick();
+      watchlistSave(view, "lst-syn-00001").props.onClick();
       await flushPromises();
       expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
     },
@@ -5183,10 +5647,6 @@ describe("Sequential My Watchlist research", () => {
     vi.stubGlobal("localStorage", storage);
     vi.stubGlobal("sessionStorage", storage);
     watchlistAction(renderWorkspace(), "Research SYN00050").props.onClick();
-    watchlistAction(
-      renderWorkspace(),
-      "Choose SYN00001 for portfolio",
-    ).props.onClick();
     let view = renderWorkspace();
     expect(requireCompanyNavigation(view).props).toMatchObject({
       position: 50,
@@ -5201,7 +5661,11 @@ describe("Sequential My Watchlist research", () => {
     );
     expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
     expect(requireCompanyNavigation(view).props.position).toBe(51);
-    watchlistPageButton(view, "Next").props.onClick();
+    (
+      requireButton(view, "Next companies").props.onClick as (
+        event: React.MouseEvent<HTMLButtonElement>,
+      ) => void
+    )(deskNavigationEvent());
     view = renderWorkspace();
     expect(requireCompanyNavigation(view).props.disabled).toBe(false);
     requireCompanyNavigation(view).props.onPrevious();
@@ -5209,7 +5673,7 @@ describe("Sequential My Watchlist research", () => {
     expect(requireCompanyResearch(view).props.selection?.listingId).toBe(
       "lst-syn-00050",
     );
-    expect(watchlistRowIds(view)).toEqual(watchlistIds(51, 100));
+    expect(watchlistRowIds(view)).toEqual(watchlistIds(1, 50));
     for (let position = 51; position <= 120; position += 1) {
       requireCompanyNavigation(view).props.onNext();
       view = renderWorkspace();
@@ -5226,12 +5690,13 @@ describe("Sequential My Watchlist research", () => {
       "valuation",
     );
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     view = renderWorkspace();
     expect(
       findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
         .selectedListing?.listingId,
-    ).toBe("lst-syn-00001");
+    ).toBe("lst-syn-00050");
     expect(
       findElement<PersonalFinancialScreenerProps>(
         view,
@@ -5307,10 +5772,6 @@ describe("Sequential My Watchlist research", () => {
     await activateWorkspace();
     editWatchlistNote("lst-syn-00001", "  A's raw thesis  ");
     watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
-    watchlistAction(
-      renderWorkspace(),
-      "Choose SYN00003 for portfolio",
-    ).props.onClick();
     expect(requireCompanyNote(renderWorkspace()).props.value).toBe(
       "  A's raw thesis  ",
     );
@@ -5321,22 +5782,22 @@ describe("Sequential My Watchlist research", () => {
     requireCompanyNavigation(renderWorkspace()).props.onPrevious();
     let view = renderWorkspace();
     expect(requireCompanyNote(view).props.value).toBe("  A's raw thesis  ");
-    expect(watchlistNote(view, "lst-syn-00002").props.value).toBe(
-      " B's separate draft\n",
-    );
     requireCompanyNote(view).props.onChange(
       "  A updated in company research  ",
     );
     requireCompanyNavigation(renderWorkspace()).props.onNext();
     view = renderWorkspace();
     expect(requireCompanyNote(view).props.value).toBe(" B's separate draft\n");
-    expect(watchlistNote(view, "lst-syn-00001").props.value).toBe(
+    expect(watchlistNote(view, "lst-syn-00002").props.value).toBe(
+      " B's separate draft\n",
+    );
+    expect(watchlistNote(renderWorkspace(), "lst-syn-00001").props.value).toBe(
       "  A updated in company research  ",
     );
     expect(
       findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
         .selectedListing?.listingId,
-    ).toBe("lst-syn-00003");
+    ).toBe("lst-syn-00001");
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
   });
 
@@ -5378,30 +5839,40 @@ describe("Sequential My Watchlist research", () => {
     await activateWorkspace();
     const dom = companyFocusDocument("watchlist-title");
     watchlistAction(renderWorkspace(), "Research SYN00050").props.onClick();
+    void renderWorkspace();
     await flushPromises();
     dom.company.focus.mockClear();
     // Next is activated inside the company panel, not from the original row.
     vi.stubGlobal("document", {
       activeElement: dom.company,
+      visibilityState: "visible",
       getElementById: dom.getElementById,
     });
     requireCompanyNavigation(renderWorkspace()).props.onNext();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.company.focus).toHaveBeenCalledOnce();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledOnce();
     dom.trigger.focus.mockClear();
-    watchlistPageButton(renderWorkspace(), "Next").props.onClick();
+    dom.origin.focus.mockClear();
+    watchlistAction(renderWorkspace(), "Research SYN00050").props.onClick();
+    void renderWorkspace();
+    dom.company.focus.mockClear();
+    dom.trigger.isConnected = false;
     requireCompanyNavigation(renderWorkspace()).props.onNext();
+    void renderWorkspace();
     await flushPromises();
-    expect(dom.company.focus).toHaveBeenCalledTimes(2);
+    expect(dom.company.focus).toHaveBeenCalledOnce();
     requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
     await flushPromises();
-    expect(dom.trigger.isConnected).toBe(true);
+    expect(dom.trigger.isConnected).toBe(false);
     expect(dom.trigger.focus).not.toHaveBeenCalled();
     expect(dom.origin.focus).toHaveBeenCalledOnce();
-    expect(watchlistRowIds(renderWorkspace())).toEqual(watchlistIds(51, 100));
+    expect(watchlistRowIds(renderWorkspace())).toEqual(watchlistIds(1, 50));
   });
 
   it("retires a cohort on filter A-to-B-to-A and recaptures it only on explicit same-company row Research", async () => {
@@ -5460,6 +5931,7 @@ describe("Sequential My Watchlist research", () => {
       const view = renderWorkspace();
       const old = requireCompanyNavigation(view);
       const key = requireCompanyResearch(view).key;
+      const originView = chooseResearchOrigin(origin);
       if (origin === "search") {
         apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
           limitApplied: 15,
@@ -5478,22 +5950,24 @@ describe("Sequential My Watchlist research", () => {
       if (origin === "catalog") openNoteCompany(identity);
       if (origin === "financials")
         findElement<PersonalFinancialScreenerProps>(
-          view,
+          originView,
           componentMocks.FinancialScreener,
         )!.props.onOpenResearch({ ...identity, cik: "0000000001" });
       if (origin === "filings")
         findElement<PersonalWatchlistFilingsProps>(
-          view,
+          originView,
           componentMocks.WatchlistFilings,
         )!.props.onOpenResearch(identity);
       if (origin === "portfolio")
-        findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!
-          .props.onOpenResearch!(identity);
+        findElement<PersonalPortfolioProps>(
+          originView,
+          componentMocks.Portfolio,
+        )!.props.onOpenResearch!(identity);
       if (origin === "priceScreen") {
         const dom = companyFocusDocument(
           "personal-price-valuation-screen-title",
         );
-        requirePriceScreen(view).props.onOpenResearch(
+        requirePriceScreen(originView).props.onOpenResearch(
           identity,
           dom.trigger as unknown as HTMLButtonElement,
           () => true,
@@ -5794,19 +6268,17 @@ describe("Sequential My Watchlist research", () => {
       await activateWorkspace();
       const dom = companyFocusDocument("watchlist-title");
       watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+      void renderWorkspace();
       await flushPromises();
       dom.company.focus.mockClear();
-      const pending: Array<() => void> = [];
-      vi.stubGlobal("queueMicrotask", (callback: () => void) =>
-        pending.push(callback),
-      );
+      deferWorkspaceEffects = true;
       if (action === "next")
         requireCompanyNavigation(renderWorkspace()).props.onNext();
       else
         watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
       requireCompanyNote(renderWorkspace()).props.onSave();
       await flushPromises(12);
-      pending.forEach((callback) => callback());
+      commitWorkspaceEffects();
       expect(dom.company.focus).not.toHaveBeenCalled();
       expect(requireCompanyNavigation(renderWorkspace()).props).toMatchObject({
         disabled: false,
@@ -5824,14 +6296,12 @@ describe("Sequential My Watchlist research", () => {
       await activateWorkspace();
       const dom = companyFocusDocument("watchlist-title");
       watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
+      void renderWorkspace();
       await flushPromises();
       dom.company.focus.mockClear();
-      const pending: Array<() => void> = [];
-      vi.stubGlobal("queueMicrotask", (callback: () => void) =>
-        pending.push(callback),
-      );
+      deferWorkspaceEffects = true;
       requireCompanyNavigation(renderWorkspace()).props.onNext();
-      const retired = pending.splice(0);
+      void renderWorkspace();
       if (change === "transition")
         requireCompanyNavigation(renderWorkspace()).props.onNext();
       if (change === "filter") void filterWatchlist("SYN");
@@ -5840,9 +6310,8 @@ describe("Sequential My Watchlist research", () => {
           false,
           new AbortController().signal,
         );
-      retired.forEach((callback) => callback());
-      expect(dom.company.focus).not.toHaveBeenCalled();
-      pending.forEach((callback) => callback());
+      void renderWorkspace();
+      commitWorkspaceEffects();
       expect(dom.company.focus).toHaveBeenCalledTimes(
         change === "transition" ? 1 : 0,
       );
@@ -5855,13 +6324,10 @@ describe("Sequential My Watchlist research", () => {
     );
     await activateWorkspace();
     const dom = companyFocusDocument("watchlist-title");
-    const pending: Array<() => void> = [];
-    vi.stubGlobal("queueMicrotask", (callback: () => void) =>
-      pending.push(callback),
-    );
+    deferWorkspaceEffects = true;
     watchlistAction(renderWorkspace(), "Research SYN00001").props.onClick();
     void filterWatchlist("SYN");
-    pending.forEach((callback) => callback());
+    commitWorkspaceEffects();
     expect(dom.company.focus).not.toHaveBeenCalled();
     expect(watchlistRowIds(renderWorkspace())).toEqual(watchlistIds(1, 2));
   });
@@ -5974,11 +6440,13 @@ describe("Save the researched company to My Watchlist", () => {
         });
         await searchAndSelectMarket("NEW");
       } else if (origin === "catalog") {
-        requireStockScreener(renderWorkspace()).props.onOpenResearch(candidate);
+        requireStockScreener(
+          chooseDeskScreen("Catalog screen"),
+        ).props.onOpenResearch(candidate);
       } else {
-        requireFinancialScreener(renderWorkspace()).props.onOpenResearch(
-          candidate,
-        );
+        requireFinancialScreener(
+          chooseDeskScreen("Financial screen"),
+        ).props.onOpenResearch(candidate);
       }
       const before = Object.values(apiMocks).map(
         (mock) => mock.mock.calls.length,
@@ -6045,7 +6513,9 @@ describe("Save the researched company to My Watchlist", () => {
     };
     // The real screener resolves off-page comparison members before this parent
     // callback; this root test deliberately supplies a DTO absent from visible rows.
-    requireFinancialScreener(renderWorkspace()).props.onOpenResearch(candidate);
+    requireFinancialScreener(
+      chooseDeskScreen("Financial screen"),
+    ).props.onOpenResearch(candidate);
     watchlistAction(
       renderWorkspace(),
       "Choose SYN00060 for portfolio",
@@ -6186,23 +6656,23 @@ describe("Save the researched company to My Watchlist", () => {
       const initial = await searchAndSelectMarket("ZERO");
       const old = requireCompanyWatchlistAction(initial).props.onAdd;
       if (change === "company B" || change === "A to B to A") {
-        requireStockScreener(renderWorkspace()).props.onOpenResearch(
-          screenRow(),
-        );
+        requireStockScreener(
+          chooseDeskScreen("Catalog screen"),
+        ).props.onOpenResearch(screenRow());
         if (change === "A to B to A")
-          requireStockScreener(renderWorkspace()).props.onOpenResearch(
-            searchResult("ZERO", "lst-zero"),
-          );
+          requireStockScreener(
+            chooseDeskScreen("Catalog screen"),
+          ).props.onOpenResearch(searchResult("ZERO", "lst-zero"));
       }
       if (change === "same identity portfolio")
         findElement<PersonalPortfolioProps>(
-          renderWorkspace(),
+          chooseDeskTask("Portfolio"),
           componentMocks.Portfolio,
         )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
       if (change === "same identity catalog")
-        requireStockScreener(renderWorkspace()).props.onOpenResearch(
-          searchResult("ZERO", "lst-zero"),
-        );
+        requireStockScreener(
+          chooseDeskScreen("Catalog screen"),
+        ).props.onOpenResearch(searchResult("ZERO", "lst-zero"));
       if (change === "Clear")
         requireCompanyResearch(renderWorkspace()).props.onClear();
       if (change === "session")
@@ -6302,7 +6772,7 @@ describe("Save the researched company to My Watchlist", () => {
       const candidate = searchResult("ZERO", "lst-zero");
       if (state === "portfolio only")
         findElement<PersonalPortfolioProps>(
-          renderWorkspace(),
+          chooseDeskTask("Portfolio"),
           componentMocks.Portfolio,
         )!.props.onOpenResearch!(candidate);
       else if (state === "historical filing")
@@ -6314,7 +6784,9 @@ describe("Save the researched company to My Watchlist", () => {
           note: "Historical",
         });
       else
-        requireStockScreener(renderWorkspace()).props.onOpenResearch(candidate);
+        requireStockScreener(
+          chooseDeskScreen("Catalog screen"),
+        ).props.onOpenResearch(candidate);
       const action = requireCompanyWatchlistAction(renderWorkspace());
       expect(
         findAllElements(PersonalCompanyWatchlistAction(action.props), "button"),
@@ -6336,10 +6808,7 @@ describe("Save the researched company to My Watchlist", () => {
     await searchAndSelectMarket("ZERO");
     const old = requireCompanyWatchlistAction(renderWorkspace()).props.onAdd;
     editWatchlistNote("lst-syn-00001", "Updated independently");
-    requireButton(
-      watchlistRow(renderWorkspace(), "lst-syn-00001"),
-      "Save note",
-    ).props.onClick();
+    watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
     await flushPromises(12);
     old();
     expect(apiMocks.saveMainPersonalWatchlist).toHaveBeenCalledOnce();
@@ -6378,15 +6847,15 @@ describe("Save the researched company to My Watchlist", () => {
     const invalidated = requireCompanyWatchlistAction(renderWorkspace());
     expect(invalidated.props.unavailableReason).toMatch(/catalog|revalidate/iu);
     invalidated.props.onAdd();
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(
-      searchResult("ZERO", "lst-zero"),
-    );
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(searchResult("ZERO", "lst-zero"));
     requireCompanyWatchlistAction(renderWorkspace()).props.onAdd();
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
     await activateWorkspace();
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(
-      searchResult("ZERO", "lst-zero"),
-    );
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(searchResult("ZERO", "lst-zero"));
     old();
     expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
     requireCompanyWatchlistAction(renderWorkspace()).props.onAdd();
@@ -6397,7 +6866,9 @@ describe("Save the researched company to My Watchlist", () => {
   it("keeps the admitted DTO copied at research entry instead of accepting later caller mutation", async () => {
     await activateWorkspace();
     const candidate = { ...screenRow() };
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(candidate);
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(candidate);
     candidate.securityId = "sec-mutated-after-entry";
     candidate.shareClassName = "Changed after admission";
     requireCompanyWatchlistAction(renderWorkspace()).props.onAdd();
@@ -6530,7 +7001,9 @@ describe("Save the researched company to My Watchlist", () => {
     requireCompanyWatchlistAction(renderWorkspace()).props.onAdd();
     await flushPromises();
     expect(apiMocks.fetchMainPersonalWatchlist).toHaveBeenCalledTimes(2);
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(screenRow());
     const during = requireCompanyWatchlistAction(renderWorkspace());
     expect(during.props.disabled).toBe(true);
     during.props.onAdd();
@@ -6547,7 +7020,9 @@ describe("Save the researched company to My Watchlist", () => {
       requireCompanyResearch(renderWorkspace()).props.selection?.listingId,
     ).toBe("lst-screen");
     await activateWorkspace();
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(screenRow());
     expect(
       requireCompanyWatchlistAction(renderWorkspace()).props.unavailableReason,
     ).toBeNull();
@@ -6585,7 +7060,7 @@ describe("Save the researched company to My Watchlist", () => {
         requireCompanyResearch(renderWorkspace()).props.onBack();
       if (caseName === "same identity origin")
         findElement<PersonalPortfolioProps>(
-          renderWorkspace(),
+          chooseDeskTask("Portfolio"),
           componentMocks.Portfolio,
         )!.props.onOpenResearch!(searchResult("ZERO", "lst-zero"));
       pending.resolve({
@@ -6719,10 +7194,7 @@ describe("Save the researched company to My Watchlist", () => {
     const queued = hookHarness.takePendingEffects();
     expect(queued).not.toHaveLength(0);
     editWatchlistNote("lst-syn-00001", "Explicit separate version change");
-    requireButton(
-      watchlistRow(renderWorkspace(), "lst-syn-00001"),
-      "Save note",
-    ).props.onClick();
+    watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
     await flushPromises(12);
     queued.forEach((callback) => callback());
     expect(dom.note.focus).not.toHaveBeenCalled();
@@ -6777,7 +7249,9 @@ describe("Save the researched company to My Watchlist", () => {
     );
     expect(dom.listenerCount()).toBe(0);
     await activateWorkspace();
-    requireStockScreener(renderWorkspace()).props.onOpenResearch(screenRow());
+    requireStockScreener(
+      chooseDeskScreen("Catalog screen"),
+    ).props.onOpenResearch(screenRow());
     await flushPromises();
     dom.document.activeElement = dom.button;
     requireCompanyWatchlistAction(renderWorkspace()).props.onAdd();
@@ -6997,10 +7471,12 @@ function requireCompanyNote(value: unknown) {
 }
 
 function openNoteCompany(identity: PersonalWatchlistMembership) {
-  requireStockScreener(renderWorkspace()).props.onOpenResearch({
-    ...identity,
-    cik: "0000000001",
-  });
+  requireStockScreener(chooseDeskScreen("Catalog screen")).props.onOpenResearch(
+    {
+      ...identity,
+      cik: "0000000001",
+    },
+  );
 }
 
 function watchlistRecord(count: number, version = 7) {
@@ -7052,14 +7528,20 @@ function watchlistRow(value: unknown, listingId: string) {
 }
 
 function watchlistAction(value: unknown, label: string) {
-  return requireElementByProps<{ disabled?: boolean; onClick: () => void }>(
-    value,
-    { "aria-label": label },
-  );
+  const action = requireElementByProps<{
+    disabled?: boolean;
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  }>(ensureWatchlistView(value), { "aria-label": label });
+  return React.cloneElement(action, {
+    onClick: () => action.props.onClick(deskNavigationEvent()),
+  }) as React.ReactElement<{ disabled?: boolean; onClick: () => void }>;
 }
 
 function watchlistPageButton(value: unknown, direction: "Previous" | "Next") {
-  return requireButton(value, `${direction} watchlist page`);
+  return requireButton(
+    ensureWatchlistView(value),
+    `${direction} watchlist page`,
+  );
 }
 
 function watchlistFilter(value: unknown) {
@@ -7067,7 +7549,7 @@ function watchlistFilter(value: unknown) {
     value: string;
     maxLength: number;
     onChange: (event: { target: { value: string } }) => void;
-  }>(value, { id: "watchlist-filter" });
+  }>(ensureWatchlistView(value), { id: "watchlist-filter" });
 }
 
 function filterWatchlist(query: string) {
@@ -7078,11 +7560,46 @@ function filterWatchlist(query: string) {
 }
 
 function watchlistNote(value: unknown, listingId: string) {
+  let view = ensureWatchlistView(value);
+  if (
+    !findAllElements(view).some(
+      (element) => element.props.id === `note-${listingId}`,
+    )
+  ) {
+    // Opening the compact list's editor is an explicit user action. Assertions
+    // still read the real controlled textarea, including retained raw drafts.
+    view = renderWorkspace();
+    if (
+      findAllElements(view).some(
+        (element) => element.props.id === `note-${listingId}`,
+      )
+    ) {
+      return requireElementByProps<{
+        value: string;
+        disabled?: boolean;
+        onChange: (event: { target: { value: string } }) => void;
+      }>(view, { id: `note-${listingId}` });
+    }
+    const row = watchlistRow(view, listingId);
+    const edit = findAllElements(row, "button").find((button) =>
+      String(button.props["aria-label"]).startsWith("Edit note for "),
+    );
+    if (edit === undefined) throw new Error("Expected note editor action.");
+    (
+      edit.props.onClick as (event: React.MouseEvent<HTMLButtonElement>) => void
+    )(deskNavigationEvent());
+    view = renderWorkspace();
+  }
   return requireElementByProps<{
     value: string;
     disabled?: boolean;
     onChange: (event: { target: { value: string } }) => void;
-  }>(value, { id: `note-${listingId}` });
+  }>(view, { id: `note-${listingId}` });
+}
+
+function watchlistSave(value: unknown, listingId: string) {
+  watchlistNote(value, listingId);
+  return requireButton(renderWorkspace(), "Save note");
 }
 
 function editWatchlistNote(listingId: string, value: string) {
@@ -7096,6 +7613,11 @@ async function activateWorkspace() {
   await owner.props.onSessionChange(true, new AbortController().signal);
 }
 
+function commitWorkspaceEffects() {
+  deferWorkspaceEffects = false;
+  hookHarness.commitEffects();
+}
+
 function renderWorkspace(
   authMode?: "account" | "bootstrap" | "local",
   options: Readonly<{ commitEffects?: boolean }> = {},
@@ -7104,7 +7626,8 @@ function renderWorkspace(
   const view = SecurityDiscoveryWorkspace(
     authMode === undefined ? undefined : { authMode },
   );
-  if (options.commitEffects !== false) hookHarness.commitEffects();
+  if (options.commitEffects !== false && !deferWorkspaceEffects)
+    hookHarness.commitEffects();
   return view;
 }
 
@@ -7128,10 +7651,127 @@ function requirePriceScreen(value: unknown) {
   return screen;
 }
 
+type DeskTaskLabel =
+  "Discover" | "Screens" | "Watchlist" | "Portfolio" | "Updates";
+
+function deskTask(view: unknown, label: DeskTaskLabel) {
+  return requireButton(
+    requireElementByProps(view, { "aria-label": "Workspace sections" }),
+    label,
+  );
+}
+
+function deskNavigationEvent() {
+  return {
+    button: 0,
+    metaKey: false,
+    ctrlKey: false,
+    shiftKey: false,
+    altKey: false,
+    preventDefault: vi.fn(),
+    currentTarget: {
+      isConnected: true,
+      closest: () => null,
+      getClientRects: () => [{}],
+    },
+  } as unknown as React.MouseEvent<HTMLButtonElement>;
+}
+
+function chooseDeskTask(label: DeskTaskLabel) {
+  if (typeof document === "undefined")
+    vi.stubGlobal("document", {
+      visibilityState: "visible",
+      activeElement: null,
+      getElementById: () => null,
+    });
+  else if (!("visibilityState" in document))
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+  const action = deskTask(renderWorkspace(), label) as React.ReactElement<{
+    onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  }>;
+  action.props.onClick(deskNavigationEvent());
+  return renderWorkspace();
+}
+
+function chooseDeskScreen(
+  label: "Catalog screen" | "Financial screen" | "Price and valuation",
+) {
+  let view = renderWorkspace();
+  if (deskView(view, "screens").props.hidden) view = chooseDeskTask("Screens");
+  const id =
+    label === "Catalog screen"
+      ? "catalog"
+      : label === "Financial screen"
+        ? "financial"
+        : "price";
+  if (
+    requireElementByProps<{ hidden: boolean }>(view, {
+      id: `desk-screen-${id}`,
+    }).props.hidden
+  ) {
+    const action = requireButton(view, label) as React.ReactElement<{
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+    }>;
+    action.props.onClick(deskNavigationEvent());
+    view = renderWorkspace();
+  }
+  return view;
+}
+
+function chooseResearchOrigin(origin: string) {
+  if (origin === "catalog") return chooseDeskScreen("Catalog screen");
+  if (origin === "financials") return chooseDeskScreen("Financial screen");
+  if (origin === "priceScreen") return chooseDeskScreen("Price and valuation");
+  if (origin === "portfolio") return chooseDeskTask("Portfolio");
+  if (origin === "filings") {
+    const view = chooseDeskTask("Updates");
+    (
+      requireButton(view, "Recent filings") as React.ReactElement<{
+        onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+      }>
+    ).props.onClick(deskNavigationEvent());
+    return renderWorkspace();
+  }
+  return chooseDeskTask("Discover");
+}
+
+function selectExistingSearchResult(index: number) {
+  const view = chooseDeskTask("Discover");
+  const results = requireElementByProps(view, {
+    "aria-label": "Security search results",
+  });
+  const actions = findAllElements(results, "button").filter(
+    (button) => textContent(button) === "Research",
+  );
+  const selected = actions[index];
+  if (selected === undefined)
+    throw new Error("Expected retained search result.");
+  (selected.props.onClick as () => void)();
+  return renderWorkspace();
+}
+
+function ensureWatchlistView(view: unknown) {
+  return deskView(view, "watchlist").props.hidden
+    ? chooseDeskTask("Watchlist")
+    : view;
+}
+
+function deskView(view: unknown, task: string) {
+  return requireElementByProps<{ hidden: boolean; children?: React.ReactNode }>(
+    view,
+    { id: `desk-view-${task}` },
+  );
+}
+
 function workspaceSectionLink(value: unknown, targetId: string) {
-  return requireElementByProps<{
+  if (targetId !== "discover-title")
+    throw new Error("Expected Discover target.");
+  return deskTask(value, "Discover") as React.ReactElement<{
     onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
-  }>(value, { href: `#${targetId}` });
+  }>;
 }
 
 function workspaceSectionDocument(targetId: string) {
@@ -7148,8 +7788,11 @@ function workspaceSectionDocument(targetId: string) {
     isConnected: true,
     tabIndex: 0,
     closest: () => (state.targetHidden ? {} : null),
+    matches: () => false,
+    hasAttribute: () => false,
     getClientRects: () => (state.targetBox ? [{}] : []),
     focus: vi.fn(),
+    scrollIntoView: vi.fn(),
   };
   const main = {
     contains: (node: unknown) => state.contains && node === target,
@@ -7213,6 +7856,9 @@ function companyFocusDocument(triggerHeadingId: string) {
     getClientRects() {
       return this.visible ? [{}] : [];
     }
+    contains() {
+      return true;
+    }
   }
   const trigger = new FocusTarget(triggerHeadingId);
   const origin = new FocusTarget();
@@ -7221,7 +7867,11 @@ function companyFocusDocument(triggerHeadingId: string) {
   const getElementById = vi.fn((id: string) =>
     id === "personal-company-research-title" ? company : origin,
   );
-  vi.stubGlobal("document", { activeElement: trigger, getElementById });
+  vi.stubGlobal("document", {
+    activeElement: trigger,
+    getElementById,
+    visibilityState: "visible",
+  });
   return { trigger, origin, company, getElementById };
 }
 
@@ -7463,7 +8113,7 @@ function requireOwnerSession(value: unknown) {
 }
 
 async function searchAndSelectMarket(query: string, resultIndex = 0) {
-  let rendered = renderWorkspace();
+  let rendered = chooseDeskTask("Discover");
   requireElementByProps<{
     onChange: (event: { target: { value: string } }) => void;
   }>(rendered, { id: "security-query" }).props.onChange({
@@ -7478,7 +8128,7 @@ async function searchAndSelectMarket(query: string, resultIndex = 0) {
   await flushPromises();
   rendered = renderWorkspace();
   const viewButtons = findAllElements(rendered, "button").filter(
-    (button) => textContent(button) === "View market",
+    (button) => textContent(button) === "Research",
   ) as React.ReactElement<{ onClick: () => void }>[];
   const selected = viewButtons[resultIndex];
   if (selected === undefined) throw new Error("Expected market selection.");

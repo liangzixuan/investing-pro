@@ -780,7 +780,8 @@ describe("PersonalPriceValuationScreen", () => {
     select("AAA");
     click(render(), "Load prices and valuation");
     await flush();
-    const origin = fakeButton();
+    let hidden = false;
+    const origin = fakeButton({ closest: () => (hidden ? {} : null) });
     const action = button(render(), "Research AAA");
     (
       action.props.onClick as (event: {
@@ -793,7 +794,13 @@ describe("PersonalPriceValuationScreen", () => {
       origin,
     ]);
     const guard = vi.mocked(props.onOpenResearch).mock.calls[0]![2];
+    const handoffGuard = vi.mocked(props.onOpenResearch).mock.calls[0]![3]!;
     expect(typeof guard).toBe("function");
+    expect(typeof handoffGuard).toBe("function");
+    hidden = true;
+    expect(guard()).toBe(false);
+    expect(handoffGuard()).toBe(true);
+    hidden = false;
     expect(guard()).toBe(true);
     props = {
       ...props,
@@ -804,6 +811,7 @@ describe("PersonalPriceValuationScreen", () => {
     expect(resultRows()).toHaveLength(1);
     select("BBB");
     expect(guard()).toBe(false);
+    expect(handoffGuard()).toBe(false);
     (
       action.props.onClick as (event: {
         currentTarget: HTMLButtonElement;
@@ -1097,19 +1105,24 @@ describe("PersonalPriceValuationCohortScreen", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]![0]).toEqual(cohortProps!.identities[0]);
     const guard = calls[0]![2];
+    const handoffGuard = calls[0]![3]!;
     expect(guard()).toBe(true);
+    expect(handoffGuard()).toBe(true);
     cohortProps = {
       ...cohortProps!,
       identities: cohortProps!.identities.map((item) => ({ ...item })),
     };
     render();
     expect(guard()).toBe(true);
+    expect(handoffGuard()).toBe(true);
     cohortProps = { ...cohortProps, suspended: true };
     render();
     expect(guard()).toBe(false);
+    expect(handoffGuard()).toBe(false);
     cohortProps = { ...cohortProps, suspended: false };
     render();
     expect(guard()).toBe(false);
+    expect(handoffGuard()).toBe(false);
     (
       action.props.onClick as (event: {
         currentTarget: HTMLButtonElement;

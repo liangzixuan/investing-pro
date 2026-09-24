@@ -498,11 +498,168 @@ describe("PersonalAnnualFinancialTrend", () => {
     );
     expect(text(next)).toContain("not point-in-time history");
   });
+
+  it("keeps compact source context outside closed disclosures and preserves every exact annual cell", () => {
+    const full = render();
+    const compact = render(true);
+    const disclosures = elements(compact, "details");
+    expect(disclosures.map((item) => text(elements(item, "summary")))).toEqual([
+      "How to read this chart",
+      "Inspect exact annual trend values",
+    ]);
+    for (const disclosure of disclosures) {
+      expect(disclosure.props).not.toHaveProperty("open");
+      expect(disclosure.props).not.toHaveProperty("onToggle");
+    }
+    const source = elements(compact, "p").find(
+      (item) => item.props.className === "annual-trend-source",
+    );
+    expect(text(source)).toBe("USD · Provider most recent · Loaded 2026-09-19");
+    expect(elements(source, "time")[0]?.props.dateTime).toBe(projection.asOf);
+    expect(disclosures.some((item) => elements(item).includes(source!))).toBe(
+      false,
+    );
+    expect(text(disclosures[0])).toContain("not point-in-time history");
+    expect(text(disclosures[0])).toContain("not reconstructed cash flow");
+    expect(elements(disclosures[1], "table")).toEqual(elements(full, "table"));
+    expect(
+      elements(disclosures[1], "tbody").flatMap((body) => elements(body, "tr")),
+    ).toHaveLength(10);
+    expect(chart.init).toHaveBeenCalledTimes(1);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(storageSpy).not.toHaveBeenCalled();
+  });
+
+  it("keeps the selected metric, chart and exact-data disclosure identity when compact mode changes", () => {
+    choose(render(), "free_cash_flow");
+    const full = render();
+    const calls = chart.init.mock.calls.length;
+    const compact = render(true);
+    const restored = render();
+    expect(select(compact).props.value).toBe("free_cash_flow");
+    expect(select(restored).props.value).toBe("free_cash_flow");
+    expect(elements(compact, "details")[1]?.key).toBe(
+      elements(full, "details")[0]?.key,
+    );
+    expect(elements(restored, "details")[0]?.key).toBe(
+      elements(full, "details")[0]?.key,
+    );
+    expect(chart.init).toHaveBeenCalledTimes(calls);
+    expect(chartOption().series[0]?.data).toEqual([
+      null,
+      ...Array.from({ length: 9 }, () => -50.123456789),
+    ]);
+  });
+
+  it("retires both compact disclosure identities on source replacement without resetting the metric", () => {
+    choose(render(true), "net_income");
+    const first = render(true);
+    const initializations = chart.init.mock.calls.length;
+    projection = {
+      ...projection,
+      contentKey: "compact-new-source",
+      asOf: "2026-09-20T00:00:00Z",
+    };
+    const next = render(true);
+    for (let index = 0; index < 2; index += 1) {
+      expect(elements(next, "details")[index]?.key).not.toBe(
+        elements(first, "details")[index]?.key,
+      );
+    }
+    expect(select(next).props.value).toBe("net_income");
+    expect(text(next)).toContain("Loaded 2026-09-20");
+    expect(chart.init).toHaveBeenCalledTimes(initializations + 1);
+  });
+
+  it("keeps compact chart failures outside disclosures with the exact table and recovery selector intact", () => {
+    chart.init.mockImplementationOnce(() => {
+      throw new Error("canvas unavailable");
+    });
+    render(true);
+    const failed = render(true);
+    expect(text(failed)).toContain("chart could not be displayed");
+    const disclosures = elements(failed, "details");
+    expect(
+      disclosures.every((item) => !text(item).includes("Chart unavailable:")),
+    ).toBe(true);
+    expect(elements(failed, "table")).toHaveLength(2);
+    expect(
+      elements(failed, "div").find((item) => item.props.role === "region")
+        ?.props.tabIndex,
+    ).toBe(0);
+    choose(failed, "net_income");
+    expect(text(render(true))).not.toContain("Chart unavailable:");
+    expect(chart.init).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps missing years, unknown cells, zero and exact signed decimals in the compact three-year table", () => {
+    const latest = projection.slots[9]!;
+    if (latest.status !== "reported")
+      throw new Error("Expected reported fixture");
+    projection = {
+      ...projection,
+      contentKey: "recent-values",
+      slots: [
+        ...projection.slots.slice(0, 7),
+        {
+          status: "missing_year",
+          fiscalYear: 2024,
+          statementDate: null,
+          cells: null,
+        },
+        {
+          ...latest,
+          fiscalYear: 2025,
+          statementDate: "2026-02-15",
+          cells: {
+            ...latest.cells,
+            revenue: {
+              status: "unknown",
+              value: null,
+              reason: "not_supplied_by_provider",
+            },
+          },
+        },
+        {
+          ...latest,
+          cells: {
+            ...latest.cells,
+            revenue: { status: "known", value: "-123456789.123456789" },
+          },
+        },
+      ],
+    };
+    const tree = render(true);
+    const recent = elements(tree, "table").find(
+      (item) => item.props.className === "annual-trend-recent-table",
+    );
+    const rows = elements(recent, "tbody").flatMap((body) =>
+      elements(body, "tr"),
+    );
+    expect(
+      elements(recent, "thead")
+        .flatMap((head) => elements(head, "th"))
+        .map(text),
+    ).toEqual(["Metric", "2024", "2025", "2026"]);
+    expect(rows.map((row) => elements(row, "td").map(text))).toEqual([
+      ["Missing year", "Unknown", "-123456789.123456789"],
+      ["Missing year", "0", "0"],
+      ["Missing year", "125.123456789", "125.123456789"],
+      ["Missing year", "2026-02-15", "2027-02-15"],
+    ]);
+    expect(
+      elements(elements(tree, "details")[1], "tbody").flatMap((body) =>
+        elements(body, "tr"),
+      ),
+    ).toHaveLength(10);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(storageSpy).not.toHaveBeenCalled();
+  });
 });
 
-function render() {
+function render(compact = false) {
   hooks.begin();
-  const tree = PersonalAnnualFinancialTrend({ projection });
+  const tree = PersonalAnnualFinancialTrend({ projection, compact });
   hooks.flush();
   return tree;
 }

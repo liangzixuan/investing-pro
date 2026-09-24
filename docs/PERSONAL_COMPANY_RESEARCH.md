@@ -2,17 +2,25 @@
 
 ## Find your place in Discover
 
-The workspace navigation links to Discover, Screens, Watchlist, Portfolio and
-Updates, with secondary links to the catalog screen, price and valuation screen,
-and daily filing monitor. Desktop navigation stays beside the workspace; on
-narrow screens the links wrap above it. Each ordinary activation focuses its
-existing section heading. Modified links keep their normal browser behavior.
+The workspace navigation opens Discover, Screens, Watchlist, Portfolio and
+Updates as focused task views. Screens keeps the catalog, financial and price
+screening tools together; Updates keeps recent filings and the daily monitor
+together. Desktop navigation runs across the header. At medium widths it moves
+to a second header row; on phones its buttons share one horizontally scrollable row.
+The active task is identified in navigation. Hidden views stay mounted while
+their controls leave keyboard and accessibility navigation.
 
 Navigation does not load provider data, save records or remount the workspace.
 Watchlist filters, pages and note drafts retain their existing lifetimes. The
 compact local-access panel still reports Checking, Ready, Paused or Unavailable,
 and Retry connection remains available after a failed check. Hiding the page
 continues to clear workspace data under the existing local-access rules.
+
+Watchlist rows show a short note preview. **Edit note** opens one editor beside
+the list; on narrow screens it appears below the rows. **Save note** explicitly
+writes the note. **Close** keeps its draft in this workspace, and reopening that
+company's editor restores it. **Manage** exposes the existing reorder and remove
+actions. Filtering still disables reorder because order belongs to the full list.
 
 ## Research a company
 
@@ -21,6 +29,11 @@ My Watchlist, recent watchlist filings or holdings. The company research heading
 keeps its symbol, issuer name, exchange and security name visible. A comparison
 column's **Research** action opens that exact selected listing, including a
 company retained from another result page.
+
+On desktop, a saved-company list stays beside research. Research opened from
+Watchlist keeps that filtered cohort and its saved order; longer lists have
+50-company pages. Changing the selected company retains the existing identity
+and source-lifetime checks. On narrow screens, **Show companies** opens the list.
 
 Five sections organize the existing panels:
 
@@ -77,6 +90,12 @@ change saved research.
 
 After **Load annual financials**, **Annual business trends** shows one metric at a
 time: Revenue, Net income, Operating cash flow or Provider-reported free cash flow.
+The chart comes before detailed statements. Open **Source and coverage**,
+**How to read this chart**, or **Reported statements and financial metrics** to
+inspect the supporting detail; these disclosures do not load or change data.
+Beside the chart, a compact table shows exact revenue, net income and operating
+cash flow for the latest three fiscal-year slots, including missing years and
+provider statement dates. The full ten-year table retains all four trend metrics.
 The signed bar chart uses ten fiscal-year slots from oldest to newest, a zero
 baseline and nominal USD amounts. It does not calculate returns or annualized or
 per-share values. Provider-reported free cash flow is distinct from the cash flow
@@ -213,7 +232,7 @@ writes or provider requests on navigation, roster changes or metadata display.
 
 ## Find a saved company
 
-The workspace header's **My Watchlist** link moves to the primary saved list.
+The workspace header's **Watchlist** control opens the primary saved list.
 Filter by ticker or company name to search only its already-loaded entries.
 Matching ignores case, surrounding whitespace and canonically equivalent
 Unicode spelling. It does not search notes or request the security catalog.
@@ -236,7 +255,7 @@ are not moved unexpectedly. Save note, Remove and reorder retain their existing
 explicit versioned operations. Screening, filing checks and peer candidates
 continue using the full admitted list, independently of its visible page.
 
-Jump navigation, filtering, paging, Research and Back make no additional data
+Task navigation, filtering, paging, Research and Back make no additional data
 request or saved-data write. Session/workspace loss clears the browsing state
 under the existing lifecycle rules. Multiple lists, tags, sorting, imports,
 exports and saved layouts remain outside this feature.

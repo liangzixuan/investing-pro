@@ -8393,6 +8393,33 @@ describe("financial-result price and valuation cohort", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("composes hidden-origin handoff currentness with the exact financial cohort lifetime", async () => {
+    props = { ...props, onOpenPriceResearch: vi.fn() };
+    const cohort = await selectedPriceFixture();
+    let hidden = false;
+    let sourceCurrent = true;
+    cohort.onOpenResearch(
+      cohort.identities[0]!,
+      {} as HTMLButtonElement,
+      () => sourceCurrent && !hidden,
+      () => sourceCurrent,
+    );
+    const call = vi.mocked(props.onOpenPriceResearch!).mock.calls[0]!;
+    expect(call[2]()).toBe(true);
+    expect(call[3]!()).toBe(true);
+    hidden = true;
+    expect(call[2]()).toBe(false);
+    expect(call[3]!()).toBe(true);
+    sourceCurrent = false;
+    expect(call[3]!()).toBe(false);
+    sourceCurrent = true;
+    click(render(), "Clear price-screen selection");
+    expect(call[2]()).toBe(false);
+    expect(call[3]!()).toBe(false);
+    expect(props.onOpenPriceResearch).toHaveBeenCalledOnce();
+    expect(props.onAddToWatchlist).not.toHaveBeenCalled();
+  });
+
   it("suspends a mounted cohort during paging and retires captured callbacks before and after resume", async () => {
     props = { ...props, onOpenPriceResearch: vi.fn() };
     const first = await selectedPriceFixture();
@@ -8581,6 +8608,7 @@ describe("financial-result price and valuation cohort", () => {
       expect(props.onOpenPriceResearch).toHaveBeenCalledOnce();
       expect(props.onOpenPriceResearch).toHaveBeenCalledWith(
         identity,
+        expect.anything(),
         expect.anything(),
         expect.anything(),
       );

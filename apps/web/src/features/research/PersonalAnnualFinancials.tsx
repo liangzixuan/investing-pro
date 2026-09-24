@@ -2,6 +2,7 @@ import type {
   PersonalAnnualFinancialsDto,
   PersonalMarketDataStatusDto,
 } from "@research-cockpit/contracts";
+import type { ReactNode } from "react";
 import {
   buildPersonalFinancialAnalytics,
   PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS,
@@ -19,6 +20,7 @@ import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 import { projectPersonalAnnualFinancialTrend } from "./personal-annual-financial-trend-input";
 
 export interface PersonalAnnualFinancialsProps {
+  readonly compact?: boolean;
   readonly errorCode: PersonalWorkspaceApiErrorCode | null;
   readonly financials: PersonalAnnualFinancialsDto | null;
   readonly onLoad: () => void;
@@ -51,6 +53,7 @@ const growthLabels = {
 } as const;
 
 export function PersonalAnnualFinancials({
+  compact = false,
   errorCode,
   financials,
   onLoad,
@@ -85,25 +88,38 @@ export function PersonalAnnualFinancials({
           })),
         });
 
+  const introduction = (
+    <FinancialDetails compact={compact} label="About annual financials">
+      {compact && (
+        <p className="market-scope-note">
+          30 reported fields · 8 metrics · 3 growth checks
+        </p>
+      )}
+      <p className="market-scope-note">
+        Load corrected annual statements separately from price history. The
+        fixed registry ignores newly added provider fields, shows missing data
+        explicitly, and keeps all values in active-session memory only.
+      </p>
+    </FinancialDetails>
+  );
+
   return (
     <section
       aria-busy={requestState === "loading"}
       aria-labelledby="personal-annual-financials-title"
-      className="personal-financials-panel"
+      className={`personal-financials-panel${compact ? " is-compact" : ""}`}
     >
       <div className="discovery-section-heading personal-financials-heading">
         <div>
           <p className="eyebrow">Multi-year company fundamentals</p>
           <h2 id="personal-annual-financials-title">Annual financials</h2>
         </div>
-        <span>30 reported fields · 8 metrics · 3 growth checks</span>
+        {!compact && (
+          <span>30 reported fields · 8 metrics · 3 growth checks</span>
+        )}
       </div>
 
-      <p className="market-scope-note">
-        Load corrected annual statements separately from price history. The
-        fixed registry ignores newly added provider fields, shows missing data
-        explicitly, and keeps all values in active-session memory only.
-      </p>
+      {!compact && introduction}
 
       {selection === null ? (
         <div className="discovery-empty-state market-empty-state">
@@ -155,6 +171,7 @@ export function PersonalAnnualFinancials({
 
           {financials !== null && analytics !== null ? (
             <FinancialsResult
+              compact={compact}
               financials={financials}
               analytics={analytics}
               selection={selection}
@@ -162,15 +179,18 @@ export function PersonalAnnualFinancials({
           ) : null}
         </>
       )}
+      {compact && introduction}
     </section>
   );
 }
 
 function FinancialsResult({
+  compact,
   analytics,
   financials,
   selection,
 }: {
+  readonly compact: boolean;
   readonly analytics: ReturnType<typeof buildPersonalFinancialAnalytics>;
   readonly financials: PersonalAnnualFinancialsDto;
   readonly selection: PersonalMarketSelection;
@@ -188,8 +208,8 @@ function FinancialsResult({
     financials.years.map((year) => [year.fiscalYear, year]),
   );
 
-  return (
-    <div className="personal-financials-result">
+  const coverage = (
+    <FinancialDetails compact={compact} label="Source and coverage">
       <div className="financials-coverage-strip">
         <div>
           <span>Annual periods returned</span>
@@ -223,9 +243,16 @@ function FinancialsResult({
           blank; later years are never shifted into their place.
         </p>
       )}
+    </FinancialDetails>
+  );
+
+  return (
+    <div className="personal-financials-result">
+      {!compact && coverage}
 
       {trend.status === "ready" ? (
         <PersonalAnnualFinancialTrend
+          compact={compact}
           key={trend.selectionKey}
           projection={trend}
         />
@@ -238,185 +265,212 @@ function FinancialsResult({
         </p>
       )}
 
-      <div className="financial-statement-stack">
-        {(["income_statement", "balance_sheet", "cash_flow"] as const).map(
-          (statement, index) => (
-            <details
-              className="financial-statement"
-              key={statement}
-              open={index === 0}
-            >
-              <summary>
-                <strong>{statementLabels[statement]}</strong>
-                <span>
-                  {
-                    PERSONAL_FINANCIAL_REPORTED_FIELDS.filter(
-                      (field) => field.statement === statement,
-                    ).length
-                  }{" "}
-                  fields
-                </span>
-              </summary>
-              <div
-                aria-label={`${statementLabels[statement]} financial statement table`}
-                className="financial-table-scroll"
-                role="region"
-                tabIndex={0}
+      {compact && coverage}
+
+      <FinancialDetails
+        compact={compact}
+        label="Reported statements and financial metrics"
+      >
+        <div className="financial-statement-stack">
+          {(["income_statement", "balance_sheet", "cash_flow"] as const).map(
+            (statement, index) => (
+              <details
+                className="financial-statement"
+                key={statement}
+                open={index === 0}
               >
-                <table>
-                  <caption>
-                    {statementLabels[statement]} · USD · newest to oldest
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Reported field</th>
-                      {displayFiscalYears.map((fiscalYear) => {
-                        const year = yearsByFiscalYear.get(fiscalYear);
-                        return (
-                          <th scope="col" key={fiscalYear}>
-                            <span>FY {fiscalYear}</span>
-                            <small>
-                              {year === undefined
-                                ? "Not returned"
-                                : `Statement date ${formatPeriodDate(year.statementDate)}`}
-                            </small>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {PERSONAL_FINANCIAL_REPORTED_FIELDS.filter(
-                      (field) => field.statement === statement,
-                    ).map((field) => (
-                      <tr key={field.fieldKey}>
-                        <th scope="row">{field.label}</th>
+                <summary>
+                  <strong>{statementLabels[statement]}</strong>
+                  <span>
+                    {
+                      PERSONAL_FINANCIAL_REPORTED_FIELDS.filter(
+                        (field) => field.statement === statement,
+                      ).length
+                    }{" "}
+                    fields
+                  </span>
+                </summary>
+                <div
+                  aria-label={`${statementLabels[statement]} financial statement table`}
+                  className="financial-table-scroll"
+                  role="region"
+                  tabIndex={0}
+                >
+                  <table>
+                    <caption>
+                      {statementLabels[statement]} · USD · newest to oldest
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Reported field</th>
                         {displayFiscalYears.map((fiscalYear) => {
                           const year = yearsByFiscalYear.get(fiscalYear);
-                          const cell = year?.reported[field.fieldKey];
                           return (
-                            <td key={fiscalYear}>
-                              {cell?.status === "known" ? (
-                                <span title={`${cell.value} USD`}>
-                                  {formatUsdExact(cell.value)}
-                                </span>
-                              ) : (
-                                <span
-                                  aria-label={
-                                    year === undefined
-                                      ? `Fiscal year ${String(fiscalYear)} not returned`
-                                      : `${field.label} unknown for fiscal year ${String(fiscalYear)}`
-                                  }
-                                  className="financial-cell-unknown"
-                                >
-                                  —
-                                </span>
-                              )}
-                            </td>
+                            <th scope="col" key={fiscalYear}>
+                              <span>FY {fiscalYear}</span>
+                              <small>
+                                {year === undefined
+                                  ? "Not returned"
+                                  : `Statement date ${formatPeriodDate(year.statementDate)}`}
+                              </small>
+                            </th>
                           );
                         })}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          ),
-        )}
-      </div>
-
-      <section
-        aria-labelledby="personal-core-metrics-title"
-        className="personal-core-metrics"
-      >
-        <div className="market-analytics-heading">
-          <div>
-            <p className="eyebrow">Formula set {analytics.formulaSetVersion}</p>
-            <h3 id="personal-core-metrics-title">Core financial metrics</h3>
-          </div>
-          <span>
-            Latest FY {String(financials.coverage.latestFiscalYear)} · exact
-            decimal arithmetic
-          </span>
+                    </thead>
+                    <tbody>
+                      {PERSONAL_FINANCIAL_REPORTED_FIELDS.filter(
+                        (field) => field.statement === statement,
+                      ).map((field) => (
+                        <tr key={field.fieldKey}>
+                          <th scope="row">{field.label}</th>
+                          {displayFiscalYears.map((fiscalYear) => {
+                            const year = yearsByFiscalYear.get(fiscalYear);
+                            const cell = year?.reported[field.fieldKey];
+                            return (
+                              <td key={fiscalYear}>
+                                {cell?.status === "known" ? (
+                                  <span title={`${cell.value} USD`}>
+                                    {formatUsdExact(cell.value)}
+                                  </span>
+                                ) : (
+                                  <span
+                                    aria-label={
+                                      year === undefined
+                                        ? `Fiscal year ${String(fiscalYear)} not returned`
+                                        : `${field.label} unknown for fiscal year ${String(fiscalYear)}`
+                                    }
+                                    className="financial-cell-unknown"
+                                  >
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            ),
+          )}
         </div>
-        {analytics.status === "quarantined" ? (
-          <div className="market-message market-message-error" role="alert">
-            <strong>Financial metrics are unavailable.</strong>
+
+        <section
+          aria-labelledby="personal-core-metrics-title"
+          className="personal-core-metrics"
+        >
+          <div className="market-analytics-heading">
+            <div>
+              <p className="eyebrow">
+                Formula set {analytics.formulaSetVersion}
+              </p>
+              <h3 id="personal-core-metrics-title">Core financial metrics</h3>
+            </div>
             <span>
-              The annual input envelope did not pass local validation.
+              Latest FY {String(financials.coverage.latestFiscalYear)} · exact
+              decimal arithmetic
             </span>
           </div>
-        ) : (
-          <>
-            <div className="financial-metric-grid">
-              {PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS.map((key) => (
-                <FinancialMetricCard
-                  key={key}
-                  label={metricLabels[key]}
-                  metric={analytics.periods[0]!.metrics[key]}
-                />
-              ))}
+          {analytics.status === "quarantined" ? (
+            <div className="market-message market-message-error" role="alert">
+              <strong>Financial metrics are unavailable.</strong>
+              <span>
+                The annual input envelope did not pass local validation.
+              </span>
             </div>
-            <div className="financial-growth-grid">
-              {(Object.keys(growthLabels) as (keyof typeof growthLabels)[]).map(
-                (key) => (
+          ) : (
+            <>
+              <div className="financial-metric-grid">
+                {PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS.map((key) => (
+                  <FinancialMetricCard
+                    key={key}
+                    label={metricLabels[key]}
+                    metric={analytics.periods[0]!.metrics[key]}
+                  />
+                ))}
+              </div>
+              <div className="financial-growth-grid">
+                {(
+                  Object.keys(growthLabels) as (keyof typeof growthLabels)[]
+                ).map((key) => (
                   <GrowthCard
                     key={key}
                     label={growthLabels[key]}
                     metric={analytics.growth[key]}
                   />
-                ),
-              )}
-            </div>
-            <details className="financial-methodology">
-              <summary>Formulas, inputs, and period details</summary>
-              <ol>
-                {PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS.map((key) => {
-                  const metric = analytics.periods[0]!.metrics[key];
-                  return (
-                    <li key={key}>
-                      <strong>{metricLabels[key]}</strong>
-                      <code>{metric.expression}</code>
-                      <span>
-                        {metric.formulaId} · version {metric.formulaVersion} ·{" "}
-                        inputs {inputLabel(metric.inputRefs)}
-                      </span>
-                    </li>
-                  );
-                })}
-                {(
-                  Object.keys(growthLabels) as (keyof typeof growthLabels)[]
-                ).map((key) => {
-                  const metric = analytics.growth[key];
-                  return (
-                    <li key={`growth-${key}`}>
-                      <strong>{growthLabels[key]}</strong>
-                      <code>{metric.expression}</code>
-                      <span>
-                        {metric.formulaId} · version {metric.formulaVersion} ·
-                        inputs {inputLabel(metric.inputRefs)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ol>
-              <p>
-                Derived metrics {roundingPolicyLabel()}. “Net debt” is debt
-                minus cash; a negative result means net cash. Growth compares
-                only distinct consecutive fiscal years with a positive
-                prior-year base, never corrected copies of the same year.
-              </p>
-            </details>
-          </>
-        )}
-      </section>
-
+                ))}
+              </div>
+              <details className="financial-methodology">
+                <summary>Formulas, inputs, and period details</summary>
+                <ol>
+                  {PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS.map((key) => {
+                    const metric = analytics.periods[0]!.metrics[key];
+                    return (
+                      <li key={key}>
+                        <strong>{metricLabels[key]}</strong>
+                        <code>{metric.expression}</code>
+                        <span>
+                          {metric.formulaId} · version {metric.formulaVersion} ·{" "}
+                          inputs {inputLabel(metric.inputRefs)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                  {(
+                    Object.keys(growthLabels) as (keyof typeof growthLabels)[]
+                  ).map((key) => {
+                    const metric = analytics.growth[key];
+                    return (
+                      <li key={`growth-${key}`}>
+                        <strong>{growthLabels[key]}</strong>
+                        <code>{metric.expression}</code>
+                        <span>
+                          {metric.formulaId} · version {metric.formulaVersion} ·
+                          inputs {inputLabel(metric.inputRefs)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+                <p>
+                  Derived metrics {roundingPolicyLabel()}. “Net debt” is debt
+                  minus cash; a negative result means net cash. Growth compares
+                  only distinct consecutive fiscal years with a positive
+                  prior-year base, never corrected copies of the same year.
+                </p>
+              </details>
+            </>
+          )}
+        </section>
+      </FinancialDetails>
       <p className="market-attribution">
         Data attribution: {financials.provider.attribution}. Values are USD and
         use the provider&apos;s most-recent corrected history, not a
         point-in-time backtest view. Export and redistribution are prohibited.
       </p>
     </div>
+  );
+}
+
+function FinancialDetails({
+  compact,
+  label,
+  children,
+}: {
+  readonly compact: boolean;
+  readonly label: string;
+  readonly children: ReactNode;
+}) {
+  return compact ? (
+    <details className="financial-details">
+      <summary>{label}</summary>
+      {children}
+    </details>
+  ) : (
+    <>{children}</>
   );
 }
 

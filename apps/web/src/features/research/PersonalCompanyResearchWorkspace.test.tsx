@@ -296,6 +296,55 @@ describe("PersonalCompanyResearchWorkspace", () => {
     expect(props.onClear).not.toHaveBeenCalled();
   });
 
+  it("keeps the shared note mounted inside a closed native disclosure across research sections", () => {
+    const note = (
+      <textarea
+        aria-label="Shared draft"
+        value="  Keep this exact draft  "
+        readOnly
+      />
+    );
+    props = { ...props, researchNote: note };
+    const before = render();
+    const disclosure = elements(before).find(
+      (node) =>
+        node.type === "details" && elements(node.props.children).includes(note),
+    );
+    expect(disclosure).toBeDefined();
+    expect(disclosure!.props.open).not.toBe(true);
+    expect(
+      elements(disclosure).find((node) => node.type === "summary")?.props
+        .children,
+    ).toBe("Watchlist and research note");
+    expect(elements(disclosure).filter((node) => node === note)).toHaveLength(
+      1,
+    );
+    for (const activeSection of [
+      "financials",
+      "valuation",
+      "peers",
+      "sec",
+      "price",
+    ] as const) {
+      props = { ...props, activeSection };
+      const next = render();
+      const currentDisclosure = elements(next).find(
+        (node) =>
+          node.type === "details" &&
+          elements(node.props.children).includes(note),
+      );
+      expect(currentDisclosure?.type).toBe(disclosure?.type);
+      expect(currentDisclosure?.key).toBe(disclosure?.key);
+      expect(
+        elements(currentDisclosure).filter((node) => node === note),
+      ).toHaveLength(1);
+      expect(renderToStaticMarkup(next)).toContain("  Keep this exact draft  ");
+    }
+    expect(props.onBack).not.toHaveBeenCalled();
+    expect(props.onClear).not.toHaveBeenCalled();
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+  });
+
   it("retains the same note outside every section while keeping panels mounted", () => {
     const note = (
       <textarea aria-label="Shared note" value="Raw draft" readOnly />

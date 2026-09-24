@@ -119,9 +119,10 @@ afterEach(() => {
 
 describe("LocalWorkspaceAccessPanel", () => {
   it("keeps compact status presentation distinct across checking, ready and paused states", async () => {
+    props = { ...props, compact: true };
     const checking = render();
     expect(checking.props.className).toBe(
-      "owner-session-panel local-access-panel",
+      "owner-session-panel local-access-panel is-compact",
     );
     expect(checking.props["data-access-state"]).toBe("checking");
     expect(statusMessage(checking).props.role).toBe("status");
@@ -130,6 +131,8 @@ describe("LocalWorkspaceAccessPanel", () => {
     const ready = render();
     expect(ready.props["data-access-state"]).toBe("ready");
     expect(ready.props["aria-labelledby"]).toBe("local-access-title");
+    expect(text(ready)).toContain("Local");
+    expect(text(ready)).not.toContain("Local access");
     expect(text(statusMessage(ready))).toContain(
       "The local workspace is available",
     );
@@ -144,6 +147,7 @@ describe("LocalWorkspaceAccessPanel", () => {
   });
 
   it("keeps the unavailable alert and retry outside the compact ready treatment", async () => {
+    props = { ...props, compact: true };
     probe.mockResolvedValueOnce(false);
     render();
     await flush();

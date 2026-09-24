@@ -17,10 +17,12 @@ type ReadyProjection = Extract<
 
 export interface PersonalAnnualFinancialTrendProps {
   readonly projection: ReadyProjection;
+  readonly compact?: boolean;
 }
 
 export function PersonalAnnualFinancialTrend({
   projection,
+  compact = false,
 }: PersonalAnnualFinancialTrendProps) {
   const chartElement = useRef<HTMLDivElement>(null);
   const [field, setField] =
@@ -90,12 +92,35 @@ export function PersonalAnnualFinancialTrend({
     // fresh projections keep the existing canvas and native selector mounted.
   }, [contentKey, field, unavailable]);
 
+  const explanation = (
+    <>
+      <p className="market-scope-note">
+        Nominal USD, with a zero baseline. Chart coordinates are approximations;
+        inspect the exact values below. Missing years and unknown values are not
+        filled or treated as zero. A known zero has a zero-height bar.
+      </p>
+      <p className="market-scope-note">
+        Free cash flow is provider-reported, not reconstructed cash flow for the
+        DCF model. Fiscal-year labels and provider statement/release dates are
+        distinct. Loaded data may include later corrections; this is not
+        point-in-time history. Response as of{" "}
+        <time dateTime={projection.asOf}>{projection.asOf}</time>.
+      </p>
+    </>
+  );
+
   return (
     <section
-      className="annual-financial-trend"
+      className={`annual-financial-trend${compact ? " is-compact" : ""}`}
       aria-label="Annual business trends"
     >
       <h4>Annual business trends</h4>
+      {compact && (
+        <p className="annual-trend-source">
+          USD · Provider most recent · Loaded{" "}
+          <time dateTime={projection.asOf}>{projection.asOf.slice(0, 10)}</time>
+        </p>
+      )}
       <label className="annual-financial-trend-selector">
         <span>Annual trend metric</span>
         <select
@@ -130,18 +155,65 @@ export function PersonalAnnualFinancialTrend({
           aria-label={summary}
         />
       )}
-      <p className="market-scope-note">
-        Nominal USD, with a zero baseline. Chart coordinates are approximations;
-        inspect the exact values below. Missing years and unknown values are not
-        filled or treated as zero. A known zero has a zero-height bar.
-      </p>
-      <p className="market-scope-note">
-        Free cash flow is provider-reported, not reconstructed cash flow for the
-        DCF model. Fiscal-year labels and provider statement/release dates are
-        distinct. Loaded data may include later corrections; this is not
-        point-in-time history. Response as of{" "}
-        <time dateTime={projection.asOf}>{projection.asOf}</time>.
-      </p>
+      {compact && (
+        <div
+          className="annual-trend-recent"
+          role="region"
+          aria-label="Latest three fiscal years"
+          tabIndex={0}
+        >
+          <table className="annual-trend-recent-table">
+            <caption>Latest three fiscal years · exact USD</caption>
+            <thead>
+              <tr>
+                <th scope="col">Metric</th>
+                {projection.slots.slice(-3).map((slot) => (
+                  <th key={slot.fiscalYear} scope="col">
+                    {slot.fiscalYear}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(["revenue", "net_income", "operating_cash_flow"] as const).map(
+                (metric) => (
+                  <tr key={metric}>
+                    <th scope="row">{fieldLabel(metric)}</th>
+                    {projection.slots.slice(-3).map((slot) => (
+                      <td key={slot.fiscalYear}>{exactValue(slot, metric)}</td>
+                    ))}
+                  </tr>
+                ),
+              )}
+              <tr>
+                <th scope="row">Provider statement/release date</th>
+                {projection.slots.slice(-3).map((slot) => (
+                  <td key={slot.fiscalYear}>
+                    {slot.statementDate === null ? (
+                      "Missing year"
+                    ) : (
+                      <time dateTime={slot.statementDate}>
+                        {slot.statementDate}
+                      </time>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      {compact ? (
+        <details
+          className="annual-trend-explanation"
+          key={`explanation-${contentKey}`}
+        >
+          <summary>How to read this chart</summary>
+          {explanation}
+        </details>
+      ) : (
+        explanation
+      )}
       <details
         key={contentKey}
         className="data-table-disclosure annual-financial-trend-data"

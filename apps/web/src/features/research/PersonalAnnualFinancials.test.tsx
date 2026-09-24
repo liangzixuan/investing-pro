@@ -254,6 +254,117 @@ describe("PersonalAnnualFinancials", () => {
     );
     expect(visibleText(unconfiguredMarkup)).toContain("Load annual financials");
   });
+
+  it("preserves all reported and exact trend tables in closed compact disclosures without loading or changing the packet", () => {
+    const packet = financials([
+      financialYear(
+        2029,
+        { ...annualValues(2029), revenue: "0", net_income: "-100.123456789" },
+        { gross_profit: unknownCell() },
+      ),
+      financialYear(2027, annualValues(2027)),
+    ]);
+    const before = JSON.stringify(packet);
+    const onLoad = vi.fn();
+    const props = defaultProps({
+      financials: packet,
+      selection: selection(),
+      onLoad,
+    });
+    const full = render(props);
+    const compact = render({ ...props, compact: true });
+    expect(compact.match(/<details class="financial-details">/gu)).toHaveLength(
+      3,
+    );
+    for (const label of [
+      "About annual financials",
+      "Source and coverage",
+      "Reported statements and financial metrics",
+    ]) {
+      expect(compact).toContain(
+        `<details class="financial-details"><summary>${label}</summary>`,
+      );
+    }
+    const tables = (markup: string) =>
+      markup.match(/<table\b[^>]*>[\s\S]*?<\/table>/gu);
+    expect(tables(compact)).toHaveLength(5);
+    expect(
+      tables(compact)?.filter(
+        (table) => !table.includes('class="annual-trend-recent-table"'),
+      ),
+    ).toEqual(tables(full));
+    expect(compact).toContain('class="annual-financial-trend is-compact"');
+    expect(visibleText(compact)).toContain("Reported values known 59 / 60");
+    expect(visibleText(compact)).toContain("Missing annual years: 2028");
+    expect(visibleText(compact)).toContain(
+      "Gross margin Unknown Required reported input is missing",
+    );
+    expect(visibleText(compact)).toContain(
+      "Revenue growth Unknown The latest two annual periods are not consecutive",
+    );
+    expect(JSON.stringify(packet)).toBe(before);
+    expect(onLoad).not.toHaveBeenCalled();
+  });
+
+  it("leaves compact load, retry and empty states outside technical disclosures", () => {
+    const loading = render(
+      defaultProps({
+        compact: true,
+        selection: selection(),
+        requestState: "loading",
+      }),
+    );
+    const failed = render(
+      defaultProps({
+        compact: true,
+        selection: selection(),
+        errorCode: "not_entitled",
+      }),
+    );
+    const empty = render(defaultProps({ compact: true }));
+    const outsideDetails = (markup: string) =>
+      markup.replace(/<details\b[^>]*>[\s\S]*?<\/details>/gu, "");
+    expect(loading).toContain('aria-busy="true"');
+    expect(outsideDetails(loading)).toContain('aria-live="polite"');
+    expect(outsideDetails(loading)).toMatch(/<button[^>]*disabled=""/u);
+    expect(visibleText(outsideDetails(loading))).toContain(
+      "Loading annual statements for ZERO",
+    );
+    expect(outsideDetails(failed)).toContain('role="alert"');
+    expect(visibleText(outsideDetails(failed))).toContain(
+      "Annual financials are not included for this account",
+    );
+    expect(visibleText(outsideDetails(failed))).toContain(
+      "Retry annual financials",
+    );
+    expect(visibleText(outsideDetails(empty))).toContain(
+      "Choose a security to inspect its financials",
+    );
+  });
+
+  it("keeps compact identity rejection outside disclosures while preserving the original reported tables", () => {
+    const packet = financials([financialYear(2029, annualValues(2029))]);
+    const markup = render(
+      defaultProps({
+        compact: true,
+        financials: packet,
+        selection: { ...selection(), securityName: "A different security" },
+      }),
+    );
+    const coverageStart = markup.indexOf(
+      '<details class="financial-details"><summary>Source and coverage</summary>',
+    );
+    const reportedStart = markup.indexOf(
+      '<details class="financial-details"><summary>Reported statements',
+    );
+    expect(coverageStart).toBeGreaterThan(-1);
+    expect(reportedStart).toBeGreaterThan(coverageStart);
+    expect(visibleText(markup.slice(0, coverageStart))).toContain(
+      "The loaded statements do not match the selected company",
+    );
+    expect(markup).not.toContain("Inspect exact annual trend values");
+    expect(markup.match(/<table\b/gu)).toHaveLength(3);
+  });
 });
 
 function defaultProps(

@@ -141,7 +141,6 @@ export function PersonalCompanyResearchWorkspace({
     >
       <div className="company-research-heading">
         <div>
-          <p className="eyebrow">Company research</p>
           <h2
             aria-describedby={
               selection !== null && navigation
@@ -188,12 +187,30 @@ export function PersonalCompanyResearchWorkspace({
         </p>
       ) : (
         <>
-          {navigation}
-          {researchNote}
-          <p className="company-research-guidance">
-            Move between sections without losing loaded data. Each section loads
-            new data only when you request it.
-          </p>
+          <div className="company-research-tools">
+            {navigation && (
+              <details className="company-sequence-disclosure">
+                <summary>Company sequence</summary>
+                {navigation}
+              </details>
+            )}
+            {researchNote !== undefined && (
+              <details className="company-research-note-disclosure">
+                <summary>Watchlist and research note</summary>
+                {researchNote}
+                <p className="company-research-guidance">
+                  Load data when you need it. Your loaded data stays available
+                  as you move between sections.
+                </p>
+              </details>
+            )}
+          </div>
+          {researchNote === undefined && (
+            <p className="company-research-guidance">
+              Load data when you need it. Your loaded data stays available as
+              you move between sections.
+            </p>
+          )}
           <div
             aria-label="Company research sections"
             className="company-research-tabs"

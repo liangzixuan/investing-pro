@@ -11,12 +11,13 @@ type LocalAccessState = "checking" | "ready" | "unavailable" | "paused";
 export type LocalWorkspaceAccessPanelProps = Pick<
   OwnerSessionPanelProps,
   "onSessionChange" | "onActivityHandlerChange"
-> & { readonly invalidationKey?: number };
+> & { readonly invalidationKey?: number; readonly compact?: boolean };
 
 export function LocalWorkspaceAccessPanel({
   onSessionChange,
   onActivityHandlerChange,
   invalidationKey = 0,
+  compact = false,
 }: LocalWorkspaceAccessPanelProps) {
   const [state, setState] = useState<LocalAccessState>("checking");
   const retry = useRef<() => void>(() => undefined);
@@ -112,14 +113,14 @@ export function LocalWorkspaceAccessPanel({
 
   return (
     <section
-      className="owner-session-panel local-access-panel"
+      className={`owner-session-panel local-access-panel${compact ? " is-compact" : ""}`}
       data-access-state={state}
       aria-labelledby="local-access-title"
     >
       <div className="owner-session-heading">
         <div>
           <p className="eyebrow">Personal local mode</p>
-          <h2 id="local-access-title">Local access</h2>
+          <h2 id="local-access-title">{compact ? "Local" : "Local access"}</h2>
         </div>
         <span
           className={`owner-session-state ${state === "ready" ? "active" : "inactive"}`}

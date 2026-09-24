@@ -33,6 +33,7 @@ export interface PersonalPriceValuationScreenProps {
     membership: PersonalWatchlistMembership,
     origin: HTMLButtonElement,
     isCurrent: () => boolean,
+    isCurrentAfterHandoff?: () => boolean,
   ) => void;
 }
 
@@ -51,6 +52,7 @@ export interface PersonalPriceValuationCohortScreenProps<
     identity: T,
     origin: HTMLButtonElement,
     isCurrent: () => boolean,
+    isCurrentAfterHandoff?: () => boolean,
   ) => void;
   readonly headingId: string;
   readonly title: string;
@@ -587,21 +589,29 @@ function usePriceValuationScreen<
   function research(id: string, origin: HTMLButtonElement) {
     const member = memberships.find((item) => item.listingId === id);
     const resultEpoch = visible.epoch;
-    const isCurrent = () =>
+    // Hiding this mounted task is expected after Research opens. Keep every
+    // other result and origin lifetime guard for the queued heading focus.
+    const isCurrentAfterHandoff = () =>
       current() &&
       epoch.current === resultEpoch &&
       state.version === version &&
       selection.current.ids.includes(id) &&
       origin.isConnected &&
       !origin.disabled &&
-      !origin.closest("[hidden]") &&
       origin.ownerDocument.visibilityState === "visible";
+    const isCurrent = () =>
+      isCurrentAfterHandoff() && !origin.closest("[hidden]");
     if (
       member &&
       visible.rows.some((row) => row.identity.listingId === id) &&
       isCurrent()
     )
-      props.onOpenResearch({ ...member }, origin, isCurrent);
+      props.onOpenResearch(
+        { ...member },
+        origin,
+        isCurrent,
+        isCurrentAfterHandoff,
+      );
   }
 
   return (

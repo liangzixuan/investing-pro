@@ -580,6 +580,7 @@ export interface PersonalFinancialScreenerProps {
     row: PersonalSecurityMasterScreenRowDto,
     origin: HTMLButtonElement,
     isCurrent: () => boolean,
+    isCurrentAfterHandoff?: () => boolean,
   ) => void;
   readonly onSessionUnavailable: () => void;
   readonly onActivityStart: OwnerSessionActivityStart;
@@ -1018,6 +1019,7 @@ export function PersonalFinancialScreener({
     identity: PersonalSecurityMasterScreenRowDto,
     trigger: HTMLButtonElement,
     childIsCurrent: () => boolean,
+    childIsCurrentAfterHandoff: () => boolean = childIsCurrent,
   ) {
     const selected = priceCohort;
     const row = selected?.rows.find(
@@ -1025,14 +1027,20 @@ export function PersonalFinancialScreener({
         canonicalFinancialValue(candidate.identity) ===
         canonicalFinancialValue(identity),
     );
-    const isCurrent = () =>
-      childIsCurrent() &&
+    const isCurrentAfterHandoff = () =>
+      childIsCurrentAfterHandoff() &&
       row !== undefined &&
       priceCohortIsCurrent(selected) &&
       selected?.rows.includes(row) === true;
+    const isCurrent = () => childIsCurrent() && isCurrentAfterHandoff();
     if (!isCurrent() || row === undefined) return;
     if (onOpenPriceResearch)
-      onOpenPriceResearch(row.identity, trigger, isCurrent);
+      onOpenPriceResearch(
+        row.identity,
+        trigger,
+        isCurrent,
+        isCurrentAfterHandoff,
+      );
     else onOpenResearch(row.identity);
   }
 

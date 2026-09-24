@@ -1,6 +1,6 @@
 # Current work
 
-Updated 2026-09-23 UTC. Start here for active priorities and use the
+Updated 2026-09-24 UTC. Start here for active priorities and use the
 [capability scoreboard](./CAPABILITY_STATUS.md) for delivered functionality,
 dated coverage, verification limits and remaining targets. The
 [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md) owns capability targets;
@@ -16,20 +16,23 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: Discover presentation
+## Immediate delivery: Research Desk
 
-Use the Bootstrap Studio pilot to make company search easier to reach: a compact
-local-access status, smaller page heading, desktop section sidebar and wrapping
-navigation on narrow screens. My Watchlist uses separated rows while keeping
-note editors, paging, filtering and reorder controls in place. Section links move
-focus to existing headings without loading data or remounting panels.
+Implement the owner's selected Research Desk direction: horizontal navigation,
+distinct Discover, Screens, Watchlist, Portfolio and Updates views, compact saved
+company rows and one focused note editor. Company research keeps a contextual
+company list beside the evidence on desktop and becomes a full view on narrow
+screens. Navigation preserves mounted panels, filters, drafts and explicit data
+loading. Keep all existing tools reachable through their appropriate task view.
 
-The editable design and static export live outside the application repository at
-`../design/bootstrap-studio/discover-v1/`. The pilot uses the bundled SB Admin
-layout patterns and Bootswatch Flatly, with the existing cream/green palette.
-Its invented companies and memory-only interactions are design examples. The
-React implementation retains the application's actual data and explicit actions;
-it adds no Bootstrap dependency. Release acceptance is pending. See
+The selected visual target and design notes live outside the repository at
+`../design/bootstrap-studio/research-directions-v2/`. It builds on the prior
+Bootstrap Studio SB Admin/Flatly exploration with a light surface and teal accents.
+The generated companies, data and chart labels are illustrative. React retains
+the existing calculations, exact source data and loading controls. Annual research
+places the trend chart before detailed statements and methodology disclosures.
+No new financial coverage or automatic data acquisition is part of this redesign.
+Release acceptance is pending; workspace CURRENT.md owns actual release status. See
 [Company research workspace](./PERSONAL_COMPANY_RESEARCH.md).
 
 ## Delivered: larger complete filing-context inspections
