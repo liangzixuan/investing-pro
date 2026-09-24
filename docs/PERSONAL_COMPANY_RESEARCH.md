@@ -1,5 +1,21 @@
 # Company research workspace
 
+## Find your place in Discover
+
+The workspace navigation links to Discover, Screens, Watchlist, Portfolio and
+Updates, with secondary links to the catalog screen, price and valuation screen,
+and daily filing monitor. Desktop navigation stays beside the workspace; on
+narrow screens the links wrap above it. Each ordinary activation focuses its
+existing section heading. Modified links keep their normal browser behavior.
+
+Navigation does not load provider data, save records or remount the workspace.
+Watchlist filters, pages and note drafts retain their existing lifetimes. The
+compact local-access panel still reports Checking, Ready, Paused or Unavailable,
+and Retry connection remains available after a failed check. Hiding the page
+continues to clear workspace data under the existing local-access rules.
+
+## Research a company
+
 Open a company from security search, catalog or financial-screen results,
 My Watchlist, recent watchlist filings or holdings. The company research heading
 keeps its symbol, issuer name, exchange and security name visible. A comparison

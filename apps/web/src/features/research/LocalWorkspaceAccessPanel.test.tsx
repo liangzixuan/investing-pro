@@ -118,6 +118,46 @@ afterEach(() => {
 });
 
 describe("LocalWorkspaceAccessPanel", () => {
+  it("keeps compact status presentation distinct across checking, ready and paused states", async () => {
+    const checking = render();
+    expect(checking.props.className).toBe(
+      "owner-session-panel local-access-panel",
+    );
+    expect(checking.props["data-access-state"]).toBe("checking");
+    expect(statusMessage(checking).props.role).toBe("status");
+    expect(text(statusMessage(checking))).toContain("Checking local access");
+    await flush();
+    const ready = render();
+    expect(ready.props["data-access-state"]).toBe("ready");
+    expect(ready.props["aria-labelledby"]).toBe("local-access-title");
+    expect(text(statusMessage(ready))).toContain(
+      "The local workspace is available",
+    );
+    expect(text(ready)).toContain("Login disabled on this computer");
+    hide();
+    const paused = render();
+    expect(paused.props["data-access-state"]).toBe("paused");
+    expect(text(paused)).toContain("Paused");
+    expect(text(statusMessage(paused))).toContain("data is cleared");
+    expect(statusMessage(paused).props["aria-live"]).toBe("polite");
+    expect(probe).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the unavailable alert and retry outside the compact ready treatment", async () => {
+    probe.mockResolvedValueOnce(false);
+    render();
+    await flush();
+    const unavailable = render();
+    expect(unavailable.props["data-access-state"]).toBe("unavailable");
+    expect(statusMessage(unavailable).props.role).toBe("alert");
+    expect(text(unavailable)).toContain("Retry connection");
+    expect(text(statusMessage(unavailable))).toContain("could not be verified");
+    clickRetry();
+    await flush();
+    expect(render().props["data-access-state"]).toBe("ready");
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
   it("loads automatically only after exact local access is confirmed and publishes a guard after the private load", async () => {
     const admitted = deferred<boolean>();
     const loaded = deferred<boolean>();
@@ -300,7 +340,11 @@ describe("LocalWorkspaceAccessPanel", () => {
   });
 });
 
-function render() {
+function render(): React.ReactElement<{
+  className: string;
+  "data-access-state": string;
+  "aria-labelledby": string;
+}> {
   hooks.begin();
   const view = LocalWorkspaceAccessPanel(props);
   hooks.effects();
@@ -333,6 +377,19 @@ function text(value: unknown): string {
   return React.isValidElement<{ children?: unknown }>(value)
     ? text(value.props.children)
     : "";
+}
+function statusMessage(value: React.ReactElement) {
+  const children = React.Children.toArray(
+    (value.props as { children: React.ReactNode }).children,
+  );
+  const message = children.find(
+    (child) =>
+      React.isValidElement<{ className?: string }>(child) &&
+      child.props.className === "local-access-message",
+  );
+  if (!React.isValidElement<{ role: string; "aria-live": string }>(message))
+    throw new Error("Expected local access status message.");
+  return message;
 }
 function clickRetry() {
   function find(

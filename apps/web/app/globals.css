@@ -453,6 +453,93 @@ h4,
   row-gap: 8px;
 }
 
+.personal-app-header .workspace-navigation {
+  position: fixed;
+  inset: 72px auto 0 0;
+  display: flex;
+  width: 204px;
+  height: calc(100dvh - 72px);
+  padding: 24px 14px;
+  border-right: 1px solid #365448;
+  align-items: stretch;
+  flex-direction: column;
+  gap: 24px;
+  overflow-y: auto;
+  background: #18392e;
+  color: #f4f1e8;
+}
+
+.workspace-navigation-primary,
+.workspace-navigation-secondary {
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-navigation-secondary {
+  padding-top: 20px;
+  border-top: 1px solid #476758;
+}
+
+.personal-app-header .workspace-navigation a {
+  display: block;
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 6px;
+  color: #e0eade;
+  font-size: 0.86rem;
+  text-decoration: none;
+}
+
+.personal-app-header .workspace-navigation-secondary a {
+  font-size: 0.77rem;
+}
+
+.personal-app-header .workspace-navigation a:hover {
+  background: #345547;
+  color: white;
+}
+
+.personal-app-header .workspace-navigation a:focus-visible {
+  outline-color: var(--mint);
+  outline-offset: 0;
+}
+
+body:has(.workspace-navigation) .personal-app-header {
+  height: 72px;
+  padding-inline: 24px;
+  flex-wrap: nowrap;
+  background: var(--paper);
+  backdrop-filter: none;
+}
+
+body:has(.workspace-navigation) .personal-disclosure {
+  margin-left: 204px;
+  background: #ecefe3;
+  border-bottom-color: var(--line);
+  color: #425145;
+  font-size: 0.74rem;
+}
+
+body:has(.workspace-navigation) .discovery-shell {
+  width: min(calc(100% - 252px), var(--content));
+  margin-left: max(228px, calc((100% - var(--content) + 204px) / 2));
+  margin-right: 24px;
+}
+
+.discovery-shell
+  :is(
+    #search-title,
+    #personal-financial-screener-title,
+    #watchlist-title,
+    #personal-portfolio-title,
+    #watchlist-filings-title,
+    #personal-stock-screener-title,
+    #personal-price-valuation-screen-title,
+    #filing-monitor-title
+  ) {
+  scroll-margin-top: var(--workspace-section-scroll-margin, 96px);
+}
+
 .personal-app-header .watchlist-jump {
   display: flex;
 }
@@ -514,23 +601,25 @@ h4,
 
 .discovery-hero {
   display: grid;
-  padding: 52px 0 30px;
+  padding: 28px 0 22px;
   border-bottom: 1px solid var(--line);
   align-items: end;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 36px;
+  gap: 24px;
 }
 
 .discovery-hero h1 {
   max-width: 820px;
-  margin: 6px 0 12px;
-  font-size: clamp(2.4rem, 6vw, 5.35rem);
-  line-height: 0.95;
+  margin: 6px 0 10px;
+  font-size: clamp(2rem, 3vw, 2.65rem);
+  line-height: 1.12;
 }
 
 .discovery-hero > div > p:last-child {
   max-width: 690px;
+  margin-bottom: 0;
   color: var(--ink-soft);
+  font-size: 0.88rem;
 }
 
 .discovery-snapshot-card {
@@ -538,9 +627,8 @@ h4,
   min-width: 290px;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  box-shadow: var(--shadow);
   grid-template-columns: 1fr 1fr;
   overflow: hidden;
 }
@@ -570,17 +658,16 @@ h4,
 
 .security-search-panel,
 .watchlist-panel {
-  margin-top: 28px;
-  padding: 26px;
+  margin-top: 22px;
+  padding: 22px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--surface);
-  box-shadow: var(--shadow);
 }
 
 .discovery-section-heading {
   display: flex;
-  margin-bottom: 22px;
+  margin-bottom: 16px;
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
@@ -588,7 +675,8 @@ h4,
 
 .discovery-section-heading h2 {
   margin-top: 4px;
-  font-size: clamp(1.6rem, 3vw, 2.25rem);
+  margin-bottom: 0;
+  font-size: clamp(1.4rem, 2.4vw, 1.8rem);
 }
 
 .discovery-section-heading > span {
@@ -2570,7 +2658,7 @@ html:has(.personal-financial-screener:focus-within) {
     .financial-screen-value-button,
     button[aria-expanded]
   ) {
-  scroll-margin-block: 90px;
+  scroll-margin-block: var(--workspace-section-scroll-margin, 90px);
 }
 
 .financial-screen-view-controls {
@@ -2633,7 +2721,7 @@ html:has(.personal-financial-screener:focus-within) {
   color: var(--ink-soft);
   font-size: 0.8rem;
   overflow-wrap: anywhere;
-  scroll-margin-block: 90px;
+  scroll-margin-block: var(--workspace-section-scroll-margin, 90px);
 }
 
 .financial-screen-inspector-header {
@@ -2712,7 +2800,7 @@ html:has(.personal-financial-screener:focus-within) {
 .financial-screen-comparison h3 {
   color: var(--navy);
   font-size: 1rem;
-  scroll-margin-block: 90px;
+  scroll-margin-block: var(--workspace-section-scroll-margin, 90px);
 }
 
 .financial-screen-shortlist-items {
@@ -3084,7 +3172,7 @@ html:has(.personal-financial-screener:focus-within) {
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow);
-  scroll-margin-block-start: 90px;
+  scroll-margin-block-start: var(--workspace-section-scroll-margin, 90px);
 }
 
 .company-research-heading {
@@ -3104,7 +3192,7 @@ html:has(.personal-financial-screener:focus-within) {
 .company-research-heading h2 {
   margin: 0;
   font-size: clamp(1.8rem, 3vw, 2.5rem);
-  scroll-margin-block-start: 90px;
+  scroll-margin-block-start: var(--workspace-section-scroll-margin, 90px);
 }
 
 .company-research-name {
@@ -3283,7 +3371,7 @@ html:has(.personal-financial-screener:focus-within) {
 
 .company-research-panel {
   min-width: 0;
-  scroll-margin-block-start: 90px;
+  scroll-margin-block-start: var(--workspace-section-scroll-margin, 90px);
 }
 
 .company-research-panel[hidden] {
@@ -6795,5 +6883,204 @@ thead th {
 
   .sec-filing-metadata-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Discover presentation: compact local status and row-based watchlist. */
+.discovery-shell .local-access-panel {
+  display: grid;
+  margin-top: 20px;
+  padding: 12px 16px;
+  border-color: #c3d2bf;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 20px;
+  background: #edf2e8;
+  box-shadow: none;
+}
+
+.local-access-panel .owner-session-heading {
+  grid-row: 1 / 3;
+  gap: 12px;
+}
+
+.local-access-panel .owner-session-heading h2 {
+  font-family: inherit;
+  font-size: 0.85rem;
+  letter-spacing: 0;
+}
+
+.local-access-panel .owner-session-heading .eyebrow {
+  font-size: 0.62rem;
+}
+
+.local-access-panel .owner-session-state {
+  padding: 4px 8px;
+  font-size: 0.66rem;
+}
+
+.discovery-shell .local-access-panel > p {
+  margin: 0;
+  color: #425145;
+  font-size: 0.76rem;
+}
+
+.local-access-panel .local-access-message {
+  overflow-wrap: anywhere;
+}
+
+.local-access-panel[data-access-state="unavailable"] {
+  border-color: #d1b17a;
+  background: #fff5e4;
+}
+
+.local-access-panel > button {
+  margin-top: 8px;
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.discovery-shell .watchlist-members {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+
+.discovery-shell .watchlist-member {
+  padding: 18px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.discovery-shell .watchlist-member .watchlist-note-row {
+  margin-top: 12px;
+}
+
+.discovery-shell .watchlist-member .watchlist-note-row textarea {
+  min-height: 52px;
+  font-size: 0.84rem;
+}
+
+.discovery-shell
+  :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible,
+body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
+  outline-color: var(--mint-deep);
+}
+
+@media (max-width: 1100px) {
+  body:has(.workspace-navigation) .personal-app-header {
+    height: auto;
+    padding-block: 12px;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+  }
+
+  .personal-app-header .workspace-navigation {
+    position: static;
+    width: 100%;
+    height: auto;
+    padding: 8px 0 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    order: 3;
+    gap: 4px;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .workspace-navigation-primary,
+  .workspace-navigation-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .workspace-navigation-secondary {
+    padding: 0;
+    border: 0;
+  }
+
+  .personal-app-header .workspace-navigation a {
+    min-height: 40px;
+    padding: 9px 12px;
+    color: var(--mint-deep);
+  }
+
+  .personal-app-header .workspace-navigation a:hover {
+    background: var(--mint-soft);
+    color: var(--ink);
+  }
+
+  body:has(.workspace-navigation) .personal-disclosure {
+    margin-left: 0;
+  }
+
+  body:has(.workspace-navigation) .discovery-shell {
+    width: calc(100% - 48px);
+    margin-inline: auto;
+  }
+
+  .discovery-shell {
+    --workspace-section-scroll-margin: 205px;
+  }
+
+  .personal-app-header .workspace-navigation a:focus-visible {
+    outline-color: var(--mint-deep);
+  }
+}
+
+@media (max-width: 700px) {
+  body:has(.workspace-navigation) .personal-app-header {
+    position: relative;
+    padding-inline: 14px;
+  }
+
+  body:has(.workspace-navigation) .discovery-shell {
+    width: calc(100% - 28px);
+  }
+
+  .personal-app-header .workspace-navigation a {
+    min-height: 44px;
+    padding: 10px;
+  }
+
+  body:has(.workspace-navigation) .personal-disclosure {
+    padding: 10px 14px;
+    text-align: left;
+  }
+
+  .discovery-shell {
+    --workspace-section-scroll-margin: 20px;
+  }
+
+  .discovery-shell .local-access-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+
+  .local-access-panel .owner-session-heading {
+    align-items: center;
+    flex-direction: row;
+    grid-row: auto;
+  }
+
+  .discovery-hero {
+    padding-top: 24px;
+  }
+
+  .discovery-snapshot-card {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .discovery-snapshot-card div {
+    min-width: 0;
+    padding: 14px;
+  }
+
+  .discovery-snapshot-card dd {
+    overflow-wrap: anywhere;
   }
 }

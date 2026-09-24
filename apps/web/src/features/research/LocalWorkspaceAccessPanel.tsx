@@ -112,7 +112,8 @@ export function LocalWorkspaceAccessPanel({
 
   return (
     <section
-      className="owner-session-panel"
+      className="owner-session-panel local-access-panel"
+      data-access-state={state}
       aria-labelledby="local-access-title"
     >
       <div className="owner-session-heading">
@@ -127,11 +128,17 @@ export function LocalWorkspaceAccessPanel({
             ? "Ready"
             : state === "checking"
               ? "Checking"
-              : "Unavailable"}
+              : state === "paused"
+                ? "Paused"
+                : "Unavailable"}
         </span>
       </div>
-      <p>Login disabled on this computer.</p>
-      <p role={state === "unavailable" ? "alert" : "status"} aria-live="polite">
+      <p className="local-access-mode-note">Login disabled on this computer.</p>
+      <p
+        className="local-access-message"
+        role={state === "unavailable" ? "alert" : "status"}
+        aria-live="polite"
+      >
         {state === "ready"
           ? "The local workspace is available."
           : state === "checking"

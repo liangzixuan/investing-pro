@@ -399,6 +399,127 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("exposes the eight workspace destinations only while loaded and focuses them without data or draft changes", async () => {
+    expect(
+      findAllElements(renderWorkspace(), "nav").some(
+        (element) => element.props["aria-label"] === "Workspace sections",
+      ),
+    ).toBe(false);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(2),
+    );
+    await activateWorkspace();
+    editWatchlistNote("lst-syn-00001", "Keep the current note draft");
+    const before = renderWorkspace();
+    const calls = Object.values(apiMocks).map((mock) => mock.mock.calls.length);
+    const navigation = requireElementByProps(before, {
+      "aria-label": "Workspace sections",
+    });
+    const links = findAllElements(navigation, "a");
+    expect(links.map((link) => [link.props.href, textContent(link)])).toEqual([
+      ["#search-title", "Discover"],
+      ["#personal-financial-screener-title", "Screens"],
+      ["#watchlist-title", "Watchlist"],
+      ["#personal-portfolio-title", "Portfolio"],
+      ["#watchlist-filings-title", "Updates"],
+      ["#personal-stock-screener-title", "Catalog screen"],
+      ["#personal-price-valuation-screen-title", "Price and valuation"],
+      ["#filing-monitor-title", "Daily filing monitor"],
+    ]);
+    for (const link of links) {
+      const targetId = String(link.props.href).slice(1);
+      const dom = workspaceSectionDocument(targetId);
+      workspaceSectionLink(before, targetId).props.onClick(dom.event());
+      expect(dom.target.tabIndex).toBe(-1);
+      expect(dom.target.focus).toHaveBeenCalledExactlyOnceWith({
+        preventScroll: true,
+      });
+      expect(dom.preventDefault).not.toHaveBeenCalled();
+    }
+    const after = renderWorkspace();
+    expect(requirePriceScreen(after).key).toBe(requirePriceScreen(before).key);
+    expect(requireCompanyResearch(after).key).toBe(
+      requireCompanyResearch(before).key,
+    );
+    expect(watchlistNote(after, "lst-syn-00001").props.value).toBe(
+      "Keep the current note draft",
+    );
+    expect(
+      Object.values(apiMocks).map((mock) => mock.mock.calls.length),
+    ).toEqual(calls);
+    await requireOwnerSession(after).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(
+      findAllElements(renderWorkspace(), "nav").some(
+        (element) => element.props["aria-label"] === "Workspace sections",
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    "missing target",
+    "foreign target",
+    "detached target",
+    "hidden target",
+    "css-hidden target",
+    "detached link",
+    "hidden link",
+    "css-hidden link",
+    "hidden page",
+  ] as const)("refuses a workspace jump with %s", async (condition) => {
+    await activateWorkspace();
+    const link = workspaceSectionLink(renderWorkspace(), "search-title");
+    const dom = workspaceSectionDocument("search-title");
+    if (condition === "missing target") dom.state.missing = true;
+    if (condition === "foreign target") dom.state.contains = false;
+    if (condition === "detached target") dom.target.isConnected = false;
+    if (condition === "hidden target") dom.state.targetHidden = true;
+    if (condition === "css-hidden target") dom.state.targetBox = false;
+    if (condition === "detached link") dom.trigger.isConnected = false;
+    if (condition === "hidden link") dom.state.linkHidden = true;
+    if (condition === "css-hidden link") dom.state.linkBox = false;
+    if (condition === "hidden page") dom.state.visible = false;
+    link.props.onClick(dom.event());
+    expect(dom.target.focus).not.toHaveBeenCalled();
+    expect(dom.preventDefault).toHaveBeenCalledOnce();
+  });
+
+  it.each(["metaKey", "ctrlKey", "shiftKey", "altKey", "button"] as const)(
+    "leaves modified workspace navigation native for %s",
+    async (modifier) => {
+      await activateWorkspace();
+      const dom = workspaceSectionDocument("search-title");
+      const event = dom.event();
+      if (modifier === "button") event.button = 1;
+      else event[modifier] = true;
+      workspaceSectionLink(renderWorkspace(), "search-title").props.onClick(
+        event,
+      );
+      expect(dom.target.focus).not.toHaveBeenCalled();
+      expect(dom.preventDefault).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retires captured section links across workspace loss and replacement", async () => {
+    await activateWorkspace();
+    const old = workspaceSectionLink(renderWorkspace(), "search-title");
+    await requireOwnerSession(renderWorkspace()).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    await activateWorkspace();
+    const dom = workspaceSectionDocument("search-title");
+    old.props.onClick(dom.event());
+    expect(dom.target.focus).not.toHaveBeenCalled();
+    expect(dom.preventDefault).toHaveBeenCalledOnce();
+    workspaceSectionLink(renderWorkspace(), "search-title").props.onClick(
+      dom.event(),
+    );
+    expect(dom.target.focus).toHaveBeenCalledOnce();
+  });
+
   it("groups company panels into five stable sections without fetching on navigation or return", async () => {
     await activateWorkspace();
     const financial = findElement<PersonalFinancialScreenerProps>(
@@ -1420,7 +1541,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     ).resolves.toBe(true);
     rendered = renderWorkspace();
 
-    expect(textContent(rendered)).toContain("Find a company");
+    expect(textContent(rendered)).toContain("Discover companies");
     expect(textContent(rendered)).toContain(
       "Security search is still available, but watchlist changes are disabled",
     );
@@ -3480,7 +3601,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(requireAnnualFinancials(rendered).props.errorCode).toBe(
       "not_entitled",
     );
-    expect(textContent(rendered)).toContain("Find a company");
+    expect(textContent(rendered)).toContain("Discover companies");
     expect(findOwnerSession(rendered)).toBeDefined();
   });
 
@@ -3997,7 +4118,7 @@ describe("SecurityDiscoveryWorkspace", () => {
   it("clears private results synchronously when the owner session ends", async () => {
     await activateWorkspace();
     let rendered = renderWorkspace();
-    expect(textContent(rendered)).toContain("Find a company");
+    expect(textContent(rendered)).toContain("Discover companies");
     requireElementByProps<{
       onChange: (event: { target: { value: string } }) => void;
     }>(rendered, { id: "security-query" }).props.onChange({
@@ -4140,7 +4261,7 @@ describe("My Watchlist navigation", () => {
       renderWorkspace(),
       { href: "#watchlist-title" },
     );
-    expect(jump.props.onClick).toBeUndefined();
+    expect(typeof jump.props.onClick).toBe("function");
     watchlistAction(renderWorkspace(), "Research SYN00051").props.onClick();
     await flushPromises();
     requireCompanyResearch(renderWorkspace()).props.onBack();
@@ -4157,7 +4278,7 @@ describe("My Watchlist navigation", () => {
       expect(mock).not.toHaveBeenCalled();
   });
 
-  it("provides an unmodified native jump to the focusable heading only while the section exists", async () => {
+  it("provides a fragment link with guarded focus to the heading only while the section exists", async () => {
     expect(
       findAllElements(renderWorkspace(), "a").some(
         (a) => a.props.href === "#watchlist-title",
@@ -4169,7 +4290,7 @@ describe("My Watchlist navigation", () => {
       href: "#watchlist-title",
     });
     expect(link.type).toBe("a");
-    expect(link.props.onClick).toBeUndefined();
+    expect(typeof link.props.onClick).toBe("function");
     const heading = requireElementByProps<{ tabIndex: number }>(view, {
       id: "watchlist-title",
     });
@@ -7005,6 +7126,67 @@ function requirePriceScreen(value: unknown) {
   if (screen === undefined)
     throw new Error("Expected price and valuation screen.");
   return screen;
+}
+
+function workspaceSectionLink(value: unknown, targetId: string) {
+  return requireElementByProps<{
+    onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void;
+  }>(value, { href: `#${targetId}` });
+}
+
+function workspaceSectionDocument(targetId: string) {
+  const state = {
+    visible: true,
+    missing: false,
+    contains: true,
+    targetHidden: false,
+    targetBox: true,
+    linkHidden: false,
+    linkBox: true,
+  };
+  const target = {
+    isConnected: true,
+    tabIndex: 0,
+    closest: () => (state.targetHidden ? {} : null),
+    getClientRects: () => (state.targetBox ? [{}] : []),
+    focus: vi.fn(),
+  };
+  const main = {
+    contains: (node: unknown) => state.contains && node === target,
+  };
+  const trigger = {
+    isConnected: true,
+    closest: () => (state.linkHidden ? {} : null),
+    getClientRects: () => (state.linkBox ? [{}] : []),
+  };
+  vi.stubGlobal("document", {
+    get visibilityState() {
+      return state.visible ? "visible" : "hidden";
+    },
+    getElementById: (id: string) =>
+      id === "main-content"
+        ? main
+        : id === targetId && !state.missing
+          ? target
+          : null,
+  });
+  const preventDefault = vi.fn();
+  return {
+    state,
+    target,
+    trigger,
+    preventDefault,
+    event: () =>
+      ({
+        button: 0,
+        metaKey: false,
+        ctrlKey: false,
+        shiftKey: false,
+        altKey: false,
+        currentTarget: trigger,
+        preventDefault,
+      }) as unknown as React.MouseEvent<HTMLAnchorElement>,
+  };
 }
 
 function companyFocusDocument(triggerHeadingId: string) {

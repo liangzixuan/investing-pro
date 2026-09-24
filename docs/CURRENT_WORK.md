@@ -16,7 +16,23 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: larger complete filing-context inspections
+## Immediate delivery: Discover presentation
+
+Use the Bootstrap Studio pilot to make company search easier to reach: a compact
+local-access status, smaller page heading, desktop section sidebar and wrapping
+navigation on narrow screens. My Watchlist uses separated rows while keeping
+note editors, paging, filtering and reorder controls in place. Section links move
+focus to existing headings without loading data or remounting panels.
+
+The editable design and static export live outside the application repository at
+`../design/bootstrap-studio/discover-v1/`. The pilot uses the bundled SB Admin
+layout patterns and Bootswatch Flatly, with the existing cream/green palette.
+Its invented companies and memory-only interactions are design examples. The
+React implementation retains the application's actual data and explicit actions;
+it adds no Bootstrap dependency. Release acceptance is pending. See
+[Company research workspace](./PERSONAL_COMPANY_RESEARCH.md).
+
+## Delivered: larger complete filing-context inspections
 
 Raise the shared selected-concept ceiling to 512 candidates while retaining the
 1 MiB worker-output limit, ten-second worker deadline and 32 MiB document limit.
@@ -29,7 +45,8 @@ and strict browser decoder, with MSFT and ORCL as controls. Measure output bytes
 and elapsed worker lifetime. Keep independent XML and Company Facts comparison
 separate from correspondence status. Page large reference lists without changing
 source membership, exact source jumps or selection/lifetime guards. Release
-acceptance is pending. See [filing context](./PERSONAL_SEC_FILING_CONTEXT.md).
+`139b3bcae39d2136e4206e43e86a5f3126930fac` is accepted; the outside-Git handoff
+records its actual checks. See [filing context](./PERSONAL_SEC_FILING_CONTEXT.md).
 
 ## Delivered: shared SEC namespace support
 

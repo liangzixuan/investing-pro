@@ -20,7 +20,13 @@ import {
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 
 import {
   createEmptyPersonalWatchlist,
@@ -203,6 +209,18 @@ const SESSION_REVALIDATION_MESSAGE =
 const MANUAL_PEER_PICKER_MAXIMUM_CANDIDATES = 250;
 const WATCHLIST_PAGE_SIZE = 50;
 const WATCHLIST_MAXIMUM_MEMBERSHIPS = 10_000;
+const WORKSPACE_PRIMARY_LINKS = [
+  ["search-title", "Discover"],
+  ["personal-financial-screener-title", "Screens"],
+  ["watchlist-title", "Watchlist"],
+  ["personal-portfolio-title", "Portfolio"],
+  ["watchlist-filings-title", "Updates"],
+] as const;
+const WORKSPACE_SECONDARY_LINKS = [
+  ["personal-stock-screener-title", "Catalog screen"],
+  ["personal-price-valuation-screen-title", "Price and valuation"],
+  ["filing-monitor-title", "Daily filing monitor"],
+] as const;
 
 class WorkspaceSnapshotChangedError extends Error {}
 
@@ -2382,6 +2400,46 @@ export function SecurityDiscoveryWorkspace({
     },
   });
 
+  function focusWorkspaceSection(
+    event: MouseEvent<HTMLAnchorElement>,
+    targetId: string,
+  ) {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    if (
+      workspace === null ||
+      workspace !== watchlistView.current.workspace ||
+      renderedWorkspaceEpoch !== workspaceEpoch.current ||
+      document.visibilityState !== "visible" ||
+      !event.currentTarget.isConnected ||
+      event.currentTarget.closest("[hidden]") ||
+      event.currentTarget.getClientRects().length === 0
+    ) {
+      event.preventDefault();
+      return;
+    }
+    const main = document.getElementById("main-content");
+    const target = document.getElementById(targetId);
+    if (
+      target === null ||
+      !target.isConnected ||
+      !main?.contains(target) ||
+      target.closest("[hidden]") ||
+      target.getClientRects().length === 0
+    ) {
+      event.preventDefault();
+      return;
+    }
+    target.tabIndex = -1;
+    target.focus({ preventScroll: true });
+  }
+
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -2392,8 +2450,29 @@ export function SecurityDiscoveryWorkspace({
           <span>RC</span> Research Cockpit
         </Link>
         {workspace !== null && (
-          <nav aria-label="Workspace sections" className="watchlist-jump">
-            <a href="#watchlist-title">My Watchlist</a>
+          <nav aria-label="Workspace sections" className="workspace-navigation">
+            <div className="workspace-navigation-primary">
+              {WORKSPACE_PRIMARY_LINKS.map(([target, label]) => (
+                <a
+                  href={`#${target}`}
+                  key={target}
+                  onClick={(event) => focusWorkspaceSection(event, target)}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+            <div className="workspace-navigation-secondary">
+              {WORKSPACE_SECONDARY_LINKS.map(([target, label]) => (
+                <a
+                  href={`#${target}`}
+                  key={target}
+                  onClick={(event) => focusWorkspaceSection(event, target)}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
           </nav>
         )}
         <div className="mode-chips" aria-label="Data mode">
@@ -2447,16 +2526,14 @@ export function SecurityDiscoveryWorkspace({
             >
               <div>
                 <p className="eyebrow">Discover</p>
-                <h1 id="discover-title">
-                  Find a company. Keep the ones that matter.
-                </h1>
+                <h1 id="discover-title">Discover companies</h1>
                 <p>
                   Search{" "}
                   {formatCount(
                     workspace.snapshot.coverage.activeEligibleSecurities,
                   )}{" "}
                   active U.S.-listed stocks and ADRs in your admitted local
-                  snapshot.
+                  snapshot. Research a company or keep it in My Watchlist.
                 </p>
               </div>
               <dl className="discovery-snapshot-card">
@@ -2482,7 +2559,9 @@ export function SecurityDiscoveryWorkspace({
               <div className="discovery-section-heading">
                 <div>
                   <p className="eyebrow">Local security search</p>
-                  <h2 id="search-title">Ticker or company name</h2>
+                  <h2 id="search-title" tabIndex={-1}>
+                    Ticker or company name
+                  </h2>
                 </div>
                 <span>Symbols, former symbols, and names</span>
               </div>
@@ -3118,7 +3197,10 @@ export function SecurityDiscoveryWorkspace({
                   {visibleWatchlistRows.map((row) => {
                     const { membership, absoluteIndex: index } = row;
                     return (
-                      <li key={membership.listingId}>
+                      <li
+                        className="watchlist-member"
+                        key={membership.listingId}
+                      >
                         <div className="watchlist-member-heading">
                           <span className="watchlist-position">
                             {String(index + 1).padStart(2, "0")}
