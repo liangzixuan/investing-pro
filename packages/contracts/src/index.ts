@@ -1006,3 +1006,6 @@ export * from "./personal-saved-manual-peer-group";
 export * from "./personal-watchlist-filings";
 export * from "./personal-watchlist-filing-monitor";
 export * from "./personal-sec-annual-evidence";
+
+export * from "./personal-sec-quarter-assessment";
+export * from "./personal-sec-source-json";

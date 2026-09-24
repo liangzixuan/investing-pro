@@ -77,6 +77,11 @@ import {
   type PersonalSecFilingContextProvider,
 } from "./personal-sec-filing-context-provider";
 import { registerPersonalWorkspaceSecFilingContextRoutes } from "./workspace-sec-filing-context-routes";
+import {
+  createSecPersonalQuarterAssessmentProvider,
+  type PersonalSecQuarterAssessmentProvider,
+} from "./personal-sec-quarter-assessment-provider";
+import { registerPersonalWorkspaceSecQuarterAssessmentRoutes } from "./workspace-sec-quarter-assessment-routes";
 
 const PERSONAL_WORKSPACE_BODY_LIMIT_BYTES = 300 * 1_024;
 const DEFAULT_LISTEN_OPTIONS: DemoApiListenOptions = Object.freeze({
@@ -97,6 +102,7 @@ export async function buildPersonalWorkspaceApp(
   annualEvidenceProvider: PersonalSecAnnualEvidenceProvider = createSecPersonalAnnualEvidenceProvider(),
   filingMonitor?: PersonalFilingMonitor,
   desktopNotifications?: PersonalDesktopNotifications,
+  quarterAssessmentProvider: PersonalSecQuarterAssessmentProvider = createSecPersonalQuarterAssessmentProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -182,7 +188,11 @@ export async function buildPersonalWorkspaceApp(
                     try {
                       annualEvidenceProvider.close();
                     } finally {
-                      ownerSession.close();
+                      try {
+                        quarterAssessmentProvider.close();
+                      } finally {
+                        ownerSession.close();
+                      }
                     }
                   }
                 }
@@ -292,6 +302,14 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     filingContextProvider,
+    ownerSession,
+    listenOptions,
+  );
+
+  await registerPersonalWorkspaceSecQuarterAssessmentRoutes(
+    app,
+    catalog,
+    quarterAssessmentProvider,
     ownerSession,
     listenOptions,
   );

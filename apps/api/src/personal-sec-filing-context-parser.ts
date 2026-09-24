@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -8,12 +9,16 @@ import {
   PERSONAL_SEC_FILING_REPORTING_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
   normalizePersonalSecReportingValue,
+  assertPersonalSecJsonUniqueKeys,
+  isPersonalSecQuarterPrimaryEvidence,
   type PersonalSecFilingContextCandidateDto,
   type PersonalSecFilingContextIssue,
   type PersonalSecFilingContextParserResultDto,
   type PersonalSecFilingContextSelectionDto,
   type PersonalSecFilingReportingMetadataDto,
   type PersonalSecFilingReportingObservationDto,
+  type PersonalSecQuarterAssessmentSelectionDto,
+  type PersonalSecQuarterPrimaryEvidenceDto,
 } from "@research-cockpit/contracts";
 
 export type PersonalSecFilingContextParserErrorCode =
@@ -47,6 +52,20 @@ export interface PersonalSecFilingContextParser {
     signal?: AbortSignal,
   ): Promise<PersonalSecFilingContextParserResultDto>;
   close(): void;
+}
+
+export interface PersonalSecAccessionEvidenceParserInput {
+  readonly document: Uint8Array;
+  readonly cik: string;
+  readonly selection: PersonalSecQuarterAssessmentSelectionDto;
+}
+
+/** One shared worker owner for legacy inspection and full-accession evidence. */
+export interface PersonalSecPrimaryParser extends PersonalSecFilingContextParser {
+  parseAccessionEvidence(
+    input: PersonalSecAccessionEvidenceParserInput,
+    signal?: AbortSignal,
+  ): Promise<PersonalSecQuarterPrimaryEvidenceDto>;
 }
 
 export interface PersonalSecFilingContextParserDependencies {
@@ -98,11 +117,11 @@ const ISSUES = new Set<PersonalSecFilingContextIssue>([
 
 export function createPersonalSecFilingContextParser(
   dependencies: PersonalSecFilingContextParserDependencies = {},
-): PersonalSecFilingContextParser {
+): PersonalSecPrimaryParser {
   return new FilingContextParser(dependencies.spawn ?? spawn);
 }
 
-class FilingContextParser implements PersonalSecFilingContextParser {
+class FilingContextParser implements PersonalSecPrimaryParser {
   readonly #spawn: typeof spawn;
   #closed = false;
   #active:
@@ -136,6 +155,69 @@ class FilingContextParser implements PersonalSecFilingContextParser {
     );
     if (stdin.byteLength > LIMITS.workerInputBytes)
       throw new PersonalSecFilingContextParserError("invalid_request");
+    return await this.#run(stdin, signal, false, (text) => {
+      const result: unknown = JSON.parse(text);
+      if (!validResult(result, selection, cik))
+        throw new PersonalSecFilingContextParserError("invalid_output");
+      return freezeResult(result);
+    });
+  }
+
+  public async parseAccessionEvidence(
+    input: PersonalSecAccessionEvidenceParserInput,
+    signal?: AbortSignal,
+  ): Promise<PersonalSecQuarterPrimaryEvidenceDto> {
+    if (this.#closed || signal?.aborted)
+      throw new PersonalSecFilingContextParserError("aborted");
+    if (this.#active) throw new PersonalSecFilingContextParserError("busy");
+    if (!validAccessionInput(input))
+      throw new PersonalSecFilingContextParserError("invalid_request");
+    const selection = Object.freeze({ ...input.selection });
+    const cik = input.cik;
+    const document = Buffer.from(input.document);
+    const documentBytes = document.byteLength;
+    const documentSha256 =
+      `sha256:${createHash("sha256").update(document).digest("hex")}` as const;
+    const stdin = Buffer.from(
+      JSON.stringify({
+        schemaVersion: "1.0.0",
+        mode: "accession_evidence",
+        documentBase64: document.toString("base64"),
+        documentSha256,
+        cik,
+        selection,
+      }),
+      "utf8",
+    );
+    document.fill(0);
+    if (stdin.byteLength > LIMITS.workerInputBytes) {
+      stdin.fill(0);
+      throw new PersonalSecFilingContextParserError("invalid_request");
+    }
+    return await this.#run(stdin, signal, true, (text) => {
+      assertPersonalSecJsonUniqueKeys(text);
+      const result: unknown = JSON.parse(text);
+      if (
+        !isPersonalSecQuarterPrimaryEvidence(result) ||
+        result.documentSha256 !== documentSha256 ||
+        result.documentBytes !== documentBytes ||
+        result.cik !== cik ||
+        result.selection.accessionNumber !== selection.accessionNumber ||
+        result.selection.form !== selection.form ||
+        result.selection.filedDate !== selection.filedDate ||
+        result.selection.reportDate !== selection.reportDate
+      )
+        throw new PersonalSecFilingContextParserError("invalid_output");
+      return freezeEvidence(result);
+    });
+  }
+
+  async #run<T>(
+    stdin: Buffer,
+    signal: AbortSignal | undefined,
+    waitForClose: boolean,
+    decode: (text: string) => T,
+  ): Promise<T> {
     return await new Promise((resolve, reject) => {
       let child: ChildProcessWithoutNullStreams;
       try {
@@ -151,10 +233,13 @@ class FilingContextParser implements PersonalSecFilingContextParser {
           },
         );
       } catch {
+        stdin.fill(0);
         reject(new PersonalSecFilingContextParserError("runtime_unavailable"));
         return;
       }
       let settled = false;
+      let closed = false;
+      let failure: PersonalSecFilingContextParserErrorCode | undefined;
       let stdoutBytes = 0;
       let stderrBytes = 0;
       const chunks: Buffer[] = [];
@@ -166,12 +251,16 @@ class FilingContextParser implements PersonalSecFilingContextParser {
       const fail = (code: PersonalSecFilingContextParserErrorCode): void => {
         if (settled) return;
         settled = true;
+        failure = code;
         cleanup();
         chunks.length = 0;
-        child.stdin.destroy();
-        child.kill("SIGKILL");
+        if (!closed) {
+          child.stdin.destroy();
+          child.kill("SIGKILL");
+        }
         // Keep the busy guard until close confirms the process has exited.
-        reject(new PersonalSecFilingContextParserError(code));
+        if (!waitForClose || closed)
+          reject(new PersonalSecFilingContextParserError(code));
       };
       const abort = (): void => fail("aborted");
       const timeout = setTimeout(() => fail("timeout"), LIMITS.workerTimeoutMs);
@@ -196,26 +285,27 @@ class FilingContextParser implements PersonalSecFilingContextParser {
         if (stderrBytes > LIMITS.workerStderrBytes) fail("output_too_large");
       });
       child.once("close", (code, terminationSignal) => {
+        closed = true;
         if (this.#active?.child === child) this.#active = undefined;
-        if (settled) return;
+        if (settled) {
+          if (waitForClose && failure !== undefined)
+            reject(new PersonalSecFilingContextParserError(failure));
+          return;
+        }
         if (code !== 0 || terminationSignal !== null || stderrBytes !== 0) {
           fail("worker_failed");
           return;
         }
         try {
-          const result: unknown = JSON.parse(
+          const result = decode(
             new TextDecoder("utf-8", { fatal: true }).decode(
               Buffer.concat(chunks),
             ),
           );
-          if (!validResult(result, selection, cik)) {
-            fail("invalid_output");
-            return;
-          }
           settled = true;
           cleanup();
           chunks.length = 0;
-          resolve(freezeResult(result));
+          resolve(result);
         } catch {
           fail("invalid_output");
         }
@@ -229,6 +319,40 @@ class FilingContextParser implements PersonalSecFilingContextParser {
     this.#closed = true;
     this.#active?.abort();
   }
+}
+
+function validAccessionInput(
+  input: PersonalSecAccessionEvidenceParserInput,
+): boolean {
+  return (
+    record(input, ["document", "cik", "selection"]) &&
+    input.document instanceof Uint8Array &&
+    input.document.byteLength > 0 &&
+    input.document.byteLength <= LIMITS.documentBytes &&
+    typeof input.cik === "string" &&
+    /^[0-9]{10}$/u.test(input.cik) &&
+    input.cik !== "0000000000" &&
+    record(input.selection, [
+      "accessionNumber",
+      "form",
+      "filedDate",
+      "reportDate",
+    ]) &&
+    typeof input.selection.accessionNumber === "string" &&
+    /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u.test(input.selection.accessionNumber) &&
+    input.selection.form === "10-Q" &&
+    date(input.selection.filedDate) &&
+    date(input.selection.reportDate) &&
+    input.selection.reportDate <= input.selection.filedDate
+  );
+}
+
+function freezeEvidence<T>(value: T): T {
+  if (value !== null && typeof value === "object") {
+    for (const child of Object.values(value)) freezeEvidence(child);
+    Object.freeze(value);
+  }
+  return value;
 }
 
 function record(

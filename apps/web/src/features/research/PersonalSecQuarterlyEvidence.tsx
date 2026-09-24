@@ -15,6 +15,7 @@ import { fetchPersonalSecQuarterlyEvidence } from "../../lib/personal-sec-quarte
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 import { PersonalSecFilingContext } from "./PersonalSecFilingContext";
+import { PersonalSecQuarterAssessment } from "./PersonalSecQuarterAssessment";
 
 export interface PersonalSecQuarterlyEvidenceProps {
   readonly catalogSnapshotSha256: `sha256:${string}`;
@@ -58,6 +59,11 @@ export function PersonalSecQuarterlyEvidence({
   const [comparisonPage, setComparisonPage] = useState(0);
   const [inspectionId, setInspectionId] = useState<string | null>(null);
   const [inspectionRequest, setInspectionRequest] = useState(0);
+  const [assessmentId, setAssessmentId] = useState<string | null>(null);
+  const [assessmentRequest, setAssessmentRequest] = useState(0);
+  const assessmentSerial = useRef(0);
+  const assessmentInstance = useRef<{ id: string; token: number } | null>(null);
+  const assessmentTrigger = useRef<HTMLButtonElement | null>(null);
   const inspectionTrigger = useRef<HTMLButtonElement | null>(null);
   const comparisonHeading = useRef<HTMLHeadingElement | null>(null);
   const comparisonTrigger = useRef<HTMLButtonElement | null>(null);
@@ -84,6 +90,9 @@ export function PersonalSecQuarterlyEvidence({
     setComparisonId(null);
     setComparisonPage(0);
     setInspectionId(null);
+    setAssessmentId(null);
+    assessmentInstance.current = null;
+    assessmentTrigger.current = null;
     inspectionTrigger.current = null;
     comparisonTrigger.current = null;
     setLoadedContext(context);
@@ -93,6 +102,8 @@ export function PersonalSecQuarterlyEvidence({
       controller.current = null;
       comparisonTrigger.current = null;
       inspectionTrigger.current = null;
+      assessmentTrigger.current = null;
+      assessmentInstance.current = null;
     };
   }, [context]);
 
@@ -113,6 +124,9 @@ export function PersonalSecQuarterlyEvidence({
     setComparisonId(null);
     setComparisonPage(0);
     setInspectionId(null);
+    setAssessmentId(null);
+    assessmentInstance.current = null;
+    assessmentTrigger.current = null;
     inspectionTrigger.current = null;
     comparisonTrigger.current = null;
   }
@@ -216,6 +230,55 @@ export function PersonalSecQuarterlyEvidence({
     current?.evidence.observations.find(
       (item) => item.id === inspectionId && canInspect(item),
     ) ?? null;
+  const assessedObservation =
+    current?.evidence.observations.find(
+      (item) => item.id === assessmentId && canAssess(item),
+    ) ?? null;
+
+  function openAssessment(
+    item: PersonalSecQuarterlyObservationDto,
+    trigger: HTMLButtonElement | null,
+  ) {
+    if (
+      current === null ||
+      renderEpoch !== epoch.current ||
+      activeContext.current !== context ||
+      !canAssess(item)
+    )
+      return;
+    assessmentTrigger.current = trigger;
+    const token = ++assessmentSerial.current;
+    assessmentInstance.current = { id: item.id, token };
+    setAssessmentId(item.id);
+    setAssessmentRequest(token);
+  }
+
+  function closeAssessment() {
+    if (
+      current === null ||
+      renderEpoch !== epoch.current ||
+      activeContext.current !== context ||
+      assessmentInstance.current?.id !== assessmentId ||
+      assessmentInstance.current.token !== assessmentRequest
+    )
+      return;
+    setAssessmentId(null);
+    assessmentInstance.current = null;
+    const trigger = assessmentTrigger.current;
+    if (
+      trigger?.isConnected &&
+      !trigger.disabled &&
+      observationsRegion.current?.contains(trigger) &&
+      trigger.closest("[hidden], [inert]") === null
+    )
+      trigger.focus();
+    else if (
+      observationsRegion.current?.isConnected &&
+      observationsRegion.current.closest("[hidden], [inert]") === null
+    )
+      observationsRegion.current.focus();
+    assessmentTrigger.current = null;
+  }
 
   function openInspection(
     item: PersonalSecQuarterlyObservationDto,
@@ -411,6 +474,9 @@ export function PersonalSecQuarterlyEvidence({
                   setComparisonId(null);
                   setComparisonPage(0);
                   setInspectionId(null);
+                  setAssessmentId(null);
+                  assessmentInstance.current = null;
+                  assessmentTrigger.current = null;
                   inspectionTrigger.current = null;
                   comparisonTrigger.current = null;
                 }}
@@ -499,6 +565,39 @@ export function PersonalSecQuarterlyEvidence({
                 if (
                   renderEpoch !== epoch.current ||
                   activeContext.current !== context
+                )
+                  return;
+                invalidate(
+                  "The owner session expired. Revalidate it to load SEC evidence.",
+                );
+                callback.current();
+              }}
+            />
+          )}
+          {assessedObservation === null ||
+          assessedObservation.filing.status !== "matched" ||
+          selection === null ||
+          !canAssess(assessedObservation) ? null : (
+            <PersonalSecQuarterAssessment
+              key={`${renderEpoch}:${assessedObservation.id}`}
+              catalogSnapshotSha256={catalogSnapshotSha256}
+              selection={selection}
+              filing={{
+                accessionNumber: assessedObservation.accessionNumber,
+                form: assessedObservation.form as "10-Q" | "10-Q/A",
+                filedDate: assessedObservation.filedDate,
+                reportDate: assessedObservation.filing.reportDate,
+              }}
+              responseGeneration={renderEpoch}
+              requestToken={assessmentRequest}
+              enabled={enabled}
+              onClose={closeAssessment}
+              onSessionUnavailable={() => {
+                if (
+                  renderEpoch !== epoch.current ||
+                  activeContext.current !== context ||
+                  assessmentInstance.current?.id !== assessmentId ||
+                  assessmentInstance.current.token !== assessmentRequest
                 )
                   return;
                 invalidate(
@@ -619,6 +718,24 @@ export function PersonalSecQuarterlyEvidence({
                           selected={inspectionId === item.id}
                           onInspect={openInspection}
                         />
+                        {canAssess(item) ? (
+                          <button
+                            className="sec-quarterly-compare-action"
+                            type="button"
+                            aria-label={`Assess quarter for accession ${item.accessionNumber}, ${item.concept}, ${item.startDate ?? "unknown start"} to ${item.endDate}`}
+                            aria-expanded={assessmentId === item.id}
+                            aria-controls={
+                              assessedObservation === null
+                                ? undefined
+                                : "sec-quarter-assessment"
+                            }
+                            onClick={(event) =>
+                              openAssessment(item, event?.currentTarget ?? null)
+                            }
+                          >
+                            Assess quarter
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -657,6 +774,13 @@ export function PersonalSecQuarterlyEvidence({
         </>
       )}
     </section>
+  );
+}
+
+function canAssess(item: PersonalSecQuarterlyObservationDto): boolean {
+  return (
+    item.filing.status === "matched" &&
+    (item.form === "10-Q" || item.form === "10-Q/A")
   );
 }
 

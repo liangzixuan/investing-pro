@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:ix="http://www.xbrl.org/2013/inlineXBRL" xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:iso4217="http://www.xbrl.org/2003/iso4217" xmlns:us-gaap="http://fasb.org/us-gaap/2025" xmlns:dei="http://xbrl.sec.gov/dei/2025">
+<head><title>Synthetic Example Corporation filing</title></head>
+<body>
+<ix:header><ix:hidden>
+<xbrli:context id="current"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000999999</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2025-01-01</xbrli:startDate><xbrli:endDate>2025-03-31</xbrli:endDate></xbrli:period></xbrli:context>
+<xbrli:unit id="usd"><xbrli:measure>iso4217:USD</xbrli:measure></xbrli:unit>
+<ix:nonNumeric name="dei:DocumentType" contextRef="current">10-Q</ix:nonNumeric>
+<ix:nonNumeric name="dei:DocumentPeriodEndDate" contextRef="current">2025-03-31</ix:nonNumeric>
+<ix:nonNumeric name="dei:DocumentFiscalYearFocus" contextRef="current">2025</ix:nonNumeric>
+<ix:nonNumeric name="dei:DocumentFiscalPeriodFocus" contextRef="current">Q1</ix:nonNumeric>
+</ix:hidden></ix:header>
+<div id="cover"><p>☒ Quarterly report pursuant to Section 13 or 15(d)</p><p>☐ Transition report pursuant to Section 13 or 15(d)</p><p>For the quarterly period ended March 31, 2025</p></div>
+<p>Item 1. Financial Statements</p>
+<p>Condensed Consolidated Balance Sheets</p><table><tr><td>March 31, 2025</td></tr></table>
+<p>Condensed Consolidated Statements of Income</p><p>(in millions)</p>
+<table id="income"><tr><td></td><th colspan="3">Three months ended</th></tr><tr><td></td><th></th><th>March 31, 2025</th><th></th></tr>
+<tr><td>Total revenues</td><td>$</td><td><ix:nonFraction name="us-gaap:Revenues" contextRef="current" unitRef="usd" scale="6" decimals="-6">100</ix:nonFraction></td><td></td></tr>
+<tr><td>Net loss attributable to the parent</td><td>$</td><td>(<ix:nonFraction name="us-gaap:NetIncomeLoss" contextRef="current" unitRef="usd" scale="6" decimals="-6" sign="-">20</ix:nonFraction>)</td><td></td></tr></table>
+<p>Condensed Consolidated Statements of Cash Flows</p><table><tr><td>March 31, 2025</td></tr></table>
+<p>Notes to Condensed Consolidated Financial Statements</p>
+<p>Our fiscal year ending December 31, 2025 consists of twelve calendar months.</p>
+<p>These financial statements cover the first quarter of fiscal year 2025.</p>
+<p>The accompanying consolidated financial statements include the accounts of Example Corporation and its wholly-owned subsidiaries. All intercompany transactions are eliminated.</p>
+<p><ix:nonNumeric name="dei:EntityRegistrantName" contextRef="current">Example Corporation</ix:nonNumeric></p>
+</body></html>

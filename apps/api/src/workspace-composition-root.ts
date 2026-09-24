@@ -57,6 +57,11 @@ import {
   createSecPersonalFilingContextProvider,
   type PersonalSecFilingContextProvider,
 } from "./personal-sec-filing-context-provider";
+import { createPersonalSecFilingContextParser } from "./personal-sec-filing-context-parser";
+import {
+  createSecPersonalQuarterAssessmentProvider,
+  type PersonalSecQuarterAssessmentProvider,
+} from "./personal-sec-quarter-assessment-provider";
 
 export const PERSONAL_WORKSPACE_API_MODE = "personal_workspace" as const;
 export const PERSONAL_WORKSPACE_LOCAL_ACCESS_ENVIRONMENT_KEY =
@@ -249,6 +254,8 @@ async function preparePersonalWorkspaceConfiguredApp(
   let financialProvider: PersonalSecFinancialProvider | undefined;
   let filingsProvider: PersonalSecFilingsProvider | undefined;
   let filingContextProvider: PersonalSecFilingContextProvider | undefined;
+  let quarterAssessmentProvider:
+    PersonalSecQuarterAssessmentProvider | undefined;
   let quarterlyEvidenceProvider:
     PersonalSecQuarterlyEvidenceProvider | undefined;
   let annualEvidenceProvider: PersonalSecAnnualEvidenceProvider | undefined;
@@ -270,8 +277,15 @@ async function preparePersonalWorkspaceConfiguredApp(
     filingsProvider = createSecPersonalFilingsProvider(secUserAgent);
     quarterlyEvidenceProvider =
       createSecPersonalQuarterlyEvidenceProvider(secUserAgent);
-    filingContextProvider =
-      createSecPersonalFilingContextProvider(secUserAgent);
+    const primaryParser = createPersonalSecFilingContextParser();
+    filingContextProvider = createSecPersonalFilingContextProvider(
+      secUserAgent,
+      { parser: primaryParser },
+    );
+    quarterAssessmentProvider = createSecPersonalQuarterAssessmentProvider(
+      secUserAgent,
+      { parser: primaryParser },
+    );
     annualEvidenceProvider =
       createSecPersonalAnnualEvidenceProvider(secUserAgent);
     desktopNotifications = createPersonalDesktopNotifications();
@@ -294,6 +308,7 @@ async function preparePersonalWorkspaceConfiguredApp(
       annualEvidenceProvider,
       filingMonitor,
       desktopNotifications,
+      quarterAssessmentProvider,
     );
   } catch (error) {
     try {
@@ -303,6 +318,7 @@ async function preparePersonalWorkspaceConfiguredApp(
         await desktopNotifications?.close();
       } finally {
         annualEvidenceProvider?.close();
+        quarterAssessmentProvider?.close();
         filingContextProvider?.close();
         quarterlyEvidenceProvider?.close();
         filingsProvider?.close();

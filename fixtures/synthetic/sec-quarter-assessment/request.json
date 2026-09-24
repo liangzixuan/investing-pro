@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0.0",
+  "catalogSnapshotSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "listingId": "fixture:example",
+  "symbol": "EXMPL",
+  "selection": {
+    "accessionNumber": "0000999999-25-000001",
+    "form": "10-Q",
+    "filedDate": "2025-05-05",
+    "reportDate": "2025-03-31"
+  }
+}

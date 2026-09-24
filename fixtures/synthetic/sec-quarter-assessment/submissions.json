@@ -1,0 +1,22 @@
+{
+  "cik": "0000999999",
+  "name": "Example Corporation",
+  "filings": {
+    "recent": {
+      "accessionNumber": ["0000999999-25-000001"],
+      "filingDate": ["2025-05-05"],
+      "reportDate": ["2025-03-31"],
+      "acceptanceDateTime": ["2025-05-05T10:00:00.000Z"],
+      "act": ["34"],
+      "form": ["10-Q"],
+      "fileNumber": ["001-00000"],
+      "filmNumber": ["25000000"],
+      "items": [""],
+      "size": [3500],
+      "isXBRL": [1],
+      "isInlineXBRL": [1],
+      "primaryDocument": ["report.htm"],
+      "primaryDocDescription": ["Synthetic 10-Q"]
+    }
+  }
+}

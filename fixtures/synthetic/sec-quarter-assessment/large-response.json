@@ -1,0 +1,2921 @@
+{
+  "schemaVersion": "1.0.0",
+  "catalogSnapshotSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "security": {
+    "country": "US",
+    "exchangeMic": "XNAS",
+    "issuerId": "fixture:example-issuer",
+    "issuerName": "Example Corporation",
+    "listingId": "fixture:example",
+    "securityName": "Example Corporation Common Stock",
+    "symbol": "EXMPL",
+    "cik": "0000999999"
+  },
+  "assessment": {
+    "status": "supported_as_filed",
+    "cik": "0000999999",
+    "selection": {
+      "accessionNumber": "0000999999-25-000001",
+      "form": "10-Q",
+      "filedDate": "2025-05-05",
+      "reportDate": "2025-03-31"
+    },
+    "stage": "assessment",
+    "acceptedAt": "2026-09-24T18:45:58.016Z",
+    "bundleId": "sha256:10c3bd566d2bdac69add8a732db54214aa903ca9a4bf0dad0c20a0182d503b8b",
+    "sources": [
+      {
+        "id": "submissions",
+        "sourceUrl": "https://data.sec.gov/submissions/CIK0000999999.json",
+        "sha256": "sha256:bd5942be0f27825fb9540521806955e3effa186f2d5d7f603a39f39b5bc4cb47",
+        "bytes": 578,
+        "retrievalStartedAt": "2026-09-24T18:45:57.907Z",
+        "retrievalCompletedAt": "2026-09-24T18:45:57.919Z"
+      },
+      {
+        "id": "company_facts",
+        "sourceUrl": "https://data.sec.gov/api/xbrl/companyfacts/CIK0000999999.json",
+        "sha256": "sha256:aeb8b3483940b67eb1e1a79e2e5a3831a2462b51f92a7e176140e6a04ad86d13",
+        "bytes": 1048,
+        "retrievalStartedAt": "2026-09-24T18:45:57.920Z",
+        "retrievalCompletedAt": "2026-09-24T18:45:57.920Z"
+      },
+      {
+        "id": "primary",
+        "sourceUrl": "https://www.sec.gov/Archives/edgar/data/999999/000099999925000001/report.htm",
+        "sha256": "sha256:d05ab52efdc1b2d61bebcf6658eecc85132ee15e6aadfb3b957738f668ead563",
+        "bytes": 2733,
+        "retrievalStartedAt": "2026-09-24T18:45:57.921Z",
+        "retrievalCompletedAt": "2026-09-24T18:45:57.921Z"
+      }
+    ],
+    "evidence": {
+      "schemaVersion": "1.0.0",
+      "submission": {
+        "id": "submissions:selected",
+        "sourceId": "submissions",
+        "rowIndex": 0,
+        "matchingRowIndices": [0],
+        "accessionNumber": "0000999999-25-000001",
+        "form": "10-Q",
+        "filedDate": "2025-05-05",
+        "reportDate": "2025-03-31",
+        "acceptedAt": "2025-05-05T10:00:00.000Z",
+        "primaryDocument": "report.htm"
+      },
+      "companyFacts": {
+        "schemaVersion": "1.0.0",
+        "sourceSha256": "sha256:aeb8b3483940b67eb1e1a79e2e5a3831a2462b51f92a7e176140e6a04ad86d13",
+        "cik": "0000999999",
+        "accessionNumber": "0000999999-25-000001",
+        "inspectedRows": 2,
+        "otherAccessionRows": 0,
+        "populations": [
+          {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "present": false,
+            "units": [],
+            "inspectedRows": 0,
+            "otherAccessionRows": 0,
+            "retainedIds": []
+          },
+          {
+            "concept": "Revenues",
+            "present": true,
+            "units": [
+              {
+                "unitKey": "USD",
+                "inspectedRows": 1,
+                "otherAccessionRows": 0,
+                "retainedIds": ["cf:1:0:0"]
+              }
+            ],
+            "inspectedRows": 1,
+            "otherAccessionRows": 0,
+            "retainedIds": ["cf:1:0:0"]
+          },
+          {
+            "concept": "SalesRevenueNet",
+            "present": false,
+            "units": [],
+            "inspectedRows": 0,
+            "otherAccessionRows": 0,
+            "retainedIds": []
+          },
+          {
+            "concept": "NetIncomeLoss",
+            "present": true,
+            "units": [
+              {
+                "unitKey": "USD",
+                "inspectedRows": 1,
+                "otherAccessionRows": 0,
+                "retainedIds": ["cf:3:0:0"]
+              }
+            ],
+            "inspectedRows": 1,
+            "otherAccessionRows": 0,
+            "retainedIds": ["cf:3:0:0"]
+          }
+        ],
+        "occurrences": [
+          {
+            "id": "cf:1:0:0",
+            "concept": "Revenues",
+            "sourceLocator": "/facts/us-gaap/Revenues/units/USD/0",
+            "unitKey": "USD",
+            "unitIndex": 0,
+            "rowIndex": 0,
+            "accessionMembership": "selected",
+            "accessionNumber": "0000999999-25-000001",
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31",
+            "form": "10-Q",
+            "filedDate": "2025-05-05",
+            "fiscalYear": 2025,
+            "fiscalPeriod": "Q1",
+            "frame": null,
+            "value": "123456789012345678901234567890000000",
+            "rawFields": [
+              {
+                "name": "start",
+                "kind": "string",
+                "text": "2025-01-01"
+              },
+              {
+                "name": "end",
+                "kind": "string",
+                "text": "2025-03-31"
+              },
+              {
+                "name": "val",
+                "kind": "number",
+                "text": "123456789012345678901234567890000000"
+              },
+              {
+                "name": "accn",
+                "kind": "string",
+                "text": "0000999999-25-000001"
+              },
+              {
+                "name": "fy",
+                "kind": "number",
+                "text": "2025"
+              },
+              {
+                "name": "fp",
+                "kind": "string",
+                "text": "Q1"
+              },
+              {
+                "name": "form",
+                "kind": "string",
+                "text": "10-Q"
+              },
+              {
+                "name": "filed",
+                "kind": "string",
+                "text": "2025-05-05"
+              }
+            ],
+            "nonObjectRow": null,
+            "issues": []
+          },
+          {
+            "id": "cf:3:0:0",
+            "concept": "NetIncomeLoss",
+            "sourceLocator": "/facts/us-gaap/NetIncomeLoss/units/USD/0",
+            "unitKey": "USD",
+            "unitIndex": 0,
+            "rowIndex": 0,
+            "accessionMembership": "selected",
+            "accessionNumber": "0000999999-25-000001",
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31",
+            "form": "10-Q",
+            "filedDate": "2025-05-05",
+            "fiscalYear": 2025,
+            "fiscalPeriod": "Q1",
+            "frame": null,
+            "value": "-20000000",
+            "rawFields": [
+              {
+                "name": "start",
+                "kind": "string",
+                "text": "2025-01-01"
+              },
+              {
+                "name": "end",
+                "kind": "string",
+                "text": "2025-03-31"
+              },
+              {
+                "name": "val",
+                "kind": "number",
+                "text": "-20000000"
+              },
+              {
+                "name": "accn",
+                "kind": "string",
+                "text": "0000999999-25-000001"
+              },
+              {
+                "name": "fy",
+                "kind": "number",
+                "text": "2025"
+              },
+              {
+                "name": "fp",
+                "kind": "string",
+                "text": "Q1"
+              },
+              {
+                "name": "form",
+                "kind": "string",
+                "text": "10-Q"
+              },
+              {
+                "name": "filed",
+                "kind": "string",
+                "text": "2025-05-05"
+              }
+            ],
+            "nonObjectRow": null,
+            "issues": []
+          }
+        ]
+      },
+      "primary": {
+        "schemaVersion": "1.0.0",
+        "mode": "accession_evidence",
+        "documentSha256": "sha256:d05ab52efdc1b2d61bebcf6658eecc85132ee15e6aadfb3b957738f668ead563",
+        "documentBytes": 2733,
+        "cik": "0000999999",
+        "selection": {
+          "accessionNumber": "0000999999-25-000001",
+          "form": "10-Q",
+          "filedDate": "2025-05-05",
+          "reportDate": "2025-03-31"
+        },
+        "status": "complete",
+        "reason": null,
+        "concepts": [
+          {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "occurrences": []
+          },
+          {
+            "concept": "Revenues",
+            "occurrences": [
+              {
+                "id": "f:43",
+                "elementOrdinal": 43,
+                "locator": "/elements/43",
+                "factId": null,
+                "concept": {
+                  "raw": "us-gaap:Revenues",
+                  "namespace": "http://fasb.org/us-gaap/2025",
+                  "localName": "Revenues"
+                },
+                "rawContextRef": "current",
+                "contextRecordId": "c:7",
+                "rawUnitRef": "usd",
+                "unitRecordId": "u:13",
+                "rawText": "123456789012345678901234567890",
+                "format": null,
+                "sign": null,
+                "scale": "6",
+                "decimals": "-6",
+                "precision": null,
+                "value": "123456789012345678901234567890000000",
+                "issues": [],
+                "elementRecordId": "e:43",
+                "actualTableOrdinal": 2,
+                "actualRowOrdinal": 3,
+                "actualCellOrdinal": 3
+              }
+            ]
+          },
+          {
+            "concept": "SalesRevenueNet",
+            "occurrences": []
+          },
+          {
+            "concept": "NetIncomeLoss",
+            "occurrences": [
+              {
+                "id": "f:49",
+                "elementOrdinal": 49,
+                "locator": "/elements/49",
+                "factId": null,
+                "concept": {
+                  "raw": "us-gaap:NetIncomeLoss",
+                  "namespace": "http://fasb.org/us-gaap/2025",
+                  "localName": "NetIncomeLoss"
+                },
+                "rawContextRef": "current",
+                "contextRecordId": "c:7",
+                "rawUnitRef": "usd",
+                "unitRecordId": "u:13",
+                "rawText": "20",
+                "format": null,
+                "sign": "-",
+                "scale": "6",
+                "decimals": "-6",
+                "precision": null,
+                "value": "-20000000",
+                "issues": [],
+                "elementRecordId": "e:49",
+                "actualTableOrdinal": 2,
+                "actualRowOrdinal": 4,
+                "actualCellOrdinal": 3
+              }
+            ]
+          }
+        ],
+        "contexts": [
+          {
+            "id": "c:7",
+            "xmlId": "current",
+            "elementOrdinal": 7,
+            "root": {
+              "elementOrdinal": 7,
+              "name": {
+                "raw": "xbrli:context",
+                "namespace": "http://www.xbrl.org/2003/instance",
+                "localName": "context"
+              },
+              "attributes": [
+                {
+                  "name": "id",
+                  "namespace": null,
+                  "localName": "id",
+                  "value": "current"
+                }
+              ],
+              "qnameAttributes": [],
+              "textQName": null,
+              "textRuns": [],
+              "children": [
+                {
+                  "elementOrdinal": 8,
+                  "name": {
+                    "raw": "xbrli:entity",
+                    "namespace": "http://www.xbrl.org/2003/instance",
+                    "localName": "entity"
+                  },
+                  "attributes": [],
+                  "qnameAttributes": [],
+                  "textQName": null,
+                  "textRuns": [],
+                  "children": [
+                    {
+                      "elementOrdinal": 9,
+                      "name": {
+                        "raw": "xbrli:identifier",
+                        "namespace": "http://www.xbrl.org/2003/instance",
+                        "localName": "identifier"
+                      },
+                      "attributes": [
+                        {
+                          "name": "scheme",
+                          "namespace": null,
+                          "localName": "scheme",
+                          "value": "http://www.sec.gov/CIK"
+                        }
+                      ],
+                      "qnameAttributes": [],
+                      "textQName": null,
+                      "textRuns": [
+                        {
+                          "beforeChildIndex": 0,
+                          "text": "0000999999"
+                        }
+                      ],
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "elementOrdinal": 10,
+                  "name": {
+                    "raw": "xbrli:period",
+                    "namespace": "http://www.xbrl.org/2003/instance",
+                    "localName": "period"
+                  },
+                  "attributes": [],
+                  "qnameAttributes": [],
+                  "textQName": null,
+                  "textRuns": [],
+                  "children": [
+                    {
+                      "elementOrdinal": 11,
+                      "name": {
+                        "raw": "xbrli:startDate",
+                        "namespace": "http://www.xbrl.org/2003/instance",
+                        "localName": "startDate"
+                      },
+                      "attributes": [],
+                      "qnameAttributes": [],
+                      "textQName": null,
+                      "textRuns": [
+                        {
+                          "beforeChildIndex": 0,
+                          "text": "2025-01-01"
+                        }
+                      ],
+                      "children": []
+                    },
+                    {
+                      "elementOrdinal": 12,
+                      "name": {
+                        "raw": "xbrli:endDate",
+                        "namespace": "http://www.xbrl.org/2003/instance",
+                        "localName": "endDate"
+                      },
+                      "attributes": [],
+                      "qnameAttributes": [],
+                      "textQName": null,
+                      "textRuns": [
+                        {
+                          "beforeChildIndex": 0,
+                          "text": "2025-03-31"
+                        }
+                      ],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "units": [
+          {
+            "id": "u:13",
+            "xmlId": "usd",
+            "elementOrdinal": 13,
+            "root": {
+              "elementOrdinal": 13,
+              "name": {
+                "raw": "xbrli:unit",
+                "namespace": "http://www.xbrl.org/2003/instance",
+                "localName": "unit"
+              },
+              "attributes": [
+                {
+                  "name": "id",
+                  "namespace": null,
+                  "localName": "id",
+                  "value": "usd"
+                }
+              ],
+              "qnameAttributes": [],
+              "textQName": null,
+              "textRuns": [],
+              "children": [
+                {
+                  "elementOrdinal": 14,
+                  "name": {
+                    "raw": "xbrli:measure",
+                    "namespace": "http://www.xbrl.org/2003/instance",
+                    "localName": "measure"
+                  },
+                  "attributes": [],
+                  "qnameAttributes": [],
+                  "textQName": {
+                    "raw": "iso4217:USD",
+                    "namespace": "http://www.xbrl.org/2003/iso4217",
+                    "localName": "USD"
+                  },
+                  "textRuns": [
+                    {
+                      "beforeChildIndex": 0,
+                      "text": "iso4217:USD"
+                    }
+                  ],
+                  "children": []
+                }
+              ]
+            }
+          }
+        ],
+        "reportingMetadata": {
+          "fields": [
+            {
+              "concept": "DocumentType",
+              "status": "observed",
+              "value": "10-Q",
+              "observationIds": ["d:15"]
+            },
+            {
+              "concept": "DocumentPeriodEndDate",
+              "status": "observed",
+              "value": "2025-03-31",
+              "observationIds": ["d:16"]
+            },
+            {
+              "concept": "DocumentFiscalYearFocus",
+              "status": "observed",
+              "value": "2025",
+              "observationIds": ["d:17"]
+            },
+            {
+              "concept": "DocumentFiscalPeriodFocus",
+              "status": "observed",
+              "value": "Q1",
+              "observationIds": ["d:18"]
+            }
+          ],
+          "observations": [
+            {
+              "id": "d:15",
+              "elementOrdinal": 15,
+              "locator": "/elements/15",
+              "factId": null,
+              "concept": {
+                "raw": "dei:DocumentType",
+                "namespace": "http://xbrl.sec.gov/dei/2025",
+                "localName": "DocumentType"
+              },
+              "rawContextRef": "current",
+              "contextRecordId": "c:7",
+              "rawText": "10-Q",
+              "format": null,
+              "value": "10-Q",
+              "issues": [],
+              "elementRecordId": "e:15"
+            },
+            {
+              "id": "d:16",
+              "elementOrdinal": 16,
+              "locator": "/elements/16",
+              "factId": null,
+              "concept": {
+                "raw": "dei:DocumentPeriodEndDate",
+                "namespace": "http://xbrl.sec.gov/dei/2025",
+                "localName": "DocumentPeriodEndDate"
+              },
+              "rawContextRef": "current",
+              "contextRecordId": "c:7",
+              "rawText": "2025-03-31",
+              "format": null,
+              "value": "2025-03-31",
+              "issues": [],
+              "elementRecordId": "e:16"
+            },
+            {
+              "id": "d:17",
+              "elementOrdinal": 17,
+              "locator": "/elements/17",
+              "factId": null,
+              "concept": {
+                "raw": "dei:DocumentFiscalYearFocus",
+                "namespace": "http://xbrl.sec.gov/dei/2025",
+                "localName": "DocumentFiscalYearFocus"
+              },
+              "rawContextRef": "current",
+              "contextRecordId": "c:7",
+              "rawText": "2025",
+              "format": null,
+              "value": "2025",
+              "issues": [],
+              "elementRecordId": "e:17"
+            },
+            {
+              "id": "d:18",
+              "elementOrdinal": 18,
+              "locator": "/elements/18",
+              "factId": null,
+              "concept": {
+                "raw": "dei:DocumentFiscalPeriodFocus",
+                "namespace": "http://xbrl.sec.gov/dei/2025",
+                "localName": "DocumentFiscalPeriodFocus"
+              },
+              "rawContextRef": "current",
+              "contextRecordId": "c:7",
+              "rawText": "Q1",
+              "format": null,
+              "value": "Q1",
+              "issues": [],
+              "elementRecordId": "e:18"
+            }
+          ]
+        },
+        "structure": {
+          "profileVersion": "sparse-source-1.0.0",
+          "status": "complete",
+          "reasons": [],
+          "document": {
+            "elementCount": 60,
+            "styleElements": 0,
+            "stylesheetLinks": 0,
+            "processingInstructions": [],
+            "scripts": [],
+            "eventAttributeCount": 0
+          },
+          "records": [
+            {
+              "id": "e:1",
+              "elementOrdinal": 1,
+              "endElementOrdinal": 60,
+              "name": {
+                "raw": "html",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "html"
+              },
+              "attributes": [
+                {
+                  "name": "xmlns",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "xmlns",
+                  "value": "http://www.w3.org/1999/xhtml"
+                },
+                {
+                  "name": "xmlns:ix",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "ix",
+                  "value": "http://www.xbrl.org/2013/inlineXBRL"
+                },
+                {
+                  "name": "xmlns:xbrli",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "xbrli",
+                  "value": "http://www.xbrl.org/2003/instance"
+                },
+                {
+                  "name": "xmlns:iso4217",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "iso4217",
+                  "value": "http://www.xbrl.org/2003/iso4217"
+                },
+                {
+                  "name": "xmlns:us-gaap",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "us-gaap",
+                  "value": "http://fasb.org/us-gaap/2025"
+                },
+                {
+                  "name": "xmlns:dei",
+                  "namespace": "http://www.w3.org/2000/xmlns/",
+                  "localName": "dei",
+                  "value": "http://xbrl.sec.gov/dei/2025"
+                }
+              ],
+              "parentRecordId": null,
+              "parentElementOrdinal": null,
+              "childIndex": 0,
+              "elementChildCount": 2,
+              "descendantTableCount": 3,
+              "descendantTableOrdinals": [1, 2, 3],
+              "textRuns": null,
+              "childRecordIds": ["e:2", "e:4"],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:2",
+              "elementOrdinal": 2,
+              "endElementOrdinal": 3,
+              "name": {
+                "raw": "head",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "head"
+              },
+              "attributes": [],
+              "parentRecordId": "e:1",
+              "parentElementOrdinal": 1,
+              "childIndex": 0,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": null,
+              "childRecordIds": [],
+              "childrenComplete": false,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:4",
+              "elementOrdinal": 4,
+              "endElementOrdinal": 60,
+              "name": {
+                "raw": "body",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "body"
+              },
+              "attributes": [],
+              "parentRecordId": "e:1",
+              "parentElementOrdinal": 1,
+              "childIndex": 1,
+              "elementChildCount": 15,
+              "descendantTableCount": 3,
+              "descendantTableOrdinals": [1, 2, 3],
+              "textRuns": null,
+              "childRecordIds": [
+                "e:5",
+                "e:19",
+                "e:23",
+                "e:24",
+                "e:25",
+                "e:28",
+                "e:29",
+                "e:30",
+                "e:51",
+                "e:52",
+                "e:55",
+                "e:56",
+                "e:57",
+                "e:58",
+                "e:59"
+              ],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:5",
+              "elementOrdinal": 5,
+              "endElementOrdinal": 18,
+              "name": {
+                "raw": "ix:header",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "header"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 0,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": null,
+              "childRecordIds": ["e:6"],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:6",
+              "elementOrdinal": 6,
+              "endElementOrdinal": 18,
+              "name": {
+                "raw": "ix:hidden",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "hidden"
+              },
+              "attributes": [],
+              "parentRecordId": "e:5",
+              "parentElementOrdinal": 5,
+              "childIndex": 0,
+              "elementChildCount": 6,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": null,
+              "childRecordIds": ["e:15", "e:16", "e:17", "e:18"],
+              "childrenComplete": false,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:15",
+              "elementOrdinal": 15,
+              "endElementOrdinal": 15,
+              "name": {
+                "raw": "ix:nonNumeric",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonNumeric"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "dei:DocumentType"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                }
+              ],
+              "parentRecordId": "e:6",
+              "parentElementOrdinal": 6,
+              "childIndex": 2,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "10-Q"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:16",
+              "elementOrdinal": 16,
+              "endElementOrdinal": 16,
+              "name": {
+                "raw": "ix:nonNumeric",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonNumeric"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "dei:DocumentPeriodEndDate"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                }
+              ],
+              "parentRecordId": "e:6",
+              "parentElementOrdinal": 6,
+              "childIndex": 3,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "2025-03-31"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:17",
+              "elementOrdinal": 17,
+              "endElementOrdinal": 17,
+              "name": {
+                "raw": "ix:nonNumeric",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonNumeric"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "dei:DocumentFiscalYearFocus"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                }
+              ],
+              "parentRecordId": "e:6",
+              "parentElementOrdinal": 6,
+              "childIndex": 4,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "2025"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:18",
+              "elementOrdinal": 18,
+              "endElementOrdinal": 18,
+              "name": {
+                "raw": "ix:nonNumeric",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonNumeric"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "dei:DocumentFiscalPeriodFocus"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                }
+              ],
+              "parentRecordId": "e:6",
+              "parentElementOrdinal": 6,
+              "childIndex": 5,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Q1"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:19",
+              "elementOrdinal": 19,
+              "endElementOrdinal": 22,
+              "name": {
+                "raw": "div",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "div"
+              },
+              "attributes": [
+                {
+                  "name": "id",
+                  "namespace": null,
+                  "localName": "id",
+                  "value": "cover"
+                }
+              ],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 1,
+              "elementChildCount": 3,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:20", "e:21", "e:22"],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:20",
+              "elementOrdinal": 20,
+              "endElementOrdinal": 20,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:19",
+              "parentElementOrdinal": 19,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "☒ Quarterly report pursuant to Section 13 or 15(d)"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:21",
+              "elementOrdinal": 21,
+              "endElementOrdinal": 21,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:19",
+              "parentElementOrdinal": 19,
+              "childIndex": 1,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "☐ Transition report pursuant to Section 13 or 15(d)"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:22",
+              "elementOrdinal": 22,
+              "endElementOrdinal": 22,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:19",
+              "parentElementOrdinal": 19,
+              "childIndex": 2,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "For the quarterly period ended March 31, 2025"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:23",
+              "elementOrdinal": 23,
+              "endElementOrdinal": 23,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 2,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Item 1. Financial Statements"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:24",
+              "elementOrdinal": 24,
+              "endElementOrdinal": 24,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 3,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Condensed Consolidated Balance Sheets"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:25",
+              "elementOrdinal": 25,
+              "endElementOrdinal": 27,
+              "name": {
+                "raw": "table",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "table"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 4,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": null,
+              "childRecordIds": [],
+              "childrenComplete": false,
+              "actualTableOrdinal": 1,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:28",
+              "elementOrdinal": 28,
+              "endElementOrdinal": 28,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 5,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Condensed Consolidated Statements of Income"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:29",
+              "elementOrdinal": 29,
+              "endElementOrdinal": 29,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 6,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "(in millions)"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:30",
+              "elementOrdinal": 30,
+              "endElementOrdinal": 50,
+              "name": {
+                "raw": "table",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "table"
+              },
+              "attributes": [
+                {
+                  "name": "id",
+                  "namespace": null,
+                  "localName": "id",
+                  "value": "income"
+                }
+              ],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 7,
+              "elementChildCount": 4,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 2,
+                  "text": "\n"
+                },
+                {
+                  "beforeChildIndex": 3,
+                  "text": "\n"
+                }
+              ],
+              "childRecordIds": ["e:31", "e:34", "e:39", "e:45"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:31",
+              "elementOrdinal": 31,
+              "endElementOrdinal": 33,
+              "name": {
+                "raw": "tr",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "tr"
+              },
+              "attributes": [],
+              "parentRecordId": "e:30",
+              "parentElementOrdinal": 30,
+              "childIndex": 0,
+              "elementChildCount": 2,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:32", "e:33"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 1,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:32",
+              "elementOrdinal": 32,
+              "endElementOrdinal": 32,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:31",
+              "parentElementOrdinal": 31,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 1,
+              "actualCellOrdinal": 1
+            },
+            {
+              "id": "e:33",
+              "elementOrdinal": 33,
+              "endElementOrdinal": 33,
+              "name": {
+                "raw": "th",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "th"
+              },
+              "attributes": [
+                {
+                  "name": "colspan",
+                  "namespace": null,
+                  "localName": "colspan",
+                  "value": "3"
+                }
+              ],
+              "parentRecordId": "e:31",
+              "parentElementOrdinal": 31,
+              "childIndex": 1,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Three months ended"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 1,
+              "actualCellOrdinal": 2
+            },
+            {
+              "id": "e:34",
+              "elementOrdinal": 34,
+              "endElementOrdinal": 38,
+              "name": {
+                "raw": "tr",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "tr"
+              },
+              "attributes": [],
+              "parentRecordId": "e:30",
+              "parentElementOrdinal": 30,
+              "childIndex": 1,
+              "elementChildCount": 4,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:35", "e:36", "e:37", "e:38"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 2,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:35",
+              "elementOrdinal": 35,
+              "endElementOrdinal": 35,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:34",
+              "parentElementOrdinal": 34,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 2,
+              "actualCellOrdinal": 1
+            },
+            {
+              "id": "e:36",
+              "elementOrdinal": 36,
+              "endElementOrdinal": 36,
+              "name": {
+                "raw": "th",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "th"
+              },
+              "attributes": [],
+              "parentRecordId": "e:34",
+              "parentElementOrdinal": 34,
+              "childIndex": 1,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 2,
+              "actualCellOrdinal": 2
+            },
+            {
+              "id": "e:37",
+              "elementOrdinal": 37,
+              "endElementOrdinal": 37,
+              "name": {
+                "raw": "th",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "th"
+              },
+              "attributes": [],
+              "parentRecordId": "e:34",
+              "parentElementOrdinal": 34,
+              "childIndex": 2,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "March 31, 2025"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 2,
+              "actualCellOrdinal": 3
+            },
+            {
+              "id": "e:38",
+              "elementOrdinal": 38,
+              "endElementOrdinal": 38,
+              "name": {
+                "raw": "th",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "th"
+              },
+              "attributes": [],
+              "parentRecordId": "e:34",
+              "parentElementOrdinal": 34,
+              "childIndex": 3,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 2,
+              "actualCellOrdinal": 4
+            },
+            {
+              "id": "e:39",
+              "elementOrdinal": 39,
+              "endElementOrdinal": 44,
+              "name": {
+                "raw": "tr",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "tr"
+              },
+              "attributes": [],
+              "parentRecordId": "e:30",
+              "parentElementOrdinal": 30,
+              "childIndex": 2,
+              "elementChildCount": 4,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:40", "e:41", "e:42", "e:44"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:40",
+              "elementOrdinal": 40,
+              "endElementOrdinal": 40,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:39",
+              "parentElementOrdinal": 39,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Total revenues"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": 1
+            },
+            {
+              "id": "e:41",
+              "elementOrdinal": 41,
+              "endElementOrdinal": 41,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:39",
+              "parentElementOrdinal": 39,
+              "childIndex": 1,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "$"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": 2
+            },
+            {
+              "id": "e:42",
+              "elementOrdinal": 42,
+              "endElementOrdinal": 43,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:39",
+              "parentElementOrdinal": 39,
+              "childIndex": 2,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:43"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": 3
+            },
+            {
+              "id": "e:43",
+              "elementOrdinal": 43,
+              "endElementOrdinal": 43,
+              "name": {
+                "raw": "ix:nonFraction",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonFraction"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "us-gaap:Revenues"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                },
+                {
+                  "name": "unitRef",
+                  "namespace": null,
+                  "localName": "unitRef",
+                  "value": "usd"
+                },
+                {
+                  "name": "scale",
+                  "namespace": null,
+                  "localName": "scale",
+                  "value": "6"
+                },
+                {
+                  "name": "decimals",
+                  "namespace": null,
+                  "localName": "decimals",
+                  "value": "-6"
+                }
+              ],
+              "parentRecordId": "e:42",
+              "parentElementOrdinal": 42,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "123456789012345678901234567890"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": 3
+            },
+            {
+              "id": "e:44",
+              "elementOrdinal": 44,
+              "endElementOrdinal": 44,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:39",
+              "parentElementOrdinal": 39,
+              "childIndex": 3,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 3,
+              "actualCellOrdinal": 4
+            },
+            {
+              "id": "e:45",
+              "elementOrdinal": 45,
+              "endElementOrdinal": 50,
+              "name": {
+                "raw": "tr",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "tr"
+              },
+              "attributes": [],
+              "parentRecordId": "e:30",
+              "parentElementOrdinal": 30,
+              "childIndex": 3,
+              "elementChildCount": 4,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:46", "e:47", "e:48", "e:50"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:46",
+              "elementOrdinal": 46,
+              "endElementOrdinal": 46,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:45",
+              "parentElementOrdinal": 45,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Net loss attributable to the parent"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": 1
+            },
+            {
+              "id": "e:47",
+              "elementOrdinal": 47,
+              "endElementOrdinal": 47,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:45",
+              "parentElementOrdinal": 45,
+              "childIndex": 1,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "$"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": 2
+            },
+            {
+              "id": "e:48",
+              "elementOrdinal": 48,
+              "endElementOrdinal": 49,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:45",
+              "parentElementOrdinal": 45,
+              "childIndex": 2,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "("
+                },
+                {
+                  "beforeChildIndex": 1,
+                  "text": ")"
+                }
+              ],
+              "childRecordIds": ["e:49"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": 3
+            },
+            {
+              "id": "e:49",
+              "elementOrdinal": 49,
+              "endElementOrdinal": 49,
+              "name": {
+                "raw": "ix:nonFraction",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonFraction"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "us-gaap:NetIncomeLoss"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                },
+                {
+                  "name": "unitRef",
+                  "namespace": null,
+                  "localName": "unitRef",
+                  "value": "usd"
+                },
+                {
+                  "name": "scale",
+                  "namespace": null,
+                  "localName": "scale",
+                  "value": "6"
+                },
+                {
+                  "name": "decimals",
+                  "namespace": null,
+                  "localName": "decimals",
+                  "value": "-6"
+                },
+                {
+                  "name": "sign",
+                  "namespace": null,
+                  "localName": "sign",
+                  "value": "-"
+                }
+              ],
+              "parentRecordId": "e:48",
+              "parentElementOrdinal": 48,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "20"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": 3
+            },
+            {
+              "id": "e:50",
+              "elementOrdinal": 50,
+              "endElementOrdinal": 50,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:45",
+              "parentElementOrdinal": 45,
+              "childIndex": 3,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 2,
+              "actualRowOrdinal": 4,
+              "actualCellOrdinal": 4
+            },
+            {
+              "id": "e:51",
+              "elementOrdinal": 51,
+              "endElementOrdinal": 51,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 8,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Condensed Consolidated Statements of Cash Flows"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:52",
+              "elementOrdinal": 52,
+              "endElementOrdinal": 54,
+              "name": {
+                "raw": "table",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "table"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 9,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:53"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 3,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:53",
+              "elementOrdinal": 53,
+              "endElementOrdinal": 54,
+              "name": {
+                "raw": "tr",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "tr"
+              },
+              "attributes": [],
+              "parentRecordId": "e:52",
+              "parentElementOrdinal": 52,
+              "childIndex": 0,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [],
+              "childRecordIds": ["e:54"],
+              "childrenComplete": true,
+              "actualTableOrdinal": 3,
+              "actualRowOrdinal": 1,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:54",
+              "elementOrdinal": 54,
+              "endElementOrdinal": 54,
+              "name": {
+                "raw": "td",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "td"
+              },
+              "attributes": [],
+              "parentRecordId": "e:53",
+              "parentElementOrdinal": 53,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "March 31, 2025"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": 3,
+              "actualRowOrdinal": 1,
+              "actualCellOrdinal": 1
+            },
+            {
+              "id": "e:55",
+              "elementOrdinal": 55,
+              "endElementOrdinal": 55,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 10,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Notes to Condensed Consolidated Financial Statements"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:56",
+              "elementOrdinal": 56,
+              "endElementOrdinal": 56,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 11,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Our fiscal year ending December 31, 2025 consists of twelve calendar months."
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:57",
+              "elementOrdinal": 57,
+              "endElementOrdinal": 57,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 12,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "These financial statements cover the first quarter of fiscal year 2025."
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:58",
+              "elementOrdinal": 58,
+              "endElementOrdinal": 58,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 13,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "The accompanying consolidated financial statements include the accounts of Example Corporation and its wholly-owned subsidiaries. All intercompany transactions are eliminated."
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:59",
+              "elementOrdinal": 59,
+              "endElementOrdinal": 60,
+              "name": {
+                "raw": "p",
+                "namespace": "http://www.w3.org/1999/xhtml",
+                "localName": "p"
+              },
+              "attributes": [],
+              "parentRecordId": "e:4",
+              "parentElementOrdinal": 4,
+              "childIndex": 14,
+              "elementChildCount": 1,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": null,
+              "childRecordIds": ["e:60"],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            },
+            {
+              "id": "e:60",
+              "elementOrdinal": 60,
+              "endElementOrdinal": 60,
+              "name": {
+                "raw": "ix:nonNumeric",
+                "namespace": "http://www.xbrl.org/2013/inlineXBRL",
+                "localName": "nonNumeric"
+              },
+              "attributes": [
+                {
+                  "name": "name",
+                  "namespace": null,
+                  "localName": "name",
+                  "value": "dei:EntityRegistrantName"
+                },
+                {
+                  "name": "contextRef",
+                  "namespace": null,
+                  "localName": "contextRef",
+                  "value": "current"
+                }
+              ],
+              "parentRecordId": "e:59",
+              "parentElementOrdinal": 59,
+              "childIndex": 0,
+              "elementChildCount": 0,
+              "descendantTableCount": 0,
+              "descendantTableOrdinals": [],
+              "textRuns": [
+                {
+                  "beforeChildIndex": 0,
+                  "text": "Example Corporation"
+                }
+              ],
+              "childRecordIds": [],
+              "childrenComplete": true,
+              "actualTableOrdinal": null,
+              "actualRowOrdinal": null,
+              "actualCellOrdinal": null
+            }
+          ],
+          "siblingWindows": [
+            {
+              "parentRecordId": "e:4",
+              "firstChildIndex": 0,
+              "childRecordIds": [
+                "e:5",
+                "e:19",
+                "e:23",
+                "e:24",
+                "e:25",
+                "e:28",
+                "e:29",
+                "e:30",
+                "e:51",
+                "e:52",
+                "e:55",
+                "e:56",
+                "e:57",
+                "e:58",
+                "e:59"
+              ]
+            },
+            {
+              "parentRecordId": "e:1",
+              "firstChildIndex": 0,
+              "childRecordIds": ["e:2", "e:4"]
+            }
+          ],
+          "tables": [
+            {
+              "tableRecordId": "e:30",
+              "status": "complete",
+              "reasons": [],
+              "rowRecordIds": ["e:31", "e:34", "e:39", "e:45"],
+              "rows": [
+                {
+                  "rowRecordId": "e:31",
+                  "cells": [
+                    {
+                      "cellRecordId": "e:32",
+                      "columnStart": 0,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:33",
+                      "columnStart": 1,
+                      "columnSpan": 3,
+                      "rowSpan": 1
+                    }
+                  ]
+                },
+                {
+                  "rowRecordId": "e:34",
+                  "cells": [
+                    {
+                      "cellRecordId": "e:35",
+                      "columnStart": 0,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:36",
+                      "columnStart": 1,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:37",
+                      "columnStart": 2,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:38",
+                      "columnStart": 3,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    }
+                  ]
+                },
+                {
+                  "rowRecordId": "e:39",
+                  "cells": [
+                    {
+                      "cellRecordId": "e:40",
+                      "columnStart": 0,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:41",
+                      "columnStart": 1,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:42",
+                      "columnStart": 2,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:44",
+                      "columnStart": 3,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    }
+                  ]
+                },
+                {
+                  "rowRecordId": "e:45",
+                  "cells": [
+                    {
+                      "cellRecordId": "e:46",
+                      "columnStart": 0,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:47",
+                      "columnStart": 1,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:48",
+                      "columnStart": 2,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    },
+                    {
+                      "cellRecordId": "e:50",
+                      "columnStart": 3,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tableRecordId": "e:52",
+              "status": "complete",
+              "reasons": [],
+              "rowRecordIds": ["e:53"],
+              "rows": [
+                {
+                  "rowRecordId": "e:53",
+                  "cells": [
+                    {
+                      "cellRecordId": "e:54",
+                      "columnStart": 0,
+                      "columnSpan": 1,
+                      "rowSpan": 1
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "supplementaryFacts": [
+            {
+              "id": "s:60",
+              "elementOrdinal": 60,
+              "elementRecordId": "e:60",
+              "concept": {
+                "raw": "dei:EntityRegistrantName",
+                "namespace": "http://xbrl.sec.gov/dei/2025",
+                "localName": "EntityRegistrantName"
+              },
+              "rawContextRef": "current",
+              "contextRecordId": "c:7",
+              "rawUnitRef": null,
+              "unitRecordId": null,
+              "format": null,
+              "rawText": "Example Corporation",
+              "sign": null,
+              "scale": null,
+              "decimals": null,
+              "precision": null,
+              "issues": []
+            }
+          ],
+          "anchorRecordIds": [
+            "e:20",
+            "e:21",
+            "e:22",
+            "e:23",
+            "e:24",
+            "e:28",
+            "e:51",
+            "e:55",
+            "e:56",
+            "e:57",
+            "e:58"
+          ]
+        }
+      }
+    },
+    "analysis": {
+      "schemaVersion": "1.0.0",
+      "predicates": [
+        {
+          "id": "p:0",
+          "profile": "report_identity_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "d:15",
+            "d:16",
+            "d:17",
+            "d:18",
+            "e:20",
+            "e:21",
+            "e:22",
+            "e:19"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "identity",
+            "form": "10-Q",
+            "reportDate": "2025-03-31",
+            "fiscalYear": 2025,
+            "fiscalQuarter": 1
+          }
+        },
+        {
+          "id": "p:1",
+          "profile": "calendar_direct_boundary_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": ["e:56", "e:57"],
+          "reasons": [],
+          "observed": {
+            "kind": "calendar",
+            "fiscalYearStart": "2025-01-01",
+            "fiscalYearEnd": "2025-12-31",
+            "quarterStart": "2025-01-01",
+            "quarterEnd": "2025-03-31",
+            "slot": 1,
+            "yearLabel": 2025,
+            "openingCashContextRef": null,
+            "closingCashContextRef": null
+          }
+        },
+        {
+          "id": "p:2",
+          "profile": "principal_statement_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "statement",
+            "tableRef": "e:30",
+            "headingRefs": ["e:28"],
+            "consolidationRefs": ["e:58"],
+            "sectionRefs": ["e:23", "e:55"]
+          }
+        },
+        {
+          "id": "p:3",
+          "profile": "standalone_column_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": ["e:42", "e:37", "e:33", "e:41"],
+          "reasons": [],
+          "observed": {
+            "kind": "column",
+            "numericCellRef": "e:42",
+            "yearHeaderRefs": ["e:37"],
+            "durationHeaderRefs": ["e:33"],
+            "adjacentCellRefs": ["e:41"]
+          }
+        },
+        {
+          "id": "p:4",
+          "profile": "whole_revenue_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:39",
+            "e:40",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "scope",
+            "rowRef": "e:39",
+            "labelCellRefs": ["e:40"],
+            "scopeRefs": [
+              "e:28",
+              "e:58",
+              "e:60",
+              "e:23",
+              "e:55",
+              "e:30",
+              "e:29",
+              "e:52",
+              "e:51",
+              "e:25",
+              "e:24"
+            ],
+            "attribution": "whole_revenue"
+          }
+        },
+        {
+          "id": "p:5",
+          "profile": "signed_usd_display_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": ["f:43", "e:42", "e:41", "e:29", "u:13"],
+          "reasons": [],
+          "observed": {
+            "kind": "display",
+            "numericCellRef": "e:42",
+            "adjacentCellRefs": ["e:41"],
+            "unitRef": "u:13",
+            "captionRefs": ["e:29"],
+            "text": "$123456789012345678901234567890",
+            "scalePower10": 6,
+            "value": "123456789012345678901234567890000000"
+          }
+        },
+        {
+          "id": "p:6",
+          "profile": "static_source_path_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:43",
+            "e:42",
+            "e:39",
+            "e:40",
+            "e:37",
+            "e:33",
+            "e:41",
+            "e:29",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24",
+            "p:document"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "static",
+            "pathRefs": [
+              "e:43",
+              "e:42",
+              "e:39",
+              "e:30",
+              "e:4",
+              "e:1",
+              "e:40",
+              "e:41",
+              "e:44",
+              "e:37",
+              "e:34",
+              "e:33",
+              "e:31",
+              "e:29",
+              "e:28",
+              "e:58",
+              "e:60",
+              "e:59",
+              "e:23",
+              "e:55",
+              "e:52",
+              "e:51",
+              "e:25",
+              "e:24"
+            ],
+            "documentProfileRef": "p:document",
+            "uninterpretedScriptRefs": [],
+            "sourceInterpretation": "static_markup_only"
+          }
+        },
+        {
+          "id": "p:7",
+          "profile": "principal_statement_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "statement",
+            "tableRef": "e:30",
+            "headingRefs": ["e:28"],
+            "consolidationRefs": ["e:58"],
+            "sectionRefs": ["e:23", "e:55"]
+          }
+        },
+        {
+          "id": "p:8",
+          "profile": "standalone_column_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": ["e:48", "e:37", "e:33", "e:47"],
+          "reasons": [],
+          "observed": {
+            "kind": "column",
+            "numericCellRef": "e:48",
+            "yearHeaderRefs": ["e:37"],
+            "durationHeaderRefs": ["e:33"],
+            "adjacentCellRefs": ["e:47"]
+          }
+        },
+        {
+          "id": "p:9",
+          "profile": "parent_income_explicit_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:45",
+            "e:46",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "scope",
+            "rowRef": "e:45",
+            "labelCellRefs": ["e:46"],
+            "scopeRefs": [
+              "e:28",
+              "e:58",
+              "e:60",
+              "e:23",
+              "e:55",
+              "e:30",
+              "e:29",
+              "e:52",
+              "e:51",
+              "e:25",
+              "e:24"
+            ],
+            "attribution": "parent_explicit"
+          }
+        },
+        {
+          "id": "p:10",
+          "profile": "signed_usd_display_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": ["f:49", "e:48", "e:47", "e:29", "u:13"],
+          "reasons": [],
+          "observed": {
+            "kind": "display",
+            "numericCellRef": "e:48",
+            "adjacentCellRefs": ["e:47"],
+            "unitRef": "u:13",
+            "captionRefs": ["e:29"],
+            "text": "$(20)",
+            "scalePower10": 6,
+            "value": "-20000000"
+          }
+        },
+        {
+          "id": "p:11",
+          "profile": "static_source_path_v1",
+          "version": "1.0.0",
+          "state": "supported",
+          "evidenceIds": [
+            "e:49",
+            "e:48",
+            "e:45",
+            "e:46",
+            "e:37",
+            "e:33",
+            "e:47",
+            "e:29",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24",
+            "p:document"
+          ],
+          "reasons": [],
+          "observed": {
+            "kind": "static",
+            "pathRefs": [
+              "e:49",
+              "e:48",
+              "e:45",
+              "e:30",
+              "e:4",
+              "e:1",
+              "e:46",
+              "e:47",
+              "e:50",
+              "e:37",
+              "e:34",
+              "e:33",
+              "e:31",
+              "e:29",
+              "e:28",
+              "e:58",
+              "e:60",
+              "e:59",
+              "e:23",
+              "e:55",
+              "e:52",
+              "e:51",
+              "e:25",
+              "e:24"
+            ],
+            "documentProfileRef": "p:document",
+            "uninterpretedScriptRefs": [],
+            "sourceInterpretation": "static_markup_only"
+          }
+        }
+      ],
+      "witnesses": [
+        {
+          "id": "w:f:43",
+          "primaryRef": "f:43",
+          "companyFactsRefs": ["cf:1:0:0"],
+          "concept": "Revenues",
+          "contextRef": "c:7",
+          "unitRef": "u:13",
+          "tableRef": "e:30",
+          "rowRef": "e:39",
+          "labelCellRefs": ["e:40"],
+          "numericCellRef": "e:42",
+          "adjacentCellRefs": ["e:41"],
+          "yearHeaderRefs": ["e:37"],
+          "durationHeaderRefs": ["e:33"],
+          "captionRefs": ["e:29"],
+          "scopeRefs": [
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "visibilityRefs": [
+            "e:43",
+            "e:42",
+            "e:39",
+            "e:30",
+            "e:4",
+            "e:1",
+            "e:40",
+            "e:41",
+            "e:44",
+            "e:37",
+            "e:34",
+            "e:33",
+            "e:31",
+            "e:29",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:59",
+            "e:23",
+            "e:55",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "predicateIds": ["p:0", "p:1", "p:2", "p:3", "p:4", "p:5", "p:6"],
+          "period": {
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31"
+          },
+          "value": "123456789012345678901234567890000000",
+          "display": {
+            "text": "$123456789012345678901234567890",
+            "scalePower10": 6,
+            "signConvention": "unsigned"
+          }
+        },
+        {
+          "id": "w:f:49",
+          "primaryRef": "f:49",
+          "companyFactsRefs": ["cf:3:0:0"],
+          "concept": "NetIncomeLoss",
+          "contextRef": "c:7",
+          "unitRef": "u:13",
+          "tableRef": "e:30",
+          "rowRef": "e:45",
+          "labelCellRefs": ["e:46"],
+          "numericCellRef": "e:48",
+          "adjacentCellRefs": ["e:47"],
+          "yearHeaderRefs": ["e:37"],
+          "durationHeaderRefs": ["e:33"],
+          "captionRefs": ["e:29"],
+          "scopeRefs": [
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:23",
+            "e:55",
+            "e:30",
+            "e:29",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "visibilityRefs": [
+            "e:49",
+            "e:48",
+            "e:45",
+            "e:30",
+            "e:4",
+            "e:1",
+            "e:46",
+            "e:47",
+            "e:50",
+            "e:37",
+            "e:34",
+            "e:33",
+            "e:31",
+            "e:29",
+            "e:28",
+            "e:58",
+            "e:60",
+            "e:59",
+            "e:23",
+            "e:55",
+            "e:52",
+            "e:51",
+            "e:25",
+            "e:24"
+          ],
+          "predicateIds": ["p:0", "p:1", "p:7", "p:8", "p:9", "p:10", "p:11"],
+          "period": {
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31"
+          },
+          "value": "-20000000",
+          "display": {
+            "text": "$(20)",
+            "scalePower10": 6,
+            "signConvention": "parentheses"
+          }
+        }
+      ],
+      "concepts": [
+        {
+          "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+          "status": "absent",
+          "reasons": ["concept_absent"],
+          "companyFactsRefs": [],
+          "primaryRefs": [],
+          "memberships": [],
+          "predicateIds": [],
+          "witnessIds": []
+        },
+        {
+          "concept": "Revenues",
+          "status": "supported_as_filed",
+          "reasons": [],
+          "companyFactsRefs": ["cf:1:0:0"],
+          "primaryRefs": ["f:43"],
+          "memberships": [
+            {
+              "reference": "cf:1:0:0",
+              "source": "company_facts",
+              "evidenceIds": ["cf:1:0:0"],
+              "disposition": "possible_current",
+              "reason": "current_period"
+            },
+            {
+              "reference": "f:43",
+              "source": "primary",
+              "evidenceIds": ["f:43", "c:7"],
+              "disposition": "possible_current",
+              "reason": "current_period"
+            }
+          ],
+          "predicateIds": ["p:2", "p:3", "p:4", "p:5", "p:6"],
+          "witnessIds": ["w:f:43"]
+        },
+        {
+          "concept": "SalesRevenueNet",
+          "status": "absent",
+          "reasons": ["concept_absent"],
+          "companyFactsRefs": [],
+          "primaryRefs": [],
+          "memberships": [],
+          "predicateIds": [],
+          "witnessIds": []
+        },
+        {
+          "concept": "NetIncomeLoss",
+          "status": "supported_as_filed",
+          "reasons": [],
+          "companyFactsRefs": ["cf:3:0:0"],
+          "primaryRefs": ["f:49"],
+          "memberships": [
+            {
+              "reference": "cf:3:0:0",
+              "source": "company_facts",
+              "evidenceIds": ["cf:3:0:0"],
+              "disposition": "possible_current",
+              "reason": "current_period"
+            },
+            {
+              "reference": "f:49",
+              "source": "primary",
+              "evidenceIds": ["f:49", "c:7"],
+              "disposition": "possible_current",
+              "reason": "current_period"
+            }
+          ],
+          "predicateIds": ["p:7", "p:8", "p:9", "p:10", "p:11"],
+          "witnessIds": ["w:f:49"]
+        }
+      ],
+      "metrics": [
+        {
+          "metric": "revenue",
+          "status": "supported_as_filed",
+          "reasons": [],
+          "concept": "Revenues",
+          "witnessIds": ["w:f:43"],
+          "value": "123456789012345678901234567890000000",
+          "unit": "USD",
+          "period": {
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31"
+          }
+        },
+        {
+          "metric": "net_income",
+          "status": "supported_as_filed",
+          "reasons": [],
+          "concept": "NetIncomeLoss",
+          "witnessIds": ["w:f:49"],
+          "value": "-20000000",
+          "unit": "USD",
+          "period": {
+            "startDate": "2025-01-01",
+            "endDate": "2025-03-31"
+          }
+        }
+      ],
+      "pair": {
+        "status": "supported_as_filed",
+        "reasons": [],
+        "revenue": "123456789012345678901234567890000000",
+        "netIncome": "-20000000",
+        "unit": "USD",
+        "period": {
+          "startDate": "2025-01-01",
+          "endDate": "2025-03-31"
+        }
+      },
+      "ttm": {
+        "status": "unavailable",
+        "reason": "source_not_admitted"
+      }
+    }
+  }
+}

@@ -1,14 +1,19 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { once } from "node:events";
+import { createHash } from "node:crypto";
+import { EventEmitter, once } from "node:events";
+import { PassThrough } from "node:stream";
 
 import {
   PERSONAL_SEC_FILING_CONTEXT_LIMITS as LIMITS,
   PERSONAL_SEC_FILING_CONTEXT_SCHEMA_VERSION,
   PERSONAL_SEC_FILING_DEI_NAMESPACES,
   PERSONAL_SEC_FILING_REPORTING_CONCEPTS,
+  PERSONAL_SEC_QUARTERLY_CONCEPTS,
   createEmptyPersonalSecFilingReportingMetadata,
   type PersonalSecFilingContextIssue,
   type PersonalSecFilingContextSelectionDto,
+  type PersonalSecQuarterAssessmentSelectionDto,
+  type PersonalSecQuarterPrimaryEvidenceDto,
 } from "@research-cockpit/contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -1725,6 +1730,735 @@ function alternateWorker(script: string) {
   parsers.push(value);
   return { value, launched, child: () => child };
 }
+
+const accessionSelection: PersonalSecQuarterAssessmentSelectionDto =
+  Object.freeze({
+    accessionNumber: "0000000042-25-000001",
+    form: "10-Q" as const,
+    filedDate: "2025-05-01",
+    reportDate: "2025-03-31",
+  });
+function accessionInput(html = document()) {
+  return {
+    document: new TextEncoder().encode(html),
+    cik: "0000000042",
+    selection: { ...accessionSelection },
+  };
+}
+function parseEvidence(html = document()) {
+  const value = createPersonalSecFilingContextParser();
+  parsers.push(value);
+  return value.parseAccessionEvidence(accessionInput(html));
+}
+function statementTable(contents = fact(), span = "") {
+  return `<div>Consolidated statements of income</div><div>In millions</div><div><table><tr><th>Line</th><th>Three months ended</th><th>2025</th></tr><tr><td>Total revenue</td><td ${span}>${contents}</td><td>Comparative</td></tr></table></div>`;
+}
+function controlledEvidenceWorker() {
+  const events = new EventEmitter();
+  const child = Object.assign(events, {
+    stdin: new PassThrough(),
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    kill: vi.fn(() => true),
+  });
+  const launched = vi.fn(
+    () => child as unknown as ChildProcessWithoutNullStreams,
+  );
+  const value = createPersonalSecFilingContextParser({
+    spawn: launched as unknown as typeof spawn,
+  });
+  parsers.push(value);
+  return { value, child, launched };
+}
+
+describe("full accession evidence worker", () => {
+  it("retains all four populations, equal duplicates and signed alternatives without legacy selection", async () => {
+    const facts =
+      PERSONAL_SEC_QUARTERLY_CONCEPTS.map((concept, index) =>
+        fact(String(index + 1), index === 3 ? 'sign="-"' : "").replace(
+          "us-gaap:Revenues",
+          `us-gaap:${concept}`,
+        ),
+      ).join("") + fact("2");
+    const result = await parseEvidence(document(facts));
+    expect(result.status).toBe("complete");
+    expect(result.concepts.map((group) => group.concept)).toEqual(
+      PERSONAL_SEC_QUARTERLY_CONCEPTS,
+    );
+    expect(
+      result.concepts.map((group) => group.occurrences.map((row) => row.value)),
+    ).toEqual([["1"], ["2", "2"], ["3"], ["-4"]]);
+    expect(result.contexts).toHaveLength(1);
+    expect(result.units).toHaveLength(1);
+    expect(
+      result.concepts
+        .flatMap((group) => group.occurrences)
+        .every((row) => row.elementRecordId === null),
+    ).toBe(true);
+    expect(Object.isFrozen(result.concepts[1]?.occurrences[0])).toBe(true);
+  });
+
+  it("binds exact source bytes, complete raw context grammar and scoped QName fields", async () => {
+    const html = document(
+      fact(),
+      context(
+        "c",
+        "2025-01-01",
+        "2025-03-31",
+        "0000000042",
+        '<xbrli:segment><xbrldi:explicitMember dimension="us-gaap:Axis">us-gaap:Member</xbrldi:explicitMember></xbrli:segment>',
+      ),
+    );
+    const result = await parseEvidence(html);
+    expect(result.documentSha256).toBe(
+      `sha256:${createHash("sha256").update(html).digest("hex")}`,
+    );
+    expect(result.documentBytes).toBe(Buffer.byteLength(html));
+    const member =
+      result.contexts[0]?.root.children[0]?.children[1]?.children[0];
+    expect(member?.name.localName).toBe("explicitMember");
+    expect(member?.qnameAttributes).toEqual([
+      {
+        name: "dimension",
+        value: {
+          raw: "us-gaap:Axis",
+          namespace: "http://fasb.org/us-gaap/2025",
+          localName: "Axis",
+        },
+      },
+    ]);
+    expect(member?.textQName?.localName).toBe("Member");
+    expect(result.units[0]?.root.children[0]?.textQName).toEqual({
+      raw: "iso4217:USD",
+      namespace: "http://www.xbrl.org/2003/iso4217",
+      localName: "USD",
+    });
+    expect(result.contexts[0]?.root.attributes[0]?.namespace).toBeNull();
+  });
+
+  it("preserves pre-fact headers, external captions, wrapper membership and physical cell ordinals", async () => {
+    const result = await parseEvidence(document(statementTable()));
+    expect(result.status).toBe("complete");
+    const row = result.concepts[1]?.occurrences[0];
+    expect(row).toMatchObject({
+      actualTableOrdinal: 1,
+      actualRowOrdinal: 2,
+      actualCellOrdinal: 2,
+    });
+    const structure = result.structure!;
+    expect(structure.tables[0]?.rows[1]?.cells[1]).toMatchObject({
+      columnStart: 1,
+      columnSpan: 1,
+      rowSpan: 1,
+    });
+    const caption = structure.records.find((record) =>
+      record.textRuns?.some(
+        (run) => run.text === "Consolidated statements of income",
+      ),
+    );
+    expect(caption?.actualTableOrdinal).toBeNull();
+    expect(caption!.elementOrdinal).toBeLessThan(row!.elementOrdinal);
+    expect(
+      structure.siblingWindows.some((window) =>
+        window.childRecordIds.includes(caption!.id),
+      ),
+    ).toBe(true);
+    expect(
+      structure.records.find(
+        (record) => record.id === structure.tables[0]?.tableRecordId,
+      ),
+    ).toMatchObject({ actualTableOrdinal: 1, childrenComplete: true });
+  });
+
+  it("retains complete external caption ranges with units and competing qualifications", async () => {
+    const result = await parseEvidence(
+      document(
+        '<p>Consolidated statements of income</p><p>(in <span>millions</span>)</p><p>Unresolved qualification <span hidden="hidden">keep this</span></p>' +
+          `<table><tr><td>Revenue</td><td>${fact()}</td></tr></table><p>${"unrelated ".repeat(500)}</p>`,
+      ),
+    );
+    expect(result.status).toBe("complete");
+    const records = result.structure!.records;
+    const units = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "(in "),
+    )!;
+    expect(units.childrenComplete).toBe(true);
+    expect(units.textRuns).toEqual([
+      { beforeChildIndex: 0, text: "(in " },
+      { beforeChildIndex: 1, text: ")" },
+    ]);
+    expect(
+      records.find((record) => record.id === units.childRecordIds[0])
+        ?.textRuns?.[0]?.text,
+    ).toBe("millions");
+    const qualification = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "Unresolved qualification "),
+    )!;
+    expect(qualification.childrenComplete).toBe(true);
+    expect(
+      records.find((record) => record.id === qualification.childRecordIds[0])
+        ?.attributes,
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "hidden", value: "hidden" }),
+      ]),
+    );
+    const last = records.at(-1)!;
+    expect(last.textRuns).toBeNull();
+    expect(
+      result.structure!.siblingWindows.some(
+        (window) =>
+          window.childRecordIds.includes(units.id) &&
+          window.childRecordIds.includes(qualification.id),
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses over-budget intervening caption content without selecting a shorter prefix", async () => {
+    const result = await parseEvidence(
+      document(
+        `<p>Consolidated statements of income</p><p>${"x".repeat(4097)}</p><table><tr><td>${fact()}</td></tr></table>`,
+      ),
+    );
+    expect(result).toMatchObject({
+      status: "unavailable",
+      reason: "structural_limit",
+      structure: null,
+    });
+    expect(
+      result.concepts.every((group) => group.occurrences.length === 0),
+    ).toBe(true);
+  });
+
+  it("retains complete local cover controls, direct text and unmatched siblings", async () => {
+    const result = await parseEvidence(
+      document(
+        '<div id="cover">Unresolved cover qualification<p>☒ Quarterly report pursuant to Section 13 or 15(d)</p><p>☐ Transition report pursuant to Section 13 or 15(d)</p><p>For the quarterly period ended March 31, 2025</p><p></p><p>Additional qualification <span hidden="hidden">kept</span></p></div>' +
+          statementTable(),
+      ),
+    );
+    expect(result.status).toBe("complete");
+    const structure = result.structure!;
+    const cover = structure.records.find((record) =>
+      record.attributes.some(
+        (attr) => attr.name === "id" && attr.value === "cover",
+      ),
+    )!;
+    expect(cover.childrenComplete).toBe(true);
+    expect(cover.childRecordIds).toHaveLength(5);
+    expect(cover.textRuns).toEqual([
+      { beforeChildIndex: 0, text: "Unresolved cover qualification" },
+    ]);
+    const children = cover.childRecordIds.map((id) =>
+      structure.records.find((record) => record.id === id)!,
+    );
+    expect(
+      children.map((record) =>
+        record.textRuns?.map((run) => run.text).join(""),
+      ),
+    ).toEqual([
+      "☒ Quarterly report pursuant to Section 13 or 15(d)",
+      "☐ Transition report pursuant to Section 13 or 15(d)",
+      "For the quarterly period ended March 31, 2025",
+      "",
+      "Additional qualification ",
+    ]);
+    expect(children.every((record) => record.childrenComplete)).toBe(true);
+    expect(structure.anchorRecordIds).toEqual(
+      expect.arrayContaining(children.slice(0, 3).map((record) => record.id)),
+    );
+    const hidden = structure.records.find(
+      (record) => record.parentRecordId === children[4]!.id,
+    )!;
+    expect(hidden.attributes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "hidden", value: "hidden" }),
+      ]),
+    );
+    expect(hidden.textRuns?.[0]?.text).toBe("kept");
+  });
+
+  it("preserves distinct cover parents without manufacturing a common control block", async () => {
+    const result = await parseEvidence(
+      document(
+        "<div><p>☒ Quarterly report</p></div><div><p>☐ Transition report</p><p>For the quarterly period ended March 31, 2025</p></div>" +
+          statementTable(),
+      ),
+    );
+    const records = result.structure!.records;
+    const quarterly = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "☒ Quarterly report"),
+    )!;
+    const transition = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "☐ Transition report"),
+    )!;
+    expect(quarterly.parentRecordId).not.toBe(transition.parentRecordId);
+    for (const control of [quarterly, transition]) {
+      expect(
+        records.find((record) => record.id === control.parentRecordId),
+      ).toMatchObject({ childrenComplete: true, textRuns: [] });
+    }
+  });
+
+  it("refuses an over-budget cover sibling rather than clipping its qualification", async () => {
+    const result = await parseEvidence(
+      document(
+        `<div><p>☒ Quarterly report</p><p>☐ Transition report</p><p>${"x".repeat(4097)}</p></div>` +
+          statementTable(),
+      ),
+    );
+    expect(result.status).toBe("unavailable");
+    expect(result.reason).toBe("structural_limit");
+    expect(result.structure).toBeNull();
+    expect(
+      result.concepts.every((group) => group.occurrences.length === 0),
+    ).toBe(true);
+  });
+
+  it("retains a complete competing narrative beside a smaller nested anchor", async () => {
+    const result = await parseEvidence(
+      document(
+        "<div>Wholly owned subsidiaries.<p>Preferred common shares.</p></div>" +
+          statementTable(),
+      ),
+    );
+    const records = result.structure!.records;
+    const parent = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "Wholly owned subsidiaries."),
+    );
+    const child = records.find((record) =>
+      record.textRuns?.some((run) => run.text === "Preferred common shares."),
+    );
+    expect(result.structure!.anchorRecordIds).toContain(parent!.id);
+    expect(result.structure!.anchorRecordIds).toContain(child!.id);
+  });
+
+  it("retains external cash tables and supplementary date contexts plus balance caption targets", async () => {
+    const cash = fact("7").replace(
+      "us-gaap:Revenues",
+      "us-gaap:CashAndCashEquivalentsAtCarryingValue",
+    );
+    const html = document(
+      statementTable() +
+        "<div>Consolidated balance sheets</div><div><table><tr><td>Assets</td></tr></table></div><div>Statements of cash flows</div><div><table><tr><td>Cash, beginning of year</td><td>" +
+        cash +
+        "</td></tr></table></div>",
+    );
+    const result = await parseEvidence(html);
+    expect(result.status).toBe("complete");
+    expect(result.structure!.supplementaryFacts[0]).toMatchObject({
+      rawText: "7",
+      rawContextRef: "c",
+    });
+    expect(
+      result.structure!.tables.map(
+        (table) =>
+          result.structure!.records.find(
+            (row) => row.id === table.tableRecordId,
+          )?.actualTableOrdinal,
+      ),
+    ).toEqual([1, 3]);
+    expect(
+      result.structure!.records.some(
+        (row) => row.name.localName === "table" && row.actualTableOrdinal === 2,
+      ),
+    ).toBe(true);
+  });
+
+  it.each(["0", "65", "-1", "1.5", "100"])(
+    "does not invent geometry for unsupported span %s",
+    async (span) => {
+      const result = await parseEvidence(
+        document(statementTable(fact(), `colspan="${span}"`)),
+      );
+      expect(result.status).toBe("complete");
+      expect(result.structure!.tables[0]).toMatchObject({
+        status: "unsupported",
+        reasons: ["unsupported_geometry"],
+        rows: [],
+      });
+      expect(result.structure!.tables[0]?.rowRecordIds).toHaveLength(2);
+      expect(result.concepts[1]?.occurrences[0]?.value).toBe("100");
+    },
+  );
+
+  it("retains nested-table ambiguity without dropping numeric occurrences", async () => {
+    const result = await parseEvidence(
+      document(`<table><tr><td>${statementTable()}</td></tr></table>`),
+    );
+    expect(result.status).toBe("complete");
+    expect(result.concepts[1]?.occurrences).toHaveLength(1);
+    expect(result.structure!.status).toBe("unsupported");
+    expect(result.structure!.reasons).toContain("nested_table");
+  });
+
+  it.each([100, 101, 512])(
+    "retains every off-table occurrence at count %s",
+    async (count) => {
+      const result = await parseEvidence(document(fact().repeat(count)));
+      expect(result.status).toBe("complete");
+      expect(result.concepts[1]?.occurrences).toHaveLength(count);
+      expect(
+        new Set(result.concepts[1]?.occurrences.map((row) => row.id)).size,
+      ).toBe(count);
+    },
+  );
+
+  it("refuses 513 occurrences without returning a prefix", async () => {
+    const result = await parseEvidence(document(fact().repeat(513)));
+    expect(result).toMatchObject({
+      status: "unavailable",
+      reason: "candidate_limit",
+      concepts: [],
+      contexts: [],
+      units: [],
+      structure: null,
+      reportingMetadata: null,
+    });
+  });
+
+  it("keeps a late hidden conflicting value and malformed apparent exclusion in the population", async () => {
+    const html = document(
+      fact().repeat(100) +
+        `<div hidden="hidden">${fact("101", "", "other")}</div>`,
+      context() +
+        '<xbrli:context id="other"><xbrli:entity><xbrli:identifier scheme="http://www.sec.gov/CIK">0000000007</xbrli:identifier><xbrli:unexpected/></xbrli:entity><xbrli:period><xbrli:instant>2024-12-31</xbrli:instant></xbrli:period></xbrli:context>',
+    );
+    const result = await parseEvidence(html);
+    expect(result.status).toBe("complete");
+    expect(result.concepts[1]?.occurrences.at(-1)).toMatchObject({
+      value: "101",
+      rawContextRef: "other",
+    });
+    expect(
+      result.contexts[1]?.root.children[0]?.children[1]?.name.localName,
+    ).toBe("unexpected");
+  });
+
+  it.each([
+    [
+      "malformed suffix",
+      (html: string) => html.replace("</body>", "</mismatch></body>"),
+      "invalid_document",
+    ],
+    [
+      "unbound concept QName",
+      (html: string) => html.replace("us-gaap:Revenues", "missing:Revenues"),
+      "invalid_namespace",
+    ],
+    [
+      "malformed concept QName",
+      (html: string) => html.replace("us-gaap:Revenues", "us-gaap:Revenues!"),
+      "invalid_namespace",
+    ],
+    [
+      "duplicate identifier",
+      (html: string) => html.replace("</body>", '<p id="c"/></body>'),
+      "duplicate_id",
+    ],
+  ] as const)(
+    "refuses %s without a numeric prefix",
+    async (_label, mutate, reason) => {
+      const result = await parseEvidence(mutate(document(fact().repeat(101))));
+      expect(result).toMatchObject({
+        status: "unavailable",
+        reason,
+        concepts: [],
+        structure: null,
+      });
+    },
+  );
+
+  it("observes scripts, styles, event attributes and processing instructions without executing them", async () => {
+    const html = document(
+      statementTable() +
+        '<style>p{display:none}</style><link rel="stylesheet" href="https://invalid.example/a.css"/><script src="https://invalid.example/code.js">unexecuted()</script><p onclick="unexecuted()">Interim basis</p>',
+    ).replace(
+      "<!DOCTYPE html>",
+      '<?xml-stylesheet href="https://invalid.example/a.xsl"?><!DOCTYPE html>',
+    );
+    const result = await parseEvidence(html);
+    expect(result.structure!.document).toMatchObject({
+      styleElements: 1,
+      stylesheetLinks: 1,
+      eventAttributeCount: 1,
+      processingInstructions: [
+        { locator: "/processing-instructions/1", target: "xml-stylesheet" },
+      ],
+    });
+    expect(result.structure!.document.scripts[0]).toMatchObject({
+      inlineTextCharacters: 12,
+    });
+    expect(
+      result.structure!.document.scripts[0]?.lastDocumentElementOrdinal,
+    ).toBe(result.structure!.document.elementCount);
+  });
+
+  it("refuses an over-budget complete statement instead of clipping records or Unicode text", async () => {
+    const html = document(
+      statementTable(fact()) +
+        "<div>Fiscal year " +
+        "😀".repeat(2049) +
+        "</div>",
+    );
+    expect(await parseEvidence(html)).toMatchObject({
+      status: "unavailable",
+      reason: "structural_limit",
+      concepts: [],
+      structure: null,
+    });
+  });
+
+  it("observes foreign-namespace active element and attribute local names", async () => {
+    const html = document(
+      statementTable() +
+        '<div xmlns:other="urn:other"><other:STYLE>unexecuted</other:STYLE><other:LINK other:REL="stylesheet"/><other:SCRIPT/><p other:onload="unexecuted()">Interim basis</p></div>',
+    );
+    const result = await parseEvidence(html);
+    expect(result.structure!.document).toMatchObject({
+      styleElements: 1,
+      stylesheetLinks: 1,
+      eventAttributeCount: 1,
+    });
+    expect(result.structure!.document.scripts).toHaveLength(1);
+  });
+
+  it.each([
+    [
+      "complete row ceiling",
+      `<table>${`<tr><td>${fact()}</td></tr>`.repeat(257)}</table>`,
+    ],
+    [
+      "escaped structural bytes",
+      `<table><tr><td>${fact()}</td></tr>${`<tr><td title="${"😀".repeat(1000)}">Cell</td></tr>`.repeat(30)}</table>`,
+    ],
+  ])(
+    "refuses %s without retaining a structural prefix",
+    async (_label, body) => {
+      const result = await parseEvidence(document(body));
+      expect(result).toMatchObject({
+        status: "unavailable",
+        reason: "structural_limit",
+        concepts: [],
+        structure: null,
+      });
+    },
+  );
+
+  it("keeps DEI raw observations and shared context references in the new protocol", async () => {
+    const result = await parseEvidence(metadataDocument());
+    expect(result.status).toBe("complete");
+    expect(
+      result.reportingMetadata!.fields.map((field) => field.concept),
+    ).toEqual(PERSONAL_SEC_FILING_REPORTING_CONCEPTS);
+    expect(
+      result.reportingMetadata!.observations.every(
+        (row) =>
+          row.id === `d:${row.elementOrdinal}` && row.contextRecordId !== null,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([40, 41])(
+    "enforces the accession-wide metadata ceiling at %s",
+    async (count) => {
+      const result = await parseEvidence(
+        metadataDocument(metadataFact().repeat(count)),
+      );
+      if (count === 40) {
+        expect(result.status).toBe("complete");
+        expect(result.reportingMetadata!.observations).toHaveLength(40);
+      } else {
+        expect(result).toMatchObject({
+          status: "unavailable",
+          reason: "metadata_limit",
+          concepts: [],
+          reportingMetadata: null,
+          structure: null,
+        });
+      }
+    },
+  );
+
+  it("counts supplementary registrant declarations in the same metadata ceiling", async () => {
+    const result = await parseEvidence(
+      metadataDocument(
+        metadataFact().repeat(40) +
+          metadataFact("EntityRegistrantName", "Invented Company"),
+      ),
+    );
+    expect(result).toMatchObject({
+      status: "unavailable",
+      reason: "metadata_limit",
+      concepts: [],
+      structure: null,
+    });
+  });
+
+  it("bounds the sum of every retained source record's direct text runs", async () => {
+    const body = `<table><tr><td>${"a".repeat(2500)}<span>separator</span>${"b".repeat(2500)}</td><td>${fact()}</td></tr></table>`;
+    expect(await parseEvidence(document(body))).toMatchObject({
+      status: "unavailable",
+      reason: "structural_limit",
+      concepts: [],
+      structure: null,
+    });
+  });
+
+  it("fails the shared output-byte budget even below aggregate count ceilings", async () => {
+    const content = PERSONAL_SEC_QUARTERLY_CONCEPTS.map((concept) =>
+      fact("9".repeat(64))
+        .replace("us-gaap:Revenues", `us-gaap:${concept}`)
+        .repeat(512),
+    ).join("");
+    expect(await parseEvidence(document(content))).toMatchObject({
+      status: "unavailable",
+      reason: "output_limit",
+      concepts: [],
+      structure: null,
+    });
+  });
+});
+
+describe("accession evidence shared native lifecycle", () => {
+  it("does not settle cancellation or release either mode until actual owned close", async () => {
+    const worker = controlledEvidenceWorker();
+    const controller = new AbortController();
+    const pending = worker.value.parseAccessionEvidence(
+      accessionInput(),
+      controller.signal,
+    );
+    let settled = false;
+    const outcome = pending.catch((error: unknown) => {
+      settled = true;
+      return error;
+    });
+    controller.abort();
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(worker.child.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+    await expect(
+      worker.value.parseAccessionEvidence(accessionInput()),
+    ).rejects.toMatchObject({ code: "busy" });
+    await expect(
+      worker.value.parse({
+        document: new TextEncoder().encode(document()),
+        cik: "0000000042",
+        selection,
+      }),
+    ).rejects.toMatchObject({ code: "busy" });
+    worker.child.stdout.emit("data", Buffer.from("late output"));
+    worker.child.emit("close", null, "SIGKILL");
+    expect(await outcome).toMatchObject({ code: "aborted" });
+  });
+
+  it.each(["timeout", "shutdown", "stdout overflow", "stderr overflow"])(
+    "retains retirement through close after %s",
+    async (mode) => {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      const worker = controlledEvidenceWorker();
+      const pending = worker.value.parseAccessionEvidence(accessionInput());
+      let settled = false;
+      const outcome = pending.catch((error: unknown) => {
+        settled = true;
+        return error;
+      });
+      if (mode === "timeout")
+        await vi.advanceTimersByTimeAsync(LIMITS.workerTimeoutMs);
+      else if (mode === "shutdown") worker.value.close();
+      else if (mode === "stdout overflow")
+        worker.child.stdout.emit(
+          "data",
+          Buffer.alloc(LIMITS.workerOutputBytes + 1),
+        );
+      else
+        worker.child.stderr.emit(
+          "data",
+          Buffer.alloc(LIMITS.workerStderrBytes + 1),
+        );
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(worker.child.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+      worker.child.emit("close", null, "SIGKILL");
+      expect(await outcome).toMatchObject({
+        code:
+          mode === "timeout"
+            ? "timeout"
+            : mode === "shutdown"
+              ? "aborted"
+              : "output_too_large",
+      });
+    },
+  );
+
+  it("copies caller input, hashes the copy and fixes the exact request keyset", async () => {
+    const worker = controlledEvidenceWorker();
+    let raw = "";
+    worker.child.stdin.on("data", (chunk: Buffer) => {
+      raw += chunk.toString("utf8");
+    });
+    const input = accessionInput();
+    const original = Buffer.from(input.document);
+    const pending = worker.value
+      .parseAccessionEvidence(input)
+      .catch((error: unknown) => error);
+    input.document.fill(0);
+    input.selection.filedDate = "2026-01-01";
+    const sent = JSON.parse(raw) as Record<string, unknown>;
+    expect(Object.keys(sent).sort()).toEqual([
+      "cik",
+      "documentBase64",
+      "documentSha256",
+      "mode",
+      "schemaVersion",
+      "selection",
+    ]);
+    expect(sent.documentSha256).toBe(
+      `sha256:${createHash("sha256").update(original).digest("hex")}`,
+    );
+    expect(sent.documentBase64).toBe(original.toString("base64"));
+    expect(sent.selection).toEqual(accessionSelection);
+    worker.value.close();
+    worker.child.emit("close", null, "SIGKILL");
+    await pending;
+  });
+
+  it.each(["10-Q/A", "10-K", "unknown"])(
+    "refuses unsupported form %s before spawn",
+    async (form) => {
+      const worker = controlledEvidenceWorker();
+      const input = accessionInput();
+      Object.assign(input.selection, { form });
+      await expect(
+        worker.value.parseAccessionEvidence(input),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(worker.launched).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    'process.stdout.write("{\\"schemaVersion\\":\\"1.0.0\\",\\"schemaVersion\\":\\"1.0.0\\"}")',
+    "process.stdout.write(Buffer.from([255]))",
+    'process.stdout.write("{}")',
+  ])("refuses malformed or duplicate-key accession output", async (script) => {
+    const worker = alternateWorker(
+      `process.stdin.resume();process.stdin.on("end",()=>{${script}})`,
+    );
+    await expect(
+      worker.value.parseAccessionEvidence(accessionInput()),
+    ).rejects.toMatchObject({ code: "invalid_output" });
+  });
+
+  it("rejects changed source or selection binding even for otherwise valid evidence", async () => {
+    const valid: PersonalSecQuarterPrimaryEvidenceDto = await parseEvidence();
+    const worker = alternateWorker(
+      `process.stdin.resume();process.stdin.on("end",()=>{const result=${JSON.stringify(valid)};result.documentSha256="sha256:"+"f".repeat(64);process.stdout.write(JSON.stringify(result))})`,
+    );
+    await expect(
+      worker.value.parseAccessionEvidence(accessionInput()),
+    ).rejects.toMatchObject({ code: "invalid_output" });
+  });
+});
 
 describe("asynchronous filing worker boundary", () => {
   const input = {

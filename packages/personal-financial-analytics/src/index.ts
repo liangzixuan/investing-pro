@@ -106,3 +106,5 @@ export {
   selectPersonalSecAnnualTarget,
   serializePersonalSecAnnualGeneration,
 } from "./personal-sec-annual-evidence";
+
+export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessment";

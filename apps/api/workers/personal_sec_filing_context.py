@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import hashlib
 import json
 import re
 import sys
@@ -154,6 +155,12 @@ class Document(HTMLParser):
         self.nodes, self.ids, self.doctype = 0, set(), False
         self.closed_void = False
         self.metadata, self.metadata_count, self.metadata_limit = [], 0, None
+        # The additive accession mode keeps one compact source tree. Legacy
+        # selected-value inspection retains its original capture behavior.
+        self.accession = concept is None
+        self.source, self.source_stack = [], []
+        self.fact_counts = {name: 0 for name in CONCEPTS}
+        self.processing_instructions = []
 
     def handle_decl(self, declaration):
         if self.doctype or declaration.strip().lower() != "doctype html":
@@ -165,6 +172,14 @@ class Document(HTMLParser):
 
     def handle_pi(self, data):
         # XML 1.0/UTF-8 or byte-verified ASCII only; no other PI is consumed.
+        if self.accession and not (self.getpos() == (1, 0) and not self.nodes and not self.stack and XML_DECLARATION.fullmatch(data)):
+            target = re.split(r"[ \t\r\n?]", data, maxsplit=1)[0]
+            if not ID.fullmatch(target) or target.lower() == "xml":
+                fail()
+            self.processing_instructions.append({"locator": f"/processing-instructions/{len(self.processing_instructions) + 1}", "target": target})
+            if len(self.processing_instructions) > 4096:
+                fail("structural_limit")
+            return
         if self.getpos() != (1, 0) or self.nodes or self.stack or not XML_DECLARATION.fullmatch(data):
             fail()
 
@@ -242,11 +257,18 @@ class Document(HTMLParser):
         is_context = namespace == XBRLI and local == "context"
         is_unit = namespace == XBRLI and local == "unit"
         name = qname(attrs.get("name", ""), namespaces)
-        is_fact = (local in ("nonfraction", "fraction", "nonnumeric") and name["localName"] == self.concept) or (expanded["localName"] == self.concept.lower() and gaap_namespace(namespace))
+        if self.accession and local in ("nonfraction", "fraction", "nonnumeric") and (name["localName"] is None or name["namespace"] is None):
+            fail("invalid_namespace")
+        chosen_concepts = CONCEPTS if self.accession else {self.concept}
+        fact_concept = next((item for item in chosen_concepts if (local in ("nonfraction", "fraction", "nonnumeric") and name["localName"] == item) or (expanded["localName"] == item.lower() and gaap_namespace(namespace))), None)
+        is_fact = fact_concept is not None
         is_metadata = (local in ("nonfraction", "fraction", "nonnumeric") and metadata_concept(name["localName"]) is not None) or (namespace not in (None, "", XHTML) and metadata_concept(local) is not None)
-        if is_metadata:
+        is_registrant = self.accession and local in ("nonfraction", "fraction", "nonnumeric") and name["localName"] == "EntityRegistrantName"
+        if is_metadata or is_registrant:
             self.metadata_count += 1
             if self.metadata_count > 40:
+                if self.accession:
+                    fail("metadata_limit")
                 self.metadata_limit = "candidate_limit"
                 self.metadata.clear()
         capture = parent is not None or is_context or is_unit or is_fact or (is_metadata and self.metadata_limit is None)
@@ -267,11 +289,16 @@ class Document(HTMLParser):
                 fail("context_limit" if is_context else "unit_limit")
             collection[identifier] = node
         if is_fact:
-            if len(self.facts) >= 512:
+            if (self.fact_counts[fact_concept] if self.accession else len(self.facts)) >= 512:
                 fail("candidate_limit")
+            self.fact_counts[fact_concept] += 1
+            if self.accession and len(self.facts) >= 2048:
+                fail("aggregate_candidate_limit")
             self.facts.append(node)
         if is_metadata and self.metadata_limit is None:
             self.metadata.append(node)
+        if self.accession:
+            source_start(self, raw_tag[1], attributes, attribute_names, namespaces)
         self.stack.append((tag, namespaces, node))
         if namespace in (None, "", XHTML) and local in VOID and ":" not in tag:
             self.handle_endtag(tag)
@@ -281,6 +308,8 @@ class Document(HTMLParser):
         if not self.stack or self.stack[-1][0] != tag:
             fail()
         _tag, namespaces, node = self.stack.pop()
+        if self.accession:
+            source_end(self, namespaces)
         if node is not None:
             # Retain only bindings needed by this node's QName-valued fields.
             # Full namespace maps otherwise multiply across a hostile captured tree.
@@ -306,6 +335,10 @@ class Document(HTMLParser):
 
     def handle_data(self, data):
         bounded(data, DOCUMENT_BYTES)
+        if self.accession and not self.source_stack and data.strip():
+            fail()
+        if self.accession and self.source_stack:
+            source_data(self.source_stack[-1], data)
         # Only retain bounded context/unit/fact content, never unrelated filing HTML.
         for _tag, _ns, node in self.stack:
             if node is not None:
@@ -314,6 +347,8 @@ class Document(HTMLParser):
                 node.text_length += utf16_length(data)
                 if node.text_length > 4096:
                     if node.metadata:
+                        if self.accession:
+                            fail("metadata_limit")
                         self.metadata_limit = "output_limit"
                         self.metadata.clear()
                         node.parts.clear()
@@ -615,7 +650,433 @@ def global_failure(reason):
     return {"schemaVersion": SCHEMA_VERSION, "status": "unsupported", "reason": reason, "candidates": [], "correspondingCandidateLocators": [], "reportingMetadata": empty_metadata("unavailable", reason)}
 
 
-def read_request():
+# Raw source observations for the separate accession-evidence protocol. These
+# records never assert statement, calendar, attribution or visibility support.
+QUARTER_CONCEPTS = ("RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet", "NetIncomeLoss")
+ANCHOR = re.compile(r"financial statements|statements? of (?:income|operations|earnings|cash flows)|income statements?|balance sheets?|notes to|basis of (?:presentation|preparation)|consolidat|subsidiar|intercompany|wholly[ -]owned|non[ -]?controlling|minority|preferred|participating|common (?:stock|share)|earnings per share|\bEPS\b|numerator|denominator|fiscal (?:year|quarter)|year (?:ended|ending|beginning)|(?:first|second|third) quarter|quarterly (?:period|report)|transition (?:period|report)|\b(?:52|53|13)[ -]weeks?\b|week[ -]based|\binterim\b|\bSEC\b|Securities and Exchange Commission|generally accepted accounting principles|beginning of (?:the )?(?:fiscal )?(?:year|period)|end of (?:the )?(?:period|year)", re.I)
+BLOCKS = {"p", "div", "td", "th", "tr", "caption", "h1", "h2", "h3", "h4", "h5", "h6"}
+XMLNS = "http://www.w3.org/2000/xmlns/"
+
+
+def json_bytes(value):
+    return json.dumps(value, ensure_ascii=True, allow_nan=False, separators=(",", ":")).encode("utf-8")
+
+
+def source_start(document, raw_tag, attributes, names, namespaces):
+    parent = document.source_stack[-1] if document.source_stack else None
+    if parent is None and document.source:
+        fail()
+    raw_attrs = []
+    qnames = []
+    for (_key, value), name in zip(attributes, names):
+        value = "" if value is None else value
+        if name == "xmlns" or name.startswith("xmlns:"):
+            expanded = {"namespace": XMLNS, "localName": "xmlns" if name == "xmlns" else name.partition(":")[2]}
+        elif ":" in name:
+            expanded = qname(name, namespaces)
+            if expanded["namespace"] is None:
+                fail("invalid_namespace")
+        else:
+            expanded = {"namespace": None, "localName": name}
+        raw_attrs.append({"name": name, "namespace": expanded["namespace"], "localName": expanded["localName"], "value": value})
+        if name in ("name", "format", "dimension"):
+            qnames.append({"name": name, "value": qname(value, namespaces)})
+    item = {"ordinal": document.nodes, "end": document.nodes, "name": qname(raw_tag, namespaces), "attributes": raw_attrs,
+            "qnames": qnames, "textQName": None, "parent": parent, "childIndex": len(parent["children"]) if parent else 0,
+            "children": [], "runs": [], "textLength": 0, "flat": "", "tables": [], "table": None, "row": None, "cell": None}
+    if parent is not None:
+        parent["children"].append(item)
+    document.source.append(item)
+    document.source_stack.append(item)
+
+
+def source_data(item, data):
+    index = len(item["children"])
+    if item["runs"] and item["runs"][-1]["beforeChildIndex"] == index:
+        item["runs"][-1]["text"] += data
+    else:
+        item["runs"].append({"beforeChildIndex": index, "text": data})
+
+
+def source_end(document, namespaces):
+    item = document.source_stack.pop()
+    item["end"] = document.nodes
+    # Each text fragment is stored once; ancestor text is a bounded projection,
+    # never an unbounded duplicated copy of the filing.
+    runs = {run["beforeChildIndex"]: run["text"] for run in item["runs"]}
+    length = sum(utf16_length(value) for value in runs.values()) + sum(child["textLength"] for child in item["children"])
+    item["textLength"] = length
+    if length <= 4096:
+        item["flat"] = "".join(runs.get(index, "") + (item["children"][index]["flat"] if index < len(item["children"]) else "") for index in range(len(item["children"]) + 1))
+    if (item["name"]["namespace"], item["name"]["localName"]) in ((XBRLI, "measure"), (XBRLDI, "explicitMember")):
+        item["textQName"] = qname(item["flat"].strip(), namespaces)
+
+
+def source_local(item, local):
+    return item["name"]["namespace"] in (None, "", XHTML) and (item["name"]["localName"] or "").lower() == local
+
+
+def source_descendants(item):
+    pending = list(reversed(item["children"]))
+    while pending:
+        current = pending.pop()
+        yield current
+        pending.extend(reversed(current["children"]))
+
+
+def anchor_residual(item):
+    runs = {run["beforeChildIndex"]: run["text"] for run in item["runs"]}
+    parts = []
+    for index in range(len(item["children"]) + 1):
+        parts.append(runs.get(index, ""))
+        if index < len(item["children"]):
+            child = item["children"][index]
+            if not ((child["name"]["localName"] or "").lower() in BLOCKS and ANCHOR.search(child["flat"])):
+                parts.append(anchor_residual(child))
+    return "".join(parts)
+
+
+def source_xml(item):
+    if item["textLength"] > 4096:
+        fail("structural_limit")
+    for attr in item["attributes"]:
+        bounded(attr["name"])
+        bounded(attr["value"], 4096)
+    return {"elementOrdinal": item["ordinal"], "name": item["name"], "attributes": item["attributes"],
+            "qnameAttributes": item["qnames"], "textQName": item["textQName"], "textRuns": item["runs"],
+            "children": [source_xml(child) for child in item["children"]]}
+
+
+def primary_failure(request, reason):
+    return {"schemaVersion": "1.0.0", "mode": "accession_evidence", "documentSha256": request["documentSha256"],
+            "documentBytes": request["documentBytes"], "cik": request["cik"], "selection": request["selection"],
+            "status": "unavailable", "reason": reason, "concepts": [], "contexts": [], "units": [], "reportingMetadata": None, "structure": None}
+
+
+def occurrence(node, document, concept):
+    attrs = node.attrs
+    for key in ("id", "contextref", "unitref", "name", "format", "sign", "scale", "decimals", "precision"):
+        if key in attrs:
+            bounded(attrs[key])
+    name = qname(attrs.get("name", node.raw_tag), node.namespaces)
+    issues = []
+    if name["localName"] != concept or not gaap_namespace(name["namespace"]):
+        issues.append("invalid_namespace")
+    if any(value is not None and not ID.fullmatch(value) for value in (attrs.get("id"), attrs.get("contextref"), attrs.get("unitref"))):
+        issues.append("invalid_identifier")
+    context = document.contexts.get(attrs.get("contextref"))
+    unit = document.units.get(attrs.get("unitref"))
+    if context is None:
+        issues.append("unresolved_context")
+    if unit is None:
+        issues.append("unresolved_unit")
+    row = {"id": f"f:{node.ordinal}", "elementOrdinal": node.ordinal, "locator": f"/elements/{node.ordinal}", "factId": attrs.get("id"),
+           "concept": name, "rawContextRef": attrs.get("contextref"), "contextRecordId": f"c:{context.ordinal}" if context else None,
+           "rawUnitRef": attrs.get("unitref"), "unitRecordId": f"u:{unit.ordinal}" if unit else None,
+           "rawText": node.text(), "format": qname(attrs["format"], node.namespaces) if "format" in attrs else None,
+           "sign": attrs.get("sign"), "scale": attrs.get("scale"), "decimals": attrs.get("decimals"), "precision": attrs.get("precision"),
+           "value": None, "issues": issues, "elementRecordId": None, "actualTableOrdinal": None, "actualRowOrdinal": None, "actualCellOrdinal": None}
+    row["value"] = numeric(node, row, issues)
+    row["issues"] = list(dict.fromkeys(issues))
+    return row
+
+
+def accession_metadata(document):
+    observations = []
+    for node in document.metadata:
+        attrs = node.attrs
+        for key in ("id", "contextref", "name", "format"):
+            if key in attrs:
+                bounded(attrs[key])
+        name = qname(attrs.get("name", node.raw_tag), node.namespaces)
+        context = document.contexts.get(attrs.get("contextref"))
+        formatting = qname(attrs["format"], node.namespaces) if "format" in attrs else None
+        issues = []
+        if name["namespace"] not in DEI_NAMESPACES or name["localName"] not in DEI_CONCEPTS:
+            issues.append("invalid_namespace")
+        if context is None:
+            issues.append("unresolved_context")
+        if any(value is not None and not ID.fullmatch(value) for value in (attrs.get("id"), attrs.get("contextref"))):
+            issues.append("invalid_identifier")
+        allowed = {"id", "name", "contextref", "format", "footnoterefs", "xmlns"}
+        if node.namespace not in IX or node.local != "nonnumeric" or node.children or node.unsupported_metadata_ancestor or any(key.endswith(":nil") for key in attrs) or any(":" not in key and key not in allowed for key in attrs):
+            issues.append("unsupported_inline")
+        if not metadata_format_supported(name["localName"], formatting):
+            issues.append("unsupported_transform")
+        value = metadata_value(name["localName"], node.text(), formatting) if not issues else None
+        if value is None and not issues:
+            issues.append("invalid_metadata_value")
+        observations.append({"id": f"d:{node.ordinal}", "elementOrdinal": node.ordinal, "locator": f"/elements/{node.ordinal}", "factId": attrs.get("id"),
+                             "concept": name, "rawContextRef": attrs.get("contextref"), "contextRecordId": f"c:{context.ordinal}" if context else None,
+                             "rawText": node.text(), "format": formatting, "value": value, "issues": issues, "elementRecordId": None})
+    fields = []
+    for concept in DEI_CONCEPTS:
+        rows = [row for row in observations if metadata_concept(row["concept"]["localName"]) == concept]
+        values = {row["value"] for row in rows if not row["issues"]}
+        status = "unsupported" if any(row["issues"] for row in rows) else "missing" if not values else "conflicting" if len(values) > 1 else "observed"
+        fields.append({"concept": concept, "status": status, "value": next(iter(values)) if status == "observed" else None, "observationIds": [row["id"] for row in rows]})
+    result = {"fields": fields, "observations": observations}
+    if len(json_bytes(result)) > METADATA_OUTPUT_BYTES:
+        fail("metadata_limit")
+    return result
+
+
+def table_geometry(table):
+    rows = [item for item in source_descendants(table) if source_local(item, "tr") and item["table"] == table["table"]]
+    reasons, projected, occupied = [], [], {}
+    if table["tables"]:
+        reasons.append("nested_table")
+    if len(rows) > 256:
+        fail("structural_limit")
+    for index, row in enumerate(rows):
+        cells = [item for item in source_descendants(row) if item["row"] == row["row"] and item["table"] == table["table"] and (source_local(item, "td") or source_local(item, "th"))]
+        if any(cell["parent"] is not row for cell in cells):
+            if "unsupported_source_structure" not in reasons:
+                reasons.append("unsupported_source_structure")
+        projected_cells, column = [], 0
+        for cell in cells:
+            attrs = {attr["name"].lower(): attr["value"] for attr in cell["attributes"]}
+            spans = [attrs.get("colspan", "1"), attrs.get("rowspan", "1")]
+            if any(not re.fullmatch(r"[1-9][0-9]?", span) or int(span) > 64 for span in spans):
+                if "unsupported_geometry" not in reasons:
+                    reasons.append("unsupported_geometry")
+                continue
+            colspan, rowspan = map(int, spans)
+            while (index, column) in occupied:
+                column += 1
+            if column + colspan > 64 or index + rowspan > len(rows):
+                if "unsupported_geometry" not in reasons:
+                    reasons.append("unsupported_geometry")
+                continue
+            positions = [(r, c) for r in range(index, index + rowspan) for c in range(column, column + colspan)]
+            if any(position in occupied for position in positions):
+                if "unsupported_geometry" not in reasons:
+                    reasons.append("unsupported_geometry")
+                continue
+            for position in positions:
+                occupied[position] = cell["ordinal"]
+            projected_cells.append({"cellRecordId": f"e:{cell['ordinal']}", "columnStart": column, "columnSpan": colspan, "rowSpan": rowspan})
+            column += colspan
+        projected.append({"rowRecordId": f"e:{row['ordinal']}", "cells": projected_cells})
+    return {"tableRecordId": f"e:{table['ordinal']}", "status": "unsupported" if reasons else "complete", "reasons": reasons,
+            "rowRecordIds": [f"e:{row['ordinal']}" for row in rows], "rows": [] if reasons else projected}
+
+
+def accession_structure(document, populations, metadata):
+    source = document.source
+    by_ordinal = {item["ordinal"]: item for item in source}
+    tables, table_rows, row_cells = [], {}, {}
+    for item in source:
+        parent = item["parent"]
+        if parent:
+            item["table"], item["row"], item["cell"] = parent["table"], parent["row"], parent["cell"]
+        if source_local(item, "table"):
+            tables.append(item)
+            item["table"], item["row"], item["cell"] = len(tables), None, None
+        elif source_local(item, "tr") and item["table"]:
+            table_rows[item["table"]] = table_rows.get(item["table"], 0) + 1
+            item["row"], item["cell"] = table_rows[item["table"]], None
+        elif (source_local(item, "td") or source_local(item, "th")) and item["table"] and item["row"]:
+            key = (item["table"], item["row"])
+            row_cells[key] = row_cells.get(key, 0) + 1
+            item["cell"] = row_cells[key]
+    for item in reversed(source):
+        parent = item["parent"]
+        if parent:
+            parent["tables"].extend(([item["table"]] if source_local(item, "table") else []) + item["tables"])
+    # Prefer the smallest complete semantic block. A larger over-budget matching
+    # block is a refusal, never a silently clipped narrative prefix.
+    anchors = []
+    for item in source:
+        local = (item["name"]["localName"] or "").lower()
+        if item["name"]["namespace"] not in (None, "", XHTML) or local not in BLOCKS:
+            continue
+        if item["textLength"] <= 4096 and ANCHOR.search(item["flat"]):
+            if not any((child["name"]["localName"] or "").lower() in BLOCKS and child["textLength"] <= 4096 and ANCHOR.search(child["flat"]) for child in source_descendants(item)) or ANCHOR.search(anchor_residual(item)):
+                anchors.append(item)
+        elif item["textLength"] > 4096 and any(ANCHOR.search(run["text"]) for run in item["runs"]):
+            fail("structural_limit")
+    relevant = {by_ordinal[row["elementOrdinal"]]["table"] for population in populations for row in population["occurrences"]}
+    relevant.discard(None)
+    for anchor in anchors:
+        if anchor["table"]:
+            relevant.add(anchor["table"])
+    balance_tables, caption_ranges = set(), []
+    for anchor in anchors:
+        if anchor["table"] or not re.search(r"statements? of (?:income|operations|earnings|cash flows)|income statements?|balance sheets?", anchor["flat"], re.I):
+            continue
+        current = anchor
+        while current["parent"]:
+            parent = current["parent"]
+            following = parent["children"][current["childIndex"] + 1:]
+            found = False
+            for sibling in following:
+                candidates = ([sibling["table"]] if source_local(sibling, "table") else []) + sibling["tables"]
+                if candidates:
+                    (balance_tables if re.search(r"balance sheets?", anchor["flat"], re.I) else relevant).update(candidates)
+                    # The heading-to-table range owns potential unit captions
+                    # and competing qualifications, even at the body root.
+                    caption_ranges.append(parent["children"][current["childIndex"]:sibling["childIndex"]])
+                    found = True
+                    break
+            if found:
+                break
+            current = parent
+    if len(relevant | balance_tables) > 64:
+        fail("structural_limit")
+    selected, text_selected, windows = set(), set(), []
+
+    def retain(item, full=False):
+        pending = [item]
+        if full:
+            pending.extend(source_descendants(item))
+        for current in pending:
+            selected.add(current["ordinal"])
+            if full:
+                if current["textLength"] > 4096 and not current["children"]:
+                    fail("structural_limit")
+                text_selected.add(current["ordinal"])
+            parent = current["parent"]
+            while parent:
+                selected.add(parent["ordinal"])
+                parent = parent["parent"]
+            if len(selected) > 4096:
+                fail("structural_limit")
+
+    for anchor in anchors:
+        retain(anchor, True)
+        # Cover controls need their actual complete local container, including
+        # unmatched siblings and direct text. Never join controls across parents
+        # or retain the whole document merely because a control is a root child.
+        parent = anchor["parent"]
+        if re.search(r"\b(?:quarterly|transition) report\b", anchor["flat"], re.I) and parent and parent["name"]["namespace"] in (None, "", XHTML) and (parent["name"]["localName"] or "").lower() in BLOCKS:
+            retain(parent, True)
+    for siblings in caption_ranges:
+        for sibling in siblings:
+            retain(sibling, True)
+    for number in sorted(relevant | balance_tables):
+        table = tables[number - 1]
+        retain(table, number in relevant)
+        # Preserve the entire sibling list at each wrapper level. The finite
+        # graph budget, not a guessed proximity radius, bounds caption evidence.
+        current = table
+        while current["parent"]:
+            parent = current["parent"]
+            if source_local(parent, "body") or source_local(parent, "html"):
+                # Root siblings may be unrelated large sections. Their complete
+                # node records still preserve order; text is retained only for
+                # selected anchors and the relevant table/caption wrapper.
+                for sibling in parent["children"]:
+                    retain(sibling)
+            else:
+                for sibling in parent["children"]:
+                    retain(sibling, sibling["textLength"] <= 4096)
+            windows.append({"parentRecordId": f"e:{parent['ordinal']}", "firstChildIndex": 0, "childRecordIds": [f"e:{child['ordinal']}" for child in parent["children"]]})
+            current = parent
+    for population in populations:
+        for row in population["occurrences"]:
+            item = by_ordinal[row["elementOrdinal"]]
+            # Off-table occurrences remain in the full numeric inventory. They
+            # need no redundant structural record merely to block a conflict.
+            row.update(elementRecordId=f"e:{item['ordinal']}" if item["ordinal"] in selected else None,
+                       actualTableOrdinal=item["table"], actualRowOrdinal=item["row"], actualCellOrdinal=item["cell"])
+    for row in metadata["observations"]:
+        item = by_ordinal[row["elementOrdinal"]]
+        retain(item, True)
+        row["elementRecordId"] = f"e:{item['ordinal']}"
+    supplementary = []
+    for item in source:
+        names = {entry["name"]: entry["value"] for entry in item["qnames"]}
+        name = names.get("name")
+        if name is None or item["name"]["namespace"] not in IX:
+            continue
+        registrant = name["namespace"] in DEI_NAMESPACES and name["localName"] == "EntityRegistrantName"
+        cash = item["table"] in relevant and name["localName"] and "Cash" in name["localName"]
+        if not (registrant or cash):
+            continue
+        retain(item, True)
+        if item["textLength"] > 4096:
+            fail("structural_limit")
+        attrs = {attr["name"].lower(): attr["value"] for attr in item["attributes"]}
+        for key in ("id", "contextref", "unitref", "name", "format", "sign", "scale", "decimals", "precision"):
+            if key in attrs:
+                bounded(attrs[key])
+        context = document.contexts.get(attrs.get("contextref"))
+        unit = document.units.get(attrs.get("unitref"))
+        supplementary.append({"id": f"s:{item['ordinal']}", "elementOrdinal": item["ordinal"], "elementRecordId": f"e:{item['ordinal']}", "concept": name,
+                              "rawContextRef": attrs.get("contextref"), "contextRecordId": f"c:{context.ordinal}" if context else None,
+                              "rawUnitRef": attrs.get("unitref"), "unitRecordId": f"u:{unit.ordinal}" if unit else None,
+                              "format": names.get("format"), "rawText": item["flat"], "sign": attrs.get("sign"), "scale": attrs.get("scale"),
+                              "decimals": attrs.get("decimals"), "precision": attrs.get("precision"), "issues": ["unresolved_context"] if context is None else []})
+    records = []
+    for ordinal in sorted(selected):
+        item = by_ordinal[ordinal]
+        attrs = item["attributes"]
+        for attr in attrs:
+            bounded(attr["name"])
+            bounded(attr["value"], 4096)
+        runs = item["runs"] if ordinal in text_selected else None
+        if runs is not None and sum(utf16_length(run["text"]) for run in runs) > 4096:
+            fail("structural_limit")
+        child_ids = [f"e:{child['ordinal']}" for child in item["children"] if child["ordinal"] in selected]
+        records.append({"id": f"e:{ordinal}", "elementOrdinal": ordinal, "endElementOrdinal": item["end"], "name": item["name"], "attributes": attrs,
+                        "parentRecordId": f"e:{item['parent']['ordinal']}" if item["parent"] else None,
+                        "parentElementOrdinal": item["parent"]["ordinal"] if item["parent"] else None,
+                        "childIndex": item["childIndex"], "elementChildCount": len(item["children"]), "descendantTableCount": len(item["tables"]),
+                        "descendantTableOrdinals": sorted(item["tables"]) if len(item["tables"]) <= 64 else None,
+                        "textRuns": runs, "childRecordIds": child_ids, "childrenComplete": len(child_ids) == len(item["children"]),
+                        "actualTableOrdinal": item["table"], "actualRowOrdinal": item["row"], "actualCellOrdinal": item["cell"]})
+    geometry = [table_geometry(tables[number - 1]) for number in sorted(relevant)]
+    reasons = list(dict.fromkeys(reason for table in geometry for reason in table["reasons"]))
+    scripts = [{"elementOrdinal": item["ordinal"], "name": item["name"], "attributes": item["attributes"], "inlineTextCharacters": item["textLength"], "lastDocumentElementOrdinal": document.nodes} for item in source if (item["name"]["localName"] or "").lower() == "script"]
+    for script in scripts:
+        for attr in script["attributes"]:
+            bounded(attr["name"])
+            bounded(attr["value"], 4096)
+    observed = {"elementCount": document.nodes, "styleElements": sum((item["name"]["localName"] or "").lower() == "style" for item in source),
+                "stylesheetLinks": sum((item["name"]["localName"] or "").lower() == "link" and any((attr["localName"] or attr["name"]).lower() == "rel" and "stylesheet" in attr["value"].lower().split() for attr in item["attributes"]) for item in source),
+                "processingInstructions": document.processing_instructions, "scripts": scripts,
+                "eventAttributeCount": sum((attr["localName"] or attr["name"]).lower().startswith("on") for item in source for attr in item["attributes"])}
+    unique_windows = {window["parentRecordId"]: window for window in windows}
+    result = {"profileVersion": "sparse-source-1.0.0", "status": "unsupported" if reasons else "complete", "reasons": reasons,
+              "document": observed, "records": records, "siblingWindows": list(unique_windows.values()), "tables": geometry,
+              "supplementaryFacts": supplementary, "anchorRecordIds": [f"e:{item['ordinal']}" for item in anchors]}
+    if len(json_bytes([metadata, [row for row in supplementary if row["concept"]["localName"] == "EntityRegistrantName"]])) > METADATA_OUTPUT_BYTES:
+        fail("metadata_limit")
+    if len(json_bytes(result)) > 256 * 1024:
+        fail("structural_limit")
+    return result
+
+
+def accession_evidence(document, request):
+    populations = [{"concept": concept, "occurrences": []} for concept in QUARTER_CONCEPTS]
+    for node in document.facts:
+        name = qname(node.attrs.get("name", node.raw_tag), node.namespaces)
+        concept = next((concept for concept in QUARTER_CONCEPTS if concept.lower() == (name["localName"] or "").lower()), None)
+        if concept is None:
+            fail("invalid_namespace")
+        populations[QUARTER_CONCEPTS.index(concept)]["occurrences"].append(occurrence(node, document, concept))
+    metadata = accession_metadata(document)
+    structure = accession_structure(document, populations, metadata)
+    all_rows = [row for group in populations for row in group["occurrences"]] + metadata["observations"] + structure["supplementaryFacts"]
+    contexts, units = [], []
+    for key, collection, output, prefix in (("rawContextRef", document.contexts, contexts, "c"), ("rawUnitRef", document.units, units, "u")):
+        refs = {row.get(key) for row in all_rows}
+        for xml_id, node in collection.items():
+            if xml_id not in refs:
+                continue
+            semantic_nodes = descendants(node)
+            if prefix == "c" and sum(child.namespace == XBRLDI and child.local in ("explicitmember", "typedmember") for child in semantic_nodes) > 32:
+                fail("unsupported_dimensions")
+            if prefix == "u" and sum(child.namespace == XBRLI and child.local == "measure" for child in semantic_nodes) > 32:
+                fail("unsupported_unit")
+            output.append({"id": f"{prefix}:{node.ordinal}", "xmlId": xml_id, "elementOrdinal": node.ordinal, "root": source_xml(document.source[node.ordinal - 1])})
+    result = primary_failure(request, "invalid_document")
+    result.update(status="complete", reason=None, concepts=populations, contexts=contexts, units=units, reportingMetadata=metadata, structure=structure)
+    return result
+
+
+def read_request(request_context=None):
     raw = sys.stdin.buffer.read(INPUT_BYTES + 1)
     if len(raw) > INPUT_BYTES:
         fail("document_limit")
@@ -627,10 +1088,17 @@ def read_request():
             value[key] = item
         return value
     request = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=object_pairs)
-    if not isinstance(request, dict) or set(request) != {"schemaVersion", "documentBase64", "cik", "selection"} or request["schemaVersion"] != SCHEMA_VERSION:
+    accession = isinstance(request, dict) and request.get("mode") == "accession_evidence"
+    expected_keys = {"schemaVersion", "mode", "documentBase64", "documentSha256", "cik", "selection"} if accession else {"schemaVersion", "documentBase64", "cik", "selection"}
+    if not isinstance(request, dict) or set(request) != expected_keys or request["schemaVersion"] != ("1.0.0" if accession else SCHEMA_VERSION):
         fail()
     selection = request["selection"]
-    if not isinstance(selection, dict) or selection.get("concept") not in CONCEPTS or not canonical(selection.get("value")) or not valid_date(selection.get("startDate")) or not valid_date(selection.get("endDate")) or selection["startDate"] > selection["endDate"] or not re.fullmatch(r"[0-9]{10}", request["cik"]) or int(request["cik"]) == 0:
+    if not isinstance(request["cik"], str) or not re.fullmatch(r"[0-9]{10}", request["cik"]) or int(request["cik"]) == 0:
+        fail()
+    if accession:
+        if not isinstance(selection, dict) or set(selection) != {"accessionNumber", "form", "filedDate", "reportDate"} or not isinstance(selection["accessionNumber"], str) or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", selection["accessionNumber"]) or selection["form"] != "10-Q" or not valid_date(selection["filedDate"]) or not valid_date(selection["reportDate"]) or selection["reportDate"] > selection["filedDate"] or not isinstance(request["documentSha256"], str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", request["documentSha256"]):
+            fail("invalid_input")
+    elif not isinstance(selection, dict) or selection.get("concept") not in CONCEPTS or not canonical(selection.get("value")) or not valid_date(selection.get("startDate")) or not valid_date(selection.get("endDate")) or selection["startDate"] > selection["endDate"]:
         fail()
     encoded = request["documentBase64"]
     if not isinstance(encoded, str):
@@ -640,6 +1108,12 @@ def read_request():
         fail("document_limit")
     if base64.b64encode(document).decode("ascii") != encoded:
         fail()
+    if accession:
+        request["documentBytes"] = len(document)
+        if request_context is not None:
+            request_context["request"] = request
+        if request["documentSha256"] != "sha256:" + hashlib.sha256(document).hexdigest():
+            fail("source_hash_mismatch")
     text = document.decode("utf-8-sig", "strict")
     # ASCII is a UTF-8 subset. A declared ASCII document must contain only ASCII
     # bytes, including the prolog: a UTF-8 BOM or non-ASCII byte contradicts it.
@@ -652,19 +1126,20 @@ def read_request():
 
 
 def main():
+    request_context = {}
     try:
-        text, selected, cik = read_request()
-        document = Document(selected["concept"])
+        text, selected, cik = read_request(request_context)
+        document = Document(None if request_context else selected["concept"])
         document.feed(text)
         document.finish()
-        result = analyze(document, selected, cik)
+        result = accession_evidence(document, request_context["request"]) if request_context else analyze(document, selected, cik)
     except Unsupported as error:
-        result = global_failure(error.reason)
+        result = primary_failure(request_context["request"], error.reason) if request_context else global_failure(error.reason)
     except (ValueError, TypeError, KeyError, UnicodeError, RecursionError, OverflowError):
-        result = global_failure("invalid_document")
+        result = primary_failure(request_context["request"], "invalid_document") if request_context else global_failure("invalid_document")
     output = json.dumps(result, ensure_ascii=True, allow_nan=False, separators=(",", ":")) + "\n"
     if len(output.encode("utf-8")) > OUTPUT_BYTES:
-        output = json.dumps(global_failure("output_limit"), separators=(",", ":")) + "\n"
+        output = json.dumps(primary_failure(request_context["request"], "output_limit") if request_context else global_failure("output_limit"), separators=(",", ":")) + "\n"
     sys.stdout.buffer.write(output.encode("utf-8"))
 
 

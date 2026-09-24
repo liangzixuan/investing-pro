@@ -16,7 +16,31 @@ credential protection, and privacy are acceptance requirements. Fix issues
 that block those outcomes within the feature; keep enterprise governance and
 unrelated hardening outside the active personal scope.
 
-## Immediate delivery: Research Desk
+## Immediate delivery: selected-quarter SEC assessment
+
+Add an explicit assessment of one selected unamended 10-Q in company research.
+Preserve every selected or potentially selected Company Facts occurrence across
+all four revenue/net-income concepts and all units, and scan the primary filing
+once for the same complete populations. Source-derived rules must establish the
+current fiscal quarter, principal consolidated statement, complete numeric-column
+ownership, whole-company revenue, parent income and signed USD display.
+
+Return a supported as-filed value only when the evidence establishes it. Otherwise
+show the specific missing premise, conflict or resource refusal. A supported
+individual metric may remain visible when the pair is unresolved. Preserve the
+existing observation inspector, explicit loading and full selection/session
+lifetimes. TTM stays unavailable; no week/stub/transition calendar, amended filing,
+fourth quarter or subtraction-derived value is admitted.
+
+The initial implementation provides this bounded assessment and refusal behavior.
+All four retained real filings exceeded the complete structural-evidence budget;
+none established a supported quarter. Compact complete retention remains a
+prerequisite for demonstrated coverage. Workspace CURRENT.md and the outside-Git
+release handoff record actual verification and activation; preserve the accepted
+runtime until the candidate passes the existing release workflow. See
+[selected-quarter assessment](./PERSONAL_SEC_QUARTER_ASSESSMENT.md).
+
+## Delivered: Research Desk
 
 Implement the owner's selected Research Desk direction: horizontal navigation,
 distinct Discover, Screens, Watchlist, Portfolio and Updates views, compact saved
@@ -32,7 +56,8 @@ The generated companies, data and chart labels are illustrative. React retains
 the existing calculations, exact source data and loading controls. Annual research
 places the trend chart before detailed statements and methodology disclosures.
 No new financial coverage or automatic data acquisition is part of this redesign.
-Release acceptance is pending; workspace CURRENT.md owns actual release status. See
+Release `6c48826daed3448a0171899ef9f21b1fcb1617f1` is accepted; workspace CURRENT.md
+records the source, native/hosted checks, browser limits and running build. See
 [Company research workspace](./PERSONAL_COMPANY_RESEARCH.md).
 
 ## Delivered: larger complete filing-context inspections

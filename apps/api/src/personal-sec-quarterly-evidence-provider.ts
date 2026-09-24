@@ -345,7 +345,13 @@ export {
   normalizeSubmissions as normalizePersonalSecSubmissions,
   validClock as isPersonalSecClock,
   validUserAgent as isPersonalSecUserAgent,
+  normalizeDecimal as normalizePersonalSecSourceDecimal,
 };
+
+/** Exact source JSON number spelling; ordinary numbers and strings are not evidence. */
+export function personalSecSourceNumberLexeme(value: unknown): string | null {
+  return value instanceof SourceNumber ? value.lexeme : null;
+}
 
 function normalizeFacts(value: unknown, cik: string): Facts {
   if (

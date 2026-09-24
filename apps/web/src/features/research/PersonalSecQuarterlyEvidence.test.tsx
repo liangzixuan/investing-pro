@@ -20,6 +20,13 @@ vi.mock("./PersonalSecFilingContext", () => ({
       "data-testid": "filing-context-child",
     }),
 }));
+vi.mock("./PersonalSecQuarterAssessment", () => ({
+  PersonalSecQuarterAssessment: (props: Record<string, unknown>) =>
+    React.createElement("div", {
+      ...props,
+      "data-testid": "quarter-assessment-child",
+    }),
+}));
 vi.mock("react", async (original) => ({
   ...(await original()),
   useState: (initial: unknown) => harness.useState(initial),
@@ -46,6 +53,88 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalSecQuarterlyEvidence", () => {
+  it("ignores callbacks from a prior same-row assessment before and after rendering the new request", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    click(render(), "Assess quarter");
+    const previous = quarterAssessment(render())!;
+    click(render(), "Assess quarter");
+    (previous.props.onClose as () => void)();
+    (previous.props.onSessionUnavailable as () => void)();
+    const current = quarterAssessment(render())!;
+    expect(current.props.requestToken).toBe(2);
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+    (previous.props.onClose as () => void)();
+    expect(quarterAssessment(render())).toBeDefined();
+    (current.props.onClose as () => void)();
+    (current.props.onSessionUnavailable as () => void)();
+    expect(quarterAssessment(render())).toBeUndefined();
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+  });
+  it("opens an amount-free quarter assessment only after the explicit row action", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    expect(quarterAssessment(render())).toBeUndefined();
+    click(render(), "Assess quarter");
+    const child = quarterAssessment(render());
+    expect(child?.props.filing).toEqual({
+      accessionNumber: observation().accessionNumber,
+      form: "10-Q",
+      filedDate: observation().filedDate,
+      reportDate: observation().filing.reportDate,
+    });
+    expect(child?.props.selection).toEqual(props.selection);
+    expect(child?.props.requestToken).toBe(1);
+    expect(api.fetchPersonalSecQuarterlyEvidence).toHaveBeenCalledOnce();
+    click(render(), "Assess quarter");
+    expect(quarterAssessment(render())?.props.requestToken).toBe(2);
+  });
+
+  it("retires the assessment on evidence refresh and ignores its old session callback", async () => {
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    click(render(), "Assess quarter");
+    const child = quarterAssessment(render())!;
+    click(render(), "Refresh SEC quarterly evidence");
+    expect(quarterAssessment(render())).toBeUndefined();
+    (child.props.onSessionUnavailable as () => void)();
+    expect(props.onSessionUnavailable).not.toHaveBeenCalled();
+    await flush();
+    expect(quarterAssessment(render())).toBeUndefined();
+  });
+
+  it("withholds assessment controls for unmatched filing metadata", async () => {
+    const unmatched = response();
+    api.fetchPersonalSecQuarterlyEvidence.mockResolvedValue({
+      ...unmatched,
+      evidence: {
+        ...unmatched.evidence,
+        observations: unmatched.evidence.observations.map((row) => ({
+          ...row,
+          filing: {
+            status: "submissions_unavailable",
+            form: row.form,
+            filedDate: row.filedDate,
+            reportDate: null,
+            acceptedAt: null,
+            sourceUrl: null,
+          },
+        })),
+      },
+    });
+    await mount();
+    click(render(), "Load SEC quarterly evidence");
+    await flush();
+    expect(
+      elements(render()).some(
+        (element) =>
+          element.type === "button" && text(element) === "Assess quarter",
+      ),
+    ).toBe(false);
+  });
   it("waits for an explicit load, binds the exact selection and retains exact dated values", async () => {
     await mount();
     expect(api.fetchPersonalSecQuarterlyEvidence).not.toHaveBeenCalled();
@@ -1063,6 +1152,11 @@ function hasComparison(value: unknown): boolean {
 function filingInspector(value: unknown) {
   return elements(value).find(
     (element) => element.props["data-testid"] === "filing-context-child",
+  );
+}
+function quarterAssessment(value: unknown) {
+  return elements(value).find(
+    (element) => element.props["data-testid"] === "quarter-assessment-child",
   );
 }
 function comparisonRegion(value: unknown) {
