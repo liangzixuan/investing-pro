@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "caseNumber": 78,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "2b2510bc677173d1c9700e9f13c5012a7a0c8a88",
+  "featureRevision": "810f1856521c4a428ef8f9df0697fbb35e69d744",
+  "featureCount": 257,
+  "closureCount": 258,
+  "featureChanges": [
+    {
+      "path": "apps/api/src/personal-market-data-provider.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/personal-market-data-provider.ts", "status": "M" },
+    {
+      "path": "apps/api/src/personal-security-master-routes.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/personal-security-master-routes.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/api/src/workspace-market-data-routes.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/api/src/workspace-market-data-routes.ts", "status": "M" },
+    { "path": "apps/web/app/company/[listingId]/page.tsx", "status": "A" },
+    { "path": "apps/web/app/discover/page.tsx", "status": "M" },
+    { "path": "apps/web/app/layout.tsx", "status": "M" },
+    { "path": "apps/web/app/markets/page.tsx", "status": "A" },
+    { "path": "apps/web/app/page.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/MarketsHome.test.tsx",
+      "status": "A"
+    },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "A" },
+    {
+      "path": "apps/web/src/features/markets/market-board-loader.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/market-board-loader.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/features/markets/markets.css", "status": "A" },
+    {
+      "path": "apps/web/src/features/markets/useMarketsSnapshot.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/useMarketsSnapshot.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalComparisonPrices.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalComparisonPrices.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFcffDcfValuation.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFcffDcfValuation.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalHistoricalMultipleValuation.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalHistoricalMultipleValuation.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPortfolio.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPortfolio.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPortfolioHistoryCoverage.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPortfolioHistoryCoverage.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPriceValuationScreen.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalPriceValuationScreen.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PriceHistoryChart.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PriceHistoryChart.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/workspace/PersonalWorkspaceRoutes.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/PersonalWorkspaceRoutes.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/WorkspaceSearch.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/useWorkspaceCompanyRoute.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/useWorkspaceCompanyRoute.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/workspace-route.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/workspace/workspace-route.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/features/workspace/workspace.css", "status": "A" },
+    {
+      "path": "apps/web/src/lib/personal-market-snapshot.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/lib/personal-market-snapshot.ts", "status": "A" },
+    {
+      "path": "apps/web/src/lib/personal-portfolio-history.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/web/src/lib/personal-portfolio-history.ts", "status": "M" },
+    {
+      "path": "apps/web/src/lib/personal-portfolio-valuation-history.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-portfolio-valuation-history.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-workspace-api.test.ts",
+      "status": "M"
+    },
+    { "path": "apps/web/src/lib/personal-workspace-api.ts", "status": "M" },
+    { "path": "apps/web/src/research-page-mode.test.tsx", "status": "M" },
+    { "path": "docs/BUILD_ROADMAP.md", "status": "M" },
+    { "path": "docs/CAPABILITY_STATUS.md", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/DELIVERY_HISTORY.md", "status": "A" },
+    { "path": "docs/ENGINEERING_AUDIT.md", "status": "A" },
+    { "path": "docs/PERSONAL_COMPARISON_PRICES.md", "status": "M" },
+    { "path": "docs/PERSONAL_PORTFOLIO.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRICE_VALUATION_SCREEN.md", "status": "M" },
+    { "path": "docs/PERSONAL_PRODUCT_BREADTH_ROADMAP.md", "status": "M" },
+    { "path": "docs/PRODUCT_ROADMAP.md", "status": "A" },
+    { "path": "docs/RELEASE_CLASSIFICATION.md", "status": "M" },
+    { "path": "docs/SANITIZED_PRODUCT_BRIEF.md", "status": "M" },
+    { "path": "packages/contracts/openapi/openapi.yaml", "status": "M" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    { "path": "packages/contracts/src/openapi.test.ts", "status": "M" },
+    {
+      "path": "packages/personal-market-analytics/src/index.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/personal-market-analytics/src/personal-market-board.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-market-analytics/src/personal-market-board.ts",
+      "status": "A"
+    },
+    { "path": "packages/personal-security-master/src/index.ts", "status": "M" },
+    {
+      "path": "packages/personal-security-master/src/personal-security-master-lookup.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-security-master/src/personal-security-master.ts",
+      "status": "M"
+    },
+    { "path": "scripts/release-classification-paths.test.ts", "status": "A" },
+    { "path": "scripts/release-classification-render.ts", "status": "M" },
+    { "path": "scripts/release-classification.test.ts", "status": "M" },
+    { "path": "scripts/release-classification.ts", "status": "M" },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" },
+    { "path": "specs/001-markets-home/plan.md", "status": "A" },
+    { "path": "specs/001-markets-home/spec.md", "status": "A" },
+    { "path": "specs/001-markets-home/tasks.md", "status": "A" },
+    { "path": "specs/README.md", "status": "A" },
+    { "path": "specs/SPEC_KIT_LICENSE.txt", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka78.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka78.json",
+  "presentation": {
+    "featureDescription": "Markets home and direct company navigation",
+    "closureDescription": "generated routing closure for Markets home and direct company navigation",
+    "inventoryDescription": "bounded EOD board, independent feeds, exact catalog lookup and shared workspace routes",
+    "testBinding": "marketshome",
+    "routingDescription": "Markets routes preserve exact identities, workspace drafts and existing provider boundaries",
+    "summaryDescription": "add a bounded market board with adjusted history and direct company research"
+  }
+}
