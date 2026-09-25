@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "caseNumber": 81,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "481522e55f746db1cb2ab4ba3951b979fd112c39",
+  "featureRevision": "65515b17ef2c6960a7f64ae0084c5b2709516491",
+  "featureCount": 263,
+  "closureCount": 264,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "M" },
+    { "path": "apps/web/src/features/markets/markets.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/company-overview.css",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/workspace/workspace.css", "status": "M" },
+    { "path": "design-qa.md", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "specs/004-market-atlas-layout/plan.md", "status": "A" },
+    { "path": "specs/004-market-atlas-layout/spec.md", "status": "A" },
+    { "path": "specs/004-market-atlas-layout/tasks.md", "status": "A" },
+    { "path": "specs/README.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka81.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka81.json",
+  "presentation": {
+    "featureDescription": "Light Market Atlas navigation and retained company research context",
+    "closureDescription": "generated routing closure for the Market Atlas layout",
+    "inventoryDescription": "shared light navigation, compact market board and retained company research layout",
+    "testBinding": "marketatlaslayout",
+    "routingDescription": "Market Atlas presentation preserves explicit data loading and persistent research state",
+    "summaryDescription": "apply a shared light layout to Markets and company research"
+  }
+}
