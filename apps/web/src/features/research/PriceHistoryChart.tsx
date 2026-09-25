@@ -153,7 +153,7 @@ function priceHistoryChartOption(
     color: ["#176b56", "#163146"],
     dataZoom: [{ type: "inside", xAxisIndex: [0, 1] }],
     grid: [
-      { bottom: 112, left: 62, right: 24, top: 28 },
+      { bottom: 128, left: 62, right: 24, top: 28 },
       { bottom: 42, height: 48, left: 62, right: 24 },
     ],
     tooltip: {
@@ -165,7 +165,7 @@ function priceHistoryChartOption(
     },
     xAxis: [
       {
-        axisLabel: { color: "#626b67", hideOverlap: true },
+        axisLabel: { show: false },
         axisLine: { lineStyle: { color: "#cad1cc" } },
         axisTick: { show: false },
         data: dates,
@@ -173,7 +173,7 @@ function priceHistoryChartOption(
         type: "category",
       },
       {
-        axisLabel: { show: false },
+        axisLabel: { color: "#626b67", hideOverlap: true, margin: 8 },
         axisLine: { show: false },
         axisTick: { show: false },
         data: dates,
@@ -192,10 +192,11 @@ function priceHistoryChartOption(
         type: "value",
       },
       {
-        axisLabel: { color: "#626b67" },
+        axisLabel: { color: "#626b67", hideOverlap: true },
         gridIndex: 1,
         name: "Volume",
         nameTextStyle: { color: "#78817d" },
+        splitNumber: 2,
         splitLine: { show: false },
         type: "value",
       },

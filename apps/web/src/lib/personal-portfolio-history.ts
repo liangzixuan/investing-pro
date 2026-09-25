@@ -1,6 +1,6 @@
 import {
   projectPersonalPortfolioLedger,
-  type PersonalMarketOverviewDto,
+  type PersonalMarketDataHistoryDto,
   type PersonalPortfolioLedgerPayload,
 } from "@research-cockpit/contracts";
 
@@ -37,7 +37,7 @@ export interface PortfolioHistoryAssessment {
 export function assessPortfolioHistory(
   ledger: PersonalPortfolioLedgerPayload,
   listingId: string,
-  history: PersonalMarketOverviewDto["history"],
+  history: PersonalMarketDataHistoryDto,
 ): PortfolioHistoryAssessment | null {
   if (
     projectPersonalPortfolioLedger(ledger).status !== "valid" ||
@@ -166,10 +166,11 @@ export function assessPortfolioHistory(
 // The adapter validates the full DTO. This consumer additionally bounds and
 // checks only the observations it uses, so malformed dates or decimal text
 // cannot produce a false match, implicit interpolation or a BigInt exception.
-function usableHistory(history: PersonalMarketOverviewDto["history"]): boolean {
+function usableHistory(history: PersonalMarketDataHistoryDto): boolean {
   if (
     typeof history !== "object" ||
     history === null ||
+    history.currency !== "USD" ||
     !Array.isArray(history.bars) ||
     history.bars.length > 4_096 ||
     !calendarDate(history.startDate) ||

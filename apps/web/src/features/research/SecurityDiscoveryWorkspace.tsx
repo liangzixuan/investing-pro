@@ -20,12 +20,21 @@ import {
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
 import Link from "next/link";
+import { WorkspaceSearch } from "../workspace/WorkspaceSearch";
+import type { MarketsHomeProps } from "../markets/MarketsHome";
+import {
+  companyHref,
+  workspaceTaskHref,
+  type WorkspaceRoute,
+} from "../workspace/workspace-route";
+import { useWorkspaceCompanyRoute } from "../workspace/useWorkspaceCompanyRoute";
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
   type MouseEvent,
+  type ReactNode,
 } from "react";
 
 import {
@@ -147,6 +156,7 @@ interface WorkspaceManualPeerState extends PersonalManualPeerState {
 
 type CompanyResearchOrigin =
   | "search"
+  | "markets"
   | "catalog"
   | "financials"
   | "portfolio"
@@ -156,7 +166,7 @@ type CompanyResearchOrigin =
   | "financialPriceScreen";
 
 type WorkspaceTask =
-  "discover" | "screens" | "watchlist" | "portfolio" | "updates";
+  "markets" | "discover" | "screens" | "watchlist" | "portfolio" | "updates";
 type ScreenView = "catalog" | "financial" | "price";
 type UpdatesView = "filings" | "monitor";
 interface WorkspaceView {
@@ -170,6 +180,7 @@ interface WorkspaceView {
 const COMPANY_RESEARCH_ORIGINS: Readonly<
   Record<CompanyResearchOrigin, Readonly<{ label: string; headingId: string }>>
 > = {
+  markets: { label: "Back to Markets", headingId: "markets-title" },
   search: { label: "Back to search results", headingId: "search-title" },
   catalog: {
     label: "Back to catalog results",
@@ -232,9 +243,18 @@ const WORKSPACE_PRIMARY_LINKS = [
 
 class WorkspaceSnapshotChangedError extends Error {}
 
+export interface SecurityDiscoveryWorkspaceProps {
+  readonly authMode?: "account" | "bootstrap" | "local";
+  readonly route?: WorkspaceRoute;
+  readonly onNavigate?: (href: string) => void;
+  readonly renderMarkets?: (props: MarketsHomeProps) => ReactNode;
+}
 export function SecurityDiscoveryWorkspace({
   authMode = "bootstrap",
-}: { authMode?: "account" | "bootstrap" | "local" } = {}) {
+  route,
+  onNavigate,
+  renderMarkets,
+}: SecurityDiscoveryWorkspaceProps = {}) {
   const [workspace, setWorkspace] = useState<LoadedWorkspace | null>(null);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>({
     task: "discover",
@@ -371,6 +391,7 @@ export function SecurityDiscoveryWorkspace({
   const valuationHistoryController = useRef<AbortController | null>(null);
   const manualPeerControllers = useRef(new Map<string, ManualPeerRequest>());
   const ownerActivityStart = useRef<OwnerSessionActivityStart | null>(null);
+  const [ownerActivityReady, setOwnerActivityReady] = useState(false);
   const workspaceActivityReady = useRef(false);
   const renderedWorkspaceEpoch = workspaceEpoch.current;
   const renderedCompanyEpoch = companySelectionEpoch.current;
@@ -763,6 +784,7 @@ export function SecurityDiscoveryWorkspace({
   const handleOwnerActivityChange = useCallback(
     (start: OwnerSessionActivityStart | null) => {
       ownerActivityStart.current = start;
+      setOwnerActivityReady(start !== null);
     },
     [],
   );
@@ -785,6 +807,7 @@ export function SecurityDiscoveryWorkspace({
     async (active: boolean, signal: AbortSignal) => {
       workspaceActivityReady.current = false;
       ownerActivityStart.current = null;
+      setOwnerActivityReady(false);
       const epoch = ++workspaceEpoch.current;
       searchEpoch.current += 1;
       replaceWorkspace(null);
@@ -874,6 +897,7 @@ export function SecurityDiscoveryWorkspace({
       setLocalAccessInvalidation((value) => value + 1);
     workspaceActivityReady.current = false;
     ownerActivityStart.current = null;
+    setOwnerActivityReady(false);
     workspaceEpoch.current += 1;
     searchEpoch.current += 1;
     replaceWorkspace(null);
@@ -1004,6 +1028,7 @@ export function SecurityDiscoveryWorkspace({
     setPortfolioSelection(portfolioIdentity(identity));
     companyNavigationEpoch.current += 1;
     replaceWorkspaceView({ task: "portfolio", research: false });
+    onNavigate?.(workspaceTaskHref("portfolio"));
     if (typeof document !== "undefined") {
       afterViewRender(() =>
         document.getElementById("personal-portfolio")?.focus(),
@@ -1046,6 +1071,11 @@ export function SecurityDiscoveryWorkspace({
         ...viewForCompanyOrigin(companyOrigin),
         research: false,
       });
+      onNavigate?.(
+        workspaceTaskHref(
+          viewForCompanyOrigin(companyOrigin).task ?? "discover",
+        ),
+      );
       afterViewRender(() => {
         if (
           typeof document === "undefined" ||
@@ -1073,21 +1103,24 @@ export function SecurityDiscoveryWorkspace({
       | PersonalSecurityMasterScreenRowDto,
     explicitOrigin?: CompanyOriginTarget,
     fromContext = false,
+    fromRoute = false,
   ) {
     const originView = viewForCompanyOrigin(origin);
     if (
       workspace === null ||
-      workspaceView.epoch !== currentWorkspaceView.current.epoch ||
+      (!fromRoute &&
+        workspaceView.epoch !== currentWorkspaceView.current.epoch) ||
       renderedWorkspaceEpoch !== workspaceEpoch.current ||
       !workspaceActivityReady.current ||
-      (fromContext
-        ? !currentWorkspaceView.current.research
-        : currentWorkspaceView.current.research ||
-          currentWorkspaceView.current.task !== originView.task ||
-          (originView.screen !== undefined &&
-            currentWorkspaceView.current.screen !== originView.screen) ||
-          (originView.updates !== undefined &&
-            currentWorkspaceView.current.updates !== originView.updates)) ||
+      (!fromRoute &&
+        (fromContext
+          ? !currentWorkspaceView.current.research
+          : currentWorkspaceView.current.research ||
+            currentWorkspaceView.current.task !== originView.task ||
+            (originView.screen !== undefined &&
+              currentWorkspaceView.current.screen !== originView.screen) ||
+            (originView.updates !== undefined &&
+              currentWorkspaceView.current.updates !== originView.updates))) ||
       explicitOrigin?.isCurrent?.() === false
     )
       return;
@@ -1095,7 +1128,8 @@ export function SecurityDiscoveryWorkspace({
     const identityKey = companyResearchIdentityKey(identity);
     replaceCompanyWatchlistCandidate(
       admittedResult !== undefined &&
-        (origin === "search" ||
+        (origin === "markets" ||
+          origin === "search" ||
           origin === "catalog" ||
           origin === "financials" ||
           origin === "financialPriceScreen") &&
@@ -1187,6 +1221,7 @@ export function SecurityDiscoveryWorkspace({
       );
     });
     selectCompanyIdentity(identity, origin);
+    if (!fromRoute) onNavigate?.(companyHref(identity.listingId));
   }
 
   function moveResearchCompany(direction: -1 | 1) {
@@ -1223,6 +1258,7 @@ export function SecurityDiscoveryWorkspace({
     currentContextPage.current = Math.floor(index / WATCHLIST_PAGE_SIZE);
     setContextPage(currentContextPage.current);
     selectCompanyIdentity(member, "watchlist");
+    onNavigate?.(companyHref(member.listingId));
     const selectionEpoch = companySelectionEpoch.current;
     afterViewRender(() => {
       if (
@@ -1308,6 +1344,11 @@ export function SecurityDiscoveryWorkspace({
         research: false,
       });
       closeMarketView();
+      onNavigate?.(
+        workspaceTaskHref(
+          viewForCompanyOrigin(companyOrigin).task ?? "discover",
+        ),
+      );
       const navigation = companyNavigationEpoch.current;
       afterViewRender(() => {
         if (
@@ -1648,6 +1689,7 @@ export function SecurityDiscoveryWorkspace({
     try {
       const loaded = await fetchPersonalMarketOverview(
         {
+          includeQuote: true,
           listingId: selection.listingId,
           range,
           symbol: selection.symbol,
@@ -2561,6 +2603,7 @@ export function SecurityDiscoveryWorkspace({
     if (!isCurrentDeskControl(event.currentTarget)) return;
     companyNavigationEpoch.current += 1;
     replaceWorkspaceView({ ...next, research: false });
+    if (next.task !== undefined) onNavigate?.(workspaceTaskHref(next.task));
     afterViewRender(() => {
       const target = document.getElementById(targetId);
       if (
@@ -2581,17 +2624,126 @@ export function SecurityDiscoveryWorkspace({
     navigateDesk(
       event,
       { task },
-      task === "discover"
-        ? "discover-title"
-        : task === "watchlist"
-          ? "watchlist-title"
-          : task === "portfolio"
-            ? "personal-portfolio-title"
-            : task === "screens"
-              ? "desk-screens-title"
-              : "desk-updates-title",
+      task === "markets"
+        ? "markets-title"
+        : task === "discover"
+          ? "discover-title"
+          : task === "watchlist"
+            ? "watchlist-title"
+            : task === "portfolio"
+              ? "personal-portfolio-title"
+              : task === "screens"
+                ? "desk-screens-title"
+                : "desk-updates-title",
     );
   }
+
+  const routeIsCurrent = () =>
+    workspace !== null &&
+    workspace.snapshot.snapshotSha256 ===
+      watchlistView.current.workspace?.snapshot.snapshotSha256 &&
+    renderedWorkspaceEpoch === workspaceEpoch.current &&
+    workspaceActivityReady.current &&
+    ownerActivityStart.current !== null;
+  const companyRouteStatus = useWorkspaceCompanyRoute({
+    route,
+    enabled: workspace !== null && ownerActivityReady,
+    catalogSnapshotSha256: workspace?.snapshot.snapshotSha256 ?? null,
+    sessionKey: renderedWorkspaceEpoch,
+    selectedListingId: marketSelection?.listingId ?? null,
+    isCurrent: routeIsCurrent,
+    onActivityStart: handleFinancialActivityStart,
+    onSessionUnavailable: clearWorkspaceForSessionLoss,
+    onView: (next) => {
+      if (!routeIsCurrent()) return;
+      if (next.kind === "company") {
+        if (marketSelection?.listingId === next.listingId) {
+          if (!currentWorkspaceView.current.research)
+            replaceWorkspaceView({ research: true });
+        } else {
+          closeMarketView();
+          replaceWorkspaceView({ task: "markets", research: false });
+        }
+        return;
+      }
+      const task = next.kind === "discover" ? next.task : "markets";
+      if (
+        currentWorkspaceView.current.task === task &&
+        !currentWorkspaceView.current.research
+      )
+        return;
+      const origin = companyOriginTarget.current;
+      const returning = currentWorkspaceView.current.research;
+      replaceWorkspaceView({ task, research: false });
+      if (returning)
+        afterViewRender(() => {
+          if (routeIsCurrent() && !currentWorkspaceView.current.research) {
+            if (origin !== null) focusCompanyOrigin(origin);
+            else
+              focusCompanyTarget(
+                document.getElementById(
+                  task === "markets" ? "markets-title" : "discover-title",
+                ),
+              );
+          }
+        });
+    },
+    onResolved: (row, isCurrent) => {
+      if (!routeIsCurrent() || !isCurrent()) return;
+      selectMarketSecurity(
+        row,
+        "markets",
+        row,
+        { headingId: "markets-title", trigger: null, isCurrent },
+        false,
+        true,
+      );
+    },
+  });
+  const marketsActive = route?.kind === "markets" && !workspaceView.research;
+  const marketProps: MarketsHomeProps = {
+    active: marketsActive,
+    enabled: workspace !== null && ownerActivityReady,
+    catalogSnapshotSha256: workspace?.snapshot.snapshotSha256 ?? null,
+    sessionKey: renderedWorkspaceEpoch,
+    providerStatus: marketDataStatus,
+    isCurrent: routeIsCurrent,
+    onActivityStart: handleFinancialActivityStart,
+    onSessionUnavailable: clearWorkspaceForSessionLoss,
+    onOpenCompany: (identity, origin, overview) => {
+      if (!routeIsCurrent() || !marketsActive || !isCurrentDeskControl(origin))
+        return;
+      selectMarketSecurity(identity, "markets", identity, {
+        headingId: "markets-title",
+        trigger: origin,
+        isCurrent: routeIsCurrent,
+      });
+      if (
+        overview !== null &&
+        routeIsCurrent() &&
+        companyIdentity.current ===
+          companyResearchIdentityKey(portfolioIdentity(identity)) &&
+        overview.window.range === "1m" &&
+        overview.history.status === "available" &&
+        overview.history.value.range === "1m" &&
+        (
+          [
+            "country",
+            "exchangeMic",
+            "issuerName",
+            "listingId",
+            "securityName",
+            "symbol",
+          ] as const
+        ).every((field) => overview.security[field] === identity[field])
+      ) {
+        setMarketOverview(overview);
+        setMarketRange("1m");
+        setMarketRequestState("idle");
+        setMarketErrorCode(null);
+      }
+    },
+  };
 
   const noteEditorMember = workspace?.watchlist.memberships.find(
     (member) => companyResearchIdentityKey(member) === editingNoteIdentity,
@@ -2721,17 +2873,63 @@ export function SecurityDiscoveryWorkspace({
         Skip to security discovery
       </a>
       <header className="app-header personal-app-header research-desk-header">
-        <Link className="wordmark" href="/discover">
+        <Link
+          className="wordmark"
+          href={route === undefined ? "/discover" : "/markets"}
+        >
           <span>RC</span> Research Cockpit
         </Link>
+        {route !== undefined && (
+          <WorkspaceSearch
+            query={query}
+            busy={searchState === "loading"}
+            disabled={workspace === null}
+            onChange={(value, origin) => {
+              if (
+                routeIsCurrent() &&
+                isCurrentDeskControl(origin) &&
+                value.length <= 128
+              )
+                setQuery(value);
+            }}
+            onSearch={(origin) => {
+              if (
+                !routeIsCurrent() ||
+                !isCurrentDeskControl(origin) ||
+                searchState === "loading"
+              )
+                return;
+              companyNavigationEpoch.current += 1;
+              replaceWorkspaceView({ task: "discover", research: false });
+              onNavigate?.("/discover");
+              void runSearch();
+              afterViewRender(() => {
+                if (
+                  routeIsCurrent() &&
+                  !currentWorkspaceView.current.research &&
+                  currentWorkspaceView.current.task === "discover"
+                )
+                  focusCompanyTarget(document.getElementById("search-title"));
+              });
+            }}
+          />
+        )}
         {workspace !== null && (
           <nav aria-label="Workspace sections" className="workspace-navigation">
             <div className="workspace-navigation-primary">
-              {WORKSPACE_PRIMARY_LINKS.map(([task, label]) => (
+              {(route === undefined
+                ? WORKSPACE_PRIMARY_LINKS
+                : ([
+                    ["markets", "Markets"],
+                    ...WORKSPACE_PRIMARY_LINKS,
+                  ] as const)
+              ).map(([task, label]) => (
                 <button
                   type="button"
                   aria-current={
-                    workspaceView.task === task ? "page" : undefined
+                    !workspaceView.research && workspaceView.task === task
+                      ? "page"
+                      : undefined
                   }
                   key={task}
                   onClick={(event) => navigateTask(event, task)}
@@ -2763,6 +2961,33 @@ export function SecurityDiscoveryWorkspace({
         className="research-shell discovery-shell research-desk-main"
         id="main-content"
       >
+        {renderMarkets !== undefined && (
+          <div hidden={!marketsActive}>{renderMarkets(marketProps)}</div>
+        )}
+        {workspace !== null && route?.kind === "invalid" && (
+          <section role="alert">
+            <h1>Workspace page unavailable</h1>
+            <p>Choose Markets or Discover to continue.</p>
+          </section>
+        )}
+        {workspace !== null &&
+          route?.kind === "company" &&
+          (marketSelection?.listingId !== route.listingId ||
+            !workspaceView.research) && (
+            <section aria-live="polite">
+              <h1>
+                {companyRouteStatus === "missing"
+                  ? "Company is not in the current catalog"
+                  : companyRouteStatus === "unavailable"
+                    ? "Company could not be resolved"
+                    : "Resolving company…"}
+              </h1>
+              <p>
+                Only an exact current catalog listing can open research.
+                Provider data loads separately.
+              </p>
+            </section>
+          )}
         {workspace === null ? (
           <section className="personal-locked-state" aria-live="polite">
             <p className="eyebrow">
@@ -3067,7 +3292,11 @@ export function SecurityDiscoveryWorkspace({
             <div
               className="desk-task-view"
               id="desk-view-research"
-              hidden={!workspaceView.research}
+              hidden={
+                !workspaceView.research ||
+                (route?.kind === "company" &&
+                  route.listingId !== marketSelection?.listingId)
+              }
             >
               <button
                 className="desk-company-toggle secondary-action compact-action"
@@ -4011,6 +4240,8 @@ function viewForCompanyOrigin(
   origin: CompanyResearchOrigin,
 ): Partial<Omit<WorkspaceView, "epoch">> {
   switch (origin) {
+    case "markets":
+      return { task: "markets" };
     case "search":
       return { task: "discover" };
     case "watchlist":

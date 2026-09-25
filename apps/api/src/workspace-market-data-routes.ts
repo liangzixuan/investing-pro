@@ -50,6 +50,7 @@ const LISTING_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SYMBOL = /^[A-Z0-9][A-Z0-9.-]{0,31}$/u;
 
 interface OverviewRequest {
+  readonly includeQuote: boolean;
   readonly listingId: string;
   readonly range: PersonalMarketDataRangeDto;
   readonly symbol: string;
@@ -65,7 +66,7 @@ interface QuarterlyFinancialsRequest {
   readonly symbol: string;
 }
 
-type ValuationHistoryRequest = OverviewRequest;
+type ValuationHistoryRequest = Omit<OverviewRequest, "includeQuote">;
 
 export function registerPersonalWorkspaceMarketDataRoutes(
   app: FastifyInstance,
@@ -135,9 +136,17 @@ export function registerPersonalWorkspaceMarketDataRoutes(
         const overview = await provider.loadOverview(
           identity,
           body.range,
+          body.includeQuote,
           abortController.signal,
         );
-        if (!matchesRequestedOverview(overview, identity, body.range)) {
+        if (
+          !matchesRequestedOverview(
+            overview,
+            identity,
+            body.range,
+            body.includeQuote,
+          )
+        ) {
           return sendMarketDataProblem(reply, request, 502);
         }
         return reply.type("application/json; charset=utf-8").send(overview);
@@ -390,6 +399,18 @@ function parseOverviewRequest(value: unknown): OverviewRequest | undefined {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return undefined;
   }
+  const { includeQuote, ...rest } = value as Record<string, unknown>;
+  if (typeof includeQuote !== "boolean") return undefined;
+  const request = parseValuationHistoryRequest(rest);
+  return request === undefined ? undefined : { ...request, includeQuote };
+}
+
+function parseValuationHistoryRequest(
+  value: unknown,
+): ValuationHistoryRequest | undefined {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
   const record = value as Record<string, unknown>;
   const keys = Object.keys(record).sort();
   if (
@@ -439,12 +460,6 @@ function parseQuarterlyFinancialsRequest(
   value: unknown,
 ): QuarterlyFinancialsRequest | undefined {
   return parseAnnualFinancialsRequest(value);
-}
-
-function parseValuationHistoryRequest(
-  value: unknown,
-): ValuationHistoryRequest | undefined {
-  return parseOverviewRequest(value);
 }
 
 function resolveIdentity(
@@ -596,20 +611,29 @@ function matchesRequestedOverview(
   overview: PersonalMarketOverviewDto,
   identity: PersonalMarketDataIdentityDto,
   range: PersonalMarketDataRangeDto,
+  includeQuote: boolean,
 ): boolean {
   if (overview === null || typeof overview !== "object") return false;
-  const history = Reflect.get(overview, "history") as unknown;
+  const window = Reflect.get(overview, "window") as unknown;
+  const quote = Reflect.get(overview, "quote") as unknown;
   const security = Reflect.get(overview, "security") as unknown;
   if (
-    history === null ||
-    typeof history !== "object" ||
+    window === null ||
+    typeof window !== "object" ||
+    quote === null ||
+    typeof quote !== "object" ||
     security === null ||
     typeof security !== "object"
   ) {
     return false;
   }
   return (
-    Reflect.get(history, "range") === range &&
+    Reflect.get(window, "range") === range &&
+    (includeQuote
+      ? ["available", "unavailable"].includes(
+          Reflect.get(quote, "status") as string,
+        )
+      : Reflect.get(quote, "status") === "not_requested") &&
     Reflect.get(security, "country") === identity.country &&
     Reflect.get(security, "exchangeMic") === identity.exchangeMic &&
     Reflect.get(security, "issuerName") === identity.issuerName &&

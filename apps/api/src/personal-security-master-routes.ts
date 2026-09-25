@@ -1,4 +1,5 @@
 import type {
+  PersonalSecurityMasterListingResponseDto,
   PersonalSecurityMasterSearchResponseDto,
   PersonalSecurityMasterSnapshotReceiptDto,
   PersonalSecurityMasterStatusDto,
@@ -6,6 +7,7 @@ import type {
 } from "@research-cockpit/contracts";
 import {
   PERSONAL_SECURITY_MASTER_LIMITS,
+  lookupPersonalSecurityMasterListing,
   searchPersonalSecurityMaster,
   type PersonalSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
@@ -25,11 +27,15 @@ export const PERSONAL_SECURITY_MASTER_STATUS_PATH =
   "/v1/personal-filing/security-master/status" as const;
 export const PERSONAL_SECURITY_MASTER_SEARCH_PATH =
   "/v1/personal-filing/security-master/search" as const;
+export const PERSONAL_SECURITY_MASTER_LISTINGS_PATH =
+  "/v1/personal-filing/security-master/listings" as const;
 
 const DEFAULT_SEARCH_LIMIT = 10;
 const MAXIMUM_RAW_SEARCH_URL_CODE_UNITS = 2_048;
 const CONTROL_FORMAT_OR_SURROGATE_CHARACTER = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 const parsedSearchRequests = new WeakMap<FastifyRequest, ParsedSearchRequest>();
+const parsedListingRequests = new WeakMap<FastifyRequest, string>();
+const LISTING_ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
 
 interface ParsedSearchRequest {
   readonly canonicalUrl: string;
@@ -69,6 +75,54 @@ export function registerPersonalSecurityMasterRoutes(
         snapshot: snapshotReceipt(catalog),
       };
       return reply.type("application/json; charset=utf-8").send(response);
+    },
+  );
+
+  app.get(
+    // Validate the raw path below so the catalog's 128-character IDs are not
+    // truncated by the router's default 100-character named-parameter limit.
+    `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/*`,
+    {
+      exposeHeadRoute: false,
+      onRequest: async (request, reply) => {
+        const listingId = parseCanonicalListingUrl(request.url);
+        if (
+          listingId === undefined ||
+          !authorizePersonalRouteRequest(
+            request,
+            ownerSession,
+            listenOptions,
+            `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/${encodeURIComponent(listingId)}`,
+          )
+        ) {
+          return sendPersonalOwnerSessionProblem(reply, request);
+        }
+        parsedListingRequests.set(request, listingId);
+      },
+    },
+    (request, reply) => {
+      const listingId = parsedListingRequests.get(request);
+      parsedListingRequests.delete(request);
+      if (listingId === undefined)
+        return sendPersonalOwnerSessionProblem(reply, request);
+      try {
+        const response: PersonalSecurityMasterListingResponseDto = {
+          listing: lookupPersonalSecurityMasterListing(catalog, listingId),
+          snapshot: snapshotReceipt(catalog),
+        };
+        return reply.type("application/json; charset=utf-8").send(response);
+      } catch {
+        const problem: ProblemDetailsDto = {
+          type: "https://research-cockpit.local/problems/400",
+          title: "Invalid request",
+          status: 400,
+          detail:
+            "The personal security-master listing request was not accepted.",
+          instance: PERSONAL_SECURITY_MASTER_LISTINGS_PATH,
+          traceId: request.id,
+        };
+        return reply.status(400).type("application/problem+json").send(problem);
+      }
     },
   );
 
@@ -129,6 +183,21 @@ export function registerPersonalSecurityMasterRoutes(
       }
     },
   );
+}
+
+function parseCanonicalListingUrl(value: string): string | undefined {
+  const prefix = `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/`;
+  if (!value.startsWith(prefix) || value.length > prefix.length + 384)
+    return undefined;
+  const rawId = value.slice(prefix.length);
+  try {
+    const listingId = decodeURIComponent(rawId);
+    return LISTING_ID.test(listingId) && encodeURIComponent(listingId) === rawId
+      ? listingId
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function parseCanonicalSecurityMasterSearchUrl(

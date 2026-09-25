@@ -340,6 +340,11 @@ export interface PersonalSecurityMasterScreenRowDto {
   readonly symbol: string;
 }
 
+export interface PersonalSecurityMasterListingResponseDto {
+  readonly listing: PersonalSecurityMasterScreenRowDto | null;
+  readonly snapshot: PersonalSecurityMasterSnapshotReceiptDto;
+}
+
 export interface PersonalSecurityMasterScreenResponseDto {
   readonly hasMore: boolean;
   readonly limitApplied: number;
@@ -450,19 +455,56 @@ export interface PersonalMarketDataDailyBarDto {
   readonly splitFactor: string;
 }
 
+export interface PersonalMarketDataWindowDto {
+  readonly endDate: string;
+  readonly range: PersonalMarketDataRangeDto;
+  readonly startDate: string;
+}
+
+export interface PersonalMarketDataHistoryDto extends PersonalMarketDataWindowDto {
+  readonly bars: readonly PersonalMarketDataDailyBarDto[];
+  readonly currency: "USD";
+}
+
+export type PersonalMarketDataFeedUnavailableReasonDto =
+  | "access_denied"
+  | "credentials_invalid"
+  | "rate_limited"
+  | "not_covered"
+  | "upstream_unavailable"
+  | "invalid_response";
+
+export interface PersonalMarketDataUnavailableDto {
+  readonly status: "unavailable";
+  readonly reason: PersonalMarketDataFeedUnavailableReasonDto;
+}
+
+export type PersonalMarketDataHistoryResultDto =
+  | {
+      readonly status: "available";
+      readonly value: PersonalMarketDataHistoryDto;
+    }
+  | PersonalMarketDataUnavailableDto;
+
+export type PersonalMarketDataQuoteResultDto =
+  | {
+      readonly status: "available";
+      readonly value: PersonalMarketDataQuoteDto & {
+        readonly kind: "derived_realtime_reference";
+      };
+    }
+  | PersonalMarketDataUnavailableDto
+  | { readonly status: "not_requested" };
+
 export interface PersonalMarketOverviewDto {
-  readonly history: Readonly<{
-    bars: readonly PersonalMarketDataDailyBarDto[];
-    endDate: string;
-    range: PersonalMarketDataRangeDto;
-    startDate: string;
-  }>;
+  readonly history: PersonalMarketDataHistoryResultDto;
+  readonly ingestedAt: string;
   readonly profile: "personal_single_user_local_market_data";
   readonly provider: PersonalMarketDataProviderDto;
-  readonly quote: PersonalMarketDataQuoteDto;
-  readonly schemaVersion: "1.0.0";
+  readonly quote: PersonalMarketDataQuoteResultDto;
+  readonly schemaVersion: "2.0.0";
   readonly security: PersonalMarketDataIdentityDto;
-  readonly status: "available";
+  readonly window: PersonalMarketDataWindowDto;
 }
 
 export type PersonalAnnualFinancialReportedFieldKeyDto =

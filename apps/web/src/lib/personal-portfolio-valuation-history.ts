@@ -2,7 +2,7 @@ import {
   isPersonalPortfolioIdentity,
   projectPersonalPortfolioLedger,
   type PersonalMarketDataRangeDto,
-  type PersonalMarketOverviewDto,
+  type PersonalMarketDataHistoryDto,
   type PersonalPortfolioIdentity,
   type PersonalPortfolioLedgerPayload,
 } from "@research-cockpit/contracts";
@@ -15,7 +15,7 @@ export interface PersonalPortfolioValuationHistoryInput {
   readonly endDate: string;
   readonly histories: readonly Readonly<{
     identity: PersonalPortfolioIdentity;
-    history: PersonalMarketOverviewDto["history"];
+    history: PersonalMarketDataHistoryDto;
   }>[];
   readonly priorSplitReviewDates?: Readonly<Record<string, readonly string[]>>;
 }

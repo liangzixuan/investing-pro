@@ -169,6 +169,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/dossier",
       "/v1/personal-filing/security-master/status",
       "/v1/personal-filing/security-master/search",
+      "/v1/personal-filing/security-master/listings/{listingId}",
       "/v1/personal-filing/market-data/status",
       "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/market-data/annual-financials",
@@ -578,6 +579,52 @@ describe("local API OpenAPI contract", () => {
     expect(unsupportedChart).toContain("NO_OWNER_APPROVED_CHART_FACTS");
   });
 
+  it("documents exact listing lookup with identity and snapshot for absent results", async () => {
+    const source = await openApiSource();
+    const route = pathSection(
+      source,
+      "/v1/personal-filing/security-master/listings/{listingId}",
+    );
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "get:",
+    ]);
+    expect(statuses(route)).toEqual(["200", "400", "403"]);
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).toContain("in: path");
+    expect(route).toContain('pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"');
+    expect(route).not.toContain("requestBody:");
+    const response = schemaSection(
+      source,
+      "PersonalSecurityMasterListingResponse",
+      "PersonalSecurityMasterScreenRow",
+    );
+    expect(requiredKeys(response)).toEqual(["listing", "snapshot"]);
+    expect(schemaKeys(response)).toEqual(requiredKeys(response));
+    expect(response).toContain('type: "null"');
+    const listing = schemaSection(
+      source,
+      "PersonalSecurityMasterScreenRow",
+      "PersonalSecurityMasterSnapshotReceipt",
+    );
+    expect(requiredKeys(listing)).toEqual([
+      "cik",
+      "country",
+      "exchangeMic",
+      "instrumentType",
+      "issuerId",
+      "issuerName",
+      "listingId",
+      "securityId",
+      "securityName",
+      "shareClassId",
+      "shareClassName",
+      "symbol",
+    ]);
+    expect(schemaKeys(listing)).toEqual(requiredKeys(listing));
+    expect(listing).not.toContain("matchKind:");
+    expect(listing).not.toContain("providerMappings:");
+  });
+
   it("freezes the offline owner-local security-master contract", async () => {
     const source = await openApiSource();
     const statusRoute = pathSection(
@@ -667,7 +714,7 @@ describe("local API OpenAPI contract", () => {
     const result = schemaSection(
       source,
       "PersonalSecurityMasterSearchResult",
-      "PersonalSecurityMasterSnapshotReceipt",
+      "PersonalSecurityMasterListingResponse",
     );
     expect(requiredKeys(result)).toEqual([
       "cik",
@@ -939,23 +986,29 @@ describe("local API OpenAPI contract", () => {
       "PersonalMarketOverviewRequest",
       "PersonalMarketOverview",
     );
-    expect(requiredKeys(request)).toEqual(["listingId", "symbol", "range"]);
+    expect(requiredKeys(request)).toEqual([
+      "includeQuote",
+      "listingId",
+      "symbol",
+      "range",
+    ]);
     expect(schemaKeys(request)).toEqual(requiredKeys(request));
     expect(listValues(request, /^ {12}- ([a-z0-9]+)$/gm)).toContain("10y");
 
     const overview = schemaSection(
       source,
       "PersonalMarketOverview",
-      "PersonalMarketDataIdentity",
+      "PersonalMarketDataWindow",
     );
     expect(requiredKeys(overview)).toEqual([
       "history",
+      "ingestedAt",
       "profile",
       "provider",
       "quote",
       "schemaVersion",
       "security",
-      "status",
+      "window",
     ]);
     expect(schemaKeys(overview)).toEqual(requiredKeys(overview));
 
@@ -966,6 +1019,7 @@ describe("local API OpenAPI contract", () => {
     );
     expect(requiredKeys(history)).toEqual([
       "bars",
+      "currency",
       "endDate",
       "range",
       "startDate",
@@ -2128,45 +2182,52 @@ describe("local API OpenAPI contract", () => {
     } satisfies PersonalMarketDataStatusDto;
     const personalMarketOverview = {
       history: {
-        bars: [
-          {
-            adjusted: {
-              close: "101.25",
-              high: "102",
-              low: "99.5",
-              open: "100",
-              volume: "1234567.5",
+        status: "available",
+        value: {
+          currency: "USD",
+          bars: [
+            {
+              adjusted: {
+                close: "101.25",
+                high: "102",
+                low: "99.5",
+                open: "100",
+                volume: "1234567.5",
+              },
+              date: "2026-09-04",
+              dividendCash: "0.25",
+              raw: {
+                close: "101.25",
+                high: "102",
+                low: "99.5",
+                open: "100",
+                volume: "1234567",
+              },
+              splitFactor: "1",
             },
-            date: "2026-09-04",
-            dividendCash: "0.25",
-            raw: {
-              close: "101.25",
-              high: "102",
-              low: "99.5",
-              open: "100",
-              volume: "1234567",
-            },
-            splitFactor: "1",
-          },
-        ],
-        endDate: "2026-09-07",
-        range: "1m",
-        startDate: "2026-08-07",
+          ],
+          endDate: "2026-09-07",
+          range: "1m",
+          startDate: "2026-08-07",
+        },
       },
       profile: "personal_single_user_local_market_data",
       provider: personalMarketProvider,
       quote: {
-        change: "1.25",
-        changePercent: "1.25",
-        currency: "USD",
-        freshness: "current",
-        ingestedAt: "2026-09-07T15:00:01.000Z",
-        kind: "derived_realtime_reference",
-        previousClose: "100",
-        price: "101.25",
-        sourceTime: "2026-09-07T15:00:00.000Z",
+        status: "available",
+        value: {
+          change: "1.25",
+          changePercent: "1.25",
+          currency: "USD",
+          freshness: "current",
+          ingestedAt: "2026-09-07T15:00:01.000Z",
+          kind: "derived_realtime_reference",
+          previousClose: "100",
+          price: "101.25",
+          sourceTime: "2026-09-07T15:00:00.000Z",
+        },
       },
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       security: {
         country: "US",
         exchangeMic: "XNAS",
@@ -2175,7 +2236,8 @@ describe("local API OpenAPI contract", () => {
         securityName: "Zero Alpha Common Stock",
         symbol: "ZERO",
       },
-      status: "available",
+      ingestedAt: "2026-09-07T15:00:01.000Z",
+      window: { startDate: "2026-08-07", endDate: "2026-09-07", range: "1m" },
     } satisfies PersonalMarketOverviewDto;
     const knownAnnualFinancialCell = {
       status: "known",
@@ -2465,15 +2527,12 @@ describe("local API OpenAPI contract", () => {
       "quote",
       "schemaVersion",
       "security",
-      "status",
+      "ingestedAt",
+      "window",
     ]);
-    expect(Object.keys(personalMarketOverview.history.bars[0] ?? {})).toEqual([
-      "adjusted",
-      "date",
-      "dividendCash",
-      "raw",
-      "splitFactor",
-    ]);
+    expect(
+      Object.keys(personalMarketOverview.history.value.bars[0] ?? {}),
+    ).toEqual(["adjusted", "date", "dividendCash", "raw", "splitFactor"]);
     expect(Object.keys(personalAnnualFinancials)).toEqual([
       "asOf",
       "coverage",

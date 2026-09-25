@@ -1,3 +1,4 @@
+import { getPersonalMarketReference } from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketOverviewDto,
   PersonalPortfolioIdentity,
@@ -147,6 +148,17 @@ afterEach(() => {
 });
 
 describe("PersonalPortfolio", () => {
+  it("retains a usable quote-only valuation before stopping a denied history batch", async () => {
+    api.fetchPersonalMarketOverview.mockResolvedValueOnce({
+      ...market(),
+      history: { status: "unavailable", reason: "access_denied" },
+    });
+    await load();
+    click(render(), "Refresh portfolio prices");
+    await flush();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(metric(render(), "Priced holdings subtotal")).toBe("100.00 USD");
+  });
   it("reopens V3 split holdings and applies current catalog admission before pricing", async () => {
     api.fetchPersonalPortfolio.mockResolvedValue(
       record({
@@ -603,6 +615,7 @@ describe("PersonalPortfolio", () => {
     await flush();
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
     expect(api.fetchPersonalMarketOverview.mock.calls[0]?.[0]).toEqual({
+      includeQuote: true,
       listingId: "listing-one",
       symbol: "ONE",
       range: "1m",
@@ -625,7 +638,13 @@ describe("PersonalPortfolio", () => {
     const observation = market();
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...observation,
-      quote: { ...observation.quote, sourceTime: "2026-09-07T22:00:30.000Z" },
+      quote: {
+        status: "available",
+        value: {
+          ...getPersonalMarketReference(observation)!.quote,
+          sourceTime: "2026-09-07T22:00:30.000Z",
+        },
+      },
     });
     await load();
     click(render(), "Refresh portfolio prices");
@@ -944,9 +963,10 @@ function search(results: readonly PersonalPortfolioIdentity[]) {
 function market(index = 0): PersonalMarketOverviewDto {
   const listing = identity(index);
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     profile: "personal_single_user_local_market_data",
-    status: "available",
+    ingestedAt: "2026-09-09T10:00:00.000Z",
+    window: { range: "1m", startDate: "2026-08-09", endDate: "2026-09-09" },
     provider: {
       attribution: "Tiingo",
       export: "prohibited",
@@ -967,21 +987,28 @@ function market(index = 0): PersonalMarketOverviewDto {
       symbol: listing.symbol,
     },
     quote: {
-      change: "1",
-      changePercent: "2.04",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2026-09-09T10:00:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "49",
-      price: "50",
-      sourceTime: "2026-09-09T09:59:00.000Z",
+      status: "available",
+      value: {
+        change: "1",
+        changePercent: "2.04",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2026-09-09T10:00:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "49",
+        price: "50",
+        sourceTime: "2026-09-09T09:59:00.000Z",
+      },
     },
     history: {
-      bars: [],
-      endDate: "2026-09-09",
-      startDate: "2026-08-09",
-      range: "1m",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [],
+        endDate: "2026-09-09",
+        startDate: "2026-08-09",
+        range: "1m",
+      },
     },
   };
 }

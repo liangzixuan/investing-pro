@@ -1,13 +1,13 @@
 import type {
   PersonalMarketDataIdentityDto,
   PersonalMarketDataRangeDto,
+  PersonalMarketOverviewDto,
 } from "@research-cockpit/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
   createTiingoPersonalMarketDataProvider,
   PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY,
-  PersonalMarketDataProviderError,
 } from "./personal-market-data-provider";
 
 const NOW = new Date("2026-09-07T18:00:00.000Z");
@@ -56,7 +56,9 @@ describe("Tiingo personal market-data provider", () => {
     expect(provider.status()).toEqual(provider.getStatus());
     expect(Object.isFrozen(provider.getStatus())).toBe(true);
 
-    await expect(provider.loadOverview(IDENTITY, "1m")).rejects.toMatchObject({
+    await expect(
+      provider.loadOverview(IDENTITY, "1m", true),
+    ).rejects.toMatchObject({
       code: "not_configured",
       message: "Personal market data is unavailable.",
       name: "PersonalMarketDataProviderError",
@@ -83,7 +85,7 @@ describe("Tiingo personal market-data provider", () => {
         fetch: fetchImplementation,
         now: () => NOW,
       });
-      const result = await provider.loadOverview(IDENTITY, "1m");
+      const result = await provider.loadOverview(IDENTITY, "1m", true);
 
       expect(provider.getStatus().status).toBe("configured");
       expect(calls).toHaveLength(2);
@@ -110,12 +112,12 @@ describe("Tiingo personal market-data provider", () => {
       }
       expect(result.security.symbol).toBe("BRK.B");
       expect(result.provider.id).toBe("tiingo");
-      expect(result.history).toMatchObject({
+      expect(availableHistory(result)).toMatchObject({
         endDate: "2026-09-07",
         range: "1m",
         startDate: "2026-08-07",
       });
-      expect(result.quote).toEqual({
+      expect(availableQuote(result)).toEqual({
         change: "2",
         changePercent: "1.9047619047619",
         currency: "USD",
@@ -126,7 +128,7 @@ describe("Tiingo personal market-data provider", () => {
         price: "107",
         sourceTime: "2026-09-07T17:58:00.000Z",
       });
-      expect(result.history.bars[1]).toEqual({
+      expect(availableHistory(result).bars[1]).toEqual({
         adjusted: {
           close: "104",
           high: "109",
@@ -146,7 +148,7 @@ describe("Tiingo personal market-data provider", () => {
         splitFactor: "1",
       });
       expect(Object.isFrozen(result)).toBe(true);
-      expect(Object.isFrozen(result.history.bars)).toBe(true);
+      expect(Object.isFrozen(availableHistory(result).bars)).toBe(true);
       expect(JSON.stringify(result)).not.toContain(TOKEN);
       expect(consoleSpies.every((spy) => spy.mock.calls.length === 0)).toBe(
         true,
@@ -175,12 +177,12 @@ describe("Tiingo personal market-data provider", () => {
         ),
         now: () => NOW,
       });
-      const result = await provider.loadOverview(IDENTITY, range);
+      const result = await provider.loadOverview(IDENTITY, range, true);
       const historyUrl = new URL(calls[1]?.url ?? "about:blank");
       expect(historyUrl.searchParams.get("startDate")).toBe(expectedStartDate);
       expect(historyUrl.searchParams.get("endDate")).toBe("2026-09-07");
-      expect(result.history.startDate).toBe(expectedStartDate);
-      expect(result.history.endDate).toBe("2026-09-07");
+      expect(availableHistory(result).startDate).toBe(expectedStartDate);
+      expect(availableHistory(result).endDate).toBe("2026-09-07");
     },
   );
 
@@ -199,123 +201,85 @@ describe("Tiingo personal market-data provider", () => {
         ),
         now: () => now,
       });
-      await provider.loadOverview(IDENTITY, range);
+      await provider.loadOverview(IDENTITY, range, true);
       expect(
         new URL(calls[1]?.url ?? "about:blank").searchParams.get("startDate"),
       ).toBe(expected);
     }
   });
 
-  it("falls back to the latest EOD close and labels stale data honestly", async () => {
-    const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
-      fetch: mockTiingoFetch(
-        [quotePayload({ tngoLast: null })],
-        [
-          dailyBar("2026-09-03", {
-            close: 100,
-            high: 101,
-            low: 97,
-            open: 98,
-          }),
-          dailyBar("2026-09-04", {
-            close: 105,
-            high: 106,
-            low: 100,
-            open: 101,
-          }),
-        ],
-      ),
-      now: () => NOW,
-    });
-
-    const result = await provider.loadOverview(IDENTITY, "1m");
-    expect(result.quote).toEqual({
-      change: "5",
-      changePercent: "5",
-      currency: "USD",
-      freshness: "older_than_36_hours",
-      ingestedAt: NOW.toISOString(),
-      kind: "end_of_day_close",
-      previousClose: "100",
-      price: "105",
-      sourceTime: "2026-09-04T20:00:00.000Z",
-    });
-  });
-
-  it.each([
-    [4, 400, 102, "100", "2", "2"],
-    [0.1, 10, 102, "100", "2", "2"],
-  ] as const)(
-    "normalizes EOD fallback change across split factor %s",
-    async (
-      splitFactor,
-      priorClose,
-      latestClose,
-      expectedPrevious,
-      expectedChange,
-      expectedPercent,
-    ) => {
+  it.each([{ quote: [] }, { quote: [quotePayload({ tngoLast: null })] }])(
+    "keeps EOD history when IEX has no reference: %j",
+    async ({ quote }) => {
       const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
-        fetch: mockTiingoFetch(
-          [quotePayload({ tngoLast: null })],
-          [
-            dailyBar("2026-09-03", {
-              close: priorClose,
-              high: priorClose + 2,
-              low: priorClose - 2,
-              open: priorClose,
-            }),
-            dailyBar("2026-09-04", {
-              close: latestClose,
-              high: latestClose + 2,
-              low: latestClose - 2,
-              open: latestClose,
-              splitFactor,
-            }),
-          ],
-        ),
+        fetch: mockTiingoFetch(quote, [
+          dailyBar("2026-09-04", { splitFactor: 4 }),
+        ]),
         now: () => NOW,
       });
-
-      await expect(
-        provider.loadOverview(IDENTITY, "1m"),
-      ).resolves.toMatchObject({
-        quote: {
-          change: expectedChange,
-          changePercent: expectedPercent,
-          previousClose: expectedPrevious,
-        },
+      const result = await provider.loadOverview(IDENTITY, "1m", true);
+      expect(result.quote).toEqual({
+        status: "unavailable",
+        reason: "not_covered",
       });
+      expect(availableHistory(result).bars[0]).toMatchObject({
+        date: "2026-09-04",
+        splitFactor: "4",
+      });
+      expect(JSON.stringify(result)).not.toContain("end_of_day_close");
+      expect(JSON.stringify(result.history)).not.toContain("sourceTime");
     },
   );
 
-  it.each([
-    ["2026-01-07", "2026-01-07T21:00:00.000Z"],
-    ["2026-03-09", "2026-03-09T20:00:00.000Z"],
-    ["2026-09-04", "2026-09-04T20:00:00.000Z"],
-    ["2026-11-02", "2026-11-02T21:00:00.000Z"],
-  ] as const)(
-    "models EOD session %s at the US regular close",
-    async (date, expectedSourceTime) => {
-      const now = new Date(
-        `${date}T${expectedSourceTime.includes("T20:") ? "21" : "22"}:00:00.000Z`,
+  it("requests only EOD when the quote is not requested", async () => {
+    const calls: FetchCall[] = [];
+    const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+      fetch: mockTiingoFetch([quotePayload()], [dailyBar("2026-09-04")], calls),
+      now: () => NOW,
+    });
+    const result = await provider.loadOverview(IDENTITY, "1m", false);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.url).toContain("/tiingo/daily/");
+    expect(result.quote).toEqual({ status: "not_requested" });
+    expect(availableHistory(result).currency).toBe("USD");
+    expect(result.window).toEqual({
+      startDate: "2026-08-07",
+      endDate: "2026-09-07",
+      range: "1m",
+    });
+    expect(result.ingestedAt).toBe(NOW.toISOString());
+  });
+
+  it.each([401, 403, 429, 500])(
+    "preserves EOD despite quote HTTP %s",
+    async (status) => {
+      const calls: FetchCall[] = [];
+      const fetcher = mockTiingoFetch(
+        [quotePayload()],
+        [dailyBar("2026-09-04")],
+        calls,
       );
       const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
-        fetch: mockTiingoFetch(
-          [quotePayload({ timestamp: now.toISOString(), tngoLast: null })],
-          [dailyBar(date)],
-        ),
-        now: () => now,
+        fetch: (input, init) =>
+          requestUrl(input).includes("/iex/")
+            ? Promise.resolve(new Response("{}", { status }))
+            : fetcher(input, init),
+        now: () => NOW,
       });
-
-      await expect(
-        provider.loadOverview(IDENTITY, "1m"),
-      ).resolves.toMatchObject({
-        quote: {
-          freshness: "current",
-          sourceTime: expectedSourceTime,
-        },
+      const result = await provider.loadOverview(IDENTITY, "1m", true);
+      expect(result.quote).toEqual({
+        status: "unavailable",
+        reason:
+          status === 403
+            ? "access_denied"
+            : status === 401
+              ? "credentials_invalid"
+              : status === 429
+                ? "rate_limited"
+                : "upstream_unavailable",
       });
+      expect(availableHistory(result).bars).toHaveLength(1);
+      expect(calls).toHaveLength(1);
     },
   );
 
@@ -328,9 +292,11 @@ describe("Tiingo personal market-data provider", () => {
       now: () => NOW,
     });
 
-    await expect(provider.loadOverview(IDENTITY, "1m")).resolves.toMatchObject({
-      quote: { price: "107" },
-      status: "available",
+    await expect(
+      provider.loadOverview(IDENTITY, "1m", true),
+    ).resolves.toMatchObject({
+      quote: { status: "available", value: { price: "107" } },
+      history: { status: "available" },
     });
 
     const missingRequiredProvider = createTiingoPersonalMarketDataProvider(
@@ -344,8 +310,11 @@ describe("Tiingo personal market-data provider", () => {
       },
     );
     await expect(
-      missingRequiredProvider.loadOverview(IDENTITY, "1m"),
-    ).rejects.toMatchObject({ code: "invalid_response" });
+      missingRequiredProvider.loadOverview(IDENTITY, "1m", true),
+    ).resolves.toMatchObject({
+      history: { status: "unavailable", reason: "invalid_response" },
+      quote: { status: "available" },
+    });
   });
 
   it.each([
@@ -367,9 +336,9 @@ describe("Tiingo personal market-data provider", () => {
         now: () => NOW,
       });
 
-      const result = await provider.loadOverview(IDENTITY, "1m");
-      expect(result.quote.sourceTime).toBe(expected);
-      expect(result.history.bars[0]?.date).toBe("2026-09-07");
+      const result = await provider.loadOverview(IDENTITY, "1m", true);
+      expect(availableQuote(result).sourceTime).toBe(expected);
+      expect(availableHistory(result).bars[0]?.date).toBe("2026-09-07");
     },
   );
 
@@ -387,14 +356,17 @@ describe("Tiingo personal market-data provider", () => {
       now: () => NOW,
     });
 
-    await expect(provider.loadOverview(IDENTITY, "1m")).rejects.toMatchObject({
-      code: "invalid_response",
+    await expect(
+      provider.loadOverview(IDENTITY, "1m", true),
+    ).resolves.toMatchObject({
+      quote: { status: "unavailable", reason: "invalid_response" },
+      history: { status: "available" },
     });
   });
 
   it.each([
     [401, "credentials_invalid"],
-    [403, "credentials_invalid"],
+    [403, "access_denied"],
     [404, "not_covered"],
     [429, "rate_limited"],
     [500, "upstream_unavailable"],
@@ -404,15 +376,10 @@ describe("Tiingo personal market-data provider", () => {
       now: () => NOW,
     });
 
-    const error = await provider
-      .loadOverview(IDENTITY, "1m")
-      .catch((caught: unknown) => caught);
-    expect(error).toBeInstanceOf(PersonalMarketDataProviderError);
-    expect(error).toMatchObject({
-      code,
-      message: "Personal market data is unavailable.",
-    });
-    expect(JSON.stringify(error)).not.toContain(TOKEN);
+    const result = await provider.loadOverview(IDENTITY, "1m", true);
+    expect(result.history).toEqual({ status: "unavailable", reason: code });
+    expect(result.quote).toEqual({ status: "unavailable", reason: code });
+    expect(JSON.stringify(result)).not.toContain(TOKEN);
   });
 
   it("rejects oversized, empty, malformed, null, and non-finite responses", async () => {
@@ -440,9 +407,12 @@ describe("Tiingo personal market-data provider", () => {
         },
         now: () => NOW,
       });
-      await expect(provider.loadOverview(IDENTITY, "1m")).rejects.toMatchObject(
-        { code: "invalid_response" },
-      );
+      await expect(
+        provider.loadOverview(IDENTITY, "1m", true),
+      ).resolves.toMatchObject({
+        history: { status: "unavailable", reason: "invalid_response" },
+        quote: { status: "available" },
+      });
       expect(historyRequest).toBe(true);
     }
   });
@@ -457,8 +427,11 @@ describe("Tiingo personal market-data provider", () => {
       now: () => NOW,
     });
 
-    await expect(provider.loadOverview(IDENTITY, "10y")).rejects.toMatchObject({
-      code: "invalid_response",
+    await expect(
+      provider.loadOverview(IDENTITY, "10y", true),
+    ).resolves.toMatchObject({
+      history: { status: "unavailable", reason: "invalid_response" },
+      quote: { status: "available" },
     });
   });
 
@@ -473,8 +446,11 @@ describe("Tiingo personal market-data provider", () => {
       fetch: mockTiingoFetch([quotePayload()], bars),
       now: () => NOW,
     });
-    await expect(provider.loadOverview(IDENTITY, "1m")).rejects.toMatchObject({
-      code: "invalid_response",
+    await expect(
+      provider.loadOverview(IDENTITY, "1m", true),
+    ).resolves.toMatchObject({
+      history: { status: "unavailable", reason: "invalid_response" },
+      quote: { status: "available" },
     });
   });
 
@@ -490,7 +466,7 @@ describe("Tiingo personal market-data provider", () => {
     } satisfies PersonalMarketDataIdentityDto;
 
     await expect(
-      provider.loadOverview(hostileIdentity, "1m"),
+      provider.loadOverview(hostileIdentity, "1m", true),
     ).rejects.toMatchObject({ code: "not_covered" });
     expect(fetchImplementation).not.toHaveBeenCalled();
   });
@@ -505,7 +481,7 @@ describe("Tiingo personal market-data provider", () => {
 
     expect(provider.getStatus().status).toBe("configured");
     const error = await provider
-      .loadOverview(IDENTITY, "1m")
+      .loadOverview(IDENTITY, "1m", true)
       .catch((caught: unknown) => caught);
     expect(error).toMatchObject({ code: "credentials_invalid" });
     expect(String(error)).not.toContain(malformedToken);
@@ -540,6 +516,7 @@ describe("Tiingo personal market-data provider", () => {
       const pending = provider.loadOverview(
         IDENTITY,
         "1m",
+        true,
         callerController.signal,
       );
       if (abortOperation === "caller") callerController.abort();
@@ -551,11 +528,66 @@ describe("Tiingo personal market-data provider", () => {
       if (abortOperation === "close") {
         expect(provider.getStatus().status).toBe("not_configured");
         await expect(
-          provider.loadOverview(IDENTITY, "1m"),
+          provider.loadOverview(IDENTITY, "1m", true),
         ).rejects.toMatchObject({ code: "not_configured" });
         provider.close();
       }
     }
+  });
+
+  it("keeps completed EOD when the optional quote times out", async () => {
+    vi.useFakeTimers();
+    try {
+      const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+        now: () => NOW,
+        fetch: (input, init) =>
+          requestUrl(input).includes("/iex/")
+            ? new Promise((_resolve, reject) =>
+                init?.signal?.addEventListener(
+                  "abort",
+                  () => reject(new DOMException("aborted", "AbortError")),
+                  { once: true },
+                ),
+              )
+            : Promise.resolve(jsonResponse([dailyBar("2026-09-04")])),
+      });
+      const pending = provider.loadOverview(IDENTITY, "1m", true);
+      await vi.advanceTimersByTimeAsync(10_000);
+      const result = await pending;
+      expect(result.history.status).toBe("available");
+      expect(result.quote).toEqual({
+        status: "unavailable",
+        reason: "upstream_unavailable",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not return completed history after the owner aborts", async () => {
+    const controller = new AbortController();
+    const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+      now: () => NOW,
+      fetch: (input, init) =>
+        requestUrl(input).includes("/iex/")
+          ? new Promise((_resolve, reject) =>
+              init?.signal?.addEventListener(
+                "abort",
+                () => reject(new DOMException("aborted", "AbortError")),
+                { once: true },
+              ),
+            )
+          : Promise.resolve(jsonResponse([dailyBar("2026-09-04")])),
+    });
+    const pending = provider.loadOverview(
+      IDENTITY,
+      "1m",
+      true,
+      controller.signal,
+    );
+    await Promise.resolve();
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ code: "aborted" });
   });
 
   it("aborts the transport at the fixed ten-second timeout", async () => {
@@ -583,9 +615,10 @@ describe("Tiingo personal market-data provider", () => {
         fetch: fetchImplementation,
         now: () => NOW,
       });
-      const pending = provider.loadOverview(IDENTITY, "1m");
-      const rejection = expect(pending).rejects.toMatchObject({
-        code: "upstream_unavailable",
+      const pending = provider.loadOverview(IDENTITY, "1m", true);
+      const rejection = expect(pending).resolves.toMatchObject({
+        history: { status: "unavailable", reason: "upstream_unavailable" },
+        quote: { status: "unavailable", reason: "upstream_unavailable" },
       });
 
       await vi.advanceTimersByTimeAsync(9_999);
@@ -1624,4 +1657,15 @@ function without(
   return Object.fromEntries(
     Object.entries(value).filter(([candidate]) => candidate !== key),
   );
+}
+
+function availableHistory(result: PersonalMarketOverviewDto) {
+  if (result.history.status !== "available")
+    throw new Error("Expected available history");
+  return result.history.value;
+}
+function availableQuote(result: PersonalMarketOverviewDto) {
+  if (result.quote.status !== "available")
+    throw new Error("Expected available quote");
+  return result.quote.value;
 }

@@ -2,11 +2,16 @@
 
 import type {
   PersonalMarketDataRangeDto,
-  PersonalMarketOverviewDto,
+  PersonalMarketDataHistoryDto,
   PersonalPortfolioIdentity,
   PersonalPortfolioLedgerPayload,
 } from "@research-cockpit/contracts";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  getPersonalMarketHistory,
+  personalMarketFeedErrorCode,
+  personalMarketBatchStopCode,
+} from "../../lib/personal-market-snapshot";
 import {
   assessPortfolioHistory,
   type PortfolioHistoryAssessment,
@@ -40,7 +45,7 @@ type Observation = Readonly<{
   identity: PersonalPortfolioIdentity;
   assessment: PortfolioHistoryAssessment | null;
   message: string;
-  history: PersonalMarketOverviewDto["history"] | null;
+  history: PersonalMarketDataHistoryDto | null;
 }>;
 
 export function PersonalPortfolioHistoryCoverage({
@@ -145,7 +150,12 @@ export function PersonalPortfolioHistoryCoverage({
           });
         } else {
           const market = await fetchPersonalMarketOverview(
-            { listingId: identity.listingId, symbol: identity.symbol, range },
+            {
+              includeQuote: false,
+              listingId: identity.listingId,
+              symbol: identity.symbol,
+              range,
+            },
             active.signal,
           );
           if (!current()) return;
@@ -159,17 +169,25 @@ export function PersonalPortfolioHistoryCoverage({
             security.securityName !== identity.securityName
           )
             throw new PersonalWorkspaceApiError("invalid_response");
+          const history = getPersonalMarketHistory(market);
+          if (history === null) {
+            throw new PersonalWorkspaceApiError(
+              market.history.status === "unavailable"
+                ? personalMarketFeedErrorCode(market.history.reason)
+                : "invalid_response",
+            );
+          }
           const assessment = assessPortfolioHistory(
             ledger,
             identity.listingId,
-            market.history,
+            history,
           );
           if (assessment === null)
             throw new PersonalWorkspaceApiError("invalid_response");
           observed.push({
             identity,
             assessment,
-            history: market.history,
+            history,
             message: assessment.requiresSplitReview
               ? "Review split differences before using current share-based totals."
               : "No split discrepancy found in these observations; unobserved dates remain unchecked.",
@@ -180,6 +198,13 @@ export function PersonalPortfolioHistoryCoverage({
             assessment.requiresSplitReview,
             assessment,
           );
+          const stopCode = personalMarketBatchStopCode(market);
+          if (stopCode !== null) {
+            stopped = true;
+            setMessage(
+              "History retained. Provider access or rate limits stopped the remaining listings.",
+            );
+          }
         }
       } catch (error) {
         if (!current()) return;
@@ -204,6 +229,7 @@ export function PersonalPortfolioHistoryCoverage({
           "not_configured",
           "credentials_invalid",
           "not_entitled",
+          "access_denied",
         ].includes(code);
         const explanation =
           code === "conflict"
@@ -214,6 +240,7 @@ export function PersonalPortfolioHistoryCoverage({
                     "not_configured",
                     "credentials_invalid",
                     "not_entitled",
+                    "access_denied",
                   ].includes(code)
                 ? "Tiingo configuration or access needs attention. Remaining listings were not requested."
                 : "History unavailable for this listing; its dates and actions remain unchecked.";

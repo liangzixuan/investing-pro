@@ -149,7 +149,60 @@ describe("personal workspace market-data routes", () => {
     expect(fixture.loadOverview).toHaveBeenCalledTimes(1);
     expect(fixture.loadOverview.mock.calls[0]?.[0]).toEqual(IDENTITY);
     expect(fixture.loadOverview.mock.calls[0]?.[1]).toBe("1y");
-    expect(fixture.loadOverview.mock.calls[0]?.[2]).toBeInstanceOf(AbortSignal);
+    expect(fixture.loadOverview.mock.calls[0]?.[3]).toBeInstanceOf(AbortSignal);
+  });
+
+  it("passes an explicit EOD-only request without adding a quote", async () => {
+    const fixture = await marketApp();
+    const response = await requestOverview(fixture.app, fixture.cookie, {
+      includeQuote: false,
+      listingId: "lst-00000",
+      range: "1m",
+      symbol: "S00000",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json<PersonalMarketOverviewDto>().quote).toEqual({
+      status: "not_requested",
+    });
+    expect(fixture.loadOverview.mock.calls[0]?.[2]).toBe(false);
+    expect(fixture.loadOverview.mock.calls[0]?.[3]).toBeInstanceOf(AbortSignal);
+  });
+
+  it.each([undefined, null, "false", 0])(
+    "rejects a missing or nonboolean includeQuote (%s)",
+    async (includeQuote) => {
+      const fixture = await marketApp();
+      const response = await requestOverview(fixture.app, fixture.cookie, {
+        includeQuote,
+        listingId: "lst-00000",
+        range: "1m",
+        symbol: "S00000",
+      });
+      expect(response.statusCode).toBe(400);
+      expect(fixture.loadOverview).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns successful EOD and the safe quote failure together", async () => {
+    const fixture = await marketApp();
+    fixture.loadOverview.mockResolvedValueOnce({
+      ...overview(IDENTITY, "1m"),
+      quote: { status: "unavailable", reason: "access_denied" },
+    });
+    const response = await requestOverview(fixture.app, fixture.cookie, {
+      includeQuote: true,
+      listingId: "lst-00000",
+      range: "1m",
+      symbol: "S00000",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json<PersonalMarketOverviewDto>().history.status).toBe(
+      "available",
+    );
+    expect(response.json<PersonalMarketOverviewDto>().quote).toEqual({
+      status: "unavailable",
+      reason: "access_denied",
+    });
   });
 
   it("authenticates annual-financial requests before parsing their JSON body", async () => {
@@ -696,9 +749,10 @@ describe("personal workspace market-data routes", () => {
       close: vi.fn(),
       getStatus: () => STATUS,
       loadAnnualFinancials,
-      loadOverview: (identity, range, signal) => {
+      loadOverview: (identity, range, includeQuote, signal) => {
+        void includeQuote;
         void signal;
-        return Promise.resolve(overview(identity, range));
+        return Promise.resolve(overview(identity, range, includeQuote));
       },
       loadQuarterlyFinancials: (identity, signal) => {
         void signal;
@@ -761,6 +815,7 @@ describe("personal workspace market-data routes", () => {
       (
         identity: PersonalMarketDataIdentityDto,
         range: "1m" | "3m" | "ytd" | "1y" | "5y" | "10y",
+        includeQuote: boolean,
         signal?: AbortSignal,
       ) =>
         new Promise<PersonalMarketOverviewDto>((resolve, reject) => {
@@ -821,6 +876,7 @@ describe("personal workspace market-data routes", () => {
       new URL(PERSONAL_MARKET_DATA_OVERVIEW_PATH, address),
       {
         body: JSON.stringify({
+          includeQuote: true,
           listingId: "lst-00000",
           range: "1y",
           symbol: "S00000",
@@ -879,9 +935,10 @@ describe("personal workspace market-data routes", () => {
       close: vi.fn(),
       getStatus: () => STATUS,
       loadAnnualFinancials,
-      loadOverview: (identity, range, signal) => {
+      loadOverview: (identity, range, includeQuote, signal) => {
+        void includeQuote;
         void signal;
-        return Promise.resolve(overview(identity, range));
+        return Promise.resolve(overview(identity, range, includeQuote));
       },
       loadQuarterlyFinancials: (identity, signal) => {
         void signal;
@@ -1023,10 +1080,11 @@ function fakeProvider(close = vi.fn()) {
     (
       identity: PersonalMarketDataIdentityDto,
       range: "1m" | "3m" | "ytd" | "1y" | "5y" | "10y",
+      includeQuote: boolean,
       signal?: AbortSignal,
     ) => {
       void signal;
-      return Promise.resolve(overview(identity, range));
+      return Promise.resolve(overview(identity, range, includeQuote));
     },
   );
   const loadQuarterlyFinancials = vi.fn(
@@ -1126,7 +1184,9 @@ function requestOverview(
       ...ownerHeaders(cookie),
       "content-type": "application/json",
     },
-    payload,
+    payload: Array.isArray(payload)
+      ? payload
+      : { includeQuote: true, ...payload },
     remoteAddress: "127.0.0.1",
   });
 }
@@ -1314,49 +1374,60 @@ function valuationHistory(
 function overview(
   identity: PersonalMarketDataIdentityDto,
   range: "1m" | "3m" | "ytd" | "1y" | "5y" | "10y",
+  includeQuote = true,
 ): PersonalMarketOverviewDto {
   return {
     history: {
-      bars: [
-        {
-          adjusted: {
-            close: "101.00",
-            high: "102.00",
-            low: "99.00",
-            open: "100.00",
-            volume: "1000",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [
+          {
+            adjusted: {
+              close: "101.00",
+              high: "102.00",
+              low: "99.00",
+              open: "100.00",
+              volume: "1000",
+            },
+            date: "2026-09-04",
+            dividendCash: "0.00",
+            raw: {
+              close: "101.00",
+              high: "102.00",
+              low: "99.00",
+              open: "100.00",
+              volume: "1000",
+            },
+            splitFactor: "1.00",
           },
-          date: "2026-09-04",
-          dividendCash: "0.00",
-          raw: {
-            close: "101.00",
-            high: "102.00",
-            low: "99.00",
-            open: "100.00",
-            volume: "1000",
-          },
-          splitFactor: "1.00",
-        },
-      ],
-      endDate: "2026-09-07",
-      range,
-      startDate: "2026-08-07",
+        ],
+        endDate: "2026-09-07",
+        range,
+        startDate: "2026-08-07",
+      },
     },
     profile: "personal_single_user_local_market_data",
     provider: STATUS.provider,
-    quote: {
-      change: "1.00",
-      changePercent: "1.00",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2026-09-07T15:00:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100.00",
-      price: "101.00",
-      sourceTime: "2026-09-07T14:59:00.000Z",
-    },
-    schemaVersion: "1.0.0",
+    quote: includeQuote
+      ? {
+          status: "available",
+          value: {
+            change: "1.00",
+            changePercent: "1.00",
+            currency: "USD",
+            freshness: "current",
+            ingestedAt: "2026-09-07T15:00:00.000Z",
+            kind: "derived_realtime_reference",
+            previousClose: "100.00",
+            price: "101.00",
+            sourceTime: "2026-09-07T14:59:00.000Z",
+          },
+        }
+      : { status: "not_requested" },
+    schemaVersion: "2.0.0",
     security: identity,
-    status: "available",
+    ingestedAt: "2026-09-07T15:00:00.000Z",
+    window: { startDate: "2026-08-07", endDate: "2026-09-07", range },
   };
 }

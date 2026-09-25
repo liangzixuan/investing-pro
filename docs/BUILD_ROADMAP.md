@@ -2,8 +2,10 @@
 
 For the active release, next deliverable, and working loop, start with
 [Current work](./CURRENT_WORK.md). This document preserves the detailed build
-history; [the personal breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
-owns the product capability targets.
+history; [the product roadmap](./PRODUCT_ROADMAP.md) owns the current goals and
+delivery order following the owner's September 24, 2026 reset. The narrower
+historical scope below does not limit that target. Existing acceptance evidence
+and correctness/privacy requirements retain their meaning.
 
 Active filing-corpus profile: `personal_single_user_local`. The current project
 has one owner, runs locally, has no tenants or customers, is noncommercial,

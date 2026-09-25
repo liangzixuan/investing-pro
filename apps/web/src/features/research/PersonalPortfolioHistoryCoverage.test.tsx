@@ -1,3 +1,7 @@
+import {
+  getPersonalMarketHistory,
+  getPersonalMarketReference,
+} from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketDataDailyBarDto,
   PersonalMarketOverviewDto,
@@ -98,26 +102,32 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     const value = market();
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
-      quote: { ...value.quote, price: "999" },
+      quote: {
+        status: "available",
+        value: { ...getPersonalMarketReference(value)!.quote, price: "999" },
+      },
       history: {
-        ...value.history,
-        bars: value.history.bars.map((entry) => ({
-          ...entry,
-          raw: {
-            open: "15",
-            high: "15",
-            low: "15",
-            close: "15",
-            volume: "100",
-          },
-          adjusted: {
-            open: "99",
-            high: "99",
-            low: "99",
-            close: "99",
-            volume: "100",
-          },
-        })),
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: getPersonalMarketHistory(value)!.bars.map((entry) => ({
+            ...entry,
+            raw: {
+              open: "15",
+              high: "15",
+              low: "15",
+              close: "15",
+              volume: "100",
+            },
+            adjusted: {
+              open: "99",
+              high: "99",
+              low: "99",
+              close: "99",
+              volume: "100",
+            },
+          })),
+        },
       },
     });
     await review();
@@ -182,13 +192,16 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
       history: {
-        ...value.history,
-        bars: [
-          pricedBar("2026-01-01", "10"),
-          pricedBar("2026-01-02", "15"),
-          pricedBar("2026-01-03", "8", "2"),
-          pricedBar("2026-01-04", "11"),
-        ],
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: [
+            pricedBar("2026-01-01", "10"),
+            pricedBar("2026-01-02", "15"),
+            pricedBar("2026-01-03", "8", "2"),
+            pricedBar("2026-01-04", "11"),
+          ],
+        },
       },
     });
     await mount();
@@ -382,8 +395,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
       history: {
-        ...value.history,
-        bars: [bar("2026-01-01"), bar("2026-01-03", "3"), bar("2026-01-04")],
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: [bar("2026-01-01"), bar("2026-01-03", "3"), bar("2026-01-04")],
+        },
       },
     });
     await review();
@@ -410,10 +426,14 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
       history: {
-        range: "1m",
-        startDate: "2026-08-09",
-        endDate: "2026-09-09",
-        bars: [bar("2026-09-08")],
+        status: "available",
+        value: {
+          currency: "USD",
+          range: "1m",
+          startDate: "2026-08-09",
+          endDate: "2026-09-09",
+          bars: [bar("2026-09-08")],
+        },
       },
     });
     await mount();
@@ -523,7 +543,12 @@ describe("PersonalPortfolioHistoryCoverage", () => {
       25,
     );
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledWith(
-      { listingId: "listing-one", symbol: "ONE", range: "1y" },
+      {
+        includeQuote: false,
+        listingId: "listing-one",
+        symbol: "ONE",
+        range: "1y",
+      },
       expect.any(AbortSignal),
     );
     expect(text(render())).toContain("3 daily observations");
@@ -572,9 +597,24 @@ describe("PersonalPortfolioHistoryCoverage", () => {
         (call): unknown => call[0],
       ),
     ).toEqual([
-      { listingId: "listing-one", symbol: "ONE", range: "1y" },
-      { listingId: "listing-two", symbol: "TWO", range: "1y" },
-      { listingId: "listing-three", symbol: "THREE", range: "1y" },
+      {
+        includeQuote: false,
+        listingId: "listing-one",
+        symbol: "ONE",
+        range: "1y",
+      },
+      {
+        includeQuote: false,
+        listingId: "listing-two",
+        symbol: "TWO",
+        range: "1y",
+      },
+      {
+        includeQuote: false,
+        listingId: "listing-three",
+        symbol: "THREE",
+        range: "1y",
+      },
     ]);
     expect(props.onAssessment).toHaveBeenCalledTimes(3);
     expect(text(render())).toContain("No prior-day shares recorded");
@@ -705,7 +745,13 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     const value = market();
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
-      history: { ...value.history, bars: [bar("2026-01-03", "0")] },
+      history: {
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: [bar("2026-01-03", "0")],
+        },
+      },
     });
     await review();
     expect(props.onAssessment).not.toHaveBeenCalled();
@@ -717,8 +763,11 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     api.fetchPersonalMarketOverview.mockResolvedValueOnce({
       ...value,
       history: {
-        ...value.history,
-        bars: [bar("2026-01-01"), bar("2026-01-03", "3")],
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: [bar("2026-01-01"), bar("2026-01-03", "3")],
+        },
       },
     });
     await review();
@@ -734,7 +783,13 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     );
     api.fetchPersonalMarketOverview.mockResolvedValueOnce({
       ...value,
-      history: { ...value.history, bars: [bar("2026-01-04")] },
+      history: {
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: [bar("2026-01-04")],
+        },
+      },
     });
     click(render(), "Review history");
     await flush();
@@ -889,7 +944,10 @@ describe("PersonalPortfolioHistoryCoverage", () => {
     });
     api.fetchPersonalMarketOverview.mockResolvedValue({
       ...value,
-      history: { ...value.history, bars },
+      history: {
+        status: "available",
+        value: { ...getPersonalMarketHistory(value)!, bars },
+      },
     });
     await review();
     expect(actionRowCount(render())).toBe(50);
@@ -1261,9 +1319,10 @@ function pricedBar(
 function market(index = 0): PersonalMarketOverviewDto {
   const listing = identity(index);
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     profile: "personal_single_user_local_market_data",
-    status: "available",
+    ingestedAt: "2026-09-09T10:00:00.000Z",
+    window: { range: "1y", startDate: "2025-09-09", endDate: "2026-09-09" },
     provider: {
       attribution: "Tiingo",
       export: "prohibited",
@@ -1284,25 +1343,32 @@ function market(index = 0): PersonalMarketOverviewDto {
       symbol: listing.symbol,
     },
     quote: {
-      change: "0",
-      changePercent: "0",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2026-09-09T10:00:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "10",
-      price: "10",
-      sourceTime: "2026-09-09T09:59:00.000Z",
+      status: "available",
+      value: {
+        change: "0",
+        changePercent: "0",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2026-09-09T10:00:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "10",
+        price: "10",
+        sourceTime: "2026-09-09T09:59:00.000Z",
+      },
     },
     history: {
-      range: "1y",
-      startDate: "2025-09-09",
-      endDate: "2026-09-09",
-      bars: [
-        bar("2026-01-01"),
-        bar("2026-01-03", "2"),
-        bar("2026-01-04", "1", "0.25"),
-      ],
+      status: "available",
+      value: {
+        currency: "USD",
+        range: "1y",
+        startDate: "2025-09-09",
+        endDate: "2026-09-09",
+        bars: [
+          bar("2026-01-01"),
+          bar("2026-01-03", "2"),
+          bar("2026-01-04", "1", "0.25"),
+        ],
+      },
     },
   };
 }

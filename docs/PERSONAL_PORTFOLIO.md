@@ -33,8 +33,12 @@ updated after trades, splits and other corporate actions.
 ## Valuation and missing data
 
 Each explicit refresh requests the existing market overview with its one-month
-range, one holding at a time. That adapter fetches a derived Tiingo IEX reference
-quote and daily history; history provides the existing end-of-day fallback.
+range and `includeQuote: true`, one holding at a time. The adapter fetches a
+derived Tiingo IEX reference quote and daily history independently. Available
+history can supply the existing end-of-day fallback when the quote feed fails;
+a history failure does not erase an available reference quote. Shared credential,
+access and rate-limit failures stop the remaining batch after preserving any
+usable reference from the completed holding.
 Only the normalized quote and its identity are retained by the portfolio panel.
 There is no background provider refresh, retry loop, or persisted price cache.
 The configured token remains in the server's existing private startup context.

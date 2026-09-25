@@ -1,8 +1,12 @@
 # Personal product-breadth roadmap
 
-For current priorities and the short delivery plan, read
-[Current work](./CURRENT_WORK.md). It orders the next useful slices without
-changing the capability targets or historical acceptance requirements below.
+Historical roadmap. The owner's September 24, 2026 goal reset is recorded in
+[PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md), which owns current product scope and
+delivery order. Build a personal Investing.com-style platform using existing
+subscriptions/free sources. The notebook, U.S.-stocks-only and competitor-layout
+exclusions below no longer constrain the goal. Keep the exact historical release
+claims and applicable correctness, privacy and release requirements below.
+Use [Current work](./CURRENT_WORK.md) for the next outcome.
 
 For the current delivered/partial/open assessment and measured coverage
 denominators, use the [capability scoreboard](./CAPABILITY_STATUS.md). The exact

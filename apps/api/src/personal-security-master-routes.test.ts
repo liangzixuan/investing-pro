@@ -1,5 +1,6 @@
 import type {
   PersonalSecurityMasterSearchResponseDto,
+  PersonalSecurityMasterListingResponseDto,
   PersonalSecurityMasterStatusDto,
 } from "@research-cockpit/contracts";
 import { admitPersonalSecurityMasterSnapshot } from "@research-cockpit/personal-security-master";
@@ -10,6 +11,7 @@ import { buildPersonalSecurityMasterApp } from "./security-master-app";
 import {
   parseCanonicalSecurityMasterSearchUrl,
   PERSONAL_SECURITY_MASTER_SEARCH_PATH,
+  PERSONAL_SECURITY_MASTER_LISTINGS_PATH,
   PERSONAL_SECURITY_MASTER_STATUS_PATH,
 } from "./personal-security-master-routes";
 import {
@@ -27,6 +29,101 @@ afterEach(async () => {
 });
 
 describe("personal security-master routes", () => {
+  it("resolves an exact listing without exposing search metadata or private records", async () => {
+    const app = await readyApp();
+    const response = await allowedRequest(
+      app,
+      `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/lst-00001`,
+    );
+    expect(response.statusCode).toBe(200);
+    const body = response.json<PersonalSecurityMasterListingResponseDto>();
+    expect(body.listing).toMatchObject({
+      listingId: "lst-00001",
+      securityId: "sec-00001",
+      shareClassId: "shr-00001",
+      issuerId: "iss-00000",
+      symbol: "S00001",
+      cik: "0000000001",
+    });
+    expect(body.listing).not.toHaveProperty("matchKind");
+    expect(body.listing).not.toHaveProperty("providerMappings");
+    expect(Object.keys(body)).toEqual(["listing", "snapshot"]);
+    expect(body.snapshot.snapshotSha256).toMatch(/^sha256:[0-9a-f]{64}$/u);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+  });
+
+  it.each(["lst-missing", "lst%3Amissing", "x".repeat(128)])(
+    "returns null plus current snapshot for a missing canonical identity %s",
+    async (listingId) => {
+      const app = await readyApp();
+      const response = await allowedRequest(
+        app,
+        `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/${listingId}`,
+      );
+      expect(response.statusCode).toBe(200);
+      expect(
+        response.json<PersonalSecurityMasterListingResponseDto>(),
+      ).toMatchObject({
+        listing: null,
+        snapshot: { catalogId: "personal-security-master-2026-09" },
+      });
+    },
+  );
+
+  it.each([
+    "ab",
+    "LST-00001",
+    "%6Cst-00001",
+    "lst%3amissing",
+    "lst%2F00001",
+    "lst-00001?x=1",
+    "lst-00001/extra",
+    "lst-00001%00",
+    "x".repeat(129),
+  ])(
+    "rejects noncanonical or invalid listing IDs before lookup (%s)",
+    async (listingId) => {
+      const app = await readyApp();
+      const response = await allowedRequest(
+        app,
+        `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/${listingId}`,
+      );
+      expect(response.statusCode).toBe(403);
+      expect(response.payload).not.toContain('"snapshot"');
+      expect(response.payload).not.toContain('"listing"');
+    },
+  );
+
+  it.each([
+    "missing session",
+    "wrong origin",
+    "nonloopback",
+    "forwarded",
+    "authorization",
+    "range",
+    "body header",
+  ])("keeps listing lookup behind the %s boundary", async (change) => {
+    const app = await readyApp();
+    const headers = allowedHeaders(
+      change === "missing session" ? undefined : requireCookie(app),
+    );
+    if (change === "wrong origin") headers.origin = "https://untrusted.example";
+    if (change === "forwarded") headers.forwarded = "for=127.0.0.1";
+    if (change === "authorization")
+      headers.authorization = "Bearer private-canary";
+    if (change === "range") headers.range = "bytes=0-1";
+    if (change === "body header") headers["content-type"] = "application/json";
+    const response = await app.inject({
+      method: "GET",
+      url: `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/lst-00001`,
+      headers,
+      remoteAddress: change === "nonloopback" ? "192.0.2.1" : "127.0.0.1",
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.payload).not.toContain('"snapshot"');
+    expect(response.payload).not.toContain("private-canary");
+  });
+
   it("returns the bounded snapshot receipt without local paths or raw records", async () => {
     const app = await readyApp();
     const response = await allowedRequest(
@@ -381,6 +478,8 @@ describe("personal security-master routes", () => {
       ["POST", PERSONAL_SECURITY_MASTER_STATUS_PATH],
       ["HEAD", `${PERSONAL_SECURITY_MASTER_SEARCH_PATH}?q=A`],
       ["POST", `${PERSONAL_SECURITY_MASTER_SEARCH_PATH}?q=A`],
+      ["HEAD", `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/lst-00001`],
+      ["POST", `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/lst-00001`],
     ] as const) {
       const response = await app.inject({
         method,

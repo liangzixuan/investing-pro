@@ -13,7 +13,7 @@ export default function HomePage() {
     redirect("/personal");
   }
   if (isPersonalWorkspaceWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE)) {
-    redirect("/discover");
+    redirect("/markets");
   }
 
   return (

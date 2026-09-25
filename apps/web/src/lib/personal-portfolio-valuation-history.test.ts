@@ -1,6 +1,6 @@
 import type {
   PersonalMarketDataRangeDto,
-  PersonalMarketOverviewDto,
+  PersonalMarketDataHistoryDto,
   PersonalPortfolioIdentity,
   PersonalPortfolioLedgerActivity,
   PersonalPortfolioLedgerPayloadV3,
@@ -16,7 +16,7 @@ import {
   type PersonalPortfolioValuationHistoryResult,
 } from "./personal-portfolio-valuation-history";
 
-type History = PersonalMarketOverviewDto["history"];
+type History = PersonalMarketDataHistoryDto;
 
 function identity(suffix = "a"): PersonalPortfolioIdentity {
   return {
@@ -135,7 +135,7 @@ function history(
   startDate = "2026-09-01",
   endDate = "2026-09-04",
 ): History {
-  return { range: "1m", startDate, endDate, bars };
+  return { range: "1m", startDate, endDate, bars, currency: "USD" };
 }
 
 function input(

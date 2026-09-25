@@ -1,3 +1,4 @@
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
 import type {
   PersonalAnnualFinancialReportedFieldKeyDto,
   PersonalAnnualFinancialsDto,
@@ -95,6 +96,19 @@ afterEach(() => {
 });
 
 describe("PersonalFcffDcfValuation", () => {
+  it("preserves DCF history inputs when the independent quote feed refuses access", () => {
+    const props = defaultProps();
+    const expected = render(props);
+    expect(
+      render({
+        ...props,
+        marketOverview: {
+          ...marketOverview(),
+          quote: { status: "unavailable", reason: "access_denied" },
+        },
+      }),
+    ).toBe(expected);
+  });
   it("starts with explicit selection guidance and the permanent decision limits", () => {
     const markup = render({
       annualFinancials: null,
@@ -883,7 +897,13 @@ describe("current and loaded saved DCF outcomes", () => {
           ...props,
           marketOverview: {
             ...props.marketOverview!,
-            history: { ...props.marketOverview!.history, range: "1m" },
+            history: {
+              status: "available",
+              value: {
+                ...getPersonalMarketHistory(props.marketOverview)!,
+                range: "1m",
+              },
+            },
           },
         };
       if (reason === "mismatched identity")
@@ -899,15 +919,18 @@ describe("current and loaded saved DCF outcomes", () => {
           marketOverview: {
             ...props.marketOverview!,
             history: {
-              ...props.marketOverview!.history,
-              startDate: "2030-01-14",
-              endDate: "2030-01-14",
-              bars: [
-                {
-                  ...props.marketOverview!.history.bars[0]!,
-                  date: "2030-01-14",
-                },
-              ],
+              status: "available",
+              value: {
+                ...getPersonalMarketHistory(props.marketOverview)!,
+                startDate: "2030-01-14",
+                endDate: "2030-01-14",
+                bars: [
+                  {
+                    ...getPersonalMarketHistory(props.marketOverview)!.bars[0]!,
+                    date: "2030-01-14",
+                  },
+                ],
+              },
             },
           },
         };
@@ -1066,8 +1089,16 @@ describe("current and loaded saved DCF outcomes", () => {
       marketOverview: {
         ...market,
         history: {
-          ...market.history,
-          bars: [{ ...market.history.bars[0]!, raw: ohlcv("50") }],
+          status: "available",
+          value: {
+            ...getPersonalMarketHistory(market)!,
+            bars: [
+              {
+                ...getPersonalMarketHistory(market)!.bars[0]!,
+                raw: ohlcv("50"),
+              },
+            ],
+          },
         },
       },
     };
@@ -1324,18 +1355,22 @@ function marketOverview(
 ): PersonalMarketOverviewDto {
   return {
     history: {
-      bars: [
-        {
-          adjusted: ohlcv("999"),
-          date: "2030-01-15",
-          dividendCash: "0",
-          raw: ohlcv("100"),
-          splitFactor: "1",
-        },
-      ],
-      endDate: "2030-01-15",
-      range: "1y",
-      startDate: "2030-01-15",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [
+          {
+            adjusted: ohlcv("999"),
+            date: "2030-01-15",
+            dividendCash: "0",
+            raw: ohlcv("100"),
+            splitFactor: "1",
+          },
+        ],
+        endDate: "2030-01-15",
+        range: "1y",
+        startDate: "2030-01-15",
+      },
     },
     profile: "personal_single_user_local_market_data",
     provider: {
@@ -1350,19 +1385,23 @@ function marketOverview(
       retention: "active_owner_session_memory_only",
     },
     quote: {
-      change: "0",
-      changePercent: "0",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2030-01-15T22:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100",
-      price: "100",
-      sourceTime: "2030-01-15T22:00:00.000Z",
+      status: "available",
+      value: {
+        change: "0",
+        changePercent: "0",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2030-01-15T22:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100",
+        price: "100",
+        sourceTime: "2030-01-15T22:00:00.000Z",
+      },
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     security,
-    status: "available",
+    ingestedAt: "2030-01-15T22:01:00.000Z",
+    window: { range: "1y", startDate: "2030-01-15", endDate: "2030-01-15" },
   };
 }
 

@@ -6,6 +6,8 @@ import type {
   PersonalValuationHistoryDto,
   PersonalValuationRatioCellDto,
 } from "@research-cockpit/contracts";
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
+
 import {
   calculatePersonalHistoricalMultipleValuation,
   type PersonalHistoricalMultipleValuationAvailableResult,
@@ -382,6 +384,7 @@ function InputProvenance({
   readonly marketOverview: PersonalMarketOverviewDto | null;
   readonly valuationHistory: PersonalValuationHistoryDto | null;
 }) {
+  const marketHistory = getPersonalMarketHistory(marketOverview);
   return (
     <dl
       aria-label="Loaded valuation input provenance"
@@ -390,16 +393,15 @@ function InputProvenance({
       <div>
         <dt>Price input</dt>
         <dd>
-          {marketOverview === null ? (
+          {marketOverview === null || marketHistory === null ? (
             "Not loaded"
           ) : (
             <>
               {marketOverview.provider.name} EOD composite · requested window{" "}
-              {formatDate(marketOverview.history.startDate)}–
-              {formatDate(marketOverview.history.endDate)} · latest raw bar{" "}
+              {formatDate(marketHistory.startDate)}–
+              {formatDate(marketHistory.endDate)} · latest raw bar{" "}
               {formatDate(
-                marketOverview.history.bars.at(-1)?.date ??
-                  marketOverview.history.endDate,
+                marketHistory.bars.at(-1)?.date ?? marketHistory.endDate,
               )}
             </>
           )}
@@ -566,13 +568,14 @@ function unavailableCopy(
 function mapMarketOverview(
   overview: PersonalMarketOverviewDto | null,
 ): PersonalHistoricalMultipleValuationMarketInput | null {
-  if (overview === null) return null;
+  const history = getPersonalMarketHistory(overview);
+  if (overview === null || history === null) return null;
   return {
-    bars: overview.history.bars.map((bar) => ({
+    bars: history.bars.map((bar) => ({
       date: bar.date,
       raw: { close: bar.raw.close },
     })),
-    range: overview.history.range,
+    range: history.range,
     security: mapIdentity(overview.security),
   };
 }

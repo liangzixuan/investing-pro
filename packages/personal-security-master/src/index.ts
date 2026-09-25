@@ -17,6 +17,7 @@ export {
   PERSONAL_SECURITY_MASTER_SYMBOL_NORMALIZATION,
   PersonalSecurityMasterError,
   admitPersonalSecurityMasterSnapshot,
+  lookupPersonalSecurityMasterListing,
   measurePersonalSecurityMasterSearchP95,
   screenPersonalSecurityMaster,
   searchPersonalSecurityMaster,

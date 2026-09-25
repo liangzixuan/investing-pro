@@ -1,5 +1,12 @@
 # Sanitized Sprint 0 product brief
 
+Historical August 2026 brief. Its one-company scope, notebook design and
+competitor-reference exclusions describe Sprint 0. The owner's September 24,
+2026 goal reset in [PRODUCT_ROADMAP.md](./PRODUCT_ROADMAP.md) supersedes those
+product restrictions. The active goal is a personal Investing.com-style platform
+using existing subscriptions/free sources. Historical evidence and applicable
+correctness/privacy requirements remain intact.
+
 ## User need
 
 A self-directed investor needs to understand a company quickly, inspect where each number came from, test transparent valuation assumptions, record a thesis, and define a fact-based monitoring rule.

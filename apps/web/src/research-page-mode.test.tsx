@@ -38,6 +38,20 @@ vi.mock("@research-cockpit/research-core", () => {
   return { DEFAULT_KNOWN_AT: "2025-03-01T12:00:00.000Z" };
 });
 vi.mock("next/navigation", () => navigation);
+vi.mock("@/features/workspace/PersonalWorkspaceRoutes", () => ({
+  PersonalWorkspaceRoutes: components.Discovery,
+}));
+vi.mock("@/features/research/LegacyLocalStateCleanup", () => ({
+  LegacyLocalStateCleanup: () => null,
+}));
+vi.mock("@/features/workspace/workspace.css", () => ({}));
+vi.mock("@/features/research/personal-portfolio.css", () => ({}));
+vi.mock("@/features/research/personal-portfolio-ledger.css", () => ({}));
+vi.mock("@/features/research/personal-portfolio-history.css", () => ({}));
+vi.mock(
+  "@/features/research/personal-portfolio-valuation-history.css",
+  () => ({}),
+);
 vi.mock("@/lib/web-mode", () => import("./lib/web-mode"));
 
 afterEach(() => vi.unstubAllEnvs());
@@ -52,6 +66,29 @@ beforeEach(() => {
 });
 
 describe("research page data-mode isolation", () => {
+  it.each([
+    [
+      "personal_workspace",
+      "Research Desk",
+      "Markets, company research and personal watchlists.",
+    ],
+    [
+      "",
+      "Research Cockpit — Synthetic Demo",
+      "Evidence-first synthetic investment research workflow.",
+    ],
+  ])(
+    "uses accurate layout metadata in %s mode",
+    async (mode, title, description) => {
+      vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", mode);
+      const { metadata } = await import("../app/layout");
+      expect(metadata).toMatchObject({
+        title,
+        description,
+        robots: { index: false, follow: false },
+      });
+    },
+  );
   it("redirects the root before rendering the synthetic landing in dossier mode", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_dossier");
     const { default: HomePage } = await import("../app/page");
@@ -106,12 +143,12 @@ describe("research page data-mode isolation", () => {
     });
   });
 
-  it("redirects the root to discovery in personal workspace mode", async () => {
+  it("redirects the root to Markets in personal workspace mode", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
     const { default: HomePage } = await import("../app/page");
 
-    expect(() => HomePage()).toThrow("NEXT_REDIRECT:/discover");
-    expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/discover");
+    expect(() => HomePage()).toThrow("NEXT_REDIRECT:/markets");
+    expect(navigation.redirect).toHaveBeenCalledExactlyOnceWith("/markets");
     expect(moduleLoads).toEqual({
       discovery: 0,
       personal: 0,
@@ -140,25 +177,29 @@ describe("research page data-mode isolation", () => {
     });
   });
 
-  it("loads discovery with account or local access only on its explicit workspace route", async () => {
+  it("keeps workspace route leaves free of duplicate session controllers", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "personal_workspace");
-    vi.stubEnv("RESEARCH_COCKPIT_WEB_AUTH", "account");
     const { default: DiscoveryPage } = await import("../app/discover/page");
-
-    const rendered = DiscoveryPage();
-
-    expect(rendered.type).toBe(components.Discovery);
-    expect(rendered.props).toEqual({ authMode: "account" });
+    const { default: MarketsPage } = await import("../app/markets/page");
+    const { default: CompanyPage } =
+      await import("../app/company/[listingId]/page");
+    expect(DiscoveryPage()).toBeNull();
+    expect(MarketsPage()).toBeNull();
+    expect(CompanyPage()).toBeNull();
+    expect(moduleLoads.discovery).toBe(0);
     expect(navigation.notFound).not.toHaveBeenCalled();
-    expect(moduleLoads).toEqual({
-      discovery: 1,
-      personal: 0,
-      researchCore: 0,
-      synthetic: 0,
-    });
-    vi.stubEnv("RESEARCH_COCKPIT_WEB_AUTH", "local");
-    expect(DiscoveryPage().props).toEqual({ authMode: "local" });
   });
+  it.each(["markets", "company"])(
+    "does not expose %s outside workspace mode",
+    async (route) => {
+      vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "");
+      const page =
+        route === "markets"
+          ? (await import("../app/markets/page")).default
+          : (await import("../app/company/[listingId]/page")).default;
+      expect(() => page()).toThrow("NEXT_NOT_FOUND");
+    },
+  );
 
   it("does not expose discovery outside personal workspace mode", async () => {
     vi.stubEnv("RESEARCH_COCKPIT_WEB_MODE", "");

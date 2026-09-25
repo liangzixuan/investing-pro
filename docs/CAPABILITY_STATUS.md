@@ -1,10 +1,12 @@
 # Capability status
 
-Updated 2026-09-23 UTC. Accepted application baseline for the current feature:
-`709eeca839980b56f0aa729c9e8d1eb26204ba24` (watchlist price and valuation screen).
+Updated 2026-09-24 UTC. Accepted application baseline:
+`2b2510bc677173d1c9700e9f13c5012a7a0c8a88` (selected-quarter SEC assessment,
+including the earlier Research Desk and financial-result price screen).
 This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
-owns delivery priorities; the [breadth roadmap](./PERSONAL_PRODUCT_BREADTH_ROADMAP.md)
-owns full targets. Historical exit matrices and release claims remain unchanged.
+owns the next outcome; the [product roadmap](./PRODUCT_ROADMAP.md) owns current
+goals and delivery order following the owner's September 24 reset. Historical
+exit matrices and release claims remain unchanged.
 The workspace checkpoint and release handoff own actual runtime and acceptance
 receipts. Preparing a later change does not advance this accepted baseline.
 Release-capacity tooling was separately accepted at
@@ -12,9 +14,11 @@ Release-capacity tooling was separately accepted at
 
 The delivered [watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
 uses explicitly loaded dated raw closes and provider P/E and P/B for up to twenty
-selected saved listings. The active extension selects a separate cohort directly
-from SEC financial results without watchlist saves. Preparation is not release
-acceptance. The daily SEC
+selected saved listings. The delivered financial-result extension selects a
+separate cohort directly from SEC financial results without watchlist saves.
+The later compact quarter-evidence transport is parked and unreleased; its four
+retained real filings still produced structural refusals, with no complete
+primary graph or admitted quarter. Preparation is not release acceptance. The daily SEC
 filing monitor is delivered with an encrypted inbox, bounded daily/restart checks
 and separately opted-in generic Windows notices; its seven-day delivery soak
 remains open. Source-backed financial coverage remains open. Neither outcome
@@ -27,18 +31,20 @@ Investing.com Pro+ parity. There is no meaningful overall percentage: source
 pipelines, small controls and multiweek reliability requirements have different
 scope. Test and release counts are supporting evidence, not capability coverage.
 
-| User job                         | Delivered at the accepted source                                                                                                                                                                                                 | Important full-target gaps                                                                                                                                             |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Find and organize companies      | Admitted U.S. common-stock/ADR catalog, search, one encrypted watchlist, shared notes, ordering/filtering/paging and sequential research navigation                                                                              | Catalog refresh breadth, multiple lists, tags, watchlist import/export                                                                                                 |
-| Inspect prices                   | Explicit Tiingo quote/history loads, six ranges, raw/adjusted charts and action observations, price analytics, shared-date company comparison                                                                                    | Declared 100-symbol validation, independent corporate-action reconciliation, broader benchmark/technical analysis                                                      |
-| Understand financials            | Up to ten annual years and sixteen quarters, 30 reported fields, derived metrics, annual trend chart/exact table, SEC observations and filing-context inspection                                                                 | Admitted standalone quarters/TTM, revision selection, point-in-time history and independently validated shared core metrics                                            |
-| Screen for ideas                 | 28 SEC annual/Q4 fields, filters, sort/paging, coverage/source inspection, watchlist scope, three sparse starter screens and saved criteria/columns; separate dated price/P/E/P/B screen for up to twenty saved listings         | Financial-result price/valuation integration, whole-universe joins, shared-core coverage gate, starter breadth and look-ahead-safe historical screens                  |
-| Compare and value companies      | One primary plus up to three manual peers; 15 measures and twelve annual quality checks; saved/reordered groups; P/E/P/B bands; mechanical unlevered-FCF-proxy forward/reverse DCF, scenarios, sensitivity and saved assumptions | Automatic/sector-relative peers, direct audited FCFF inputs, additional justified model families, independent golden-case breadth and point-in-time fair-value history |
-| Track holdings                   | One encrypted USD portfolio, transactions/CSV import, FIFO/opening-pool estimates, manual splits, allocation, historical values and endpoint/Modified Dietz/EOD-linked returns                                                   | Multiple portfolios, XIRR, benchmarks, broader corporate actions/FX and owner recovery validation; EOD-linked returns do not establish measured intraday TWR           |
-| Follow changes                   | Explicit recent SEC-filing checks plus an opt-in daily monitor, encrypted inbox and generic Windows notices                                                                                                                      | Upcoming calendars/news, estimates/revisions/ownership/transcripts as sources permit; seven-day alert delivery soak                                                    |
-| Reuse or share research          | Saved notes, up to twenty named financial views, saved comparison/peer groups and company DCF assumptions                                                                                                                        | General saved-widget layouts and evidence-bearing CSV/JSON/PDF/XLSX reports; saved definitions do not preserve result snapshots                                        |
-| Depend on daily operation        | Local-access mode, encrypted storage, isolated releases/rollback, focused keyboard/narrow-layout checks and extensive verification                                                                                               | Installable PWA/offline mode, full WCAG 2.2 AA audit, app-wide latency acceptance, owner backup/restore drill and 30-day workflow soak                                 |
-| Ask questions or test strategies | Deterministic research/evidence foundations; no end-user AI or strategy workflow                                                                                                                                                 | Opt-in cited AI and original point-in-time, cost-aware, reproducible strategy research                                                                                 |
+| User job                         | Delivered at the accepted source                                                                                                                                                                                                                 | Important full-target gaps                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| See markets at a glance          | Search-first Research Desk and company-specific price panels                                                                                                                                                                                     | A useful market homepage, scoped movers/benchmarks, sectors, broad market status and multi-asset overview                                                              |
+| Find and organize companies      | Admitted U.S. common-stock/ADR catalog, search, one encrypted watchlist, shared notes, ordering/filtering/paging and sequential research navigation                                                                                              | Catalog refresh breadth, multiple lists, tags, watchlist import/export                                                                                                 |
+| Inspect prices                   | Explicit Tiingo quote/history loads, six ranges, raw/adjusted charts and action observations, price analytics, shared-date company comparison                                                                                                    | Declared 100-symbol validation, independent corporate-action reconciliation, broader benchmark/technical analysis                                                      |
+| Understand financials            | Up to ten annual years and sixteen quarters, 30 provider fields, derived metrics, annual trend chart/exact table, SEC observations, filing-context inspection and bounded selected-quarter assessment/refusals                                   | Connected complete company pages, admitted standalone SEC quarters/TTM, revision selection, point-in-time history and independently validated shared core metrics      |
+| Screen for ideas                 | 28 SEC annual/Q4 fields, filters, sort/paging, coverage/source inspection, watchlist scope, three sparse starter screens and saved criteria/columns; separate dated price/P/E/P/B screen for up to twenty watchlist or financial-result listings | Whole-universe price/fundamental joins, shared-core coverage gate, starter breadth and look-ahead-safe historical screens                                              |
+| Compare and value companies      | One primary plus up to three manual peers; 15 measures and twelve annual quality checks; saved/reordered groups; P/E/P/B bands; mechanical unlevered-FCF-proxy forward/reverse DCF, scenarios, sensitivity and saved assumptions                 | Automatic/sector-relative peers, direct audited FCFF inputs, additional justified model families, independent golden-case breadth and point-in-time fair-value history |
+| Track holdings                   | One encrypted USD portfolio, transactions/CSV import, FIFO/opening-pool estimates, manual splits, allocation, historical values and endpoint/Modified Dietz/EOD-linked returns                                                                   | Multiple portfolios, XIRR, benchmarks, broader corporate actions/FX and owner recovery validation; EOD-linked returns do not establish measured intraday TWR           |
+| Follow changes                   | Explicit recent SEC-filing checks plus an opt-in daily monitor, encrypted inbox and generic Windows notices                                                                                                                                      | Upcoming calendars/news, estimates/revisions/ownership/transcripts as sources permit; seven-day alert delivery soak                                                    |
+| Read news and plan the day       | SEC filing metadata and original filing links                                                                                                                                                                                                    | Market/company news, economic releases, upcoming earnings/dividends, time-zone-aware calendars and personal relevance                                                  |
+| Reuse or share research          | Saved notes, up to twenty named financial views, saved comparison/peer groups and company DCF assumptions                                                                                                                                        | General saved-widget layouts and evidence-bearing CSV/JSON/PDF/XLSX reports; saved definitions do not preserve result snapshots                                        |
+| Depend on daily operation        | Local-access mode, encrypted storage, isolated releases/rollback, focused keyboard/narrow-layout checks and extensive verification                                                                                                               | Installable PWA/offline mode, full WCAG 2.2 AA audit, app-wide latency acceptance, owner backup/restore drill and 30-day workflow soak                                 |
+| Ask questions or test strategies | Deterministic research/evidence foundations; no end-user AI or strategy workflow                                                                                                                                                                 | Opt-in cited AI and original point-in-time, cost-aware, reproducible strategy research                                                                                 |
 
 Feature details: [company research](./PERSONAL_COMPANY_RESEARCH.md),
 [financial screening](./SEC_ANNUAL_FINANCIAL_SCREENING.md),
@@ -118,23 +124,25 @@ paused at the end of the authorized work window. It is not a persistent app
 scheduler, OS notification service or alert-delivery soak. The older synthetic
 threshold evaluator likewise provides no background delivery.
 
-## Approved delivery order
+## Current delivery order
 
-1. Establish a bounded, independently reviewed release-capacity path beyond a64
-   and keep this scoreboard current. Preserve existing checks and historical
-   evidence; do not turn the prerequisite into an open-ended infrastructure effort.
-2. Deliver measured data and discovery coverage: define the actual shared core,
-   measure eligible security/metric and complete-job coverage, and independently
-   validate the declared issuer cohort. Prioritize useful price/valuation
-   screening and source-backed quarterly/TTM admission over count-only expansion.
-3. The daily filing follow-up loop is delivered: opt-in scheduling, restart
-   catch-up, accession detection, an encrypted inbox and generic Windows notices.
-   Preserve its delivery uncertainty and duplicate guards; the seven-day soak is
-   still open. Add outputs only within retention/export rights.
-4. Expand models, peers and portfolio features according to actual use and
-   verified inputs. Keep AI, backtests and broader event feeds behind their source
-   prerequisites. Another DCF display increment is lower priority than these gaps.
+The owner chose a personal Investing.com-style platform using existing
+subscriptions and free sources. The [product roadmap](./PRODUCT_ROADMAP.md)
+defines visible acceptance for each milestone:
 
-These priorities do not imply that later work has been implemented or accepted.
-Multi-user enterprise operations, trading, global multi-asset coverage, native
-app stores and cloud sync remain outside the current personal common-stock goal.
+1. Confirm the first page's actual source capabilities and desktop/narrow design,
+   then deliver a populated Markets home and direct company navigation.
+2. Connect complete company pages and discovery using the existing research tools.
+3. Add useful news and calendars; source work can run alongside the first pages.
+4. Expand Pro-style screening, models, comparisons, reports and portfolio review.
+5. Add broader markets and personal improvements as suitable feeds permit;
+   available asset classes need not wait for all preceding research features.
+
+Keep the latest compact SEC work parked. Its independent evidence track must meet
+existing correctness criteria if resumed, but does not block unrelated portal
+features. Measured coverage and reliability targets above remain open until their
+actual acceptance evidence exists. No reset of the goal changes those results.
+
+Broader asset classes are now in the product goal. Personal use comes first;
+multi-user operations, trading, new paid services and public distribution are
+outside this delivery sequence. No new implementation is claimed by this plan.

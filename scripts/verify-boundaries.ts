@@ -125,6 +125,7 @@ const personalSecurityMasterPackagePrefix =
 const personalSecurityMasterPackagePaths = [
   `${personalSecurityMasterPackagePrefix}package.json`,
   `${personalSecurityMasterPackagePrefix}src/index.ts`,
+  `${personalSecurityMasterPackagePrefix}src/personal-security-master-lookup.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.security.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts`,
@@ -9108,6 +9109,8 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     `${personalSecurityMasterPackagePrefix}src/test-personal-security-master-builder.ts` as const;
   const unitTestPath =
     `${personalSecurityMasterPackagePrefix}src/personal-security-master.test.ts` as const;
+  const lookupUnitTestPath =
+    `${personalSecurityMasterPackagePrefix}src/personal-security-master-lookup.test.ts` as const;
   const securityTestPath =
     `${personalSecurityMasterPackagePrefix}src/personal-security-master-security.test.ts` as const;
   const screenerUnitTestPath =
@@ -9198,6 +9201,15 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         );
       }
     } else if (
+      path === lookupUnitTestPath &&
+      (!modules.includes("vitest") ||
+        !modules.includes("./index") ||
+        modules.some((module) => !allowedTestModules.has(module)))
+    ) {
+      found.push(
+        `${path}: exact listing lookup tests may use only the reviewed local, Vitest, crypto, and proxy-inspection imports`,
+      );
+    } else if (
       (path === unitTestPath ||
         path === securityTestPath ||
         path === screenerUnitTestPath ||
@@ -9253,6 +9265,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ["PERSONAL_SECURITY_MASTER_SYMBOL_NORMALIZATION", false],
     ["PersonalSecurityMasterError", false],
     ["admitPersonalSecurityMasterSnapshot", false],
+    ["lookupPersonalSecurityMasterListing", false],
     ["measurePersonalSecurityMasterSearchP95", false],
     ["screenPersonalSecurityMaster", false],
     ["searchPersonalSecurityMaster", false],
@@ -9374,6 +9387,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       "apps/api/src/personal-security-master-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
+        "lookupPersonalSecurityMasterListing",
         "searchPersonalSecurityMaster",
         "type PersonalSecurityMasterCatalog",
       ],
@@ -9750,6 +9764,12 @@ import {
     ) !== null,
     measurementProbeViolation(exactMeasurementBoundaryProbe) !== null,
     measurementProbeViolation(
+      `${exactMeasurementBoundaryProbe}\nexport function lookupPersonalSecurityMasterListing(): null { return null; }`,
+    ) !== null,
+    measurementProbeViolation(
+      `${exactMeasurementBoundaryProbe}\nexport function lookupPersonalSecurityMasterListingForTesting(): null { return null; }`,
+    ) === null,
+    measurementProbeViolation(
       exactMeasurementBoundaryProbe.replace(
         "  input: PersonalSecurityMasterMeasurementInput,\n)",
         "  input: PersonalSecurityMasterMeasurementInput,\n  readNowMilliseconds: (() => number) | undefined = undefined,\n)",
@@ -10055,6 +10075,7 @@ function personalSecurityMasterMeasurementBoundaryViolation(
       (name) =>
         ![
           "admitPersonalSecurityMasterSnapshot",
+          "lookupPersonalSecurityMasterListing",
           "measurePersonalSecurityMasterSearchP95",
           "screenPersonalSecurityMaster",
           "searchPersonalSecurityMaster",

@@ -150,6 +150,7 @@ export const PERSONAL_SECURITY_MASTER_FAILURE_CODES = Object.freeze([
   "PERSONAL_SECURITY_MASTER_DIGEST_MISMATCH",
   "PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID",
   "PERSONAL_SECURITY_MASTER_SEARCH_INVALID",
+  "PERSONAL_SECURITY_MASTER_LOOKUP_INVALID",
   "PERSONAL_SECURITY_MASTER_SCREEN_INVALID",
   "PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID",
 ] as const);
@@ -643,6 +644,25 @@ export function searchPersonalSecurityMaster(
     return searchState(state, request);
   } catch (error) {
     throw publicError(error, "PERSONAL_SECURITY_MASTER_SEARCH_INVALID");
+  }
+}
+
+export function lookupPersonalSecurityMasterListing(
+  catalog: PersonalSecurityMasterCatalog,
+  listingId: string,
+): PersonalSecurityMasterScreenRow | null {
+  try {
+    if (arguments.length !== 2 || !isSafeId(listingId)) {
+      fail("PERSONAL_SECURITY_MASTER_LOOKUP_INVALID");
+    }
+    const state = CATALOG_STATES.get(catalog);
+    if (state === undefined) fail("PERSONAL_SECURITY_MASTER_LOOKUP_INVALID");
+    const entry = state.searchEntries.find(
+      (candidate) => candidate.listing.listingId === listingId,
+    );
+    return entry === undefined ? null : screenRow(entry);
+  } catch (error) {
+    throw publicError(error, "PERSONAL_SECURITY_MASTER_LOOKUP_INVALID");
   }
 }
 

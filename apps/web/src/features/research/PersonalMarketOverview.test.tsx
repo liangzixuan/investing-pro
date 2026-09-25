@@ -1,3 +1,7 @@
+import {
+  getPersonalMarketHistory,
+  getPersonalMarketReference,
+} from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -20,6 +24,40 @@ import {
 } from "./PersonalMarketAnalytics";
 
 describe("PersonalMarketOverview", () => {
+  it("retains EOD history when the quote feed denies access and labels the modeled reference", () => {
+    const loaded: PersonalMarketOverviewDto = {
+      ...overview(),
+      quote: { status: "unavailable", reason: "access_denied" },
+    };
+    const view = PersonalMarketOverview(
+      defaultProps({ overview: loaded, selection: selection() }),
+    );
+    expect(requireElement(view, PersonalMarketAnalytics).props.bars).toBe(
+      getPersonalMarketHistory(loaded)!.bars,
+    );
+    expect(textContent(view)).toContain("End-of-day history remains available");
+    const quote = textContent(
+      QuoteSummary({ reference: getPersonalMarketReference(loaded)! }),
+    );
+    expect(quote).toContain("2030-01-15");
+    expect(quote).toContain("Modeled age policy");
+    expect(quote).toContain("not an observed closing-trade time");
+    expect(quote).not.toContain("Current");
+  });
+  it("keeps a quote-only result visible and offers history retry", () => {
+    const loaded: PersonalMarketOverviewDto = {
+      ...overview(),
+      history: { status: "unavailable", reason: "upstream_unavailable" },
+    };
+    const props = defaultProps({ overview: loaded, selection: selection() });
+    const view = PersonalMarketOverview(props);
+    expect(requireElement(view, QuoteSummary).props.reference).toEqual(
+      getPersonalMarketReference(loaded),
+    );
+    expect(textContent(view)).toContain("End-of-day history unavailable");
+    requireButton(view, "Retry market data").props.onClick();
+    expect(props.onLoad).toHaveBeenCalledOnce();
+  });
   it("shows provider readiness without requesting data before selection", () => {
     const props = defaultProps();
     const rendered = PersonalMarketOverview(props);
@@ -60,12 +98,14 @@ describe("PersonalMarketOverview", () => {
       selection: selection(),
     });
     const rendered = PersonalMarketOverview(props);
-    const quote = textContent(QuoteSummary({ overview: overview() }));
+    const quote = textContent(
+      QuoteSummary({ reference: getPersonalMarketReference(overview())! }),
+    );
 
     expect(quote).toContain("$101.50");
     expect(quote).toContain("Up +$1.50 (+1.5%)");
     expect(quote).toContain("Derived real-time reference");
-    expect(quote).toContain("Current");
+    expect(quote).toContain("Within 36 hours");
     expect(textContent(rendered)).toContain("Data attribution:");
     expect(textContent(rendered)).toContain("Tiingo");
 
@@ -85,7 +125,9 @@ describe("PersonalMarketOverview", () => {
       PersonalMarketAnalytics,
     ) as unknown as React.ReactElement<PersonalMarketAnalyticsProps>;
     expect(analytics.props.asOfDate).toBe("2030-01-15");
-    expect(analytics.props.bars).toBe(props.overview?.history.bars);
+    expect(analytics.props.bars).toBe(
+      getPersonalMarketHistory(props.overview)!.bars,
+    );
     expect(analytics.props.mode).toBe("adjusted");
   });
 
@@ -95,7 +137,13 @@ describe("PersonalMarketOverview", () => {
       defaultProps({
         overview: {
           ...loaded,
-          history: { ...loaded.history, endDate: "2030-01-20" },
+          history: {
+            status: "available",
+            value: {
+              ...getPersonalMarketHistory(loaded)!,
+              endDate: "2030-01-20",
+            },
+          },
         },
         selection: selection(),
       }),
@@ -176,25 +224,32 @@ function selection() {
 function overview(): PersonalMarketOverviewDto {
   return {
     history: {
-      bars: [bar("2030-01-14", "100.00"), bar("2030-01-15", "101.50")],
-      endDate: "2030-01-15",
-      range: "1y",
-      startDate: "2030-01-14",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [bar("2030-01-14", "100.00"), bar("2030-01-15", "101.50")],
+        endDate: "2030-01-15",
+        range: "1y",
+        startDate: "2030-01-14",
+      },
     },
     profile: "personal_single_user_local_market_data",
     provider: provider(),
     quote: {
-      change: "1.50",
-      changePercent: "1.50",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2030-01-15T21:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100.00",
-      price: "101.50",
-      sourceTime: "2030-01-15T21:00:00.000Z",
+      status: "available",
+      value: {
+        change: "1.50",
+        changePercent: "1.50",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2030-01-15T21:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100.00",
+        price: "101.50",
+        sourceTime: "2030-01-15T21:00:00.000Z",
+      },
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -203,7 +258,8 @@ function overview(): PersonalMarketOverviewDto {
       securityName: "Zero Alpha Common Stock",
       symbol: "ZERO",
     },
-    status: "available",
+    ingestedAt: "2030-01-15T21:01:00.000Z",
+    window: { range: "1y", startDate: "2030-01-14", endDate: "2030-01-15" },
   };
 }
 

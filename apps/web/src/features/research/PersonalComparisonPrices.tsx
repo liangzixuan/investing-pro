@@ -2,6 +2,8 @@
 
 import type {
   PersonalMarketDataStatusDto,
+  PersonalMarketDataQuoteDto,
+  PersonalMarketDataRangeDto,
   PersonalMarketOverviewDto,
   PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
@@ -12,6 +14,13 @@ import {
   PersonalWorkspaceApiError,
   type PersonalWorkspaceApiErrorCode,
 } from "@/lib/personal-workspace-api";
+
+import {
+  getPersonalMarketHistory,
+  getPersonalMarketReference,
+  personalMarketFeedErrorCode,
+  personalMarketBatchStopCode,
+} from "../../lib/personal-market-snapshot";
 
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import { PersonalComparisonPerformance } from "./PersonalComparisonPerformance";
@@ -26,7 +35,7 @@ export interface PersonalComparisonPricesProps {
 }
 
 interface PriceContext {
-  readonly quote: PersonalMarketOverviewDto["quote"];
+  readonly quote: PersonalMarketDataQuoteDto;
   readonly provider: PersonalMarketOverviewDto["provider"];
   readonly eodDate: string | null;
   readonly history: {
@@ -39,7 +48,7 @@ interface PriceContext {
     }[];
   };
 }
-type HistoryRange = PersonalMarketOverviewDto["history"]["range"];
+type HistoryRange = PersonalMarketDataRangeDto;
 type PriceEntry =
   | { readonly state: "queued" | "loading" }
   | { readonly state: "available"; readonly value: PriceContext }
@@ -60,6 +69,7 @@ const identityFields = [
 const stopErrors = new Set<PersonalWorkspaceApiErrorCode>([
   "credentials_invalid",
   "not_entitled",
+  "access_denied",
   "not_configured",
   "rate_limited",
 ]);
@@ -192,6 +202,7 @@ export function PersonalComparisonPrices({
         try {
           const overview = await fetchPersonalMarketOverview(
             {
+              includeQuote: false,
               listingId: listing.listingId,
               symbol: listing.symbol,
               range,
@@ -207,34 +218,31 @@ export function PersonalComparisonPrices({
             identityFields.some(
               (field) => overview.security[field] !== listing[field],
             ) ||
-            overview.history.range !== range
+            overview.window.range !== range
           ) {
             throw new PersonalWorkspaceApiError("invalid_response");
           }
-          const eodDate =
-            overview.quote.kind === "end_of_day_close"
-              ? overview.history.bars.at(-1)?.date
-              : null;
-          if (
-            overview.quote.kind === "end_of_day_close" &&
-            (eodDate === undefined ||
-              overview.quote.sourceTime.slice(0, 10) !== eodDate ||
-              !isAssumedRegularClose(overview.quote.sourceTime) ||
-              overview.quote.price !== overview.history.bars.at(-1)?.raw.close)
-          ) {
-            throw new PersonalWorkspaceApiError("invalid_response");
+          const history = getPersonalMarketHistory(overview);
+          const reference = getPersonalMarketReference(overview);
+          if (history === null || reference === null) {
+            throw new PersonalWorkspaceApiError(
+              overview.history.status === "unavailable"
+                ? personalMarketFeedErrorCode(overview.history.reason)
+                : "invalid_response",
+            );
           }
+          const eodDate = reference.sourceDate;
           // Retain only the close fields needed for an active-session comparison.
           entries[listing.listingId] = {
             state: "available",
             value: {
-              quote: { ...overview.quote },
+              quote: { ...reference.quote },
               provider: { ...overview.provider },
               eodDate: eodDate ?? null,
               history: {
-                startDate: overview.history.startDate,
-                endDate: overview.history.endDate,
-                bars: overview.history.bars.map((bar) => ({
+                startDate: history.startDate,
+                endDate: history.endDate,
+                bars: history.bars.map((bar) => ({
                   date: bar.date,
                   adjusted: { close: bar.adjusted.close },
                   raw: { close: bar.raw.close },
@@ -242,6 +250,21 @@ export function PersonalComparisonPrices({
               },
             },
           };
+          const stopCode = personalMarketBatchStopCode(overview);
+          if (stopCode !== null) {
+            for (const remaining of listings) {
+              if (entries[remaining.listingId]?.state === "queued") {
+                entries[remaining.listingId] = {
+                  state: "error",
+                  message:
+                    "Not requested because the price load stopped. " +
+                    priceError(stopCode),
+                };
+              }
+            }
+            publish(false);
+            return;
+          }
         } catch (error) {
           if (!isCurrent()) return;
           const code =
@@ -413,7 +436,7 @@ function PriceDetails({ value }: { readonly value: PriceContext }) {
           </dd>
         </div>
         <div>
-          <dt>Freshness when loaded</dt>
+          <dt>Age when loaded</dt>
           <dd>
             {quote.freshness === "current"
               ? "Within 36 hours"
@@ -444,22 +467,12 @@ function formatTimestamp(value: string): string {
   }).format(new Date(value));
 }
 
-function isAssumedRegularClose(value: string): boolean {
-  return (
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false,
-    }).format(new Date(value)) === "16:00:00"
-  );
-}
-
 function priceError(code: PersonalWorkspaceApiErrorCode): string {
   switch (code) {
     case "credentials_invalid":
       return "Tiingo rejected the configured credential. The price load stopped.";
+    case "access_denied":
+      return "The provider refused access to this feed. The load stopped.";
     case "not_entitled":
       return "The configured Tiingo account cannot access this feed. The price load stopped.";
     case "not_configured":

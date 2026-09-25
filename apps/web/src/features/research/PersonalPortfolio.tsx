@@ -15,6 +15,11 @@ import {
 } from "@research-cockpit/contracts";
 import { calculatePersonalPortfolioOverview } from "@research-cockpit/personal-market-analytics";
 import { useEffect, useRef, useState } from "react";
+import {
+  getPersonalMarketReference,
+  personalMarketFeedErrorCode,
+  personalMarketBatchStopCode,
+} from "../../lib/personal-market-snapshot";
 
 import {
   fetchPersonalPortfolio,
@@ -345,6 +350,7 @@ export function PersonalPortfolio({
         }
         const result = await fetchPersonalMarketOverview(
           {
+            includeQuote: true,
             listingId: holding.identity.listingId,
             symbol: holding.identity.symbol,
             range: "1m",
@@ -352,7 +358,21 @@ export function PersonalPortfolio({
           request.signal,
         );
         if (!request.current()) return;
-        observed.push({ security: result.security, quote: result.quote });
+        const reference = getPersonalMarketReference(result);
+        if (reference !== null) {
+          observed.push({ security: result.security, quote: reference.quote });
+          setQuotes([...observed]);
+          setEvaluatedAt(new Date().toISOString());
+        }
+        const stopCode = personalMarketBatchStopCode(result);
+        if (stopCode !== null) throw new PersonalWorkspaceApiError(stopCode);
+        if (reference === null) {
+          throw new PersonalWorkspaceApiError(
+            result.history.status === "unavailable"
+              ? personalMarketFeedErrorCode(result.history.reason)
+              : "invalid_response",
+          );
+        }
       } catch (error) {
         if (!request.current()) return;
         const code =
@@ -380,7 +400,8 @@ export function PersonalPortfolio({
         if (
           code === "not_configured" ||
           code === "credentials_invalid" ||
-          code === "not_entitled"
+          code === "not_entitled" ||
+          code === "access_denied"
         ) {
           setMessage(
             code === "not_configured"
@@ -1030,7 +1051,7 @@ export function PersonalPortfolio({
                       ? "Catalog reconciliation required"
                       : (priceError ??
                         (value?.priceStatus === "priced"
-                          ? "Current reference quote"
+                          ? "Reference within the 36-hour age policy"
                           : value?.priceStatus === "stale"
                             ? "Stale quote; excluded from valuation"
                             : "Price unavailable"))}
@@ -1042,8 +1063,10 @@ export function PersonalPortfolio({
                           ? "End-of-day close"
                           : "Derived real-time reference"}{" "}
                         · Reference price {value.quote.price} USD · Source{" "}
-                        {displayTime(value.quote.sourceTime)} · Received{" "}
-                        {displayTime(value.quote.ingestedAt)}
+                        {value.quote.kind === "end_of_day_close"
+                          ? `${value.quote.sourceTime.slice(0, 10)} (EOD bar date; modeled regular-close age policy)`
+                          : displayTime(value.quote.sourceTime)}{" "}
+                        · Received {displayTime(value.quote.ingestedAt)}
                       </>
                     )}
                   </p>

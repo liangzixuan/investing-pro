@@ -1,9 +1,16 @@
+import {
+  WorkspaceSearch,
+  type WorkspaceSearchProps,
+} from "../workspace/WorkspaceSearch";
+import type { MarketsHomeProps } from "../markets/MarketsHome";
+import type { SecurityDiscoveryWorkspaceProps } from "./SecurityDiscoveryWorkspace";
 import type {
   PersonalAnnualFinancialReportedFieldKeyDto,
   PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalSecurityMasterListingResponseDto,
   PersonalQuarterlyFinancialsDto,
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
@@ -139,6 +146,13 @@ const hookHarness = vi.hoisted(() => {
 });
 
 const apiMocks = vi.hoisted(() => ({
+  fetchPersonalSecurityMasterListing:
+    vi.fn<
+      (
+        listingId: string,
+        signal: AbortSignal,
+      ) => Promise<PersonalSecurityMasterListingResponseDto>
+    >(),
   fetchMainPersonalWatchlist:
     vi.fn<(signal: AbortSignal) => Promise<PersonalWatchlistRecord | null>>(),
   fetchPersonalAnnualFinancials:
@@ -402,6 +416,256 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("navigates Choose holding to Portfolio with the admitted identity", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(1),
+    );
+    await activateRoutedWorkspace();
+    const onNavigate = vi.fn();
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "discover", task: "watchlist" },
+      onNavigate,
+    };
+    void renderWorkspace(undefined, { bridge });
+    const view = renderWorkspace(undefined, { bridge });
+    watchlistAction(view, "Choose SYN00001 for portfolio").props.onClick();
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith(
+      "/discover?view=portfolio",
+    );
+    const next = renderWorkspace(undefined, {
+      bridge: { ...bridge, route: { kind: "discover", task: "portfolio" } },
+    });
+    expect(
+      findElement<PersonalPortfolioProps>(next, componentMocks.Portfolio)?.props
+        .selectedListing?.listingId,
+    ).toBe("lst-syn-00001");
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+  });
+  it.each(["markets", "company"] as const)(
+    "waits for the activity handler before starting the %s route and resumes when it arrives",
+    async (kind) => {
+      const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+        () => null,
+      );
+      const bridge: SecurityDiscoveryWorkspaceProps = {
+        route: kind === "markets" ? { kind } : { kind, listingId: "lst-zero" },
+        renderMarkets: markets,
+      };
+      const owner = requireOwnerSession(renderWorkspace(undefined, { bridge }));
+      await owner.props.onSessionChange(true, new AbortController().signal);
+      void renderWorkspace(undefined, { bridge });
+      expect(markets.mock.calls.at(-1)![0].enabled).toBe(false);
+      expect(
+        apiMocks.fetchPersonalSecurityMasterListing,
+      ).not.toHaveBeenCalled();
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      const result = searchResult("ZERO", "lst-zero");
+      apiMocks.fetchPersonalSecurityMasterListing.mockResolvedValue({
+        listing: { ...result, cik: "0000000001" },
+        snapshot: snapshot(),
+      });
+      const start = vi.fn(() => () => true);
+      owner.props.onActivityHandlerChange?.(start);
+      void renderWorkspace(undefined, { bridge });
+      await flushPromises();
+      const view = renderWorkspace(undefined, { bridge });
+      expect(markets.mock.calls.at(-1)![0].enabled).toBe(true);
+      expect(apiMocks.fetchPersonalSecurityMasterListing).toHaveBeenCalledTimes(
+        kind === "company" ? 1 : 0,
+      );
+      if (kind === "company")
+        expect(requireMarketOverview(view).props.selection?.listingId).toBe(
+          "lst-zero",
+        );
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      owner.props.onActivityHandlerChange?.(null);
+      expect(markets.mock.calls.at(-1)![0].isCurrent()).toBe(false);
+    },
+  );
+  it.each(["exact", "identity mismatch", "range mismatch"])(
+    "passes only the exact loaded Markets snapshot to company (%s)",
+    async (condition) => {
+      await activateRoutedWorkspace();
+      const dom = companyFocusDocument("markets-title");
+      const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+        () => null,
+      );
+      const onNavigate = vi.fn();
+      const bridge: SecurityDiscoveryWorkspaceProps = {
+        route: { kind: "markets" },
+        renderMarkets: markets,
+        onNavigate,
+      };
+      void renderWorkspace(undefined, { bridge });
+      void renderWorkspace(undefined, { bridge });
+      const loaded = marketOverview();
+      const overview: PersonalMarketOverviewDto = {
+        ...loaded,
+        window: {
+          ...loaded.window,
+          range: condition === "range mismatch" ? "1y" : "1m",
+        },
+        history:
+          loaded.history.status === "available"
+            ? {
+                ...loaded.history,
+                value: { ...loaded.history.value, range: "1m" },
+              }
+            : loaded.history,
+        security: {
+          ...loaded.security,
+          symbol: condition === "identity mismatch" ? "WRONG" : "ZERO",
+        },
+      };
+      markets.mock.calls
+        .at(-1)![0]
+        .onOpenCompany(
+          searchResult("ZERO", "lst-zero"),
+          dom.trigger as unknown as HTMLElement,
+          overview,
+        );
+      const company = {
+        ...bridge,
+        route: { kind: "company", listingId: "lst-zero" } as const,
+      };
+      void renderWorkspace(undefined, { bridge: company });
+      const view = renderWorkspace(undefined, { bridge: company });
+      expect(requireMarketOverview(view).props.overview).toBe(
+        condition === "exact" ? overview : null,
+      );
+      if (condition === "exact")
+        expect(requireMarketOverview(view).props.range).toBe("1m");
+      expect(onNavigate).toHaveBeenCalledWith("/company/lst-zero");
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+      expect(
+        apiMocks.fetchPersonalSecurityMasterListing,
+      ).not.toHaveBeenCalled();
+    },
+  );
+  it("shares header search state and retires captured search handlers with the session", async () => {
+    await activateRoutedWorkspace();
+    const dom = companyFocusDocument("search-title");
+    const onNavigate = vi.fn();
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "markets" },
+      onNavigate,
+    };
+    void renderWorkspace(undefined, { bridge });
+    let view = renderWorkspace(undefined, { bridge });
+    let search = findElement<WorkspaceSearchProps>(view, WorkspaceSearch)!;
+    search.props.onChange("ZERO", dom.trigger as unknown as HTMLInputElement);
+    view = renderWorkspace(undefined, { bridge });
+    search = findElement<WorkspaceSearchProps>(view, WorkspaceSearch)!;
+    expect(search.props.query).toBe("ZERO");
+    search.props.onSearch(dom.trigger as unknown as HTMLFormElement);
+    await flushPromises();
+    expect(onNavigate).toHaveBeenCalledWith("/discover");
+    expect(apiMocks.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+    view = renderWorkspace(undefined, {
+      bridge: { ...bridge, route: { kind: "discover", task: "discover" } },
+    });
+    expect(
+      findElement<WorkspaceSearchProps>(view, WorkspaceSearch)!.props.query,
+    ).toBe("ZERO");
+    await requireOwnerSession(view).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    search.props.onSearch(dom.trigger as unknown as HTMLFormElement);
+    expect(apiMocks.searchPersonalSecurities).toHaveBeenCalledTimes(1);
+  });
+  it("keeps one session controller and mounted Markets slot across route changes", async () => {
+    await activateRoutedWorkspace();
+    const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+      () => null,
+    );
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "markets" },
+      renderMarkets: markets,
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge });
+    let view = renderWorkspace(undefined, { bridge });
+    const ready = markets.mock.calls.at(-1)![0];
+    expect(ready.active).toBe(true);
+    expect(ready.isCurrent()).toBe(true);
+    expect(findAllElements(view, componentMocks.OwnerSession)).toHaveLength(1);
+    const discover = {
+      ...bridge,
+      route: { kind: "discover", task: "watchlist" } as const,
+    };
+    void renderWorkspace(undefined, { bridge: discover });
+    view = renderWorkspace(undefined, { bridge: discover });
+    const hidden = markets.mock.calls.at(-1)![0];
+    expect(hidden.active).toBe(false);
+    expect(hidden.sessionKey).toBe(ready.sessionKey);
+    expect(findAllElements(view, componentMocks.OwnerSession)).toHaveLength(1);
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    await requireOwnerSession(view).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(ready.isCurrent()).toBe(false);
+    expect(hidden.isCurrent()).toBe(false);
+  });
+  it("opens an exact direct company URL without acquiring provider data", async () => {
+    await activateRoutedWorkspace();
+    const before = renderWorkspace();
+    requireOwnerSession(before).props.onActivityHandlerChange?.(
+      () => () => true,
+    );
+    const result = searchResult("ZERO", "lst-zero");
+    const identity = { ...result };
+    apiMocks.fetchPersonalSecurityMasterListing.mockResolvedValue({
+      listing: { ...identity, cik: "0000000001" },
+      snapshot: snapshot(),
+    });
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "company", listingId: "lst-zero" },
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge });
+    void renderWorkspace(undefined, { bridge });
+    await flushPromises();
+    const view = renderWorkspace(undefined, { bridge });
+    expect(
+      apiMocks.fetchPersonalSecurityMasterListing,
+    ).toHaveBeenCalledExactlyOnceWith("lst-zero", expect.any(AbortSignal));
+    expect(requireMarketOverview(view).props.selection?.listingId).toBe(
+      "lst-zero",
+    );
+    expect(requireCompanyResearch(view).props.backLabel).toBe(
+      "Back to Markets",
+    );
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    requireCompanyResearch(view).props.onBack();
+    expect(bridge.onNavigate).toHaveBeenCalledWith("/markets");
+  });
+  it("preserves loaded company data through routed Back and Forward", async () => {
+    await activateRoutedWorkspace();
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises();
+    view = renderWorkspace();
+    const loaded = requireMarketOverview(view).props.overview;
+    const company: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "company", listingId: "lst-zero" },
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge: company });
+    view = renderWorkspace(undefined, { bridge: company });
+    requireCompanyResearch(view).props.onBack();
+    expect(company.onNavigate).toHaveBeenCalledWith("/discover");
+    void renderWorkspace(undefined, {
+      bridge: { ...company, route: { kind: "discover", task: "discover" } },
+    });
+    void renderWorkspace(undefined, { bridge: company });
+    view = renderWorkspace(undefined, { bridge: company });
+    expect(requireMarketOverview(view).props.overview).toBe(loaded);
+    expect(apiMocks.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalSecurityMasterListing).not.toHaveBeenCalled();
+  });
   it("exposes five task views only while loaded and preserves mounted screens without requests", async () => {
     expect(
       findAllElements(renderWorkspace(), "nav").some(
@@ -1804,11 +2068,16 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(
       apiMocks.fetchPersonalMarketOverview,
     ).toHaveBeenCalledExactlyOnceWith(
-      { listingId: "lst-zero", range: "1y", symbol: "ZERO" },
+      {
+        includeQuote: true,
+        listingId: "lst-zero",
+        range: "1y",
+        symbol: "ZERO",
+      },
       expect.any(AbortSignal),
     );
     expect(market.props.overview).toMatchObject({
-      status: "available",
+      schemaVersion: "2.0.0",
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
   });
@@ -1952,7 +2221,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     valuation = requireHistoricalMultipleValuation(rendered);
 
     expect(valuation.props.marketOverview).toMatchObject({
-      history: { range: "1y" },
+      history: { status: "available", value: { range: "1y" } },
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
     expect(valuation.props.valuationHistory).toMatchObject({
@@ -1998,7 +2267,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     valuation = requireFcffDcfValuation(rendered);
 
     expect(valuation.props.marketOverview).toMatchObject({
-      history: { range: "1y" },
+      history: { status: "available", value: { range: "1y" } },
       security: { listingId: "lst-zero", symbol: "ZERO" },
     });
     expect(valuation.props.annualFinancials).toMatchObject({
@@ -7613,6 +7882,13 @@ async function activateWorkspace() {
   await owner.props.onSessionChange(true, new AbortController().signal);
 }
 
+async function activateRoutedWorkspace() {
+  await activateWorkspace();
+  requireOwnerSession(renderWorkspace()).props.onActivityHandlerChange?.(
+    () => () => true,
+  );
+}
+
 function commitWorkspaceEffects() {
   deferWorkspaceEffects = false;
   hookHarness.commitEffects();
@@ -7620,12 +7896,16 @@ function commitWorkspaceEffects() {
 
 function renderWorkspace(
   authMode?: "account" | "bootstrap" | "local",
-  options: Readonly<{ commitEffects?: boolean }> = {},
+  options: Readonly<{
+    commitEffects?: boolean;
+    bridge?: SecurityDiscoveryWorkspaceProps;
+  }> = {},
 ): React.ReactNode {
   hookHarness.beginRender();
-  const view = SecurityDiscoveryWorkspace(
-    authMode === undefined ? undefined : { authMode },
-  );
+  const view = SecurityDiscoveryWorkspace({
+    ...(authMode === undefined ? {} : { authMode }),
+    ...options.bridge,
+  });
   if (options.commitEffects !== false && !deferWorkspaceEffects)
     hookHarness.commitEffects();
   return view;
@@ -8336,45 +8616,52 @@ function marketStatus(): PersonalMarketDataStatusDto {
 function marketOverview(): PersonalMarketOverviewDto {
   return {
     history: {
-      bars: [
-        {
-          adjusted: {
-            close: "101.50",
-            high: "102.00",
-            low: "99.00",
-            open: "100.00",
-            volume: "1200000",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [
+          {
+            adjusted: {
+              close: "101.50",
+              high: "102.00",
+              low: "99.00",
+              open: "100.00",
+              volume: "1200000",
+            },
+            date: "2030-01-14",
+            dividendCash: "0",
+            raw: {
+              close: "101.50",
+              high: "102.00",
+              low: "99.00",
+              open: "100.00",
+              volume: "1200000",
+            },
+            splitFactor: "1",
           },
-          date: "2030-01-14",
-          dividendCash: "0",
-          raw: {
-            close: "101.50",
-            high: "102.00",
-            low: "99.00",
-            open: "100.00",
-            volume: "1200000",
-          },
-          splitFactor: "1",
-        },
-      ],
-      endDate: "2030-01-14",
-      range: "1y",
-      startDate: "2030-01-14",
+        ],
+        endDate: "2030-01-14",
+        range: "1y",
+        startDate: "2030-01-14",
+      },
     },
     profile: "personal_single_user_local_market_data",
     provider: marketProvider(),
     quote: {
-      change: "1.50",
-      changePercent: "1.50",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2030-01-15T00:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100.00",
-      price: "101.50",
-      sourceTime: "2030-01-15T00:00:00.000Z",
+      status: "available",
+      value: {
+        change: "1.50",
+        changePercent: "1.50",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2030-01-15T00:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100.00",
+        price: "101.50",
+        sourceTime: "2030-01-15T00:00:00.000Z",
+      },
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -8383,7 +8670,8 @@ function marketOverview(): PersonalMarketOverviewDto {
       securityName: "ZERO Common Stock",
       symbol: "ZERO",
     },
-    status: "available",
+    ingestedAt: "2030-01-15T00:01:00.000Z",
+    window: { range: "1y", startDate: "2030-01-14", endDate: "2030-01-14" },
   };
 }
 

@@ -8,21 +8,21 @@ request. Prices are separate from the reported annual financial amounts.
 
 Choose one month, three months or one year of history, then load explicitly.
 Changing the range clears the previous results without sending a request.
-The comparison uses the existing overview API. Requests run one company at a time; each overview uses the
-existing quote and EOD operations. There is no automatic retry or refresh.
+The comparison uses the overview API with `includeQuote: false`. Requests run
+one company at a time, with one EOD request per listing and no quote request.
+There is no automatic retry or refresh.
 Credential, entitlement, configuration, session and rate-limit failures stop
 the remaining batch. Ordinary missing company coverage remains visible without
 hiding another company's result.
 
 ## Read the price context
 
-A **Tiingo reference price** is provider-derived and is not an executable quote.
-Its time is the provider's reference refresh timestamp. An **End-of-day close**
-uses the latest admitted EOD bar only when the existing adapter permits fallback.
-Its date is a trading-session date; the app assumes the regular 16:00 New York
-close. Early closes are not modeled and the time is not an observed closing trade.
+An **End-of-day close** uses the latest admitted EOD bar. Its actual source date
+is shown separately from the modeled regular 16:00 New York close used for the
+existing freshness policy. Early closes are not modeled; the timestamp is not
+an observed closing trade. This comparison does not acquire a live reference quote.
 
-Freshness describes the quote when loaded, with the existing 36-hour threshold.
+Freshness describes that EOD reference when loaded, with the existing 36-hour threshold.
 Prices do not update in the background. The provider and source date/time remain
 visible so an older reference or prior close is not presented as a current trade.
 The annual financial periods remain independent. No price-to-earnings, yield,

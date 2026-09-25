@@ -18,6 +18,12 @@ import {
   type PersonalWorkspaceApiErrorCode,
   type PersonalWatchlistMembership,
 } from "../../lib/personal-workspace-api";
+import {
+  getPersonalMarketHistory,
+  personalMarketFeedErrorCode,
+  personalMarketBatchStopCode,
+} from "../../lib/personal-market-snapshot";
+
 import type { OwnerSessionActivityStart } from "./owner-session-lifecycle";
 import "./personal-price-valuation-screen.css";
 
@@ -77,6 +83,7 @@ const stopErrors = new Set<PersonalWorkspaceApiErrorCode>([
   "not_configured",
   "credentials_invalid",
   "not_entitled",
+  "access_denied",
   "rate_limited",
 ]);
 type View = "all" | "match" | "unknown" | "non_match";
@@ -449,7 +456,8 @@ function usePriceValuationScreen<
     async function acquire<
       T extends {
         security: ReturnType<typeof marketIdentity>;
-        history: { range: string };
+        window?: { range: string };
+        history: unknown;
       },
       U,
     >(
@@ -459,6 +467,7 @@ function usePriceValuationScreen<
         signal: AbortSignal,
       ) => Promise<T>,
       project: (response: T) => U,
+      responseRange: (response: T) => string,
     ): Promise<U | null> {
       if (!isCurrent()) return null;
       const complete = props.onActivityStart();
@@ -493,7 +502,7 @@ function usePriceValuationScreen<
         identityFields.some(
           (field) => response.security[field] !== identity[field],
         ) ||
-        response.history.range !== "1m"
+        responseRange(response) !== "1m"
       ) {
         messages[identity.listingId] = errorMessage("invalid_response");
         return null;
@@ -511,17 +520,36 @@ function usePriceValuationScreen<
         publish(true, `Loading ${index + 1} of ${batch.length}.`);
         const market = await acquire(
           identity,
-          fetchPersonalMarketOverview,
-          (response) => ({
-            security: { ...response.security },
-            range: "1m" as const,
-            startDate: response.history.startDate,
-            endDate: response.history.endDate,
-            bars: response.history.bars.map((bar) => ({
-              date: bar.date,
-              raw: { close: bar.raw.close },
-            })),
-          }),
+          (input, signal) =>
+            fetchPersonalMarketOverview(
+              { ...input, includeQuote: false },
+              signal,
+            ),
+          (response) => {
+            const history = getPersonalMarketHistory(response);
+            const stopCode = personalMarketBatchStopCode(response);
+            if (stopCode !== null)
+              throw new PersonalWorkspaceApiError(stopCode);
+            if (history === null) {
+              messages[identity.listingId] = errorMessage(
+                response.history.status === "unavailable"
+                  ? personalMarketFeedErrorCode(response.history.reason)
+                  : "invalid_response",
+              );
+              return null;
+            }
+            return {
+              security: { ...response.security },
+              range: "1m" as const,
+              startDate: history.startDate,
+              endDate: history.endDate,
+              bars: history.bars.map((bar) => ({
+                date: bar.date,
+                raw: { close: bar.raw.close },
+              })),
+            };
+          },
+          (response) => response.window.range,
         );
         if (!isCurrent()) return;
         const valuation = await acquire(
@@ -545,6 +573,7 @@ function usePriceValuationScreen<
               priceToBook: { ...point.priceToBook },
             })),
           }),
+          (response) => response.history.range,
         );
         if (!isCurrent()) return;
         try {
@@ -634,7 +663,7 @@ function usePriceValuationScreen<
       </p>
       <p className="market-scope-note">
         Tiingo · active-session memory only · no export or saved screen. Loading
-        uses up to 40 local calls and 60 underlying provider requests. Provider
+        uses up to 40 local calls and 40 underlying provider requests. Provider
         ratios can be negative or zero; this screen does not calculate ratios or
         provide executable quotes.
       </p>
@@ -990,6 +1019,8 @@ function errorMessage(code: PersonalWorkspaceApiErrorCode): string {
       return "Tiingo credentials were rejected.";
     case "not_configured":
       return "Tiingo is not configured.";
+    case "access_denied":
+      return "The provider refused access to this feed. The load stopped.";
     case "not_entitled":
       return "The provider account is not entitled to this data.";
     case "rate_limited":

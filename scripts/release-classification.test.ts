@@ -186,6 +186,38 @@ describe("strict release descriptor", () => {
   });
 
   it.each([
+    "apps/web/app/company/[listingId]/page.tsx",
+    "apps/web/app/[market]/company/[_listing2]/page.tsx",
+  ])("accepts complete dynamic identifier segments in %s", (path) => {
+    const expected = {
+      ...descriptor(),
+      featureChanges: [{ path, status: "A" as const }],
+    };
+    expect(parseReleaseDescriptor(JSON.stringify(expected))).toEqual(expected);
+    expect(parseGitChanges(`A\0${path}\0`)).toEqual(expected.featureChanges);
+  });
+
+  it.each([
+    "apps/web/app/company/[]/page.tsx",
+    "apps/web/app/company/[9id]/page.tsx",
+    "apps/web/app/company/[listing-id]/page.tsx",
+    "apps/web/app/company/[...listingId]/page.tsx",
+    "apps/web/app/company/[[listingId]]/page.tsx",
+    "apps/web/app/company/[[...listingId]]/page.tsx",
+    "apps/web/app/company/prefix[listingId]/page.tsx",
+    "apps/web/app/company/[listingId]suffix/page.tsx",
+    "apps/web/app/company/[listingId].tsx",
+    "apps/web/app/company/[listingId/page.tsx",
+    "apps/web/app/company/listingId]/page.tsx",
+    "apps/web/app/company/[$id]/page.tsx",
+    "apps/web/app/company/[.git]/page.tsx",
+    "apps/web/app/company/[listingId]/../page.tsx",
+    "apps/web/app/company/[listingId]/.GIT/config",
+    "apps/web/app/company/[listingId]/CON.txt",
+    "apps/web/app/company/[listingId]/file.",
+    "apps/web/app/company/[listingId]//page.tsx",
+    "apps/web/app/company/[listingId]\\page.tsx",
+    `apps/web/app/[${"i".repeat(240)}]/page.tsx`,
     "../escape.ts",
     "/outside.ts",
     "C:/outside.ts",
@@ -288,6 +320,21 @@ describe("strict release descriptor", () => {
       expect(() =>
         parseReleaseDescriptor(JSON.stringify({ ...original, featureChanges })),
       ).toThrow();
+  });
+
+  it("keeps dynamic paths case-unique and strictly ordered", () => {
+    for (const paths of [
+      ["apps/[Id]/page.tsx", "apps/[id]/page.tsx"],
+      ["apps/[z]/page.tsx", "apps/[a]/page.tsx"],
+    ])
+      expect(() =>
+        parseReleaseDescriptor(
+          JSON.stringify({
+            ...descriptor(),
+            featureChanges: paths.map((path) => ({ path, status: "A" })),
+          }),
+        ),
+      ).toThrow(/unique and ordered/u);
   });
 
   it("rejects shell/comment interpolation and malformed binding metadata", () => {
@@ -673,6 +720,45 @@ describe("real bounded Git reader", () => {
     );
     return { directory, root, git, base, parent, head, graftPath };
   }
+
+  it("reads dynamic paths literally and excludes Git glob near-misses", () => {
+    const { root, git } = graftRepository();
+    const route = "apps/web/app/company/[listingId]/page.tsx";
+    const nearMiss = "apps/web/app/company/l/page.tsx";
+    for (const path of [route, nearMiss]) {
+      mkdirSync(dirname(join(root, path)), { recursive: true });
+      writeFileSync(join(root, path), "before\n");
+    }
+    git("add", "--", "apps");
+    git("commit", "--quiet", "-m", "synthetic route baseline");
+    const base = git("rev-parse", "HEAD");
+    writeFileSync(join(root, route), "route changed\n");
+    git("add", "--", "apps");
+    git("commit", "--quiet", "-m", "synthetic dynamic route");
+    const routeHead = git("rev-parse", "HEAD");
+    const actual = createReleaseGitReader(root);
+    expect(actual.changes(base, routeHead)).toEqual([
+      { path: route, status: "M" },
+    ]);
+    expect(actual.blob(routeHead, route)).toBe("route changed\n");
+    const diff = ["diff", "--name-only", "--no-renames", "-z"];
+    expect(
+      git("--literal-pathspecs", ...diff, base, routeHead, "--", route),
+    ).toBe(`${route}\0`);
+    writeFileSync(join(root, nearMiss), "near miss changed\n");
+    git("add", "--", "apps");
+    git("commit", "--quiet", "-m", "synthetic route near miss");
+    const nearHead = git("rev-parse", "HEAD");
+    expect(git(...diff, routeHead, nearHead, "--", route)).toBe(
+      `${nearMiss}\0`,
+    );
+    expect(
+      git("--literal-pathspecs", ...diff, routeHead, nearHead, "--", route),
+    ).toBe("");
+    expect(actual.changes(routeHead, nearHead)).toEqual([
+      { path: nearMiss, status: "M" },
+    ]);
+  });
 
   it("rejects on-disk grafts even when replacement objects are disabled", () => {
     const { root, git, base, parent, head, graftPath } = graftRepository();

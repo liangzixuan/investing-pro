@@ -6,6 +6,8 @@ import type {
   PersonalMarketOverviewDto,
   PersonalValuationHistoryDto,
 } from "@research-cockpit/contracts";
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
+
 import {
   calculatePersonalFcffDcfValuation,
   PERSONAL_FCFF_DCF_DEFAULT_ASSUMPTIONS,
@@ -1313,14 +1315,15 @@ function mapSelection(selection: PersonalMarketSelection) {
 }
 
 function mapMarketOverview(overview: PersonalMarketOverviewDto | null) {
-  if (overview === null) return null;
+  const history = getPersonalMarketHistory(overview);
+  if (overview === null || history === null) return null;
   return {
-    bars: overview.history.bars.map((bar) => ({
+    bars: history.bars.map((bar) => ({
       date: bar.date,
       raw: { close: bar.raw.close },
     })),
-    priceCurrency: overview.quote.currency,
-    range: overview.history.range,
+    priceCurrency: history.currency,
+    range: history.range,
     security: mapIdentity(overview.security),
   };
 }

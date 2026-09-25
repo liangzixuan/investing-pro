@@ -1,3 +1,4 @@
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketDataIdentityDto,
   PersonalMarketDataRangeDto,
@@ -16,6 +17,24 @@ import {
 } from "./PersonalHistoricalMultipleValuation";
 
 describe("PersonalHistoricalMultipleValuation", () => {
+  it("preserves historical scenarios when the independent quote feed refuses access", () => {
+    const loaded = loadedInputs(60);
+    const props = defaultProps({
+      marketOverview: loaded.market,
+      selection: selection(),
+      valuationHistory: loaded.valuation,
+    });
+    const expected = render(props).markup;
+    expect(
+      render({
+        ...props,
+        marketOverview: {
+          ...loaded.market,
+          quote: { status: "unavailable", reason: "access_denied" },
+        },
+      }).markup,
+    ).toBe(expected);
+  });
   it("starts with explicit load guidance and makes the product limits visible", () => {
     const rendered = render(
       defaultProps({
@@ -131,12 +150,17 @@ describe("PersonalHistoricalMultipleValuation", () => {
         marketOverview: {
           ...loaded.market,
           history: {
-            ...loaded.market.history,
-            bars: loaded.market.history.bars.map((bar) => ({
-              ...bar,
-              adjusted: ohlcv("999.99"),
-            })),
-            startDate: "2029-12-15",
+            status: "available",
+            value: {
+              ...getPersonalMarketHistory(loaded.market)!,
+              bars: getPersonalMarketHistory(loaded.market)!.bars.map(
+                (bar) => ({
+                  ...bar,
+                  adjusted: ohlcv("999.99"),
+                }),
+              ),
+              startDate: "2029-12-15",
+            },
           },
         },
         selection: selection(),
@@ -390,27 +414,26 @@ function loadedInputs(
   return {
     market: {
       history: {
-        bars,
-        endDate: latestBar.date,
-        range: marketRange,
-        startDate: bars[0]?.date ?? latestBar.date,
+        status: "available",
+        value: {
+          currency: "USD",
+          bars,
+          endDate: latestBar.date,
+          range: marketRange,
+          startDate: bars[0]?.date ?? latestBar.date,
+        },
       },
       profile: "personal_single_user_local_market_data",
       provider: marketProvider(),
-      quote: {
-        change: null,
-        changePercent: null,
-        currency: "USD",
-        freshness: "current",
-        ingestedAt: `${latestBar.date}T21:01:00.000Z`,
-        kind: "end_of_day_close",
-        previousClose: null,
-        price: latestBar.raw.close,
-        sourceTime: `${latestBar.date}T21:00:00.000Z`,
-      },
-      schemaVersion: "1.0.0",
+      quote: { status: "not_requested" },
+      schemaVersion: "2.0.0",
       security: marketIdentity,
-      status: "available",
+      ingestedAt: `${latestBar.date}T21:01:00.000Z`,
+      window: {
+        range: marketRange,
+        startDate: bars[0]?.date ?? latestBar.date,
+        endDate: latestBar.date,
+      },
     },
     valuation: {
       asOf: `${latestPoint.date}T22:00:00.000Z`,

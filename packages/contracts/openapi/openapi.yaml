@@ -478,6 +478,64 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/security-master/listings/{listingId}:
+    get:
+      operationId: getPersonalSecurityMasterListing
+      summary: Resolve one exact active listing in the current admitted catalog.
+      description: >-
+        Read-only owner-local lookup by opaque listing identity. This performs no
+        provider request, text search, snapshot admission, or saved-record write.
+        The identifier uses canonical encodeURIComponent encoding and the admitted
+        catalog ID grammar. Query strings, extra path segments, noncanonical
+        escapes and request bodies fail closed. Existing owner-session, origin,
+        loopback, authority and header guards apply. A missing, inactive or
+        ineligible listing returns null together with the current snapshot receipt.
+        Provider mappings and raw source records remain private. HEAD is not exposed.
+      security:
+        - PersonalOwnerSession: []
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 128
+            pattern: "^[a-z0-9][a-z0-9._:-]{2,127}$"
+      responses:
+        "200":
+          description: Exact active listing or null, bound to the current catalog snapshot.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalSecurityMasterListingResponse"
+        "400":
+          description: The accepted listing lookup could not be evaluated.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
+          description: The identifier grammar, request boundary, or owner session is not accepted.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/personal-filing/market-data/status:
     get:
       operationId: getPersonalMarketDataStatus
@@ -2217,6 +2275,61 @@ components:
           minLength: 1
           maxLength: 15
           pattern: "^[A-Z0-9][A-Z0-9.-]{0,14}$"
+    PersonalSecurityMasterListingResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - listing
+        - snapshot
+      properties:
+        listing:
+          oneOf:
+            - $ref: "#/components/schemas/PersonalSecurityMasterScreenRow"
+            - type: "null"
+        snapshot:
+          $ref: "#/components/schemas/PersonalSecurityMasterSnapshotReceipt"
+    PersonalSecurityMasterScreenRow:
+      type: object
+      description: Current admitted identity without search-specific match metadata.
+      additionalProperties: false
+      required:
+        - cik
+        - country
+        - exchangeMic
+        - instrumentType
+        - issuerId
+        - issuerName
+        - listingId
+        - securityId
+        - securityName
+        - shareClassId
+        - shareClassName
+        - symbol
+      properties:
+        cik:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/cik"
+        country:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/country"
+        exchangeMic:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/exchangeMic"
+        instrumentType:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/instrumentType"
+        issuerId:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/issuerId"
+        issuerName:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/issuerName"
+        listingId:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/listingId"
+        securityId:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/securityId"
+        securityName:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/securityName"
+        shareClassId:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/shareClassId"
+        shareClassName:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/shareClassName"
+        symbol:
+          $ref: "#/components/schemas/PersonalSecurityMasterSearchResult/properties/symbol"
     PersonalSecurityMasterSnapshotReceipt:
       type: object
       description: >-
@@ -2734,10 +2847,14 @@ components:
       type: object
       additionalProperties: false
       required:
+        - includeQuote
         - listingId
         - symbol
         - range
       properties:
+        includeQuote:
+          type: boolean
+          description: Whether to request the optional IEX reference quote. False requests only EOD history.
         listingId:
           type: string
           minLength: 3
@@ -2762,27 +2879,91 @@ components:
       additionalProperties: false
       required:
         - history
+        - ingestedAt
         - profile
         - provider
         - quote
         - schemaVersion
         - security
-        - status
+        - window
       properties:
         history:
-          $ref: "#/components/schemas/PersonalMarketDataHistory"
+          $ref: "#/components/schemas/PersonalMarketDataHistoryResult"
+        ingestedAt:
+          type: string
+          format: date-time
         profile:
           const: personal_single_user_local_market_data
         provider:
           $ref: "#/components/schemas/PersonalMarketDataProvider"
         quote:
-          $ref: "#/components/schemas/PersonalMarketDataQuote"
+          $ref: "#/components/schemas/PersonalMarketDataQuoteResult"
         schemaVersion:
-          const: "1.0.0"
+          const: "2.0.0"
         security:
           $ref: "#/components/schemas/PersonalMarketDataIdentity"
+        window:
+          $ref: "#/components/schemas/PersonalMarketDataWindow"
+    PersonalMarketDataWindow:
+      type: object
+      additionalProperties: false
+      required: [endDate, range, startDate]
+      properties:
+        endDate:
+          type: string
+          format: date
+        range:
+          type: string
+          enum: [1m, 3m, ytd, 1y, 5y, 10y]
+        startDate:
+          type: string
+          format: date
+    PersonalMarketDataUnavailable:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
         status:
-          const: available
+          const: unavailable
+        reason:
+          type: string
+          enum:
+            [
+              access_denied,
+              credentials_invalid,
+              rate_limited,
+              not_covered,
+              upstream_unavailable,
+              invalid_response,
+            ]
+    PersonalMarketDataHistoryResult:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [status, value]
+          properties:
+            status:
+              const: available
+            value:
+              $ref: "#/components/schemas/PersonalMarketDataHistory"
+        - $ref: "#/components/schemas/PersonalMarketDataUnavailable"
+    PersonalMarketDataQuoteResult:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [status, value]
+          properties:
+            status:
+              const: available
+            value:
+              $ref: "#/components/schemas/PersonalMarketDataQuote"
+        - $ref: "#/components/schemas/PersonalMarketDataUnavailable"
+        - type: object
+          additionalProperties: false
+          required: [status]
+          properties:
+            status:
+              const: not_requested
     PersonalMarketDataIdentity:
       type: object
       additionalProperties: false
@@ -2856,10 +3037,7 @@ components:
           type: string
           format: date-time
         kind:
-          type: string
-          enum:
-            - derived_realtime_reference
-            - end_of_day_close
+          const: derived_realtime_reference
         previousClose:
           type:
             - string
@@ -2875,14 +3053,14 @@ components:
           type: string
           format: date-time
           description: >-
-            Provider observation time for a derived quote. An end-of-day
-            fallback uses the returned trading-session date modeled at the US
-            regular-session close (16:00 America/New_York).
+            Provider observation time for the IEX derived reference quote.
+            EOD history has session dates and never masquerades as this quote.
     PersonalMarketDataHistory:
       type: object
       additionalProperties: false
       required:
         - bars
+        - currency
         - endDate
         - range
         - startDate
@@ -2893,6 +3071,8 @@ components:
           maxItems: 4096
           items:
             $ref: "#/components/schemas/PersonalMarketDataDailyBar"
+        currency:
+          const: USD
         endDate:
           type: string
           format: date

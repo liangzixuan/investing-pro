@@ -462,6 +462,22 @@ function renderCrossEngine(
 ): string {
   const current = descriptor.caseNumber;
   const previous = current - 1;
+  // Preserve historical bytes; a78 first admits literal Next dynamic segments.
+  const protectedDiff =
+    '            git diff --name-only --no-renames -z "$public_promotion" HEAD -- "${protected[@]}"\n';
+  const literalProtectedDiff = protectedDiff.replace(
+    "git diff",
+    "git --literal-pathspecs diff",
+  );
+  if (current === 78)
+    source = once(source, protectedDiff, literalProtectedDiff);
+  if (
+    current >= 78 &&
+    (source.split(literalProtectedDiff).length !== 2 ||
+      source.split(literalProtectedDiff.trim()).length !== 2 ||
+      source.includes(protectedDiff.trim()))
+  )
+    throw new Error("Changed literal protected-inventory command");
   const next = (value: string) =>
     mapped(value, {
       [`cycle3ka${previous - 1}`]: `cycle3ka${previous}`,

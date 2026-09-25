@@ -24,6 +24,7 @@ import {
   fetchPersonalQuarterlyFinancials,
   fetchPersonalValuationHistory,
   fetchPersonalSecurityMasterStatus,
+  fetchPersonalSecurityMasterListing,
   membershipFromSearchResult,
   normalizeWatchlistNote,
   PersonalWorkspaceApiError,
@@ -67,6 +68,106 @@ describe("personal workspace API client", () => {
         referrerPolicy: "no-referrer",
       }),
     );
+  });
+
+  it("resolves and freezes exact listing identity with its current snapshot", async () => {
+    const listing = screenResponse().rows[0];
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ listing, snapshot: snapshot() }),
+    );
+    const signal = new AbortController().signal;
+    const result = await fetchPersonalSecurityMasterListing(
+      "lst-00001",
+      signal,
+    );
+    expect(result.listing).toEqual(listing);
+    expect(result.snapshot.snapshotSha256).toBe(snapshot().snapshotSha256);
+    expect(requestUrl(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://127.0.0.1:3100/v1/personal-filing/security-master/listings/lst-00001",
+    );
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      signal,
+      cache: "no-store",
+      credentials: "include",
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+    });
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.listing)).toBe(true);
+    expect(Object.isFrozen(result.snapshot)).toBe(true);
+    expect(Object.isFrozen(result.snapshot.provenance.artifacts)).toBe(true);
+  });
+
+  it("preserves the current snapshot on a missing listing and canonicalizes an ID colon", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ listing: null, snapshot: snapshot() }),
+    );
+    await expect(
+      fetchPersonalSecurityMasterListing(
+        "lst:missing",
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({
+      listing: null,
+      snapshot: { snapshotSha256: snapshot().snapshotSha256 },
+    });
+    expect(requestUrl(fetchMock.mock.calls[0]?.[0])).toContain(
+      "/listings/lst%3Amissing",
+    );
+  });
+
+  it.each([
+    "",
+    "ab",
+    "LST-00001",
+    "lst/00001",
+    " lst-00001",
+    "lst-00001?x=1",
+    "x".repeat(129),
+  ])("rejects invalid listing ID before fetch (%s)", async (listingId) => {
+    await expect(
+      fetchPersonalSecurityMasterListing(
+        listingId,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "wrong identity",
+    "wrong snapshot",
+    "unknown keys",
+    "search metadata",
+    "missing listing",
+  ])("rejects malformed listing response: %s", async (kind) => {
+    const original = screenResponse().rows[0];
+    if (original === undefined) throw new Error("Missing fixture");
+    const body = { listing: original, snapshot: snapshot() };
+    const invalid =
+      kind === "wrong identity"
+        ? { ...body, listing: { ...original, listingId: "lst-00002" } }
+        : kind === "wrong snapshot"
+          ? {
+              ...body,
+              snapshot: { ...body.snapshot, snapshotSha256: "invalid" },
+            }
+          : kind === "unknown keys"
+            ? { ...body, private: true }
+            : kind === "search metadata"
+              ? {
+                  ...body,
+                  listing: { ...original, matchKind: "current_symbol_exact" },
+                }
+              : { snapshot: body.snapshot };
+    fetchMock.mockResolvedValueOnce(jsonResponse(invalid));
+    await expect(
+      fetchPersonalSecurityMasterListing(
+        "lst-00001",
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_response" });
   });
 
   it("uses the canonical search URL instead of form-style plus encoding", async () => {
@@ -362,12 +463,21 @@ describe("personal workspace API client", () => {
       fetchPersonalMarketDataStatus(new AbortController().signal),
     ).resolves.toMatchObject({ status: "configured" });
     const overview = await fetchPersonalMarketOverview(
-      { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+      {
+        includeQuote: true,
+        listingId: "lst-00001",
+        range: "1y",
+        symbol: "ZERO",
+      },
       new AbortController().signal,
     );
 
-    expect(overview.history.bars).toHaveLength(2);
-    expect(Object.isFrozen(overview.history.bars[0]?.adjusted)).toBe(true);
+    if (overview.history.status !== "available")
+      throw new Error("Expected available EOD history");
+    expect(overview.history.value.bars).toHaveLength(2);
+    expect(Object.isFrozen(overview.history.value.bars[0]?.adjusted)).toBe(
+      true,
+    );
     expect(fetchMock.mock.calls[0]).toEqual([
       new URL("http://127.0.0.1:3100/v1/personal-filing/market-data/status"),
       expect.objectContaining({
@@ -382,6 +492,7 @@ describe("personal workspace API client", () => {
       new URL("http://127.0.0.1:3100/v1/personal-filing/market-data/overview"),
       expect.objectContaining({
         body: JSON.stringify({
+          includeQuote: true,
           listingId: "lst-00001",
           symbol: "ZERO",
           range: "1y",
@@ -393,6 +504,131 @@ describe("personal workspace API client", () => {
         method: "POST",
       }),
     ]);
+  });
+
+  it.each([
+    "access_denied",
+    "credentials_invalid",
+    "rate_limited",
+    "not_covered",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "retains history with a bounded unavailable quote reason %s",
+    async (reason) => {
+      const response = {
+        ...marketOverview(),
+        quote: { status: "unavailable", reason },
+      };
+      fetchMock.mockResolvedValueOnce(jsonResponse(response));
+      const result = await fetchPersonalMarketOverview(
+        {
+          includeQuote: true,
+          listingId: "lst-00001",
+          range: "1y",
+          symbol: "ZERO",
+        },
+        new AbortController().signal,
+      );
+      expect(result.history.status).toBe("available");
+      expect(result.quote).toEqual(response.quote);
+      expect(Object.isFrozen(result.quote)).toBe(true);
+    },
+  );
+
+  it("accepts EOD-only results and rejects a quote that was not requested", async () => {
+    const response = {
+      ...marketOverview(),
+      quote: { status: "not_requested" },
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(response));
+    const input = {
+      includeQuote: false,
+      listingId: "lst-00001",
+      range: "1y" as const,
+      symbol: "ZERO",
+    };
+    const result = await fetchPersonalMarketOverview(
+      input,
+      new AbortController().signal,
+    );
+    expect(result.quote).toEqual({ status: "not_requested" });
+    expect(result.history.status).toBe("available");
+    fetchMock.mockResolvedValueOnce(jsonResponse(marketOverview()));
+    await expect(
+      fetchPersonalMarketOverview(input, new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("validates both unavailable results without inventing data", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ...marketOverview(),
+        history: { status: "unavailable", reason: "not_covered" },
+        quote: { status: "unavailable", reason: "access_denied" },
+      }),
+    );
+    const result = await fetchPersonalMarketOverview(
+      {
+        includeQuote: true,
+        listingId: "lst-00001",
+        range: "1y",
+        symbol: "ZERO",
+      },
+      new AbortController().signal,
+    );
+    expect(result.history).toEqual({
+      status: "unavailable",
+      reason: "not_covered",
+    });
+    expect(result.quote).toEqual({
+      status: "unavailable",
+      reason: "access_denied",
+    });
+  });
+
+  it.each([
+    { status: "unavailable", reason: "private-upstream-message" },
+    { status: "unavailable", reason: "access_denied", value: "unexpected" },
+    {
+      status: "available",
+      value: { ...marketOverview().quote.value, kind: "end_of_day_close" },
+    },
+    {
+      status: "available",
+      value: {
+        ...marketOverview().quote.value,
+        ingestedAt: "2030-01-14T21:01:00.000Z",
+      },
+    },
+    { status: "not_requested" },
+  ])("rejects invalid quote result %j", async (quote) => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ ...marketOverview(), quote }),
+    );
+    await expect(
+      fetchPersonalMarketOverview(
+        {
+          includeQuote: true,
+          listingId: "lst-00001",
+          range: "1y",
+          symbol: "ZERO",
+        },
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("requires an explicit quote choice before making a request", async () => {
+    await expect(
+      fetchPersonalMarketOverview(
+        { listingId: "lst-00001", range: "1y", symbol: "ZERO" } as Parameters<
+          typeof fetchPersonalMarketOverview
+        >[0],
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("posts one exact annual-financials request and returns a deeply frozen response", async () => {
@@ -747,7 +983,10 @@ describe("personal workspace API client", () => {
           ...unordered,
           history: {
             ...unordered.history,
-            bars: [...unordered.history.bars].reverse(),
+            value: {
+              ...unordered.history.value,
+              bars: [...unordered.history.value.bars].reverse(),
+            },
           },
         }),
       );
@@ -758,7 +997,12 @@ describe("personal workspace API client", () => {
     for (let index = 0; index < 3; index += 1) {
       await expect(
         fetchPersonalMarketOverview(
-          { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+          {
+            includeQuote: true,
+            listingId: "lst-00001",
+            range: "1y",
+            symbol: "ZERO",
+          },
           new AbortController().signal,
         ),
       ).rejects.toMatchObject({ code: "invalid_response" });
@@ -770,21 +1014,37 @@ describe("personal workspace API client", () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         ...response,
-        history: {
-          ...response.history,
+        window: {
+          ...response.window,
           endDate: "2030-01-19",
           startDate: "2030-01-12",
+        },
+        history: {
+          ...response.history,
+          value: {
+            ...response.history.value,
+            endDate: "2030-01-19",
+            startDate: "2030-01-12",
+          },
         },
       }),
     );
 
     await expect(
       fetchPersonalMarketOverview(
-        { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+        {
+          includeQuote: true,
+          listingId: "lst-00001",
+          range: "1y",
+          symbol: "ZERO",
+        },
         new AbortController().signal,
       ),
     ).resolves.toMatchObject({
-      history: { endDate: "2030-01-19", startDate: "2030-01-12" },
+      history: {
+        status: "available",
+        value: { endDate: "2030-01-19", startDate: "2030-01-12" },
+      },
     });
   });
 
@@ -803,7 +1063,12 @@ describe("personal workspace API client", () => {
 
     await expect(
       fetchPersonalMarketOverview(
-        { listingId: "lst-00001", range: "1y", symbol: "ZERO" },
+        {
+          includeQuote: true,
+          listingId: "lst-00001",
+          range: "1y",
+          symbol: "ZERO",
+        },
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code });
@@ -819,7 +1084,12 @@ describe("personal workspace API client", () => {
     ).rejects.toMatchObject({ code: "invalid_request" });
     await expect(
       fetchPersonalMarketOverview(
-        { listingId: "bad id", range: "1y", symbol: "ZERO" },
+        {
+          includeQuote: true,
+          listingId: "bad id",
+          range: "1y",
+          symbol: "ZERO",
+        },
         new AbortController().signal,
       ),
     ).rejects.toMatchObject({ code: "invalid_request" });
@@ -1191,31 +1461,38 @@ function marketStatus(): PersonalMarketDataStatusDto {
   };
 }
 
-function marketOverview(): PersonalMarketOverviewDto {
+function marketOverview() {
   return {
     history: {
-      bars: [
-        marketBar("2030-01-14", "100.00"),
-        marketBar("2030-01-15", "101.50"),
-      ],
-      endDate: "2030-01-15",
-      range: "1y",
-      startDate: "2030-01-14",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [
+          marketBar("2030-01-14", "100.00"),
+          marketBar("2030-01-15", "101.50"),
+        ],
+        endDate: "2030-01-15",
+        range: "1y",
+        startDate: "2030-01-14",
+      },
     },
     profile: "personal_single_user_local_market_data",
     provider: marketProvider(),
     quote: {
-      change: "1.50",
-      changePercent: "1.50",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2030-01-15T21:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100.00",
-      price: "101.50",
-      sourceTime: "2030-01-15T21:00:00.000Z",
+      status: "available",
+      value: {
+        change: "1.50",
+        changePercent: "1.50",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2030-01-15T21:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100.00",
+        price: "101.50",
+        sourceTime: "2030-01-15T21:00:00.000Z",
+      },
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     security: {
       country: "US",
       exchangeMic: "XNAS",
@@ -1224,8 +1501,9 @@ function marketOverview(): PersonalMarketOverviewDto {
       securityName: "Zero Alpha Common Stock",
       symbol: "ZERO",
     },
-    status: "available",
-  };
+    ingestedAt: "2030-01-15T21:01:00.000Z",
+    window: { startDate: "2030-01-14", endDate: "2030-01-15", range: "1y" },
+  } satisfies PersonalMarketOverviewDto;
 }
 
 function valuationHistory(

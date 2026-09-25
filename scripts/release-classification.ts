@@ -77,7 +77,11 @@ function safePath(value: unknown): string {
   requireCondition(
     typeof value === "string" &&
       value.length <= 240 &&
-      /^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/u.test(value),
+      value
+        .split("/")
+        .every((part) =>
+          /^(?:[A-Za-z0-9_.-]+|\[[A-Za-z_][A-Za-z0-9_]*\])$/u.test(part),
+        ),
     "Invalid repository path",
   );
   for (const part of value.split("/")) {

@@ -122,6 +122,45 @@ describe("PriceHistoryChart", () => {
       textContent(PriceHistoryChart({ bars: [], mode: "raw", symbol: "ZERO" })),
     ).toContain("No price-history sessions are available");
   });
+
+  it("puts shared dates below volume and separates its title from the lowest price tick", () => {
+    chart.init.mockReturnValue({
+      setOption: chart.setOption,
+      dispose: chart.dispose,
+    });
+    vi.stubGlobal("window", { matchMedia: () => ({ matches: false }) });
+    vi.stubGlobal("ResizeObserver", undefined);
+    PriceHistoryChart({ bars: bars(), mode: "adjusted", symbol: "ZERO" });
+    hooks.runEffect();
+    const option = chart.setOption.mock.calls[0]?.[0] as {
+      grid: { bottom: number; height?: number }[];
+      yAxis: { splitNumber?: number; axisLabel: { hideOverlap?: boolean } }[];
+      xAxis: {
+        data: string[];
+        gridIndex: number;
+        axisLabel: { show?: boolean; hideOverlap?: boolean; margin?: number };
+      }[];
+      dataZoom: { xAxisIndex: number[] }[];
+    };
+    const [price, volume] = option.grid;
+    expect(
+      price!.bottom - volume!.bottom - volume!.height!,
+    ).toBeGreaterThanOrEqual(38);
+    expect(option.xAxis[0]!.axisLabel.show).toBe(false);
+    expect(option.xAxis[1]!.axisLabel).toMatchObject({
+      hideOverlap: true,
+      margin: 8,
+    });
+    expect(option.xAxis[1]!.axisLabel.show).not.toBe(false);
+    expect(option.xAxis.map((axis) => axis.gridIndex)).toEqual([0, 1]);
+    expect(option.xAxis[0]!.data).toEqual(bars().map((bar) => bar.date));
+    expect(option.xAxis[1]!.data).toEqual(option.xAxis[0]!.data);
+    expect(option.dataZoom[0]!.xAxisIndex).toEqual([0, 1]);
+    expect(option.yAxis[1]).toMatchObject({
+      splitNumber: 2,
+      axisLabel: { hideOverlap: true },
+    });
+  });
 });
 
 function bars(): readonly PersonalMarketDataDailyBarDto[] {

@@ -64,7 +64,13 @@ test binding; they do not declare additional validation or execution evidence.
 Use short plain descriptions, at most 240 characters each. `testBinding` must
 start with a lowercase letter and contain only letters and digits.
 
-The input is limited to 64,000 bytes, with at most 256 feature paths. Inventories
+The input is limited to 64,000 bytes, with at most 256 feature paths. Paths may
+include a complete dynamic route component such as `[listingId]`, using an ASCII
+letter or underscore followed by letters, digits or underscores. Partial brackets,
+catch-all and optional-catch-all components are not supported. The existing path
+length, traversal, device-name and link checks still apply. From a78, the cross-engine
+protected-inventory probe uses Git's literal path semantics; workflow glob watches
+are unchanged, and historical release outputs retain their exact bytes. Inventories
 must be sorted by path and unique even when case is ignored. Only additions and
 modifications are supported; duplicate JSON keys, unknown fields, unsafe paths
 and unsupported statuses fail validation. Feature changes cannot include the

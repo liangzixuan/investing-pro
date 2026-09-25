@@ -2,11 +2,17 @@ import type {
   PersonalAnnualFinancialReportedFieldKeyDto,
   PersonalAnnualFinancialsDto,
   PersonalMarketDataRangeDto,
+  PersonalMarketDataDailyBarDto,
+  PersonalMarketDataHistoryDto,
+  PersonalMarketDataQuoteDto,
+  PersonalMarketDataWindowDto,
+  PersonalMarketDataUnavailableDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
   PersonalQuarterlyFinancialsDto,
   PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResponseDto,
+  PersonalSecurityMasterListingResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterScreenClauseDto,
   PersonalSecurityMasterScreenRequestDto,
@@ -49,6 +55,8 @@ export const MAIN_PERSONAL_WATCHLIST_PATH =
   "/v1/personal-filing/workspace/watchlists/main" as const;
 export const PERSONAL_SECURITY_MASTER_SCREEN_PATH =
   "/v1/personal-filing/security-master/screen" as const;
+export const PERSONAL_SECURITY_MASTER_LISTINGS_PATH =
+  "/v1/personal-filing/security-master/listings" as const;
 export const PERSONAL_SCREENER_SAVED_VIEWS_ID =
   "stock-screener-saved-views" as const;
 export const PERSONAL_SCREENER_SAVED_VIEWS_PATH =
@@ -65,6 +73,7 @@ const privateRequestOptions = Object.freeze({
 >);
 
 export type PersonalWorkspaceApiErrorCode =
+  | "access_denied"
   | "conflict"
   | "credentials_invalid"
   | "invalid_request"
@@ -326,12 +335,13 @@ const marketStatusKeys = [
 ] as const;
 const marketOverviewKeys = [
   "history",
+  "ingestedAt",
   "profile",
   "provider",
   "quote",
   "schemaVersion",
   "security",
-  "status",
+  "window",
 ] as const;
 const marketIdentityKeys = [
   "country",
@@ -352,7 +362,14 @@ const marketQuoteKeys = [
   "price",
   "sourceTime",
 ] as const;
-const marketHistoryKeys = ["bars", "endDate", "range", "startDate"] as const;
+const marketHistoryKeys = [
+  "bars",
+  "currency",
+  "endDate",
+  "range",
+  "startDate",
+] as const;
+const marketWindowKeys = ["endDate", "range", "startDate"] as const;
 const marketBarKeys = [
   "adjusted",
   "date",
@@ -562,6 +579,7 @@ export async function fetchPersonalMarketDataStatus(
 
 export async function fetchPersonalMarketOverview(
   input: Readonly<{
+    includeQuote: boolean;
     listingId: string;
     range: PersonalMarketDataRangeDto;
     symbol: string;
@@ -569,6 +587,7 @@ export async function fetchPersonalMarketOverview(
   signal: AbortSignal,
 ): Promise<PersonalMarketOverviewDto> {
   if (
+    typeof input.includeQuote !== "boolean" ||
     !isIdentifier(input.listingId) ||
     typeof input.symbol !== "string" ||
     !symbol.test(input.symbol) ||
@@ -578,6 +597,7 @@ export async function fetchPersonalMarketOverview(
   }
   const response = await request(PERSONAL_MARKET_OVERVIEW_PATH, {
     body: JSON.stringify({
+      includeQuote: input.includeQuote,
       listingId: input.listingId,
       symbol: input.symbol,
       range: input.range,
@@ -595,7 +615,10 @@ export async function fetchPersonalMarketOverview(
     !isPersonalMarketOverview(value) ||
     value.security.listingId !== input.listingId ||
     value.security.symbol !== input.symbol ||
-    value.history.range !== input.range
+    value.window.range !== input.range ||
+    (input.includeQuote
+      ? value.quote.status === "not_requested"
+      : value.quote.status !== "not_requested")
   ) {
     throw new PersonalWorkspaceApiError("invalid_response");
   }
@@ -712,6 +735,48 @@ export async function fetchPersonalValuationHistory(
     throw new PersonalWorkspaceApiError("invalid_response");
   }
   return copyPersonalValuationHistory(value);
+}
+
+export async function fetchPersonalSecurityMasterListing(
+  listingId: string,
+  signal: AbortSignal,
+): Promise<PersonalSecurityMasterListingResponseDto> {
+  if (!isIdentifier(listingId)) {
+    throw new PersonalWorkspaceApiError("invalid_request");
+  }
+  const response = await request(
+    `${PERSONAL_SECURITY_MASTER_LISTINGS_PATH}/${encodeURIComponent(listingId)}`,
+    { headers: { Accept: "application/json" }, method: "GET", signal },
+  );
+  if (!response.ok) throw responseError(response.status);
+  const value: unknown = await response.json();
+  if (
+    !hasExactKeys(value, ["listing", "snapshot"]) ||
+    !isSnapshot(value.snapshot) ||
+    (value.listing !== null &&
+      (!isScreenResult(value.listing) || value.listing.listingId !== listingId))
+  ) {
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  return Object.freeze({
+    listing:
+      value.listing === null ? null : Object.freeze({ ...value.listing }),
+    snapshot: Object.freeze({
+      ...value.snapshot,
+      coverage: Object.freeze({ ...value.snapshot.coverage }),
+      provenance: Object.freeze({
+        ...value.snapshot.provenance,
+        artifacts: Object.freeze(
+          value.snapshot.provenance.artifacts.map((artifact) =>
+            Object.freeze({ ...artifact }),
+          ),
+        ),
+      }),
+      sourcePolicyCompatibility: Object.freeze({
+        ...value.snapshot.sourcePolicyCompatibility,
+      }),
+    }),
+  });
 }
 
 export async function searchPersonalSecurities(
@@ -1354,11 +1419,18 @@ function isPersonalMarketOverview(
     hasExactKeys(value, marketOverviewKeys) &&
     value.profile === "personal_single_user_local_market_data" &&
     isPersonalMarketDataProvider(value.provider) &&
-    isPersonalMarketQuote(value.quote) &&
-    value.schemaVersion === "1.0.0" &&
+    isInstant(value.ingestedAt) &&
+    isPersonalMarketWindow(value.window) &&
+    isPersonalMarketQuoteResult(value.quote, value.ingestedAt) &&
+    value.schemaVersion === "2.0.0" &&
     isPersonalMarketIdentity(value.security) &&
-    value.status === "available" &&
-    isPersonalMarketHistory(value.history)
+    (isPersonalMarketUnavailable(value.history) ||
+      (hasExactKeys(value.history, ["status", "value"]) &&
+        value.history.status === "available" &&
+        isPersonalMarketHistory(value.history.value) &&
+        value.history.value.range === value.window.range &&
+        value.history.value.startDate === value.window.startDate &&
+        value.history.value.endDate === value.window.endDate))
   );
 }
 
@@ -1906,7 +1978,7 @@ function isPersonalMarketIdentity(
 
 function isPersonalMarketQuote(
   value: unknown,
-): value is PersonalMarketOverviewDto["quote"] {
+): value is PersonalMarketDataQuoteDto {
   if (!hasExactKeys(value, marketQuoteKeys)) return false;
   const relatedValuesArePresent =
     (value.change === null &&
@@ -1921,8 +1993,7 @@ function isPersonalMarketQuote(
     (value.freshness === "current" ||
       value.freshness === "older_than_36_hours") &&
     isInstant(value.ingestedAt) &&
-    (value.kind === "derived_realtime_reference" ||
-      value.kind === "end_of_day_close") &&
+    value.kind === "derived_realtime_reference" &&
     isDecimal(value.price, false) &&
     isInstant(value.sourceTime)
   );
@@ -1930,9 +2001,10 @@ function isPersonalMarketQuote(
 
 function isPersonalMarketHistory(
   value: unknown,
-): value is PersonalMarketOverviewDto["history"] {
+): value is PersonalMarketDataHistoryDto {
   if (
     !hasExactKeys(value, marketHistoryKeys) ||
+    value.currency !== "USD" ||
     !Array.isArray(value.bars) ||
     value.bars.length < 1 ||
     value.bars.length > 4_096 ||
@@ -1960,7 +2032,7 @@ function isPersonalMarketHistory(
 
 function isPersonalMarketBar(
   value: unknown,
-): value is PersonalMarketOverviewDto["history"]["bars"][number] {
+): value is PersonalMarketDataDailyBarDto {
   return (
     hasExactKeys(value, marketBarKeys) &&
     isPersonalMarketOhlcv(value.adjusted) &&
@@ -1973,7 +2045,7 @@ function isPersonalMarketBar(
 
 function isPersonalMarketOhlcv(
   value: unknown,
-): value is PersonalMarketOverviewDto["history"]["bars"][number]["raw"] {
+): value is PersonalMarketDataDailyBarDto["raw"] {
   if (!hasExactKeys(value, marketOhlcvKeys)) return false;
   if (
     !isDecimal(value.close, false) ||
@@ -1999,21 +2071,77 @@ function copyPersonalMarketOverview(
   return Object.freeze({
     ...value,
     provider: Object.freeze({ ...value.provider }),
-    quote: Object.freeze({ ...value.quote }),
+    window: Object.freeze({ ...value.window }),
+    quote:
+      value.quote.status === "available"
+        ? Object.freeze({
+            status: "available",
+            value: Object.freeze({ ...value.quote.value }),
+          })
+        : Object.freeze({ ...value.quote }),
     security: Object.freeze({ ...value.security }),
-    history: Object.freeze({
-      ...value.history,
-      bars: Object.freeze(
-        value.history.bars.map((bar) =>
-          Object.freeze({
-            ...bar,
-            adjusted: Object.freeze({ ...bar.adjusted }),
-            raw: Object.freeze({ ...bar.raw }),
-          }),
-        ),
-      ),
-    }),
+    history:
+      value.history.status === "available"
+        ? Object.freeze({
+            status: "available",
+            value: Object.freeze({
+              ...value.history.value,
+              bars: Object.freeze(
+                value.history.value.bars.map((bar) =>
+                  Object.freeze({
+                    ...bar,
+                    adjusted: Object.freeze({ ...bar.adjusted }),
+                    raw: Object.freeze({ ...bar.raw }),
+                  }),
+                ),
+              ),
+            }),
+          })
+        : Object.freeze({ ...value.history }),
   });
+}
+
+function isPersonalMarketWindow(
+  value: unknown,
+): value is PersonalMarketDataWindowDto {
+  return (
+    hasExactKeys(value, marketWindowKeys) &&
+    isDate(value.startDate) &&
+    isDate(value.endDate) &&
+    value.startDate <= value.endDate &&
+    marketRanges.has(value.range as PersonalMarketDataRangeDto)
+  );
+}
+
+function isPersonalMarketUnavailable(
+  value: unknown,
+): value is PersonalMarketDataUnavailableDto {
+  return (
+    hasExactKeys(value, ["status", "reason"]) &&
+    value.status === "unavailable" &&
+    [
+      "access_denied",
+      "credentials_invalid",
+      "rate_limited",
+      "not_covered",
+      "upstream_unavailable",
+      "invalid_response",
+    ].includes(value.reason as string)
+  );
+}
+
+function isPersonalMarketQuoteResult(
+  value: unknown,
+  ingestedAt: string,
+): boolean {
+  return (
+    isPersonalMarketUnavailable(value) ||
+    (hasExactKeys(value, ["status"]) && value.status === "not_requested") ||
+    (hasExactKeys(value, ["status", "value"]) &&
+      value.status === "available" &&
+      isPersonalMarketQuote(value.value) &&
+      value.value.ingestedAt === ingestedAt)
+  );
 }
 
 function copyPersonalAnnualFinancials(

@@ -1,6 +1,6 @@
 import {
   projectPersonalPortfolioLedger,
-  type PersonalMarketOverviewDto,
+  type PersonalMarketDataHistoryDto,
   type PersonalPortfolioLedgerActivity,
   type PersonalPortfolioLedgerPayload,
   type PersonalPortfolioLedgerPayloadV2,
@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { assessPortfolioHistory } from "./personal-portfolio-history";
 
-type History = PersonalMarketOverviewDto["history"];
+type History = PersonalMarketDataHistoryDto;
 
 function ledger(): PersonalPortfolioLedgerPayloadV2 {
   return {
@@ -117,7 +117,7 @@ function history(
   startDate = "2026-09-01",
   endDate = "2026-09-09",
 ): History {
-  return { bars, startDate, endDate, range: "1y" };
+  return { bars, startDate, endDate, range: "1y", currency: "USD" };
 }
 
 function assess(
@@ -453,6 +453,7 @@ describe("portfolio history assessment input limits", () => {
   it.each([
     null,
     {},
+    { ...history(), currency: "EUR" },
     { ...history(), bars: null },
     { ...history(), startDate: "2026-02-30" },
     { ...history(), endDate: "2026-08-31" },

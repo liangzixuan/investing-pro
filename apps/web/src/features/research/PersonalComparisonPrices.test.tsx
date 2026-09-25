@@ -1,3 +1,4 @@
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -138,6 +139,38 @@ beforeEach(() => {
 afterEach(() => harness.unmount());
 
 describe("PersonalComparisonPrices", () => {
+  it("loads EOD-only comparisons without a requested quote", async () => {
+    api.fetchPersonalMarketOverview.mockImplementation(
+      ({ symbol }: { symbol: string }) =>
+        Promise.resolve({
+          ...overview(symbol),
+          quote: { status: "not_requested" },
+        }),
+    );
+    click(render());
+    await flush();
+    expect(card("AAA")).toContain("End-of-day close");
+    expect(card("BBB")).toContain("End-of-day close");
+    expect(
+      api.fetchPersonalMarketOverview.mock.calls.map(
+        ([input]): unknown => input,
+      ),
+    ).toEqual([
+      expect.objectContaining({ includeQuote: false }),
+      expect.objectContaining({ includeQuote: false }),
+    ]);
+  });
+  it("retains a successful history and stops remaining listings on a feed access refusal", async () => {
+    api.fetchPersonalMarketOverview.mockResolvedValueOnce({
+      ...overview("AAA"),
+      quote: { status: "unavailable", reason: "access_denied" },
+    });
+    click(render());
+    await flush();
+    expect(card("AAA")).toContain("End-of-day close");
+    expect(card("BBB")).toContain("load stopped");
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+  });
   it("retains the chart aggregate across display-only rerenders and clears it on range change", async () => {
     api.fetchPersonalMarketOverview.mockImplementation(
       ({ symbol }: { symbol: string }) =>
@@ -192,7 +225,7 @@ describe("PersonalComparisonPrices", () => {
     click(initial);
     expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
     expect(api.fetchPersonalMarketOverview).toHaveBeenLastCalledWith(
-      { listingId: "lst-aaa", symbol: "AAA", range: "1m" },
+      { includeQuote: false, listingId: "lst-aaa", symbol: "AAA", range: "1m" },
       expect.any(AbortSignal),
     );
     expect(card("AAA")).toContain("Loading price…");
@@ -225,7 +258,7 @@ describe("PersonalComparisonPrices", () => {
     const displayed = text(render());
     expect(displayed).toContain("Derived reference price");
     expect(displayed).toContain("Loaded at");
-    expect(displayed).toContain("Freshness when loaded");
+    expect(displayed).toContain("Age when loaded");
     expect(displayed).toContain("UTC");
   });
 
@@ -334,7 +367,11 @@ describe("PersonalComparisonPrices", () => {
           const result = overview(symbol);
           return Promise.resolve({
             ...result,
-            history: { ...result.history, range },
+            window: { ...result.window, range },
+            history: {
+              status: "available",
+              value: { ...getPersonalMarketHistory(result)!, range },
+            },
           });
         },
       );
@@ -342,7 +379,7 @@ describe("PersonalComparisonPrices", () => {
       await flush();
       expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(2);
       expect(api.fetchPersonalMarketOverview).toHaveBeenLastCalledWith(
-        { listingId: "lst-bbb", symbol: "BBB", range },
+        { includeQuote: false, listingId: "lst-bbb", symbol: "BBB", range },
         expect.any(AbortSignal),
       );
       expect(card("BBB")).toContain("101.50 USD");
@@ -408,7 +445,7 @@ describe("PersonalComparisonPrices", () => {
     const result = overview("AAA");
     api.fetchPersonalMarketOverview.mockResolvedValueOnce({
       ...result,
-      history: { ...result.history, range: "3m" },
+      window: { ...result.window, range: "3m" },
     });
     click(render());
     await flush();
@@ -663,7 +700,7 @@ describe("PersonalComparisonPrices", () => {
 
   it("labels stale EOD on an early-close date with its assumed regular-session time", async () => {
     api.fetchPersonalMarketOverview.mockResolvedValueOnce(
-      eod("AAA", "2030-11-29", "2030-11-29T21:00:00.000Z"),
+      eod("AAA", "2030-11-29"),
     );
     click(render());
     await flush();
@@ -675,25 +712,30 @@ describe("PersonalComparisonPrices", () => {
     expect(displayed).toContain("Early closes are not modeled");
   });
 
-  it.each(["date", "close", "empty", "hour"])(
-    "rejects inconsistent EOD %s evidence",
+  it.each(["empty", "zero", "date", "clock"])(
+    "rejects unusable EOD %s evidence",
     async (mismatch) => {
-      const result = eod("AAA", "2030-11-29", "2030-11-29T21:00:00.000Z");
+      const result = eod("AAA", "2030-11-29");
+      const history = getPersonalMarketHistory(result)!;
       api.fetchPersonalMarketOverview.mockResolvedValueOnce({
         ...result,
-        quote: {
-          ...result.quote,
-          ...(mismatch === "date"
-            ? { sourceTime: "2030-11-28T21:00:00.000Z" }
-            : mismatch === "close"
-              ? { price: "102.50" }
-              : mismatch === "hour"
-                ? { sourceTime: "2030-11-29T18:00:00.000Z" }
-                : {}),
-        },
+        ingestedAt: mismatch === "clock" ? "invalid" : result.ingestedAt,
         history: {
-          ...result.history,
-          bars: mismatch === "empty" ? [] : result.history.bars,
+          status: "available",
+          value: {
+            ...history,
+            bars:
+              mismatch === "empty"
+                ? []
+                : history.bars.map((item) => ({
+                    ...item,
+                    date: mismatch === "date" ? "invalid" : item.date,
+                    raw: {
+                      ...item.raw,
+                      close: mismatch === "zero" ? "0" : item.raw.close,
+                    },
+                  })),
+          },
         },
       });
       click(render());
@@ -819,8 +861,9 @@ function overview(symbol: string): PersonalMarketOverviewDto {
   return {
     profile: "personal_single_user_local_market_data",
     provider: provider(),
-    schemaVersion: "1.0.0",
-    status: "available",
+    schemaVersion: "2.0.0",
+    ingestedAt: "2030-01-15T21:01:00.000Z",
+    window: { range: "1m", startDate: "2030-01-15", endDate: "2030-01-15" },
     security: {
       country,
       exchangeMic,
@@ -830,47 +873,50 @@ function overview(symbol: string): PersonalMarketOverviewDto {
       symbol,
     },
     history: {
-      bars: [bar("2030-01-15")],
-      startDate: "2030-01-15",
-      endDate: "2030-01-15",
-      range: "1m",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [bar("2030-01-15")],
+        startDate: "2030-01-15",
+        endDate: "2030-01-15",
+        range: "1m",
+      },
     },
     quote: {
-      change: "1.50",
-      changePercent: "1.50",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2030-01-15T21:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100.00",
-      price: "101.50",
-      sourceTime: "2030-01-15T21:00:00.000Z",
+      status: "available",
+      value: {
+        change: "1.50",
+        changePercent: "1.50",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2030-01-15T21:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100.00",
+        price: "101.50",
+        sourceTime: "2030-01-15T21:00:00.000Z",
+      },
     },
   };
 }
-function eod(
-  symbol: string,
-  date: string,
-  sourceTime: string,
-): PersonalMarketOverviewDto {
+function eod(symbol: string, date: string): PersonalMarketOverviewDto {
   const result = overview(symbol);
   return {
     ...result,
-    quote: {
-      ...result.quote,
-      kind: "end_of_day_close",
-      freshness: "older_than_36_hours",
-      sourceTime,
-      ingestedAt: "2030-12-02T21:01:00.000Z",
-    },
+    ingestedAt: "2030-12-02T21:01:00.000Z",
+    quote: { status: "not_requested" },
+    window: { ...result.window, startDate: date, endDate: date },
     history: {
-      ...result.history,
-      startDate: date,
-      endDate: date,
-      bars: [bar(date)],
+      status: "available",
+      value: {
+        ...getPersonalMarketHistory(result)!,
+        startDate: date,
+        endDate: date,
+        bars: [bar(date)],
+      },
     },
   };
 }
+
 function history(
   symbol: string,
   observations: readonly (readonly [string, string])[],
@@ -879,22 +925,26 @@ function history(
   return {
     ...result,
     history: {
-      range: "1m",
-      startDate: "2030-01-01",
-      endDate: "2030-01-15",
-      bars: observations.map(([date, adjustedClose]) => {
-        const item = bar(date);
-        return {
-          ...item,
-          adjusted: { ...item.adjusted, close: adjustedClose },
-        };
-      }),
+      status: "available",
+      value: {
+        currency: "USD",
+        range: "1m",
+        startDate: "2030-01-01",
+        endDate: "2030-01-15",
+        bars: observations.map(([date, adjustedClose]) => {
+          const item = bar(date);
+          return {
+            ...item,
+            adjusted: { ...item.adjusted, close: adjustedClose },
+          };
+        }),
+      },
     },
   };
 }
 function bar(
   date: string,
-): PersonalMarketOverviewDto["history"]["bars"][number] {
+): NonNullable<ReturnType<typeof getPersonalMarketHistory>>["bars"][number] {
   const prices = {
     close: "101.50",
     high: "102.00",

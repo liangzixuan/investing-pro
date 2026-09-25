@@ -58,10 +58,10 @@ default, and rendering the screen does not acquire provider data.
 
 Load uses the existing one-month market overview and daily valuation endpoints,
 one local operation at a time. For twenty successful listings this is at most
-forty local acquisition calls and sixty underlying Tiingo requests. Each overview
-internally starts quote and EOD requests together, then the daily valuation call
-follows. Overview requires both feeds: a quote entitlement failure can prevent
-use of otherwise available EOD data.
+forty local acquisition calls and forty underlying Tiingo requests. Each overview
+requests EOD history only (`includeQuote: false`), then the daily valuation call
+follows. This screen does not request the quote feed, so quote entitlement does
+not determine whether its EOD history is usable.
 
 Cancel stops the current batch; there is no automatic retry or refresh. Session,
 configuration, credential, entitlement and rate-limit failures stop the remaining

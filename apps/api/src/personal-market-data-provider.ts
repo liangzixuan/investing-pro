@@ -5,6 +5,9 @@ import type {
   PersonalAnnualFinancialsDto,
   PersonalAnnualFinancialsProviderDto,
   PersonalMarketDataDailyBarDto,
+  PersonalMarketDataHistoryResultDto,
+  PersonalMarketDataQuoteResultDto,
+  PersonalMarketDataUnavailableDto,
   PersonalMarketDataIdentityDto,
   PersonalMarketDataProviderDto,
   PersonalMarketDataQuoteDto,
@@ -24,6 +27,7 @@ export const PERSONAL_MARKET_DATA_TIINGO_TOKEN_ENVIRONMENT_KEY =
   "PERSONAL_MARKET_DATA_TIINGO_TOKEN" as const;
 
 export type PersonalMarketDataProviderErrorCode =
+  | "access_denied"
   | "not_configured"
   | "credentials_invalid"
   | "not_entitled"
@@ -43,6 +47,7 @@ export interface PersonalMarketDataProvider {
   loadOverview(
     identity: PersonalMarketDataIdentityDto,
     range: PersonalMarketDataRangeDto,
+    includeQuote: boolean,
     signal?: AbortSignal,
   ): Promise<PersonalMarketOverviewDto>;
   loadQuarterlyFinancials(
@@ -181,9 +186,6 @@ const REGISTRATION_BY_SOURCE_CODE = new Map(
 
 interface NormalizedBar {
   readonly dto: PersonalMarketDataDailyBarDto;
-  readonly rawClose: number;
-  readonly sourceTime: string;
-  readonly splitFactor: number;
 }
 
 interface RequestContext {
@@ -577,12 +579,14 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
   public async loadOverview(
     identity: PersonalMarketDataIdentityDto,
     range: PersonalMarketDataRangeDto,
+    includeQuote: boolean,
     signal?: AbortSignal,
   ): Promise<PersonalMarketOverviewDto> {
     if (this.#closed || this.#tokenBytes === undefined) {
       fail(this.#invalidCredential ? "credentials_invalid" : "not_configured");
     }
     if (this.#invalidCredential) fail("credentials_invalid");
+    if (typeof includeQuote !== "boolean") fail("invalid_response");
     if (signal?.aborted === true) fail("aborted");
 
     const security = normalizeIdentity(identity);
@@ -603,28 +607,47 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
       const authorization = `Token ${new TextDecoder().decode(
         this.#tokenBytes,
       )}`;
-      const [quoteValue, historyValue] = await Promise.all([
-        this.#requestJson(quoteUrl, authorization, context),
-        this.#requestJson(historyUrl, authorization, context),
+      const quoteRequest: Promise<PersonalMarketDataQuoteResultDto> =
+        includeQuote
+          ? settleMarketFeed(
+              this.#requestJson(quoteUrl, authorization, context).then(
+                (value) =>
+                  normalizeQuote(
+                    value,
+                    providerSymbol,
+                    ingestedAtDate,
+                    ingestedAt,
+                  ),
+              ),
+            )
+          : Promise.resolve(Object.freeze({ status: "not_requested" }));
+      const historyRequest: Promise<PersonalMarketDataHistoryResultDto> =
+        settleMarketFeed(
+          this.#requestJson(historyUrl, authorization, context).then((value) =>
+            Object.freeze({
+              bars: Object.freeze(
+                normalizeHistory(value, dates.startDate, dates.endDate).map(
+                  ({ dto }) => dto,
+                ),
+              ),
+              currency: "USD" as const,
+              endDate: dates.endDate,
+              range,
+              startDate: dates.startDate,
+            }),
+          ),
+        );
+      const [quote, history] = await Promise.all([
+        quoteRequest,
+        historyRequest,
       ]);
       if (this.#closed || context.externalSignal?.aborted === true) {
         fail("aborted");
       }
-      const bars = normalizeHistory(
-        historyValue,
-        dates.startDate,
-        dates.endDate,
-      );
-      const quote = normalizeQuote(
-        quoteValue,
-        providerSymbol,
-        bars,
-        ingestedAtDate,
-        ingestedAt,
-      );
       return Object.freeze({
-        history: Object.freeze({
-          bars: Object.freeze(bars.map(({ dto }) => dto)),
+        history,
+        ingestedAt,
+        window: Object.freeze({
           endDate: dates.endDate,
           range,
           startDate: dates.startDate,
@@ -632,9 +655,8 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
         profile: "personal_single_user_local_market_data",
         provider: TIINGO_PROVIDER,
         quote,
-        schemaVersion: "1.0.0",
+        schemaVersion: "2.0.0",
         security,
-        status: "available",
       });
     } catch (error) {
       if (
@@ -1614,14 +1636,7 @@ function normalizeHistory(
       raw: raw.dto,
       splitFactor: decimalString(splitFactor),
     }) satisfies PersonalMarketDataDailyBarDto;
-    normalized.push(
-      Object.freeze({
-        dto,
-        rawClose: raw.close,
-        sourceTime: usEquityRegularSessionCloseInstant(date.date),
-        splitFactor,
-      }),
-    );
+    normalized.push(Object.freeze({ dto }));
   }
   return Object.freeze(normalized);
 }
@@ -1680,10 +1695,11 @@ function field(
 function normalizeQuote(
   value: unknown,
   providerSymbol: string,
-  bars: readonly NormalizedBar[],
   now: Date,
   ingestedAt: string,
-): PersonalMarketDataQuoteDto {
+): PersonalMarketDataQuoteDto & {
+  readonly kind: "derived_realtime_reference";
+} {
   if (!Array.isArray(value) || value.length > 1) fail("invalid_response");
   if (value.length === 1) {
     const candidates: readonly unknown[] = value;
@@ -1712,33 +1728,19 @@ function normalizeQuote(
       );
     }
   }
-  const latest = bars.at(-1);
-  if (latest === undefined) fail("not_covered");
-  const previous = bars.at(-2);
-  const previousClose =
-    previous === undefined
-      ? null
-      : finiteNumber(previous.rawClose / latest.splitFactor, {
-          minimumExclusive: 0,
-        });
-  return quoteDto(
-    latest.rawClose,
-    previousClose,
-    "end_of_day_close",
-    latest.sourceTime,
-    now,
-    ingestedAt,
-  );
+  fail("not_covered");
 }
 
 function quoteDto(
   price: number,
   previousClose: number | null,
-  kind: "derived_realtime_reference" | "end_of_day_close",
+  kind: "derived_realtime_reference",
   sourceTime: string,
   now: Date,
   ingestedAt: string,
-): PersonalMarketDataQuoteDto {
+): PersonalMarketDataQuoteDto & {
+  readonly kind: "derived_realtime_reference";
+} {
   const sourceMilliseconds = Date.parse(sourceTime);
   if (
     !Number.isFinite(sourceMilliseconds) ||
@@ -1778,25 +1780,6 @@ function normalizeTiingoDate(value: unknown): Readonly<{
     fail("invalid_response");
   }
   return Object.freeze({ date: sourceTime.slice(0, 10) });
-}
-
-function usEquityRegularSessionCloseInstant(date: string): string {
-  const year = Number(date.slice(0, 4));
-  const month = Number(date.slice(5, 7));
-  const day = Number(date.slice(8, 10));
-  const dayOrdinal = Date.UTC(year, month - 1, day);
-  const daylightStart = nthSundayOrdinal(year, 2, 2);
-  const daylightEnd = nthSundayOrdinal(year, 10, 1);
-  const utcHour =
-    dayOrdinal >= daylightStart && dayOrdinal < daylightEnd ? 20 : 21;
-  return new Date(Date.UTC(year, month - 1, day, utcHour)).toISOString();
-}
-
-function nthSundayOrdinal(year: number, zeroBasedMonth: number, nth: number) {
-  const firstDay = Date.UTC(year, zeroBasedMonth, 1);
-  const firstWeekday = new Date(firstDay).getUTCDay();
-  const firstSunday = 1 + ((7 - firstWeekday) % 7);
-  return Date.UTC(year, zeroBasedMonth, firstSunday + (nth - 1) * 7);
 }
 
 function normalizeIsoInstant(value: unknown, now: Date): string {
@@ -1909,9 +1892,33 @@ function canonicalizeDecimal(value: string): string {
   return negative && magnitude !== "0" ? `-${magnitude}` : magnitude;
 }
 
+async function settleMarketFeed<T>(
+  operation: Promise<T>,
+): Promise<
+  | { readonly status: "available"; readonly value: T }
+  | PersonalMarketDataUnavailableDto
+> {
+  try {
+    return Object.freeze({ status: "available", value: await operation });
+  } catch (error) {
+    if (!(error instanceof PersonalMarketDataProviderError)) throw error;
+    switch (error.code) {
+      case "access_denied":
+      case "credentials_invalid":
+      case "rate_limited":
+      case "not_covered":
+      case "upstream_unavailable":
+      case "invalid_response":
+        return Object.freeze({ status: "unavailable", reason: error.code });
+      default:
+        throw error;
+    }
+  }
+}
+
 function httpErrorCode(status: number): PersonalMarketDataProviderErrorCode {
   if (status === 401) return "credentials_invalid";
-  if (status === 403) return "credentials_invalid";
+  if (status === 403) return "access_denied";
   if (status === 404) return "not_covered";
   if (status === 429) return "rate_limited";
   return "upstream_unavailable";

@@ -1,3 +1,4 @@
+import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
 import type {
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
@@ -176,6 +177,18 @@ afterEach(() => {
 });
 
 describe("PersonalPriceValuationScreen", () => {
+  it("does not continue a paired load after an EOD feed access refusal", async () => {
+    api.fetchPersonalMarketOverview.mockResolvedValueOnce({
+      ...overview("AAA"),
+      history: { status: "unavailable", reason: "access_denied" },
+      quote: { status: "not_requested" },
+    });
+    select("AAA");
+    click(render(), "Load prices and valuation");
+    await flush();
+    expect(api.fetchPersonalValuationHistory).not.toHaveBeenCalled();
+    expect(api.fetchPersonalMarketOverview).toHaveBeenCalledTimes(1);
+  });
   it("refuses a stale Load handler after selection changes away and back", async () => {
     select("AAA");
     const old = render();
@@ -234,11 +247,14 @@ describe("PersonalPriceValuationScreen", () => {
     api.fetchPersonalMarketOverview.mockResolvedValueOnce({
       ...value,
       history: {
-        ...value.history,
-        bars: value.history.bars.map((bar) => ({
-          ...bar,
-          raw: { ...bar.raw, close: "101.500" },
-        })),
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          bars: getPersonalMarketHistory(value)!.bars.map((bar) => ({
+            ...bar,
+            raw: { ...bar.raw, close: "101.500" },
+          })),
+        },
       },
     });
     select("AAA");
@@ -517,10 +533,18 @@ describe("PersonalPriceValuationScreen", () => {
     api.fetchPersonalMarketOverview.mockResolvedValueOnce({
       ...value,
       history: {
-        ...value.history,
-        startDate: "2026-08-21",
-        endDate: "2026-09-21",
-        bars: [{ ...value.history.bars[0]!, date: "2026-09-21" }],
+        status: "available",
+        value: {
+          ...getPersonalMarketHistory(value)!,
+          startDate: "2026-08-21",
+          endDate: "2026-09-21",
+          bars: [
+            {
+              ...getPersonalMarketHistory(value)!.bars[0]!,
+              date: "2026-09-21",
+            },
+          ],
+        },
       },
     });
     select("AAA");
@@ -1324,33 +1348,41 @@ function overview(symbol: string): PersonalMarketOverviewDto {
   return {
     profile: "personal_single_user_local_market_data",
     provider: provider(),
-    schemaVersion: "1.0.0",
-    status: "available",
+    schemaVersion: "2.0.0",
+    ingestedAt: "2026-09-22T21:01:00.000Z",
+    window: { range: "1m", startDate: "2026-08-22", endDate: "2026-09-22" },
     security: identity(symbol),
     history: {
-      bars: [
-        {
-          date: "2026-09-22",
-          adjusted: prices,
-          raw: prices,
-          dividendCash: "0",
-          splitFactor: "1",
-        },
-      ],
-      startDate: "2026-08-22",
-      endDate: "2026-09-22",
-      range: "1m",
+      status: "available",
+      value: {
+        currency: "USD",
+        bars: [
+          {
+            date: "2026-09-22",
+            adjusted: prices,
+            raw: prices,
+            dividendCash: "0",
+            splitFactor: "1",
+          },
+        ],
+        startDate: "2026-08-22",
+        endDate: "2026-09-22",
+        range: "1m",
+      },
     },
     quote: {
-      change: "1.5",
-      changePercent: "1.5",
-      currency: "USD",
-      freshness: "current",
-      ingestedAt: "2026-09-22T21:01:00.000Z",
-      kind: "derived_realtime_reference",
-      previousClose: "100",
-      price: "101.5",
-      sourceTime: "2026-09-22T21:00:00.000Z",
+      status: "available",
+      value: {
+        change: "1.5",
+        changePercent: "1.5",
+        currency: "USD",
+        freshness: "current",
+        ingestedAt: "2026-09-22T21:01:00.000Z",
+        kind: "derived_realtime_reference",
+        previousClose: "100",
+        price: "101.5",
+        sourceTime: "2026-09-22T21:00:00.000Z",
+      },
     },
   };
 }

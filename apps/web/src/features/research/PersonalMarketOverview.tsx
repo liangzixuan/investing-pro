@@ -4,6 +4,12 @@ import type {
   PersonalMarketOverviewDto,
 } from "@research-cockpit/contracts";
 
+import {
+  getPersonalMarketHistory,
+  getPersonalMarketReference,
+  personalMarketFeedErrorCode,
+} from "../../lib/personal-market-snapshot";
+
 import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api";
 
 import { PersonalMarketAnalytics } from "./PersonalMarketAnalytics";
@@ -57,6 +63,8 @@ export function PersonalMarketOverview({
   selection,
 }: PersonalMarketOverviewProps) {
   const configured = providerStatus?.status === "configured";
+  const history = getPersonalMarketHistory(overview);
+  const reference = getPersonalMarketReference(overview);
   return (
     <section
       aria-busy={requestState === "loading"}
@@ -68,7 +76,7 @@ export function PersonalMarketOverview({
       <div className="discovery-section-heading personal-market-heading">
         <div>
           <p className="eyebrow">Owner-triggered market data</p>
-          <h2 id="personal-market-title">Current quote and price history</h2>
+          <h2 id="personal-market-title">Price and history</h2>
         </div>
         <span
           className={`market-provider-state ${configured ? "configured" : ""}`}
@@ -194,24 +202,62 @@ export function PersonalMarketOverview({
             </div>
           ) : (
             <>
-              <QuoteSummary overview={overview} />
-              <p className="discovery-status" aria-live="polite">
-                {requestState === "loading"
-                  ? `Loading ${rangeLabel(range)} history…`
-                  : `${rangeLabel(overview.history.range)} history · ${overview.history.startDate} through ${overview.history.endDate}`}
-              </p>
-              <PriceHistoryChart
-                bars={overview.history.bars}
-                mode={adjustmentMode}
-                symbol={overview.security.symbol}
-              />
-              <PersonalMarketAnalytics
-                asOfDate={
-                  overview.history.bars.at(-1)?.date ?? overview.history.endDate
-                }
-                bars={overview.history.bars}
-                mode={adjustmentMode}
-              />
+              {reference !== null && <QuoteSummary reference={reference} />}
+              {overview.quote.status === "unavailable" && (
+                <p className="market-message" role="note">
+                  Reference quote unavailable.{" "}
+                  {marketErrorDetail(
+                    personalMarketFeedErrorCode(overview.quote.reason),
+                  )}
+                  {history !== null && " End-of-day history remains available."}
+                </p>
+              )}
+              {overview.quote.status === "not_requested" && (
+                <p className="market-scope-note">
+                  Reference quote not requested.
+                </p>
+              )}
+              {history === null ? (
+                <div
+                  className="market-message market-message-error"
+                  role="alert"
+                >
+                  <strong>End-of-day history unavailable.</strong>
+                  <span>
+                    {overview.history.status === "unavailable"
+                      ? marketErrorDetail(
+                          personalMarketFeedErrorCode(overview.history.reason),
+                        )
+                      : "History is unavailable."}
+                  </span>
+                  <button
+                    className="secondary-action compact-action"
+                    disabled={!configured || requestState === "loading"}
+                    onClick={() => onLoad(range)}
+                    type="button"
+                  >
+                    Retry market data
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="discovery-status" aria-live="polite">
+                    {requestState === "loading"
+                      ? `Loading ${rangeLabel(range)} history…`
+                      : `${rangeLabel(history.range)} history · ${history.startDate} through ${history.endDate}`}
+                  </p>
+                  <PriceHistoryChart
+                    bars={history.bars}
+                    mode={adjustmentMode}
+                    symbol={overview.security.symbol}
+                  />
+                  <PersonalMarketAnalytics
+                    asOfDate={history.bars.at(-1)?.date ?? history.endDate}
+                    bars={history.bars}
+                    mode={adjustmentMode}
+                  />
+                </>
+              )}
               <p className="market-attribution">
                 Data attribution: {overview.provider.attribution}. Export and
                 redistribution are prohibited; values remain in active-session
@@ -226,11 +272,11 @@ export function PersonalMarketOverview({
 }
 
 export function QuoteSummary({
-  overview,
+  reference,
 }: {
-  overview: PersonalMarketOverviewDto;
+  reference: NonNullable<ReturnType<typeof getPersonalMarketReference>>;
 }) {
-  const { quote } = overview;
+  const { quote, sourceDate, timeBasis } = reference;
   const direction =
     quote.change === null
       ? "unavailable"
@@ -256,9 +302,15 @@ export function QuoteSummary({
       </div>
       <dl>
         <div>
-          <dt>Freshness</dt>
+          <dt>
+            {timeBasis === "modeled_regular_close"
+              ? "Modeled age policy"
+              : "Age policy"}
+          </dt>
           <dd>
-            {quote.freshness === "current" ? "Current" : "Older than 36 hours"}
+            {quote.freshness === "current"
+              ? "Within 36 hours"
+              : "Older than 36 hours"}
           </dd>
         </div>
         <div>
@@ -271,13 +323,11 @@ export function QuoteSummary({
         </div>
         <div>
           <dt>
-            {quote.kind === "end_of_day_close"
-              ? "Modeled session close"
-              : "Source time"}
+            {quote.kind === "end_of_day_close" ? "EOD bar date" : "Source time"}
           </dt>
           <dd>
-            <time dateTime={quote.sourceTime}>
-              {formatInstant(quote.sourceTime)}
+            <time dateTime={sourceDate ?? quote.sourceTime}>
+              {sourceDate ?? formatInstant(quote.sourceTime)}
             </time>
           </dd>
         </div>
@@ -290,6 +340,12 @@ export function QuoteSummary({
           </dd>
         </div>
       </dl>
+      {timeBasis === "modeled_regular_close" && (
+        <p>
+          Age uses an assumed regular-session close, not an observed
+          closing-trade time.
+        </p>
+      )}
     </article>
   );
 }
@@ -304,6 +360,10 @@ function marketErrorTitle(code: PersonalWorkspaceApiErrorCode): string {
       return "The provider rate limit was reached.";
     case "not_covered":
       return "This listing is not covered.";
+    case "access_denied":
+      return "The provider refused access to this feed.";
+    case "not_entitled":
+      return "This feed is not available to the configured account.";
     case "provider_unavailable":
       return "The market-data provider is unavailable.";
     default:
@@ -320,7 +380,11 @@ function marketErrorDetail(code: PersonalWorkspaceApiErrorCode): string {
     case "rate_limited":
       return "Wait for the provider limit to reset, then retry this range.";
     case "not_covered":
-      return "No admitted quote and daily history mapping exists for this listing.";
+      return "This feed has no admitted data for this listing.";
+    case "access_denied":
+      return "The provider refused access to this feed.";
+    case "not_entitled":
+      return "The configured account cannot access this feed.";
     case "provider_unavailable":
       return "No synthetic value was substituted. Retry when Tiingo is available.";
     default:
