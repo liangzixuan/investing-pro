@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "caseNumber": 80,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "b25a05e735ab6d095023a22f427ff75be66af414",
+  "featureRevision": "3b005035bf88cbc04984fcf1e52fc256cff67ae5",
+  "featureCount": 261,
+  "closureCount": 262,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/research/CompanyResearchPage.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyKeyStatistics.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyKeyStatistics.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialQualityScorecard.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFinancialQualityScorecard.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalManualPeerComparison.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalManualPeerQualityComparison.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalManualPeerQualityComparison.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/company-overview.css",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-company-key-statistics.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-company-key-statistics.ts",
+      "status": "A"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    {
+      "path": "packages/personal-financial-analytics/src/financial-ratio-display.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/financial-ratio-display.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/personal-financial-analytics/src/index.ts",
+      "status": "M"
+    },
+    { "path": "specs/002-company-overview/plan.md", "status": "M" },
+    { "path": "specs/002-company-overview/spec.md", "status": "M" },
+    { "path": "specs/002-company-overview/tasks.md", "status": "M" },
+    { "path": "specs/003-company-key-statistics/plan.md", "status": "A" },
+    { "path": "specs/003-company-key-statistics/spec.md", "status": "A" },
+    { "path": "specs/003-company-key-statistics/tasks.md", "status": "A" },
+    { "path": "specs/README.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka80.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka80.json",
+  "presentation": {
+    "featureDescription": "Annual company key statistics and readable quality ratios",
+    "closureDescription": "generated routing closure for annual company key statistics",
+    "inventoryDescription": "six annual statistics, source details and readable quality ratio displays",
+    "testBinding": "companykeystatistics",
+    "routingDescription": "Annual company statistics reuse existing source data and preserve calculation precision",
+    "summaryDescription": "show six annual company statistics and readable quality ratios"
+  }
+}
