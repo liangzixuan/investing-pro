@@ -45,6 +45,7 @@ vi.mock("@/features/research/LegacyLocalStateCleanup", () => ({
   LegacyLocalStateCleanup: () => null,
 }));
 vi.mock("@/features/workspace/workspace.css", () => ({}));
+vi.mock("@/features/research/company-overview.css", () => ({}));
 vi.mock("@/features/research/personal-portfolio.css", () => ({}));
 vi.mock("@/features/research/personal-portfolio-ledger.css", () => ({}));
 vi.mock("@/features/research/personal-portfolio-history.css", () => ({}));

@@ -14,6 +14,15 @@ import {
 } from "./PersonalAnnualFinancials";
 
 describe("PersonalAnnualFinancials", () => {
+  it("disables annual acquisition while the shared price request is active", () => {
+    const markup = render(
+      defaultProps({ selection: selection(), requestBlocked: true }),
+    );
+    expect(markup).toMatch(
+      /<button[^>]*disabled=""[^>]*>Load annual financials<\/button>/,
+    );
+    expect(markup).toContain('aria-busy="false"');
+  });
   it("renders ten complete annual statements with transparent latest-year metrics", () => {
     const markup = render(
       defaultProps({

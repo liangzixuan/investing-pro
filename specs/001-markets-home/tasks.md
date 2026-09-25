@@ -1,6 +1,10 @@
 # Tasks: Markets home and company entry
 
-**Status:** T001–T008 implementation and focused verification complete. Integrated synthetic Brave checks passed including the final chart presentation recheck; T009 real-source demonstration and T010 release acceptance remain open. **Input:** [spec](./spec.md), [plan](./plan.md).
+**Status:** T001–T010 accepted at release `9c2aa4f` on 2026-09-25.
+**Input:** [spec](./spec.md), [plan](./plan.md). Actual acceptance is recorded in
+[the final review](../../../tmp/markets-home/final-acceptance-independent-review.json)
+and [requirement matrix](../../../tmp/markets-home/m1-final-acceptance-matrix.json);
+[workspace CURRENT.md](../../../CURRENT.md) owns later progress and runtime status.
 Format: `[ID] [P?] [Story] Description`; `[P]` permits parallel work only when
 files and dependencies are independent. Parent assigns actual agents before edits.
 Tests below verify behavior and are required by the specification.
@@ -19,7 +23,7 @@ Tests below verify behavior and are required by the specification.
 - [x] T002 [P] [US1] Web owner: save desktop/narrow designs outside Git and link
       them from `plan.md`; show the whole Markets-to-company journey and failure states.
       Completed prototype QA: Brave 1440/390, selected-company Back, draft retention,
-      and quote failure with usable EOD. Actual React integration remains T009.
+      and quote failure with usable EOD. Actual React integration passed T009.
 
 ## Phase 2: US1, Populated Markets Board
 
@@ -55,10 +59,10 @@ Tests below verify behavior and are required by the specification.
 
 ## Phase 5: Demonstration and Release
 
-- [ ] T009 [US1/US2/US3] Root: verify all FR/SC acceptance against actual behavior,
+- [x] T009 [US1/US2/US3] Root: verify all FR/SC acceptance against actual behavior,
       inspect desktop/narrow Brave with a real permitted cohort and synthetic failure/
       draft scenarios. Record source/build, coverage and limits; preserve owner records.
-- [ ] T010 [US1/US2/US3] Root: review explicit files and complete unchanged feature/
+- [x] T010 [US1/US2/US3] Root: review explicit files and complete unchanged feature/
       generated closure, isolated native and applicable exact-revision hosted checks.
       Activate only the accepted candidate; record real verification and runtime in
       CURRENT.md/handoff and update these tasks from evidence. SC-001/002/003.
@@ -87,6 +91,12 @@ checks covered the populated board, adjusted-close sorting, cached company entry
 and Back, direct URL resolution, retained note drafts, delayed/aborted responses,
 partial EOD results and quote refusal with usable EOD. The fixture makes no real
 provider calls or owner-record writes. Exact source receipts and limits are in
-workspace `tmp/markets-home/app-qa/`; actual Next routing and the permitted live
-cohort remain T009 acceptance. The chart spacing and reconnect-state fixes have
+workspace `tmp/markets-home/app-qa/`; T009 subsequently accepted actual Next routing
+and the permitted live cohort. The chart spacing and reconnect-state fixes have
 focused regression coverage and passed their final visual recheck.
+
+T009/T010 acceptance: three real EOD rows; eight limited live Brave groups including
+fresh direct entry; 9,084 native passes with nine existing skips; all six required
+hosted jobs across five workflows. One unchanged-source Windows retry passed after
+an initial failure, with both attempts retained. These counts support the linked
+acceptance matrix; they are not a platform-completion percentage.

@@ -1,7 +1,7 @@
 # Implementation Plan: Markets home and company entry
 
-**Date:** 2026-09-24 | **Status:** Source/design decisions made; integrated implementation and verification in progress
-**Spec:** [spec.md](./spec.md) | **Checkout:** Isolated `markets-home` at accepted a77
+**Date:** 2026-09-24 | **Status:** Accepted 2026-09-25 at release `9c2aa4f`
+**Spec:** [spec.md](./spec.md) | **Checkout:** `markets-home`; implemented from accepted a77, now accepted M1
 
 ## Summary
 
@@ -137,7 +137,9 @@ page load resolves the requested company and does not imply persisted unsaved dr
 ### Design and Validation Guide
 
 The bounded source/cohort contract and desktop/narrow prototype are recorded
-above. Integrated application and real-cohort acceptance remain open. Use the
+above. Integrated application and real-cohort acceptance passed; see the
+[final independent review](../../../tmp/markets-home/final-acceptance-independent-review.json)
+and [requirement matrix](../../../tmp/markets-home/m1-final-acceptance-matrix.json). Use the
 owner's market-portal reference and suitable Bootstrap Studio resources.
 Use compact tables, chart, clear source dates and existing research entry points.
 FinanceDatabase is a future directory input, never a quote source, automatic
@@ -157,4 +159,5 @@ handoff; a written plan or source classification is not a passed release.
 No principle exception is proposed. Shared route lifetime is necessary for direct
 navigation without losing existing drafts/guards. Feed independence fixes a concrete
 coupling defect; it does not justify a new provider framework. Source-probe and prototype evidence remain distinct from integrated application
-and release acceptance, which are still pending.
+and release acceptance. Both are now complete within the linked M1 evidence limits;
+[workspace CURRENT.md](../../../CURRENT.md) owns later runtime/progress status.

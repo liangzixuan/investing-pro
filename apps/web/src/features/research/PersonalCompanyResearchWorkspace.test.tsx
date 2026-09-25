@@ -205,6 +205,42 @@ describe("PersonalCompanyResearchWorkspace", () => {
     expect(props.onSectionChange).not.toHaveBeenCalled();
   });
 
+  it("keeps the overview before tabs across section changes without remounting panel content", () => {
+    const overview = (
+      <aside id="overview-slot">Same annual and price data</aside>
+    );
+    props = { ...props, overview };
+    const before = render();
+    expect(elementById(before, "overview-slot")).toBe(overview);
+    const markup = renderToStaticMarkup(before);
+    expect(markup.indexOf('id="overview-slot"')).toBeLessThan(
+      markup.indexOf('role="tablist"'),
+    );
+    const panels = elements(before).filter(
+      (node) => node.props.role === "tabpanel",
+    );
+    props = { ...props, activeSection: "financials" };
+    const after = render();
+    expect(elementById(after, "overview-slot")).toBe(overview);
+    expect(
+      elements(after)
+        .filter((node) => node.props.role === "tabpanel")
+        .map((node) => [node.key, node.props.children]),
+    ).toEqual(panels.map((node) => [node.key, node.props.children]));
+    expect(props.onSectionChange).not.toHaveBeenCalled();
+  });
+
+  it("does not expose a retained overview when the company selection is cleared", () => {
+    props = {
+      ...props,
+      selection: null,
+      overview: <aside id="overview-slot">Previous company data</aside>,
+    };
+    expect(
+      elements(render()).some((node) => node.props.id === "overview-slot"),
+    ).toBe(false);
+  });
+
   it("omits a supplied navigation description when the navigation slot is absent", () => {
     props = { ...props, navigationDescriptionId: "absent-navigation" };
     expect(

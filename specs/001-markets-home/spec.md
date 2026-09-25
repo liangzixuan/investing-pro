@@ -1,7 +1,10 @@
 # Feature Specification: Markets home and company entry
 
-**Created:** 2026-09-24 | **Status:** Implementation and focused verification in progress; not released
-**Checkout:** `markets-home`, isolated from the accepted a77 release and parked SEC work.
+**Created:** 2026-09-24 | **Status:** Accepted 2026-09-25; release `9c2aa4f`
+**Checkout:** `markets-home`; original SEC work remains parked separately.
+**Acceptance:** [final independent review](../../../tmp/markets-home/final-acceptance-independent-review.json)
+and [15-requirement matrix](../../../tmp/markets-home/m1-final-acceptance-matrix.json).
+[Workspace CURRENT.md](../../../CURRENT.md) owns subsequent runtime/progress status.
 **Input:** Personal Investing.com-style platform, existing subscriptions/free sources;
 first useful market board and connected company research. [Roadmap](../../docs/PRODUCT_ROADMAP.md)
 
@@ -86,8 +89,11 @@ they satisfy these requirements; dataset metadata does not prove feed entitlemen
 
 ## Assumptions and Scope
 
-The three-listing source probe and desktop/narrow prototype are verified within the limits recorded in the plan. Integrated application QA and release acceptance remain open. Existing Tiingo configuration
-does not establish endpoint access. Start with the supported equity cohort; broader
-assets, news/calendars and AI remain later layers. SEC structural parsing and
-FinanceDatabase integration are independent of this release. Preserve the healthy
-accepted app while building this layer.
+Actual AAPL/MSFT/WMT EOD data, desktop/narrow Brave navigation and fresh direct
+company entry passed. Synthetic cases cover partial feeds, drafts and retirement;
+actual browser network totals and 200% zoom were not measured. Native and all six
+required hosted jobs passed, with the original Windows failure and sole successful
+retry preserved in the linked acceptance evidence. These are bounded M1 outcomes,
+not whole-market or complete-company coverage. Annual entitlement, broader assets,
+news/calendars and AI remain separate work; configuration proves no new feed access.
+SEC structural parsing and FinanceDatabase admission do not block this release.

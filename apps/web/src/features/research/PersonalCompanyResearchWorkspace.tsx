@@ -17,6 +17,7 @@ export interface PersonalCompanyResearchWorkspaceProps {
   readonly navigation?: ReactNode;
   readonly navigationDescriptionId?: string | undefined;
   readonly researchNote?: ReactNode;
+  readonly overview?: ReactNode;
   readonly sections: Readonly<
     Record<PersonalCompanyResearchSection, ReactNode>
   >;
@@ -47,6 +48,7 @@ export function PersonalCompanyResearchWorkspace({
   navigation,
   navigationDescriptionId,
   researchNote,
+  overview,
   sections: content,
 }: PersonalCompanyResearchWorkspaceProps) {
   const identity = JSON.stringify(selection);
@@ -211,6 +213,7 @@ export function PersonalCompanyResearchWorkspace({
               you move between sections.
             </p>
           )}
+          {overview}
           <div
             aria-label="Company research sections"
             className="company-research-tabs"

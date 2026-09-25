@@ -1,0 +1,131 @@
+.research-desk .personal-company-overview {
+  margin: 16px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.research-desk .company-overview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.research-desk .company-overview-heading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.research-desk .company-overview-actions button,
+.research-desk .company-overview-domains a {
+  min-height: 44px;
+}
+
+.research-desk .company-overview-actions button:disabled {
+  background: var(--surface);
+  border-color: var(--line);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+
+.research-desk .company-overview-status,
+.research-desk .company-overview-deferral,
+.research-desk .company-overview-period,
+.research-desk .company-overview-coverage,
+.research-desk .company-overview-source,
+.research-desk .company-overview-retained {
+  margin: 10px 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.research-desk .company-overview-domains {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.research-desk .company-overview-price:empty {
+  display: none;
+}
+
+.research-desk .company-overview-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.research-desk .company-overview-price p {
+  margin: 0;
+}
+
+.research-desk .company-overview-annual h4 {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.research-desk .company-overview-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.research-desk .company-overview-values > div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+}
+
+.research-desk .company-overview-values dt {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.research-desk .company-overview-values dd {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.research-desk .company-overview-values small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.research-desk .company-overview-domains a {
+  display: inline-flex;
+  align-items: center;
+  color: var(--mint-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .research-desk .personal-company-overview {
+    padding: 14px;
+  }
+
+  .research-desk .company-overview-actions,
+  .research-desk .company-overview-actions button {
+    width: 100%;
+  }
+
+  .research-desk .company-overview-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+}

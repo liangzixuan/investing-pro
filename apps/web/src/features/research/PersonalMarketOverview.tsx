@@ -38,6 +38,7 @@ export interface PersonalMarketOverviewProps {
   readonly providerStatus: PersonalMarketDataStatusDto | null;
   readonly range: PersonalMarketDataRangeDto;
   readonly requestState: "idle" | "loading";
+  readonly requestBlocked?: boolean;
   readonly selection: PersonalMarketSelection | null;
 }
 
@@ -60,6 +61,7 @@ export function PersonalMarketOverview({
   providerStatus,
   range,
   requestState,
+  requestBlocked = false,
   selection,
 }: PersonalMarketOverviewProps) {
   const configured = providerStatus?.status === "configured";
@@ -151,7 +153,9 @@ export function PersonalMarketOverview({
               {ranges.map(([value, label]) => (
                 <button
                   aria-pressed={range === value}
-                  disabled={!configured || requestState === "loading"}
+                  disabled={
+                    !configured || requestState === "loading" || requestBlocked
+                  }
                   key={value}
                   onClick={() => onLoad(value)}
                   type="button"
@@ -184,12 +188,14 @@ export function PersonalMarketOverview({
             <div className="market-load-state">
               <p aria-live="polite">
                 {requestState === "loading"
-                  ? `Loading ${rangeLabel(range)} quote and history…`
+                  ? `Loading ${rangeLabel(range)} market data…`
                   : "No provider request has been made for this selection."}
               </p>
               <button
                 className="primary-action compact-action"
-                disabled={!configured || requestState === "loading"}
+                disabled={
+                  !configured || requestState === "loading" || requestBlocked
+                }
                 onClick={() => onLoad(range)}
                 type="button"
               >
@@ -232,7 +238,11 @@ export function PersonalMarketOverview({
                   </span>
                   <button
                     className="secondary-action compact-action"
-                    disabled={!configured || requestState === "loading"}
+                    disabled={
+                      !configured ||
+                      requestState === "loading" ||
+                      requestBlocked
+                    }
                     onClick={() => onLoad(range)}
                     type="button"
                   >

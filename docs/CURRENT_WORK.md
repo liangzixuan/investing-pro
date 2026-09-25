@@ -1,52 +1,80 @@
 # Current work
 
-Updated September 24, 2026. The owner is building a personal Investing.com-style
+Updated September 25, 2026. The owner is building a personal Investing.com-style
 platform, then Pro-style research and personal improvements, using existing
 subscriptions/free sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns the
 scope and delivery order; [capability status](./CAPABILITY_STATUS.md) records
 what is actually delivered. Workspace CURRENT.md owns current runtime and
 unfinished-source checkpoints.
 
-## Active outcome: Markets home and direct company entry
+## Active outcome: connected company overview (first M2 slice)
 
-Use the manual, adapted Spec Kit pilot:
+Use the manual Spec Kit [specification](../specs/002-company-overview/spec.md),
+[plan](../specs/002-company-overview/plan.md) and
+[tasks](../specs/002-company-overview/tasks.md). Work continues in `markets-home/`
+from accepted M1 `9c2aa4f`; local implementation and focused checks are recorded,
+with synthetic Brave journey/presentation checks complete. Permitted real-page
+QA and release acceptance remain pending.
+Workspace `tmp/company-overview/` holds current evidence and interrupted work.
 
-- [Specification](../specs/001-markets-home/spec.md): user journeys and acceptance.
-- [Implementation plan](../specs/001-markets-home/plan.md): existing dependencies,
-  source limits, module responsibilities and actual open evidence.
-- [Tasks](../specs/001-markets-home/tasks.md): ordered work and verification state.
+One explicit action supplies missing 1M EOD and annual statements, reusing a
+matching Markets snapshot. Show latest-year revenue, net income and operating
+cash flow with fiscal/source dates and unknown cells. Share the loaded annual
+result with Financials, quality and existing valuation inputs. Fresh company entry
+stays idle; quarterly, longer valuation history, peers and SEC remain explicit.
+This is the first connected-page layer, not the whole M2 milestone.
 
-Implementation is in the isolated `markets-home` checkout. T001 source decisions,
-T002 prototype, T003 independent feeds and T004 arithmetic have focused evidence.
-The Markets loader/view and shared routes have passed focused checks and source
-review. Integrated synthetic Brave checks passed; actual Next routing and permitted live-data acceptance remain open. The candidate is
-uncommitted and has not completed native/hosted release gates.
-Read workspace `tmp/markets-home/` for actual evidence and interrupted-work handoffs.
+Market/annual state now lives in one persistent data hook, with separate company
+composition/projection modules. Root owns integration/CSS; data owns the hook;
+UI owns summary/projection/components; spec work owns these guides.
 
-The bounded outcome is a populated market board, one chart, scoped movers and direct
-company navigation. Keep the first source check and desktop/narrow design tied
-to that working outcome. Reuse the current React application, market adapters,
-ECharts, calculations and company panels. New layers must preserve a usable app.
-News/calendar source work can proceed independently as feeds become available.
+Overview and panel controls share 15-minute spacing for repeated exact domain
+inputs and four request sequences/hour per company authority. A first annual load
+or new range remains allowed; Back/selection retains the budget and snapshot
+admission costs zero. Missing-domain Load/Retry and explicit complete-data Refresh
+preserve successful siblings, dates, drafts and identity/lifetime guards.
 
-Do not append another orchestration layer to the large discovery component.
-Use the existing Next routing and a shared workspace lifetime with separate
-market-page, company-page and data-coordination modules. Separate quote and
-history availability so a quote entitlement failure cannot erase usable EOD
-history. Exact interfaces and callers change together; no compatibility layer
-is required for a superseded API.
+A bounded AAPL annual probe on September 25 returned FY2023–2025, three of ten
+requested years: 90 known returned cells, zero unknown returned cells and seven
+missing years. All three latest summary fields were known. This establishes one
+company/operation's observed access, not universal annual entitlement or a working
+M2 page. The [plan](../specs/002-company-overview/plan.md#actual-source-probe)
+links metadata-only evidence. Focused evidence records 54 hook passes, 73 UI passes
+and 339 root integration cases across retained attempts, plus web types/scoped
+lint and four targeted catalog-conflict feedback cases. These groups overlap;
+do not sum them. [Tasks](../specs/002-company-overview/tasks.md#evidence) retain
+the exact counts, failures and repairs.
 
-FinanceDatabase is a future instrument-directory input, not a quote feed or an
-admitted common-stock catalog. Its import does not block the initial market board.
+Synthetic Brave build 2 verified bounded loading, partial failures, source-tab
+focus, a 390px layout without horizontal overflow, cached entry, and retained data
+and unsaved invented notes through Back and a failed Refresh. The late-response
+case also involved local-access revalidation; focused tests cover route-only
+retirement. Build 3 passed final busy-copy/disabled-style checks and the settled
+636px layout; the [plan](../specs/002-company-overview/plan.md#synthetic-brave-evidence)
+links both browser receipts. Guardrails, permitted real-page QA and release
+acceptance remain open. No new API, schema, dependency, source purchase or
+authentication change is planned. FinanceDatabase remains a future directory input.
 See the [engineering audit](./ENGINEERING_AUDIT.md) and
-[Spec Kit adoption note](../specs/README.md).
+[Spec Kit adaptation](../specs/README.md).
+
+The first native candidate, `db4a9794`, stopped at the boundary guard: five
+render checks still targeted the old workspace after composition moved to
+`CompanyResearchPage`. Format, lint and classification passed; native typechecks,
+tests and builds did not run. The correction must check the actual component
+owners and retain every existing requirement. A revised candidate and full
+acceptance remain pending; [failure evidence](../specs/002-company-overview/plan.md#native-gate-recovery)
+is retained. The added boundary-script path also requires the normalization
+hosted workflow, bringing the revised scope to five workflows and six jobs.
 
 ## Accepted runtime and parked work
 
-Accepted source is `2b2510bc677173d1c9700e9f13c5012a7a0c8a88`, including Research
-Desk, financial-result price screening and the bounded selected-quarter SEC
-assessment. Workspace CURRENT.md and outside-Git handoffs record actual native,
-hosted and Brave verification, source/build identity and rollback state.
+Accepted M1 is `9c2aa4f059a10c6508e1ba8798ac350231d06dce`: a three-listing
+real-EOD Markets board, chart/sorting, global search and exact company entry/Back.
+[Markets tasks](../specs/001-markets-home/tasks.md) link the independent final review
+and acceptance matrix. Existing research, watchlists, drafts and analyses remain
+available. Workspace [CURRENT.md](../../CURRENT.md) and `tmp/markets-home/` own
+actual source/build/runtime, native/hosted/Brave evidence, limits and rollback.
+Never reuse historical process IDs or terminal/consumed observers as new authority.
 
 The later compact quarter-evidence work is preserved and unreleased. Its four
 retained real filings returned structural refusals: zero complete primary graphs

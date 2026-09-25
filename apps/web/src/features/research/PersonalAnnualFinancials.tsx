@@ -4,12 +4,12 @@ import type {
 } from "@research-cockpit/contracts";
 import type { ReactNode } from "react";
 import {
-  buildPersonalFinancialAnalytics,
   PERSONAL_FINANCIAL_ANALYTICS_METRIC_KEYS,
   PERSONAL_FINANCIAL_ANALYTICS_ROUNDING,
   PERSONAL_FINANCIAL_REPORTED_FIELDS,
   type PersonalFinancialAnalyticsGrowthMetric,
   type PersonalFinancialAnalyticsPeriodMetric,
+  type PersonalFinancialAnalyticsResult,
   type PersonalFinancialStatementId,
 } from "@research-cockpit/personal-financial-analytics";
 
@@ -18,6 +18,10 @@ import type { PersonalWorkspaceApiErrorCode } from "@/lib/personal-workspace-api
 import { PersonalAnnualFinancialTrend } from "./PersonalAnnualFinancialTrend";
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 import { projectPersonalAnnualFinancialTrend } from "./personal-annual-financial-trend-input";
+import {
+  buildPersonalAnnualFinancialAnalytics,
+  formatPersonalFinancialUsd as formatUsdExact,
+} from "./personal-annual-financial-analytics";
 
 export interface PersonalAnnualFinancialsProps {
   readonly compact?: boolean;
@@ -26,6 +30,7 @@ export interface PersonalAnnualFinancialsProps {
   readonly onLoad: () => void;
   readonly providerStatus: PersonalMarketDataStatusDto | null;
   readonly requestState: "idle" | "loading";
+  readonly requestBlocked?: boolean;
   readonly selection: PersonalMarketSelection | null;
 }
 
@@ -59,6 +64,7 @@ export function PersonalAnnualFinancials({
   onLoad,
   providerStatus,
   requestState,
+  requestBlocked = false,
   selection,
 }: PersonalAnnualFinancialsProps) {
   const configured = providerStatus?.status === "configured";
@@ -66,27 +72,7 @@ export function PersonalAnnualFinancials({
   const analytics =
     financials === null
       ? null
-      : buildPersonalFinancialAnalytics({
-          asOf: financials.asOf,
-          periods: financials.years.map((year) => ({
-            facts: PERSONAL_FINANCIAL_REPORTED_FIELDS.flatMap((field) => {
-              if (field.analyticsInput === null) return [];
-              const cell = year.reported[field.fieldKey];
-              return cell.status === "known"
-                ? [
-                    {
-                      key: field.analyticsInput,
-                      sourceRef: `${String(year.fiscalYear)}:${field.fieldKey}`,
-                      unit: "USD" as const,
-                      value: cell.value,
-                    },
-                  ]
-                : [];
-            }),
-            fiscalYear: year.fiscalYear,
-            statementDate: year.statementDate,
-          })),
-        });
+      : buildPersonalAnnualFinancialAnalytics(financials);
 
   const introduction = (
     <FinancialDetails compact={compact} label="About annual financials">
@@ -155,7 +141,9 @@ export function PersonalAnnualFinancials({
             </p>
             <button
               className="primary-action compact-action"
-              disabled={!configured || requestState === "loading"}
+              disabled={
+                !configured || requestState === "loading" || requestBlocked
+              }
               onClick={onLoad}
               type="button"
             >
@@ -191,7 +179,7 @@ function FinancialsResult({
   selection,
 }: {
   readonly compact: boolean;
-  readonly analytics: ReturnType<typeof buildPersonalFinancialAnalytics>;
+  readonly analytics: PersonalFinancialAnalyticsResult;
   readonly financials: PersonalAnnualFinancialsDto;
   readonly selection: PersonalMarketSelection;
 }) {
@@ -602,14 +590,6 @@ function growthUnavailableReason(reason: string): string {
 
 function signed(value: string): string {
   return value.startsWith("-") || value === "0.00" ? value : `+${value}`;
-}
-
-function formatUsdExact(value: string): string {
-  const negative = value.startsWith("-");
-  const unsigned = negative ? value.slice(1) : value;
-  const [integer = "0", fraction] = unsigned.split(".");
-  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/gu, ",");
-  return `${negative ? "−" : ""}$${grouped}${fraction === undefined ? "" : `.${fraction}`}`;
 }
 
 function formatInstant(value: string): string {

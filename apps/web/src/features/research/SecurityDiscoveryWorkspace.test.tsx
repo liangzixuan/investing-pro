@@ -1,3 +1,8 @@
+import type { PersonalCompanyOverviewProps } from "./PersonalCompanyOverview";
+import {
+  CompanyResearchPage,
+  type CompanyResearchPageProps,
+} from "./CompanyResearchPage";
 import {
   WorkspaceSearch,
   type WorkspaceSearchProps,
@@ -304,6 +309,10 @@ vi.mock("@/lib/personal-workspace-api", async () => ({
     )
   ).normalizeWatchlistNote,
 }));
+vi.mock(
+  "../../lib/personal-workspace-api",
+  async () => import("@/lib/personal-workspace-api"),
+);
 vi.mock("./OwnerSessionPanel", () => ({
   OwnerSessionPanel: componentMocks.OwnerSession,
 }));
@@ -382,6 +391,12 @@ afterEach(() => vi.unstubAllGlobals());
 let deferWorkspaceEffects = false;
 
 beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => {
+      throw new Error("Unexpected network call in workspace fixture");
+    }),
+  );
   deferWorkspaceEffects = false;
   hookHarness.reset();
   for (const mock of Object.values(apiMocks)) mock.mockReset();
@@ -416,6 +431,114 @@ beforeEach(() => {
 });
 
 describe("SecurityDiscoveryWorkspace", () => {
+  it("loads one connected overview sequentially and shares its annual result with analysis", async () => {
+    await activateWorkspace();
+    const held = deferred<PersonalMarketOverviewDto>();
+    apiMocks.fetchPersonalMarketOverview.mockReturnValueOnce(held.promise);
+    const view = await searchAndSelectMarket("ZERO");
+    const overview = requireCompanyOverview(view);
+    expect(overview.canLoad).toBe(true);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    overview.onLoad();
+    overview.onLoad();
+    requireAnnualFinancials(view).props.onLoad();
+    expect(
+      apiMocks.fetchPersonalMarketOverview,
+    ).toHaveBeenCalledExactlyOnceWith(
+      {
+        listingId: "lst-zero",
+        symbol: "ZERO",
+        range: "1m",
+        includeQuote: false,
+      },
+      expect.any(AbortSignal),
+    );
+    expect(apiMocks.fetchPersonalAnnualFinancials).not.toHaveBeenCalled();
+    expect(
+      requireAnnualFinancials(renderWorkspace()).props.requestBlocked,
+    ).toBe(true);
+    held.resolve(oneMonthOverview());
+    await flushPromises(12);
+    const loaded = renderWorkspace();
+    const result = requireCompanyOverview(loaded);
+    expect(result.marketOverview).toBe(
+      requireMarketOverview(loaded).props.overview,
+    );
+    expect(result.annualFinancials).not.toBeNull();
+    expect(result.annualFinancials).toBe(
+      requireAnnualFinancials(loaded).props.financials,
+    );
+    expect(result.annualFinancials).toBe(
+      requireFinancialQualityScorecard(loaded).props.financials,
+    );
+    expect(result.annualFinancials).toBe(
+      requireFcffDcfValuation(loaded).props.annualFinancials,
+    );
+    expect(result.action).toBe("refresh");
+    expect(result.canLoad).toBe(false);
+    expect(result.deferralMessage).toContain("after");
+    expect(providerRequestCounts()).toEqual([1, 0, 0, 1]);
+  });
+  it("uses a Markets snapshot so the overview requests only annual data", async () => {
+    await activateRoutedWorkspace();
+    const dom = companyFocusDocument("markets-title");
+    const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+      () => null,
+    );
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "markets" },
+      renderMarkets: markets,
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge });
+    void renderWorkspace(undefined, { bridge });
+    const cached = oneMonthOverview();
+    markets.mock.calls
+      .at(-1)![0]
+      .onOpenCompany(
+        searchResult("ZERO", "lst-zero"),
+        dom.trigger as unknown as HTMLElement,
+        cached,
+      );
+    const company = {
+      ...bridge,
+      route: { kind: "company", listingId: "lst-zero" } as const,
+    };
+    void renderWorkspace(undefined, { bridge: company });
+    let view = renderWorkspace(undefined, { bridge: company });
+    expect(requireCompanyOverview(view).marketOverview).toBe(cached);
+    requireCompanyOverview(view).onLoad();
+    await flushPromises(12);
+    view = renderWorkspace(undefined, { bridge: company });
+    expect(requireCompanyOverview(view).annualFinancials).not.toBeNull();
+    expect(requireMarketOverview(view).props.overview).toBe(cached);
+    expect(providerRequestCounts()).toEqual([1, 0, 0, 0]);
+  });
+  it("clears loaded overview data when only the admitted share class changes", async () => {
+    await activateWorkspace();
+    apiMocks.fetchPersonalMarketOverview.mockResolvedValueOnce(
+      oneMonthOverview(),
+    );
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireCompanyOverview(view).onLoad();
+    await flushPromises(12);
+    view = renderWorkspace();
+    const stale = requireCompanyOverview(view);
+    expect(stale.annualFinancials).not.toBeNull();
+    findElement<PersonalPortfolioProps>(
+      chooseDeskTask("Portfolio"),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!({
+      ...searchResult("ZERO", "lst-zero"),
+      shareClassId: "other-share-class",
+    });
+    view = renderWorkspace();
+    expect(requireCompanyOverview(view).marketOverview).toBeNull();
+    expect(requireCompanyOverview(view).annualFinancials).toBeNull();
+    stale.onLoad();
+    expect(providerRequestCounts()).toEqual([1, 0, 0, 1]);
+  });
+
   it("navigates Choose holding to Portfolio with the admitted identity", async () => {
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
       watchlistRecord(1),
@@ -912,6 +1035,8 @@ describe("SecurityDiscoveryWorkspace", () => {
     await activateWorkspace();
     let view: unknown = await searchAndSelectMarket("ZERO");
     requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises();
+    view = renderWorkspace();
     requireAnnualFinancials(view).props.onLoad();
     requireQuarterlyFinancials(view).props.onLoad();
     requireValuationHistory(view).props.onLoad();
@@ -952,7 +1077,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
   });
 
-  it("does not cancel an in-flight company load when navigating or reopening its exact identity", async () => {
+  it("keeps an in-flight company load through section changes but retires it on Back before a same-identity reopen", async () => {
     await activateWorkspace();
     const loading = deferred<PersonalAnnualFinancialsDto>();
     apiMocks.fetchPersonalAnnualFinancials.mockReturnValueOnce(loading.promise);
@@ -961,15 +1086,16 @@ describe("SecurityDiscoveryWorkspace", () => {
     const signal = apiMocks.fetchPersonalAnnualFinancials.mock.calls[0]![1];
     requireCompanyResearch(view).props.onSectionChange("valuation");
     view = renderWorkspace();
+    expect(signal.aborted).toBe(false);
     requireCompanyResearch(view).props.onBack();
     findElement<PersonalPortfolioProps>(view, componentMocks.Portfolio)!.props
       .onOpenResearch!(searchResult("ZERO", "lst-zero"));
-    expect(signal.aborted).toBe(false);
+    expect(signal.aborted).toBe(true);
     loading.resolve(annualFinancials());
     await flushPromises();
     expect(
       requireAnnualFinancials(renderWorkspace()).props.financials,
-    ).not.toBeNull();
+    ).toBeNull();
     expect(apiMocks.fetchPersonalAnnualFinancials).toHaveBeenCalledTimes(1);
   });
 
@@ -1676,6 +1802,9 @@ describe("SecurityDiscoveryWorkspace", () => {
 
   it("fails closed while the owner activity handler is absent or replaced", async () => {
     await activateWorkspace();
+    requireOwnerSession(renderWorkspace()).props.onActivityHandlerChange?.(
+      null,
+    );
     const owner = requireOwnerSession(renderWorkspace());
     const financial = findElement<PersonalFinancialScreenerProps>(
       chooseDeskScreen("Financial screen"),
@@ -2258,6 +2387,8 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(apiMocks.fetchPersonalValuationHistory).not.toHaveBeenCalled();
 
     requireMarketOverview(rendered).props.onLoad("1y");
+    await flushPromises();
+    rendered = renderWorkspace();
     requireAnnualFinancials(rendered).props.onLoad();
     await flushPromises();
     rendered = renderWorkspace();
@@ -6638,9 +6769,11 @@ describe("Sequential My Watchlist research", () => {
     await activateWorkspace();
     watchlistAction(renderWorkspace(), "Research ZERO").props.onClick();
     let view = renderWorkspace();
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises();
+    view = renderWorkspace();
     const oldAnnual = requireAnnualFinancials(view);
     oldAnnual.props.onLoad();
-    requireMarketOverview(view).props.onLoad("1y");
     requireQuarterlyFinancials(view).props.onLoad();
     requireValuationHistory(view).props.onLoad();
     await flushPromises();
@@ -7880,6 +8013,9 @@ function editWatchlistNote(listingId: string, value: string) {
 async function activateWorkspace() {
   const owner = requireOwnerSession(renderWorkspace());
   await owner.props.onSessionChange(true, new AbortController().signal);
+  requireOwnerSession(renderWorkspace()).props.onActivityHandlerChange?.(
+    () => () => true,
+  );
 }
 
 async function activateRoutedWorkspace() {
@@ -8448,6 +8584,21 @@ function findAllElements(
     return value.flatMap((child) => findAllElements(child, type));
   }
   if (!React.isValidElement(value)) return [];
+  if (value.type === CompanyResearchPage) {
+    return findAllElements(
+      CompanyResearchPage(value.props as CompanyResearchPageProps),
+      type,
+    ).map((element) =>
+      // These assertions track mounted identity, including the extracted page's
+      // parent key. A parent remount also retires its unkeyed descendants.
+      element.type === componentMocks.CompanyResearch ||
+      element.type === componentMocks.FcffDcfValuation
+        ? React.cloneElement(element, {
+            key: `${value.key}:${element.key ?? ""}`,
+          })
+        : element,
+    );
+  }
   const own =
     type === undefined || value.type === type
       ? [value as React.ReactElement<Record<string, unknown>>]
@@ -8743,7 +8894,9 @@ function annualFinancials(
     security: {
       country: "US",
       exchangeMic: "XNAS",
-      issuerName: "Zero Alpha, Inc.",
+      issuerName: /^SYN\d{5}$/.test(symbol)
+        ? `Synthetic Company ${symbol.slice(3)}`
+        : "Zero Alpha, Inc.",
       listingId,
       securityName: `${symbol} Common Stock`,
       symbol,
@@ -8921,4 +9074,26 @@ function deferred<T>() {
     resolve = complete;
   });
   return { promise, resolve };
+}
+
+function requireCompanyOverview(value: unknown): PersonalCompanyOverviewProps {
+  const element = requireCompanyResearch(value).props.overview;
+  if (!React.isValidElement<PersonalCompanyOverviewProps>(element))
+    throw new Error("Expected company overview.");
+  return element.props;
+}
+
+function oneMonthOverview(): PersonalMarketOverviewDto {
+  const value = marketOverview();
+  if (value.history.status !== "available")
+    throw new Error("Expected history fixture.");
+  return {
+    ...value,
+    window: { ...value.window, range: "1m" },
+    history: {
+      ...value.history,
+      value: { ...value.history.value, range: "1m" },
+    },
+    quote: { status: "not_requested" },
+  };
 }

@@ -24,6 +24,30 @@ import {
 } from "./PersonalMarketAnalytics";
 
 describe("PersonalMarketOverview", () => {
+  it("describes an EOD-only initial load without claiming a quote request", () => {
+    const props = defaultProps({
+      selection: selection(),
+      requestState: "loading",
+      range: "1m",
+    });
+    const view = PersonalMarketOverview(props);
+    expect(textContent(view)).toContain("Loading 1M market data…");
+    expect(textContent(view)).not.toContain("quote and history");
+    expect(requireButton(view, "Loading market data…").props.disabled).toBe(
+      true,
+    );
+    expect(props.onLoad).not.toHaveBeenCalled();
+  });
+  it("disables market acquisition while the shared annual request is active", () => {
+    const props = defaultProps({
+      selection: selection(),
+      requestBlocked: true,
+    });
+    const view = PersonalMarketOverview(props);
+    expect(requireButton(view, "Load market data").props.disabled).toBe(true);
+    expect(requireButton(view, "1M").props.disabled).toBe(true);
+    expect(textContent(view)).not.toContain("Loading market data");
+  });
   it("retains EOD history when the quote feed denies access and labels the modeled reference", () => {
     const loaded: PersonalMarketOverviewDto = {
       ...overview(),
