@@ -2702,50 +2702,68 @@ export function SecurityDiscoveryWorkspace({
   return (
     <div className="research-desk">
       <a className="skip-link" href="#main-content">
-        Skip to security discovery
+        Skip to main content
       </a>
       <header className="app-header personal-app-header research-desk-header">
-        <Link
-          className="wordmark"
-          href={route === undefined ? "/discover" : "/markets"}
-        >
-          <span>RC</span> Research Cockpit
-        </Link>
-        {route !== undefined && (
-          <WorkspaceSearch
-            query={query}
-            busy={searchState === "loading"}
-            disabled={workspace === null}
-            onChange={(value, origin) => {
-              if (
-                routeIsCurrent() &&
-                isCurrentDeskControl(origin) &&
-                value.length <= 128
-              )
-                setQuery(value);
-            }}
-            onSearch={(origin) => {
-              if (
-                !routeIsCurrent() ||
-                !isCurrentDeskControl(origin) ||
-                searchState === "loading"
-              )
-                return;
-              companyNavigationEpoch.current += 1;
-              replaceWorkspaceView({ task: "discover", research: false });
-              onNavigate?.("/discover");
-              void runSearch();
-              afterViewRender(() => {
+        <div className="workspace-utility-row">
+          <Link
+            className="wordmark workspace-brand"
+            href={route === undefined ? "/discover" : "/markets"}
+          >
+            Research <strong>Cockpit</strong>
+          </Link>
+          {route !== undefined && (
+            <WorkspaceSearch
+              query={query}
+              busy={searchState === "loading"}
+              disabled={workspace === null}
+              onChange={(value, origin) => {
                 if (
                   routeIsCurrent() &&
-                  !currentWorkspaceView.current.research &&
-                  currentWorkspaceView.current.task === "discover"
+                  isCurrentDeskControl(origin) &&
+                  value.length <= 128
                 )
-                  focusCompanyTarget(document.getElementById("search-title"));
-              });
-            }}
-          />
-        )}
+                  setQuery(value);
+              }}
+              onSearch={(origin) => {
+                if (
+                  !routeIsCurrent() ||
+                  !isCurrentDeskControl(origin) ||
+                  searchState === "loading"
+                )
+                  return;
+                companyNavigationEpoch.current += 1;
+                replaceWorkspaceView({ task: "discover", research: false });
+                onNavigate?.("/discover");
+                void runSearch();
+                afterViewRender(() => {
+                  if (
+                    routeIsCurrent() &&
+                    !currentWorkspaceView.current.research &&
+                    currentWorkspaceView.current.task === "discover"
+                  )
+                    focusCompanyTarget(document.getElementById("search-title"));
+                });
+              }}
+            />
+          )}
+          <div className="research-desk-access">
+            {authMode === "local" ? (
+              <LocalWorkspaceAccessPanel
+                compact
+                invalidationKey={localAccessInvalidation}
+                onActivityHandlerChange={handleOwnerActivityChange}
+                onSessionChange={handleOwnerSessionChange}
+              />
+            ) : (
+              <OwnerSessionPanel
+                authMode={authMode}
+                onActivityHandlerChange={handleOwnerActivityChange}
+                onSessionChange={handleOwnerSessionChange}
+              />
+            )}
+          </div>
+        </div>
         {workspace !== null && (
           <nav aria-label="Workspace sections" className="workspace-navigation">
             <div className="workspace-navigation-primary">
@@ -2769,25 +2787,17 @@ export function SecurityDiscoveryWorkspace({
                   {label}
                 </button>
               ))}
+              {workspaceView.research && (
+                <span
+                  className="workspace-current-location"
+                  aria-current="page"
+                >
+                  Research
+                </span>
+              )}
             </div>
           </nav>
         )}
-        <div className="research-desk-access">
-          {authMode === "local" ? (
-            <LocalWorkspaceAccessPanel
-              compact
-              invalidationKey={localAccessInvalidation}
-              onActivityHandlerChange={handleOwnerActivityChange}
-              onSessionChange={handleOwnerSessionChange}
-            />
-          ) : (
-            <OwnerSessionPanel
-              authMode={authMode}
-              onActivityHandlerChange={handleOwnerActivityChange}
-              onSessionChange={handleOwnerSessionChange}
-            />
-          )}
-        </div>
       </header>
       <main
         className="research-shell discovery-shell research-desk-main"
@@ -3142,7 +3152,11 @@ export function SecurityDiscoveryWorkspace({
               >
                 {contextExpanded ? "Hide companies" : "Show companies"}
               </button>
-              <div className="desk-research-layout">
+              <div
+                className="desk-research-layout"
+                data-has-companies={contextIdentities.length > 0}
+                data-context-invalidated={researchCohort?.invalidated === true}
+              >
                 <aside
                   className={`desk-company-context${contextExpanded ? " is-expanded" : ""}`}
                   id="desk-company-context"

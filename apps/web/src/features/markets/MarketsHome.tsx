@@ -180,7 +180,6 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
     >
       <div className="markets-heading">
         <div>
-          <p className="eyebrow">Market overview</p>
           <h1 id="markets-title">Markets</h1>
           <p>AAPL, MSFT and WMT · U.S. common stocks</p>
         </div>
@@ -306,20 +305,24 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                       className={rowSelected ? "markets-row-selected" : ""}
                     >
                       <th scope="row">
-                        <strong>{entry.symbol}</strong>
-                        <span className="markets-company-name">
-                          {entry.identity?.issuerName ??
-                            (props.busy
-                              ? "Checking catalog identity"
-                              : props.snapshot === null
-                                ? "Catalog identity not loaded"
-                                : "Catalog identity unavailable")}
-                        </span>
-                        {entry.identity === null ? null : (
-                          <>
-                            <span className="markets-venue">
-                              {entry.identity.exchangeMic} · U.S.
+                        <div className="markets-company-cell">
+                          <div className="markets-company-identity">
+                            <strong>{entry.symbol}</strong>
+                            <span className="markets-company-name">
+                              {entry.identity?.issuerName ??
+                                (props.busy
+                                  ? "Checking catalog identity"
+                                  : props.snapshot === null
+                                    ? "Catalog identity not loaded"
+                                    : "Catalog identity unavailable")}
                             </span>
+                            {entry.identity === null ? null : (
+                              <span className="markets-venue">
+                                {entry.identity.exchangeMic} · U.S.
+                              </span>
+                            )}
+                          </div>
+                          {entry.identity === null ? null : (
                             <div className="markets-row-actions">
                               <button
                                 type="button"
@@ -345,8 +348,8 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                                 Research {entry.symbol}
                               </a>
                             </div>
-                          </>
-                        )}
+                          )}
+                        </div>
                       </th>
                       <td data-label="Closing price (USD)">
                         {value?.status === "available" ? (
@@ -398,11 +401,14 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           <header className="markets-card-heading">
             <div>
               <h2 id="markets-chart-title" tabIndex={-1}>
-                {selected?.symbol ?? "Price history"}
+                {selected?.identity?.issuerName ??
+                  selected?.symbol ??
+                  "Price history"}
               </h2>
               <p>
-                {selected?.identity?.issuerName ??
-                  "Select a company from the board"}
+                {selected?.identity
+                  ? `${selected.symbol} · ${selected.identity.exchangeMic} · USD`
+                  : "Select a company from the board"}
               </p>
             </div>
             <span className="markets-eod-badge">1M · EOD</span>

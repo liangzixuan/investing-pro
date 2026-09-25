@@ -67,11 +67,41 @@ export function PersonalMarketOverview({
   const configured = providerStatus?.status === "configured";
   const history = getPersonalMarketHistory(overview);
   const reference = getPersonalMarketReference(overview);
+  const scopeNote = (
+    <p className="market-scope-note">
+      Data loads only after you choose a security and request it. Nothing is
+      written to browser storage, and synthetic prices are never used as a
+      fallback.
+    </p>
+  );
+  const securityHeading = selection !== null && (
+    <div className="market-security-heading">
+      <div className="security-identity">
+        <strong>{selection.symbol}</strong>
+        <div>
+          <b>{selection.issuerName}</b>
+          <span>
+            {selection.securityName} · {selection.exchangeMic}
+          </span>
+        </div>
+      </div>
+      <button className="text-button" onClick={onClear} type="button">
+        Close market view
+      </button>
+    </div>
+  );
+  const analytics = overview !== null && history !== null && (
+    <PersonalMarketAnalytics
+      asOfDate={history.bars.at(-1)?.date ?? history.endDate}
+      bars={history.bars}
+      mode={adjustmentMode}
+    />
+  );
   return (
     <section
       aria-busy={requestState === "loading"}
       aria-labelledby="personal-market-title"
-      className="personal-market-panel"
+      className="personal-market-panel is-compact"
       id="personal-market-overview"
       tabIndex={-1}
     >
@@ -91,12 +121,6 @@ export function PersonalMarketOverview({
         </span>
       </div>
 
-      <p className="market-scope-note">
-        Data loads only after you choose a security and request it. Nothing is
-        written to browser storage, and synthetic prices are never used as a
-        fallback.
-      </p>
-
       {selection === null ? (
         <div className="discovery-empty-state market-empty-state">
           <strong>Choose a security to inspect.</strong>
@@ -107,21 +131,6 @@ export function PersonalMarketOverview({
         </div>
       ) : (
         <>
-          <div className="market-security-heading">
-            <div className="security-identity">
-              <strong>{selection.symbol}</strong>
-              <div>
-                <b>{selection.issuerName}</b>
-                <span>
-                  {selection.securityName} · {selection.exchangeMic}
-                </span>
-              </div>
-            </div>
-            <button className="text-button" onClick={onClear} type="button">
-              Close market view
-            </button>
-          </div>
-
           {providerStatus?.status === "not_configured" ? (
             <div className="market-message market-message-warning" role="note">
               <strong>Tiingo is not configured.</strong>
@@ -261,11 +270,10 @@ export function PersonalMarketOverview({
                     mode={adjustmentMode}
                     symbol={overview.security.symbol}
                   />
-                  <PersonalMarketAnalytics
-                    asOfDate={history.bars.at(-1)?.date ?? history.endDate}
-                    bars={history.bars}
-                    mode={adjustmentMode}
-                  />
+                  <details className="market-analytics-details">
+                    <summary>Trend &amp; risk</summary>
+                    {analytics}
+                  </details>
                 </>
               )}
               <p className="market-attribution">
@@ -275,6 +283,11 @@ export function PersonalMarketOverview({
               </p>
             </>
           )}
+          <details className="market-data-details">
+            <summary>Price data details</summary>
+            {securityHeading}
+            {scopeNote}
+          </details>
         </>
       )}
     </section>
@@ -295,21 +308,8 @@ export function QuoteSummary({
         : Number(quote.change) < 0
           ? "down"
           : "unchanged";
-  return (
-    <article className="market-quote-card" aria-labelledby="market-quote-title">
-      <div>
-        <span className="eyebrow" id="market-quote-title">
-          {quote.kind === "derived_realtime_reference"
-            ? "Derived real-time reference"
-            : "End-of-day close"}
-        </span>
-        <strong title={`${quote.price} ${quote.currency}`}>
-          {formatUsd(quote.price)}
-        </strong>
-        <span className={`market-change market-change-${direction}`}>
-          {changeLabel(quote.change, quote.changePercent, direction)}
-        </span>
-      </div>
+  const metadata = (
+    <>
       <dl>
         <div>
           <dt>
@@ -356,6 +356,34 @@ export function QuoteSummary({
           closing-trade time.
         </p>
       )}
+    </>
+  );
+  return (
+    <article className="market-quote-card" aria-labelledby="market-quote-title">
+      <div>
+        <span className="eyebrow" id="market-quote-title">
+          {quote.kind === "derived_realtime_reference"
+            ? "Derived real-time reference"
+            : "End-of-day close"}
+        </span>
+        <strong title={`${quote.price} ${quote.currency}`}>
+          {formatUsd(quote.price)}
+        </strong>
+        <span className={`market-change market-change-${direction}`}>
+          {changeLabel(quote.change, quote.changePercent, direction)}
+        </span>
+        <p className="market-reference-source-date">
+          {quote.kind === "end_of_day_close" ? "EOD bar date" : "Source time"}
+          {": "}
+          <time dateTime={sourceDate ?? quote.sourceTime}>
+            {sourceDate ?? formatInstant(quote.sourceTime)}
+          </time>
+        </p>
+      </div>
+      <details className="market-reference-details">
+        <summary>Reference details</summary>
+        {metadata}
+      </details>
     </article>
   );
 }

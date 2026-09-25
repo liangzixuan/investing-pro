@@ -22,8 +22,139 @@ import {
   PersonalMarketAnalytics,
   type PersonalMarketAnalyticsProps,
 } from "./PersonalMarketAnalytics";
+import { PriceHistoryChart } from "./PriceHistoryChart";
 
 describe("PersonalMarketOverview", () => {
+  it("keeps compact chart content ahead of mounted analytics and company details", () => {
+    const props = defaultProps({
+      overview: overview(),
+      selection: selection(),
+    });
+    const view = PersonalMarketOverview(props);
+    const elements = findAllElements(view);
+    const chart = requireElement(view, PriceHistoryChart);
+    const analyticsDetails = requireDisclosure(view, "Trend & risk");
+    const dataDetails = requireDisclosure(view, "Price data details");
+    expect(elements.indexOf(chart)).toBeLessThan(
+      elements.indexOf(analyticsDetails),
+    );
+    expect(elements.indexOf(analyticsDetails)).toBeLessThan(
+      elements.indexOf(dataDetails),
+    );
+    expect(analyticsDetails.props.open).toBeUndefined();
+    expect(dataDetails.props.open).toBeUndefined();
+    expect(
+      requireElement(analyticsDetails, PersonalMarketAnalytics).props.bars,
+    ).toBe(getPersonalMarketHistory(props.overview)!.bars);
+    expect(requireElement(view, PriceHistoryChart).props).toMatchObject({
+      bars: getPersonalMarketHistory(props.overview)!.bars,
+      mode: "adjusted",
+      symbol: "ZERO",
+    });
+    expect(
+      findAllElements(view, "button").filter(
+        (button) => textContent(button) === "Close market view",
+      ),
+    ).toHaveLength(1);
+    expect(textContent(dataDetails)).toContain("Zero Alpha Common Stock");
+    expect(textContent(dataDetails)).toContain(
+      "synthetic prices are never used",
+    );
+    requireButton(dataDetails, "Close market view").props.onClick();
+    expect(props.onClear).toHaveBeenCalledOnce();
+    expect(props.onLoad).not.toHaveBeenCalled();
+  });
+
+  it("preserves compact range and adjustment actions without loading on render", () => {
+    const props = defaultProps({
+      overview: overview(),
+      selection: selection(),
+    });
+    const view = PersonalMarketOverview(props);
+    expect(props.onLoad).not.toHaveBeenCalled();
+    requireButton(view, "3M").props.onClick();
+    requireButton(view, "Raw").props.onClick();
+    expect(props.onLoad).toHaveBeenCalledExactlyOnceWith("3m");
+    expect(props.onAdjustmentModeChange).toHaveBeenCalledExactlyOnceWith("raw");
+    const blocked = PersonalMarketOverview({ ...props, requestBlocked: true });
+    expect(requireButton(blocked, "3M").props.disabled).toBe(true);
+  });
+
+  it("keeps retained compact history errors, dates and attribution outside disclosures", () => {
+    const props = defaultProps({
+      overview: overview(),
+      selection: selection(),
+      errorCode: "provider_unavailable",
+      requestState: "loading",
+    });
+    const view = PersonalMarketOverview(props);
+    const disclosed = findAllElements(view, "details").flatMap((details) =>
+      findAllElements(details),
+    );
+    const visible = findAllElements(view).filter(
+      (element) => !disclosed.includes(element),
+    );
+    expect(
+      visible.some(
+        (element) =>
+          element.props.role === "alert" &&
+          textContent(element).includes("market-data provider is unavailable"),
+      ),
+    ).toBe(true);
+    expect(
+      visible.some(
+        (element) =>
+          element.props["aria-live"] === "polite" &&
+          textContent(element).includes("Loading 1Y history"),
+      ),
+    ).toBe(true);
+    expect(
+      visible.some(
+        (element) =>
+          element.props.className === "market-attribution" &&
+          textContent(element).includes("Tiingo"),
+      ),
+    ).toBe(true);
+    expect(requireElement(view, QuoteSummary).props.reference).toEqual(
+      getPersonalMarketReference(props.overview),
+    );
+    expect(requireElement(view, PriceHistoryChart).props.bars).toBe(
+      getPersonalMarketHistory(props.overview)!.bars,
+    );
+  });
+
+  it.each(["quote", "eod"] as const)(
+    "keeps the exact %s source date visible while compact reference metadata stays mounted",
+    (kind) => {
+      const loaded: PersonalMarketOverviewDto =
+        kind === "quote"
+          ? overview()
+          : { ...overview(), quote: { status: "not_requested" } };
+      const reference = getPersonalMarketReference(loaded)!;
+      const view = QuoteSummary({ reference });
+      const details = requireDisclosure(view, "Reference details");
+      const visibleSource = findAllElements(view, "p").find(
+        (element) => element.props.className === "market-reference-source-date",
+      );
+      expect(visibleSource).toBeDefined();
+      expect(findAllElements(details)).not.toContain(visibleSource);
+      expect(requireElement(visibleSource, "time").props.dateTime).toBe(
+        kind === "quote" ? "2030-01-15T21:00:00.000Z" : "2030-01-15",
+      );
+      expect(textContent(view)).toContain(
+        kind === "quote" ? "Derived real-time reference" : "End-of-day close",
+      );
+      expect(details.props.open).toBeUndefined();
+      expect(textContent(details)).toContain("Previous close");
+      expect(textContent(details)).toContain("Ingested");
+      if (kind === "eod") {
+        expect(textContent(details)).toContain(
+          "not an observed closing-trade time",
+        );
+      }
+    },
+  );
+
   it("describes an EOD-only initial load without claiming a quote request", () => {
     const props = defaultProps({
       selection: selection(),
@@ -88,7 +219,9 @@ describe("PersonalMarketOverview", () => {
 
     expect(textContent(rendered)).toContain("Tiingo configured");
     expect(textContent(rendered)).toContain("Choose a security to inspect");
-    expect(textContent(rendered)).toContain("synthetic prices are never used");
+    expect(textContent(rendered)).toContain(
+      "Checking provider configuration does not request market data",
+    );
     expect(props.onLoad).not.toHaveBeenCalled();
   });
 
@@ -333,6 +466,16 @@ function requireButton(value: unknown, text: string) {
     disabled?: boolean;
     onClick: () => void;
   }>;
+}
+
+function requireDisclosure(value: unknown, summary: string) {
+  const details = findAllElements(value, "details").find((candidate) =>
+    findAllElements(candidate, "summary").some(
+      (element) => textContent(element) === summary,
+    ),
+  );
+  if (details === undefined) throw new Error(`Expected disclosure ${summary}.`);
+  return details;
 }
 
 function requireElement(value: unknown, type: React.ElementType) {

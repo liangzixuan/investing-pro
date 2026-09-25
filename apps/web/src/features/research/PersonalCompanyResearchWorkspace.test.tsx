@@ -205,7 +205,7 @@ describe("PersonalCompanyResearchWorkspace", () => {
     expect(props.onSectionChange).not.toHaveBeenCalled();
   });
 
-  it("keeps the overview before tabs across section changes without remounting panel content", () => {
+  it("keeps the active section before the retained overview without remounting panel content", () => {
     const overview = (
       <aside id="overview-slot">Same annual and price data</aside>
     );
@@ -213,8 +213,8 @@ describe("PersonalCompanyResearchWorkspace", () => {
     const before = render();
     expect(elementById(before, "overview-slot")).toBe(overview);
     const markup = renderToStaticMarkup(before);
-    expect(markup.indexOf('id="overview-slot"')).toBeLessThan(
-      markup.indexOf('role="tablist"'),
+    expect(markup.indexOf('id="overview-slot"')).toBeGreaterThan(
+      markup.lastIndexOf('role="tabpanel"'),
     );
     const panels = elements(before).filter(
       (node) => node.props.role === "tabpanel",

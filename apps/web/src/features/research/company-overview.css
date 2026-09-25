@@ -1,8 +1,9 @@
 .research-desk .personal-company-overview {
   margin: 16px 0;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 16px 0;
+  border: 0;
+  border-block: 1px solid var(--line);
+  border-radius: 0;
   background: var(--surface);
   color: var(--ink);
 }
@@ -80,15 +81,15 @@
 
 .research-desk .company-overview-values > div {
   min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  padding: 8px 0;
+  border: 0;
+  border-radius: 0;
   background: white;
 }
 
 .research-desk .company-overview-values dt {
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .research-desk .company-overview-values dd {
@@ -109,14 +110,14 @@
 .research-desk .company-overview-domains a {
   display: inline-flex;
   align-items: center;
-  color: var(--mint-deep);
-  font-size: 13px;
+  color: #1d4ed8;
+  font-size: 14px;
   font-weight: 600;
 }
 
 @media (max-width: 640px) {
   .research-desk .personal-company-overview {
-    padding: 14px;
+    padding: 14px 0;
   }
 
   .research-desk .company-overview-actions,
@@ -132,9 +133,10 @@
 
 .research-desk .personal-company-key-statistics {
   margin: 16px 0;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  padding: 16px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
   background: var(--surface);
   color: var(--ink);
 }
@@ -177,7 +179,7 @@
 
 .research-desk .company-key-statistics-grid dt {
   color: var(--ink-soft);
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .research-desk .company-key-statistics-grid dd {
@@ -200,8 +202,8 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--mint-deep);
-  font-size: 13px;
+  color: #1d4ed8;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -228,7 +230,7 @@
 .research-desk .financial-ratio-details > summary {
   min-height: 44px;
   align-content: center;
-  color: var(--mint-deep);
+  color: #1d4ed8;
   cursor: pointer;
   font-size: 12px;
 }
@@ -240,7 +242,7 @@
 
 @media (max-width: 640px) {
   .research-desk .personal-company-key-statistics {
-    padding: 14px;
+    padding: 14px 0;
   }
 
   .research-desk .company-key-statistics-grid {
@@ -257,4 +259,168 @@
   .research-desk .company-key-statistics-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* Embedded company research keeps the selected analysis ahead of metadata. */
+.research-desk .personal-market-panel.is-compact {
+  margin: 16px 0;
+  padding: 0 0 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: #fff;
+}
+.research-desk .personal-market-panel.is-compact .personal-market-heading {
+  margin: 0 0 12px;
+}
+.research-desk .personal-market-panel.is-compact .personal-market-heading h2 {
+  font-size: 20px;
+}
+.research-desk .personal-market-panel.is-compact .market-chart-controls {
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.research-desk
+  .personal-market-panel.is-compact
+  :is(.market-range-switch, .market-adjustment-switch) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  gap: 4px;
+}
+.research-desk
+  .personal-market-panel.is-compact
+  :is(.market-range-switch, .market-adjustment-switch)
+  button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 14px;
+}
+.research-desk
+  .personal-market-panel.is-compact
+  :is(.market-range-switch, .market-adjustment-switch)
+  button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.research-desk .personal-market-panel.is-compact .market-quote-card {
+  display: block;
+  margin: 14px 0 0;
+  padding: 0;
+  border-radius: 0;
+  background: #fff;
+  color: var(--ink);
+}
+.research-desk .personal-market-panel.is-compact .market-quote-card > div {
+  flex-direction: row;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.research-desk .personal-market-panel.is-compact .market-quote-card .eyebrow {
+  flex-basis: 100%;
+  color: var(--ink-soft);
+  font-size: 14px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.research-desk
+  .personal-market-panel.is-compact
+  .market-quote-card
+  > div
+  > strong {
+  margin: 0;
+  font-family: inherit;
+  font-size: 34px;
+  line-height: 1.2;
+}
+.research-desk .personal-market-panel.is-compact .market-change {
+  font-size: 16px;
+}
+.research-desk .personal-market-panel.is-compact .market-change-up {
+  color: #08743d;
+}
+.research-desk .personal-market-panel.is-compact .market-change-down {
+  color: #b42318;
+}
+.research-desk
+  .personal-market-panel.is-compact
+  :is(.market-change-unchanged, .market-change-unavailable) {
+  color: var(--ink-soft);
+}
+.research-desk .market-reference-source-date {
+  flex-basis: 100%;
+  margin: 4px 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.research-desk
+  :is(
+    .market-reference-details,
+    .market-analytics-details,
+    .market-data-details
+  ) {
+  margin: 8px 0;
+  border-block: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.research-desk
+  :is(
+    .market-reference-details,
+    .market-analytics-details,
+    .market-data-details
+  )
+  > summary {
+  min-height: 44px;
+  padding: 10px 0;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.research-desk .market-reference-details :is(dt, dd, p) {
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.research-desk .personal-market-panel.is-compact .market-chart-canvas {
+  height: 300px;
+}
+.research-desk .personal-market-panel.is-compact .market-chart-summary {
+  font-size: 14px;
+}
+.research-desk .personal-market-panel.is-compact .price-history-chart {
+  border: 0;
+  padding: 0;
+}
+.research-desk .company-overview-values dd {
+  font-family: inherit;
+}
+
+.research-desk .desk-company-toggle {
+  color: var(--ink);
+}
+.research-desk .company-research-note-actions > button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.research-desk .company-research-note-actions > button:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
+.research-desk
+  :is(
+    #personal-market-overview,
+    #personal-annual-financials-title,
+    #personal-valuation-history-title
+  ) {
+  scroll-margin-block-start: var(--workspace-section-scroll-margin);
 }

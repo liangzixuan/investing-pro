@@ -7084,15 +7084,18 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
     overflow-wrap: anywhere;
   }
 }
-/* Research Desk: the selected light workspace; other app surfaces retain their theme. */
+/* Market Atlas: shared light surfaces for markets and retained company research. */
 .research-desk {
-  --ink: #172b46;
-  --ink-soft: #53657d;
-  --paper: #f5f8fb;
-  --paper-deep: #edf2f7;
+  --ink: #17243b;
+  --ink-soft: #536176;
+  --paper: #fff;
+  --paper-deep: #f5f7fa;
   --surface: #fff;
-  --line: #dce4ec;
+  --line: #dbe2e9;
   --line-strong: #b8c7d5;
+  --accent: #c74700;
+  --accent-strong: #a83c00;
+  --accent-soft: #fff5ec;
   --mint: #8dc8c0;
   --mint-soft: #e6f3f1;
   --mint-deep: #006b63;
@@ -7132,7 +7135,7 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
 
 .research-desk
   :is(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 3px solid #006b63;
+  outline: 3px solid #1d4ed8;
   outline-offset: 3px;
 }
 
@@ -7440,27 +7443,27 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
     .watchlist-actions button,
     .desk-company-toggle
   ) {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 4px;
   box-shadow: none;
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .research-desk .primary-action {
-  border: 1px solid #006b63;
-  background: #006b63;
+  border: 1px solid var(--accent);
+  background: var(--accent);
   color: white;
 }
 
 .research-desk .primary-action:hover:not(:disabled) {
-  background: #00574f;
+  background: var(--accent-strong);
 }
 
 .research-desk .secondary-action {
   border-color: var(--line-strong);
   background: white;
-  color: #005c55;
+  color: var(--ink);
 }
 
 .research-desk .security-result-list {
@@ -7711,7 +7714,7 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
 .research-desk .desk-research-layout {
   display: grid;
   min-width: 0;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 210px minmax(0, 1fr);
   align-items: start;
   gap: 24px;
 }
@@ -7748,21 +7751,21 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
   min-height: 44px;
   padding: 9px 10px;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 0;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 3px 8px;
   background: transparent;
   color: var(--ink);
-  font-size: 0.8rem;
+  font-size: 0.875rem;
   text-align: left;
   overflow-wrap: anywhere;
 }
 
 .research-desk .desk-company-list button[aria-current="true"] {
-  border-color: #c4e0dc;
-  background: var(--mint-soft);
-  color: #005c55;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
 }
 
 .research-desk .desk-company-list button:hover:not(:disabled) {
@@ -7802,11 +7805,26 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
   margin-bottom: 12px;
 }
 
+.research-desk
+  .desk-research-layout[data-has-companies="false"][data-context-invalidated="false"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.research-desk
+  .desk-research-layout[data-has-companies="false"][data-context-invalidated="false"]
+  > .desk-company-context,
+.research-desk
+  .desk-company-toggle:has(
+    + .desk-research-layout[data-has-companies="false"][data-context-invalidated="false"]
+  ) {
+  display: none;
+}
+
 .research-desk .company-research-workspace {
   margin: 0;
-  padding: 16px 20px;
-  border-color: var(--line);
-  border-radius: 6px;
+  padding: 12px 0;
+  border: 0;
+  border-radius: 0;
   background: white;
   box-shadow: none;
 }
@@ -7817,26 +7835,28 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
 }
 
 .research-desk .company-research-heading > div:first-child {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 2px 12px;
 }
 
 .research-desk .company-research-heading h2 {
-  font-size: clamp(1.45rem, 2.1vw, 1.9rem);
+  font-size: 1rem;
   line-height: 1.2;
 }
 
 .research-desk .company-research-name {
+  order: -1;
+  flex-basis: 100%;
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: clamp(1.5rem, 2.2vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .research-desk .company-research-identity {
-  grid-column: 1 / -1;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .research-desk .company-research-actions > button {
@@ -7908,10 +7928,10 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
 
 .research-desk .company-research-note-disclosure > summary,
 .research-desk .company-sequence-disclosure > summary {
-  min-height: 30px;
+  min-height: 44px;
   padding: 5px 0;
   color: var(--ink-soft);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -7932,14 +7952,15 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
   border-bottom: 2px solid transparent;
   border-radius: 0;
   color: var(--ink-soft);
-  font-size: 0.82rem;
+  min-height: 44px;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .research-desk .company-research-tabs > button[aria-selected="true"] {
-  border-bottom-color: var(--mint-deep);
+  border-bottom-color: var(--accent);
   background: transparent;
-  color: #005c55;
+  color: var(--accent-strong);
 }
 
 .research-desk .company-research-panel > section {
@@ -7947,6 +7968,65 @@ body:has(.workspace-navigation) .personal-app-header > a:focus-visible {
   border-color: var(--line);
   background: var(--surface);
   box-shadow: none;
+}
+
+@media (min-width: 1280px) {
+  .research-desk
+    .company-research-workspace:has(.company-research-note-disclosure[open]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  .research-desk
+    .company-research-workspace:has(.company-research-note-disclosure[open])
+    > :not(.company-research-tools) {
+    grid-column: 1;
+  }
+
+  .research-desk
+    .company-research-workspace:has(.company-research-note-disclosure[open])
+    > .company-research-tools {
+    display: contents;
+  }
+
+  .research-desk
+    .company-research-workspace:has(.company-research-note-disclosure[open])
+    .company-sequence-disclosure {
+    grid-column: 1;
+  }
+
+  .research-desk .company-research-note-disclosure[open] {
+    position: sticky;
+    top: var(--workspace-section-scroll-margin);
+    grid-column: 2;
+    grid-row: 1 / span 6;
+    width: auto;
+    max-height: calc(100dvh - var(--workspace-section-scroll-margin) - 24px);
+    margin: 0;
+    padding: 0 0 0 20px;
+    border-left: 1px solid var(--line);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .research-desk .company-research-note-disclosure[open] > summary {
+    color: var(--ink);
+    font-size: 1rem;
+  }
+
+  .research-desk .company-research-note-disclosure .company-research-note {
+    margin: 8px 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .research-desk .company-research-note-disclosure textarea {
+    min-height: 240px;
+    font-size: 0.875rem;
+  }
 }
 
 .research-desk .personal-financials-panel.is-compact {

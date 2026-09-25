@@ -5,85 +5,97 @@ Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: annual company key statistics
+## Active outcome: light Market Atlas layout
 
-Use the manual Spec Kit [specification](../specs/003-company-key-statistics/spec.md),
-[plan](../specs/003-company-key-statistics/plan.md) and
-[tasks](../specs/003-company-key-statistics/tasks.md). Work in `markets-home/` from
-accepted `b25a05e`. Source and focused verification are complete; browser and
-new-release acceptance are pending.
-Evidence belongs in workspace `tmp/company-key-statistics/`.
+Use the manual Spec Kit [specification](../specs/004-market-atlas-layout/spec.md),
+[plan](../specs/004-market-atlas-layout/plan.md) and
+[tasks](../specs/004-market-atlas-layout/tasks.md). Work in `markets-home/` from
+accepted a80 `481522e`. Implementation, focused checks and synthetic browser QA
+are complete; release acceptance remains pending.
 
-Add operating margin, net margin, operating cash-flow margin, net debt, debt/assets
-and revenue year-over-year growth from the existing annual analytics. Reuse the
-loaded annual result; the new panel adds no acquisition or request owner. Preserve
-latest-year unknown reasons, actual consecutive growth periods, formula/input
-references and fiscal/source dates. Six-metric availability is distinct from
-returned annual-year coverage.
+The owner selected [Market Atlas's home/navigation](../../design/platform-directions-20260925/01-market-atlas.png)
+with [Terminal-style retained company context](../../design/platform-directions-20260925/06-selected-combined-research.png)
+in one light theme. Recompose the current shared shell, compact market table/chart
+and company workspace. The combined image's market-board rail maps to the existing
+Watchlist rail. No market-cohort handoff or multi-company loaded state is promised.
+The images contain invented data and do not establish functional acceptance.
 
-Also repair the existing Financial quality and manual peer-quality ratio displays.
-A shared formatter uses the installed Decimal dependency; short rounded labels
-retain full calculation strings in keyboard-accessible details. Check statuses,
-comparisons, source strings and engine precision remain unchanged. Root owns page
-composition/CSS/integration; data owns the pure projection/tests; UI owns the
-component/tests and display formatter/quality tables; spec owns these guides.
+Markets owns `MarketsHome.tsx`/`markets.css`; shell owns
+`SecurityDiscoveryWorkspace.tsx`/`workspace.css`; root owns shared global CSS,
+company composition and integration. Spec owns the current feature documents.
+The final layout spans eight production files and two affected tests. Tabs and
+the stable keyed panel map now precede overview/key statistics in DOM order.
+The existing Price component has a compact presentation: chart, controls, source
+date and errors stay visible, with metadata, analytics and help retained in native
+disclosures. This is the component's single layout; no unused full-mode API is
+retained. `CompanyResearchPage.tsx` returns to its accepted baseline composition.
+Preserve persistent mounts, hidden views/panels, exact company/catalog/session
+guards, drafts, Back/source focus and existing explicit acquisition budgets.
+No new route, loader, data coverage, dependency, authentication or owner-record
+change belongs to this layout slice.
 
-One bounded AAPL daily valuation call returned HTTP 502 / `provider_unavailable`
-on September 25. This proves neither access nor denied entitlement. Its consumed
-[receipt](../../tmp/company-key-statistics/valuation-source-probe.json) is preserved;
-do not repeat the probe. Daily valuation summary and loader migration are deferred.
-The current hook, API/schema, dependencies, valuation behavior, local-access/vault/
-origin boundaries and owner records stay within the existing product behavior.
+Acceptance requires source-bound desktop/390px screenshots, keyboard navigation,
+readable exact-value details, retained notes/data and no additional acquisition
+from presentation actions. Independently review source and pass every applicable
+existing release gate before activation. Keep actual evidence outside Git and
+report observed behavior separately from the visual target.
 
-Acceptance covers exact/missing/zero/signed values, quarantine, growth periods,
-readable desktop/390px and keyboard details, source focus and no extra requests.
-Retained checks passed 16 projection cases, 78 distinct formatter/UI cases and
-314 workspace integration cases, plus scoped lint and web/analytics typechecks.
-The [source reviews](../../tmp/company-key-statistics/ui-integration-independent-review.json)
-record evidence and limits. Complete source-bound synthetic/permitted live Brave
-and the unchanged full release workflow before claiming release acceptance.
+The [initial focused checks](../../tmp/market-atlas-layout/focused-checks.json)
+passed 415 cases, web types and the unchanged boundary guard. Later Markets and
+compact Price checks passed 20 and 18 cases respectively; these overlap the
+earlier suites and should not be summed. The [single-presentation cleanup](../../tmp/market-atlas-layout/single-price-presentation/handoff.json)
+also passed 15 page-mode cases and web types. Earlier production review and its
+[source-focus correction](../../tmp/market-atlas-layout/source-focus-css-review.json)
+pass. Desktop Brave iterations produced 77.5–78px Markets rows, reordered company
+content and a verified 132px source-focus offset. The [build4 binding review](../../tmp/market-atlas-layout/app-qa/fixture-build4-independent-review.json)
+records the pre-cleanup source binding. [Design verification](../design-qa.md) passes
+desktop, 390px and 1000px views, keyboard/source focus, retained notes/data and
+partial/empty states. Narrow document widths are 375px and 985px; final fixture
+quote/write/blocked-request/storage counters are zero. These are synthetic RAM
+observations, not live provider evidence. The [final build5 check](../../tmp/market-atlas-layout/synthetic-brave-qa-final-delta.json)
+confirms desktop, 390px and source focus with the single layout. Final inventory
+review, native/hosted gates, activation and limited live QA remain pending.
 
 ## Accepted runtime and parked work
 
-Connected company overview `b25a05e735ab6d095023a22f427ff75be66af414` is accepted,
-normally pushed and running; feature `4cc9946`, build `_TaRVEPpgM-yDGGOd068H`.
-It provides one explicit missing-price/annual load, shared results/pacing, dates,
-partial-result retention and Back/draft continuity. Native acceptance passed
-9,183 tests with nine existing skips, 25 typechecks and 24 builds; all five hosted
-workflows/six jobs, guarded activation, smoke and seven limited live Brave groups
-passed. The [final matrix](../../tmp/company-overview/m2-acceptance-matrix-v3.json)
-and [independent review](../../tmp/company-overview/final-acceptance-independent-review-v3.json)
-record exact evidence and limits. M1 Markets remains part of that accepted product.
+Annual company key statistics release `481522e55f746db1cb2ab4ba3951b979fd112c39`
+is accepted, normally pushed and running; feature `3b005035`, build
+`uVl5Lt9ew16Q8y-ooe5ps`. The [final independent review](../../tmp/company-key-statistics-v2/final-acceptance-independent-review.json)
+binds actual native/hosted, source preservation, activation and browser evidence.
+It supersedes pending-final-review wording retained in earlier pinned handoffs.
+Preserve that history rather than changing previous specifications for release status.
 
-Live AAPL returned FY2023–2025, three of ten years and three known summary fields.
-That verifies one operation, not universal coverage or complete M2. The 358 native
-health samples concern preservation of the predecessor during verification;
-candidate runtime evidence is separate. Keep rollback and both failed M2 candidate
-refs/evidence. Never reuse historical process IDs or terminal/consumed helpers.
+The accepted product includes Markets, connected company overview, six annual
+statistics and readable company/peer quality ratios. Live AAPL demonstrated
+FY2023-2025, three of ten years, and six FY2025 metrics. This is bounded coverage,
+not complete M2 or universal data availability. Native acceptance recorded 9,249
+passes and nine existing skips; all five applicable hosted jobs, twelve synthetic
+and six limited live Brave groups passed. CURRENT.md owns later runtime changes.
 
-The original `research-cockpit/` checkout contains parked, unreleased SEC quarter
-work. Its four retained filings had zero complete primary graphs/quarter admissions;
-do not resume that queue unless a later task selects it. The new slice does not
-change that work. [Quarter guide](./PERSONAL_SEC_QUARTER_ASSESSMENT.md).
+The [single daily valuation probe](../../tmp/company-key-statistics/valuation-source-probe.json)
+returned 502 / `provider_unavailable`; access remains unresolved. The approved
+layout takes priority over that diagnostic. Do not retry consumed probes or infer
+denied entitlement. The original `research-cockpit/` checkout's unreleased SEC
+quarter work stays parked. Preserve rollback, failed-candidate refs and existing
+owner records; historical process IDs and consumed helpers are not action authority.
 
 ## Working loop
 
-1. Read applicable AGENTS.md, workspace CURRENT.md, this guide and the active spec.
-   Inspect source state and choose one bounded, independently useful outcome.
-2. Assign file ownership; use existing libraries/formulas and separate concerns.
-   Coordinate shared interfaces before edits; preserve unrelated user changes.
-3. Verify meaningful behavior, types/lint and existing component-owner/style setup
-   early. [Recorded lessons](../../tmp/company-overview/verification-order-lessons-v3.md)
-   explain the prior boundary/mocked-CSS failures without weakening any gate.
-4. Review source and explicit files; follow the separate feature/generated closure
-   procedure and unchanged isolated native gate. Preserve failures and rollback.
-5. Push the verified candidate normally; accept actual required hosted-job success
-   at its exact revision. Do not replay terminal observers or unchanged passed gates.
-6. Demonstrate desktop/narrow Brave behavior, perform guarded activation/smoke and
-   record actual acceptance outside Git and in CURRENT.md. Report source coverage
-   separately from complete-page coverage; keep the next outcome bounded.
+1. Read applicable AGENTS.md, CURRENT.md, this guide and the active spec. Assign
+   file ownership and a bounded acceptance demonstration before source edits.
+2. Reuse current dependencies and modules; coordinate shared interfaces without
+   moving session, draft or acquisition ownership into presentation components.
+3. Verify meaningful behavior, types/lint/format and existing component-owner/style
+   setup early. [Recorded lessons](../../tmp/company-overview/verification-order-lessons-v3.md)
+   explain prior boundary/mocked-CSS failures without weakening any gate.
+4. Review explicit files and follow the separate feature/generated closure and
+   unchanged isolated native gate. Preserve failed attempts and accepted runtime.
+5. Push normally; accept actual required hosted-job success at the exact revision.
+   Never replay terminal observers or unchanged passed gates.
+6. Complete guarded activation/smoke and permitted Brave QA; record exact evidence,
+   limitations, rollback and the next bounded outcome outside Git and in CURRENT.md.
 
 [Release classification](./RELEASE_CLASSIFICATION.md) governs releases. The
 [engineering audit](./ENGINEERING_AUDIT.md) and [Spec Kit adaptation](../specs/README.md)
-do not replace it. Use configured local access and external Brave; preserve owner
-records/tabs and keep credentials/private payloads out of source and handoffs.
+do not replace it. Use configured local access and external Brave, preserve owner
+records/tabs, and keep credentials/private payloads out of source and handoffs.

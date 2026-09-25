@@ -213,7 +213,6 @@ export function PersonalCompanyResearchWorkspace({
               you move between sections.
             </p>
           )}
-          {overview}
           <div
             aria-label="Company research sections"
             className="company-research-tabs"
@@ -252,6 +251,7 @@ export function PersonalCompanyResearchWorkspace({
           {content[section]}
         </div>
       ))}
+      {selection !== null && overview}
     </section>
   );
 }

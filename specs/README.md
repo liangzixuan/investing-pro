@@ -5,9 +5,14 @@ This is a manual Spec Kit adaptation for bounded product changes.
 [completed tasks](./001-markets-home/tasks.md) link actual acceptance evidence.
 The [connected company overview](./002-company-overview/spec.md) is accepted at
 `b25a05e`; its [tasks](./002-company-overview/tasks.md) link actual acceptance.
-The active [annual company key statistics](./003-company-key-statistics/spec.md)
-slice is being implemented with acceptance pending; see its
-[plan](./003-company-key-statistics/plan.md) and [tasks](./003-company-key-statistics/tasks.md).
+[Annual company key statistics](./003-company-key-statistics/spec.md) is accepted
+at `481522e`; its [final outside-Git review](../../tmp/company-key-statistics-v2/final-acceptance-independent-review.json)
+supersedes the earlier pending status retained in that feature's documents.
+The active [light Market Atlas layout](./004-market-atlas-layout/spec.md) uses the
+approved shared light shell and existing Watchlist company context. Its
+[plan](./004-market-atlas-layout/plan.md) and [tasks](./004-market-atlas-layout/tasks.md)
+record the implemented single Price layout, focused checks and completed synthetic
+browser QA. Release acceptance remains pending.
 No Specify CLI, generated skills, scripts or branch automation are installed.
 
 The [owner's AGENTS.md](../../AGENTS.md) and [product roadmap](../docs/PRODUCT_ROADMAP.md)
