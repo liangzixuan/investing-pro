@@ -3,7 +3,10 @@ import type {
   PersonalAnnualFinancialReportedValuesDto,
   PersonalAnnualFinancialsDto,
 } from "@research-cockpit/contracts";
-import { PERSONAL_FINANCIAL_REPORTED_FIELDS } from "@research-cockpit/personal-financial-analytics";
+import {
+  buildPersonalFinancialQualityScorecard,
+  PERSONAL_FINANCIAL_REPORTED_FIELDS,
+} from "@research-cockpit/personal-financial-analytics";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -12,7 +15,78 @@ import {
   type PersonalFinancialQualityScorecardProps,
 } from "./PersonalFinancialQualityScorecard";
 
+import { mapAnnualFinancials } from "./personal-financial-quality-input";
 describe("PersonalFinancialQualityScorecard", () => {
+  it.each([
+    ["1", "3", "≈ 0.3333 ratio"],
+    ["1", "100000000", "0 < ratio < 0.0001"],
+    ["10000000000000000000000000000000000000000", "3", "≈ 3.3333e+39 ratio"],
+  ])(
+    "keeps %s/%s exact in collapsed details without changing checks",
+    (assets, liabilities, label) => {
+      const source = financials([
+        financialYear(2029, {
+          ...strongValues("current"),
+          current_assets: assets,
+          current_liabilities: liabilities,
+        }),
+        financialYear(2028, strongValues("prior")),
+      ]);
+      const expected = buildPersonalFinancialQualityScorecard(
+        mapAnnualFinancials(source),
+      );
+      expect(expected.status).toBe("ready");
+      if (expected.status !== "ready") throw Error("Fixture rejected");
+      const exact = expected.groups
+        .flatMap((group) => group.checks)
+        .find((check) => check.label.includes("Current ratio"))!
+        .currentObservation!.value!;
+      const markup = render({ selection: selection(), financials: source });
+      const collapsed = markup.replace(
+        /<details\b[^>]*>[\s\S]*?<\/details>/gu,
+        "",
+      );
+      expect(visibleText(collapsed)).toContain(label);
+      expect(visibleText(collapsed)).not.toContain(`${exact} ratio`);
+      expect(markup).toContain(
+        `<p class="financial-exact-value">${exact} ratio</p>`,
+      );
+      expect(markup).toContain("<summary>Calculation details</summary>");
+      expect(markup).not.toContain("<details open");
+      expect(visibleText(markup)).toContain(
+        `${String(expected.counts.met)} met · ${String(expected.counts.notMet)} not met · ${String(expected.counts.unavailable)} unavailable`,
+      );
+      expect(markup).toContain(
+        '<div class="personal-quality-scorecard-observation">',
+      );
+    },
+  );
+  it.each([
+    ["0.99999", "Not met"],
+    ["1.00001", "Met"],
+  ])(
+    "keeps the exact threshold result for ratio %s despite the same rounded label",
+    (value, status) => {
+      const markup = render({
+        selection: selection(),
+        financials: financials([
+          financialYear(2029, {
+            ...strongValues("current"),
+            current_assets: value,
+            current_liabilities: "1",
+          }),
+          financialYear(2028, strongValues("prior")),
+        ]),
+      });
+      expect(visibleText(markup)).toContain("≈ 1 ratio");
+      expect(markup).toContain(
+        `aria-label="Current ratio at least 1: ${status}"`,
+      );
+      expect(markup).toContain(
+        `<p class="financial-exact-value">${value} ratio</p>`,
+      );
+    },
+  );
   afterEach(() => {
     vi.unstubAllGlobals();
   });

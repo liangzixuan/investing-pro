@@ -20,6 +20,35 @@ import {
 import { mapAnnualFinancials } from "./personal-financial-quality-input";
 
 describe("PersonalManualPeerQualityComparison", () => {
+  it("shortens a repeating peer ratio with nested keyboard-accessible full calculation details", () => {
+    const companies = [
+      company(0),
+      company(1, { current_assets: "1", current_liabilities: "3" }),
+    ];
+    const expected = buildPersonalFinancialQualityScorecard(
+      mapAnnualFinancials(companies[1]!.annualFinancials!),
+    );
+    expect(expected.status).toBe("ready");
+    if (expected.status !== "ready") throw Error("Fixture rejected");
+    const check = expected.groups
+      .flatMap((group) => group.checks)
+      .find((item) => item.label.includes("Current ratio"))!;
+    const row = qualityRows(render(companies)).find((item) =>
+      text(item.label).includes("Current ratio"),
+    )!;
+    const cell = row.cells[1]!;
+    expect(text(cell)).toContain("≈ 0.3333 ratio");
+    expect(cell).toContain(
+      '<details class="financial-ratio-details"><summary>Calculation details</summary>',
+    );
+    expect(cell).toContain(
+      `<p class="financial-exact-value">${check.currentObservation!.value!} ratio</p>`,
+    );
+    expect(cell).not.toContain('<details class="financial-ratio-details" open');
+    expect(cell).toContain(`data-status="${check.status}"`);
+    expect(text(cell)).toContain("2029:current_assets");
+    expect(text(cell)).toContain("2029-12-31");
+  });
   it.each([2, 3, 4])(
     "matches all twelve real-engine checks across %i ordered companies",
     (count) => {

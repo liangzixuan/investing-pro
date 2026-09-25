@@ -1,9 +1,17 @@
 # Implementation Plan: Connected company overview
 
-**Date:** 2026-09-25 | **Status:** Local implementation, focused and synthetic Brave checks complete; acceptance pending
+**Date:** 2026-09-25 | **Status:** Accepted at `b25a05e`
 **Spec:** [spec.md](./spec.md) | **Base:** accepted M1 `9c2aa4f` in `markets-home`
 
 ## Summary
+
+Actual acceptance is recorded in the [final matrix](../../../tmp/company-overview/m2-acceptance-matrix-v3.json)
+and [independent review](../../../tmp/company-overview/final-acceptance-independent-review-v3.json):
+9,183 native passes/nine existing skips, all five hosted workflows/six jobs,
+synthetic and limited live Brave, guarded activation and smoke. Both failed native
+candidates and repairs remain preserved. The implementation/validation narrative
+below records the earlier plan and intermediate evidence, including then-pending
+steps; the final records and workspace CURRENT.md own delivered status.
 
 Connect the existing company page through one explicit missing-domain load and a
 compact annual summary. Reuse a matching Markets snapshot and one annual result

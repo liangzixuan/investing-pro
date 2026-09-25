@@ -1,6 +1,7 @@
 import type { PersonalAnnualFinancialsDto } from "@research-cockpit/contracts";
 import {
   buildPersonalFinancialQualityScorecard,
+  formatPersonalFinancialRatio,
   PERSONAL_FINANCIAL_QUALITY_SCORECARD_CHECK_IDS,
   PERSONAL_FINANCIAL_QUALITY_SCORECARD_FORMULAS,
   PERSONAL_FINANCIAL_QUALITY_SCORECARD_GROUP_IDS,
@@ -404,6 +405,10 @@ function QualityObservation({
   readonly label: string;
   readonly observation: PersonalFinancialQualityScorecardObservation | null;
 }) {
+  const ratio =
+    observation?.unit === "ratio" && observation.value !== null
+      ? formatPersonalFinancialRatio(observation.value)
+      : null;
   return (
     <div>
       <p>
@@ -417,7 +422,23 @@ function QualityObservation({
             <div>
               <dt>Value</dt>
               <dd>
-                {observation.value ?? "Unavailable"} {observation.unit}
+                {observation.unit === "ratio" && observation.value !== null
+                  ? (ratio?.label ?? "Unavailable ratio")
+                  : `${observation.value ?? "Unavailable"} ${observation.unit}`}
+                {ratio !== null &&
+                  (ratio.rounded || ratio.notation === "scientific") && (
+                    <details className="financial-ratio-details">
+                      <summary>Calculation details</summary>
+                      <p className="financial-exact-value">
+                        {ratio.exactValue} ratio
+                      </p>
+                      <p>
+                        Display uses up to four decimal places, or scientific
+                        notation for large ratios. Checks use the full
+                        calculation value.
+                      </p>
+                    </details>
+                  )}
               </dd>
             </div>
             <div>

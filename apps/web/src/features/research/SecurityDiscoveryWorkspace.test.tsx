@@ -1,4 +1,11 @@
-import type { PersonalCompanyOverviewProps } from "./PersonalCompanyOverview";
+import {
+  PersonalCompanyOverview,
+  type PersonalCompanyOverviewProps,
+} from "./PersonalCompanyOverview";
+import {
+  PersonalCompanyKeyStatistics,
+  type PersonalCompanyKeyStatisticsProps,
+} from "./PersonalCompanyKeyStatistics";
 import {
   CompanyResearchPage,
   type CompanyResearchPageProps,
@@ -474,6 +481,11 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(result.annualFinancials).toBe(
       requireFcffDcfValuation(loaded).props.annualFinancials,
     );
+    const statistics = requireCompanyKeyStatistics(loaded);
+    expect(statistics.annualFinancials).toBe(result.annualFinancials);
+    expect(statistics.selection).toBe(result.selection);
+    expect(statistics.annualErrorCode).toBeNull();
+    expect(statistics.busy).toBe(false);
     expect(result.action).toBe("refresh");
     expect(result.canLoad).toBe(false);
     expect(result.deferralMessage).toContain("after");
@@ -9077,9 +9089,23 @@ function deferred<T>() {
 }
 
 function requireCompanyOverview(value: unknown): PersonalCompanyOverviewProps {
-  const element = requireCompanyResearch(value).props.overview;
-  if (!React.isValidElement<PersonalCompanyOverviewProps>(element))
-    throw new Error("Expected company overview.");
+  const element = findElement<PersonalCompanyOverviewProps>(
+    requireCompanyResearch(value).props.overview,
+    PersonalCompanyOverview,
+  );
+  if (element === undefined) throw new Error("Expected company overview.");
+  return element.props;
+}
+
+function requireCompanyKeyStatistics(
+  value: unknown,
+): PersonalCompanyKeyStatisticsProps {
+  const element = findElement<PersonalCompanyKeyStatisticsProps>(
+    requireCompanyResearch(value).props.overview,
+    PersonalCompanyKeyStatistics,
+  );
+  if (element === undefined)
+    throw new Error("Expected company key statistics.");
   return element.props;
 }
 

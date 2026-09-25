@@ -1,6 +1,6 @@
 # Feature Specification: Connected company overview
 
-**Created:** 2026-09-25 | **Status:** Implemented locally; focused and synthetic Brave checks recorded; acceptance pending
+**Created:** 2026-09-25 | **Status:** Accepted at `b25a05e` on 2026-09-25
 **Checkout:** `markets-home`, based on accepted M1 release `9c2aa4f`.
 **Input:** [Product roadmap M2](../../docs/PRODUCT_ROADMAP.md); the first connected
 company-page slice, not completion of M2 or InvestingPro parity.
@@ -101,11 +101,12 @@ analytics. Catalog admission and EOD success do not establish annual entitlement
 
 ## Assumptions and Scope
 
-M1 is accepted. This slice is implemented locally, with focused checks recorded in
-the [tasks](./tasks.md#evidence). Synthetic Brave covered the main journey and
-final presentation. Permitted real-page QA and release acceptance remain open.
+This first M2 slice is accepted. The [final matrix](../../../tmp/company-overview/m2-acceptance-matrix-v3.json)
+and [independent review](../../../tmp/company-overview/final-acceptance-independent-review-v3.json)
+record actual native/hosted, synthetic/live Brave and runtime acceptance.
 The [plan](./plan.md#actual-source-probe) records one successful AAPL annual probe
-with partial ten-year coverage. Broader entitlement and the real integrated
-company page remain unverified. Focused tests cover the shared pacing contract.
+with partial ten-year coverage. A later limited live AAPL journey demonstrated
+the integrated summary and navigation. Broader entitlement remains unverified;
+focused/native tests cover the shared pacing contract.
 Daily market cap/multiples, longer valuation history, quarterly data, automatic peers,
 broader screening and complete company-page coverage remain later M2 work.

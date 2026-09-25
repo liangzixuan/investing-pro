@@ -1,123 +1,89 @@
 # Current work
 
-Updated September 25, 2026. The owner is building a personal Investing.com-style
-platform, then Pro-style research and personal improvements, using existing
-subscriptions/free sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns the
-scope and delivery order; [capability status](./CAPABILITY_STATUS.md) records
-what is actually delivered. Workspace CURRENT.md owns current runtime and
-unfinished-source checkpoints.
+Updated September 25, 2026. Build a personal Investing.com-style platform, then
+Pro-style research and personal improvements, using existing subscriptions/free
+sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
+workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: connected company overview (first M2 slice)
+## Active outcome: annual company key statistics
 
-Use the manual Spec Kit [specification](../specs/002-company-overview/spec.md),
-[plan](../specs/002-company-overview/plan.md) and
-[tasks](../specs/002-company-overview/tasks.md). Work continues in `markets-home/`
-from accepted M1 `9c2aa4f`; local implementation and focused checks are recorded,
-with synthetic Brave journey/presentation checks complete. Permitted real-page
-QA and release acceptance remain pending.
-Workspace `tmp/company-overview/` holds current evidence and interrupted work.
+Use the manual Spec Kit [specification](../specs/003-company-key-statistics/spec.md),
+[plan](../specs/003-company-key-statistics/plan.md) and
+[tasks](../specs/003-company-key-statistics/tasks.md). Work in `markets-home/` from
+accepted `b25a05e`. Source and focused verification are complete; browser and
+new-release acceptance are pending.
+Evidence belongs in workspace `tmp/company-key-statistics/`.
 
-One explicit action supplies missing 1M EOD and annual statements, reusing a
-matching Markets snapshot. Show latest-year revenue, net income and operating
-cash flow with fiscal/source dates and unknown cells. Share the loaded annual
-result with Financials, quality and existing valuation inputs. Fresh company entry
-stays idle; quarterly, longer valuation history, peers and SEC remain explicit.
-This is the first connected-page layer, not the whole M2 milestone.
+Add operating margin, net margin, operating cash-flow margin, net debt, debt/assets
+and revenue year-over-year growth from the existing annual analytics. Reuse the
+loaded annual result; the new panel adds no acquisition or request owner. Preserve
+latest-year unknown reasons, actual consecutive growth periods, formula/input
+references and fiscal/source dates. Six-metric availability is distinct from
+returned annual-year coverage.
 
-Market/annual state now lives in one persistent data hook, with separate company
-composition/projection modules. Root owns integration/CSS; data owns the hook;
-UI owns summary/projection/components; spec work owns these guides.
+Also repair the existing Financial quality and manual peer-quality ratio displays.
+A shared formatter uses the installed Decimal dependency; short rounded labels
+retain full calculation strings in keyboard-accessible details. Check statuses,
+comparisons, source strings and engine precision remain unchanged. Root owns page
+composition/CSS/integration; data owns the pure projection/tests; UI owns the
+component/tests and display formatter/quality tables; spec owns these guides.
 
-Overview and panel controls share 15-minute spacing for repeated exact domain
-inputs and four request sequences/hour per company authority. A first annual load
-or new range remains allowed; Back/selection retains the budget and snapshot
-admission costs zero. Missing-domain Load/Retry and explicit complete-data Refresh
-preserve successful siblings, dates, drafts and identity/lifetime guards.
+One bounded AAPL daily valuation call returned HTTP 502 / `provider_unavailable`
+on September 25. This proves neither access nor denied entitlement. Its consumed
+[receipt](../../tmp/company-key-statistics/valuation-source-probe.json) is preserved;
+do not repeat the probe. Daily valuation summary and loader migration are deferred.
+The current hook, API/schema, dependencies, valuation behavior, local-access/vault/
+origin boundaries and owner records stay within the existing product behavior.
 
-A bounded AAPL annual probe on September 25 returned FY2023–2025, three of ten
-requested years: 90 known returned cells, zero unknown returned cells and seven
-missing years. All three latest summary fields were known. This establishes one
-company/operation's observed access, not universal annual entitlement or a working
-M2 page. The [plan](../specs/002-company-overview/plan.md#actual-source-probe)
-links metadata-only evidence. Focused evidence records 54 hook passes, 73 UI passes
-and 339 root integration cases across retained attempts, plus web types/scoped
-lint and four targeted catalog-conflict feedback cases. These groups overlap;
-do not sum them. [Tasks](../specs/002-company-overview/tasks.md#evidence) retain
-the exact counts, failures and repairs.
-
-Synthetic Brave build 2 verified bounded loading, partial failures, source-tab
-focus, a 390px layout without horizontal overflow, cached entry, and retained data
-and unsaved invented notes through Back and a failed Refresh. The late-response
-case also involved local-access revalidation; focused tests cover route-only
-retirement. Build 3 passed final busy-copy/disabled-style checks and the settled
-636px layout; the [plan](../specs/002-company-overview/plan.md#synthetic-brave-evidence)
-links both browser receipts. Guardrails, permitted real-page QA and release
-acceptance remain open. No new API, schema, dependency, source purchase or
-authentication change is planned. FinanceDatabase remains a future directory input.
-See the [engineering audit](./ENGINEERING_AUDIT.md) and
-[Spec Kit adaptation](../specs/README.md).
-
-The first native candidate, `db4a9794`, stopped at the boundary guard: five
-render checks still targeted the old workspace after composition moved to
-`CompanyResearchPage`. Format, lint and classification passed; native typechecks,
-tests and builds did not run. The correction must check the actual component
-owners and retain every existing requirement. A revised candidate and full
-acceptance remain pending; [failure evidence](../specs/002-company-overview/plan.md#native-gate-recovery)
-is retained. The added boundary-script path also requires the normalization
-hosted workflow, bringing the revised scope to five workflows and six jobs.
+Acceptance covers exact/missing/zero/signed values, quarantine, growth periods,
+readable desktop/390px and keyboard details, source focus and no extra requests.
+Retained checks passed 16 projection cases, 78 distinct formatter/UI cases and
+314 workspace integration cases, plus scoped lint and web/analytics typechecks.
+The [source reviews](../../tmp/company-key-statistics/ui-integration-independent-review.json)
+record evidence and limits. Complete source-bound synthetic/permitted live Brave
+and the unchanged full release workflow before claiming release acceptance.
 
 ## Accepted runtime and parked work
 
-Accepted M1 is `9c2aa4f059a10c6508e1ba8798ac350231d06dce`: a three-listing
-real-EOD Markets board, chart/sorting, global search and exact company entry/Back.
-[Markets tasks](../specs/001-markets-home/tasks.md) link the independent final review
-and acceptance matrix. Existing research, watchlists, drafts and analyses remain
-available. Workspace [CURRENT.md](../../CURRENT.md) and `tmp/markets-home/` own
-actual source/build/runtime, native/hosted/Brave evidence, limits and rollback.
-Never reuse historical process IDs or terminal/consumed observers as new authority.
+Connected company overview `b25a05e735ab6d095023a22f427ff75be66af414` is accepted,
+normally pushed and running; feature `4cc9946`, build `_TaRVEPpgM-yDGGOd068H`.
+It provides one explicit missing-price/annual load, shared results/pacing, dates,
+partial-result retention and Back/draft continuity. Native acceptance passed
+9,183 tests with nine existing skips, 25 typechecks and 24 builds; all five hosted
+workflows/six jobs, guarded activation, smoke and seven limited live Brave groups
+passed. The [final matrix](../../tmp/company-overview/m2-acceptance-matrix-v3.json)
+and [independent review](../../tmp/company-overview/final-acceptance-independent-review-v3.json)
+record exact evidence and limits. M1 Markets remains part of that accepted product.
 
-The later compact quarter-evidence work is preserved and unreleased. Its four
-retained real filings returned structural refusals: zero complete primary graphs
-and zero quarter admissions. Do not resume that old caption-retention queue
-unless a later bounded task selects it. Existing selected-company provider
-quarterly history is a different capability; the SEC result does not erase it.
-[Quarter assessment guide](./PERSONAL_SEC_QUARTER_ASSESSMENT.md).
+Live AAPL returned FY2023–2025, three of ten years and three known summary fields.
+That verifies one operation, not universal coverage or complete M2. The 358 native
+health samples concern preservation of the predecessor during verification;
+candidate runtime evidence is separate. Keep rollback and both failed M2 candidate
+refs/evidence. Never reuse historical process IDs or terminal/consumed helpers.
 
-The [delivery history](./DELIVERY_HISTORY.md) preserves earlier feature details
-and old command examples. Read the relevant feature guide rather than loading
-that entire archive for routine work.
+The original `research-cockpit/` checkout contains parked, unreleased SEC quarter
+work. Its four retained filings had zero complete primary graphs/quarter admissions;
+do not resume that queue unless a later task selects it. The new slice does not
+change that work. [Quarter guide](./PERSONAL_SEC_QUARTER_ASSESSMENT.md).
 
 ## Working loop
 
-1. Read applicable AGENTS.md, workspace CURRENT.md, this page and the feature
-   specification. Inspect Git status and unfinished work. Choose one independently
-   useful end-to-end outcome, its source input and visible acceptance demonstration.
-2. Assign concrete file ownership for parallel UI/data/review work. Check installed
-   dependency documentation and types before custom code or a new package. Keep
-   concerns modular and choose a durable design for the current requirements.
-3. Run focused behavioral tests and typechecks for changed code. Update spec/tasks
-   with actual evidence. Do not recreate setup/authentication or run unrelated
-   historical test lists because a template includes examples.
-4. Review the final diff, format touched files, and run applicable guardrails.
-   Use the release-classification guide for the separate feature and routing
-   closure commits. Freeze the reviewed candidate before the full `pnpm verify`
-   in a fresh independent verification clone; the API build deliberately rejects
-   a dirty tree. Keep the serving clone running separately. If an earlier gate
-   fails, fix it and rerun the affected checks before the final clean-source
-   gate. Do not bypass source identity or remove the full gate to save time.
-5. Push only the verified candidate and wait for applicable hosted checks.
-   Recheck only changed or failed work during iteration; broaden verification
-   when new evidence warrants it. Report actual local and hosted outcomes
-   separately. Do not describe a historical passing run as current validation.
-6. Compare the implementation to the specification and show the working journey
-   in Brave at desktop and narrow widths. A completed document or convergence
-   review is not release acceptance. Keep the task list and checkpoint current;
-   report user capability, observed coverage, limits and the next visible outcome.
+1. Read applicable AGENTS.md, workspace CURRENT.md, this guide and the active spec.
+   Inspect source state and choose one bounded, independently useful outcome.
+2. Assign file ownership; use existing libraries/formulas and separate concerns.
+   Coordinate shared interfaces before edits; preserve unrelated user changes.
+3. Verify meaningful behavior, types/lint and existing component-owner/style setup
+   early. [Recorded lessons](../../tmp/company-overview/verification-order-lessons-v3.md)
+   explain the prior boundary/mocked-CSS failures without weakening any gate.
+4. Review source and explicit files; follow the separate feature/generated closure
+   procedure and unchanged isolated native gate. Preserve failures and rollback.
+5. Push the verified candidate normally; accept actual required hosted-job success
+   at its exact revision. Do not replay terminal observers or unchanged passed gates.
+6. Demonstrate desktop/narrow Brave behavior, perform guarded activation/smoke and
+   record actual acceptance outside Git and in CURRENT.md. Report source coverage
+   separately from complete-page coverage; keep the next outcome bounded.
 
-[Release classification](./RELEASE_CLASSIFICATION.md) still governs releases.
-The engineering audit identifies concrete simplifications to review separately;
-this planning change does not disable tests or modify release policy.
-
-For runtime setup use [the personal workspace instructions](../README.md#personal-discovery-workspace).
-Keep credentials and private source payloads out of these documents. Use the
-configured local-access app and external Brave; preserve owner records and tabs.
+[Release classification](./RELEASE_CLASSIFICATION.md) governs releases. The
+[engineering audit](./ENGINEERING_AUDIT.md) and [Spec Kit adaptation](../specs/README.md)
+do not replace it. Use configured local access and external Brave; preserve owner
+records/tabs and keep credentials/private payloads out of source and handoffs.

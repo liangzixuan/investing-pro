@@ -1022,11 +1022,9 @@ describe("manual peer annual quality integration", () => {
     const props = loadedComparison();
     const table = qualityTable(props);
     expect(table).toBeDefined();
-    const summaries = hostElements(table).filter(
-      (node) => node.type === "summary",
-    );
-    expect(summaries).toHaveLength(24);
-    const labels = summaries.map((node) => node.props["aria-label"]);
+    const checks = nativeDisclosures(props, "manual-peer-quality-inputs");
+    expect(checks).toHaveLength(24);
+    const labels = checks.map(summaryLabel);
     expect(new Set(labels).size).toBe(24);
     expect(
       labels.filter((label) => String(label).startsWith("Inspect ZERO ")),
@@ -1034,6 +1032,31 @@ describe("manual peer annual quality integration", () => {
     expect(
       labels.filter((label) => String(label).startsWith("Inspect PEER ")),
     ).toHaveLength(12);
+    const grossMargin = checks.find((check) =>
+      summaryLabel(check).startsWith(
+        "Inspect PEER Gross margin not declining quality check",
+      ),
+    );
+    expect(grossMargin).toBeDefined();
+    const grossMarginText = disclosureText(grossMargin!);
+    expect(grossMarginText).toContain("Not met");
+    expect(grossMarginText).toContain(
+      "current_gross_profit / current_revenue >= prior_gross_profit / prior_revenue",
+    );
+    expect(grossMarginText).toContain("efficiency_gross_margin_not_declining");
+    expect(grossMarginText).toContain("≈ 0.4545");
+    const calculations = hostElements(grossMargin!.element).filter(
+      (node) =>
+        node.type === "details" &&
+        node.props.className === "financial-ratio-details",
+    );
+    expect(calculations).toHaveLength(1);
+    expect(visibleText(renderToStaticMarkup(calculations[0]))).toContain(
+      "Calculation details",
+    );
+    expect(visibleText(renderToStaticMarkup(calculations[0]))).toContain(
+      `0.${"45".repeat(128)} ratio`,
+    );
     expect(nativeDisclosures(props)).toHaveLength(30);
     expect(disclosureText(disclosure(props, "PEER", "Revenue"))).toContain(
       "1100",
@@ -1061,7 +1084,7 @@ describe("manual peer annual quality integration", () => {
     const table = qualityTable(annualOnly);
     expect(table).toBeDefined();
     expect(
-      hostElements(table).filter((node) => node.type === "details"),
+      nativeDisclosures(annualOnly, "manual-peer-quality-inputs"),
     ).toHaveLength(24);
     const text = visibleText(renderToStaticMarkup(table));
     expect(text).toContain("2029-12-31");
@@ -1087,7 +1110,7 @@ describe("manual peer annual quality integration", () => {
       "Latest annual fiscal year differs from the selected company's year",
     );
     expect(
-      hostElements(table).filter((node) => node.type === "details"),
+      nativeDisclosures(mismatch, "manual-peer-quality-inputs"),
     ).toHaveLength(12);
     // The independently existing metric comparison still uses its exact FY2029 anchor.
     expect(disclosureText(disclosure(mismatch, "PEER", "Revenue"))).toContain(
@@ -1119,9 +1142,9 @@ describe("manual peer annual quality integration", () => {
     const text = visibleText(renderToStaticMarkup(table));
     expect(text.toLowerCase()).toContain("quarantined");
     expect(text).not.toContain("not-a-decimal");
-    expect(
-      hostElements(table).filter((node) => node.type === "details"),
-    ).toHaveLength(12);
+    expect(nativeDisclosures(input, "manual-peer-quality-inputs")).toHaveLength(
+      12,
+    );
   });
 
   it.each([
@@ -1144,7 +1167,7 @@ describe("manual peer annual quality integration", () => {
         "quarantined",
       );
       expect(
-        hostElements(table).filter((node) => node.type === "details"),
+        nativeDisclosures(changed, "manual-peer-quality-inputs"),
       ).toHaveLength(12);
     },
   );
@@ -1160,11 +1183,9 @@ describe("manual peer annual quality integration", () => {
       onRemovePeer: vi.fn(),
     };
     const props = freezeDeep({ ...loadedComparison(), ...callbacks });
-    expect(
-      hostElements(qualityTable(props)).filter(
-        (node) => node.type === "details",
-      ),
-    ).toHaveLength(24);
+    expect(nativeDisclosures(props, "manual-peer-quality-inputs")).toHaveLength(
+      24,
+    );
     expect(qualityTable({ ...props, peers: [] })).toBeUndefined();
     expect(qualityTable({ ...props, selection: null })).toBeUndefined();
     const restored = {
@@ -1174,7 +1195,7 @@ describe("manual peer annual quality integration", () => {
     const table = qualityTable(restored);
     expect(table).toBeDefined();
     expect(
-      hostElements(table).filter((node) => node.type === "details"),
+      nativeDisclosures(restored, "manual-peer-quality-inputs"),
     ).toHaveLength(12);
     expect(visibleText(renderToStaticMarkup(table)).toLowerCase()).toContain(
       "not loaded",

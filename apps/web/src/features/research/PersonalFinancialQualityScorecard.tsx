@@ -1,5 +1,8 @@
 import type { PersonalAnnualFinancialsDto } from "@research-cockpit/contracts";
-import { buildPersonalFinancialQualityScorecard } from "@research-cockpit/personal-financial-analytics";
+import {
+  buildPersonalFinancialQualityScorecard,
+  formatPersonalFinancialRatio,
+} from "@research-cockpit/personal-financial-analytics";
 
 import type { PersonalMarketSelection } from "./PersonalMarketOverview";
 import { mapAnnualFinancials } from "./personal-financial-quality-input";
@@ -253,14 +256,31 @@ function Observation({
     return <span>Not required</span>;
   }
 
+  const ratio =
+    observation.unit === "ratio" && observation.value !== null
+      ? formatPersonalFinancialRatio(observation.value)
+      : null;
+
   return (
-    <span className="personal-quality-scorecard-observation">
+    <div className="personal-quality-scorecard-observation">
       <span className="personal-quality-scorecard-observation-value">
         FY {observation.fiscalYear} ·{" "}
         {observation.value === null
           ? "Unavailable"
-          : formatObservationValue(observation.value, observation.unit)}
+          : observation.unit === "USD"
+            ? `USD ${observation.value}`
+            : (ratio?.label ?? "Unavailable")}
       </span>
+      {ratio !== null && (ratio.rounded || ratio.notation === "scientific") && (
+        <details className="financial-ratio-details">
+          <summary>Calculation details</summary>
+          <p className="financial-exact-value">{ratio.exactValue} ratio</p>
+          <p>
+            Display uses up to four decimal places, or scientific notation for
+            large ratios. Checks use the full calculation value.
+          </p>
+        </details>
+      )}
       <small className="personal-quality-scorecard-observation-meta">
         Statement {observation.statementDate} ·{" "}
         {observation.inputRefs.length === 0
@@ -269,7 +289,7 @@ function Observation({
               .map((input) => `${input.factKey} ← ${input.sourceRef}`)
               .join(" + ")}`}
       </small>
-    </span>
+    </div>
   );
 }
 
@@ -337,13 +357,6 @@ function checkStatusLabel(status: ScorecardCheck["status"]): string {
   if (status === "met") return "Met";
   if (status === "not_met") return "Not met";
   return "Unavailable";
-}
-
-function formatObservationValue(
-  value: string,
-  unit: Exclude<ScorecardObservation, null>["unit"],
-): string {
-  return unit === "USD" ? `USD ${value}` : `${value} ratio`;
 }
 
 function unavailableReasonLabel(reason: string): string {

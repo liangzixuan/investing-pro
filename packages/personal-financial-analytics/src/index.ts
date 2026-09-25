@@ -1,4 +1,9 @@
 export {
+  formatPersonalFinancialRatio,
+  type PersonalFinancialRatioDisplay,
+} from "./financial-ratio-display";
+
+export {
   PERSONAL_QUARTERLY_COMPATIBILITY_LIMITS,
   PERSONAL_QUARTERLY_COMPATIBILITY_ISSUE_REASONS,
   assessPersonalQuarterlyCompatibility,

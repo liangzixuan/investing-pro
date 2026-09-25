@@ -4,6 +4,7 @@ import {
   type PersonalCompanyResearchWorkspaceProps,
 } from "./PersonalCompanyResearchWorkspace";
 import { PersonalCompanyOverview } from "./PersonalCompanyOverview";
+import { PersonalCompanyKeyStatistics } from "./PersonalCompanyKeyStatistics";
 import { PersonalMarketOverview } from "./PersonalMarketOverview";
 import { PersonalAnnualFinancials } from "./PersonalAnnualFinancials";
 import { PersonalQuarterlyFinancials } from "./PersonalQuarterlyFinancials";
@@ -56,7 +57,17 @@ export function CompanyResearchPage({
   return (
     <PersonalCompanyResearchWorkspace
       {...workspace}
-      overview={<PersonalCompanyOverview {...overview} />}
+      overview={
+        <>
+          <PersonalCompanyOverview {...overview} />
+          <PersonalCompanyKeyStatistics
+            selection={overview.selection}
+            annualFinancials={overview.annualFinancials}
+            annualErrorCode={overview.annualErrorCode}
+            busy={overview.busy}
+          />
+        </>
+      }
       sections={{
         price: <PersonalMarketOverview {...market} />,
         financials: (

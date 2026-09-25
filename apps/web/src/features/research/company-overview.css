@@ -129,3 +129,132 @@
     gap: 8px;
   }
 }
+
+.research-desk .personal-company-key-statistics {
+  margin: 16px 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.research-desk .company-key-statistics-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.research-desk .company-key-statistics-heading h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.research-desk .company-key-statistics-period,
+.research-desk .company-key-statistics-coverage,
+.research-desk .company-key-statistics-source,
+.research-desk .company-key-statistics-unavailable {
+  margin: 10px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.research-desk .company-key-statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 20px;
+  margin: 12px 0;
+}
+
+.research-desk .company-key-statistics-grid > div {
+  min-width: 0;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.research-desk .company-key-statistics-grid dt {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.research-desk .company-key-statistics-grid dd {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.research-desk .company-key-statistics-grid small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.research-desk .personal-company-key-statistics a,
+.research-desk .company-key-statistics-details > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--mint-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.research-desk .company-key-statistics-details {
+  font-size: 13px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.research-desk .company-key-statistics-details > summary {
+  display: list-item;
+  align-content: center;
+  cursor: pointer;
+}
+
+.research-desk .financial-exact-value {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.research-desk .financial-ratio-details > summary {
+  min-height: 44px;
+  align-content: center;
+  color: var(--mint-deep);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.research-desk .financial-ratio-details p {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .research-desk .personal-company-key-statistics {
+    padding: 14px;
+  }
+
+  .research-desk .company-key-statistics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
+  }
+
+  .research-desk .company-key-statistics-grid dd {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .research-desk .company-key-statistics-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

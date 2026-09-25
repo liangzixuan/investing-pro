@@ -3,10 +3,11 @@
 This is a manual Spec Kit adaptation for bounded product changes.
 [Markets home](./001-markets-home/spec.md) is accepted at `9c2aa4f`; its
 [completed tasks](./001-markets-home/tasks.md) link actual acceptance evidence.
-The active [connected company overview](./002-company-overview/spec.md) is the first
-M2 slice, implemented locally with focused/synthetic Brave checks and acceptance
-pending; see its
-[plan](./002-company-overview/plan.md) and [tasks](./002-company-overview/tasks.md).
+The [connected company overview](./002-company-overview/spec.md) is accepted at
+`b25a05e`; its [tasks](./002-company-overview/tasks.md) link actual acceptance.
+The active [annual company key statistics](./003-company-key-statistics/spec.md)
+slice is being implemented with acceptance pending; see its
+[plan](./003-company-key-statistics/plan.md) and [tasks](./003-company-key-statistics/tasks.md).
 No Specify CLI, generated skills, scripts or branch automation are installed.
 
 The [owner's AGENTS.md](../../AGENTS.md) and [product roadmap](../docs/PRODUCT_ROADMAP.md)
