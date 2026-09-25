@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "caseNumber": 79,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "9c2aa4f059a10c6508e1ba8798ac350231d06dce",
+  "featureRevision": "4cc994667b7cddd434909514699008afa2f94b57",
+  "featureCount": 259,
+  "closureCount": 260,
+  "featureChanges": [
+    { "path": "apps/web/app/layout.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/CompanyResearchPage.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalAnnualFinancials.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalAnnualFinancials.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyOverview.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyOverview.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalCompanyResearchWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalMarketOverview.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/company-overview.css",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-annual-financial-analytics.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-company-overview.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/personal-company-overview.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/useCompanyOverviewData.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/useCompanyOverviewData.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/research-page-mode.test.tsx", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" },
+    { "path": "specs/001-markets-home/plan.md", "status": "M" },
+    { "path": "specs/001-markets-home/spec.md", "status": "M" },
+    { "path": "specs/001-markets-home/tasks.md", "status": "M" },
+    { "path": "specs/002-company-overview/plan.md", "status": "A" },
+    { "path": "specs/002-company-overview/spec.md", "status": "A" },
+    { "path": "specs/002-company-overview/tasks.md", "status": "A" },
+    { "path": "specs/README.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka79.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka79.json",
+  "presentation": {
+    "featureDescription": "Connected company overview with shared price and annual data",
+    "closureDescription": "generated routing closure for the connected company overview",
+    "inventoryDescription": "shared company loading, exact annual summary figures, navigation and draft retention",
+    "testBinding": "companyoverview",
+    "routingDescription": "Company overview preserves exact identity, request lifetime and provider boundaries",
+    "summaryDescription": "connect price history and dated annual figures in one company overview"
+  }
+}
