@@ -1538,6 +1538,12 @@ describe("SecurityDiscoveryWorkspace", () => {
     await searchAndSelectMarket("ZERO");
     await flushPromises();
     expect(dom.company.focus).toHaveBeenCalledTimes(1);
+    expect(dom.company.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+    });
+    expect(dom.company.scrollIntoView).not.toHaveBeenCalled();
+    expect(dom.companyRegion.focus).not.toHaveBeenCalled();
     expect(requireCompanyResearch(renderWorkspace()).props.backLabel).toBe(
       "Back to search results",
     );
@@ -1546,13 +1552,16 @@ describe("SecurityDiscoveryWorkspace", () => {
     void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledTimes(1);
+    expect(dom.trigger.focus).toHaveBeenCalledWith({ preventScroll: true });
     expect(dom.trigger.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledOnce();
     dom.trigger.isConnected = false;
     requireCompanyResearch(renderWorkspace()).props.onBack();
     void renderWorkspace();
     await flushPromises();
     expect(dom.origin.focus).toHaveBeenCalledTimes(1);
     expect(dom.origin.tabIndex).toBe(-1);
+    expect(dom.origin.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
   });
 
   it.each(["hidden", "disabled", "unrelated"] as const)(
@@ -6254,6 +6263,7 @@ describe("Sequential My Watchlist research", () => {
     void renderWorkspace();
     await flushPromises();
     dom.company.focus.mockClear();
+    dom.companyRegion.scrollIntoView.mockClear();
     // Next is activated inside the company panel, not from the original row.
     vi.stubGlobal("document", {
       activeElement: dom.company,
@@ -6264,20 +6274,30 @@ describe("Sequential My Watchlist research", () => {
     void renderWorkspace();
     await flushPromises();
     expect(dom.company.focus).toHaveBeenCalledOnce();
+    expect(dom.company.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledOnce();
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+    });
+    expect(dom.company.scrollIntoView).not.toHaveBeenCalled();
     requireCompanyResearch(renderWorkspace()).props.onBack();
     void renderWorkspace();
     await flushPromises();
     expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(dom.trigger.scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledOnce();
     dom.trigger.focus.mockClear();
     dom.origin.focus.mockClear();
     watchlistAction(renderWorkspace(), "Research SYN00050").props.onClick();
     void renderWorkspace();
     dom.company.focus.mockClear();
+    dom.companyRegion.scrollIntoView.mockClear();
     dom.trigger.isConnected = false;
     requireCompanyNavigation(renderWorkspace()).props.onNext();
     void renderWorkspace();
     await flushPromises();
     expect(dom.company.focus).toHaveBeenCalledOnce();
+    expect(dom.companyRegion.scrollIntoView).toHaveBeenCalledOnce();
     requireCompanyResearch(renderWorkspace()).props.onBack();
     void renderWorkspace();
     await flushPromises();
@@ -6683,6 +6703,7 @@ describe("Sequential My Watchlist research", () => {
       void renderWorkspace();
       await flushPromises();
       dom.company.focus.mockClear();
+      dom.companyRegion.scrollIntoView.mockClear();
       deferWorkspaceEffects = true;
       if (action === "next")
         requireCompanyNavigation(renderWorkspace()).props.onNext();
@@ -6692,6 +6713,7 @@ describe("Sequential My Watchlist research", () => {
       await flushPromises(12);
       commitWorkspaceEffects();
       expect(dom.company.focus).not.toHaveBeenCalled();
+      expect(dom.companyRegion.scrollIntoView).not.toHaveBeenCalled();
       expect(requireCompanyNavigation(renderWorkspace()).props).toMatchObject({
         disabled: false,
         invalidated: false,
@@ -8291,16 +8313,21 @@ function companyFocusDocument(triggerHeadingId: string) {
   const trigger = new FocusTarget(triggerHeadingId);
   const origin = new FocusTarget();
   const company = new FocusTarget();
+  const companyRegion = new FocusTarget();
   vi.stubGlobal("HTMLElement", FocusTarget);
   const getElementById = vi.fn((id: string) =>
-    id === "personal-company-research-title" ? company : origin,
+    id === "personal-company-research-title"
+      ? company
+      : id === "personal-company-research"
+        ? companyRegion
+        : origin,
   );
   vi.stubGlobal("document", {
     activeElement: trigger,
     getElementById,
     visibilityState: "visible",
   });
-  return { trigger, origin, company, getElementById };
+  return { trigger, origin, company, companyRegion, getElementById };
 }
 
 function findOwnerSession(value: unknown) {

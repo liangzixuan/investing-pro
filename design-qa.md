@@ -133,3 +133,34 @@ may reduce repeated source/help text, but should be scoped separately from layou
 - [ ] Complete native/hosted gates, guarded activation and limited live verification.
 
 final result: passed
+
+## Company-entry alignment follow-up (a82)
+
+The accepted layout's live review found a small issuer-name overlap on company
+entry. The follow-up retains ticker focus and scrolls the containing company
+region using its existing responsive margin. Back and source targets are unchanged.
+
+Source-bound synthetic Brave checks passed at 2560, 1000 and 390 pixels. Short
+and long wrapped names remain fully visible; the desktop name starts at 144px
+below a header ending at 113px. At 1000px the name starts at 198.19px, below the
+162.19px header. At 390px the nonsticky header is out of view and the complete
+wrapped name appears from 36px to 237.58px. None of these pages overflows
+horizontally, and the ticker remains focused.
+
+Watchlist entry, Next/Previous company, Back/origin focus and Price/Financials
+source links passed. One invented overview load was retained through Back/reopen,
+along with an unsaved synthetic note. The 25 RAM calls stayed unchanged through
+reopening and source navigation; final counters show one synthetic EOD load, one
+annual load, zero quote calls, writes, blocked requests or storage attempts.
+No browser errors were recorded. These counters do not establish live feed behavior.
+
+Two premature browser actions timed out: Previous while its disclosure was closed,
+and Research during Back's transition. Fresh DOM inspection established each state;
+opening the disclosure and retrying after the transition completed the checks.
+Inline screenshots were inspected, but the tool supplied no saved screenshot path.
+The normal viewport was restored and existing user tabs were preserved.
+
+Evidence and exact source binding are in
+`tmp/company-entry-alignment/synthetic-brave-qa.json` outside Git. Native/hosted
+gates, guarded activation and limited live checks remain pending at this source
+checkpoint; CURRENT.md and the final acceptance receipt own their eventual status.

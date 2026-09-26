@@ -1210,6 +1210,7 @@ export function SecurityDiscoveryWorkspace({
         return;
       focusCompanyTarget(
         document.getElementById("personal-company-research-title"),
+        document.getElementById("personal-company-research"),
       );
     });
     selectCompanyIdentity(identity, origin);
@@ -1270,6 +1271,7 @@ export function SecurityDiscoveryWorkspace({
         return;
       focusCompanyTarget(
         document.getElementById("personal-company-research-title"),
+        document.getElementById("personal-company-research"),
       );
     });
   }
@@ -4135,8 +4137,12 @@ function focusCompanyOrigin(origin: CompanyOriginTarget) {
   focusCompanyTarget(target);
 }
 
-function focusCompanyTarget(target: HTMLElement | null) {
-  if (!isVisibleFocusTarget(target)) return;
+function focusCompanyTarget(
+  target: HTMLElement | null,
+  scrollTarget: HTMLElement | null = target,
+) {
+  if (!isVisibleFocusTarget(target) || !isVisibleFocusTarget(scrollTarget))
+    return;
   if (
     !target.hasAttribute("tabindex") &&
     !target.matches("button, input, select, textarea, a[href]")
@@ -4144,7 +4150,7 @@ function focusCompanyTarget(target: HTMLElement | null) {
     target.tabIndex = -1;
   }
   target.focus({ preventScroll: true });
-  target.scrollIntoView({ block: "start" });
+  scrollTarget.scrollIntoView({ block: "start" });
 }
 
 function collectManualPeerCandidates(
