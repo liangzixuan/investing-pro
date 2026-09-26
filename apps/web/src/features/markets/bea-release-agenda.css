@@ -1,0 +1,99 @@
+.research-desk .bea-release-agenda {
+  color: var(--ink, #17243b);
+  background: #fff;
+  border-top: 1px solid #dbe2e9;
+  min-width: 0;
+  padding: 24px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.research-desk .bea-agenda-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.research-desk .bea-agenda-heading h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.research-desk .bea-agenda-heading p {
+  margin: 0;
+  color: #536176;
+}
+.research-desk .bea-agenda-heading button {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 1px solid var(--accent, #c74700);
+  border-radius: 3px;
+  background: var(--accent, #c74700);
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.research-desk .bea-agenda-heading button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.research-desk .bea-release-agenda :is(button, a):focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 3px;
+}
+.research-desk :is(.bea-agenda-source, .bea-agenda-note) {
+  color: #536176;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.research-desk .bea-agenda-source a {
+  color: #a83c00;
+  text-underline-offset: 3px;
+}
+.research-desk .bea-agenda-error {
+  color: #9e2c21;
+  border-left: 3px solid currentColor;
+  padding-left: 12px;
+}
+.research-desk .bea-agenda-day {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 4fr);
+  gap: 16px;
+  border-top: 1px solid #dbe2e9;
+  padding: 12px 0;
+}
+.research-desk .bea-agenda-day h3 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 650;
+}
+.research-desk .bea-agenda-day ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.research-desk .bea-agenda-day li {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  gap: 12px;
+  padding: 4px 0;
+}
+.research-desk .bea-agenda-day time {
+  color: #536176;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.research-desk .bea-agenda-day span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .research-desk .bea-agenda-day {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+}

@@ -28,6 +28,10 @@ import {
 } from "./vault-composition-root";
 import { buildPersonalWorkspaceApp } from "./workspace-app";
 import {
+  createBeaReleaseProvider,
+  type BeaReleaseProvider,
+} from "./bea-release-provider";
+import {
   createPersonalFilingMonitor,
   type PersonalFilingMonitor,
 } from "./personal-filing-monitor";
@@ -251,6 +255,7 @@ async function preparePersonalWorkspaceConfiguredApp(
 
   let vault: LocalResearchVault | undefined;
   let marketDataProvider: PersonalMarketDataProvider | undefined;
+  let economicCalendarProvider: BeaReleaseProvider | undefined;
   let financialProvider: PersonalSecFinancialProvider | undefined;
   let filingsProvider: PersonalSecFilingsProvider | undefined;
   let filingContextProvider: PersonalSecFilingContextProvider | undefined;
@@ -273,6 +278,7 @@ async function preparePersonalWorkspaceConfiguredApp(
         : await LocalResearchVault.open(startupOptions);
     marketDataProvider =
       createTiingoPersonalMarketDataProvider(marketDataToken);
+    economicCalendarProvider = createBeaReleaseProvider();
     financialProvider = createSecPersonalFinancialProvider(secUserAgent);
     filingsProvider = createSecPersonalFilingsProvider(secUserAgent);
     quarterlyEvidenceProvider =
@@ -309,6 +315,7 @@ async function preparePersonalWorkspaceConfiguredApp(
       filingMonitor,
       desktopNotifications,
       quarterAssessmentProvider,
+      economicCalendarProvider,
     );
   } catch (error) {
     try {
@@ -324,6 +331,7 @@ async function preparePersonalWorkspaceConfiguredApp(
         filingsProvider?.close();
         financialProvider?.close();
         marketDataProvider?.close();
+        economicCalendarProvider?.close();
         vault?.close();
         ownerSession.close();
       }

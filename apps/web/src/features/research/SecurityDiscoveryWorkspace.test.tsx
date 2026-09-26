@@ -724,6 +724,7 @@ describe("SecurityDiscoveryWorkspace", () => {
     const ready = markets.mock.calls.at(-1)![0];
     expect(ready.active).toBe(true);
     expect(ready.isCurrent()).toBe(true);
+    expect(ready.isActive()).toBe(true);
     expect(findAllElements(view, componentMocks.OwnerSession)).toHaveLength(1);
     const discover = {
       ...bridge,
@@ -733,6 +734,8 @@ describe("SecurityDiscoveryWorkspace", () => {
     view = renderWorkspace(undefined, { bridge: discover });
     const hidden = markets.mock.calls.at(-1)![0];
     expect(hidden.active).toBe(false);
+    expect(ready.isActive()).toBe(false);
+    expect(hidden.isActive()).toBe(false);
     expect(hidden.sessionKey).toBe(ready.sessionKey);
     expect(findAllElements(view, componentMocks.OwnerSession)).toHaveLength(1);
     expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
@@ -742,6 +745,40 @@ describe("SecurityDiscoveryWorkspace", () => {
     );
     expect(ready.isCurrent()).toBe(false);
     expect(hidden.isCurrent()).toBe(false);
+  });
+  it("retires the Markets activity callback immediately on company entry and keeps it retired after Back", async () => {
+    await activateRoutedWorkspace();
+    const dom = companyFocusDocument("markets-title");
+    const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+      () => null,
+    );
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "markets" },
+      renderMarkets: markets,
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge });
+    void renderWorkspace(undefined, { bridge });
+    const before = markets.mock.calls.at(-1)![0];
+    expect(before.isActive()).toBe(true);
+    before.onOpenCompany(
+      searchResult("ZERO", "lst-zero"),
+      dom.trigger as unknown as HTMLElement,
+      null,
+    );
+    // The ref changes synchronously, before another React render.
+    expect(before.isActive()).toBe(false);
+    expect(before.isCurrent()).toBe(true);
+    const company = {
+      ...bridge,
+      route: { kind: "company", listingId: "lst-zero" } as const,
+    };
+    void renderWorkspace(undefined, { bridge: company });
+    void renderWorkspace(undefined, { bridge });
+    void renderWorkspace(undefined, { bridge });
+    expect(markets.mock.calls.at(-1)![0].isActive()).toBe(true);
+    expect(before.isActive()).toBe(false);
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
   });
   it("opens an exact direct company URL without acquiring provider data", async () => {
     await activateRoutedWorkspace();

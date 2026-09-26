@@ -1051,3 +1051,4 @@ export * from "./personal-sec-annual-evidence";
 
 export * from "./personal-sec-quarter-assessment";
 export * from "./personal-sec-source-json";
+export * from "./personal-economic-calendar";

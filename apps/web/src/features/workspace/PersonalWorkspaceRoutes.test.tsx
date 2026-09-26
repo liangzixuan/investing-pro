@@ -71,6 +71,7 @@ describe("persistent personal workspace route bridge", () => {
       sessionKey: 5,
       providerStatus: null,
       isCurrent: () => true,
+      isActive: () => false,
       onActivityStart: () => () => true,
       onSessionUnavailable: vi.fn(),
       onOpenCompany: vi.fn(),

@@ -43,6 +43,11 @@ import {
   registerPersonalSecurityMasterRoutes,
 } from "./personal-security-master-routes";
 import { registerPersonalWorkspaceMarketDataRoutes } from "./workspace-market-data-routes";
+import {
+  createBeaReleaseProvider,
+  type BeaReleaseProvider,
+} from "./bea-release-provider";
+import { registerPersonalWorkspaceEconomicCalendarRoutes } from "./workspace-economic-calendar-routes";
 import { registerPersonalWorkspaceScreenerRoutes } from "./workspace-screener-routes";
 import { registerPersonalWorkspaceFinancialScreenRoutes } from "./workspace-financial-screen-routes";
 import {
@@ -103,6 +108,7 @@ export async function buildPersonalWorkspaceApp(
   filingMonitor?: PersonalFilingMonitor,
   desktopNotifications?: PersonalDesktopNotifications,
   quarterAssessmentProvider: PersonalSecQuarterAssessmentProvider = createSecPersonalQuarterAssessmentProvider(),
+  economicCalendarProvider: BeaReleaseProvider = createBeaReleaseProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -191,7 +197,11 @@ export async function buildPersonalWorkspaceApp(
                       try {
                         quarterAssessmentProvider.close();
                       } finally {
-                        ownerSession.close();
+                        try {
+                          economicCalendarProvider.close();
+                        } finally {
+                          ownerSession.close();
+                        }
                       }
                     }
                   }
@@ -256,6 +266,12 @@ export async function buildPersonalWorkspaceApp(
     app,
     catalog,
     marketDataProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceEconomicCalendarRoutes(
+    app,
+    economicCalendarProvider,
     ownerSession,
     listenOptions,
   );

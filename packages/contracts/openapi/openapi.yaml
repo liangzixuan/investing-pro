@@ -536,6 +536,44 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/economic-calendar:
+    get:
+      operationId: loadPersonalEconomicCalendar
+      summary: Load the next 30 days of scheduled BEA series releases.
+      description: >-
+        Explicit, authenticated, body-free load from BEA's fixed public JSON
+        schedule. No query parameters, redirects, credentials, provider retries
+        or persistent records. HEAD is not exposed. The upstream response body is bounded to
+        256 KiB and ten seconds. Results cover the half-open interval from the
+        local fetched time through exactly 30 days later. Repeated series/time
+        entries are deduplicated; different series at the same time remain.
+        This schedule has no forecasts, actual values or company events.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: A dated BEA schedule, possibly with no events in its window.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalEconomicCalendar"
+        "403":
+          description: The existing local request or owner-session boundary rejected the request.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: The source schedule is unavailable or invalid; no partial schedule is returned.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/personal-filing/market-data/status:
     get:
       operationId: getPersonalMarketDataStatus
@@ -1504,6 +1542,60 @@ components:
           schema:
             $ref: "#/components/schemas/ProblemDetails"
   schemas:
+    PersonalEconomicCalendar:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, source, fetchedAt, window, events]
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        source:
+          type: object
+          additionalProperties: false
+          required: [id, name, scheduleUrl, timeZone]
+          properties:
+            id:
+              const: bea
+            name:
+              const: U.S. Bureau of Economic Analysis
+            scheduleUrl:
+              const: https://www.bea.gov/news/schedule
+            timeZone:
+              const: America/New_York
+        fetchedAt:
+          type: string
+          format: date-time
+          description: Local successful retrieval time in canonical UTC with milliseconds; not a source revision timestamp.
+        window:
+          type: object
+          additionalProperties: false
+          required: [fromInclusive, toExclusive]
+          properties:
+            fromInclusive:
+              type: string
+              format: date-time
+              description: Equal to fetchedAt.
+            toExclusive:
+              type: string
+              format: date-time
+              description: Exactly 30 elapsed days after fromInclusive, exclusive.
+        events:
+          type: array
+          maxItems: 512
+          description: Unique series/time pairs, sorted by UTC instant then series text; all instants fall within the stated window.
+          items:
+            type: object
+            additionalProperties: false
+            required: [series, scheduledAt]
+            properties:
+              series:
+                type: string
+                minLength: 1
+                maxLength: 256
+              scheduledAt:
+                type: string
+                format: date-time
+                description: Announced release time in canonical UTC with milliseconds; subject to schedule changes.
     ThesisWriteRequest:
       type: object
       additionalProperties: false

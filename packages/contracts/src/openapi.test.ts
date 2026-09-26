@@ -170,6 +170,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/security-master/status",
       "/v1/personal-filing/security-master/search",
       "/v1/personal-filing/security-master/listings/{listingId}",
+      "/v1/personal-filing/economic-calendar",
       "/v1/personal-filing/market-data/status",
       "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/market-data/annual-financials",

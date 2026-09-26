@@ -3,12 +3,38 @@ import type {
   PersonalSecurityMasterSearchResultDto,
 } from "@research-cockpit/contracts";
 import React, { type ReactNode, type ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   MarketsBoardView,
+  MarketsHome,
   projectMarketBoard,
   type MarketsBoardViewProps,
 } from "./MarketsHome";
+
+const onAgendaLoad = vi.hoisted(() => vi.fn());
+const agendaHook = vi.hoisted(() =>
+  vi.fn(() => ({
+    agenda: null,
+    busy: false,
+    error: null,
+    onLoad: onAgendaLoad,
+  })),
+);
+const boardHook = vi.hoisted(() =>
+  vi.fn(() => ({
+    snapshot: null,
+    selectedListingId: null,
+    busy: false,
+    attempted: false,
+    error: null,
+    nextRefreshAt: null,
+    onSelect: vi.fn(() => true),
+    onRefresh: vi.fn(),
+  })),
+);
+vi.mock("./useBeaReleaseAgenda", () => ({ useBeaReleaseAgenda: agendaHook }));
+vi.mock("./useMarketsSnapshot", () => ({ useMarketsSnapshot: boardHook }));
 import { PriceHistoryChart } from "../research/PriceHistoryChart";
 import type { MarketBoardSnapshot } from "./market-board-loader";
 vi.mock("../research/PriceHistoryChart", () => ({
@@ -123,6 +149,7 @@ function props(
     sessionKey: 1,
     providerStatus: null,
     isCurrent: () => true,
+    isActive: () => true,
     onActivityStart: () => () => true,
     onSessionUnavailable: vi.fn(),
     onOpenCompany: vi.fn(),
@@ -171,6 +198,22 @@ function button(node: ReactNode, label: string) {
   return found;
 }
 describe("Markets board presentation", () => {
+  it("offers the independent BEA agenda when Tiingo is unconfigured and the catalog is absent", () => {
+    const input = props({ catalogSnapshotSha256: null, providerStatus: null });
+    const html = renderToStaticMarkup(<MarketsHome {...input} />);
+    expect(html).toContain("Economic calendar");
+    expect(html).toContain("Load agenda");
+    expect(agendaHook).toHaveBeenLastCalledWith(input);
+    expect(boardHook).toHaveBeenLastCalledWith({ ...input, enabled: false });
+    expect(onAgendaLoad).not.toHaveBeenCalled();
+  });
+  it("keeps the agenda mounted inside the same hidden Markets lifetime while Research is active", () => {
+    const input = props({ active: false });
+    const html = renderToStaticMarkup(<MarketsHome {...input} />);
+    expect(html).toContain('<div hidden="">');
+    expect(html).toContain("Economic calendar");
+    expect(agendaHook).toHaveBeenLastCalledWith(input);
+  });
   it("withholds the chart when a selected overview fails exact identity projection", () => {
     const snapshot = board();
     const rows = snapshot.rows.map((row) =>

@@ -11,6 +11,7 @@ describe("personal workspace startup static graph", () => {
   it("combines the reviewed local workspace, SEC monitor and desktop notification modules", async () => {
     const graph = await staticGraph(WORKSPACE_ENTRY);
     expect([...graph.files].sort()).toEqual([
+      "bea-release-provider.ts",
       "listen-options.ts",
       "personal-desktop-notifications.ts",
       "personal-filing-monitor-schedule.ts",
@@ -40,6 +41,7 @@ describe("personal workspace startup static graph", () => {
       "vault-composition-root.ts",
       "workspace-app.ts",
       "workspace-composition-root.ts",
+      "workspace-economic-calendar-routes.ts",
       "workspace-filing-monitor-routes.ts",
       "workspace-financial-screen-routes.ts",
       "workspace-market-data-routes.ts",

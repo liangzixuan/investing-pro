@@ -2545,6 +2545,11 @@ export function SecurityDiscoveryWorkspace({
     sessionKey: renderedWorkspaceEpoch,
     providerStatus: marketDataStatus,
     isCurrent: routeIsCurrent,
+    isActive: () =>
+      routeIsCurrent() &&
+      workspaceView.epoch === currentWorkspaceView.current.epoch &&
+      currentWorkspaceView.current.task === "markets" &&
+      !currentWorkspaceView.current.research,
     onActivityStart: handleFinancialActivityStart,
     onSessionUnavailable: clearWorkspaceForSessionLoss,
     onOpenCompany: (identity, origin, overview) => {

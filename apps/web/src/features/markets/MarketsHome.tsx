@@ -22,6 +22,8 @@ import {
   type MarketBoardSnapshot,
 } from "./market-board-loader";
 import { useMarketsSnapshot } from "./useMarketsSnapshot";
+import { useBeaReleaseAgenda } from "./useBeaReleaseAgenda";
+import { BeaReleaseAgenda } from "./BeaReleaseAgenda";
 import "./markets.css";
 
 export interface MarketsHomeProps {
@@ -31,6 +33,7 @@ export interface MarketsHomeProps {
   readonly sessionKey: number;
   readonly providerStatus: PersonalMarketDataStatusDto | null;
   readonly isCurrent: () => boolean;
+  readonly isActive: () => boolean;
   readonly onActivityStart: OwnerSessionActivityStart;
   readonly onSessionUnavailable: () => void;
   readonly onOpenCompany: (
@@ -43,6 +46,7 @@ export interface MarketsHomeProps {
 }
 type BoardOrder = "board" | "gainers" | "losers";
 export function MarketsHome(props: MarketsHomeProps) {
+  const agenda = useBeaReleaseAgenda(props);
   const data = useMarketsSnapshot({
     ...props,
     enabled: props.enabled && props.providerStatus?.status === "configured",
@@ -89,6 +93,7 @@ export function MarketsHome(props: MarketsHomeProps) {
             });
         }}
       />
+      <BeaReleaseAgenda {...agenda} enabled={props.enabled} />
     </div>
   );
 }
