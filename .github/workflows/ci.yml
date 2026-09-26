@@ -23,7 +23,7 @@ jobs:
         include:
           - os: ubuntu-latest
             python: "3.12.13"
-            timeout: 15
+            timeout: 30
           - os: windows-latest
             python: "3.12.10"
             timeout: 30
