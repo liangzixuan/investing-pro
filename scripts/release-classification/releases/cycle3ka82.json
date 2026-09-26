@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "caseNumber": 82,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "80b68b270364121ab806c9c98fb1f8a69ac2e8cd",
+  "featureRevision": "01af1b2d82164b5e2cd137cbb324359871d6f61e",
+  "featureCount": 265,
+  "closureCount": 266,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    { "path": "design-qa.md", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka82.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka82.json",
+  "presentation": {
+    "featureDescription": "Keep complete company headings visible on research entry",
+    "closureDescription": "generated routing closure for company-entry heading alignment",
+    "inventoryDescription": "company-entry region alignment, navigation assertions and verification notes",
+    "testBinding": "companyentryalignment",
+    "routingDescription": "Company entry aligns its containing region while preserving ticker focus and navigation guards",
+    "summaryDescription": "keep company names visible when entering research"
+  }
+}
