@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "caseNumber": 84,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "d0ad5d3537d012f2d96af1355dc05f015a76c7e8",
+  "featureRevision": "7b0a3eefc9ba85aebc34bacae3b20a22838043f6",
+  "featureCount": 269,
+  "closureCount": 270,
+  "featureChanges": [
+    { "path": "apps/api/src/bea-release-provider.test.ts", "status": "A" },
+    { "path": "apps/api/src/bea-release-provider.ts", "status": "A" },
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    { "path": "apps/api/src/workspace-composition-root.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-economic-calendar-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-economic-calendar-routes.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/BeaReleaseAgenda.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/BeaReleaseAgenda.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketsHome.test.tsx",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/bea-release-agenda.css",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/useBeaReleaseAgenda.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/useBeaReleaseAgenda.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/workspace/PersonalWorkspaceRoutes.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/lib/personal-economic-calendar-api.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/lib/personal-workspace-api.ts", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "packages/contracts/openapi/openapi.yaml", "status": "M" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    { "path": "packages/contracts/src/openapi.test.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-economic-calendar.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-economic-calendar.ts",
+      "status": "A"
+    },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" },
+    { "path": "specs/005-bea-release-agenda/plan.md", "status": "A" },
+    { "path": "specs/005-bea-release-agenda/spec.md", "status": "A" },
+    { "path": "specs/005-bea-release-agenda/tasks.md", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka84.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka84.json",
+  "presentation": {
+    "featureDescription": "Add the BEA thirty-day release agenda to Markets",
+    "closureDescription": "generated routing closure for the BEA release agenda",
+    "inventoryDescription": "BEA public-source adapter, authenticated agenda API and Markets view",
+    "testBinding": "beareleaseagenda",
+    "routingDescription": "An explicit public BEA schedule load presents dated releases without forecasts or persistent records",
+    "summaryDescription": "show the next thirty days of BEA releases with source attribution"
+  }
+}

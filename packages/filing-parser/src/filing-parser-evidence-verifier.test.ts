@@ -609,6 +609,10 @@ import {
   isCycle3ka83FeatureTopologyAllowed,
   isCycle3ka83RoutingClosureCommitDiffSetAllowed,
   isCycle3ka83RoutingClosureTopologyAllowed,
+  isCycle3ka84FeatureCommitDiffSetAllowed,
+  isCycle3ka84FeatureTopologyAllowed,
+  isCycle3ka84RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka84RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1756,6 +1760,10 @@ const CYCLE_3K_A82_ROUTING_CLOSURE_REVISION =
   "0cf524332797fa2ddcc1a00e766850b3c3bded6e" as const;
 const CYCLE_3K_A83_FEATURE_REVISION =
   "a180581b3b8a5680b95b9309aa3af539e4446a73" as const;
+const CYCLE_3K_A83_ROUTING_CLOSURE_REVISION =
+  "d0ad5d3537d012f2d96af1355dc05f015a76c7e8" as const;
+const CYCLE_3K_A84_FEATURE_REVISION =
+  "7b0a3eefc9ba85aebc34bacae3b20a22838043f6" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -9898,6 +9906,96 @@ const CYCLE_3K_A83_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka83.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A84_FEATURE_TRANSITION = [
+  { path: "apps/api/src/bea-release-provider.test.ts", status: "A" },
+  { path: "apps/api/src/bea-release-provider.ts", status: "A" },
+  { path: "apps/api/src/workspace-app.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-economic-calendar-routes.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/workspace-economic-calendar-routes.ts", status: "A" },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "M" },
+  {
+    path: "apps/web/src/features/markets/BeaReleaseAgenda.test.tsx",
+    status: "A",
+  },
+  { path: "apps/web/src/features/markets/BeaReleaseAgenda.tsx", status: "A" },
+  { path: "apps/web/src/features/markets/MarketsHome.test.tsx", status: "M" },
+  { path: "apps/web/src/features/markets/MarketsHome.tsx", status: "M" },
+  { path: "apps/web/src/features/markets/bea-release-agenda.css", status: "A" },
+  {
+    path: "apps/web/src/features/markets/useBeaReleaseAgenda.test.ts",
+    status: "A",
+  },
+  { path: "apps/web/src/features/markets/useBeaReleaseAgenda.ts", status: "A" },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/workspace/PersonalWorkspaceRoutes.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/lib/personal-economic-calendar-api.test.ts",
+    status: "A",
+  },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "M" },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  {
+    path: "packages/contracts/src/personal-economic-calendar.test.ts",
+    status: "A",
+  },
+  { path: "packages/contracts/src/personal-economic-calendar.ts", status: "A" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+  { path: "specs/005-bea-release-agenda/plan.md", status: "A" },
+  { path: "specs/005-bea-release-agenda/spec.md", status: "A" },
+  { path: "specs/005-bea-release-agenda/tasks.md", status: "A" },
+];
+const CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka84.json",
     status: "A",
   },
 ];
@@ -26221,6 +26319,117 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedUbuntucijobbudgetClosure = [
+      "268",
+      "268",
+      CYCLE_3K_A83_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A83_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A83_FEATURE_REVISION}`,
+      ubuntucijobbudgetFeature,
+    ] as const;
+    expect(
+      isCycle3ka83RoutingClosureTopologyAllowed(
+        ...pinnedUbuntucijobbudgetClosure,
+      ),
+    ).toBe(true);
+    const beareleaseagendaFeature = [
+      "269",
+      "269",
+      CYCLE_3K_A84_FEATURE_REVISION,
+      `${CYCLE_3K_A84_FEATURE_REVISION} ${CYCLE_3K_A83_ROUTING_CLOSURE_REVISION}`,
+      pinnedUbuntucijobbudgetClosure,
+    ] as const;
+    expect(isCycle3ka84FeatureTopologyAllowed(...beareleaseagendaFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "268"],
+      [1, "270"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A84_FEATURE_REVISION} ${CYCLE_3K_A83_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A84_FEATURE_REVISION} ${CYCLE_3K_A83_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...beareleaseagendaFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka84FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka84FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedUbuntucijobbudgetClosure: unknown[] = [
+      ...pinnedUbuntucijobbudgetClosure,
+    ];
+    tamperedPinnedUbuntucijobbudgetClosure[4] =
+      tamperedUbuntucijobbudgetFeature;
+    expect(
+      isCycle3ka84FeatureTopologyAllowed(
+        "269",
+        "269",
+        CYCLE_3K_A84_FEATURE_REVISION,
+        `${CYCLE_3K_A84_FEATURE_REVISION} ${CYCLE_3K_A83_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedUbuntucijobbudgetClosure as unknown as Parameters<
+          typeof isCycle3ka84FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const beareleaseagendaClosureRevision = "e".repeat(40);
+    const beareleaseagendaClosure = [
+      "270",
+      "270",
+      beareleaseagendaClosureRevision,
+      `${beareleaseagendaClosureRevision} ${CYCLE_3K_A84_FEATURE_REVISION}`,
+      beareleaseagendaFeature,
+    ] as const;
+    expect(
+      isCycle3ka84RoutingClosureTopologyAllowed(...beareleaseagendaClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "269"],
+      [1, "271"],
+      [2, CYCLE_3K_A84_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${beareleaseagendaClosureRevision} ${CYCLE_3K_A83_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${beareleaseagendaClosureRevision} ${CYCLE_3K_A84_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...beareleaseagendaClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka84RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka84RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedBeareleaseagendaFeature: unknown[] = [
+      ...beareleaseagendaFeature,
+    ];
+    tamperedBeareleaseagendaFeature[4] = tamperedPinnedUbuntucijobbudgetClosure;
+    expect(
+      isCycle3ka84RoutingClosureTopologyAllowed(
+        "270",
+        "270",
+        beareleaseagendaClosureRevision,
+        `${beareleaseagendaClosureRevision} ${CYCLE_3K_A84_FEATURE_REVISION}`,
+        tamperedBeareleaseagendaFeature as unknown as Parameters<
+          typeof isCycle3ka84RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -27651,6 +27860,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A83_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka84FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A84_FEATURE_TRANSITION,
+      29,
+    );
+    expectExactTransition(
+      isCycle3ka84RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -27924,6 +28143,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A82_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A83_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A83_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A84_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
