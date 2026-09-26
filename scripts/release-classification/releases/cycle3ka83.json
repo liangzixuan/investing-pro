@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "caseNumber": 83,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "0cf524332797fa2ddcc1a00e766850b3c3bded6e",
+  "featureRevision": "a180581b3b8a5680b95b9309aa3af539e4446a73",
+  "featureCount": 267,
+  "closureCount": 268,
+  "featureChanges": [
+    { "path": ".github/workflows/ci.yml", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka83.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka83.json",
+  "presentation": {
+    "featureDescription": "Allow the complete Ubuntu release gate to finish",
+    "closureDescription": "generated routing closure for Ubuntu CI job budget",
+    "inventoryDescription": "Ubuntu outer job budget and current release checkpoint",
+    "testBinding": "ubuntucijobbudget",
+    "routingDescription": "Ubuntu uses the existing finite thirty-minute budget without changing checks or test deadlines",
+    "summaryDescription": "give the complete Ubuntu release job adequate time"
+  }
+}
