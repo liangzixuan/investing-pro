@@ -5,6 +5,10 @@
 **Acceptance:** [final independent review](../../../tmp/markets-home/final-acceptance-independent-review.json)
 and [15-requirement matrix](../../../tmp/markets-home/m1-final-acceptance-matrix.json).
 [Workspace CURRENT.md](../../../CURRENT.md) owns subsequent runtime/progress status.
+The later [Markets watchlist specification](../006-markets-watchlist/spec.md)
+supersedes automatic entry loading in US1 and FR-005 with explicit loading for
+both default and watchlist cohorts. This document retains the original accepted
+M1 behavior and evidence.
 **Input:** Personal Investing.com-style platform, existing subscriptions/free sources;
 first useful market board and connected company research. [Roadmap](../../docs/PRODUCT_ROADMAP.md)
 

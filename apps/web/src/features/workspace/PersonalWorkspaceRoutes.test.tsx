@@ -70,6 +70,8 @@ describe("persistent personal workspace route bridge", () => {
       catalogSnapshotSha256: "sha256:" + "a".repeat(64),
       sessionKey: 5,
       providerStatus: null,
+      watchlist: { status: "unavailable", members: [] },
+      isWatchlistCurrent: () => false,
       isCurrent: () => true,
       isActive: () => false,
       onActivityStart: () => () => true,

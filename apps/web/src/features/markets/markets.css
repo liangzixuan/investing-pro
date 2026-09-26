@@ -85,6 +85,105 @@
   font-size: 14px;
   margin: 0 0 16px;
 }
+.markets-home .markets-picker {
+  min-width: 0;
+  margin: 0 0 20px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--markets-rule);
+  background: #f8fafc;
+}
+.markets-home .markets-picker legend {
+  padding: 0 6px;
+  font-weight: 650;
+}
+.markets-home .markets-board-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.markets-home .markets-board-modes button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--markets-rule);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--markets-ink);
+}
+.markets-home .markets-board-modes button[aria-pressed="true"] {
+  color: var(--markets-action);
+  background: #fff5ec;
+  border-color: var(--markets-action);
+  font-weight: 650;
+}
+.markets-home .markets-picker p {
+  margin: 10px 0 0;
+  color: var(--markets-muted);
+}
+.markets-home .markets-picker-count {
+  margin: 12px 0 8px;
+  font-weight: 600;
+}
+.markets-home .markets-picker-members {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.markets-home .markets-picker-members label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 54px;
+  height: 100%;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid var(--markets-rule);
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+.markets-home .markets-picker-members label:has(input:checked) {
+  border-color: var(--markets-action);
+  background: #fff5ec;
+}
+.markets-home .markets-picker-members input {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--markets-action);
+}
+.markets-home .markets-picker-members input:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 3px;
+}
+.markets-home .markets-picker-members input:disabled + span {
+  color: var(--markets-muted);
+}
+.markets-home .markets-picker-name,
+.markets-home .markets-picker-members small {
+  display: block;
+  font-size: 14px;
+}
+.markets-home .markets-picker-venue,
+.markets-home .markets-picker-name,
+.markets-home .markets-picker-members small {
+  color: var(--markets-muted);
+}
+.markets-home .markets-picker-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 10px;
+}
+.markets-home .markets-picker-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #1d4ed8;
+  text-decoration: underline;
+}
 .markets-home .markets-grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);

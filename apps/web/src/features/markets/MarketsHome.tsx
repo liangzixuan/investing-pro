@@ -18,12 +18,18 @@ import { PriceHistoryChart } from "../research/PriceHistoryChart";
 import type { OwnerSessionActivityStart } from "../research/owner-session-lifecycle";
 import {
   MARKET_BOARD_SEEDS,
+  marketBoardCohortKey,
+  marketBoardIdentityKey,
+  type MarketBoardDefinition,
   type MarketBoardEntry,
+  type MarketBoardMember,
   type MarketBoardSnapshot,
+  type MarketBoardWatchlist,
 } from "./market-board-loader";
 import { useMarketsSnapshot } from "./useMarketsSnapshot";
 import { useBeaReleaseAgenda } from "./useBeaReleaseAgenda";
 import { BeaReleaseAgenda } from "./BeaReleaseAgenda";
+import { MarketBoardPicker } from "./MarketBoardPicker";
 import "./markets.css";
 
 export interface MarketsHomeProps {
@@ -34,6 +40,10 @@ export interface MarketsHomeProps {
   readonly providerStatus: PersonalMarketDataStatusDto | null;
   readonly isCurrent: () => boolean;
   readonly isActive: () => boolean;
+  readonly watchlist: MarketBoardWatchlist;
+  readonly isWatchlistCurrent: (
+    expectedMembers: readonly MarketBoardMember[],
+  ) => boolean;
   readonly onActivityStart: OwnerSessionActivityStart;
   readonly onSessionUnavailable: () => void;
   readonly onOpenCompany: (
@@ -56,6 +66,7 @@ export function MarketsHome(props: MarketsHomeProps) {
     listingId: string;
     sessionKey: number;
     catalogSnapshotSha256: string | null;
+    isCurrent: () => boolean;
   } | null>(null);
   useEffect(() => {
     if (chartFocus === null) return;
@@ -64,6 +75,9 @@ export function MarketsHome(props: MarketsHomeProps) {
       props.active &&
       props.enabled &&
       props.isCurrent() &&
+      props.isActive() &&
+      chartFocus.isCurrent() &&
+      data.isSnapshotCurrent() &&
       chartFocus.sessionKey === props.sessionKey &&
       chartFocus.catalogSnapshotSha256 === props.catalogSnapshotSha256 &&
       chartFocus.listingId === data.selectedListingId
@@ -90,6 +104,7 @@ export function MarketsHome(props: MarketsHomeProps) {
               listingId,
               sessionKey: props.sessionKey,
               catalogSnapshotSha256: props.catalogSnapshotSha256,
+              isCurrent: data.isSnapshotCurrent,
             });
         }}
       />
@@ -98,6 +113,9 @@ export function MarketsHome(props: MarketsHomeProps) {
   );
 }
 export interface MarketsBoardViewProps extends MarketsHomeProps {
+  readonly draft: MarketBoardDefinition;
+  readonly canLoad: boolean;
+  readonly isSnapshotCurrent: () => boolean;
   readonly snapshot: MarketBoardSnapshot | null;
   readonly selectedListingId: string | null;
   readonly busy: boolean;
@@ -107,7 +125,9 @@ export interface MarketsBoardViewProps extends MarketsHomeProps {
   readonly order: BoardOrder;
   readonly onOrder: (order: BoardOrder) => void;
   readonly onSelect: (listingId: string) => void;
-  readonly onRefresh: () => void;
+  readonly onLoad: () => void;
+  readonly onModeChange: (kind: "default" | "watchlist") => void;
+  readonly onToggleWatchlist: (listingId: string, selected: boolean) => void;
 }
 export function projectMarketBoard(
   snapshot: MarketBoardSnapshot | null,
@@ -143,10 +163,20 @@ export function projectMarketBoard(
   }
 }
 export function MarketsBoardView(props: MarketsBoardViewProps) {
-  const projected = projectMarketBoard(props.snapshot);
+  const snapshot = matchingSnapshot(props);
+  const projected = projectMarketBoard(snapshot);
+  const cohortName =
+    props.draft.kind === "default"
+      ? "Default suggestions"
+      : "My Watchlist selection";
+  const pendingMembers =
+    props.draft.kind === "watchlist" ? props.draft.members : [];
   const rows =
-    props.snapshot?.rows ??
-    MARKET_BOARD_SEEDS.map((symbol): MarketBoardEntry => ({
+    snapshot?.rows ??
+    (props.draft.kind === "default"
+      ? MARKET_BOARD_SEEDS
+      : pendingMembers.map((member) => member.symbol)
+    ).map((symbol): MarketBoardEntry => ({
       symbol,
       identity: null,
       overview: null,
@@ -186,23 +216,36 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
       <div className="markets-heading">
         <div>
           <h1 id="markets-title">Markets</h1>
-          <p>AAPL, MSFT and WMT · U.S. common stocks</p>
+          <p>{cohortName} · U.S. common stocks</p>
         </div>
         <div className="markets-refresh">
           <span className="markets-eod-badge">End-of-day snapshot · USD</span>
           <button
             type="button"
             className="markets-button"
-            onClick={props.onRefresh}
-            disabled={!props.enabled || !configured || props.busy}
+            onClick={props.onLoad}
+            disabled={
+              !props.enabled || !configured || props.busy || !props.canLoad
+            }
           >
-            {props.busy ? "Loading board…" : "Refresh board"}
+            {props.busy
+              ? "Loading board…"
+              : snapshot === null
+                ? "Load board"
+                : "Refresh board"}
           </button>
         </div>
       </div>
+      <MarketBoardPicker
+        draft={props.draft}
+        watchlist={props.watchlist}
+        disabled={!props.enabled || !configured || props.busy}
+        onModeChange={props.onModeChange}
+        onToggleWatchlist={props.onToggleWatchlist}
+      />
       {!props.enabled ? (
         <p className="markets-message" role="status">
-          The market board will load when your local workspace is ready.
+          Load the market board after your local workspace is ready.
         </p>
       ) : !configured ? (
         <p className="markets-message" role="status">
@@ -219,19 +262,18 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           role={props.error === "refresh_deferred" ? "status" : "alert"}
         >
           {marketBoardErrorMessage(props.error)}
-          {props.snapshot !== null
-            ? " The previous dated snapshot is kept below."
-            : ""}
+          {snapshot !== null ? " The current board result is shown below." : ""}
         </p>
       ) : null}
-      {props.busy && props.snapshot !== null ? (
+      {props.busy && snapshot !== null ? (
         <p className="markets-message" role="status">
           Previous snapshot shown while the refresh is in progress.
         </p>
       ) : null}
       {props.nextRefreshAt !== null ? (
         <p className="markets-refresh-note">
-          Refresh is limited to once every 15 minutes. Next eligible refresh:{" "}
+          Board loads share a 15-minute interval and a limit of four starts per
+          hour. Next eligible load:{" "}
           <time dateTime={new Date(props.nextRefreshAt).toISOString()}>
             {new Date(props.nextRefreshAt).toLocaleTimeString("en-US", {
               hour: "numeric",
@@ -245,14 +287,18 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
         <section className="markets-card" aria-labelledby="markets-board-title">
           <header className="markets-card-heading">
             <div>
-              <h2 id="markets-board-title">Your market board</h2>
+              <h2 id="markets-board-title">{cohortName}</h2>
               <p>
                 {available} of {rows.length} companies with EOD observations
               </p>
             </div>
             <span>{rows.length} companies</span>
           </header>
-          <div className="markets-order" role="group" aria-label="Board order">
+          <div
+            className="markets-order"
+            role="group"
+            aria-label={`${cohortName} order`}
+          >
             {(
               [
                 ["board", "Board order"],
@@ -265,7 +311,9 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                 key={value}
                 aria-pressed={props.order === value}
                 disabled={value !== "board" && ranking?.status !== "available"}
-                onClick={() => props.onOrder(value)}
+                onClick={() => {
+                  if (currentBoardAction(props, snapshot)) props.onOrder(value);
+                }}
               >
                 {label}
               </button>
@@ -281,8 +329,10 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           <div className="markets-table-scroll">
             <table className="markets-table">
               <caption>
-                AAPL, MSFT and WMT board. Raw EOD closes in USD; changes use
-                adjusted closes.
+                {cohortName}:{" "}
+                {rows.map((row) => row.symbol).join(", ") ||
+                  "no companies selected"}
+                . Raw EOD closes in USD; changes use adjusted closes.
               </caption>
               <thead>
                 <tr>
@@ -297,6 +347,8 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
               </thead>
               <tbody>
                 {ordered.map((entry) => {
+                  const originalIndex = rows.indexOf(entry);
+                  const pendingMember = pendingMembers[originalIndex];
                   const value = projected?.rows.find(
                     (row) =>
                       row.identity.listingId === entry.identity?.listingId,
@@ -306,7 +358,11 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                     entry.identity.listingId === props.selectedListingId;
                   return (
                     <tr
-                      key={entry.symbol}
+                      key={
+                        entry.identity?.listingId ??
+                        pendingMember?.listingId ??
+                        entry.symbol
+                      }
                       className={rowSelected ? "markets-row-selected" : ""}
                     >
                       <th scope="row">
@@ -315,9 +371,10 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                             <strong>{entry.symbol}</strong>
                             <span className="markets-company-name">
                               {entry.identity?.issuerName ??
+                                pendingMember?.issuerName ??
                                 (props.busy
                                   ? "Checking catalog identity"
-                                  : props.snapshot === null
+                                  : snapshot === null
                                     ? "Catalog identity not loaded"
                                     : "Catalog identity unavailable")}
                             </span>
@@ -333,9 +390,10 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                                 type="button"
                                 aria-label={`View chart for ${entry.symbol}`}
                                 aria-pressed={rowSelected}
-                                onClick={() =>
-                                  props.onSelect(entry.identity!.listingId)
-                                }
+                                onClick={() => {
+                                  if (currentBoardAction(props, snapshot))
+                                    props.onSelect(entry.identity!.listingId);
+                                }}
                               >
                                 Chart
                               </button>
@@ -344,6 +402,7 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                                 onClick={(event) =>
                                   openCompany(
                                     props,
+                                    snapshot,
                                     entry.identity!,
                                     entry.overview,
                                     event,
@@ -371,7 +430,7 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                               ? marketBoardErrorMessage(entry.error)
                               : props.busy
                                 ? "Loading…"
-                                : props.snapshot !== null
+                                : snapshot !== null
                                   ? "No EOD observations"
                                   : "Not loaded"}
                           </span>
@@ -395,8 +454,9 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
             </table>
           </div>
           <p className="markets-footnote">
-            Changes compare two dated observations. This board does not
-            represent the whole market.
+            Changes compare two dated observations within{" "}
+            {cohortName.toLowerCase()}. This board does not represent the whole
+            market.
           </p>
         </section>
         <section
@@ -458,6 +518,7 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
                 onClick={(event) =>
                   openCompany(
                     props,
+                    snapshot,
                     selected.identity!,
                     selected.overview,
                     event,
@@ -480,14 +541,12 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           one trading session.
         </p>
         <p>
-          {props.snapshot === null ? (
+          {snapshot === null ? (
             "No snapshot is loaded."
           ) : (
             <>
               Snapshot loaded{" "}
-              <time dateTime={props.snapshot.loadedAt}>
-                {props.snapshot.loadedAt}
-              </time>
+              <time dateTime={snapshot.loadedAt}>{snapshot.loadedAt}</time>
               .{" "}
             </>
           )}
@@ -495,16 +554,17 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           an EOD value live. Missing values are unavailable, never zero.
         </p>
         <p>
-          This board suggests AAPL, MSFT and WMT, then resolves their current
-          identities in the local admitted catalog. It does not change My
+          Default suggestions resolve AAPL, MSFT and WMT in the local admitted
+          catalog. My Watchlist selections use their exact saved listing
+          identities. Both load only when requested and do not change My
           Watchlist. Reference quotes are separate and can be loaded in company
           research.
         </p>
         <p>
           One sequential history request per resolved company, at most six
-          companies per board. No background refresh. This board's limit does
-          not include requests from other research tools sharing your provider
-          account.
+          companies per board, at most 24 EOD requests per rolling hour. No
+          background refresh. This board's limit does not include requests from
+          other research tools sharing your provider account.
         </p>
       </details>
     </section>
@@ -555,6 +615,10 @@ export function marketBoardErrorMessage(code: string) {
       return "No EOD coverage for this company.";
     case "not_in_catalog":
       return "No unique current catalog listing.";
+    case "unsupported_listing":
+      return "This listing is not a supported U.S. common stock.";
+    case "identity_mismatch":
+      return "The saved identity no longer matches the current catalog listing.";
     case "rate_limited":
       return "The provider request limit was reached. Try a later refresh.";
     case "not_requested":
@@ -568,9 +632,44 @@ export function marketBoardErrorMessage(code: string) {
   }
 }
 
+function matchingSnapshot(
+  props: MarketsBoardViewProps,
+): MarketBoardSnapshot | null {
+  const snapshot = props.snapshot;
+  if (
+    snapshot === null ||
+    props.catalogSnapshotSha256 === null ||
+    snapshot.snapshotSha256 !== props.catalogSnapshotSha256 ||
+    snapshot.cohortKey !==
+      marketBoardCohortKey(props.draft, props.catalogSnapshotSha256) ||
+    snapshot.cohortKey !==
+      marketBoardCohortKey(snapshot.definition, props.catalogSnapshotSha256) ||
+    (snapshot.definition.kind === "watchlist" &&
+      !props.isWatchlistCurrent(snapshot.definition.members))
+  )
+    return null;
+  return snapshot;
+}
+
+function currentBoardAction(
+  props: MarketsBoardViewProps,
+  snapshot: MarketBoardSnapshot | null,
+) {
+  return (
+    snapshot !== null &&
+    props.active &&
+    props.enabled &&
+    props.isCurrent() &&
+    props.isActive() &&
+    props.isSnapshotCurrent() &&
+    matchingSnapshot(props) === snapshot
+  );
+}
+
 function openCompany(
-  props: MarketsHomeProps,
-  identity: PersonalSecurityMasterSearchResultDto,
+  props: MarketsBoardViewProps,
+  snapshot: MarketBoardSnapshot | null,
+  identity: PersonalSecurityMasterScreenRowDto,
   overview: PersonalMarketOverviewDto | null,
   event: MouseEvent<HTMLAnchorElement>,
 ) {
@@ -583,6 +682,21 @@ function openCompany(
   )
     return;
   event.preventDefault();
-  if (props.active && props.enabled && props.isCurrent())
-    props.onOpenCompany(identity, event.currentTarget, overview);
+  if (!currentBoardAction(props, snapshot)) return;
+  const entry = snapshot?.rows.find(
+    (row) =>
+      row.identity !== null &&
+      marketBoardIdentityKey(row.identity) === marketBoardIdentityKey(identity),
+  );
+  if (entry === undefined || entry.overview !== overview) return;
+  const verifiedHistory = projectMarketBoard(snapshot)?.rows.some(
+    (row) =>
+      row.identity.listingId === identity.listingId &&
+      row.status === "available",
+  );
+  props.onOpenCompany(
+    identity,
+    event.currentTarget,
+    verifiedHistory ? overview : null,
+  );
 }

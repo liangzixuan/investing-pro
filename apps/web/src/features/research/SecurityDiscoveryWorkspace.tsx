@@ -2544,6 +2544,42 @@ export function SecurityDiscoveryWorkspace({
     catalogSnapshotSha256: workspace?.snapshot.snapshotSha256 ?? null,
     sessionKey: renderedWorkspaceEpoch,
     providerStatus: marketDataStatus,
+    watchlist: {
+      status:
+        workspace === null || !workspace.watchlistAvailable
+          ? "unavailable"
+          : reconciling
+            ? "reconciling"
+            : !hasCurrentWatchlistSnapshot(workspace)
+              ? "stale"
+              : "available",
+      members: Object.freeze(
+        (workspace?.watchlist.memberships ?? []).map(portfolioIdentity),
+      ),
+    },
+    isWatchlistCurrent: (expectedMembers) => {
+      const currentWorkspace = watchlistView.current.workspace;
+      if (
+        !routeIsCurrent() ||
+        currentWorkspace === null ||
+        !currentWorkspace.watchlistAvailable ||
+        watchlistView.current.reconciling ||
+        !hasCurrentWatchlistSnapshot(currentWorkspace) ||
+        new Set(expectedMembers.map((member) => member.listingId)).size !==
+          expectedMembers.length
+      )
+        return false;
+      return expectedMembers.every((expected) => {
+        const matches = currentWorkspace.watchlist.memberships.filter(
+          (member) => member.listingId === expected.listingId,
+        );
+        return (
+          matches.length === 1 &&
+          companyResearchIdentityKey(matches[0]!) ===
+            companyResearchIdentityKey(expected)
+        );
+      });
+    },
     isCurrent: routeIsCurrent,
     isActive: () =>
       routeIsCurrent() &&

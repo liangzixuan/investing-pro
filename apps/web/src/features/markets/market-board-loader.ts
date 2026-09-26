@@ -1,11 +1,14 @@
-import type {
-  PersonalMarketOverviewDto,
-  PersonalSecurityMasterSearchResponseDto,
-  PersonalSecurityMasterSearchResultDto,
+import {
+  isPersonalPortfolioIdentity,
+  type PersonalMarketOverviewDto,
+  type PersonalPortfolioIdentity,
+  type PersonalSecurityMasterScreenRowDto,
+  type PersonalSecurityMasterSearchResponseDto,
 } from "@research-cockpit/contracts";
 
 import {
   fetchPersonalMarketOverview,
+  fetchPersonalSecurityMasterListing,
   PersonalWorkspaceApiError,
   searchPersonalSecurities,
   type PersonalWorkspaceApiErrorCode,
@@ -21,22 +24,62 @@ const HOUR = 60 * 60 * 1_000;
 const IDENTITY_FIELDS = [
   "country",
   "exchangeMic",
+  "instrumentType",
+  "issuerId",
+  "issuerName",
+  "listingId",
+  "securityId",
+  "securityName",
+  "shareClassId",
+  "shareClassName",
+  "symbol",
+] as const;
+const OVERVIEW_IDENTITY_FIELDS = [
+  "country",
+  "exchangeMic",
   "issuerName",
   "listingId",
   "securityName",
   "symbol",
 ] as const;
 
-export interface MarketBoardEntry {
+export type MarketBoardMember = PersonalPortfolioIdentity;
+export type MarketBoardDefinition =
+  | Readonly<{ kind: "default" }>
+  | Readonly<{ kind: "watchlist"; members: readonly MarketBoardMember[] }>;
+export type MarketBoardDraft = Readonly<{
+  mode: "default" | "watchlist";
+  watchlistMembers: readonly MarketBoardMember[];
+}>;
+export type MarketBoardWatchlist = Readonly<{
+  status: "available" | "unavailable" | "stale" | "reconciling";
+  members: readonly MarketBoardMember[];
+}>;
+export type MarketBoardError =
+  | PersonalWorkspaceApiErrorCode
+  | "not_in_catalog"
+  | "unsupported_listing"
+  | "identity_mismatch"
+  | "not_requested";
+
+export interface MarketBoardAdmissionRow {
   readonly symbol: string;
-  readonly identity: PersonalSecurityMasterSearchResultDto | null;
-  readonly overview: PersonalMarketOverviewDto | null;
-  readonly error:
-    PersonalWorkspaceApiErrorCode | "not_in_catalog" | "not_requested" | null;
+  readonly identity: PersonalSecurityMasterScreenRowDto | null;
+  readonly error: MarketBoardError | null;
 }
 
-export interface MarketBoardSnapshot {
+export interface MarketBoardAdmission {
+  readonly definition: MarketBoardDefinition;
+  readonly cohortKey: string;
   readonly snapshotSha256: string;
+  readonly rows: readonly MarketBoardAdmissionRow[];
+}
+
+export interface MarketBoardEntry extends MarketBoardAdmissionRow {
+  readonly overview: PersonalMarketOverviewDto | null;
+}
+
+export interface MarketBoardSnapshot extends MarketBoardAdmission {
   readonly loadedAt: string;
   readonly rows: readonly MarketBoardEntry[];
   readonly stoppedBy: PersonalWorkspaceApiErrorCode | null;
@@ -53,75 +96,189 @@ export interface MarketBoardDependencies {
       "snapshotSha256"
     >;
   }>;
+  readonly listing: typeof fetchPersonalSecurityMasterListing;
   readonly overview: typeof fetchPersonalMarketOverview;
   readonly now: () => Date;
 }
 
 const defaults: MarketBoardDependencies = {
   search: (symbol, signal) => searchPersonalSecurities(symbol, signal, 25),
+  listing: fetchPersonalSecurityMasterListing,
   overview: fetchPersonalMarketOverview,
   now: () => new Date(),
 };
 
-/** One bounded snapshot; callers own active-session lifetime and explicit refresh. */
-export async function loadMarketBoard(
+export function marketBoardIdentityKey(member: MarketBoardMember): string {
+  return JSON.stringify(IDENTITY_FIELDS.map((field) => member[field]));
+}
+
+export function marketBoardCohortKey(
+  definition: MarketBoardDefinition,
+  snapshotSha256: string,
+): string {
+  return JSON.stringify([
+    snapshotSha256,
+    definition.kind,
+    definition.kind === "default"
+      ? MARKET_BOARD_SEEDS
+      : definition.members.map(marketBoardIdentityKey),
+  ]);
+}
+
+function copyMember(member: MarketBoardMember): MarketBoardMember {
+  return Object.freeze({
+    country: member.country,
+    exchangeMic: member.exchangeMic,
+    instrumentType: member.instrumentType,
+    issuerId: member.issuerId,
+    issuerName: member.issuerName,
+    listingId: member.listingId,
+    securityId: member.securityId,
+    securityName: member.securityName,
+    shareClassId: member.shareClassId,
+    shareClassName: member.shareClassName,
+    symbol: member.symbol,
+  });
+}
+
+function copyListing(
+  row: PersonalSecurityMasterScreenRowDto,
+): PersonalSecurityMasterScreenRowDto {
+  return Object.freeze({ ...copyMember(row), cik: row.cik });
+}
+
+function copyDefinition(
+  definition: MarketBoardDefinition,
+): MarketBoardDefinition {
+  if (definition.kind === "default") return Object.freeze({ kind: "default" });
+  if (
+    definition.kind !== "watchlist" ||
+    !Array.isArray(definition.members) ||
+    definition.members.length > 6 ||
+    !definition.members.every(isPersonalPortfolioIdentity) ||
+    new Set(definition.members.map((member) => member.listingId)).size !==
+      definition.members.length ||
+    new Set(
+      definition.members.map(
+        (member) => `${member.exchangeMic}:${member.symbol}`,
+      ),
+    ).size !== definition.members.length
+  )
+    throw new PersonalWorkspaceApiError("invalid_request");
+  return Object.freeze({
+    kind: "watchlist",
+    members: Object.freeze(definition.members.map(copyMember)),
+  });
+}
+
+/** Complete local catalog admission before the caller charges any provider slot. */
+export async function admitMarketBoard(
+  requestedDefinition: MarketBoardDefinition,
   snapshotSha256: string,
   signal: AbortSignal,
   dependencies: MarketBoardDependencies = defaults,
-  seeds: readonly string[] = MARKET_BOARD_SEEDS,
-): Promise<MarketBoardSnapshot> {
-  if (
-    !/^sha256:[a-f0-9]{64}$/u.test(snapshotSha256) ||
-    seeds.length < 1 ||
-    seeds.length > 6 ||
-    new Set(seeds).size !== seeds.length ||
-    seeds.some((symbol) => !/^[A-Z0-9][A-Z0-9.-]{0,14}$/u.test(symbol))
-  ) {
+): Promise<MarketBoardAdmission> {
+  if (!/^sha256:[a-f0-9]{64}$/u.test(snapshotSha256))
     throw new PersonalWorkspaceApiError("invalid_request");
-  }
-  const rows: MarketBoardEntry[] = [];
-  const seen = new Set<string>();
-  let stoppedBy: PersonalWorkspaceApiErrorCode | null = null;
-  for (const symbol of seeds) {
+  const definition = copyDefinition(requestedDefinition);
+  const rows: MarketBoardAdmissionRow[] = [];
+  const members =
+    definition.kind === "default" ? MARKET_BOARD_SEEDS : definition.members;
+  for (const member of members) {
     signal.throwIfAborted();
-    if (stoppedBy !== null) {
+    const symbol = typeof member === "string" ? member : member.symbol;
+    try {
+      let identity: PersonalSecurityMasterScreenRowDto | null;
+      let error: MarketBoardError | null = null;
+      if (typeof member === "string") {
+        const found = await dependencies.search(symbol, signal);
+        signal.throwIfAborted();
+        if (found.snapshot.snapshotSha256 !== snapshotSha256)
+          throw new PersonalWorkspaceApiError("conflict");
+        const exact = found.results.filter((row) => row.symbol === symbol);
+        const common = exact.filter(
+          (row) =>
+            row.country === "US" && row.instrumentType === "common_stock",
+        );
+        identity = common.length === 1 ? (common[0] ?? null) : null;
+        if (identity === null)
+          error = exact.length === 1 ? "unsupported_listing" : "not_in_catalog";
+      } else {
+        const found = await dependencies.listing(member.listingId, signal);
+        signal.throwIfAborted();
+        if (found.snapshot.snapshotSha256 !== snapshotSha256)
+          throw new PersonalWorkspaceApiError("conflict");
+        identity = found.listing;
+        if (identity === null) error = "not_in_catalog";
+        else if (
+          IDENTITY_FIELDS.some(
+            (field) => found.listing?.[field] !== member[field],
+          )
+        )
+          error = "identity_mismatch";
+        else if (
+          identity.country !== "US" ||
+          identity.instrumentType !== "common_stock"
+        )
+          error = "unsupported_listing";
+      }
       rows.push(
         Object.freeze({
           symbol,
-          identity: null,
-          overview: null,
-          error: "not_requested",
+          identity:
+            identity !== null && error === null ? copyListing(identity) : null,
+          error,
         }),
+      );
+    } catch (error) {
+      signal.throwIfAborted();
+      const code =
+        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable";
+      if (code === "session_unavailable" || code === "conflict") throw error;
+      rows.push(Object.freeze({ symbol, identity: null, error: code }));
+    }
+  }
+  signal.throwIfAborted();
+  const identities = rows.flatMap((row) =>
+    row.identity === null ? [] : [row.identity],
+  );
+  if (
+    new Set(identities.map((row) => row.listingId)).size !==
+      identities.length ||
+    new Set(identities.map((row) => `${row.exchangeMic}:${row.symbol}`))
+      .size !== identities.length
+  )
+    throw new PersonalWorkspaceApiError("invalid_response");
+  return Object.freeze({
+    definition,
+    cohortKey: marketBoardCohortKey(definition, snapshotSha256),
+    snapshotSha256,
+    rows: Object.freeze(rows),
+  });
+}
+
+/** One EOD-only loop. Callers check authority and charge immediately before entry. */
+export async function loadMarketBoard(
+  admission: MarketBoardAdmission,
+  signal: AbortSignal,
+  dependencies: MarketBoardDependencies = defaults,
+): Promise<MarketBoardSnapshot> {
+  const rows: MarketBoardEntry[] = [];
+  let stoppedBy: PersonalWorkspaceApiErrorCode | null = null;
+  for (const admitted of admission.rows) {
+    signal.throwIfAborted();
+    const { symbol, identity } = admitted;
+    if (identity === null || admitted.error !== null) {
+      rows.push(Object.freeze({ ...admitted, overview: null }));
+      continue;
+    }
+    if (stoppedBy !== null) {
+      rows.push(
+        Object.freeze({ ...admitted, overview: null, error: "not_requested" }),
       );
       continue;
     }
-    let identity: PersonalSecurityMasterSearchResultDto | null = null;
     try {
-      const found = await dependencies.search(symbol, signal);
-      signal.throwIfAborted();
-      if (found.snapshot.snapshotSha256 !== snapshotSha256)
-        throw new PersonalWorkspaceApiError("conflict");
-      const exact = found.results.filter(
-        (candidate) =>
-          candidate.symbol === symbol &&
-          candidate.country === "US" &&
-          candidate.instrumentType === "common_stock",
-      );
-      if (exact.length !== 1 || exact[0] === undefined) {
-        rows.push(
-          Object.freeze({
-            symbol,
-            identity: null,
-            overview: null,
-            error: "not_in_catalog",
-          }),
-        );
-        continue;
-      }
-      identity = Object.freeze({ ...exact[0] });
-      if (seen.has(identity.listingId))
-        throw new PersonalWorkspaceApiError("invalid_response");
-      seen.add(identity.listingId);
       const overview = await dependencies.overview(
         {
           listingId: identity.listingId,
@@ -135,8 +292,8 @@ export async function loadMarketBoard(
       if (
         overview.quote.status !== "not_requested" ||
         overview.window.range !== "1m" ||
-        IDENTITY_FIELDS.some(
-          (key) => overview.security[key] !== identity?.[key],
+        OVERVIEW_IDENTITY_FIELDS.some(
+          (key) => overview.security[key] !== identity[key],
         )
       )
         throw new PersonalWorkspaceApiError("invalid_response");
@@ -174,7 +331,9 @@ export async function loadMarketBoard(
   }
   signal.throwIfAborted();
   return Object.freeze({
-    snapshotSha256,
+    definition: admission.definition,
+    cohortKey: admission.cohortKey,
+    snapshotSha256: admission.snapshotSha256,
     loadedAt: dependencies.now().toISOString(),
     rows: Object.freeze(rows),
     stoppedBy,

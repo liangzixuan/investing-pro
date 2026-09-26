@@ -5,64 +5,77 @@ Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a84 BEA release agenda
+## Active outcome: a85 Markets for My Watchlist
 
-Add an explicit 30-day economic-release agenda to Markets using BEA's public
-schedule. This is a bounded M3 slice that works independently of company valuation
-access. The [specification](../specs/005-bea-release-agenda/spec.md),
-[plan](../specs/005-bea-release-agenda/plan.md) and
-[tasks](../specs/005-bea-release-agenda/tasks.md) define implementation and acceptance.
-Release verification is pending; implementation is not delivery.
+Let the owner choose up to six admitted U.S. common stocks from My Watchlist,
+load their dated EOD prices, inspect charts and scoped movers, then open company
+research and return to the same cohort. Annual financials are not a prerequisite.
+The [specification](../specs/006-markets-watchlist/spec.md),
+[plan](../specs/006-markets-watchlist/plan.md) and
+[tasks](../specs/006-markets-watchlist/tasks.md) define behavior and acceptance.
+Implementation, focused checks and the production web build are complete.
+Nine synthetic Brave groups cover selection, loading, failures, navigation,
+notes, membership changes, session loss and narrow layouts. Final release gates
+and limited live verification are pending; the accepted a84 app remains running.
 
-The fixed BEA adapter makes one credential-free request per explicit load, with
-a ten-second deadline and 256 KiB upstream body limit. It validates timestamps,
-deduplicates identical series/instant pairs and returns a dated, bounded window.
-The API authenticates through existing local-access/request controls. The web
-agenda shows Eastern times, attribution and the loaded window, preserves accepted
-results after a failed refresh and on Research/Back, and rejects retired requests.
-There is no new dependency or persistence. Forecasts, actual values, earnings,
-non-BEA events and individual release links are outside the source's coverage.
+Both default suggestions and watchlist selections load explicitly. This replaces
+M1's automatic entry acquisition. One mode/selection draft retains checkbox
+choices across modes; one accepted snapshot carries exact cohort identity and
+observation dates. The picker does not save or reorder My Watchlist.
 
-The retained public source contains 30 series plus one update-metadata field.
-Offline admission produces six events in the September 26–October 26 window;
-this is evidence for that retrieval, not a guarantee of future feed availability.
-`tmp/bea-release-agenda/` preserves source bytes, failed attempts, focused checks
-and independent reviews. Root owns contracts/specs/guard/release coordination;
-Spec owns the provider/route; Finance owns presentation/lifecycle; Performance
-reviews independently. Concrete file ownership is recorded in workspace CURRENT.
+Local catalog admission precedes the single EOD loop. Saved members use the
+exact-listing client and all eleven identity fields, with no ticker substitution.
+A shared fifteen-minute/four-start rolling-hour budget is charged immediately
+before the first EOD request; wholly inadmissible selections consume no slot.
+At six companies, this board permits at most 24 EOD GETs per rolling hour. Other
+research tools share the provider account. No entitlement claim follows from
+that bound. No new API, storage schema, dependency or provider operation is needed.
 
-The prior valuation diagnosis is closed without usable daily fundamentals.
-Its admitted provider request returned HTTP 400 before body parsing. Official
-documentation comparison found no demonstrated request-shape defect. This does
-not establish denied entitlement or the cause of the earlier 502. The operation
-budget is consumed: do not replay either helper or repeat unchanged probing.
-Evidence and limits are in `tmp/valuation-diagnosis-20260926/`.
+Keep a same-cohort accepted snapshot after a wholly failed refresh, including
+row-level failures. A usable partial result replaces it as a whole. A changed
+draft must not display old prices under its new labels. Preserve synchronous
+session/view/selected-member guards, note drafts, matching company handoff and
+independent BEA agenda state. Notes, saved versions and unrelated membership
+edits do not invalidate unchanged selected identities.
 
-## Accepted runtime and parked work
+Spec owns loader/admission/tests; Performance owns the hook/lifetime/tests;
+Finance owns picker/presentation/CSS/tests; root owns the identity-only workspace
+bridge, integration, specifications and release coordination. Exact ownership and
+later evidence are in CURRENT and `tmp/markets-watchlist/`. Use synthetic records
+for mutation QA and one existing admitted cohort for bounded live verification.
+Do not create owner records to obtain a populated test result.
 
-Release `d0ad5d3537d012f2d96af1355dc05f015a76c7e8`, feature
-`a180581b3b8a5680b95b9309aa3af539e4446a73`, is accepted, pushed and running with
-build `ctwpL7Jmcwdx9J_OSztkI`. Its
-[final independent review](../../tmp/ubuntu-ci-budget/final-acceptance-independent-review.json)
-records 9,254 native passes, nine existing skips, 25 typechecks, 24 builds,
-370 healthy observations, six successful required hosted jobs, six carried
-synthetic Brave groups and five limited live groups.
+## Accepted runtime and preserved work
 
-The light Market Atlas layout and company-entry correction preserve ticker focus,
-Back/source navigation, drafts and loaded data. The Ubuntu job's outer budget is
-30 minutes, matching Windows; all gate commands and operation deadlines remain
-unchanged. Both failed a82 Ubuntu attempts remain preserved. All a83 and older
-hosted observers are terminal and must not run again.
+The BEA agenda release `9c3dee7bacdbb6799925e5b4d04e2675ade6be48`, feature
+`7b0a3eefc9ba85aebc34bacae3b20a22838043f6`, is accepted, normally pushed and
+running with build `tfssNu3LdvQ1Mr2L76IDz`. Its
+[final independent review](../../tmp/bea-release-agenda-v2/final-acceptance-independent-review.json)
+records 9,360 native passes, nine existing skips, 25 typechecks, 24 builds,
+440 healthy samples, six successful required hosted jobs, seven carried
+synthetic Brave groups and six limited live groups.
 
-Use `markets-home/` for the active feature. Preserve the original dirty
-`research-cockpit/` checkout, the accepted a81 rollback checkout and the actual
-rollback manifest in CURRENT. Saved process IDs and used stop/reservation helpers
-are historical evidence, never authority for a new action.
+The live BEA load showed six scheduled events, Eastern times and a dated 30-day
+window, with four simultaneous series kept separate. Phone-width focus and
+Discover/Back retention passed. Research/Back, adverse refreshes, DST and session
+retirement remain synthetic coverage. This is BEA schedule coverage without
+forecasts, released values, earnings, news or a complete economic calendar.
 
-The price board still covers three companies. The retained AAPL annual example
-has FY2023–2025 and six selected metrics, rather than ten complete years. M2 and
-M3 remain incomplete; a BEA agenda does not establish a complete economic/news
-service or InvestingPro parity.
+The first a84 candidate failed the strict OpenAPI route-list assertion. Its
+revision, checkout and evidence remain preserved; the replacement added the
+missing literal without relaxing the assertion. All a84 and older observers are
+terminal. Used captures, stop helpers and reservations must not run again.
+
+Use `markets-home/` for development. Preserve the parked `research-cockpit/`
+changes, healthy a84 runtime and actual a83/a81 rollback manifests and checkouts
+recorded in CURRENT. Historical process IDs are never future action authority.
+The prior valuation diagnostic returned HTTP 400 before body parsing. No request
+defect or entitlement denial was established; its operation budget is consumed.
+Do not replay its helpers or repeat unchanged probing.
+
+M2 and M3 remain incomplete. The retained AAPL annual example has FY2023–2025 and
+six selected metrics, rather than ten complete years. The personal board and BEA
+agenda do not establish whole-market breadth or InvestingPro parity.
 
 ## Working loop
 

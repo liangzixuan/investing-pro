@@ -1,5 +1,23 @@
 # Company research workspace
 
+## Use your watchlist in Markets
+
+Markets offers the default suggestions or a selection of up to six U.S. common
+stocks from My Watchlist. Choose companies with the checkboxes, then load the
+board explicitly. Switching modes retains the selection without changing saved
+memberships or requesting prices. The board shows dated EOD closes, a one-month
+chart and changes ranked only when their observation dates match.
+
+One shared refresh budget applies across both modes. A different draft has no
+loaded prices until its own request succeeds. A failed refresh of the same
+cohort retains the last usable snapshot with its original dates. Company research
+uses matching loaded history, and Back restores the retained board. BEA agenda
+loading is independent of the selected companies.
+
+The [Markets watchlist specification](../specs/006-markets-watchlist/spec.md)
+records identity, request and verification limits. Workspace CURRENT records
+whether this outcome has completed release acceptance.
+
 ## Find your place in Discover
 
 The workspace navigation opens Discover, Screens, Watchlist, Portfolio and

@@ -22,6 +22,7 @@ import type {
   PersonalMarketDataRangeDto,
   PersonalMarketDataStatusDto,
   PersonalMarketOverviewDto,
+  PersonalPortfolioIdentity,
   PersonalSecurityMasterListingResponseDto,
   PersonalQuarterlyFinancialsDto,
   PersonalValuationHistoryDto,
@@ -5564,6 +5565,149 @@ describe("My Watchlist navigation", () => {
     expect(watchlistNote(renderWorkspace(), "lst-syn-00051").props.value).toBe(
       "",
     );
+  });
+});
+
+describe("Markets watchlist identity bridge", () => {
+  async function marketBridge() {
+    await activateRoutedWorkspace();
+    const markets = vi.fn<(props: MarketsHomeProps) => React.ReactNode>(
+      () => null,
+    );
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "markets" },
+      renderMarkets: markets,
+      onNavigate: vi.fn(),
+    };
+    void renderWorkspace(undefined, { bridge });
+    void renderWorkspace(undefined, { bridge });
+    return { props: markets.mock.calls.at(-1)![0], markets, bridge };
+  }
+
+  it("projects ordered identities without notes or saved record metadata", async () => {
+    const record = watchlistRecord(2);
+    record.payload.memberships[0]!.note = "Synthetic private note";
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const { props } = await marketBridge();
+    expect(props.watchlist.status).toBe("available");
+    expect(props.watchlist.members.map((member) => member.listingId)).toEqual(
+      watchlistIds(1, 2),
+    );
+    for (const member of props.watchlist.members) {
+      expect(Object.keys(member).sort()).toEqual([
+        "country",
+        "exchangeMic",
+        "instrumentType",
+        "issuerId",
+        "issuerName",
+        "listingId",
+        "securityId",
+        "securityName",
+        "shareClassId",
+        "shareClassName",
+        "symbol",
+      ]);
+      expect(Object.isFrozen(member)).toBe(true);
+    }
+    expect(props.isWatchlistCurrent(props.watchlist.members)).toBe(true);
+    expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "listingId",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)("rejects a captured %s mismatch", async (field) => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(1),
+    );
+    const { props } = await marketBridge();
+    const member = props.watchlist.members[0]!;
+    const changed = {
+      ...member,
+      [field]: `${member[field]}-changed`,
+    } as PersonalPortfolioIdentity;
+    expect(props.isWatchlistCurrent([changed])).toBe(false);
+    expect(props.isWatchlistCurrent([member, member])).toBe(false);
+  });
+
+  it.each(["unavailable", "stale"] as const)(
+    "exposes an %s watchlist without authorizing acquisition",
+    async (status) => {
+      if (status === "unavailable") {
+        apiMocks.fetchMainPersonalWatchlist.mockRejectedValueOnce(
+          new PersonalWorkspaceApiError("unavailable"),
+        );
+      } else {
+        const record = watchlistRecord(1);
+        record.payload.snapshotSha256 = `sha256:${"f".repeat(64)}`;
+        apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+      }
+      const { props } = await marketBridge();
+      expect(props.watchlist.status).toBe(status);
+      expect(props.isWatchlistCurrent(props.watchlist.members)).toBe(false);
+      expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps selected authority through note saves and unselected removal, then retires a removed selection", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const { props } = await marketBridge();
+    const selected = [props.watchlist.members[0]!];
+    let view = chooseDeskTask("Watchlist");
+    watchlistNote(view, "lst-syn-00001").props.onChange({
+      target: { value: "Synthetic draft" },
+    });
+    view = renderWorkspace();
+    const saving = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(saving.promise);
+    requireButton(view, "Save note").props.onClick();
+    expect(props.isWatchlistCurrent(selected)).toBe(true);
+    saving.resolve({
+      version: 8,
+      payload: apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1],
+    });
+    await flushPromises();
+    expect(props.isWatchlistCurrent(selected)).toBe(true);
+
+    view = renderWorkspace();
+    requireButton(
+      watchlistRow(view, "lst-syn-00002"),
+      "Remove",
+    ).props.onClick();
+    await flushPromises();
+    expect(props.isWatchlistCurrent(selected)).toBe(true);
+    view = renderWorkspace();
+    requireButton(
+      watchlistRow(view, "lst-syn-00001"),
+      "Remove",
+    ).props.onClick();
+    await flushPromises();
+    // Workspace refs retire the captured identity before the next render.
+    expect(props.isWatchlistCurrent(selected)).toBe(false);
+  });
+
+  it("retires captured authority when the owner session ends", async () => {
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(
+      watchlistRecord(1),
+    );
+    const { props, bridge } = await marketBridge();
+    const view = renderWorkspace(undefined, { bridge });
+    await requireOwnerSession(view).props.onSessionChange(
+      false,
+      new AbortController().signal,
+    );
+    expect(props.isWatchlistCurrent(props.watchlist.members)).toBe(false);
   });
 });
 

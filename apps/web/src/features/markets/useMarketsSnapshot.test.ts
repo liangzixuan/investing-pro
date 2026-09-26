@@ -7,6 +7,11 @@ import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
 import type * as Loader from "./market-board-loader";
 import {
   MARKET_BOARD_REFRESH_MILLISECONDS,
+  marketBoardCohortKey,
+  marketBoardIdentityKey,
+  type MarketBoardDefinition,
+  type MarketBoardMember,
+  type MarketBoardAdmission,
   type MarketBoardSnapshot,
 } from "./market-board-loader";
 import {
@@ -112,518 +117,6 @@ const hooks = vi.hoisted(() => {
     },
   };
 });
-const client = vi.hoisted(() => ({
-  load: vi.fn<typeof Loader.loadMarketBoard>(),
-}));
-vi.mock("react", async (original) => ({
-  ...(await original()),
-  useState: hooks.useState,
-  useRef: hooks.useRef,
-  useEffect: hooks.useEffect,
-}));
-vi.mock("./market-board-loader", async () => ({
-  ...(await vi.importActual<typeof Loader>("./market-board-loader")),
-  loadMarketBoard: client.load,
-}));
-const digest = `sha256:${"a".repeat(64)}`;
-const otherDigest = `sha256:${"b".repeat(64)}`;
-const startTime = Date.parse("2026-09-24T23:00:00Z");
-const complete = vi.fn<() => boolean>();
-const activity = vi.fn<MarketsSnapshotContext["onActivityStart"]>();
-const unavailable = vi.fn();
-const unexpectedFetch = vi.fn();
-let context: MarketsSnapshotContext;
-let current = true;
-beforeEach(() => {
-  hooks.reset();
-  vi.clearAllMocks();
-  vi.useFakeTimers();
-  vi.setSystemTime(startTime);
-  current = true;
-  complete.mockReset().mockReturnValue(true);
-  activity.mockReset().mockImplementation(() => complete);
-  client.load.mockReset().mockResolvedValue(snapshot());
-  unexpectedFetch.mockReset().mockImplementation(() => {
-    throw new Error("Unexpected network request");
-  });
-  vi.stubGlobal("fetch", unexpectedFetch);
-  context = {
-    active: true,
-    enabled: true,
-    catalogSnapshotSha256: digest,
-    sessionKey: 1,
-    isCurrent: () => current,
-    onActivityStart: activity,
-    onSessionUnavailable: unavailable,
-  };
-});
-afterEach(() => {
-  hooks.unmount();
-  expect(unexpectedFetch).not.toHaveBeenCalled();
-  vi.unstubAllGlobals();
-  vi.useRealTimers();
-});
-
-describe("Markets shared snapshot lifecycle", () => {
-  it("loads once after initial StrictMode effect replay and retires the former controls", async () => {
-    const beforeReplay = render();
-    hooks.replayCommittedEffects();
-    beforeReplay.onRefresh();
-    expect(client.load).not.toHaveBeenCalled();
-    await flush();
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(client.load.mock.calls[0]?.[0]).toBe(digest);
-    expect(render()).toMatchObject({
-      busy: false,
-      attempted: true,
-      snapshot: snapshot(),
-      selectedListingId: "listing-AAPL",
-    });
-    expect(activity).toHaveBeenCalledTimes(1);
-    expect(complete).toHaveBeenCalledTimes(1);
-  });
-  it("deduplicates entry and repeated refresh clicks while the first load is pending", async () => {
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    const view = render();
-    view.onRefresh();
-    view.onRefresh();
-    await flush();
-    render().onRefresh();
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(render()).toMatchObject({ busy: true, attempted: true });
-    held.resolve(snapshot());
-    await flush();
-    expect(render().busy).toBe(false);
-    expect(complete).toHaveBeenCalledTimes(1);
-  });
-  it.each([
-    { active: false },
-    { enabled: false },
-    { catalogSnapshotSha256: null },
-  ])("does not load with an unavailable entry context: %j", async (change) => {
-    context = { ...context, ...change };
-    render();
-    await flush();
-    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
-    render().onRefresh();
-    expect(client.load).not.toHaveBeenCalled();
-    expect(activity).not.toHaveBeenCalled();
-  });
-  it("performs one entry load on activation and retains selection and cache on return", async () => {
-    context = { ...context, active: false };
-    render();
-    await flush();
-    context = { ...context, active: true };
-    render();
-    await flush();
-    render().onSelect("listing-WMT");
-    const beforeLeave = render();
-    context = { ...context, active: false };
-    expect(render()).toMatchObject({
-      snapshot: snapshot(),
-      selectedListingId: "listing-WMT",
-      busy: false,
-    });
-    beforeLeave.onSelect("listing-MSFT");
-    beforeLeave.onRefresh();
-    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
-    context = { ...context, active: true };
-    render();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: snapshot(),
-      selectedListingId: "listing-WMT",
-    });
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-  it("selects the first resolved declared listing even if its EOD history failed", async () => {
-    const result = snapshot();
-    client.load.mockResolvedValue({
-      ...result,
-      rows: result.rows.map((row, index) =>
-        index === 0 ? { ...row, overview: null, error: "unavailable" } : row,
-      ),
-    });
-    render();
-    await flush();
-    expect(render().selectedListingId).toBe("listing-AAPL");
-  });
-  it("rejects selection outside the exact loaded board and does not fetch on selection", async () => {
-    const view = await loaded();
-    view.onSelect("not-on-board");
-    expect(render().selectedListingId).toBe("listing-AAPL");
-    render().onSelect("listing-MSFT");
-    expect(render().selectedListingId).toBe("listing-MSFT");
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-  it("enforces refresh spacing, keeps the previous snapshot while busy and preserves selection", async () => {
-    const view = await loaded();
-    view.onSelect("listing-MSFT");
-    render().onRefresh();
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(render().nextRefreshAt).toBe(
-      startTime + MARKET_BOARD_REFRESH_MILLISECONDS,
-    );
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS - 1);
-    render().onRefresh();
-    expect(client.load).toHaveBeenCalledTimes(1);
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    render().onRefresh();
-    expect(render()).toMatchObject({
-      busy: true,
-      snapshot: snapshot(),
-      selectedListingId: "listing-MSFT",
-    });
-    const newer = { ...snapshot(), loadedAt: "2026-09-24T23:15:00.000Z" };
-    held.resolve(newer);
-    await flush();
-    expect(render()).toMatchObject({
-      busy: false,
-      snapshot: newer,
-      selectedListingId: "listing-MSFT",
-    });
-    expect(client.load).toHaveBeenCalledTimes(2);
-  });
-  it("never polls, retries or refreshes merely because time passes", async () => {
-    await loaded();
-    await vi.advanceTimersByTimeAsync(30 * 24 * 60 * 60 * 1000);
-    render();
-    await flush();
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-  it("does not spend budget or request data when owner activity cannot start", async () => {
-    activity.mockReturnValue(undefined);
-    render();
-    await flush();
-    expect(client.load).not.toHaveBeenCalled();
-    activity.mockReturnValue(complete);
-    render().onRefresh();
-    await flush();
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-  it("rechecks currentness after starting owner activity", async () => {
-    activity.mockImplementation(() => {
-      current = false;
-      return complete;
-    });
-    render();
-    await flush();
-    expect(client.load).not.toHaveBeenCalled();
-    expect(complete).not.toHaveBeenCalled();
-  });
-  it.each([
-    { sessionKey: 2 },
-    { catalogSnapshotSha256: otherDigest },
-    { enabled: false },
-  ])(
-    "clears visible state and aborts before effects when context changes: %j",
-    async (change) => {
-      const old = await loaded();
-      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-      const held = deferred<MarketBoardSnapshot>();
-      client.load.mockReturnValue(held.promise);
-      old.onRefresh();
-      const signal = client.load.mock.calls[1]![1];
-      context = { ...context, ...change };
-      const cleared = render(false);
-      expect(cleared).toMatchObject({
-        snapshot: null,
-        selectedListingId: null,
-        busy: false,
-      });
-      expect(signal.aborted).toBe(true);
-      old.onRefresh();
-      old.onSelect("listing-WMT");
-      expect(client.load).toHaveBeenCalledTimes(2);
-      held.resolve(snapshot());
-      await flush();
-      expect(render(false).snapshot).toBeNull();
-      expect(unavailable).not.toHaveBeenCalled();
-    },
-  );
-  it.each([
-    { sessionKey: 2 },
-    { catalogSnapshotSha256: otherDigest },
-    { active: false },
-  ])(
-    "retires an entry microtask before effect cleanup on context change: %j",
-    async (change) => {
-      render();
-      context = { ...context, ...change };
-      render(false);
-      await flush();
-      expect(client.load).not.toHaveBeenCalled();
-      hooks.commit();
-      await flush();
-      expect(client.load).toHaveBeenCalledTimes(context.active ? 1 : 0);
-      if (context.active)
-        expect(client.load.mock.calls[0]?.[0]).toBe(
-          context.catalogSnapshotSha256,
-        );
-    },
-  );
-  it("explains a deferred reload after session reconnection without presenting cleared data", async () => {
-    await loaded();
-    context = { ...context, enabled: false };
-    render();
-    await flush();
-    context = { ...context, enabled: true, sessionKey: 2 };
-    render();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: null,
-      selectedListingId: null,
-      busy: false,
-      attempted: true,
-      error: "refresh_deferred",
-      nextRefreshAt: startTime + MARKET_BOARD_REFRESH_MILLISECONDS,
-    });
-    expect(client.load).toHaveBeenCalledTimes(1);
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    render().onRefresh();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: snapshot(),
-      error: null,
-      busy: false,
-    });
-    expect(client.load).toHaveBeenCalledTimes(2);
-  });
-  it("retains the consumed refresh budget across a catalog change", async () => {
-    await loaded();
-    context = { ...context, catalogSnapshotSha256: otherDigest };
-    render();
-    await flush();
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(render()).toMatchObject({
-      snapshot: null,
-      attempted: true,
-      nextRefreshAt: startTime + MARKET_BOARD_REFRESH_MILLISECONDS,
-    });
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    client.load.mockResolvedValue({
-      ...snapshot(),
-      snapshotSha256: otherDigest,
-    });
-    render().onRefresh();
-    await flush();
-    expect(client.load.mock.calls[1]?.[0]).toBe(otherDigest);
-  });
-  it("aborts pending work when currentness retires and never resurrects the old snapshot", async () => {
-    await loaded();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    const prior = render();
-    prior.onRefresh();
-    const signal = client.load.mock.calls[1]![1];
-    current = false;
-    expect(render(false)).toMatchObject({
-      snapshot: null,
-      selectedListingId: null,
-      busy: false,
-    });
-    expect(signal.aborted).toBe(true);
-    current = true;
-    prior.onRefresh();
-    prior.onSelect("listing-MSFT");
-    held.resolve(snapshot());
-    await flush();
-    expect(render().snapshot).toBeNull();
-    expect(client.load).toHaveBeenCalledTimes(2);
-  });
-  it("ignores a late currentness-retired success before any rerender", async () => {
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    render();
-    await flush();
-    current = false;
-    held.resolve(snapshot());
-    await flush();
-    expect(complete).not.toHaveBeenCalled();
-    expect(render().snapshot).toBeNull();
-    expect(unavailable).not.toHaveBeenCalled();
-  });
-  it.each(["session_unavailable", "unavailable"] as const)(
-    "ignores late %s after route retirement",
-    async (code) => {
-      const held = deferred<MarketBoardSnapshot>();
-      client.load.mockReturnValue(held.promise);
-      const old = render();
-      await flush();
-      context = { ...context, active: false };
-      render();
-      held.reject(new PersonalWorkspaceApiError(code));
-      await flush();
-      old.onRefresh();
-      expect(client.load).toHaveBeenCalledTimes(1);
-      expect(complete).not.toHaveBeenCalled();
-      expect(unavailable).not.toHaveBeenCalled();
-      expect(render()).toMatchObject({
-        snapshot: null,
-        error: null,
-        busy: false,
-      });
-    },
-  );
-  it("aborts an initial entry on leaving and does not automatically retry it on return", async () => {
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    render();
-    await flush();
-    const signal = client.load.mock.calls[0]![1];
-    context = { ...context, active: false };
-    render();
-    expect(signal.aborted).toBe(true);
-    context = { ...context, active: true };
-    render();
-    held.resolve(snapshot());
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: null,
-      attempted: true,
-      busy: false,
-    });
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-  it("clears cache and selection on session failure and reports it once", async () => {
-    await loaded();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    client.load.mockRejectedValue(
-      new PersonalWorkspaceApiError("session_unavailable"),
-    );
-    render().onRefresh();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: null,
-      selectedListingId: null,
-      busy: false,
-      error: null,
-    });
-    expect(unavailable).toHaveBeenCalledTimes(1);
-  });
-  it.each(["success", "failure"] as const)(
-    "withholds a %s when owner activity completion expires",
-    async (result) => {
-      await loaded();
-      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-      complete.mockReturnValue(false);
-      if (result === "failure")
-        client.load.mockRejectedValue(
-          new PersonalWorkspaceApiError("unavailable"),
-        );
-      render().onRefresh();
-      await flush();
-      expect(render()).toMatchObject({
-        snapshot: null,
-        selectedListingId: null,
-        busy: false,
-      });
-      expect(unavailable).toHaveBeenCalledTimes(1);
-    },
-  );
-  it("keeps the last snapshot after a refresh transport failure without an automatic retry", async () => {
-    await loaded();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    client.load.mockRejectedValue(new Error("synthetic transport failure"));
-    render().onRefresh();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: snapshot(),
-      error: "unavailable",
-      busy: false,
-    });
-    await vi.advanceTimersByTimeAsync(MARKET_BOARD_REFRESH_MILLISECONDS);
-    expect(client.load).toHaveBeenCalledTimes(2);
-  });
-  it("clears the mismatched catalog snapshot after a conflict", async () => {
-    await loaded();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    client.load.mockRejectedValue(new PersonalWorkspaceApiError("conflict"));
-    render().onRefresh();
-    await flush();
-    expect(render()).toMatchObject({
-      snapshot: null,
-      error: "conflict",
-      busy: false,
-    });
-  });
-  it("retires pending work and handlers on unmount", async () => {
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    const old = render();
-    await flush();
-    hooks.unmount();
-    expect(client.load.mock.calls[0]![1].aborted).toBe(true);
-    held.reject(new PersonalWorkspaceApiError("session_unavailable"));
-    await flush();
-    old.onRefresh();
-    old.onSelect("listing-MSFT");
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(unavailable).not.toHaveBeenCalled();
-    expect(complete).not.toHaveBeenCalled();
-  });
-  it("retains idle cache after replay but only fresh controls can refresh", async () => {
-    const old = await loaded();
-    old.onSelect("listing-WMT");
-    render();
-    hooks.replayCommittedEffects();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    old.onRefresh();
-    old.onSelect("listing-MSFT");
-    expect(client.load).toHaveBeenCalledTimes(1);
-    expect(render()).toMatchObject({
-      snapshot: snapshot(),
-      selectedListingId: "listing-WMT",
-      busy: false,
-    });
-    render().onRefresh();
-    await flush();
-    expect(client.load).toHaveBeenCalledTimes(2);
-  });
-  it("ignores a retired request's error while a newer explicit request is pending", async () => {
-    const prior = deferred<MarketBoardSnapshot>();
-    const fresh = deferred<MarketBoardSnapshot>();
-    client.load
-      .mockReturnValueOnce(prior.promise)
-      .mockReturnValueOnce(fresh.promise);
-    render();
-    await flush();
-    context = { ...context, active: false };
-    render();
-    context = { ...context, active: true };
-    render();
-    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
-    render().onRefresh();
-    expect(client.load).toHaveBeenCalledTimes(2);
-    prior.reject(new PersonalWorkspaceApiError("session_unavailable"));
-    await flush();
-    expect(render()).toMatchObject({ busy: true, error: null, snapshot: null });
-    expect(unavailable).not.toHaveBeenCalled();
-    expect(complete).not.toHaveBeenCalled();
-    fresh.resolve(snapshot());
-    await flush();
-    expect(render()).toMatchObject({ busy: false, snapshot: snapshot() });
-    expect(complete).toHaveBeenCalledTimes(1);
-  });
-  it("recovers from effect replay during IO without leaving busy state or reviving old work", async () => {
-    const held = deferred<MarketBoardSnapshot>();
-    client.load.mockReturnValue(held.promise);
-    const old = render();
-    await flush();
-    hooks.replayCommittedEffects();
-    expect(client.load.mock.calls[0]![1].aborted).toBe(true);
-    expect(render()).toMatchObject({ busy: false, snapshot: null });
-    old.onRefresh();
-    held.resolve(snapshot());
-    await flush();
-    expect(render()).toMatchObject({ busy: false, snapshot: null });
-    expect(client.load).toHaveBeenCalledTimes(1);
-  });
-});
 
 function render(commit = true) {
   hooks.beginRender();
@@ -635,7 +128,7 @@ async function flush() {
   for (let i = 0; i < 8; i++) await Promise.resolve();
 }
 async function loaded() {
-  render();
+  render().onLoad();
   await flush();
   return render();
 }
@@ -691,15 +184,48 @@ function overview(symbol: string): PersonalMarketOverviewDto {
     quote: { status: "not_requested" },
     history: {
       status: "available",
-      value: { ...window, currency: "USD", bars: [] },
+      value: {
+        ...window,
+        currency: "USD",
+        bars: [
+          {
+            date: "2026-09-24",
+            raw: {
+              open: "10",
+              high: "11",
+              low: "9",
+              close: "10",
+              volume: "100",
+            },
+            adjusted: {
+              open: "10",
+              high: "11",
+              low: "9",
+              close: "10",
+              volume: "100",
+            },
+            splitFactor: "1",
+            dividendCash: "0",
+          },
+        ],
+      },
     },
   };
 }
-function snapshot(): MarketBoardSnapshot {
+function snapshot(
+  board: MarketBoardDefinition = { kind: "default" },
+  snapshotSha256 = digest,
+): MarketBoardSnapshot {
+  const symbols =
+    board.kind === "default"
+      ? ["AAPL", "MSFT", "WMT"]
+      : board.members.map((member) => member.symbol);
   return {
-    snapshotSha256: digest,
+    definition: board,
+    cohortKey: marketBoardCohortKey(board, snapshotSha256),
+    snapshotSha256,
     loadedAt: "2026-09-24T23:00:00.000Z",
-    rows: ["AAPL", "MSFT", "WMT"].map((symbol) => ({
+    rows: symbols.map((symbol) => ({
       symbol,
       identity: identity(symbol),
       overview: overview(symbol),
@@ -716,4 +242,713 @@ function deferred<T>() {
     reject = no;
   });
   return { promise, resolve, reject };
+}
+const client = vi.hoisted(() => ({
+  admit: vi.fn<typeof Loader.admitMarketBoard>(),
+  load: vi.fn<typeof Loader.loadMarketBoard>(),
+}));
+vi.mock("react", async (original) => ({
+  ...(await original()),
+  useState: hooks.useState,
+  useRef: hooks.useRef,
+  useEffect: hooks.useEffect,
+}));
+vi.mock("./market-board-loader", async () => ({
+  ...(await vi.importActual<typeof Loader>("./market-board-loader")),
+  admitMarketBoard: client.admit,
+  loadMarketBoard: client.load,
+}));
+const digest = "sha256:" + "a".repeat(64);
+const otherDigest = "sha256:" + "b".repeat(64);
+const startTime = Date.parse("2026-09-24T23:00:00Z");
+const complete = vi.fn<() => boolean>();
+const activity = vi.fn<MarketsSnapshotContext["onActivityStart"]>();
+const unavailable = vi.fn();
+const unexpectedFetch = vi.fn();
+let context: MarketsSnapshotContext;
+let current = true;
+let viewEpoch = 0;
+let members: readonly MarketBoardMember[];
+beforeEach(() => {
+  hooks.reset();
+  vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(startTime);
+  current = true;
+  viewEpoch = 0;
+  members = ["AAPL", "MSFT", "WMT", "IBM", "ORCL", "COST", "AMZN"].map(member);
+  complete.mockReset().mockReturnValue(true);
+  activity.mockReset().mockImplementation(() => complete);
+  client.admit
+    .mockReset()
+    .mockImplementation((board, sha) => Promise.resolve(admission(board, sha)));
+  client.load
+    .mockReset()
+    .mockImplementation((admitted) =>
+      Promise.resolve(snapshot(admitted.definition, admitted.snapshotSha256)),
+    );
+  unexpectedFetch.mockReset().mockImplementation(() => {
+    throw new Error("Unexpected network request");
+  });
+  vi.stubGlobal("fetch", unexpectedFetch);
+  context = {
+    active: true,
+    enabled: true,
+    catalogSnapshotSha256: digest,
+    sessionKey: 1,
+    isCurrent: () => current,
+    isActive: () => viewEpoch === 0,
+    watchlist: { status: "available", members },
+    isWatchlistCurrent: (expected) =>
+      context.watchlist.status === "available" &&
+      expected.every((entry) =>
+        members.some(
+          (saved) =>
+            marketBoardIdentityKey(saved) === marketBoardIdentityKey(entry),
+        ),
+      ),
+    onActivityStart: activity,
+    onSessionUnavailable: unavailable,
+  };
+});
+afterEach(() => {
+  hooks.unmount();
+  expect(unexpectedFetch).not.toHaveBeenCalled();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
+
+describe("Markets explicit cohort lifecycle", () => {
+  it("rejects a queued checkbox callback when an unchecked same-listing identity was replaced", () => {
+    render().onModeChange("watchlist");
+    const old = render();
+    members = members.map((entry) =>
+      entry.symbol === "AAPL"
+        ? { ...entry, shareClassId: "replacement-class" }
+        : entry,
+    );
+    context = { ...context, watchlist: { status: "available", members } };
+    render();
+    old.onToggleWatchlist("listing-AAPL", true);
+    expect(render().draft).toEqual({ kind: "watchlist", members: [] });
+    render().onToggleWatchlist("listing-AAPL", true);
+    expect(render().draft).toEqual({
+      kind: "watchlist",
+      members: [members[0]],
+    });
+    expect(client.admit).not.toHaveBeenCalled();
+  });
+  it("prunes a hidden retired watchlist copy without aborting an unrelated paid default request", async () => {
+    choose("AAPL");
+    render().onModeChange("default");
+    const held = deferred<MarketBoardSnapshot>();
+    client.load.mockReturnValueOnce(held.promise);
+    render().onLoad();
+    await flush();
+    const signal = client.load.mock.calls[0]![1];
+    members = members.slice(1);
+    context = { ...context, watchlist: { status: "available", members } };
+    expect(render().busy).toBe(true);
+    expect(signal.aborted).toBe(false);
+    held.resolve(snapshot());
+    await flush();
+    expect(render().snapshot).toEqual(snapshot());
+    expect(complete).toHaveBeenCalledOnce();
+    render().onModeChange("watchlist");
+    expect(render().draft).toEqual({ kind: "watchlist", members: [] });
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+
+  it("rechecks authority if owner completion retires the view", async () => {
+    complete.mockImplementation(() => {
+      viewEpoch = 1;
+      return true;
+    });
+    await loaded();
+    expect(render().snapshot).toBeNull();
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(unavailable).not.toHaveBeenCalled();
+  });
+
+  it("never loads on entry, StrictMode replay, mode/checkbox edits, time passage or Back", async () => {
+    const stale = render();
+    hooks.replayCommittedEffects();
+    stale.onLoad();
+    render().onModeChange("watchlist");
+    render().onToggleWatchlist("listing-AAPL", true);
+    render().onModeChange("default");
+    context = { ...context, active: false };
+    render();
+    context = { ...context, active: true };
+    render();
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
+    await flush();
+    expect(client.admit).not.toHaveBeenCalled();
+    expect(client.load).not.toHaveBeenCalled();
+    expect(activity).not.toHaveBeenCalled();
+    expect(render().draft).toEqual({ kind: "default" });
+  });
+  it("starts empty and preserves copied selections in saved order across modes", () => {
+    render().onModeChange("watchlist");
+    expect(render().draft).toEqual({ kind: "watchlist", members: [] });
+    expect(render().canLoad).toBe(false);
+    render().onLoad();
+    render().onToggleWatchlist("listing-WMT", true);
+    render().onToggleWatchlist("listing-AAPL", true);
+    const chosen = render().draft;
+    expect(chosen).toEqual({
+      kind: "watchlist",
+      members: [member("AAPL"), member("WMT")],
+    });
+    if (chosen.kind === "watchlist") {
+      expect(chosen.members[0]).not.toBe(members[0]);
+      expect(Object.isFrozen(chosen.members[0])).toBe(true);
+    }
+    render().onModeChange("default");
+    render().onModeChange("watchlist");
+    expect(render().draft).toEqual(chosen);
+    expect(client.admit).not.toHaveBeenCalled();
+  });
+  it("caps selection at six, ignores unknown/ADR/duplicate entries and allows removal", () => {
+    members = [...members, { ...member("ADR"), instrumentType: "adr" }];
+    context = { ...context, watchlist: { status: "available", members } };
+    render().onModeChange("watchlist");
+    render().onToggleWatchlist("listing-ADR", true);
+    render().onToggleWatchlist("missing", true);
+    for (const entry of members)
+      render().onToggleWatchlist(entry.listingId, true);
+    const draft = render().draft;
+    expect(draft.kind === "watchlist" && draft.members.length).toBe(6);
+    render().onToggleWatchlist("listing-AAPL", true);
+    render().onToggleWatchlist("listing-AAPL", false);
+    render().onToggleWatchlist("listing-AMZN", true);
+    expect(render().draft).toEqual({
+      kind: "watchlist",
+      members: members.slice(1, 7),
+    });
+    expect(client.admit).not.toHaveBeenCalled();
+  });
+  it("deduplicates clicks across local admission and acquisition using one signal", async () => {
+    const pendingAdmission = deferred<MarketBoardAdmission>();
+    const pendingLoad = deferred<MarketBoardSnapshot>();
+    client.admit.mockReturnValue(pendingAdmission.promise);
+    client.load.mockReturnValue(pendingLoad.promise);
+    const view = render();
+    view.onLoad();
+    view.onLoad();
+    render().onLoad();
+    expect(client.admit).toHaveBeenCalledTimes(1);
+    expect(client.load).not.toHaveBeenCalled();
+    pendingAdmission.resolve(admission());
+    await flush();
+    render().onLoad();
+    expect(client.load).toHaveBeenCalledTimes(1);
+    expect(client.load.mock.calls[0]![1]).toBe(client.admit.mock.calls[0]![2]);
+    pendingLoad.resolve(snapshot());
+    await flush();
+    expect(render()).toMatchObject({
+      busy: false,
+      attempted: true,
+      selectedListingId: "listing-AAPL",
+      snapshot: snapshot(),
+    });
+    expect(activity).toHaveBeenCalledTimes(1);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { active: false },
+    { enabled: false },
+    { catalogSnapshotSha256: null },
+    { isActive: () => false },
+    { isCurrent: () => false },
+  ])("refuses an unavailable action context: %j", async (change) => {
+    context = { ...context, ...change };
+    render().onLoad();
+    await flush();
+    expect(client.admit).not.toHaveBeenCalled();
+    expect(activity).not.toHaveBeenCalled();
+  });
+  it.each(["unavailable", "stale", "reconciling"] as const)(
+    "disables %s watchlist without affecting default loading",
+    async (status) => {
+      choose("AAPL");
+      context = { ...context, watchlist: { status, members } };
+      expect(render().canLoad).toBe(false);
+      render().onLoad();
+      expect(client.admit).not.toHaveBeenCalled();
+      render().onModeChange("default");
+      await loaded();
+      expect(client.load).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("refuses owner activity failure and rechecks authority after activity starts without spending budget", async () => {
+    activity.mockReturnValue(undefined);
+    render().onLoad();
+    expect(client.admit).not.toHaveBeenCalled();
+    activity.mockImplementation(() => {
+      current = false;
+      return complete;
+    });
+    render().onLoad();
+    expect(client.admit).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+    current = true;
+    activity.mockReturnValue(complete);
+    await loaded();
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it("prechecks cadence before owner/local IO and charges after delayed admission before EOD", async () => {
+    const held = deferred<MarketBoardAdmission>();
+    client.admit.mockReturnValueOnce(held.promise);
+    render().onLoad();
+    expect(render().nextRefreshAt).toBeNull();
+    vi.setSystemTime(startTime + 1000);
+    held.resolve(admission());
+    await flush();
+    expect(render().nextRefreshAt).toBe(
+      startTime + 1000 + MARKET_BOARD_REFRESH_MILLISECONDS,
+    );
+    render().onLoad();
+    expect(render().error).toBe("refresh_deferred");
+    expect(client.admit).toHaveBeenCalledTimes(1);
+    expect(activity).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(startTime + 1000 + MARKET_BOARD_REFRESH_MILLISECONDS);
+    render().onLoad();
+    await flush();
+    expect(client.load).toHaveBeenCalledTimes(2);
+  });
+  it("does not charge for an empty or wholly inadmissible cohort and keeps explicit failure rows", async () => {
+    render().onModeChange("watchlist");
+    render().onLoad();
+    expect(client.admit).not.toHaveBeenCalled();
+    render().onToggleWatchlist("listing-AAPL", true);
+    client.admit.mockImplementationOnce((board, sha) =>
+      Promise.resolve({
+        ...admission(board, sha),
+        rows: [{ symbol: "AAPL", identity: null, error: "not_in_catalog" }],
+      }),
+    );
+    client.load.mockImplementationOnce((admitted) =>
+      Promise.resolve({
+        ...snapshot(admitted.definition),
+        rows: admitted.rows.map((row) => ({ ...row, overview: null })),
+      }),
+    );
+    render().onLoad();
+    await flush();
+    expect(render()).toMatchObject({
+      error: "unavailable",
+      nextRefreshAt: null,
+    });
+    expect(render().snapshot?.rows[0]?.error).toBe("not_in_catalog");
+    render().onModeChange("default");
+    await loaded();
+    expect(client.admit).toHaveBeenCalledTimes(2);
+    expect(render().nextRefreshAt).toBe(
+      startTime + MARKET_BOARD_REFRESH_MILLISECONDS,
+    );
+  });
+  it("shares nonrefundable cadence across failure, modes, catalog and session resets", async () => {
+    client.load.mockRejectedValueOnce(
+      new PersonalWorkspaceApiError("unavailable"),
+    );
+    await loaded();
+    choose("AAPL");
+    render().onLoad();
+    expect(client.admit).toHaveBeenCalledTimes(1);
+    context = { ...context, sessionKey: 2, catalogSnapshotSha256: otherDigest };
+    render().onLoad();
+    expect(render()).toMatchObject({
+      snapshot: null,
+      error: "refresh_deferred",
+    });
+    expect(client.admit).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+    await loaded();
+    expect(client.load).toHaveBeenCalledTimes(2);
+  });
+  it("permits at most four starts before the rolling hour boundary across cohort switches", async () => {
+    for (let index = 0; index < 4; index++) {
+      vi.setSystemTime(startTime + index * MARKET_BOARD_REFRESH_MILLISECONDS);
+      if (index % 2) choose("AAPL");
+      else render().onModeChange("default");
+      await loaded();
+    }
+    vi.setSystemTime(startTime + 60 * 60 * 1000 - 1);
+    render().onLoad();
+    expect(client.load).toHaveBeenCalledTimes(4);
+    expect(client.admit).toHaveBeenCalledTimes(4);
+    vi.setSystemTime(startTime + 60 * 60 * 1000);
+    await loaded();
+    expect(client.load).toHaveBeenCalledTimes(5);
+  });
+  it("checks authority after admission before charging or starting EOD", async () => {
+    const held = deferred<MarketBoardAdmission>();
+    client.admit.mockReturnValueOnce(held.promise);
+    const old = render();
+    old.onLoad();
+    viewEpoch = 1;
+    held.resolve(admission());
+    await flush();
+    expect(client.load).not.toHaveBeenCalled();
+    expect(complete).not.toHaveBeenCalled();
+    context = { ...context, isActive: () => viewEpoch === 1 };
+    await loaded();
+    expect(client.load).toHaveBeenCalledTimes(1);
+    expect(render().error).toBeNull();
+  });
+  it("retains cache and selection on Back without automatic IO", async () => {
+    await loaded();
+    render().onSelect("listing-WMT");
+    const old = render();
+    context = { ...context, active: false };
+    expect(render().snapshot).toEqual(snapshot());
+    old.onLoad();
+    expect(old.onSelect("listing-MSFT")).toBe(false);
+    context = { ...context, active: true };
+    await flush();
+    expect(render().selectedListingId).toBe("listing-WMT");
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it("hides unmatched data and retires company/select controls synchronously after draft edits", async () => {
+    const old = await loaded();
+    expect(old.isSnapshotCurrent()).toBe(true);
+    old.onModeChange("watchlist");
+    expect(old.isSnapshotCurrent()).toBe(false);
+    expect(old.onSelect("listing-MSFT")).toBe(false);
+    expect(render().snapshot).toBeNull();
+    render().onToggleWatchlist("listing-AAPL", true);
+    expect(render().snapshot).toBeNull();
+    render().onModeChange("default");
+    expect(render().snapshot).toEqual(snapshot());
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it("keeps one snapshot and cannot relabel another cohort after a failed load", async () => {
+    await loaded();
+    choose("AAPL");
+    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+    const failed = {
+      ...snapshot(render().draft),
+      rows: [
+        {
+          symbol: "AAPL",
+          identity: identity("AAPL"),
+          overview: null,
+          error: "unavailable" as const,
+        },
+      ],
+    };
+    client.load.mockResolvedValueOnce(failed);
+    await loaded();
+    expect(render().snapshot).toEqual(failed);
+    render().onModeChange("default");
+    expect(render().snapshot).toBeNull();
+  });
+  it.each(["rows", "empty", "transport"] as const)(
+    "retains same-cohort original dates on zero usable %s refresh",
+    async (failure) => {
+      const before = await loaded();
+      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+      if (failure === "transport")
+        client.load.mockRejectedValueOnce(
+          new Error("fixture transport failure"),
+        );
+      else
+        client.load.mockResolvedValueOnce({
+          ...snapshot(),
+          loadedAt: "2026-09-24T23:15:00Z",
+          rows: snapshot().rows.map((row) => ({
+            ...row,
+            error: failure === "rows" ? "unavailable" : null,
+            overview: failure === "rows" ? null : emptyOverview(row.symbol),
+          })),
+        });
+      await loaded();
+      expect(render().snapshot).toBe(before.snapshot);
+      expect(render().error).toBe("unavailable");
+      await vi.advanceTimersByTimeAsync(MARKET_BOARD_REFRESH_MILLISECONDS);
+      expect(client.load).toHaveBeenCalledTimes(2);
+    },
+  );
+  it("replaces the whole snapshot on usable partial data including one valid observation", async () => {
+    const before = await loaded();
+    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+    const partial = {
+      ...snapshot(),
+      loadedAt: "2026-09-24T23:15:00Z",
+      rows: snapshot().rows.map((row, i) =>
+        i === 0
+          ? row
+          : { ...row, overview: null, error: "unavailable" as const },
+      ),
+    };
+    client.load.mockResolvedValueOnce(partial);
+    await loaded();
+    expect(render().snapshot).toBe(partial);
+    expect(render().snapshot).not.toBe(before.snapshot);
+    expect(render().snapshot?.rows[1]?.overview).toBeNull();
+    expect(render().error).toBeNull();
+  });
+  it("selection never fetches and rejects a listing outside the cohort", async () => {
+    await loaded();
+    expect(render().onSelect("missing")).toBe(false);
+    expect(render().onSelect("listing-MSFT")).toBe(true);
+    expect(render().selectedListingId).toBe("listing-MSFT");
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it("preserves pending work and accepted data through note-only and unrelated member replacement", async () => {
+    choose("AAPL");
+    const held = deferred<MarketBoardSnapshot>();
+    client.load.mockReturnValueOnce(held.promise);
+    render().onLoad();
+    await flush();
+    members = members.map((entry) =>
+      entry.symbol === "MSFT"
+        ? { ...entry, issuerName: "Unrelated changed name" }
+        : { ...entry },
+    );
+    context = { ...context, watchlist: { status: "available", members } };
+    render();
+    expect(client.load.mock.calls[0]![1].aborted).toBe(false);
+    held.resolve(snapshot(render().draft));
+    await flush();
+    const accepted = render().snapshot;
+    context = {
+      ...context,
+      watchlist: { status: "available", members: [...members] },
+    };
+    expect(render().snapshot).toBe(accepted);
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it.each(["remove", "identity"] as const)(
+    "retires a selected member on %s without substitution",
+    async (change) => {
+      choose("AAPL");
+      await loaded();
+      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+      const held = deferred<MarketBoardSnapshot>();
+      client.load.mockReturnValueOnce(held.promise);
+      const old = render();
+      old.onLoad();
+      await flush();
+      const oldDefinition = old.draft;
+      members =
+        change === "remove"
+          ? members.slice(1)
+          : members.map((entry) =>
+              entry.symbol === "AAPL"
+                ? { ...entry, shareClassName: "Replacement" }
+                : entry,
+            );
+      context = { ...context, watchlist: { status: "available", members } };
+      expect(render(false)).toMatchObject({
+        snapshot: null,
+        draft: { kind: "watchlist", members: [] },
+        busy: false,
+      });
+      expect(client.load.mock.calls[1]![1].aborted).toBe(true);
+      expect(old.isSnapshotCurrent()).toBe(false);
+      held.resolve(snapshot(oldDefinition));
+      await flush();
+      expect(render().snapshot).toBeNull();
+    },
+  );
+  it("checks a hidden snapshot's own authority rather than the current default draft", async () => {
+    choose("AAPL");
+    await loaded();
+    render().onModeChange("default");
+    members = members.slice(1);
+    context = { ...context, watchlist: { status: "available", members } };
+    render();
+    render().onModeChange("watchlist");
+    expect(render().snapshot).toBeNull();
+    expect(render().draft).toEqual({ kind: "watchlist", members: [] });
+  });
+  it("retires stale watchlist data but preserves an unrelated default snapshot", async () => {
+    choose("AAPL");
+    await loaded();
+    context = { ...context, watchlist: { status: "stale", members } };
+    expect(render().snapshot).toBeNull();
+    context = { ...context, watchlist: { status: "available", members } };
+    expect(render().snapshot).toBeNull();
+    render().onModeChange("default");
+    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+    await loaded();
+    context = { ...context, watchlist: { status: "stale", members } };
+    expect(render().snapshot).toEqual(snapshot());
+  });
+  it.each([
+    { sessionKey: 2 },
+    { catalogSnapshotSha256: otherDigest },
+    { enabled: false },
+  ])(
+    "resets draft/data and aborts before effects on lifetime change: %j",
+    async (change) => {
+      choose("AAPL");
+      await loaded();
+      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+      const held = deferred<MarketBoardSnapshot>();
+      client.load.mockReturnValueOnce(held.promise);
+      const old = render();
+      old.onLoad();
+      await flush();
+      context = { ...context, ...change };
+      expect(render(false)).toMatchObject({
+        draft: { kind: "default" },
+        snapshot: null,
+        busy: false,
+      });
+      expect(client.load.mock.calls[1]![1].aborted).toBe(true);
+      old.onLoad();
+      held.resolve(snapshot());
+      await flush();
+      expect(render().snapshot).toBeNull();
+      expect(unavailable).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects synchronous hide/return completion and old controls before rerender", async () => {
+    const held = deferred<MarketBoardSnapshot>();
+    client.load.mockReturnValueOnce(held.promise);
+    const old = render();
+    old.onLoad();
+    await flush();
+    viewEpoch = 2;
+    context = { ...context, isActive: () => viewEpoch === 2 };
+    held.resolve(snapshot());
+    await flush();
+    old.onLoad();
+    expect(complete).not.toHaveBeenCalled();
+    expect(render().snapshot).toBeNull();
+    expect(client.load).toHaveBeenCalledTimes(1);
+  });
+  it("rejects selected-member replacement before rerender or completion", async () => {
+    choose("AAPL");
+    const held = deferred<MarketBoardSnapshot>();
+    client.load.mockReturnValueOnce(held.promise);
+    const old = render();
+    old.onLoad();
+    await flush();
+    members = members.slice(1);
+    held.resolve(snapshot(old.draft));
+    await flush();
+    expect(complete).not.toHaveBeenCalled();
+    context = { ...context, watchlist: { status: "available", members } };
+    expect(render().snapshot).toBeNull();
+  });
+  it.each(["session_unavailable", "conflict"] as const)(
+    "clears retained data on current %s",
+    async (code) => {
+      await loaded();
+      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+      client.admit.mockRejectedValueOnce(new PersonalWorkspaceApiError(code));
+      await loaded();
+      expect(render().snapshot).toBeNull();
+      expect(render().selectedListingId).toBeNull();
+      expect(unavailable).toHaveBeenCalledTimes(
+        code === "session_unavailable" ? 1 : 0,
+      );
+    },
+  );
+  it.each(["success", "failure"] as const)(
+    "clears data when owner completion expires on %s",
+    async (result) => {
+      await loaded();
+      vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+      complete.mockReturnValue(false);
+      if (result === "failure")
+        client.load.mockRejectedValueOnce(new Error("fixture failure"));
+      await loaded();
+      expect(render().snapshot).toBeNull();
+      expect(unavailable).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("ignores old errors while a newer explicit request is pending, without refunding starts", async () => {
+    const old = deferred<MarketBoardSnapshot>(),
+      fresh = deferred<MarketBoardSnapshot>();
+    client.load
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(fresh.promise);
+    render().onLoad();
+    await flush();
+    context = { ...context, active: false };
+    render();
+    context = { ...context, active: true };
+    render();
+    vi.setSystemTime(startTime + MARKET_BOARD_REFRESH_MILLISECONDS);
+    render().onLoad();
+    await flush();
+    old.reject(new PersonalWorkspaceApiError("session_unavailable"));
+    await flush();
+    expect(render()).toMatchObject({ busy: true, error: null, snapshot: null });
+    expect(unavailable).not.toHaveBeenCalled();
+    fresh.resolve(snapshot());
+    await flush();
+    expect(render().snapshot).toEqual(snapshot());
+    expect(complete).toHaveBeenCalledTimes(1);
+    render().onLoad();
+    expect(client.load).toHaveBeenCalledTimes(2);
+  });
+  it("retires requests and controls on unmount and StrictMode effect replay", async () => {
+    const held = deferred<MarketBoardSnapshot>();
+    client.load.mockReturnValueOnce(held.promise);
+    const old = render();
+    old.onLoad();
+    await flush();
+    hooks.replayCommittedEffects();
+    expect(client.load.mock.calls[0]![1].aborted).toBe(true);
+    old.onLoad();
+    held.resolve(snapshot());
+    await flush();
+    expect(render()).toMatchObject({ busy: false, snapshot: null });
+    hooks.unmount();
+    old.onLoad();
+    expect(client.load).toHaveBeenCalledTimes(1);
+    expect(complete).not.toHaveBeenCalled();
+  });
+});
+function member(symbol: string): MarketBoardMember {
+  const value = identity(symbol);
+  return {
+    country: value.country,
+    exchangeMic: value.exchangeMic,
+    instrumentType: value.instrumentType,
+    issuerId: value.issuerId,
+    issuerName: value.issuerName,
+    listingId: value.listingId,
+    securityId: value.securityId,
+    securityName: value.securityName,
+    shareClassId: value.shareClassId,
+    shareClassName: value.shareClassName,
+    symbol: value.symbol,
+  };
+}
+function choose(...symbols: string[]) {
+  render().onModeChange("watchlist");
+  for (const symbol of symbols)
+    render().onToggleWatchlist("listing-" + symbol, true);
+}
+function admission(
+  board: MarketBoardDefinition = { kind: "default" },
+  snapshotSha256 = digest,
+): MarketBoardAdmission {
+  return {
+    ...snapshot(board, snapshotSha256),
+    rows: snapshot(board, snapshotSha256).rows.map(({ symbol, identity }) => ({
+      symbol,
+      identity,
+      error: null,
+    })),
+  };
+}
+function emptyOverview(symbol: string): PersonalMarketOverviewDto {
+  const value = overview(symbol);
+  if (value.history.status !== "available")
+    throw Error("Fixture expected history");
+  return {
+    ...value,
+    history: {
+      status: "available",
+      value: { ...value.history.value, bars: [] },
+    },
+  };
 }

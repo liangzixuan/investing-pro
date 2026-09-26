@@ -1,6 +1,6 @@
 import type {
   PersonalMarketOverviewDto,
-  PersonalSecurityMasterSearchResultDto,
+  PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import React, { type ReactNode, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -29,19 +29,29 @@ const boardHook = vi.hoisted(() =>
     attempted: false,
     error: null,
     nextRefreshAt: null,
+    draft: { kind: "default" as const },
+    canLoad: true,
+    isSnapshotCurrent: () => false,
+    onModeChange: vi.fn(),
+    onToggleWatchlist: vi.fn(),
     onSelect: vi.fn(() => true),
-    onRefresh: vi.fn(),
+    onLoad: vi.fn(),
   })),
 );
 vi.mock("./useBeaReleaseAgenda", () => ({ useBeaReleaseAgenda: agendaHook }));
 vi.mock("./useMarketsSnapshot", () => ({ useMarketsSnapshot: boardHook }));
 import { PriceHistoryChart } from "../research/PriceHistoryChart";
-import type { MarketBoardSnapshot } from "./market-board-loader";
+import {
+  marketBoardCohortKey,
+  type MarketBoardDefinition,
+  type MarketBoardSnapshot,
+} from "./market-board-loader";
+import { MarketBoardPicker } from "./MarketBoardPicker";
 vi.mock("../research/PriceHistoryChart", () => ({
   PriceHistoryChart: () => null,
 }));
 const digest = `sha256:${"a".repeat(64)}` as const;
-function identity(symbol: string): PersonalSecurityMasterSearchResultDto {
+function identity(symbol: string): PersonalSecurityMasterScreenRowDto {
   return {
     cik: "0000000001",
     country: "US",
@@ -50,8 +60,6 @@ function identity(symbol: string): PersonalSecurityMasterSearchResultDto {
     issuerId: `issuer-${symbol}`,
     issuerName: `Synthetic ${symbol}`,
     listingId: `listing-${symbol}`,
-    matchKind: "current_symbol_exact",
-    matchedValue: symbol,
     securityId: `security-${symbol}`,
     securityName: "Common stock",
     shareClassId: `class-${symbol}`,
@@ -124,6 +132,8 @@ function populated(
 }
 function board(): MarketBoardSnapshot {
   return {
+    definition: { kind: "default" },
+    cohortKey: marketBoardCohortKey({ kind: "default" }, digest),
     snapshotSha256: digest,
     loadedAt: "2026-09-24T23:00:00.000Z",
     stoppedBy: null,
@@ -147,13 +157,23 @@ function props(
     enabled: true,
     catalogSnapshotSha256: digest,
     sessionKey: 1,
-    providerStatus: null,
+    providerStatus: {
+      schemaVersion: "1.0.0",
+      profile: "personal_single_user_local_market_data",
+      status: "configured",
+      provider: overview("AAPL").provider,
+    },
     isCurrent: () => true,
     isActive: () => true,
+    watchlist: { status: "available", members: [] },
+    isWatchlistCurrent: () => true,
     onActivityStart: () => () => true,
     onSessionUnavailable: vi.fn(),
     onOpenCompany: vi.fn(),
     snapshot: board(),
+    draft: { kind: "default" },
+    canLoad: true,
+    isSnapshotCurrent: () => true,
     selectedListingId: "listing-AAPL",
     busy: false,
     attempted: true,
@@ -162,7 +182,9 @@ function props(
     order: "board",
     onOrder: vi.fn(),
     onSelect: vi.fn(),
-    onRefresh: vi.fn(),
+    onLoad: vi.fn(),
+    onModeChange: vi.fn(),
+    onToggleWatchlist: vi.fn(),
     ...overrides,
   };
 }
@@ -392,7 +414,7 @@ describe("Markets board presentation", () => {
     );
     (chosen?.props.onClick as () => void)();
     expect(input.onSelect).toHaveBeenCalledWith("listing-MSFT");
-    expect(input.onRefresh).not.toHaveBeenCalled();
+    expect(input.onLoad).not.toHaveBeenCalled();
   });
   it("opens the exact catalog identity from the selected company action", () => {
     const input = props();
@@ -409,22 +431,25 @@ describe("Markets board presentation", () => {
       origin,
       input.snapshot?.rows[0]?.overview,
     );
-    expect(input.onRefresh).not.toHaveBeenCalled();
+    expect(input.onLoad).not.toHaveBeenCalled();
   });
-  it.each([{ active: false }, { enabled: false }, { isCurrent: () => false }])(
-    "rejects company actions from an inactive context",
-    (override) => {
-      const input = props(override);
-      const action = button(MarketsBoardView(input), "Open company research");
-      (
-        action.props.onClick as (event: {
-          currentTarget: HTMLButtonElement;
-          preventDefault: () => void;
-        }) => void
-      )({ currentTarget: {} as HTMLButtonElement, preventDefault: vi.fn() });
-      expect(input.onOpenCompany).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    { active: false },
+    { enabled: false },
+    { isCurrent: () => false },
+    { isActive: () => false },
+    { isSnapshotCurrent: () => false },
+  ])("rejects company actions from an inactive context", (override) => {
+    const input = props(override);
+    const action = button(MarketsBoardView(input), "Open company research");
+    (
+      action.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+        preventDefault: () => void;
+      }) => void
+    )({ currentTarget: {} as HTMLButtonElement, preventDefault: vi.fn() });
+    expect(input.onOpenCompany).not.toHaveBeenCalled();
+  });
   it("shows the prior snapshot while an explicit refresh is pending", () => {
     const view = MarketsBoardView(props({ busy: true }));
     expect(text(view)).toContain("Loading board…");
@@ -449,8 +474,28 @@ describe("Markets board presentation", () => {
   });
   it("explains a failed refresh while retaining dated values", () => {
     const view = MarketsBoardView(props({ error: "unavailable" }));
-    expect(text(view)).toContain("The previous dated snapshot is kept below");
+    expect(text(view)).toContain("The current board result is shown below");
     expect(text(view)).toContain("110");
+  });
+  it("describes an initial all-failed result without claiming a prior snapshot", () => {
+    const snapshot = board();
+    const view = MarketsBoardView(
+      props({
+        snapshot: {
+          ...snapshot,
+          rows: snapshot.rows.map((row) => ({
+            ...row,
+            overview: null,
+            error: "unavailable",
+          })),
+        },
+        error: "unavailable",
+      }),
+    );
+    expect(text(view)).toContain("The current board result is shown below");
+    expect(text(view)).not.toContain("previous");
+    expect(text(view)).not.toContain("110");
+    expect(nodes(view).some((node) => node.props.role === "alert")).toBe(true);
   });
   it("does not render a company action for unresolved seeds", () => {
     const snapshot = board();
@@ -467,5 +512,161 @@ describe("Markets board presentation", () => {
         (node) => node.type === "button" && text(node).startsWith("Research "),
       ),
     ).toHaveLength(0);
+  });
+  it("offers one explicit Load and passes picker actions without acquiring prices", () => {
+    const input = props({ snapshot: null });
+    const view = MarketsBoardView(input);
+    const picker = nodes(view).find((node) => node.type === MarketBoardPicker);
+    expect(picker?.props.draft).toBe(input.draft);
+    expect(picker?.props.onModeChange).toBe(input.onModeChange);
+    expect(picker?.props.onToggleWatchlist).toBe(input.onToggleWatchlist);
+    expect(input.onLoad).not.toHaveBeenCalled();
+    (button(view, "Load board").props.onClick as () => void)();
+    expect(input.onLoad).toHaveBeenCalledOnce();
+  });
+  it("labels the exact watchlist cohort and renders distinct venues with stable listing keys", () => {
+    const first = identity("SAME");
+    const second = {
+      ...first,
+      listingId: "listing-other",
+      exchangeMic: "XNYS",
+    };
+    const draft: MarketBoardDefinition = {
+      kind: "watchlist",
+      members: [first, second],
+    };
+    const input = props({
+      draft,
+      snapshot: {
+        ...board(),
+        definition: draft,
+        cohortKey: marketBoardCohortKey(draft, digest),
+        rows: [first, second].map((member) => ({
+          symbol: member.symbol,
+          identity: member,
+          overview: null,
+          error: "not_covered",
+        })),
+      },
+    });
+    const view = MarketsBoardView(input);
+    expect(text(view)).toContain("My Watchlist selection");
+    expect(text(nodes(view).find((node) => node.type === "caption"))).toContain(
+      "SAME, SAME",
+    );
+    expect(
+      nodes(view)
+        .filter((node) => node.type === "tr")
+        .slice(1)
+        .map((node) => node.key),
+    ).toEqual(["listing-SAME", "listing-other"]);
+  });
+  it("never relabels a retained default snapshot under a changed watchlist draft", () => {
+    const draft: MarketBoardDefinition = {
+      kind: "watchlist",
+      members: [identity("NEW")],
+    };
+    const view = MarketsBoardView(props({ draft }));
+    expect(text(nodes(view).find((node) => node.type === "tbody"))).toContain(
+      "NEW",
+    );
+    expect(
+      text(nodes(view).find((node) => node.type === "tbody")),
+    ).not.toContain("110");
+    expect(
+      nodes(view).find((node) => node.type === PriceHistoryChart),
+    ).toBeUndefined();
+    expect(nodes(view).filter((node) => node.type === "a")).toHaveLength(0);
+    expect(button(view, "Load board")).toBeDefined();
+  });
+  it("withholds prices when the snapshot definition and cohort key disagree", () => {
+    const snapshot = {
+      ...board(),
+      definition: { kind: "watchlist" as const, members: [identity("AAPL")] },
+    };
+    const view = MarketsBoardView(props({ snapshot }));
+    expect(text(view)).toContain("No snapshot is loaded.");
+    expect(
+      nodes(view).find((node) => node.type === PriceHistoryChart),
+    ).toBeUndefined();
+  });
+  it("withholds a retired watchlist snapshot even if its draft key still matches", () => {
+    const draft: MarketBoardDefinition = {
+      kind: "watchlist",
+      members: [identity("AAPL")],
+    };
+    const snapshot = {
+      ...board(),
+      definition: draft,
+      cohortKey: marketBoardCohortKey(draft, digest),
+      rows: board().rows.slice(0, 1),
+    };
+    const view = MarketsBoardView(
+      props({ draft, snapshot, isWatchlistCurrent: () => false }),
+    );
+    expect(text(view)).toContain("No snapshot is loaded.");
+    expect(
+      nodes(view).find((node) => node.type === PriceHistoryChart),
+    ).toBeUndefined();
+  });
+  it("rejects queued company and chart actions when the hook retires their snapshot", () => {
+    let current = true;
+    const input = props({ isSnapshotCurrent: () => current });
+    const view = MarketsBoardView(input);
+    const company = button(view, "Open company research");
+    const chart = nodes(view).find(
+      (node) => node.props["aria-label"] === "View chart for MSFT",
+    );
+    const gainers = button(view, "Gainers");
+    current = false;
+    (company.props.onClick as (event: unknown) => void)({
+      currentTarget: {},
+      preventDefault: vi.fn(),
+    });
+    (chart?.props.onClick as () => void)();
+    (gainers.props.onClick as () => void)();
+    expect(input.onOpenCompany).not.toHaveBeenCalled();
+    expect(input.onSelect).not.toHaveBeenCalled();
+    expect(input.onOrder).not.toHaveBeenCalled();
+  });
+  it("opens an admitted company without handing over invalid price history", () => {
+    const snapshot = board();
+    const first = snapshot.rows[0]!;
+    const rows = [
+      {
+        ...first,
+        overview: {
+          ...first.overview!,
+          security: { ...first.overview!.security, listingId: "wrong" },
+        },
+      },
+      ...snapshot.rows.slice(1),
+    ];
+    const input = props({ snapshot: { ...snapshot, rows } });
+    const company = button(MarketsBoardView(input), "Open company research");
+    const origin = {} as HTMLAnchorElement;
+    (company.props.onClick as (event: unknown) => void)({
+      currentTarget: origin,
+      preventDefault: vi.fn(),
+    });
+    expect(input.onOpenCompany).toHaveBeenCalledWith(
+      identity("AAPL"),
+      origin,
+      null,
+    );
+  });
+  it("shows zero-company guidance and disables loading without fabricating seed rows", () => {
+    const view = MarketsBoardView(
+      props({
+        draft: { kind: "watchlist", members: [] },
+        snapshot: null,
+        canLoad: false,
+      }),
+    );
+    expect(nodes(view).filter((node) => node.type === "tr")).toHaveLength(1);
+    expect(button(view, "Load board").props.disabled).toBe(true);
+    expect(text(nodes(view).find((node) => node.type === "caption"))).toContain(
+      "no companies selected",
+    );
   });
 });
