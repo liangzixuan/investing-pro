@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "caseNumber": 85,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "9c3dee7bacdbb6799925e5b4d04e2675ade6be48",
+  "featureRevision": "2056bd4e3480b1ebc544009c78ed7c4b026dcc61",
+  "featureCount": 271,
+  "closureCount": 272,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/markets/MarketBoardPicker.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketBoardPicker.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketsHome.test.tsx",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/market-board-loader.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/markets/market-board-loader.ts",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/markets/markets.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/useMarketsSnapshot.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/markets/useMarketsSnapshot.ts",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/workspace/PersonalWorkspaceRoutes.test.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" },
+    { "path": "specs/001-markets-home/spec.md", "status": "M" },
+    { "path": "specs/006-markets-watchlist/plan.md", "status": "A" },
+    { "path": "specs/006-markets-watchlist/spec.md", "status": "A" },
+    { "path": "specs/006-markets-watchlist/tasks.md", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka85.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka85.json",
+  "presentation": {
+    "featureDescription": "Add explicit Markets loads for My Watchlist cohorts",
+    "closureDescription": "generated routing closure for Markets watchlist cohorts",
+    "inventoryDescription": "Exact-identity admission, shared request budget and watchlist board controls",
+    "testBinding": "marketswatchlist",
+    "routingDescription": "Explicit cohort loads reuse dated EOD charts and company research without changing saved records",
+    "summaryDescription": "choose up to six saved companies and load their dated market board"
+  }
+}

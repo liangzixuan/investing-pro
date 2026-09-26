@@ -613,6 +613,10 @@ import {
   isCycle3ka84FeatureTopologyAllowed,
   isCycle3ka84RoutingClosureCommitDiffSetAllowed,
   isCycle3ka84RoutingClosureTopologyAllowed,
+  isCycle3ka85FeatureCommitDiffSetAllowed,
+  isCycle3ka85FeatureTopologyAllowed,
+  isCycle3ka85RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka85RoutingClosureTopologyAllowed,
   isCycle3eaRoutingClosureCommitDiffSetAllowed,
   isCycle3eaRoutingClosureTopologyAllowed,
   isCycle3eaSourceCommitDiffSetAllowed,
@@ -1764,6 +1768,10 @@ const CYCLE_3K_A83_ROUTING_CLOSURE_REVISION =
   "d0ad5d3537d012f2d96af1355dc05f015a76c7e8" as const;
 const CYCLE_3K_A84_FEATURE_REVISION =
   "7b0a3eefc9ba85aebc34bacae3b20a22838043f6" as const;
+const CYCLE_3K_A84_ROUTING_CLOSURE_REVISION =
+  "9c3dee7bacdbb6799925e5b4d04e2675ade6be48" as const;
+const CYCLE_3K_A85_FEATURE_REVISION =
+  "2056bd4e3480b1ebc544009c78ed7c4b026dcc61" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -9996,6 +10004,79 @@ const CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka84.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A85_FEATURE_TRANSITION = [
+  {
+    path: "apps/web/src/features/markets/MarketBoardPicker.test.tsx",
+    status: "A",
+  },
+  { path: "apps/web/src/features/markets/MarketBoardPicker.tsx", status: "A" },
+  { path: "apps/web/src/features/markets/MarketsHome.test.tsx", status: "M" },
+  { path: "apps/web/src/features/markets/MarketsHome.tsx", status: "M" },
+  {
+    path: "apps/web/src/features/markets/market-board-loader.test.ts",
+    status: "M",
+  },
+  { path: "apps/web/src/features/markets/market-board-loader.ts", status: "M" },
+  { path: "apps/web/src/features/markets/markets.css", status: "M" },
+  {
+    path: "apps/web/src/features/markets/useMarketsSnapshot.test.ts",
+    status: "M",
+  },
+  { path: "apps/web/src/features/markets/useMarketsSnapshot.ts", status: "M" },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+    status: "M",
+  },
+  {
+    path: "apps/web/src/features/workspace/PersonalWorkspaceRoutes.test.tsx",
+    status: "M",
+  },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "docs/PERSONAL_COMPANY_RESEARCH.md", status: "M" },
+  { path: "specs/001-markets-home/spec.md", status: "M" },
+  { path: "specs/006-markets-watchlist/plan.md", status: "A" },
+  { path: "specs/006-markets-watchlist/spec.md", status: "A" },
+  { path: "specs/006-markets-watchlist/tasks.md", status: "A" },
+];
+const CYCLE_3K_A85_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka85.json",
     status: "A",
   },
 ];
@@ -26430,6 +26511,116 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedBeareleaseagendaClosure = [
+      "270",
+      "270",
+      CYCLE_3K_A84_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A84_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A84_FEATURE_REVISION}`,
+      beareleaseagendaFeature,
+    ] as const;
+    expect(
+      isCycle3ka84RoutingClosureTopologyAllowed(
+        ...pinnedBeareleaseagendaClosure,
+      ),
+    ).toBe(true);
+    const marketswatchlistFeature = [
+      "271",
+      "271",
+      CYCLE_3K_A85_FEATURE_REVISION,
+      `${CYCLE_3K_A85_FEATURE_REVISION} ${CYCLE_3K_A84_ROUTING_CLOSURE_REVISION}`,
+      pinnedBeareleaseagendaClosure,
+    ] as const;
+    expect(isCycle3ka85FeatureTopologyAllowed(...marketswatchlistFeature)).toBe(
+      true,
+    );
+    for (const [index, replacement] of [
+      [0, "270"],
+      [1, "272"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A85_FEATURE_REVISION} ${CYCLE_3K_A84_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A85_FEATURE_REVISION} ${CYCLE_3K_A84_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...marketswatchlistFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka85FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka85FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedBeareleaseagendaClosure: unknown[] = [
+      ...pinnedBeareleaseagendaClosure,
+    ];
+    tamperedPinnedBeareleaseagendaClosure[4] = tamperedBeareleaseagendaFeature;
+    expect(
+      isCycle3ka85FeatureTopologyAllowed(
+        "271",
+        "271",
+        CYCLE_3K_A85_FEATURE_REVISION,
+        `${CYCLE_3K_A85_FEATURE_REVISION} ${CYCLE_3K_A84_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedBeareleaseagendaClosure as unknown as Parameters<
+          typeof isCycle3ka85FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const marketswatchlistClosureRevision = "e".repeat(40);
+    const marketswatchlistClosure = [
+      "272",
+      "272",
+      marketswatchlistClosureRevision,
+      `${marketswatchlistClosureRevision} ${CYCLE_3K_A85_FEATURE_REVISION}`,
+      marketswatchlistFeature,
+    ] as const;
+    expect(
+      isCycle3ka85RoutingClosureTopologyAllowed(...marketswatchlistClosure),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "271"],
+      [1, "273"],
+      [2, CYCLE_3K_A85_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${marketswatchlistClosureRevision} ${CYCLE_3K_A84_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${marketswatchlistClosureRevision} ${CYCLE_3K_A85_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...marketswatchlistClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka85RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka85RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedMarketswatchlistFeature: unknown[] = [
+      ...marketswatchlistFeature,
+    ];
+    tamperedMarketswatchlistFeature[4] = tamperedPinnedBeareleaseagendaClosure;
+    expect(
+      isCycle3ka85RoutingClosureTopologyAllowed(
+        "272",
+        "272",
+        marketswatchlistClosureRevision,
+        `${marketswatchlistClosureRevision} ${CYCLE_3K_A85_FEATURE_REVISION}`,
+        tamperedMarketswatchlistFeature as unknown as Parameters<
+          typeof isCycle3ka85RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes the exact source, evidence, promotion, alias, and routing transitions", () => {
@@ -27870,6 +28061,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka85FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A85_FEATURE_TRANSITION,
+      18,
+    );
+    expectExactTransition(
+      isCycle3ka85RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A85_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -28145,6 +28346,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A83_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A84_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A84_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A85_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A85_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
