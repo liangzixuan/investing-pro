@@ -144,6 +144,7 @@ type CompanyResearchOrigin =
   | "financials"
   | "portfolio"
   | "filings"
+  | "monitor"
   | "watchlist"
   | "priceScreen"
   | "financialPriceScreen";
@@ -180,6 +181,10 @@ const COMPANY_RESEARCH_ORIGINS: Readonly<
   filings: {
     label: "Back to recent filings",
     headingId: "watchlist-filings-title",
+  },
+  monitor: {
+    label: "Back to filing inbox",
+    headingId: "filing-monitor-title",
   },
   watchlist: { label: "Back to My Watchlist", headingId: "watchlist-title" },
   priceScreen: {
@@ -692,6 +697,39 @@ export function SecurityDiscoveryWorkspace({
         (current.page + 1) * WATCHLIST_PAGE_SIZE,
       )
       .some((member) => companyResearchIdentityKey(member) === identityKey);
+  }
+
+  function openFilingMonitorResearch(
+    membership: PersonalWatchlistMembership,
+    trigger: HTMLButtonElement,
+    isCurrentResult: () => boolean,
+    isCurrentAfterHandoff: () => boolean,
+  ) {
+    const identityKey = companyResearchIdentityKey(membership);
+    const currentBinding = () =>
+      workspace !== null &&
+      workspace === watchlistView.current.workspace &&
+      renderedWorkspaceEpoch === workspaceEpoch.current &&
+      workspaceActivityReady.current &&
+      researchCatalogInvalidatedEpoch.current !== workspaceEpoch.current &&
+      renderedWatchlistVersion === workspace.version &&
+      workspace.watchlistAvailable &&
+      workspace.version > 0 &&
+      hasCurrentWatchlistSnapshot(workspace) &&
+      !watchlistView.current.saving &&
+      !watchlistView.current.reconciling &&
+      workspace.watchlist.memberships.some(
+        (member) => companyResearchIdentityKey(member) === identityKey,
+      );
+    const isCurrent = () => isCurrentAfterHandoff() && currentBinding();
+    if (!isCurrentResult() || !isCurrentDeskControl(trigger) || !isCurrent())
+      return;
+    selectMarketSecurity(membership, "monitor", undefined, {
+      headingId: COMPANY_RESEARCH_ORIGINS.monitor.headingId,
+      trigger,
+      isCurrent,
+      isCurrentAfterHandoff: isCurrent,
+    });
   }
 
   function openPriceScreenResearch(
@@ -1281,6 +1319,7 @@ export function SecurityDiscoveryWorkspace({
     origin: CompanyResearchOrigin,
   ) {
     const identityKey = companyResearchIdentityKey(membership);
+    if (origin === "monitor") setCompanySection("sec");
     if (identityKey === companyIdentity.current) return;
     replaceNoteFeedback(null);
     companySelectionEpoch.current += 1;
@@ -1289,7 +1328,7 @@ export function SecurityDiscoveryWorkspace({
     setCompanySection(
       origin === "financials"
         ? "financials"
-        : origin === "filings"
+        : origin === "filings" || origin === "monitor"
           ? "sec"
           : "price",
     );
@@ -3626,6 +3665,11 @@ export function SecurityDiscoveryWorkspace({
                   catalogSnapshotSha256={workspace.snapshot.snapshotSha256}
                   watchlistVersion={workspace.version}
                   memberships={workspace.watchlist.memberships}
+                  active={
+                    !workspaceView.research &&
+                    workspaceView.task === "updates" &&
+                    workspaceView.updates === "monitor"
+                  }
                   enabled={
                     workspace.watchlistAvailable &&
                     workspace.version > 0 &&
@@ -3633,6 +3677,7 @@ export function SecurityDiscoveryWorkspace({
                     watchlistState !== "saving" &&
                     !reconciling
                   }
+                  onOpenResearch={openFilingMonitorResearch}
                   onSessionUnavailable={clearWorkspaceForSessionLoss}
                 />
               </div>
@@ -4100,6 +4145,8 @@ function viewForCompanyOrigin(
       return { task: "portfolio" };
     case "filings":
       return { task: "updates", updates: "filings" };
+    case "monitor":
+      return { task: "updates", updates: "monitor" };
     case "catalog":
       return { task: "screens", screen: "catalog" };
     case "priceScreen":

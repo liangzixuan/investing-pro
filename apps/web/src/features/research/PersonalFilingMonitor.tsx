@@ -24,6 +24,13 @@ export interface PersonalFilingMonitorProps {
   readonly watchlistVersion: number;
   readonly memberships: readonly PersonalWatchlistMembership[];
   readonly enabled: boolean;
+  readonly active: boolean;
+  readonly onOpenResearch: (
+    membership: PersonalWatchlistMembership,
+    trigger: HTMLButtonElement,
+    isCurrentResult: () => boolean,
+    isCurrentAfterHandoff: () => boolean,
+  ) => void;
   readonly onSessionUnavailable: () => void;
 }
 type Draft = Pick<
@@ -53,6 +60,8 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
     watchlistVersion,
     memberships,
     enabled,
+    active,
+    onOpenResearch,
     onSessionUnavailable,
   } = props;
   const key = JSON.stringify([
@@ -87,6 +96,18 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
   const mounted = useRef(false);
   const epoch = useRef(0);
   const controller = useRef<AbortController | null>(null);
+  const visibility = useRef({ active, generation: 0 });
+  if (visibility.current.active !== active)
+    visibility.current = {
+      active,
+      generation: visibility.current.generation + 1,
+    };
+  const visibilityGeneration = visibility.current.generation;
+  const inboxView = useRef({
+    response: null as PersonalFilingMonitorDto | null,
+    page: 0,
+    generation: 0,
+  });
   const sessionCallback = useRef(onSessionUnavailable);
   sessionCallback.current = onSessionUnavailable;
   const loadButton = useRef<HTMLButtonElement | null>(null);
@@ -311,6 +332,83 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
     Math.max(0, Math.ceil(inbox.length / 20) - 1),
   );
   const unread = inbox.filter((entry) => entry.readAt === null);
+  if (
+    inboxView.current.response !== current ||
+    inboxView.current.page !== inboxIndex
+  )
+    inboxView.current = {
+      response: current,
+      page: inboxIndex,
+      generation: inboxView.current.generation + 1,
+    };
+  const inboxGeneration = inboxView.current.generation;
+
+  function changeInboxPage(next: number) {
+    if (
+      !validRender() ||
+      inboxView.current.generation !== inboxGeneration ||
+      next < 0 ||
+      next * 20 >= inbox.length
+    )
+      return;
+    inboxView.current = {
+      response: current,
+      page: next,
+      generation: inboxGeneration + 1,
+    };
+    setInboxPage(next);
+  }
+
+  function researchMember(
+    listing: PersonalFilingMonitorDto["inbox"][number]["listings"][number],
+  ) {
+    if (
+      current?.bindingStatus !== "current" ||
+      !current.policy?.listingIds.includes(listing.listingId)
+    )
+      return undefined;
+    return memberships.find(
+      (member) =>
+        member.listingId === listing.listingId &&
+        member.symbol === listing.symbol &&
+        member.issuerName === listing.issuerName,
+    );
+  }
+
+  function research(
+    entry: PersonalFilingMonitorDto["inbox"][number],
+    listing: PersonalFilingMonitorDto["inbox"][number]["listings"][number],
+    trigger: HTMLButtonElement,
+  ) {
+    const member = researchMember(listing);
+    const isCurrentAfterHandoff = () =>
+      validRender() &&
+      controller.current === null &&
+      inboxView.current.response === current &&
+      inboxView.current.generation === inboxGeneration &&
+      inbox.slice(inboxIndex * 20, (inboxIndex + 1) * 20).includes(entry) &&
+      entry.listings.includes(listing) &&
+      member !== undefined &&
+      researchMember(listing) === member &&
+      trigger.isConnected &&
+      trigger.ownerDocument.visibilityState === "visible";
+    // Hiding this mounted monitor is the expected Research handoff. Its saved
+    // result remains a return target; only fresh clicks require this view epoch.
+    const isCurrentResult = () =>
+      isCurrentAfterHandoff() &&
+      active &&
+      visibility.current.active &&
+      visibility.current.generation === visibilityGeneration &&
+      !trigger.disabled &&
+      trigger.closest("[hidden], [inert]") === null;
+    if (member && isCurrentResult())
+      onOpenResearch(
+        Object.freeze({ ...member }),
+        trigger,
+        isCurrentResult,
+        isCurrentAfterHandoff,
+      );
+  }
 
   return (
     <section
@@ -618,7 +716,9 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
           <p className="discovery-copy">
             Observed times below are UTC. SEC filing and report dates are
             calendar dates. Acknowledgement records your explicit action;
-            desktop display and clicks never acknowledge entries.
+            desktop display and clicks never acknowledge entries. Research opens
+            a current saved listing without acknowledging the entry or loading
+            company data.
           </p>
           {unread.length > 0 && (
             <button
@@ -663,6 +763,34 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
                       {entry.filing.reportDate ?? "Not supplied"} · First
                       observed (UTC): {entry.firstSeenAt}
                     </p>
+                    <div className="personal-stock-screener-run-actions">
+                      {entry.listings.map((listing) => {
+                        const member = researchMember(listing);
+                        const needsListingLabel =
+                          member !== undefined &&
+                          entry.listings.some(
+                            (other) =>
+                              other.listingId !== listing.listingId &&
+                              other.symbol === member.symbol &&
+                              researchMember(other)?.exchangeMic ===
+                                member.exchangeMic,
+                          );
+                        return member ? (
+                          <button
+                            key={listing.listingId}
+                            type="button"
+                            className="secondary-action compact-action"
+                            disabled={!active || running}
+                            aria-label={`Research ${member.symbol} on ${member.exchangeMic}${needsListingLabel ? ` (${member.listingId})` : ""} for SEC filing ${entry.filing.accessionNumber}`}
+                            onClick={(event) =>
+                              research(entry, listing, event.currentTarget)
+                            }
+                          >
+                            {`Research ${member.symbol} · ${member.exchangeMic}${needsListingLabel ? ` · ${member.listingId}` : ""}`}
+                          </button>
+                        ) : null;
+                      })}
+                    </div>
                     <p>
                       {deliveryLabels[entry.delivery.status]}
                       {entry.delivery.shownObserved &&
@@ -695,9 +823,7 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
               <button
                 type="button"
                 disabled={inboxIndex === 0}
-                onClick={() => {
-                  if (validRender()) setInboxPage(inboxIndex - 1);
-                }}
+                onClick={() => changeInboxPage(inboxIndex - 1)}
               >
                 Previous inbox entries
               </button>
@@ -707,9 +833,7 @@ export function PersonalFilingMonitor(props: PersonalFilingMonitorProps) {
               <button
                 type="button"
                 disabled={(inboxIndex + 1) * 20 >= inbox.length}
-                onClick={() => {
-                  if (validRender()) setInboxPage(inboxIndex + 1);
-                }}
+                onClick={() => changeInboxPage(inboxIndex + 1)}
               >
                 Next inbox entries
               </button>

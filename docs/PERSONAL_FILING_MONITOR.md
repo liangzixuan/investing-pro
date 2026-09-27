@@ -28,6 +28,23 @@ requires an empty retained inbox, or an explicit reset
 while paused. Reset clears this monitor's history and leaves it disabled; the
 next enable establishes a new baseline.
 
+## Research from retained entries
+
+The filing-inbox navigation outcome is in progress; workspace CURRENT records
+its release status. Once available, **Research** beside an eligible listing opens
+that exact company in the SEC section. An entry covering multiple listings offers
+each separately. **Back to filing inbox** returns to the same page, unsaved
+settings and read status. Browser Back also restores the mounted monitor view.
+This retention lasts within the current workspace session, not a full reload.
+
+A current paused monitor remains researchable. An obsolete catalog/watchlist
+binding requires the existing explicit rebind before its history can authorize
+company navigation. Opening Research does not acknowledge the event, change the
+monitor or load company data. The original filing link remains separate.
+
+See the [specification](../specs/009-filing-inbox-research/spec.md) for exact
+identity, stale-action and focus requirements.
+
 ## Scheduling and coverage
 
 Enable schedules an immediate baseline check. Later checks follow the saved daily

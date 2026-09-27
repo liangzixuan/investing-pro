@@ -74,6 +74,7 @@ import type { PersonalSecQuarterlyEvidenceProps } from "./PersonalSecQuarterlyEv
 import type { PersonalStockScreenerProps } from "./PersonalStockScreener";
 import type { PersonalFinancialScreenerProps } from "./PersonalFinancialScreener";
 import type { PersonalWatchlistFilingsProps } from "./PersonalWatchlistFilings";
+import type { PersonalFilingMonitorProps } from "./PersonalFilingMonitor";
 import type { PersonalPriceValuationScreenProps } from "./PersonalPriceValuationScreen";
 import type { PersonalPortfolioProps } from "./PersonalPortfolio";
 import type { PersonalValuationHistoryProps } from "./PersonalValuationHistory";
@@ -244,6 +245,7 @@ const componentMocks = vi.hoisted(() => ({
   StockScreener: () => null,
   FinancialScreener: () => null,
   WatchlistFilings: () => null,
+  FilingMonitor: () => null,
   PriceValuationScreen: () => null,
   Portfolio: () => null,
   ValuationHistory: () => null,
@@ -377,6 +379,9 @@ vi.mock("./PersonalFinancialScreener", () => ({
 }));
 vi.mock("./PersonalWatchlistFilings", () => ({
   PersonalWatchlistFilings: componentMocks.WatchlistFilings,
+}));
+vi.mock("./PersonalFilingMonitor", () => ({
+  PersonalFilingMonitor: componentMocks.FilingMonitor,
 }));
 vi.mock("./PersonalPriceValuationScreen", () => ({
   PersonalPriceValuationScreen: componentMocks.PriceValuationScreen,
@@ -1243,6 +1248,304 @@ describe("SecurityDiscoveryWorkspace", () => {
       expect(apiMocks.fetchPersonalMarketOverview).not.toHaveBeenCalled();
     },
   );
+
+  it("returns monitor Research through routed Back and Forward with durable focus and no added acquisition", async () => {
+    const record = watchlistRecord(2);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateRoutedWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    void chooseResearchOrigin("monitor");
+    const bridge: SecurityDiscoveryWorkspaceProps = {
+      route: { kind: "discover", task: "updates" },
+      onNavigate: vi.fn(),
+    };
+    const monitor = requireFilingMonitor(
+      renderWorkspace(undefined, { bridge }),
+    );
+    expect(monitor.props.active).toBe(true);
+    expect(monitor.props.enabled).toBe(true);
+    let canInitiate = true;
+    monitor.props.onOpenResearch(
+      record.payload.memberships[1]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => canInitiate,
+      () => true,
+    );
+    canInitiate = false;
+    expect(bridge.onNavigate).toHaveBeenCalledExactlyOnceWith(
+      "/company/lst-syn-00002",
+    );
+    const companyRoute: SecurityDiscoveryWorkspaceProps = {
+      ...bridge,
+      route: { kind: "company", listingId: "lst-syn-00002" },
+    };
+    let view = renderWorkspace(undefined, { bridge: companyRoute });
+    await flushPromises();
+    expect(requireCompanyResearch(view).props.activeSection).toBe("sec");
+    expect(requireCompanyResearch(view).props.backLabel).toBe(
+      "Back to filing inbox",
+    );
+    expect(requireFilingMonitor(view).props).toMatchObject({
+      active: false,
+      enabled: true,
+    });
+    expect(requireFilingMonitor(view).props.memberships).toBe(
+      monitor.props.memberships,
+    );
+    expect(dom.company.focus).toHaveBeenCalledOnce();
+    dom.origin.focus.mockClear();
+    void renderWorkspace(undefined, { bridge });
+    view = renderWorkspace(undefined, { bridge });
+    expect(deskView(view, "updates").props.hidden).toBe(false);
+    expect(
+      requireElementByProps<{ hidden: boolean }>(view, {
+        id: "desk-update-monitor",
+      }).props.hidden,
+    ).toBe(false);
+    expect(requireFilingMonitor(view).props).toMatchObject({
+      active: true,
+      enabled: true,
+    });
+    expect(dom.trigger.focus).toHaveBeenCalledOnce();
+    expect(dom.origin.focus).not.toHaveBeenCalled();
+    void renderWorkspace(undefined, { bridge: companyRoute });
+    view = renderWorkspace(undefined, { bridge: companyRoute });
+    expect(requireCompanyResearch(view).props.activeSection).toBe("sec");
+    requireCompanyResearch(view).props.onBack();
+    view = renderWorkspace(undefined, { bridge });
+    expect(bridge.onNavigate).toHaveBeenLastCalledWith(
+      "/discover?view=updates",
+    );
+    expect(requireFilingMonitor(view).props.active).toBe(true);
+    expect(dom.trigger.focus).toHaveBeenCalledTimes(2);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(apiMocks.fetchPersonalSecurityMasterListing).not.toHaveBeenCalled();
+    expect(apiMocks.fetchMainPersonalWatchlist).toHaveBeenCalledOnce();
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("selects SEC for same-company monitor entry while preserving loaded data and model identity", async () => {
+    const record = watchlistRecord(1);
+    record.payload.memberships = [membership("ZERO", "lst-zero")];
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireMarketOverview(view).props.onLoad("1y");
+    await flushPromises();
+    view = renderWorkspace();
+    requireAnnualFinancials(view).props.onLoad();
+    requireQuarterlyFinancials(view).props.onLoad();
+    requireValuationHistory(view).props.onLoad();
+    await flushPromises();
+    view = renderWorkspace();
+    const companyKey = requireCompanyResearch(view).key;
+    const dcfKey = requireFcffDcfValuation(view).key;
+    const overview = requireMarketOverview(view).props.overview;
+    const annual = requireAnnualFinancials(view).props.financials;
+    const quarterly = requireQuarterlyFinancials(view).props.financials;
+    const history = requireValuationHistory(view).props.history;
+    requireCompanyNote(view).props.onChange("Keep this unsaved filing thesis");
+    requireCompanyResearch(view).props.onSectionChange("valuation");
+    const dom = companyFocusDocument("filing-monitor-title");
+    requireFilingMonitor(chooseResearchOrigin("monitor")).props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => true,
+    );
+    view = renderWorkspace();
+    expect(requireCompanyResearch(view).props.activeSection).toBe("sec");
+    expect(requireCompanyResearch(view).key).toBe(companyKey);
+    expect(requireFcffDcfValuation(view).key).toBe(dcfKey);
+    expect(requireMarketOverview(view).props.overview).toBe(overview);
+    expect(requireAnnualFinancials(view).props.financials).toBe(annual);
+    expect(requireQuarterlyFinancials(view).props.financials).toBe(quarterly);
+    expect(requireValuationHistory(view).props.history).toBe(history);
+    expect(requireCompanyNote(view).props.value).toBe(
+      "Keep this unsaved filing thesis",
+    );
+    expect(providerRequestCounts()).toEqual([1, 1, 1, 1]);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
+
+  it("rejects forged monitor callback identities across all eleven fields", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    const monitor = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    const member = record.payload.memberships[0]!;
+    // Country is an off-domain hostile input; the other alternatives have valid
+    // identity field shapes, but none is this saved membership.
+    const replacements = [
+      ["country", "CA"],
+      ["exchangeMic", "XNYS"],
+      ["instrumentType", "adr"],
+      ["issuerId", "iss-other"],
+      ["issuerName", "Other Issuer, Inc."],
+      ["listingId", "lst-other"],
+      ["securityId", "sec-other"],
+      ["securityName", "Other Common Stock"],
+      ["shareClassId", "shr-other"],
+      ["shareClassName", "Class B"],
+      ["symbol", "OTHER"],
+    ] as const;
+    for (const [field, value] of replacements) {
+      monitor.props.onOpenResearch(
+        { ...member, [field]: value },
+        dom.trigger as unknown as HTMLButtonElement,
+        () => true,
+        () => true,
+      );
+      expect(
+        requireCompanyResearch(renderWorkspace()).props.selection,
+        field,
+      ).toBeNull();
+    }
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("rejects retired monitor click callbacks across hide and return while keeping its authority enabled", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    const old = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    void chooseDeskTask("Discover");
+    expect(requireFilingMonitor(renderWorkspace()).props).toMatchObject({
+      active: false,
+      enabled: true,
+    });
+    const fresh = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    for (const [callback, before, after] of [
+      [old.props.onOpenResearch, true, true],
+      [fresh.props.onOpenResearch, false, true],
+      [fresh.props.onOpenResearch, true, false],
+    ] as const) {
+      callback(
+        record.payload.memberships[0]!,
+        dom.trigger as unknown as HTMLButtonElement,
+        () => before,
+        () => after,
+      );
+      expect(
+        requireCompanyResearch(renderWorkspace()).props.selection,
+      ).toBeNull();
+    }
+    expect(fresh.props.enabled).toBe(true);
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("retires monitor queued focus with its accepted result and uses the inbox heading on Back", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    const monitor = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    let resultCurrent = true;
+    monitor.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => resultCurrent,
+    );
+    resultCurrent = false;
+    void renderWorkspace();
+    expect(dom.company.focus).not.toHaveBeenCalled();
+    dom.origin.focus.mockClear();
+    requireCompanyResearch(renderWorkspace()).props.onBack();
+    void renderWorkspace();
+    expect(dom.trigger.focus).not.toHaveBeenCalled();
+    expect(dom.origin.focus).toHaveBeenCalledOnce();
+    expect(dom.getElementById).toHaveBeenLastCalledWith("filing-monitor-title");
+  });
+
+  it("retires monitor Research during a watchlist save and after session replacement", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    const saving = deferred<SavedPersonalWatchlist>();
+    apiMocks.saveMainPersonalWatchlist.mockReturnValueOnce(saving.promise);
+    await activateWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    const old = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    editWatchlistNote("lst-syn-00001", "Pending saved note");
+    watchlistSave(renderWorkspace(), "lst-syn-00001").props.onClick();
+    expect(requireFilingMonitor(renderWorkspace()).props.enabled).toBe(false);
+    old.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    saving.resolve({
+      version: 8,
+      payload: apiMocks.saveMainPersonalWatchlist.mock.calls[0]![1],
+    });
+    await flushPromises();
+    const current = requireFilingMonitor(chooseResearchOrigin("monitor"));
+    old.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    current.props.onSessionUnavailable();
+    await activateWorkspace();
+    current.props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+  });
+
+  it("rejects a fresh monitor handoff after explicit catalog invalidation", async () => {
+    const record = watchlistRecord(1);
+    apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce(record);
+    await activateWorkspace();
+    const dom = companyFocusDocument("filing-monitor-title");
+    apiMocks.searchPersonalSecurities.mockResolvedValueOnce({
+      limitApplied: 15,
+      normalizedQuery: "NEW",
+      results: [],
+      totalMatches: 0,
+      snapshot: { ...snapshot(), snapshotSha256: `sha256:${"d".repeat(64)}` },
+    });
+    const discovery = chooseDeskTask("Discover");
+    requireElementByProps<{
+      onChange: (event: { target: { value: string } }) => void;
+    }>(discovery, { id: "security-query" }).props.onChange({
+      target: { value: "NEW" },
+    });
+    requireElementByProps<{
+      onSubmit: (event: { preventDefault: () => void }) => void;
+    }>(renderWorkspace(), { className: "security-search-form" }).props.onSubmit(
+      { preventDefault: vi.fn() },
+    );
+    await flushPromises(12);
+    requireFilingMonitor(chooseResearchOrigin("monitor")).props.onOpenResearch(
+      record.payload.memberships[0]!,
+      dom.trigger as unknown as HTMLButtonElement,
+      () => true,
+      () => true,
+    );
+    expect(
+      requireCompanyResearch(renderWorkspace()).props.selection,
+    ).toBeNull();
+    expect(providerRequestCounts()).toEqual([0, 0, 0, 0]);
+    expect(apiMocks.saveMainPersonalWatchlist).not.toHaveBeenCalled();
+  });
 
   it("opens a saved company with a My Watchlist return target and preserves its unsaved note", async () => {
     apiMocks.fetchMainPersonalWatchlist.mockResolvedValueOnce({
@@ -6531,6 +6834,7 @@ describe("Sequential My Watchlist research", () => {
     "catalog",
     "financials",
     "filings",
+    "monitor",
     "portfolio",
     "priceScreen",
   ] as const)(
@@ -6571,6 +6875,15 @@ describe("Sequential My Watchlist research", () => {
           originView,
           componentMocks.WatchlistFilings,
         )!.props.onOpenResearch(identity);
+      if (origin === "monitor") {
+        const dom = companyFocusDocument("filing-monitor-title");
+        requireFilingMonitor(originView).props.onOpenResearch(
+          identity,
+          dom.trigger as unknown as HTMLButtonElement,
+          () => true,
+          () => true,
+        );
+      }
       if (origin === "portfolio")
         findElement<PersonalPortfolioProps>(
           originView,
@@ -8282,6 +8595,15 @@ function requirePriceScreen(value: unknown) {
   return screen;
 }
 
+function requireFilingMonitor(value: unknown) {
+  const monitor = findElement<PersonalFilingMonitorProps>(
+    value,
+    componentMocks.FilingMonitor,
+  );
+  if (monitor === undefined) throw new Error("Expected filing monitor.");
+  return monitor;
+}
+
 type DeskTaskLabel =
   "Discover" | "Screens" | "Watchlist" | "Portfolio" | "Updates";
 
@@ -8357,10 +8679,13 @@ function chooseResearchOrigin(origin: string) {
   if (origin === "financials") return chooseDeskScreen("Financial screen");
   if (origin === "priceScreen") return chooseDeskScreen("Price and valuation");
   if (origin === "portfolio") return chooseDeskTask("Portfolio");
-  if (origin === "filings") {
+  if (origin === "filings" || origin === "monitor") {
     const view = chooseDeskTask("Updates");
     (
-      requireButton(view, "Recent filings") as React.ReactElement<{
+      requireButton(
+        view,
+        origin === "monitor" ? "Daily filing monitor" : "Recent filings",
+      ) as React.ReactElement<{
         onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
       }>
     ).props.onClick(deskNavigationEvent());

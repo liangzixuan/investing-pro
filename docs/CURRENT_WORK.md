@@ -5,7 +5,56 @@ Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a87 Federal Reserve announcements
+## Active outcome: a88 filing inbox Research/Back
+
+Open an exact current listing from a retained Daily SEC filing monitor entry in
+the existing company SEC section. In-app and browser Back retain the inbox page,
+settings draft, order and read status. Multiple listings remain separate choices;
+obsolete bindings cannot authorize Research. The
+[specification](../specs/009-filing-inbox-research/spec.md),
+[plan](../specs/009-filing-inbox-research/plan.md) and
+[tasks](../specs/009-filing-inbox-research/tasks.md) define the acceptance contract.
+Implementation is in progress and unreleased.
+
+The two focused suites establish 391 distinct passing cases and a registration
+increase of 30. Affected web types, scoped lint/format and the complete boundary
+check passed. The configured personal-workspace/local production web preflight
+passed with build `WnzkJPpWuLV16Irxeha7n`; the
+[preflight receipt](../../tmp/filing-inbox-research/production-web-preflight.json)
+reconciles its six input pins before and after compilation. Independent source
+review and six composed synthetic Brave groups passed. The browser checks cover
+exact listing choices, page and draft retention, in-app/browser Back, same-company
+SEC selection, obsolete bindings, delayed response retirement and phone layout.
+Navigation added no requests or saved-record writes in the RAM fixture. Its
+History shim does not establish production Next hydration or live API behavior;
+loaded company-data retention remains focused-test coverage. All release gates
+and limited live QA remain pending. Raw failed
+lint and label-assertion attempts are retained in the implementation handoffs;
+filtered cases are not counted as additional passes or product skips.
+
+Finance owns the monitor and its tests; Performance owns workspace composition
+and its tests; root owns integration, guides and release. Spec prepares the
+outside-Git composed fixture and independent review. Keep visibility separate
+from the monitor's enabled lifetime and distinguish new-click authority from
+durable handoff/return authority. Reuse existing routes and state. No API, schema,
+dependency, acquisition or saved-record write is added by navigation.
+
+A87 release `4a033698634ab217af21de9f0332c95b07941abc` is accepted, pushed and
+running with build `0L2DjUvoK99Djl82vErL0`. Its
+[final independent review](../../tmp/fed-announcements-v2/final-acceptance-independent-review.json)
+records 634 focused cases, 9,690 native passes and nine existing skips, 25
+typechecks, 24 builds, 398 healthy samples, seven successful required hosted
+jobs, seven synthetic and six limited live Brave groups. Live displayed ten of
+fifteen Fed announcements and checked Discover/Back and desktop/390px layouts.
+This establishes monetary-policy announcements, not general company-news
+coverage. Preserve that release and the rollback while a88 is unfinished.
+
+The [a87 handoff](../../tmp/fed-announcements-v2/release-handoff.md) and workspace
+CURRENT own actual release evidence and preserved failures. All consumed a87
+and older operational helpers remain terminal or stale. The sections below
+retain earlier implementation context; their pending statements are historical.
+
+## A87 implementation context (released)
 
 Add an independent, explicitly loaded Markets panel with up to ten attributed
 monetary-policy announcements. The [specification](../specs/008-fed-announcements/spec.md),

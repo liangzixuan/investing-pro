@@ -61,6 +61,12 @@ actions. Filtering still disables reorder because order belongs to the full list
 
 ## Research a company
 
+The filing-inbox navigation outcome is in progress; workspace CURRENT records
+release status. Its per-listing **Research** action opens SEC evidence and
+**Back to filing inbox** restores the retained monitor page, settings draft and
+read status. Selecting the same full identity preserves loaded company data.
+See the [filing-inbox specification](../specs/009-filing-inbox-research/spec.md).
+
 Open a company from security search, catalog or financial-screen results,
 My Watchlist, recent watchlist filings or holdings. The company research heading
 keeps its symbol, issuer name, exchange and security name visible. A comparison

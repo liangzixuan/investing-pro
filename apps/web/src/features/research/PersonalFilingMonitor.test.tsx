@@ -38,6 +38,8 @@ beforeEach(() => {
     watchlistVersion: 1,
     memberships: [membership()],
     enabled: true,
+    active: true,
+    onOpenResearch: vi.fn(),
     onSessionUnavailable: vi.fn(),
   };
 });
@@ -521,7 +523,382 @@ describe("PersonalFilingMonitor", () => {
     click(view, "Enable daily monitor");
     expect(api.configurePersonalFilingMonitor).not.toHaveBeenCalled();
   });
+
+  it("opens each exact current listing separately with a native Research button", async () => {
+    const first = membership();
+    const second = {
+      ...membership(1),
+      issuerId: first.issuerId,
+      issuerName: first.issuerName,
+      exchangeMic: "XNYS",
+    };
+    props = { ...props, memberships: [first, second] };
+    const listings = [first, second].map(
+      ({ listingId, symbol, issuerName }) => ({
+        listingId,
+        symbol,
+        issuerName,
+      }),
+    );
+    const data = populated();
+    api.fetchPersonalFilingMonitor.mockResolvedValue({
+      ...data,
+      policy: {
+        ...data.policy!,
+        listingIds: listings.map((item) => item.listingId),
+      },
+      issuers: [{ ...data.issuers[0]!, listings }],
+      inbox: [{ ...data.inbox[0]!, listings }],
+    });
+    const view = await load();
+    const buttons = researchButtons(view);
+    expect(buttons.map(text)).toEqual([
+      "Research EX0 · XNAS",
+      "Research EX1 · XNYS",
+    ]);
+    expect(buttons[1]!.props.type).toBe("button");
+    expect(buttons[1]!.props["aria-label"]).toBe(
+      "Research EX1 on XNYS for SEC filing 0000000001-26-000001",
+    );
+    const firstTrigger = researchTrigger();
+    const secondTrigger = researchTrigger();
+    buttons[0]!.props.onClick({ currentTarget: firstTrigger });
+    buttons[1]!.props.onClick({ currentTarget: secondTrigger });
+    const calls = vi.mocked(props.onOpenResearch).mock.calls;
+    expect(calls.map(([member]) => member)).toEqual([first, second]);
+    expect(calls[1]![0]).not.toBe(second);
+    expect(Object.isFrozen(calls[1]![0])).toBe(true);
+    expect(calls[1]![1]).toBe(secondTrigger);
+    expect(calls[1]![2]()).toBe(true);
+    expect(calls[1]![3]()).toBe(true);
+    expect(api.fetchPersonalFilingMonitor).toHaveBeenCalledTimes(1);
+    expect(api.acknowledgePersonalFilingMonitor).not.toHaveBeenCalled();
+    expect(api.configurePersonalFilingMonitor).not.toHaveBeenCalled();
+  });
+
+  it("permits a paused current monitor and preserves the unacknowledged entry", async () => {
+    const data = populated();
+    api.fetchPersonalFilingMonitor.mockResolvedValue({
+      ...data,
+      policy: { ...data.policy!, enabled: false },
+      nextCheckAt: null,
+    });
+    const view = await load();
+    researchButtons(view)[0]!.props.onClick({
+      currentTarget: researchTrigger(),
+    });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+    expect(text(view)).toContain("Read state: Unacknowledged");
+    expect(api.pausePersonalFilingMonitor).not.toHaveBeenCalled();
+    expect(api.acknowledgePersonalFilingMonitor).not.toHaveBeenCalled();
+  });
+
+  it("distinguishes current listings sharing a symbol and venue without choosing one implicitly", async () => {
+    const first = membership();
+    const second = {
+      ...membership(1),
+      symbol: first.symbol,
+      issuerName: first.issuerName,
+      issuerId: first.issuerId,
+    };
+    props = { ...props, memberships: [first, second] };
+    const listings = [first, second].map(
+      ({ listingId, symbol, issuerName }) => ({
+        listingId,
+        symbol,
+        issuerName,
+      }),
+    );
+    const data = populated();
+    api.fetchPersonalFilingMonitor.mockResolvedValue({
+      ...data,
+      policy: {
+        ...data.policy!,
+        listingIds: listings.map((item) => item.listingId),
+      },
+      issuers: [{ ...data.issuers[0]!, listings }],
+      inbox: [{ ...data.inbox[0]!, listings }],
+    });
+    const buttons = researchButtons(await load());
+    expect(buttons.map(text)).toEqual([
+      "Research EX0 · XNAS · listing-0",
+      "Research EX0 · XNAS · listing-1",
+    ]);
+    expect(buttons.map((item) => item.props["aria-label"])).toEqual([
+      "Research EX0 on XNAS (listing-0) for SEC filing 0000000001-26-000001",
+      "Research EX0 on XNAS (listing-1) for SEC filing 0000000001-26-000001",
+    ]);
+    buttons[1]!.props.onClick({ currentTarget: researchTrigger() });
+    expect(vi.mocked(props.onOpenResearch).mock.calls[0]![0]).toEqual(second);
+    expect(api.fetchPersonalFilingMonitor).toHaveBeenCalledTimes(1);
+    expect(api.acknowledgePersonalFilingMonitor).not.toHaveBeenCalled();
+  });
+
+  it.each(["needs_rebind", "missing", "symbol", "issuerName", "unselected"])(
+    "does not offer Research for %s retained metadata",
+    async (kind) => {
+      const data = populated();
+      const listing = data.inbox[0]!.listings[0]!;
+      if (kind === "missing") props = { ...props, memberships: [] };
+      api.fetchPersonalFilingMonitor.mockResolvedValue({
+        ...data,
+        ...(kind === "needs_rebind" ? { bindingStatus: "needs_rebind" } : {}),
+        ...(kind === "unselected"
+          ? { policy: { ...data.policy!, listingIds: [] } }
+          : {}),
+        inbox: [
+          {
+            ...data.inbox[0]!,
+            listings: [
+              {
+                ...listing,
+                ...(kind === "symbol" ? { symbol: "OTHER" } : {}),
+                ...(kind === "issuerName"
+                  ? { issuerName: "Different issuer" }
+                  : {}),
+              },
+            ],
+          },
+        ],
+      });
+      const view = await load();
+      expect(researchButtons(view)).toHaveLength(0);
+      expect(text(view)).toContain("Read state: Unacknowledged");
+      expect(props.onOpenResearch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retains page, settings draft and exact result through hide/return while retiring old clicks", async () => {
+    const data = populated("observed_shown", 21);
+    const original = JSON.stringify(data);
+    api.fetchPersonalFilingMonitor.mockResolvedValue(data);
+    let view = await load();
+    change(view, "Monitor daily local time", "10:17");
+    view = render();
+    click(view, "Next inbox entries");
+    view = render();
+    const oldButton = researchButtons(view)[0]!;
+    const trigger = researchTrigger();
+    oldButton.props.onClick({ currentTarget: trigger });
+    const [, , before, after] = vi.mocked(props.onOpenResearch).mock.calls[0]!;
+    expect(before()).toBe(true);
+    props = { ...props, active: false };
+    trigger.disabled = true;
+    view = render();
+    expect(before()).toBe(false);
+    expect(after()).toBe(true);
+    expect(researchButtons(view)[0]!.props.disabled).toBe(true);
+    props = { ...props, active: true };
+    trigger.disabled = false;
+    view = render();
+    expect(before()).toBe(false);
+    expect(after()).toBe(true);
+    expect(input(view, "Monitor daily local time").props.value).toBe("10:17");
+    expect(text(view)).toContain("Page 2 of 2");
+    expect(text(view)).toContain("SEC filing 0000000001-26-000021");
+    expect(text(view)).toContain("Read state: Unacknowledged");
+    oldButton.props.onClick({ currentTarget: trigger });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+    researchButtons(view)[0]!.props.onClick({ currentTarget: trigger });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(2);
+    expect(api.fetchPersonalFilingMonitor).toHaveBeenCalledTimes(1);
+    expect(api.acknowledgePersonalFilingMonitor).not.toHaveBeenCalled();
+    expect(api.configurePersonalFilingMonitor).not.toHaveBeenCalled();
+    expect(JSON.stringify(data)).toBe(original);
+  });
+
+  it("retires page actions immediately, including a stale click before the paging render", async () => {
+    api.fetchPersonalFilingMonitor.mockResolvedValue(
+      populated("observed_shown", 41),
+    );
+    const first = await load();
+    const firstButton = researchButtons(first)[0]!;
+    const trigger = researchTrigger();
+    firstButton.props.onClick({ currentTarget: trigger });
+    const [, , before, after] = vi.mocked(props.onOpenResearch).mock.calls[0]!;
+    click(first, "Next inbox entries");
+    firstButton.props.onClick({ currentTarget: trigger });
+    click(first, "Next inbox entries");
+    expect(before()).toBe(false);
+    expect(after()).toBe(false);
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+    let view = render();
+    expect(text(view)).toContain("Page 2 of 3");
+    click(view, "Previous inbox entries");
+    view = render();
+    expect(text(view)).toContain("Page 1 of 3");
+    firstButton.props.onClick({ currentTarget: trigger });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+    researchButtons(view)[0]!.props.onClick({ currentTarget: trigger });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["load", "configure", "pause", "reset", "acknowledge"] as const)(
+    "retires captured Research callbacks immediately when %s is pending",
+    async (action) => {
+      const data = populated();
+      api.fetchPersonalFilingMonitor.mockResolvedValue(
+        action === "reset"
+          ? {
+              ...data,
+              policy: { ...data.policy!, enabled: false },
+              nextCheckAt: null,
+            }
+          : data,
+      );
+      let view = await load();
+      if (action === "reset") {
+        toggle(view, "Confirm monitor history reset", true);
+        view = render();
+      }
+      const oldButton = researchButtons(view)[0]!;
+      const trigger = researchTrigger();
+      oldButton.props.onClick({ currentTarget: trigger });
+      const [, , before, after] = vi.mocked(props.onOpenResearch).mock
+        .calls[0]!;
+      const pending = deferred<PersonalFilingMonitorDto>();
+      const operation = {
+        load: [api.fetchPersonalFilingMonitor, "Reload monitor"],
+        configure: [
+          api.configurePersonalFilingMonitor,
+          "Save monitor settings",
+        ],
+        pause: [api.pausePersonalFilingMonitor, "Pause monitor"],
+        reset: [api.resetPersonalFilingMonitor, "Reset monitor history"],
+        acknowledge: [
+          api.acknowledgePersonalFilingMonitor,
+          "Acknowledge 0000000001-26-000001",
+        ],
+      } as const;
+      const [mock, label] = operation[action];
+      mock.mockReturnValueOnce(pending.promise);
+      click(view, label);
+      oldButton.props.onClick({ currentTarget: trigger });
+      expect(before()).toBe(false);
+      expect(after()).toBe(false);
+      expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+      expect(researchButtons(render())).toHaveLength(0);
+      pending.resolve(data);
+      await flush();
+      view = render();
+      oldButton.props.onClick({ currentTarget: trigger });
+      expect(after()).toBe(false);
+      expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+      researchButtons(view)[0]!.props.onClick({ currentTarget: trigger });
+      expect(props.onOpenResearch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each(["catalog", "watchlist", "identity", "disabled", "unmount"])(
+    "retires Research and its saved return guard on %s change",
+    async (kind) => {
+      api.fetchPersonalFilingMonitor.mockResolvedValue(populated());
+      const view = await load();
+      const oldButton = researchButtons(view)[0]!;
+      const trigger = researchTrigger();
+      oldButton.props.onClick({ currentTarget: trigger });
+      const [, , before, after] = vi.mocked(props.onOpenResearch).mock
+        .calls[0]!;
+      if (kind === "unmount") harness.unmount();
+      else {
+        props =
+          kind === "catalog"
+            ? { ...props, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` }
+            : kind === "watchlist"
+              ? { ...props, watchlistVersion: 2 }
+              : kind === "identity"
+                ? {
+                    ...props,
+                    memberships: [
+                      { ...membership(), shareClassId: "new-class" },
+                    ],
+                  }
+                : { ...props, enabled: false };
+        render();
+      }
+      oldButton.props.onClick({ currentTarget: trigger });
+      expect(before()).toBe(false);
+      expect(after()).toBe(false);
+      expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("does not admit inactive, hidden, disconnected or disabled Research triggers", async () => {
+    api.fetchPersonalFilingMonitor.mockResolvedValue(populated());
+    const view = await load();
+    const researchButton = researchButtons(view)[0]!;
+    for (const trigger of [
+      researchTrigger({ isConnected: false }),
+      researchTrigger({ disabled: true }),
+      researchTrigger({ closest: () => ({}) as Element }),
+      researchTrigger({
+        ownerDocument: { visibilityState: "hidden" } as Document,
+      }),
+    ])
+      researchButton.props.onClick({ currentTarget: trigger });
+    props = { ...props, active: false };
+    const inactive = render();
+    researchButtons(inactive)[0]!.props.onClick({
+      currentTarget: researchTrigger(),
+    });
+    expect(props.onOpenResearch).not.toHaveBeenCalled();
+  });
+
+  it("keeps cancelled requests from reviving a captured Research result", async () => {
+    api.fetchPersonalFilingMonitor.mockResolvedValue(populated());
+    let view = await load();
+    const trigger = researchTrigger();
+    const oldButton = researchButtons(view)[0]!;
+    oldButton.props.onClick({ currentTarget: trigger });
+    const [, , before, after] = vi.mocked(props.onOpenResearch).mock.calls[0]!;
+    const pending = deferred<PersonalFilingMonitorDto>();
+    api.fetchPersonalFilingMonitor.mockReturnValueOnce(pending.promise);
+    click(view, "Reload monitor");
+    view = render();
+    const cancel = elements(view).find(
+      (item) => item.type === "button" && text(item) === "Cancel waiting",
+    )!;
+    vi.stubGlobal("document", { activeElement: null, body: {} });
+    (
+      cancel.props.onClick as (event: {
+        currentTarget: HTMLButtonElement;
+      }) => void
+    )({ currentTarget: trigger });
+    pending.resolve(populated());
+    await flush();
+    view = render();
+    expect(researchButtons(view)).toHaveLength(0);
+    expect(before()).toBe(false);
+    expect(after()).toBe(false);
+    oldButton.props.onClick({ currentTarget: trigger });
+    expect(props.onOpenResearch).toHaveBeenCalledTimes(1);
+  });
 });
+
+function researchTrigger(overrides: Partial<HTMLButtonElement> = {}) {
+  return {
+    isConnected: true,
+    disabled: false,
+    closest: () => null,
+    ownerDocument: { visibilityState: "visible" },
+    ...overrides,
+  } as HTMLButtonElement;
+}
+
+function researchButtons(value: unknown) {
+  return elements(value).filter(
+    (item) =>
+      item.type === "button" &&
+      String(item.props["aria-label"]).startsWith("Research "),
+  ) as Array<
+    React.ReactElement<{
+      type: string;
+      disabled: boolean;
+      "aria-label": string;
+      onClick: (event: { currentTarget: HTMLButtonElement }) => void;
+    }>
+  >;
+}
 const harness = vi.hoisted(() => {
   const states: unknown[] = [];
   const refs: Array<{ current: unknown }> = [];
