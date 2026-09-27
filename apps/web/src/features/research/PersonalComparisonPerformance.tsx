@@ -60,7 +60,11 @@ export function PersonalComparisonPerformance({
         </p>
       )}
       {result?.status === "available" && (
-        <PersonalComparisonPriceChart result={result} listings={listings} />
+        <PersonalComparisonPriceChart
+          result={result}
+          listings={listings}
+          headingLevel={6}
+        />
       )}
       {result !== null && (
         <div

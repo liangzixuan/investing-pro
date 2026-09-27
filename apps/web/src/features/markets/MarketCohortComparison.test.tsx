@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { MarketCohortComparison } from "./MarketCohortComparison";
+import { PersonalComparisonPriceChart } from "../research/PersonalComparisonPriceChart";
 import { deriveMarketCohortComparison } from "./market-cohort-comparison";
 import {
   marketBoardCohortKey,
@@ -193,6 +194,47 @@ function nodes(
 }
 
 describe("Markets cohort comparison presentation", () => {
+  it.each([2, 3, 6])(
+    "hands all %s members and the exact result to the shared chart in original order",
+    (count) => {
+      const input = snapshot(
+        Array.from({ length: count }, (_, index) => [
+          "100",
+          String(80 + index),
+          "110",
+        ]),
+      );
+      const model = deriveMarketCohortComparison(input);
+      if (model?.status !== "available")
+        throw new Error("Expected an available fixture");
+      const view = MarketCohortComparison({
+        model,
+        cohortName: "My Watchlist selection",
+      });
+      const chart = nodes(view).find(
+        (node) => node.type === PersonalComparisonPriceChart,
+      );
+      expect(chart?.props.result).toBe(model.comparison);
+      expect(chart?.props.listings).toBe(model.members);
+      expect(chart?.props.headingLevel).toBe(3);
+      const html = renderToStaticMarkup(view);
+      expect(html).toContain("<h3>Indexed adjusted-price comparison</h3>");
+      expect(html).toContain("First shared date = 100");
+      const legend = html.slice(
+        html.indexOf('class="comparison-price-chart-legend"'),
+        html.indexOf('class="comparison-price-chart-canvas"'),
+      );
+      expect(legend.match(/<li/gu)).toHaveLength(count);
+      let previous = -1;
+      for (const member of model.members) {
+        const position = legend.indexOf(
+          `${member.symbol} · ${member.exchangeMic}`,
+        );
+        expect(position).toBeGreaterThan(previous);
+        previous = position;
+      }
+    },
+  );
   it("renders nothing before a matching snapshot is loaded", () => {
     expect(render(null)).toBe("");
   });
@@ -202,6 +244,7 @@ describe("Markets cohort comparison presentation", () => {
     expect(text(html)).toContain("Choose and load at least two listings");
     expect(html).toContain('role="status"');
     expect(html).not.toContain("<table");
+    expect(html).not.toContain("comparison-price-chart");
     expect(html).not.toContain("<details");
   });
 
@@ -219,6 +262,7 @@ describe("Markets cohort comparison presentation", () => {
     expect(text(html)).toContain("No subset was compared");
     expect(html).not.toContain("<table");
     expect(html).not.toContain("10.0000%");
+    expect(html).not.toContain("comparison-price-chart");
   });
 
   it("reports an identity mismatch as unverifiable instead of missing or zero performance", () => {
@@ -227,6 +271,7 @@ describe("Markets cohort comparison presentation", () => {
     expect(text(html)).toContain("could not be verified");
     expect(html).not.toContain("<table");
     expect(html).not.toContain("0.0000%");
+    expect(html).not.toContain("comparison-price-chart");
   });
 
   it("preserves six-member cohort order and names its scope instead of sorting by return", () => {
@@ -352,6 +397,7 @@ describe("Markets cohort comparison presentation", () => {
       if (count === 1) expect(text(html)).toContain("Shared date: 2026-09-02");
       expect(html).not.toContain("<table");
       expect(html).not.toContain("20.0000%");
+      expect(html).not.toContain("comparison-price-chart");
       expect(html).toContain("<details");
       expect(text(html)).toContain("Observed bars");
       expect(text(html)).not.toContain("First / last shared adjusted close");

@@ -4,6 +4,7 @@ import type {
 } from "@research-cockpit/personal-market-analytics";
 
 import type { MarketCohortComparisonModel } from "./market-cohort-comparison";
+import { PersonalComparisonPriceChart } from "../research/PersonalComparisonPriceChart";
 
 export interface MarketCohortComparisonProps {
   readonly model: MarketCohortComparisonModel;
@@ -78,6 +79,11 @@ export function MarketCohortComparison({
                   })}
                 </tbody>
               </table>
+              <PersonalComparisonPriceChart
+                result={model.comparison}
+                listings={model.members}
+                headingLevel={3}
+              />
             </>
           ) : (
             <p role="status">

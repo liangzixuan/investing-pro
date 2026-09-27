@@ -2,6 +2,13 @@
 
 ## Compare a loaded Markets board
 
+The indexed-chart extension is in progress under the
+[a89 specification](../specs/010-markets-indexed-comparison/spec.md). It adds the
+existing Research chart to the same complete comparison result, with two through
+six labeled series and each first shared observation at `100.0000`. Exact values
+remain inspectable; the chart adds no request. Workspace CURRENT records actual
+release status separately from this implementation guide.
+
 The shared-date table compares all two through six loaded companies in
 their original board order, using adjusted-price change and maximum drawdown.
 The displayed period is the dates observed for every company within the loaded

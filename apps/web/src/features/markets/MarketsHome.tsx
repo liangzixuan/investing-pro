@@ -12,7 +12,7 @@ import {
   type PersonalMarketBoardResult,
   type PersonalMarketBoardRow,
 } from "@research-cockpit/personal-market-analytics";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { getPersonalMarketHistory } from "../../lib/personal-market-snapshot";
 import { PriceHistoryChart } from "../research/PriceHistoryChart";
 import type { OwnerSessionActivityStart } from "../research/owner-session-lifecycle";
@@ -170,6 +170,10 @@ export function projectMarketBoard(
 }
 export function MarketsBoardView(props: MarketsBoardViewProps) {
   const snapshot = matchingSnapshot(props);
+  const comparison = useMemo(
+    () => deriveMarketCohortComparison(snapshot),
+    [snapshot],
+  );
   const projected = projectMarketBoard(snapshot);
   const cohortName =
     props.draft.kind === "default"
@@ -538,10 +542,7 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           ) : null}
         </section>
       </div>
-      <MarketCohortComparison
-        model={deriveMarketCohortComparison(snapshot)}
-        cohortName={cohortName}
-      />
+      <MarketCohortComparison model={comparison} cohortName={cohortName} />
       <details className="markets-sources">
         <summary>Data sources and price conventions</summary>
         <p>

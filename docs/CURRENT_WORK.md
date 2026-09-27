@@ -5,7 +5,48 @@ Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a88 filing inbox Research/Back
+## Active outcome: a89 indexed Markets comparison
+
+Plot every company in the complete loaded two-to-six-member board on the same
+observed dates, starting each line at 100. Reuse the Research comparison chart,
+existing exact result and installed ECharts; keep the numeric summary and exact
+table. Inspection survives unrelated rendering and resets when the snapshot is
+replaced. No acquisition, API, schema, dependency or calculation change is added.
+The [specification](../specs/010-markets-indexed-comparison/spec.md),
+[plan](../specs/010-markets-indexed-comparison/plan.md) and
+[tasks](../specs/010-markets-indexed-comparison/tasks.md) define acceptance.
+Implementation is complete and unreleased. Actual verification includes 98
+distinct chart/Markets/Research cases, 15 page-mode cases, affected web types,
+scoped lint/format, the full boundary check and configured production preflight
+`HkxL2ge1us4FFKVBgAHmS`. The registration delta is 15. Eight synthetic Brave
+groups cover complete cohorts, retained and replaced snapshots, unavailable
+states, exact-data fallback, response retirement, Research/Back and desktop/390px
+layouts. All fixture acquisition terminated in RAM, with no owner writes.
+Some first Research clicks had no effect before a fresh click succeeded. The
+unchanged navigation guards were traced; no cause or a89 regression was proven.
+The fixture's History shim does not establish production Next navigation. The
+full native/hosted gates, guarded activation and limited live QA remain pending.
+
+Spec owns the shared chart/tests, minimal Research interface and heading CSS.
+Finance owns Markets composition/tests/scoped styles. Performance owns the
+outside-Git composed fixture and independent review; root owns guides,
+integration and release. Preserve complete-cohort admission and all existing
+identity, draft, session, budget and response-lifetime rules.
+
+A88 is accepted, normally pushed and running at
+`bf5113cdd0e0a3708051620bfc5a590f5c2ad83a`, build `_4tKol895B21oz_tsVsGN`.
+Its [final review](../../tmp/filing-inbox-research/final-acceptance-independent-review.json)
+records 391 focused cases, 9,720 native passes, nine existing skips, 25 package
+typechecks plus root, 24 builds, 462 healthy samples, five hosted jobs, six
+synthetic and five limited live Brave groups. The live monitor was paused/off
+with no retained events; populated Research/Back remains synthetic/focused
+coverage. The [handoff](../../tmp/filing-inbox-research/release-handoff.md) records
+the exact runtime and rollback. All used a88 and older helpers are terminal.
+
+## A88 implementation context (released)
+
+This section preserves the pre-acceptance checkpoint. Its pending statements are
+historical; the accepted a88 status and evidence above supersede them.
 
 Open an exact current listing from a retained Daily SEC filing monitor entry in
 the existing company SEC section. In-app and browser Back retain the inbox page,

@@ -3041,7 +3041,7 @@ html:has(.personal-financial-screener:focus-within) {
   vertical-align: top;
 }
 
-.comparison-price-chart h6 {
+.comparison-price-chart :is(h3, h6) {
   margin: 0;
   font-size: 0.9rem;
 }

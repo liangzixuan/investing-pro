@@ -76,6 +76,12 @@ requires no additional price request.
 
 ## See the adjusted-price path
 
+The shared chart also supports the in-progress Markets board extension described
+in the [a89 specification](../specs/010-markets-indexed-comparison/spec.md).
+Research still selects two or three companies; Markets can compare up to six
+already loaded listings. This does not widen Research's selection or request
+bounds. Each caller supplies its heading and actual identity labels.
+
 The indexed chart starts each selected company at **100 on the first shared
 date**, making differently priced shares comparable on one scale. Each point is
 `100 * adjusted close / first shared adjusted close`, using an isolated 80-digit

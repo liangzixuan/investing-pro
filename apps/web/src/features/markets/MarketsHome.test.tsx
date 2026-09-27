@@ -4,13 +4,89 @@ import type {
 } from "@research-cockpit/contracts";
 import React, { type ReactNode, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MarketsBoardView,
   MarketsHome,
   projectMarketBoard,
   type MarketsBoardViewProps,
 } from "./MarketsHome";
+import { MarketCohortComparison } from "./MarketCohortComparison";
+import {
+  PersonalComparisonPriceChart,
+  type PersonalComparisonPriceChartProps,
+} from "../research/PersonalComparisonPriceChart";
+
+const inspectionHooks = vi.hoisted(() => {
+  const memos: Array<{ deps: readonly unknown[]; value: unknown }> = [];
+  const states: unknown[] = [];
+  const refs: Array<{ current: unknown }> = [];
+  let memoIndex = 0;
+  let stateIndex = 0;
+  let refIndex = 0;
+  return {
+    active: false,
+    reset() {
+      memos.length = 0;
+      states.length = 0;
+      refs.length = 0;
+      this.active = false;
+    },
+    begin() {
+      this.active = true;
+      memoIndex = stateIndex = refIndex = 0;
+    },
+    memo(factory: () => unknown, deps: readonly unknown[]) {
+      const index = memoIndex++;
+      const previous = memos[index];
+      if (
+        !previous ||
+        previous.deps.length !== deps.length ||
+        deps.some((value, i) => !Object.is(value, previous.deps[i]))
+      )
+        memos[index] = { deps, value: factory() };
+      return memos[index]!.value;
+    },
+    state(initial: unknown) {
+      const index = stateIndex++;
+      if (!(index in states)) states[index] = initial;
+      return [
+        states[index],
+        (next: unknown) => {
+          states[index] =
+            typeof next === "function"
+              ? (next as (previous: unknown) => unknown)(states[index])
+              : next;
+        },
+      ];
+    },
+    ref(initial: unknown) {
+      const index = refIndex++;
+      return (refs[index] ??= { current: initial });
+    },
+  };
+});
+vi.mock("react", async (load) => {
+  const original = await load<typeof React>();
+  return {
+    ...original,
+    // Most existing presentation checks call the stateless board directly.
+    useMemo: (factory: () => unknown, deps: readonly unknown[]) =>
+      inspectionHooks.active ? inspectionHooks.memo(factory, deps) : factory(),
+    useState: (initial: unknown) =>
+      inspectionHooks.active
+        ? inspectionHooks.state(initial)
+        : original.useState(initial),
+    useRef: (initial: unknown) =>
+      inspectionHooks.active
+        ? inspectionHooks.ref(initial)
+        : original.useRef(initial),
+    useEffect: (run: () => (() => void) | void, deps: readonly unknown[]) => {
+      if (!inspectionHooks.active) original.useEffect(run, deps);
+    },
+  };
+});
+beforeEach(() => inspectionHooks.reset());
 
 const onAnnouncementsLoad = vi.hoisted(() => vi.fn());
 const announcementsHook = vi.hoisted(() =>
@@ -224,6 +300,63 @@ function comparisonBoard(): MarketBoardSnapshot {
     }),
   };
 }
+function longComparisonBoard(): MarketBoardSnapshot {
+  const snapshot = comparisonBoard();
+  return {
+    ...snapshot,
+    rows: snapshot.rows.map((row) => {
+      const value = row.overview!;
+      if (value.history.status !== "available")
+        throw new Error("Fixture history");
+      const bar = value.history.value.bars[0]!;
+      return {
+        ...row,
+        overview: {
+          ...value,
+          window: { ...value.window, startDate: "2026-08-01" },
+          history: {
+            status: "available" as const,
+            value: {
+              ...value.history.value,
+              startDate: "2026-08-01",
+              bars: Array.from({ length: 30 }, (_, index) => ({
+                ...bar,
+                date: `2026-08-${String(index + 1).padStart(2, "0")}`,
+              })),
+            },
+          },
+        },
+      };
+    }),
+  };
+}
+
+// Use the existing injected-hook seam to compose the actual board, adapter,
+// cohort and shared chart. Effects stay inert; chart effects have their own suite.
+function renderInspection(input: MarketsBoardViewProps) {
+  inspectionHooks.begin();
+  try {
+    const board = MarketsBoardView(input);
+    const cohortElement = nodes(board).find(
+      (node) => node.type === MarketCohortComparison,
+    )!;
+    const cohortProps = cohortElement.props as unknown as Parameters<
+      typeof MarketCohortComparison
+    >[0];
+    const cohort = MarketCohortComparison(cohortProps);
+    const chartElement = nodes(cohort).find(
+      (node) => node.type === PersonalComparisonPriceChart,
+    );
+    const chartProps = chartElement?.props as
+      PersonalComparisonPriceChartProps | undefined;
+    return {
+      model: cohortProps.model,
+      chart: chartProps ? PersonalComparisonPriceChart(chartProps) : null,
+    };
+  } finally {
+    inspectionHooks.active = false;
+  }
+}
 function nodes(
   node: ReactNode,
 ): ReactElement<{ children?: ReactNode; [key: string]: unknown }>[] {
@@ -256,6 +389,108 @@ function button(node: ReactNode, label: string) {
   return found;
 }
 describe("Markets board presentation", () => {
+  it("retains the exact comparison and open inspection page across unrelated board renders", () => {
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const input = props({ snapshot: longComparisonBoard() });
+      const first = renderInspection(input);
+      expect(first.model?.status).toBe("available");
+      const details = nodes(first.chart).find(
+        (node) => node.type === "details",
+      )!;
+      (details.props.onToggle as (event: unknown) => void)({
+        currentTarget: { open: true },
+      });
+      const opened = renderInspection(input);
+      (button(opened.chart, "Next dates").props.onClick as () => void)();
+      for (const change of [
+        { order: "gainers" as const },
+        { selectedListingId: "listing-msft" },
+        { busy: true },
+        { error: "unavailable" },
+        { active: false },
+        { active: true },
+      ]) {
+        const current = renderInspection({ ...input, ...change });
+        expect(current.model).toBe(first.model);
+        expect(text(current.chart)).toContain("Page 2 of 2");
+        expect(
+          nodes(current.chart).find((node) => node.type === "details")?.props
+            .open,
+        ).toBe(true);
+      }
+      expect(input.onLoad).not.toHaveBeenCalled();
+      expect(input.onOpenCompany).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+  it("resets composed inspection for a replaced snapshot and rejects its saved page action", () => {
+    const input = props({ snapshot: longComparisonBoard() });
+    const first = renderInspection(input);
+    (
+      nodes(first.chart).find((node) => node.type === "details")!.props
+        .onToggle as (event: unknown) => void
+    )({
+      currentTarget: { open: true },
+    });
+    const opened = renderInspection(input);
+    const savedNext = button(opened.chart, "Next dates").props
+      .onClick as () => void;
+    savedNext();
+    expect(text(renderInspection(input).chart)).toContain("Page 2 of 2");
+    const replacement = { ...input, snapshot: { ...input.snapshot! } };
+    const next = renderInspection(replacement);
+    expect(next.model?.status).toBe("available");
+    expect(next.model).not.toBe(first.model);
+    expect(
+      nodes(next.chart).find((node) => node.type === "details")?.props.open,
+    ).toBe(false);
+    savedNext();
+    const closed = renderInspection(replacement);
+    expect(
+      nodes(closed.chart).filter((node) => node.type === "table"),
+    ).toHaveLength(0);
+    (
+      nodes(closed.chart).find((node) => node.type === "details")!.props
+        .onToggle as (event: unknown) => void
+    )({
+      currentTarget: { open: true },
+    });
+    expect(text(renderInspection(replacement).chart)).toContain("Page 1 of 2");
+    expect(input.onLoad).not.toHaveBeenCalled();
+  });
+  it("retires the composed chart when the accepted board becomes partial or loses its matching authority", () => {
+    const snapshot = comparisonBoard();
+    const input = props({ snapshot });
+    expect(renderInspection(input).chart).not.toBeNull();
+    const partial = {
+      ...snapshot,
+      rows: snapshot.rows.map((row, index) =>
+        index === 1
+          ? { ...row, overview: null, error: "unavailable" as const }
+          : row,
+      ),
+    };
+    const replacement = renderInspection({ ...input, snapshot: partial });
+    expect(replacement.model).toEqual({
+      status: "unavailable",
+      reason: "incomplete_cohort",
+    });
+    expect(replacement.chart).toBeNull();
+    for (const change of [
+      { snapshot: null },
+      { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
+      { draft: { kind: "watchlist" as const, members: [] } },
+    ]) {
+      const retired = renderInspection({ ...input, ...change });
+      expect(retired.model).toBeNull();
+      expect(retired.chart).toBeNull();
+    }
+    expect(input.onLoad).not.toHaveBeenCalled();
+  });
   it("compares the complete loaded cohort in its original order while the board ranks gainers", () => {
     const input = props({ order: "gainers", snapshot: comparisonBoard() });
     const html = renderToStaticMarkup(<MarketsBoardView {...input} />);
@@ -266,6 +501,7 @@ describe("Markets board presentation", () => {
     expect(comparison).toContain("2026-09-22");
     expect(comparison).toContain("2026-09-23");
     expect(comparison).toContain("2 shared observations");
+    expect(comparison).toContain("<h3>Indexed adjusted-price comparison</h3>");
     const rows = comparison.slice(
       comparison.indexOf("<tbody>"),
       comparison.indexOf("</tbody>"),
@@ -306,6 +542,7 @@ describe("Markets board presentation", () => {
     expect(comparison).toContain("No subset was compared.");
     expect(comparison).not.toContain('class="markets-cohort-table"');
     expect(comparison).not.toContain("shared observations");
+    expect(comparison).not.toContain("comparison-price-chart");
   });
   it("withholds comparison results for unloaded, changed-draft and changed-catalog boards", () => {
     const variants: Partial<MarketsBoardViewProps>[] = [

@@ -1,6 +1,5 @@
 "use client";
 
-import type { PersonalSecurityMasterScreenRowDto } from "@research-cockpit/contracts";
 import type { PersonalPricePerformanceComparisonAvailableResult } from "@research-cockpit/personal-market-analytics";
 import * as echarts from "echarts";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -11,17 +10,29 @@ const SERIES_STYLES = [
   { color: "#176b56", line: "solid", symbol: "circle", marker: "●" },
   { color: "#315b91", line: "dashed", symbol: "diamond", marker: "◆" },
   { color: "#a35417", line: "dotted", symbol: "triangle", marker: "▲" },
+  { color: "#765394", line: "solid", symbol: "rect", marker: "■" },
+  { color: "#695c35", line: "dashed", symbol: "roundRect", marker: "▢" },
+  { color: "#19758a", line: "dotted", symbol: "pin", marker: "▼" },
 ] as const;
+
+export interface PersonalComparisonPriceChartListing {
+  readonly listingId: string;
+  readonly symbol: string;
+  readonly exchangeMic: string;
+}
 
 export interface PersonalComparisonPriceChartProps {
   readonly result: PersonalPricePerformanceComparisonAvailableResult;
-  readonly listings: readonly PersonalSecurityMasterScreenRowDto[];
+  readonly listings: readonly PersonalComparisonPriceChartListing[];
+  readonly headingLevel: 3 | 6;
 }
 
 export function PersonalComparisonPriceChart({
   result,
   listings,
+  headingLevel,
 }: PersonalComparisonPriceChartProps) {
+  const Heading = headingLevel === 3 ? "h3" : "h6";
   const chartElement = useRef<HTMLDivElement>(null);
   const [inspection, setInspection] = useState({
     result,
@@ -39,6 +50,8 @@ export function PersonalComparisonPriceChart({
   const numericSeries = useMemo(() => plotValues(result), [result]);
   const labelsKey = JSON.stringify(listingLabels(result, listings));
   const labels = useMemo(() => JSON.parse(labelsKey) as string[], [labelsKey]);
+  const renderedInput = useRef({ result, labels });
+  renderedInput.current = { result, labels };
   const unavailable = numericSeries === null || current.failed;
   const summary = `${labels.join("; ")}: indexed adjusted closes from ${result.firstDate} to ${result.lastDate}, ${result.sharedSessionCount} shared observations. First shared date = 100.`;
 
@@ -48,12 +61,16 @@ export function PersonalComparisonPriceChart({
     let chart: echarts.ECharts | null = null;
     let observer: ResizeObserver | null = null;
     let disposed = false;
+    const isCurrent = () =>
+      !disposed &&
+      renderedInput.current.result === result &&
+      renderedInput.current.labels === labels;
     const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
     const resize = () => {
-      if (!disposed) chart?.resize();
+      if (isCurrent()) chart?.resize();
     };
     const changeMotion = (event: MediaQueryListEvent) => {
-      if (!disposed) chart?.setOption({ animation: !event.matches });
+      if (isCurrent()) chart?.setOption({ animation: !event.matches });
     };
     const cleanup = () => {
       if (disposed) return;
@@ -69,7 +86,14 @@ export function PersonalComparisonPriceChart({
         renderer: "canvas",
       });
       chart.setOption(
-        chartOption(result, labels, numericSeries, summary, !motion?.matches),
+        chartOption(
+          result,
+          labels,
+          numericSeries,
+          summary,
+          !motion?.matches,
+          isCurrent,
+        ),
       );
       if (typeof ResizeObserver === "undefined") {
         window.addEventListener("resize", resize);
@@ -80,7 +104,11 @@ export function PersonalComparisonPriceChart({
       motion?.addEventListener?.("change", changeMotion);
     } catch {
       cleanup();
-      setInspection({ result, open: false, page: 0, failed: true });
+      setInspection((previous) =>
+        previous.result === result
+          ? { result, open: false, page: 0, failed: true }
+          : previous,
+      );
     }
     return cleanup;
   }, [labels, numericSeries, result, summary, unavailable]);
@@ -94,7 +122,7 @@ export function PersonalComparisonPriceChart({
       className="comparison-price-chart"
       aria-label="Indexed adjusted-price comparison"
     >
-      <h6>Indexed adjusted-price comparison</h6>
+      <Heading>Indexed adjusted-price comparison</Heading>
       <p>Indexed adjusted close (first shared date = 100)</p>
       <ul
         className="comparison-price-chart-legend"
@@ -111,7 +139,13 @@ export function PersonalComparisonPriceChart({
               >
                 {style.marker}
               </span>
-              {label} · {style.line} line, {style.symbol} markers
+              {label} · {style.line} line,{" "}
+              {style.symbol === "roundRect"
+                ? "rounded rectangle"
+                : style.symbol === "rect"
+                  ? "rectangle"
+                  : style.symbol}{" "}
+              markers
             </li>
           );
         })}
@@ -142,12 +176,12 @@ export function PersonalComparisonPriceChart({
       <details
         className="data-table-disclosure comparison-price-chart-data"
         open={current.open}
-        onToggle={(event) =>
-          setInspection({
-            ...current,
-            open: event.currentTarget.open,
-          })
-        }
+        onToggle={(event) => {
+          const open = event.currentTarget.open;
+          setInspection((previous) =>
+            previous.result === result ? { ...previous, open } : previous,
+          );
+        }}
       >
         <summary>
           Inspect exact adjusted closes and index values (
@@ -163,11 +197,11 @@ export function PersonalComparisonPriceChart({
                 type="button"
                 disabled={current.page === 0}
                 onClick={() =>
-                  setInspection({
-                    ...current,
-                    open: true,
-                    page: current.page - 1,
-                  })
+                  setInspection((previous) =>
+                    previous.result === result && previous.open
+                      ? { ...previous, page: Math.max(0, previous.page - 1) }
+                      : previous,
+                  )
                 }
               >
                 Previous dates
@@ -180,11 +214,14 @@ export function PersonalComparisonPriceChart({
                 type="button"
                 disabled={current.page + 1 >= pageCount}
                 onClick={() =>
-                  setInspection({
-                    ...current,
-                    open: true,
-                    page: current.page + 1,
-                  })
+                  setInspection((previous) =>
+                    previous.result === result && previous.open
+                      ? {
+                          ...previous,
+                          page: Math.min(pageCount - 1, previous.page + 1),
+                        }
+                      : previous,
+                  )
                 }
               >
                 Next dates
@@ -276,7 +313,7 @@ function plotValues(
 
 function listingLabels(
   result: PersonalPricePerformanceComparisonAvailableResult,
-  listings: readonly PersonalSecurityMasterScreenRowDto[],
+  listings: readonly PersonalComparisonPriceChartListing[],
 ): string[] {
   const labels = result.rows.map((row) => {
     const listing = listings.find((item) => item.listingId === row.listingId);
@@ -297,6 +334,7 @@ function chartOption(
   numericSeries: readonly number[][],
   summary: string,
   animation: boolean,
+  isCurrent: () => boolean,
 ) {
   return {
     animation,
@@ -310,6 +348,7 @@ function chartOption(
       padding: 8,
       textStyle: { fontSize: 12, lineHeight: 14 },
       formatter: (params: unknown) => {
+        if (!isCurrent()) return "Observation unavailable";
         const item: unknown = Array.isArray(params) ? params[0] : params;
         if (
           !item ||
@@ -334,7 +373,7 @@ function chartOption(
           }),
         ];
         return lines.length > 12
-          ? `${result.sharedDates[index]}\nLong values: inspect the\nexact-data table below.`
+          ? `${result.sharedDates[index]}\nMore values: inspect the\nexact-data table below.`
           : lines.join("\n");
       },
     },

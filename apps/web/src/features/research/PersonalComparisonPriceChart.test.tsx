@@ -9,10 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hooks = vi.hoisted(() => {
   const states: unknown[] = [];
+  const refs: Array<{ current: unknown }> = [];
   const memos: Array<{ deps: readonly unknown[]; value: unknown }> = [];
   const effects: Array<{ deps: readonly unknown[]; cleanup?: () => void }> = [];
   const chartElement = {};
   let stateIndex = 0,
+    refIndex = 0,
     memoIndex = 0,
     effectIndex = 0;
   let pending: Array<() => void> = [];
@@ -24,6 +26,7 @@ const hooks = vi.hoisted(() => {
     chartElement,
     begin() {
       stateIndex = 0;
+      refIndex = 0;
       memoIndex = 0;
       effectIndex = 0;
     },
@@ -38,6 +41,7 @@ const hooks = vi.hoisted(() => {
     },
     reset() {
       states.length = 0;
+      refs.length = 0;
       memos.length = 0;
       effects.length = 0;
       pending = [];
@@ -48,9 +52,18 @@ const hooks = vi.hoisted(() => {
       return [
         states[index],
         (next: unknown) => {
-          states[index] = next;
+          states[index] =
+            typeof next === "function"
+              ? (next as (previous: unknown) => unknown)(states[index])
+              : next;
         },
       ];
+    },
+    useRef(initial: unknown) {
+      const index = refIndex++;
+      if (!(index in refs))
+        refs[index] = { current: initial === null ? chartElement : initial };
+      return refs[index];
     },
     useMemo(factory: () => unknown, deps: readonly unknown[]) {
       const index = memoIndex++,
@@ -88,7 +101,7 @@ const chart = vi.hoisted(() => ({
 vi.mock("react", async (original) => ({
   ...(await original()),
   useState: (initial: unknown) => hooks.useState(initial),
-  useRef: () => ({ current: hooks.chartElement }),
+  useRef: (initial: unknown) => hooks.useRef(initial),
   useMemo: (factory: () => unknown, deps: readonly unknown[]) =>
     hooks.useMemo(factory, deps),
   useEffect: (run: () => (() => void) | void, deps: readonly unknown[]) =>
@@ -99,6 +112,7 @@ vi.mock("echarts", () => ({ init: chart.init }));
 import { PersonalComparisonPerformance } from "./PersonalComparisonPerformance";
 import {
   PersonalComparisonPriceChart,
+  type PersonalComparisonPriceChartListing,
   type PersonalComparisonPriceChartProps,
 } from "./PersonalComparisonPriceChart";
 
@@ -132,6 +146,7 @@ beforeEach(() => {
       ["200", "160", "220"],
     ]),
     listings: [],
+    headingLevel: 6,
   };
 });
 afterEach(() => {
@@ -141,6 +156,74 @@ afterEach(() => {
 });
 
 describe("PersonalComparisonPriceChart", () => {
+  it.each([2, 3, 6])(
+    "plots all %i members in cohort order with exact data and distinct styles",
+    (count) => {
+      const closes = Array.from({ length: count }, (_, index) => [
+        String(100 * (index + 1)),
+        String(110 * (index + 1)),
+      ]);
+      props = {
+        result: comparison(closes),
+        // Every label intentionally collides; listing identity still distinguishes it.
+        listings: closes.map((_, index) => listing(`listing-${index}`, "SAME")),
+        headingLevel: count === 6 ? 3 : 6,
+      };
+      const tree = render();
+      const option = chartOption();
+      expect(elements(tree, count === 6 ? "h3" : "h6")).toHaveLength(1);
+      expect(elements(tree, count === 6 ? "h6" : "h3")).toHaveLength(0);
+      expect(option.series.map((series) => series.id)).toEqual(
+        closes.map((_, index) => `listing-${index}`),
+      );
+      expect(option.series.map((series) => series.data)).toEqual(
+        closes.map(() => [100, 110]),
+      );
+      expect(
+        option.series.map((series) => [series.symbol, series.lineStyle.type]),
+      ).toEqual(
+        [
+          ["circle", "solid"],
+          ["diamond", "dashed"],
+          ["triangle", "dotted"],
+          ["rect", "solid"],
+          ["roundRect", "dashed"],
+          ["pin", "dotted"],
+        ].slice(0, count),
+      );
+      expect(
+        new Set(option.series.map((series) => series.lineStyle.color)).size,
+      ).toBe(count);
+      expect(option.xAxis.data).toEqual(props.result.sharedDates);
+      openTable(tree);
+      const exact = render();
+      const headers = elements(exact, "th").filter(
+        (item) => item.props.scope === "col",
+      );
+      expect(headers).toHaveLength(1 + 2 * count);
+      for (const [index, values] of closes.entries()) {
+        expect(option.series[index]?.name).toBe(
+          `SAME · XNAS (listing-${index})`,
+        );
+        expect(text(headers[1 + 2 * index])).toBe(
+          `SAME · XNAS (listing-${index}) adjusted close (USD)`,
+        );
+        expect(text(exact)).toContain(values[1]);
+      }
+      const rows = elements(exact, "tbody")[0]!.props.children as unknown[];
+      expect(
+        elements(rows[0], "td")
+          .filter((_, index) => index % 2 === 1)
+          .map(text),
+      ).toEqual(closes.map(() => "100.0000"));
+      expect(
+        elements(rows[1], "td")
+          .filter((_, index) => index % 2 === 1)
+          .map(text),
+      ).toEqual(closes.map(() => "110.0000"));
+    },
+  );
+
   it("starts collapsed and describes each line without color-only identity", () => {
     props = {
       result: comparison([
@@ -153,6 +236,7 @@ describe("PersonalComparisonPriceChart", () => {
         listing("listing-1", "BBB"),
         listing("listing-2", "CCC"),
       ],
+      headingLevel: 6,
     };
     const tree = render();
     expect(text(tree)).toContain(
@@ -272,6 +356,132 @@ describe("PersonalComparisonPriceChart", () => {
     );
   });
 
+  it("retires old result inspection, tooltip, resize and motion callbacks", () => {
+    props = {
+      ...props,
+      result: comparison([Array(30).fill("100"), Array(30).fill("200")]),
+    };
+    openTable(render());
+    const oldTree = render();
+    const oldTooltip = chartOption().tooltip.formatter;
+    const oldResize = resizeCallback;
+    const oldMotion = chart.motionAdd.mock.calls[0]![1] as (event: {
+      matches: boolean;
+    }) => void;
+    props = {
+      ...props,
+      result: comparison([Array(30).fill("300"), Array(30).fill("400")]),
+    };
+    render();
+    const newState = hooks.states[0];
+    openTable(oldTree);
+    click(oldTree, "Next dates");
+    expect(hooks.states[0]).toBe(newState);
+    expect(oldTooltip([{ dataIndex: 0 }])).toBe("Observation unavailable");
+    const optionCount = chart.setOption.mock.calls.length;
+    oldResize();
+    oldMotion({ matches: false });
+    expect(chart.resize).not.toHaveBeenCalled();
+    expect(chart.setOption).toHaveBeenCalledTimes(optionCount);
+    const tree = render();
+    expect(elements(tree, "details")[0]?.props.open).toBe(false);
+    openTable(tree);
+    const currentTree = render();
+    click(oldTree, "Next dates");
+    expect(text(render())).toContain("Observations 1–25 of 30");
+    click(currentTree, "Next dates");
+    expect(text(render())).toContain("Observations 26–30 of 30");
+    expect(chart.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("directs six ordinary series to the complete exact table without dropping tooltip members", () => {
+    props = {
+      ...props,
+      result: comparison(
+        Array.from({ length: 6 }, (_, index) => [
+          String(100 + index),
+          String(110 + index),
+        ]),
+      ),
+    };
+    const tree = render();
+    const tooltip = chartOption().tooltip.formatter([{ dataIndex: 1 }]);
+    expect(tooltip).toBe(
+      "2026-01-02\nMore values: inspect the\nexact-data table below.",
+    );
+    expect(tooltip.split("\n")).toHaveLength(3);
+    openTable(tree);
+    const exact = render();
+    expect(elements(exact, "td")).toHaveLength(24);
+    for (const row of props.result.rows) {
+      expect(text(exact)).toContain(row.indexedObservations[1]!.adjustedClose);
+      expect(text(exact)).toContain(
+        row.indexedObservations[1]!.indexedAdjustedClose,
+      );
+    }
+  });
+
+  it.each(["result", "labels"])(
+    "retires old chart callbacks before effect cleanup when rendered %s change",
+    (changed) => {
+      render();
+      const oldTooltip = chartOption().tooltip.formatter;
+      const oldResize = resizeCallback;
+      const oldMotion = chart.motionAdd.mock.calls[0]![1] as (event: {
+        matches: boolean;
+      }) => void;
+      expect(oldTooltip([{ dataIndex: 1 }])).toContain("Adjusted USD: 80");
+      props =
+        changed === "result"
+          ? {
+              ...props,
+              result: comparison([
+                ["300", "330"],
+                ["400", "440"],
+              ]),
+            }
+          : { ...props, listings: [listing("listing-0", "NEW")] };
+      render(false);
+      expect(chart.dispose).not.toHaveBeenCalled();
+      expect(oldTooltip([{ dataIndex: 1 }])).toBe("Observation unavailable");
+      oldResize();
+      oldMotion({ matches: false });
+      expect(chart.resize).not.toHaveBeenCalled();
+      expect(chart.setOption).toHaveBeenCalledOnce();
+      hooks.effects();
+      expect(chart.dispose).toHaveBeenCalledOnce();
+      const current = chart.setOption.mock.calls.at(-1)![0] as ReturnType<
+        typeof chartOption
+      >;
+      expect(current.tooltip.formatter([{ dataIndex: 1 }])).toContain(
+        changed === "result" ? "Adjusted USD: 330" : "NEW · XNAS",
+      );
+    },
+  );
+
+  it.each(["100000000000000", "0.000000001"])(
+    "preserves all six members when the final member cannot be plotted (%s)",
+    (close) => {
+      props = {
+        ...props,
+        result: comparison([
+          ...Array.from({ length: 5 }, () => ["100", "110"]),
+          ["1", close],
+        ]),
+      };
+      const tree = render();
+      expect(text(tree)).toContain("Chart unavailable");
+      expect(chart.init).not.toHaveBeenCalled();
+      openTable(tree);
+      const exact = render();
+      expect(elements(exact, "td")).toHaveLength(24);
+      expect(text(exact)).toContain(close);
+      expect(text(exact)).toContain(
+        props.result.rows[5]!.indexedObservations[1]!.indexedAdjustedClose,
+      );
+    },
+  );
+
   it("tooltips return only observed exact strings as text, with no interpolated point", () => {
     props = { ...props, listings: [listing("listing-0", "<AAA>")] };
     render();
@@ -335,7 +545,7 @@ describe("PersonalComparisonPriceChart", () => {
       typeof chartOption
     >;
     expect(latest.tooltip.formatter([{ dataIndex: 0 }])).toBe(
-      "2026-01-01\nLong values: inspect the\nexact-data table below.",
+      "2026-01-01\nMore values: inspect the\nexact-data table below.",
     );
     openTable(tree);
     expect(text(render())).toContain(long);
@@ -343,6 +553,7 @@ describe("PersonalComparisonPriceChart", () => {
 
   it("resizes, responds to reduced motion and disposes listeners and tooltips", () => {
     render();
+    const tooltip = chartOption().tooltip.formatter;
     expect(chartOption().animation).toBe(false);
     expect(chart.observe).toHaveBeenCalledWith(hooks.chartElement);
     resizeCallback();
@@ -361,6 +572,7 @@ describe("PersonalComparisonPriceChart", () => {
     changeMotion({ matches: true });
     expect(chart.resize).toHaveBeenCalledOnce();
     expect(chart.setOption).toHaveBeenCalledTimes(2);
+    expect(tooltip([{ dataIndex: 1 }])).toBe("Observation unavailable");
   });
 
   it("falls back to window resize events when ResizeObserver is unavailable", () => {
@@ -492,10 +704,12 @@ describe("PersonalComparisonPriceChart", () => {
       state: "ready" as const,
     };
     hooks.begin();
-    const first = elements(
+    const firstChart = elements(
       PersonalComparisonPerformance(parentProps),
       PersonalComparisonPriceChart,
-    )[0]?.props.result;
+    )[0];
+    const first = firstChart?.props.result;
+    expect(firstChart?.props.headingLevel).toBe(6);
     hooks.begin();
     const second = elements(
       PersonalComparisonPerformance({ ...parentProps, listings: [] }),
@@ -524,11 +738,13 @@ function chartOption() {
     xAxis: { type: string; data: string[] };
     yAxis: { name: string };
     series: Array<{
+      id: string;
+      name: string;
       data: number[];
       smooth: boolean;
       connectNulls: boolean;
       symbol: string;
-      lineStyle: { type: string };
+      lineStyle: { type: string; color: string };
     }>;
     legend?: unknown;
     dataZoom?: unknown;
@@ -540,10 +756,10 @@ function chartOption() {
   };
 }
 
-function render() {
+function render(runEffects = true) {
   hooks.begin();
   const tree = PersonalComparisonPriceChart(props);
-  hooks.effects();
+  if (runEffects) hooks.effects();
   return tree;
 }
 function openTable(tree: unknown) {
@@ -584,20 +800,11 @@ function histories(
 function listing(
   listingId: string,
   symbol: string,
-): PersonalSecurityMasterScreenRowDto {
+): PersonalComparisonPriceChartListing {
   return {
     listingId,
     symbol,
     exchangeMic: "XNAS",
-    country: "US",
-    cik: "0000000001",
-    instrumentType: "common_stock",
-    issuerId: `issuer-${listingId}`,
-    issuerName: `${symbol} Company`,
-    securityId: `security-${listingId}`,
-    securityName: symbol,
-    shareClassId: `share-${listingId}`,
-    shareClassName: "Common",
   };
 }
 function elements(
