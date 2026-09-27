@@ -604,6 +604,10 @@ import {
   isCycle3ka86FeatureTopologyAllowed,
   isCycle3ka86RoutingClosureCommitDiffSetAllowed,
   isCycle3ka86RoutingClosureTopologyAllowed,
+  isCycle3ka87FeatureCommitDiffSetAllowed,
+  isCycle3ka87FeatureTopologyAllowed,
+  isCycle3ka87RoutingClosureCommitDiffSetAllowed,
+  isCycle3ka87RoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureCommitDiffSetAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyRoutingClosureTopologyAllowed,
   isCycle3eaWindowsExpiryRecoveryLatencyStabilizationCommitDiffSetAllowed,
@@ -1748,6 +1752,10 @@ const CYCLE_3K_A85_ROUTING_CLOSURE_REVISION =
   "3aaa62206dcbc929a15c0c3b16ace5759c977d84" as const;
 const CYCLE_3K_A86_FEATURE_REVISION =
   "bee398c709debade0246667f2689f5007c316acb" as const;
+const CYCLE_3K_A86_ROUTING_CLOSURE_REVISION =
+  "dbfaf478722eab4cfde0fbe2b0c896d2fab37398" as const;
+const CYCLE_3K_A87_FEATURE_REVISION =
+  "ba92852bd8ac926e5b0524d547ec44fdb503d30f" as const;
 const CYCLE_2Z_SOURCE_TRANSITION = [
   { path: ".gitignore", status: "M" },
   { path: "README.md", status: "M" },
@@ -10293,6 +10301,107 @@ const CYCLE_3K_A86_ROUTING_CLOSURE_TRANSITION = [
   },
   {
     path: "scripts/release-classification/releases/cycle3ka86.json",
+    status: "A",
+  },
+];
+const CYCLE_3K_A87_FEATURE_TRANSITION = [
+  { path: "THIRD_PARTY_NOTICES.md", status: "M" },
+  { path: "apps/api/package.json", status: "M" },
+  {
+    path: "apps/api/src/fed-monetary-announcements-provider.test.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/fed-monetary-announcements-provider.ts", status: "A" },
+  { path: "apps/api/src/workspace-app.ts", status: "M" },
+  { path: "apps/api/src/workspace-composition-root.ts", status: "M" },
+  {
+    path: "apps/api/src/workspace-monetary-announcements-integration.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/api/src/workspace-monetary-announcements-routes.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/api/src/workspace-monetary-announcements-routes.ts",
+    status: "A",
+  },
+  { path: "apps/api/src/workspace-static-graph.test.ts", status: "M" },
+  {
+    path: "apps/web/src/features/markets/FedMonetaryAnnouncements.test.tsx",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/markets/FedMonetaryAnnouncements.tsx",
+    status: "A",
+  },
+  { path: "apps/web/src/features/markets/MarketsHome.test.tsx", status: "M" },
+  { path: "apps/web/src/features/markets/MarketsHome.tsx", status: "M" },
+  { path: "apps/web/src/features/markets/fed-announcements.css", status: "A" },
+  {
+    path: "apps/web/src/features/markets/useFedMonetaryAnnouncements.test.ts",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/features/markets/useFedMonetaryAnnouncements.ts",
+    status: "A",
+  },
+  {
+    path: "apps/web/src/lib/personal-monetary-announcements-api.test.ts",
+    status: "A",
+  },
+  { path: "apps/web/src/lib/personal-workspace-api.ts", status: "M" },
+  { path: "docs/CURRENT_WORK.md", status: "M" },
+  { path: "packages/contracts/openapi/openapi.yaml", status: "M" },
+  { path: "packages/contracts/src/index.ts", status: "M" },
+  { path: "packages/contracts/src/openapi.test.ts", status: "M" },
+  {
+    path: "packages/contracts/src/personal-monetary-announcements.test.ts",
+    status: "A",
+  },
+  {
+    path: "packages/contracts/src/personal-monetary-announcements.ts",
+    status: "A",
+  },
+  { path: "pnpm-lock.yaml", status: "M" },
+  { path: "scripts/verify-boundaries.ts", status: "M" },
+  { path: "scripts/verify-licenses.ts", status: "M" },
+  { path: "specs/008-fed-announcements/plan.md", status: "A" },
+  { path: "specs/008-fed-announcements/spec.md", status: "A" },
+  { path: "specs/008-fed-announcements/tasks.md", status: "A" },
+];
+const CYCLE_3K_A87_ROUTING_CLOSURE_TRANSITION = [
+  { path: ".github/workflows/filing-parser-acceptance.yml", status: "M" },
+  {
+    path: ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: ".github/workflows/filing-payload-custody-acceptance.yml",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+    status: "M",
+  },
+  {
+    path: "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+    status: "M",
+  },
+  {
+    path: "scripts/classify-filing-parser-cross-engine-source.sh",
+    status: "M",
+  },
+  {
+    path: "scripts/release-classification/releases/cycle3ka87.json",
     status: "A",
   },
 ];
@@ -27543,6 +27652,120 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
         >[4],
       ),
     ).toBe(false);
+
+    const pinnedMarketcohortcomparisonClosure = [
+      "274",
+      "274",
+      CYCLE_3K_A86_ROUTING_CLOSURE_REVISION,
+      `${CYCLE_3K_A86_ROUTING_CLOSURE_REVISION} ${CYCLE_3K_A86_FEATURE_REVISION}`,
+      marketcohortcomparisonFeature,
+    ] as const;
+    expect(
+      isCycle3ka86RoutingClosureTopologyAllowed(
+        ...pinnedMarketcohortcomparisonClosure,
+      ),
+    ).toBe(true);
+    const fedmonetaryannouncementsFeature = [
+      "275",
+      "275",
+      CYCLE_3K_A87_FEATURE_REVISION,
+      `${CYCLE_3K_A87_FEATURE_REVISION} ${CYCLE_3K_A86_ROUTING_CLOSURE_REVISION}`,
+      pinnedMarketcohortcomparisonClosure,
+    ] as const;
+    expect(
+      isCycle3ka87FeatureTopologyAllowed(...fedmonetaryannouncementsFeature),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "274"],
+      [1, "276"],
+      [2, "b".repeat(40)],
+      [2, "not-a-commit"],
+      [3, `${CYCLE_3K_A87_FEATURE_REVISION} ${CYCLE_3K_A86_FEATURE_REVISION}`],
+      [
+        3,
+        `${CYCLE_3K_A87_FEATURE_REVISION} ${CYCLE_3K_A86_ROUTING_CLOSURE_REVISION} ${"c".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...fedmonetaryannouncementsFeature];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka87FeatureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka87FeatureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedPinnedMarketcohortcomparisonClosure: unknown[] = [
+      ...pinnedMarketcohortcomparisonClosure,
+    ];
+    tamperedPinnedMarketcohortcomparisonClosure[4] =
+      tamperedMarketcohortcomparisonFeature;
+    expect(
+      isCycle3ka87FeatureTopologyAllowed(
+        "275",
+        "275",
+        CYCLE_3K_A87_FEATURE_REVISION,
+        `${CYCLE_3K_A87_FEATURE_REVISION} ${CYCLE_3K_A86_ROUTING_CLOSURE_REVISION}`,
+        tamperedPinnedMarketcohortcomparisonClosure as unknown as Parameters<
+          typeof isCycle3ka87FeatureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
+
+    const fedmonetaryannouncementsClosureRevision = "e".repeat(40);
+    const fedmonetaryannouncementsClosure = [
+      "276",
+      "276",
+      fedmonetaryannouncementsClosureRevision,
+      `${fedmonetaryannouncementsClosureRevision} ${CYCLE_3K_A87_FEATURE_REVISION}`,
+      fedmonetaryannouncementsFeature,
+    ] as const;
+    expect(
+      isCycle3ka87RoutingClosureTopologyAllowed(
+        ...fedmonetaryannouncementsClosure,
+      ),
+    ).toBe(true);
+    for (const [index, replacement] of [
+      [0, "275"],
+      [1, "277"],
+      [2, CYCLE_3K_A87_FEATURE_REVISION],
+      [2, "not-a-commit"],
+      [
+        3,
+        `${fedmonetaryannouncementsClosureRevision} ${CYCLE_3K_A86_ROUTING_CLOSURE_REVISION}`,
+      ],
+      [
+        3,
+        `${fedmonetaryannouncementsClosureRevision} ${CYCLE_3K_A87_FEATURE_REVISION} ${"f".repeat(40)}`,
+      ],
+    ] as const) {
+      const changed: unknown[] = [...fedmonetaryannouncementsClosure];
+      changed[index] = replacement;
+      expect(
+        isCycle3ka87RoutingClosureTopologyAllowed(
+          ...(changed as unknown as Parameters<
+            typeof isCycle3ka87RoutingClosureTopologyAllowed
+          >),
+        ),
+      ).toBe(false);
+    }
+    const tamperedFedmonetaryannouncementsFeature: unknown[] = [
+      ...fedmonetaryannouncementsFeature,
+    ];
+    tamperedFedmonetaryannouncementsFeature[4] =
+      tamperedPinnedMarketcohortcomparisonClosure;
+    expect(
+      isCycle3ka87RoutingClosureTopologyAllowed(
+        "276",
+        "276",
+        fedmonetaryannouncementsClosureRevision,
+        `${fedmonetaryannouncementsClosureRevision} ${CYCLE_3K_A87_FEATURE_REVISION}`,
+        tamperedFedmonetaryannouncementsFeature as unknown as Parameters<
+          typeof isCycle3ka87RoutingClosureTopologyAllowed
+        >[4],
+      ),
+    ).toBe(false);
   });
 
   it("freezes every exact Cycle 3e-a transition through Windows stabilization routing", () => {
@@ -29003,6 +29226,16 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       CYCLE_3K_A86_ROUTING_CLOSURE_TRANSITION,
       9,
     );
+    expectExactTransition(
+      isCycle3ka87FeatureCommitDiffSetAllowed,
+      CYCLE_3K_A87_FEATURE_TRANSITION,
+      31,
+    );
+    expectExactTransition(
+      isCycle3ka87RoutingClosureCommitDiffSetAllowed,
+      CYCLE_3K_A87_ROUTING_CLOSURE_TRANSITION,
+      9,
+    );
   });
 
   it("routes every inherited, source, and routing surface", () => {
@@ -29282,6 +29515,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A85_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A86_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A86_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A87_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A87_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     for (const path of protectedPaths) {
       expect(isCycle3eaTransitionRoutingRequired([path]), path).toBe(true);
@@ -29613,6 +29848,8 @@ describe("Cycle 3e-a prepared security-master source routing", () => {
       ...CYCLE_3K_A85_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A86_FEATURE_TRANSITION.map((entry) => entry.path),
       ...CYCLE_3K_A86_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A87_FEATURE_TRANSITION.map((entry) => entry.path),
+      ...CYCLE_3K_A87_ROUTING_CLOSURE_TRANSITION.map((entry) => entry.path),
     ]);
     expect(selectedPaths).toHaveLength(expectedPaths.size);
     expect(new Set(selectedPaths)).toEqual(expectedPaths);

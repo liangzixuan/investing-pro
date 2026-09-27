@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "caseNumber": 87,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "dbfaf478722eab4cfde0fbe2b0c896d2fab37398",
+  "featureRevision": "ba92852bd8ac926e5b0524d547ec44fdb503d30f",
+  "featureCount": 275,
+  "closureCount": 276,
+  "featureChanges": [
+    { "path": "THIRD_PARTY_NOTICES.md", "status": "M" },
+    { "path": "apps/api/package.json", "status": "M" },
+    {
+      "path": "apps/api/src/fed-monetary-announcements-provider.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/fed-monetary-announcements-provider.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-app.ts", "status": "M" },
+    { "path": "apps/api/src/workspace-composition-root.ts", "status": "M" },
+    {
+      "path": "apps/api/src/workspace-monetary-announcements-integration.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-monetary-announcements-routes.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/api/src/workspace-monetary-announcements-routes.ts",
+      "status": "A"
+    },
+    { "path": "apps/api/src/workspace-static-graph.test.ts", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/FedMonetaryAnnouncements.test.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/FedMonetaryAnnouncements.tsx",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketsHome.test.tsx",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/fed-announcements.css",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/useFedMonetaryAnnouncements.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/features/markets/useFedMonetaryAnnouncements.ts",
+      "status": "A"
+    },
+    {
+      "path": "apps/web/src/lib/personal-monetary-announcements-api.test.ts",
+      "status": "A"
+    },
+    { "path": "apps/web/src/lib/personal-workspace-api.ts", "status": "M" },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "packages/contracts/openapi/openapi.yaml", "status": "M" },
+    { "path": "packages/contracts/src/index.ts", "status": "M" },
+    { "path": "packages/contracts/src/openapi.test.ts", "status": "M" },
+    {
+      "path": "packages/contracts/src/personal-monetary-announcements.test.ts",
+      "status": "A"
+    },
+    {
+      "path": "packages/contracts/src/personal-monetary-announcements.ts",
+      "status": "A"
+    },
+    { "path": "pnpm-lock.yaml", "status": "M" },
+    { "path": "scripts/verify-boundaries.ts", "status": "M" },
+    { "path": "scripts/verify-licenses.ts", "status": "M" },
+    { "path": "specs/008-fed-announcements/plan.md", "status": "A" },
+    { "path": "specs/008-fed-announcements/spec.md", "status": "A" },
+    { "path": "specs/008-fed-announcements/tasks.md", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka87.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka87.json",
+  "presentation": {
+    "featureDescription": "Explicit Federal Reserve monetary-policy announcements on Markets",
+    "closureDescription": "generated routing closure for Federal Reserve monetary-policy announcements",
+    "inventoryDescription": "Strict Fed RSS source, authenticated route, bounded DTO and independent announcements panel",
+    "testBinding": "fedmonetaryannouncements",
+    "routingDescription": "Load one bounded official feed explicitly while preserving existing Markets data and request lifetimes",
+    "summaryDescription": "show attributed monetary-policy announcements with their supplied publication dates"
+  }
+}
