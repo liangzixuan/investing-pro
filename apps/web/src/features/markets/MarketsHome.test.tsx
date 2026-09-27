@@ -12,6 +12,18 @@ import {
   type MarketsBoardViewProps,
 } from "./MarketsHome";
 
+const onAnnouncementsLoad = vi.hoisted(() => vi.fn());
+const announcementsHook = vi.hoisted(() =>
+  vi.fn(() => ({
+    announcements: null,
+    busy: false,
+    error: null,
+    onLoad: onAnnouncementsLoad,
+  })),
+);
+vi.mock("./useFedMonetaryAnnouncements", () => ({
+  useFedMonetaryAnnouncements: announcementsHook,
+}));
 const onAgendaLoad = vi.hoisted(() => vi.fn());
 const agendaHook = vi.hoisted(() =>
   vi.fn(() => ({
@@ -347,21 +359,29 @@ describe("Markets board presentation", () => {
     ).not.toContain("Compare this board");
     expect(input.onLoad).not.toHaveBeenCalled();
   });
-  it("offers the independent BEA agenda when Tiingo is unconfigured and the catalog is absent", () => {
+  it("offers independent public-source panels when Tiingo is unconfigured and the catalog is absent", () => {
     const input = props({ catalogSnapshotSha256: null, providerStatus: null });
     const html = renderToStaticMarkup(<MarketsHome {...input} />);
     expect(html).toContain("Economic calendar");
     expect(html).toContain("Load agenda");
     expect(agendaHook).toHaveBeenLastCalledWith(input);
+    expect(announcementsHook).toHaveBeenLastCalledWith(input);
+    expect(html).toContain("Federal Reserve announcements");
+    expect(html).toContain("Load announcements");
+    expect(onAnnouncementsLoad).not.toHaveBeenCalled();
     expect(boardHook).toHaveBeenLastCalledWith({ ...input, enabled: false });
     expect(onAgendaLoad).not.toHaveBeenCalled();
   });
-  it("keeps the agenda mounted inside the same hidden Markets lifetime while Research is active", () => {
+  it("keeps the public-source panels mounted inside the same hidden Markets lifetime while Research is active", () => {
     const input = props({ active: false });
     const html = renderToStaticMarkup(<MarketsHome {...input} />);
     expect(html).toContain('<div hidden="">');
     expect(html).toContain("Economic calendar");
     expect(agendaHook).toHaveBeenLastCalledWith(input);
+    expect(announcementsHook).toHaveBeenLastCalledWith(input);
+    expect(html).toContain("Federal Reserve announcements");
+    expect(html).toContain("Load announcements");
+    expect(onAnnouncementsLoad).not.toHaveBeenCalled();
   });
   it("withholds the chart when a selected overview fails exact identity projection", () => {
     const snapshot = board();

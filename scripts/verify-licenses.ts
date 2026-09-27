@@ -46,6 +46,11 @@ const exactVersion =
   /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const noticeGroups: readonly NoticeGroup[] = Object.freeze([
   Object.freeze({
+    label: "@rgrove/parse-xml",
+    packages: Object.freeze(["@rgrove/parse-xml"]),
+    use: "Federal Reserve RSS parsing",
+  }),
+  Object.freeze({
     label: "Next.js",
     packages: Object.freeze(["next"]),
     use: "Web framework",

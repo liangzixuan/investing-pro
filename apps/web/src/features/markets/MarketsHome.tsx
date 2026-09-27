@@ -29,6 +29,8 @@ import {
 import { useMarketsSnapshot } from "./useMarketsSnapshot";
 import { useBeaReleaseAgenda } from "./useBeaReleaseAgenda";
 import { BeaReleaseAgenda } from "./BeaReleaseAgenda";
+import { useFedMonetaryAnnouncements } from "./useFedMonetaryAnnouncements";
+import { FedMonetaryAnnouncements } from "./FedMonetaryAnnouncements";
 import { MarketBoardPicker } from "./MarketBoardPicker";
 import { MarketCohortComparison } from "./MarketCohortComparison";
 import { deriveMarketCohortComparison } from "./market-cohort-comparison";
@@ -59,6 +61,7 @@ export interface MarketsHomeProps {
 type BoardOrder = "board" | "gainers" | "losers";
 export function MarketsHome(props: MarketsHomeProps) {
   const agenda = useBeaReleaseAgenda(props);
+  const announcements = useFedMonetaryAnnouncements(props);
   const data = useMarketsSnapshot({
     ...props,
     enabled: props.enabled && props.providerStatus?.status === "configured",
@@ -111,6 +114,7 @@ export function MarketsHome(props: MarketsHomeProps) {
         }}
       />
       <BeaReleaseAgenda {...agenda} enabled={props.enabled} />
+      <FedMonetaryAnnouncements {...announcements} enabled={props.enabled} />
     </div>
   );
 }

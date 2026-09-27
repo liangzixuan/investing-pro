@@ -48,6 +48,11 @@ import {
   type BeaReleaseProvider,
 } from "./bea-release-provider";
 import { registerPersonalWorkspaceEconomicCalendarRoutes } from "./workspace-economic-calendar-routes";
+import {
+  createFedMonetaryAnnouncementsProvider,
+  type FedMonetaryAnnouncementsProvider,
+} from "./fed-monetary-announcements-provider";
+import { registerPersonalWorkspaceMonetaryAnnouncementsRoutes } from "./workspace-monetary-announcements-routes";
 import { registerPersonalWorkspaceScreenerRoutes } from "./workspace-screener-routes";
 import { registerPersonalWorkspaceFinancialScreenRoutes } from "./workspace-financial-screen-routes";
 import {
@@ -109,6 +114,7 @@ export async function buildPersonalWorkspaceApp(
   desktopNotifications?: PersonalDesktopNotifications,
   quarterAssessmentProvider: PersonalSecQuarterAssessmentProvider = createSecPersonalQuarterAssessmentProvider(),
   economicCalendarProvider: BeaReleaseProvider = createBeaReleaseProvider(),
+  monetaryAnnouncementsProvider: FedMonetaryAnnouncementsProvider = createFedMonetaryAnnouncementsProvider(),
 ): Promise<FastifyInstance> {
   if (
     catalog.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
@@ -200,7 +206,11 @@ export async function buildPersonalWorkspaceApp(
                         try {
                           economicCalendarProvider.close();
                         } finally {
-                          ownerSession.close();
+                          try {
+                            monetaryAnnouncementsProvider.close();
+                          } finally {
+                            ownerSession.close();
+                          }
                         }
                       }
                     }
@@ -272,6 +282,12 @@ export async function buildPersonalWorkspaceApp(
   registerPersonalWorkspaceEconomicCalendarRoutes(
     app,
     economicCalendarProvider,
+    ownerSession,
+    listenOptions,
+  );
+  registerPersonalWorkspaceMonetaryAnnouncementsRoutes(
+    app,
+    monetaryAnnouncementsProvider,
     ownerSession,
     listenOptions,
   );

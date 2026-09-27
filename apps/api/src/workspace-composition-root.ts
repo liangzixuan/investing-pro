@@ -32,6 +32,10 @@ import {
   type BeaReleaseProvider,
 } from "./bea-release-provider";
 import {
+  createFedMonetaryAnnouncementsProvider,
+  type FedMonetaryAnnouncementsProvider,
+} from "./fed-monetary-announcements-provider";
+import {
   createPersonalFilingMonitor,
   type PersonalFilingMonitor,
 } from "./personal-filing-monitor";
@@ -256,6 +260,8 @@ async function preparePersonalWorkspaceConfiguredApp(
   let vault: LocalResearchVault | undefined;
   let marketDataProvider: PersonalMarketDataProvider | undefined;
   let economicCalendarProvider: BeaReleaseProvider | undefined;
+  let monetaryAnnouncementsProvider:
+    FedMonetaryAnnouncementsProvider | undefined;
   let financialProvider: PersonalSecFinancialProvider | undefined;
   let filingsProvider: PersonalSecFilingsProvider | undefined;
   let filingContextProvider: PersonalSecFilingContextProvider | undefined;
@@ -279,6 +285,7 @@ async function preparePersonalWorkspaceConfiguredApp(
     marketDataProvider =
       createTiingoPersonalMarketDataProvider(marketDataToken);
     economicCalendarProvider = createBeaReleaseProvider();
+    monetaryAnnouncementsProvider = createFedMonetaryAnnouncementsProvider();
     financialProvider = createSecPersonalFinancialProvider(secUserAgent);
     filingsProvider = createSecPersonalFilingsProvider(secUserAgent);
     quarterlyEvidenceProvider =
@@ -316,6 +323,7 @@ async function preparePersonalWorkspaceConfiguredApp(
       desktopNotifications,
       quarterAssessmentProvider,
       economicCalendarProvider,
+      monetaryAnnouncementsProvider,
     );
   } catch (error) {
     try {
@@ -332,6 +340,7 @@ async function preparePersonalWorkspaceConfiguredApp(
         financialProvider?.close();
         marketDataProvider?.close();
         economicCalendarProvider?.close();
+        monetaryAnnouncementsProvider?.close();
         vault?.close();
         ownerSession.close();
       }

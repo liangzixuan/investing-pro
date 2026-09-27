@@ -5,7 +5,56 @@ Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a86 compare the loaded Markets board
+## Active outcome: a87 Federal Reserve announcements
+
+Add an independent, explicitly loaded Markets panel with up to ten attributed
+monetary-policy announcements. The [specification](../specs/008-fed-announcements/spec.md),
+[plan](../specs/008-fed-announcements/plan.md) and
+[tasks](../specs/008-fed-announcements/tasks.md) define the source, transport,
+lifecycle and acceptance requirements. Implementation is
+unreleased. Source, contract/provider/client and UI tests, dependency license
+inventory and boundary checks have passed. The configured personal-workspace/local
+web build and 16 page-mode cases also passed; see the
+[preflight](../../tmp/fed-announcements/production-web-preflight.json) and
+[independent review](../../tmp/fed-announcements/production-web-preflight-independent-review.json).
+Its build is `0jN1_VQa2fxRAPTekA-_e`, separate from the accepted running app.
+Independent product source/integration review and seven source-bound synthetic
+Brave groups passed; see the
+[integration review](../../tmp/fed-announcements/workspace-integration-independent-review.json)
+and [synthetic review](../../tmp/fed-announcements/synthetic-qa-independent-review.json).
+The synthetic checks covered explicit loading, busy and failed refresh retention,
+empty replacement, hide/Back and session retirement, independent panels, and
+desktop/390px layout and keyboard focus. They used invented RAM data; screenshots
+were inspected inline only. A disabled-control Return was refused by the browser
+tool, so duplicate-callback behavior remains unit-test coverage. The History shim
+does not establish production Next hydration or live feed access.
+Final feature/closure review, native and hosted gates, activation and limited live
+QA remain pending.
+The [implementation checkpoint](../../tmp/fed-announcements/implementation-checkpoint.md)
+records 631 distinct focused cases, including existing regressions. Its 28 source
+pins and accepted HEAD were reconciled before these documentation changes; use the
+[renewal reconciliation](../../tmp/fed-announcements/renewal-checkpoint-reconciliation.json)
+and subsequent evidence for current file hashes. Preserve the original checkpoint.
+Renewed work adds three focused workspace integration cases for actual route
+wiring, startup inactivity and shutdown disposal; see the
+[integration handoff](../../tmp/fed-announcements/workspace-integration-handoff.json).
+Workspace CURRENT.md records the renewed window through September 28, 06:29:44 UTC,
+with no new slice after 05:44:44 UTC that day. Scope and behavior are unchanged.
+
+A86 comparison release `dbfaf478722eab4cfde0fbe2b0c896d2fab37398` is the accepted
+running baseline, build `nWXiku1-SsHPISrPv44B1`. Its final independent review records
+9,495 native passes, nine existing skips, 25 typechecks, 24 builds, five hosted
+jobs, eight synthetic Brave groups and six limited live groups. Historical a86
+and earlier sections below retain the implementation context; CURRENT.md and the
+[final review](../../tmp/markets-cohort-comparison/final-acceptance-independent-review.json)
+own actual release status. Preserve the app and rollback while a87 is unfinished.
+
+Root owns dependency/client/composition/boundaries/docs; Spec owns contracts and
+OpenAPI; Finance owns provider/routes; Performance owns hook/panel/composition.
+The source prerequisite's single GET is consumed. Work offline from its retained
+fixture; no linked article requests or owner-record writes are part of QA.
+
+## A86 comparison implementation context
 
 Add a compact shared-date comparison beneath the loaded board. Show each
 company's adjusted-price change and maximum drawdown over observations present
@@ -13,7 +62,8 @@ for every member, with the actual dates/count and a coverage disclosure. The
 [specification](../specs/007-markets-cohort-comparison/spec.md),
 [plan](../specs/007-markets-cohort-comparison/plan.md) and
 [tasks](../specs/007-markets-cohort-comparison/tasks.md) define acceptance.
-Implementation and verification are in progress; a85 remains the accepted app.
+A86 completed implementation and release acceptance; its actual final evidence is
+linked above. This section retains its product and ownership context.
 
 Reuse the pure comparison engine with a maximum of six series. Preserve exact
 decimal calculations and validation before date intersection. Admit the whole
@@ -35,11 +85,12 @@ integration, specifications and release. See CURRENT and
 Limited live QA permits one default-board load, at most three existing EOD GETs,
 without retries or owner writes. This feature itself adds no requests.
 
-## Accepted runtime and preserved work
+## Accepted history and preserved work
 
 Markets watchlist release `3aaa62206dcbc929a15c0c3b16ace5759c977d84`, feature
-`2056bd4e3480b1ebc544009c78ed7c4b026dcc61`, is accepted, normally pushed and
-running with build `fhvAHY2sO_Gv5b7mr8DF4`. Its
+`2056bd4e3480b1ebc544009c78ed7c4b026dcc61`, was accepted, normally pushed and
+activated with build `fhvAHY2sO_Gv5b7mr8DF4`. A86 later replaced it; a85 is the
+preserved rollback release. Its
 [final independent review](../../tmp/markets-watchlist/final-acceptance-independent-review.json)
 records 9,437 native passes, nine existing skips, 25 typechecks, 24 builds,
 414 healthy samples, five successful required hosted jobs, nine synthetic
@@ -61,7 +112,7 @@ missing literal without relaxing the assertion. All a85 and older observers are
 terminal. Used captures, stop helpers and reservations must not run again.
 
 Use `markets-home/` for development. Preserve the parked `research-cockpit/`
-changes, healthy a85 runtime and actual a84/a83/a81 rollback manifests and checkouts
+changes, accepted a86 runtime and actual a85/a84/a83/a81 rollback manifests and checkouts
 recorded in CURRENT. Historical process IDs are never future action authority.
 The prior valuation diagnostic returned HTTP 400 before body parsing. No request
 defect or entitlement denial was established; its operation budget is consumed.

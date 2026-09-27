@@ -1,0 +1,79 @@
+.research-desk .fed-announcements {
+  min-width: 0;
+  border-top: 1px solid #dbe2e9;
+  padding: 24px 0;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.research-desk .fed-announcements-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.research-desk .fed-announcements-heading h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+.research-desk .fed-announcements-heading p {
+  margin: 6px 0 0;
+  color: #536176;
+}
+.research-desk .fed-announcements button {
+  min-height: 44px;
+  padding: 9px 16px;
+  border: 1px solid var(--desk-accent, #e56b22);
+  border-radius: 3px;
+  background: var(--desk-accent, #e56b22);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.research-desk .fed-announcements button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.research-desk .fed-announcements a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  color: #a83c00;
+  text-underline-offset: 3px;
+}
+.research-desk .fed-announcements :is(a, button):focus-visible {
+  outline: 3px solid #216bc4;
+  outline-offset: 3px;
+}
+.research-desk .fed-announcements-source,
+.research-desk .fed-announcements-note {
+  margin: 12px 0;
+  color: #536176;
+}
+.research-desk .fed-announcements-error {
+  padding-left: 12px;
+  border-left: 3px solid #b42318;
+  color: #84251c;
+}
+.research-desk .fed-announcements-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.research-desk .fed-announcements-list li {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid #e4e9ef;
+}
+.research-desk .fed-announcements-list a {
+  font-weight: 600;
+}
+.research-desk .fed-announcements-list p {
+  margin: 0;
+  color: #536176;
+}

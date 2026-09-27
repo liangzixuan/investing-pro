@@ -574,6 +574,45 @@ paths:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
+  /v1/personal-filing/monetary-policy-announcements:
+    get:
+      operationId: loadPersonalMonetaryAnnouncements
+      summary: Explicitly load Federal Reserve monetary-policy announcements.
+      description: >-
+        Authenticated, body-free GET from one fixed public Federal Reserve RSS
+        feed. No query parameters or automatic HEAD route. One upstream request,
+        no redirects, credentials, retries or linked-article acquisition.
+        Fetch and body reading share a ten-second deadline and 256 KiB body cap;
+        this is not a hard synchronous XML parse deadline. Validate all bounded
+        input items before deduplication and the ten-item output limit. Malformed
+        XML, DTDs, undefined entities and conflicting duplicate URLs fail the
+        complete response. No persistent records, article contents or company matching.
+      security:
+        - PersonalOwnerSession: []
+      responses:
+        "200":
+          description: A validated announcement list, including a valid empty feed.
+          headers:
+            Cache-Control:
+              $ref: "#/components/headers/PrivateNoStore"
+            Pragma:
+              $ref: "#/components/headers/PragmaNoCache"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonalMonetaryAnnouncements"
+        "403":
+          description: The existing local request or owner-session boundary rejected the request before acquisition.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "502":
+          description: The source is unavailable or invalid; no partial list is returned.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
   /v1/personal-filing/market-data/status:
     get:
       operationId: getPersonalMarketDataStatus
@@ -1596,6 +1635,63 @@ components:
                 type: string
                 format: date-time
                 description: Announced release time in canonical UTC with milliseconds; subject to schedule changes.
+    PersonalMonetaryAnnouncements:
+      type: object
+      additionalProperties: false
+      required: [schemaVersion, source, fetchedAt, availableItemCount, items]
+      properties:
+        schemaVersion:
+          const: "1.0.0"
+        source:
+          type: object
+          additionalProperties: false
+          required: [id, name, feedUrl, directoryUrl, timeZone]
+          properties:
+            id:
+              const: federal-reserve-board
+            name:
+              const: Board of Governors of the Federal Reserve System
+            feedUrl:
+              const: https://www.federalreserve.gov/feeds/press_monetary.xml
+            directoryUrl:
+              const: https://www.federalreserve.gov/feeds/feeds.htm
+            timeZone:
+              const: America/New_York
+        fetchedAt:
+          type: string
+          format: date-time
+          pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$'
+          description: Local time after the complete body is received, before normalization; published only with an accepted result, distinct from publication time.
+        availableItemCount:
+          type: integer
+          minimum: 0
+          maximum: 128
+          description: Validated unique feed items before the ten-item output limit.
+        items:
+          type: array
+          maxItems: 10
+          description: Length equals min(10, availableItemCount). URLs are unique. Known publication instants sort descending with source-order ties; unknown times follow in source order. No fixed retention or complete-news claim.
+          items:
+            type: object
+            additionalProperties: false
+            required: [title, url, publishedAt]
+            properties:
+              title:
+                type: string
+                minLength: 1
+                maxLength: 256
+                description: Entity-decoded plain text, bounded to 256 UTF-16 code units, without surrounding XML whitespace or Unicode control, format or surrogate characters. Never source HTML.
+              url:
+                type: string
+                format: uri
+                maxLength: 2048
+                pattern: '^https://www\.federalreserve\.gov/newsevents/pressreleases/monetary[0-9]{8}[a-z]\.htm$'
+                description: Exact canonical HTTPS URL and item identity; no credentials, port, query, fragment or encoded/path-normalized aliases. Optional source GUID must agree and is not returned.
+              publishedAt:
+                type: [string, "null"]
+                format: date-time
+                pattern: '^[1-9][0-9]{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z$'
+                description: Canonical UTC at whole-second source precision, or null only for an absent source date. Supplied malformed dates fail. Source GMT calendar components and weekday must agree; future source instants are not replaced with fetchedAt.
     ThesisWriteRequest:
       type: object
       additionalProperties: false

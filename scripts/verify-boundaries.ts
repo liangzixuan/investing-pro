@@ -5215,6 +5215,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
   const secProviderPath = "apps/api/src/personal-sec-financial-provider.ts";
   const expectedFiles = [
     "apps/api/src/bea-release-provider.ts",
+    "apps/api/src/fed-monetary-announcements-provider.ts",
     "apps/api/src/listen-options.ts",
     providerPath,
     "apps/api/src/personal-desktop-notifications.ts",
@@ -5245,6 +5246,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-app.ts",
     "apps/api/src/workspace-composition-root.ts",
     "apps/api/src/workspace-economic-calendar-routes.ts",
+    "apps/api/src/workspace-monetary-announcements-routes.ts",
     "apps/api/src/workspace-financial-screen-routes.ts",
     "apps/api/src/workspace-filing-monitor-routes.ts",
     "apps/api/src/workspace-saved-dcf-routes.ts",
@@ -5261,6 +5263,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/workspace-portfolio-routes.ts",
   ].sort();
   const expectedExternalSpecifiers = [
+    "@rgrove/parse-xml",
     "@fastify/cors",
     "@fastify/helmet",
     "@research-cockpit/contracts",
@@ -6136,6 +6139,92 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
         `scripts/verify-boundaries.ts: quarter-assessment negative source case ${String(index + 1)} regressed`,
       );
   }
+  const monetaryCases: readonly (readonly [string, string, string])[] = [
+    [
+      "fed-monetary-announcements-provider.ts",
+      "PERSONAL_FED_MONETARY_SOURCE.feedUrl",
+      '"https://example.invalid/feed"',
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      "MAX_BYTES = 256 * 1_024",
+      "MAX_BYTES = 512 * 1_024",
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      "DEADLINE_MILLISECONDS = 10_000",
+      "DEADLINE_MILLISECONDS = 20_000",
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      'credentials: "omit"',
+      'credentials: "include"',
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      'redirect: "error"',
+      'redirect: "follow"',
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      "preserveDocumentType: true",
+      "preserveDocumentType: false",
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      "ignoreUndefinedEntities: false",
+      "ignoreUndefinedEntities: true",
+    ],
+    [
+      "fed-monetary-announcements-provider.ts",
+      "const SOURCE_URL",
+      'void globalThis.fetch("https://example.invalid");\nconst SOURCE_URL',
+    ],
+    [
+      "workspace-monetary-announcements-routes.ts",
+      "!authorizePersonalRouteRequest(",
+      "!Boolean(",
+    ],
+    [
+      "workspace-monetary-announcements-routes.ts",
+      "exposeHeadRoute: false",
+      "exposeHeadRoute: true",
+    ],
+    [
+      "workspace-monetary-announcements-routes.ts",
+      "provider.load(controller.signal)",
+      "provider.load()",
+    ],
+    ["workspace-monetary-announcements-routes.ts", "app.get(", "app.post("],
+  ];
+  for (const [index, [file, before, after]] of monetaryCases.entries()) {
+    const path = `apps/api/src/${file}`;
+    const original = (runtimeSources.get(path) ?? "").replaceAll("\r\n", "\n");
+    const changed = original.replace(before, after);
+    const altered = new Map(runtimeSources);
+    altered.set(path, changed);
+    if (
+      changed === original ||
+      personalMarketDataRuntimeBoundaryViolation(altered) === null
+    )
+      found.push(
+        `scripts/verify-boundaries.ts: Fed announcements negative source case ${String(index + 1)} regressed`,
+      );
+  }
+  if (
+    !personalMarketDataWebViolation(
+      'void fetch("https://www.federalreserve.gov/feeds/press_monetary.xml");',
+    ) ||
+    personalMarketDataWebViolation(
+      'const source = "https://www.federalreserve.gov/feeds/feeds.htm";',
+    ) ||
+    personalMarketDataWebViolation(
+      'const article = "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm";',
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: Fed browser acquisition/source-link boundary regressed",
+    );
   const calendarCases: readonly (readonly [string, string, string])[] = [
     [
       "bea-release-provider.ts",
@@ -6304,6 +6393,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== providerPath &&
         path !== secProviderPath &&
         path !== "apps/api/src/bea-release-provider.ts" &&
+        path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
@@ -6312,7 +6402,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         personalMarketDataUsesGlobalFetch(source)
       ) {
         found.push(
-          `${path}: only the reviewed Tiingo, SEC and BEA providers may use the API runtime fetch capability`,
+          `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`,
         );
       }
       if (path !== providerPath && content.includes(providerHost)) {
@@ -7404,6 +7494,7 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== providerPath &&
       path !== secProviderPath &&
       path !== "apps/api/src/bea-release-provider.ts" &&
+      path !== "apps/api/src/fed-monetary-announcements-provider.ts" &&
       path !== "apps/api/src/personal-sec-filings-provider.ts" &&
       path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
       path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
@@ -7411,11 +7502,13 @@ function personalMarketDataRuntimeBoundaryViolation(
       path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
       personalMarketDataUsesGlobalFetch(source)
     ) {
-      return `${path}: only the reviewed Tiingo, SEC and BEA providers may use the API runtime fetch capability`;
+      return `${path}: only the reviewed Tiingo, SEC, BEA and Fed providers may use the API runtime fetch capability`;
     }
     if (
       (path === providerPath ||
         path === "apps/api/src/bea-release-provider.ts" ||
+        path === "apps/api/src/fed-monetary-announcements-provider.ts" ||
+        path === "apps/api/src/workspace-monetary-announcements-routes.ts" ||
         path === "apps/api/src/workspace-economic-calendar-routes.ts" ||
         path === routesPath ||
         path === secProviderPath ||
@@ -7446,6 +7539,8 @@ function personalMarketDataRuntimeBoundaryViolation(
     }
   }
 
+  const monetaryViolation = fedMonetaryAnnouncementsBoundaryViolation(sources);
+  if (monetaryViolation !== null) return monetaryViolation;
   const calendarViolation = beaReleaseBoundaryViolation(sources);
   if (calendarViolation !== null) return calendarViolation;
   const providerViolation = personalMarketDataProviderViolation(provider);
@@ -7663,6 +7758,180 @@ function beaReleaseBoundaryViolation(
   ])
     if (!compact(route).includes(anchor)) invalid = true;
   return invalid || endpoints !== 1 || transports !== 1 ? message : null;
+}
+
+function fedMonetaryAnnouncementsBoundaryViolation(
+  sources: ReadonlyMap<string, string>,
+): string | null {
+  const providerPath = "apps/api/src/fed-monetary-announcements-provider.ts";
+  const routePath = "apps/api/src/workspace-monetary-announcements-routes.ts";
+  const provider = sources.get(providerPath) ?? "";
+  const route = sources.get(routePath) ?? "";
+  const message =
+    "Fed announcements must retain the reviewed XML parser, one fixed public request and its authenticated route";
+  const compact = (text: string) =>
+    text.replace(/\s+/gu, "").replace(/,(?=[)}\]])/gu, "");
+  if (
+    JSON.stringify(collectModuleSpecifiers(provider)) !==
+      JSON.stringify(["@rgrove/parse-xml", "@research-cockpit/contracts"]) ||
+    JSON.stringify(collectModuleSpecifiers(route)) !==
+      JSON.stringify([
+        "@research-cockpit/contracts",
+        "fastify",
+        "./fed-monetary-announcements-provider",
+        "./listen-options",
+        "./personal-owner-session",
+        "./personal-owner-session-routes",
+      ])
+  )
+    return message;
+  const source = ts.createSourceFile(
+    providerPath,
+    provider,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  if (
+    findIdentifiers(
+      source,
+      new Set([
+        "process",
+        "console",
+        "global",
+        "window",
+        "self",
+        "XMLHttpRequest",
+        "WebSocket",
+        "EventSource",
+        "setInterval",
+      ]),
+    ).some((node) => !isBoundaryIdentifierDeclarationOrPropertyName(node)) ||
+    [
+      "constSOURCE_URL=PERSONAL_FED_MONETARY_SOURCE.feedUrl;",
+      "constMAX_BYTES=256*1_024;",
+      "inputItems.length>PERSONAL_MONETARY_ANNOUNCEMENTS_MAXIMUM_INPUT_ITEMS",
+      'newTextDecoder("utf-8",{fatal:true}).decode(bytes)',
+      "parseXml(text,{ignoreUndefinedEntities:false,preserveDocumentType:true,preserveXmlDeclaration:true,preserveCdata:false,preserveComments:false,includeOffsets:false,sortAttributes:false})",
+      "constDEADLINE_MILLISECONDS=10_000;",
+      "this.#fetch=dependencies.fetch??globalThis.fetch;",
+      "},DEADLINE_MILLISECONDS)",
+      "controller.abort()",
+      "for(constcontrollerofthis.#active)controller.abort();",
+      'signal?.addEventListener("abort",abort,{once:true})',
+      'signal?.removeEventListener("abort",abort)',
+      "awaitreadBoundedText(response,controller.signal)",
+      "awaitwithAbort(reader.read(),signal)",
+      "size>MAX_BYTES",
+      "!isPersonalMonetaryAnnouncementsDto(result)",
+    ].some((anchor) => !compact(provider).includes(anchor))
+  )
+    return message;
+  let endpoints = 0;
+  let transports = 0;
+  let invalid = false;
+  const visit = (node: ts.Node) => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.head.text)
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    ) {
+      endpoints += 1;
+      invalid = true;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression;
+      if (
+        (ts.isIdentifier(callee) && callee.text === "fetch") ||
+        namedBoundaryPropertyAccess(callee, new Set(["fetch"])) !== null
+      )
+        invalid = true;
+      if (
+        ts.isPropertyAccessExpression(callee) &&
+        callee.expression.kind === ts.SyntaxKind.ThisKeyword &&
+        callee.name.text === "#fetch"
+      ) {
+        transports += 1;
+        const [url, options] = node.arguments;
+        if (
+          node.arguments.length !== 2 ||
+          url?.getText(source) !== "SOURCE_URL" ||
+          options === undefined ||
+          !ts.isObjectLiteralExpression(options)
+        )
+          invalid = true;
+        else {
+          const expected = new Map([
+            ["method", '"GET"'],
+            ["headers", '{Accept:"application/rss+xml,application/xml;q=0.9"}'],
+            ["credentials", '"omit"'],
+            ["redirect", '"error"'],
+            ["referrerPolicy", '"no-referrer"'],
+            ["cache", '"no-store"'],
+            ["signal", "controller.signal"],
+          ]);
+          if (
+            options.properties.length !== expected.size ||
+            options.properties.some(
+              (property) =>
+                !ts.isPropertyAssignment(property) ||
+                compact(property.initializer.getText(source)) !==
+                  expected.get(boundaryPropertyName(property.name) ?? ""),
+            )
+          )
+            invalid = true;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  const routeSource = ts.createSourceFile(
+    routePath,
+    route,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const registrations: ts.CallExpression[] = [];
+  let providerLoads = 0;
+  const visitRoute = (node: ts.Node) => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression)
+    ) {
+      if (node.expression.expression.getText(routeSource) === "app")
+        registrations.push(node);
+      if (node.expression.getText(routeSource) === "provider.load")
+        providerLoads += 1;
+    }
+    ts.forEachChild(node, visitRoute);
+  };
+  visitRoute(routeSource);
+  if (
+    registrations.length !== 1 ||
+    registrations[0]?.expression.getText(routeSource) !== "app.get" ||
+    registrations[0]?.arguments[0]?.getText(routeSource) !==
+      "PERSONAL_MONETARY_ANNOUNCEMENTS_PATH" ||
+    providerLoads !== 1
+  )
+    invalid = true;
+  for (const anchor of [
+    "exposeHeadRoute:false",
+    "if(!authorizePersonalRouteRequest(request,ownerSession,listenOptions,PERSONAL_MONETARY_ANNOUNCEMENTS_PATH))returnsendPersonalOwnerSessionProblem(reply,request);",
+    "constresult=awaitprovider.load(controller.signal);",
+    "controller.signal.aborted||!isPersonalMonetaryAnnouncementsDto(result)",
+    'request.raw.once("aborted",abort)',
+    'reply.raw.once("close",abort)',
+    'request.raw.off("aborted",abort)',
+    'reply.raw.off("close",abort)',
+  ])
+    if (!compact(route).includes(anchor)) invalid = true;
+  return invalid || endpoints !== 0 || transports !== 1 ? message : null;
 }
 
 function personalDesktopNotificationBoundaryViolation(
@@ -9314,11 +9583,16 @@ function personalMarketDataWebViolation(content: string): boolean {
     content.includes(providerHost) ||
     content.includes(tokenEnvironmentLiteral) ||
     content.includes("https://apps.bea.gov/API/signup/release_dates.json") ||
+    content.includes(
+      "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    ) ||
     /["'`]\/(?:iex|tiingo\/(?:daily|fundamentals))\//iu.test(content) ||
     collectModuleSpecifiers(content).some(
       (specifier) =>
         specifier.includes("personal-market-data-provider") ||
         specifier.includes("bea-release-provider") ||
+        specifier.includes("fed-monetary-announcements-provider") ||
+        specifier === "@rgrove/parse-xml" ||
         personalSecPrivateRuntimeImport(specifier) ||
         /(?:^|[/@-])tiingo(?:[/@-]|$)/iu.test(specifier),
     )
@@ -9626,6 +9900,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ],
     [
       "apps/api/src/workspace-economic-calendar-routes.test.ts",
+      ["admitPersonalSecurityMasterSnapshot"],
+    ],
+    [
+      "apps/api/src/workspace-monetary-announcements-integration.test.ts",
       ["admitPersonalSecurityMasterSnapshot"],
     ],
     [
@@ -14900,6 +15178,10 @@ function localResearchVaultAllowedApiBindings(): ReadonlyMap<
     ],
     [
       "apps/api/src/workspace-economic-calendar-routes.test.ts",
+      ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
+    ],
+    [
+      "apps/api/src/workspace-monetary-announcements-integration.test.ts",
       ["LOCAL_RESEARCH_VAULT_PROFILE", "type LocalResearchVault"],
     ],
     [

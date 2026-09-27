@@ -12,6 +12,7 @@ describe("personal workspace startup static graph", () => {
     const graph = await staticGraph(WORKSPACE_ENTRY);
     expect([...graph.files].sort()).toEqual([
       "bea-release-provider.ts",
+      "fed-monetary-announcements-provider.ts",
       "listen-options.ts",
       "personal-desktop-notifications.ts",
       "personal-filing-monitor-schedule.ts",
@@ -45,6 +46,7 @@ describe("personal workspace startup static graph", () => {
       "workspace-filing-monitor-routes.ts",
       "workspace-financial-screen-routes.ts",
       "workspace-market-data-routes.ts",
+      "workspace-monetary-announcements-routes.ts",
       "workspace-portfolio-routes.ts",
       "workspace-saved-dcf-routes.ts",
       "workspace-saved-manual-peer-routes.ts",
@@ -68,6 +70,7 @@ describe("personal workspace startup static graph", () => {
       "@research-cockpit/local-research-vault",
       "@research-cockpit/personal-financial-analytics",
       "@research-cockpit/personal-security-master",
+      "@rgrove/parse-xml",
       "fastify",
       "node:child_process",
       "node:crypto",

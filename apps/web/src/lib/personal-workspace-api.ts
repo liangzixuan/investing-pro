@@ -1,4 +1,5 @@
 import type {
+  PersonalMonetaryAnnouncementsDto,
   PersonalEconomicCalendarDto,
   PersonalAnnualFinancialReportedFieldKeyDto,
   PersonalAnnualFinancialsDto,
@@ -25,6 +26,8 @@ import type {
   PersonalScreenerSavedViewsRecordDto,
 } from "@research-cockpit/contracts";
 import {
+  isPersonalMonetaryAnnouncementsDto,
+  PERSONAL_MONETARY_ANNOUNCEMENTS_PATH,
   isPersonalEconomicCalendarDto,
   PERSONAL_ECONOMIC_CALENDAR_PATH,
 } from "@research-cockpit/contracts";
@@ -598,6 +601,42 @@ export async function fetchPersonalEconomicCalendar(
     events: Object.freeze(
       value.events.map((event) => Object.freeze({ ...event })),
     ),
+  });
+}
+
+export async function fetchPersonalMonetaryAnnouncements(
+  signal: AbortSignal,
+): Promise<PersonalMonetaryAnnouncementsDto> {
+  signal.throwIfAborted();
+  const response = await request(PERSONAL_MONETARY_ANNOUNCEMENTS_PATH, {
+    headers: { Accept: "application/json" },
+    method: "GET",
+    signal,
+  });
+  signal.throwIfAborted();
+  if (!response.ok) {
+    if (response.status === 429)
+      throw new PersonalWorkspaceApiError("rate_limited");
+    if (response.status === 502 || response.status === 503)
+      throw new PersonalWorkspaceApiError("provider_unavailable");
+    throw responseError(response.status);
+  }
+  let value: unknown;
+  try {
+    value = await response.json();
+  } catch {
+    signal.throwIfAborted();
+    throw new PersonalWorkspaceApiError("invalid_response");
+  }
+  signal.throwIfAborted();
+  if (!isPersonalMonetaryAnnouncementsDto(value))
+    throw new PersonalWorkspaceApiError("invalid_response");
+  return Object.freeze({
+    schemaVersion: value.schemaVersion,
+    source: Object.freeze({ ...value.source }),
+    fetchedAt: value.fetchedAt,
+    availableItemCount: value.availableItemCount,
+    items: Object.freeze(value.items.map((item) => Object.freeze({ ...item }))),
   });
 }
 

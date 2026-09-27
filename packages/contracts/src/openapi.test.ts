@@ -171,6 +171,7 @@ describe("local API OpenAPI contract", () => {
       "/v1/personal-filing/security-master/search",
       "/v1/personal-filing/security-master/listings/{listingId}",
       "/v1/personal-filing/economic-calendar",
+      "/v1/personal-filing/monetary-policy-announcements",
       "/v1/personal-filing/market-data/status",
       "/v1/personal-filing/market-data/overview",
       "/v1/personal-filing/market-data/annual-financials",
@@ -220,6 +221,48 @@ describe("local API OpenAPI contract", () => {
         expect(routeSource).toContain(header);
       }
     }
+  });
+
+  it("documents the bounded authenticated Federal Reserve announcement contract", async () => {
+    const source = await openApiSource();
+    const route = pathSection(
+      source,
+      "/v1/personal-filing/monetary-policy-announcements",
+    );
+    expect(route.match(/^ {4}[a-z]+:/gm)?.map((line) => line.trim())).toEqual([
+      "get:",
+    ]);
+    expect(route).toContain("PersonalOwnerSession: []");
+    expect(route).not.toContain("requestBody:");
+    expect(route).not.toContain("parameters:");
+    expect(statuses(route)).toEqual(["200", "403", "502"]);
+    expect(route).toContain(
+      '$ref: "#/components/schemas/PersonalMonetaryAnnouncements"',
+    );
+    expect(route).toContain('$ref: "#/components/headers/PrivateNoStore"');
+    expect(route).toContain("no partial list is returned");
+    const schema = schemaSection(
+      source,
+      "PersonalMonetaryAnnouncements",
+      "ThesisWriteRequest",
+    );
+    expect(schema).toContain(
+      "required: [schemaVersion, source, fetchedAt, availableItemCount, items]",
+    );
+    expect(schema).toContain(
+      "required: [id, name, feedUrl, directoryUrl, timeZone]",
+    );
+    expect(schema).toContain("required: [title, url, publishedAt]");
+    expect(schema).toContain("maximum: 128");
+    expect(schema).toContain("maxItems: 10");
+    expect(schema).toContain('type: [string, "null"]');
+    expect(schema).toContain(
+      "const: https://www.federalreserve.gov/feeds/press_monetary.xml",
+    );
+    expect(schema).toContain("const: America/New_York");
+    expect(schema).toContain("Length equals min(10, availableItemCount)");
+    expect(schema).toContain("weekday must agree");
+    expect(schema.match(/additionalProperties: false/g)).toHaveLength(3);
   });
 
   it("freezes the body-free possession-bound local owner-session contract", async () => {
