@@ -15,6 +15,113 @@ const unsafeCalculate = calculatePersonalPricePerformanceComparison as (
 ) => PersonalPricePerformanceComparisonResult;
 
 describe("personal price performance comparison", () => {
+  it.each([4, 5, 6])(
+    "compares every member of a %i-series cohort in input order",
+    (count) => {
+      const input = {
+        series: Array.from({ length: count }, (_, index) =>
+          series(`listing-${count - index}`, [
+            bar(1, String(100 * (index + 1))),
+            bar(2, String(120 * (index + 1))),
+            bar(3, String(90 * (index + 1))),
+          ]),
+        ),
+      };
+      const before = structuredClone(input);
+      const result = calculatePersonalPricePerformanceComparison(input);
+      if (result.status !== "available") throw new TypeError();
+
+      expect(result.sharedDates).toEqual([
+        "2025-01-01",
+        "2025-01-02",
+        "2025-01-03",
+      ]);
+      expect(result.rows.map((row) => row.listingId)).toEqual(
+        input.series.map((entry) => entry.listingId),
+      );
+      for (const row of result.rows) {
+        expect(row.selectedWindowReturn.valuePercent).toBe("-10.0000");
+        expect(row.maximumDrawdown).toMatchObject({
+          valuePercent: "25.0000",
+          peakDate: "2025-01-02",
+          troughDate: "2025-01-03",
+        });
+        expect(
+          row.indexedObservations.map((point) => point.indexedAdjustedClose),
+        ).toEqual(["100.0000", "120.0000", "90.0000"]);
+        expect(row.loadedSessionCount).toBe(3);
+        expect(row.excludedSessionCount).toBe(0);
+      }
+      expect(input).toEqual(before);
+      expectDeepFrozen(result);
+    },
+  );
+
+  it("intersects all six shifted histories before calculating returns and drawdown", () => {
+    const dates = [
+      [1, 2, 3, 4, 5, 6],
+      [2, 3, 4, 5, 6, 7],
+      [1, 2, 4, 5, 6, 7],
+      [1, 2, 3, 4, 6, 7],
+      [1, 2, 3, 4, 5, 6, 7],
+      [2, 4, 6],
+    ];
+    const closes = ["1", "100", "1000", "120", "1", "90", "1"];
+    const result = calculatePersonalPricePerformanceComparison({
+      series: dates.map((days, index) =>
+        series(
+          `listing-${index}`,
+          days.map((day) => bar(day, closes[day - 1]!)),
+        ),
+      ),
+    });
+    if (result.status !== "available") throw new TypeError();
+    expect(result.sharedDates).toEqual([
+      "2025-01-02",
+      "2025-01-04",
+      "2025-01-06",
+    ]);
+    expect(result.sharedSessionCount).toBe(3);
+    expect(result.rows.map((row) => row.excludedSessionCount)).toEqual([
+      3, 3, 3, 3, 4, 0,
+    ]);
+    for (const row of result.rows) {
+      expect(row.firstAdjustedClose).toBe("100");
+      expect(row.lastAdjustedClose).toBe("90");
+      expect(row.selectedWindowReturn.valuePercent).toBe("-10.0000");
+      expect(row.maximumDrawdown).toMatchObject({
+        valuePercent: "25.0000",
+        peakDate: "2025-01-04",
+        troughDate: "2025-01-06",
+        observedSessions: 3,
+      });
+    }
+  });
+
+  it.each([
+    ["empty", [], []],
+    ["one shared date", [bar(2, "10"), bar(3, "20")], ["2025-01-02"]],
+  ] as const)(
+    "retains six members when the last history has %s coverage",
+    (_name, bars, sharedDates) => {
+      const result = calculatePersonalPricePerformanceComparison({
+        series: [
+          ...Array.from({ length: 5 }, (_, index) =>
+            series(`listing-${index}`, [bar(1, "10"), bar(2, "20")]),
+          ),
+          series("listing-last", bars),
+        ],
+      });
+      expect(result.status).toBe("insufficient_history");
+      expect(result.sharedDates).toEqual(sharedDates);
+      expect(result.rows).toHaveLength(6);
+      for (const row of result.rows) {
+        expect(row).not.toHaveProperty("selectedWindowReturn");
+        expect(row).not.toHaveProperty("maximumDrawdown");
+      }
+    },
+  );
+
   it("compares adjusted closes over exact dates shared by every selected listing", () => {
     const result = calculatePersonalPricePerformanceComparison({
       series: [
@@ -614,12 +721,17 @@ describe("maximum drawdown on shared observations", () => {
 });
 
 describe("price performance comparison admission", () => {
-  it.each([2, 3])("rejects sparse selection arrays of length %i", (length) => {
-    const sparse = new Array<PersonalPricePerformanceComparisonSeries>(length);
-    sparse[0] = validInput().series[0]!;
-    if (length === 3) sparse[2] = validInput().series[1]!;
-    expectGenericTypeError({ series: sparse });
-  });
+  it.each([2, 3, 4, 5, 6])(
+    "rejects sparse selection arrays of length %i",
+    (length) => {
+      const sparse = new Array<PersonalPricePerformanceComparisonSeries>(
+        length,
+      );
+      sparse[0] = validInput().series[0]!;
+      if (length === 3) sparse[2] = validInput().series[1]!;
+      expectGenericTypeError({ series: sparse });
+    },
+  );
 
   it.each([
     ["null", null],
@@ -629,12 +741,15 @@ describe("price performance comparison admission", () => {
     ["series object", { series: {} }],
     ["one series", { series: [validInput().series[0]] }],
     [
-      "four series",
+      "seven series",
       {
         series: [
           ...validInput().series,
           series("listing-c", []),
           series("listing-d", []),
+          series("listing-e", []),
+          series("listing-f", []),
+          series("listing-g", []),
         ],
       },
     ],
@@ -708,6 +823,24 @@ describe("price performance comparison admission", () => {
       ],
     });
   });
+
+  it.each([
+    ["adjusted close", bar(3, "0")],
+    ["raw close", bar(3, "10", "0")],
+    ["calendar date", { ...bar(3, "10"), date: "2025-01-32" }],
+  ] as const)(
+    "rejects invalid excluded %s in the sixth history",
+    (_name, invalidBar) => {
+      expectGenericTypeError({
+        series: [
+          ...Array.from({ length: 5 }, (_, index) =>
+            series(`listing-${index}`, [bar(1, "10"), bar(2, "20")]),
+          ),
+          series("listing-last", [bar(1, "10"), bar(2, "20"), invalidBar]),
+        ],
+      });
+    },
+  );
 
   it("validates every original member even when another member has no history", () => {
     expectGenericTypeError({

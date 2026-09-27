@@ -1,5 +1,24 @@
 # Company research workspace
 
+## Compare a loaded Markets board
+
+The shared-date table compares all two through six loaded companies in
+their original board order, using adjusted-price change and maximum drawdown.
+The displayed period is the dates observed for every company within the loaded
+1M histories. It may be shorter than a month. The coverage disclosure shows
+requested/observed bounds, omitted observations, exact first/last adjusted closes
+and drawdown peak/trough dates. Missing observations can hide declines, and
+provider-adjusted price change is not independently reconstructed total return.
+
+One company, incomplete or mismatched histories, and insufficient shared dates
+have explicit states instead of a partial numeric comparison. The view uses the
+existing accepted snapshot: editing the cohort hides mismatched data, a wholly
+failed refresh retains the prior dates, and a new partial result replaces the
+whole snapshot. The comparison itself makes no data requests.
+
+See the [comparison specification](../specs/007-markets-cohort-comparison/spec.md)
+and workspace CURRENT for actual implementation and release status.
+
 ## Use your watchlist in Markets
 
 Markets offers the default suggestions or a selection of up to six U.S. common

@@ -182,7 +182,7 @@ function validateInput(
     throw new TypeError();
   }
   const { series } = input;
-  if (!Array.isArray(series) || series.length < 2 || series.length > 3) {
+  if (!Array.isArray(series) || series.length < 2 || series.length > 6) {
     throw new TypeError();
   }
   for (let index = 0; index < series.length; index += 1) {

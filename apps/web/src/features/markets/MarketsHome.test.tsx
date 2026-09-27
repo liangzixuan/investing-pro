@@ -188,6 +188,30 @@ function props(
     ...overrides,
   };
 }
+function comparisonBoard(): MarketBoardSnapshot {
+  const snapshot = board();
+  return {
+    ...snapshot,
+    rows: snapshot.rows.map((row) => {
+      const member = row.identity!;
+      const listingId = member.listingId.toLowerCase();
+      return {
+        ...row,
+        identity: {
+          ...member,
+          listingId,
+          issuerId: member.issuerId.toLowerCase(),
+          securityId: member.securityId.toLowerCase(),
+          shareClassId: member.shareClassId.toLowerCase(),
+        },
+        overview: {
+          ...row.overview!,
+          security: { ...row.overview!.security, listingId },
+        },
+      };
+    }),
+  };
+}
 function nodes(
   node: ReactNode,
 ): ReactElement<{ children?: ReactNode; [key: string]: unknown }>[] {
@@ -220,6 +244,109 @@ function button(node: ReactNode, label: string) {
   return found;
 }
 describe("Markets board presentation", () => {
+  it("compares the complete loaded cohort in its original order while the board ranks gainers", () => {
+    const input = props({ order: "gainers", snapshot: comparisonBoard() });
+    const html = renderToStaticMarkup(<MarketsBoardView {...input} />);
+    const comparison = html.slice(
+      html.indexOf('class="markets-cohort-comparison"'),
+    );
+    expect(comparison).toContain("Compare this board");
+    expect(comparison).toContain("2026-09-22");
+    expect(comparison).toContain("2026-09-23");
+    expect(comparison).toContain("2 shared observations");
+    const rows = comparison.slice(
+      comparison.indexOf("<tbody>"),
+      comparison.indexOf("</tbody>"),
+    );
+    expect(rows.indexOf("AAPL")).toBeLessThan(rows.indexOf("MSFT"));
+    expect(rows.indexOf("MSFT")).toBeLessThan(rows.indexOf("WMT"));
+    expect(rows).toContain("10.0000%");
+    expect(rows).toContain("-10.0000%");
+    expect(rows).toContain("20.0000%");
+    expect(input.onLoad).not.toHaveBeenCalled();
+    expect(input.onOpenCompany).not.toHaveBeenCalled();
+  });
+  it("keeps shared-date results while refreshing or showing a same-cohort refresh error", () => {
+    const snapshot = comparisonBoard();
+    for (const state of [{ busy: true }, { error: "unavailable" }]) {
+      const html = renderToStaticMarkup(
+        <MarketsBoardView {...props({ snapshot, ...state })} />,
+      );
+      expect(html).toContain("Compare this board");
+      expect(html).toContain("2 shared observations");
+      expect(html).toContain("2026-09-24T23:00:00.000Z");
+      expect(html).toContain("20.0000%");
+    }
+  });
+  it("replaces the entire comparison with an unavailable state after a partial board result", () => {
+    const snapshot = comparisonBoard();
+    const rows = snapshot.rows.map((row) =>
+      row.symbol === "MSFT"
+        ? { ...row, overview: null, error: "unavailable" as const }
+        : row,
+    );
+    const html = renderToStaticMarkup(
+      <MarketsBoardView {...props({ snapshot: { ...snapshot, rows } })} />,
+    );
+    const comparison = html.slice(
+      html.indexOf('class="markets-cohort-comparison"'),
+    );
+    expect(comparison).toContain("No subset was compared.");
+    expect(comparison).not.toContain('class="markets-cohort-table"');
+    expect(comparison).not.toContain("shared observations");
+  });
+  it("withholds comparison results for unloaded, changed-draft and changed-catalog boards", () => {
+    const variants: Partial<MarketsBoardViewProps>[] = [
+      { snapshot: null },
+      { draft: { kind: "watchlist", members: [identity("NEW")] } },
+      { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
+    ];
+    for (const variant of variants) {
+      const input = props(variant);
+      const html = renderToStaticMarkup(<MarketsBoardView {...input} />);
+      expect(html).not.toContain("Compare this board");
+      expect(input.onLoad).not.toHaveBeenCalled();
+    }
+  });
+  it("removes the watchlist comparison when its exact members retire", () => {
+    const snapshot = comparisonBoard();
+    const draft: MarketBoardDefinition = {
+      kind: "watchlist",
+      members: snapshot.rows.map((row) => {
+        const member = row.identity!;
+        return {
+          country: member.country,
+          exchangeMic: member.exchangeMic,
+          instrumentType: member.instrumentType,
+          issuerId: member.issuerId,
+          issuerName: member.issuerName,
+          listingId: member.listingId,
+          securityId: member.securityId,
+          securityName: member.securityName,
+          shareClassId: member.shareClassId,
+          shareClassName: member.shareClassName,
+          symbol: member.symbol,
+        };
+      }),
+    };
+    const input = props({
+      draft,
+      snapshot: {
+        ...snapshot,
+        definition: draft,
+        cohortKey: marketBoardCohortKey(draft, digest),
+      },
+    });
+    expect(renderToStaticMarkup(<MarketsBoardView {...input} />)).toContain(
+      "2 shared observations",
+    );
+    expect(
+      renderToStaticMarkup(
+        <MarketsBoardView {...input} isWatchlistCurrent={() => false} />,
+      ),
+    ).not.toContain("Compare this board");
+    expect(input.onLoad).not.toHaveBeenCalled();
+  });
   it("offers the independent BEA agenda when Tiingo is unconfigured and the catalog is absent", () => {
     const input = props({ catalogSnapshotSha256: null, providerStatus: null });
     const html = renderToStaticMarkup(<MarketsHome {...input} />);

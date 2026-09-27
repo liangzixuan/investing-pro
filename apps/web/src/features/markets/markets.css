@@ -488,6 +488,103 @@
   background: #fff5ec;
   color: #85411b;
 }
+.markets-home .markets-cohort-comparison {
+  min-width: 0;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--markets-rule);
+}
+.markets-home .markets-cohort-comparison h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.3;
+}
+.markets-home .markets-cohort-name {
+  margin: 4px 0 12px;
+  color: var(--markets-muted);
+}
+.markets-home .markets-cohort-window {
+  margin: 0 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+.markets-home .markets-cohort-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+}
+.markets-home .markets-cohort-table caption {
+  padding: 0 0 8px;
+  color: var(--markets-muted);
+  text-align: left;
+}
+.markets-home .markets-cohort-table :is(th, td) {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--markets-rule);
+  text-align: right;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.markets-home .markets-cohort-table th:first-child {
+  width: 36%;
+  text-align: left;
+}
+.markets-home .markets-cohort-table thead th {
+  background: #f8fafc;
+  font-size: 13px;
+}
+.markets-home .markets-cohort-table :is(th span, td small) {
+  display: block;
+  margin-top: 3px;
+  color: var(--markets-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.markets-home .markets-cohort-details {
+  margin-top: 12px;
+}
+.markets-home .markets-cohort-details summary {
+  padding: 8px 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.markets-home .markets-cohort-details summary:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 3px;
+}
+.markets-home .markets-cohort-coverage {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px 24px;
+}
+.markets-home .markets-cohort-coverage section {
+  min-width: 0;
+  padding-top: 8px;
+}
+.markets-home .markets-cohort-coverage h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.markets-home .markets-cohort-coverage dl {
+  margin: 0;
+}
+.markets-home .markets-cohort-coverage dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 8px;
+  padding: 5px 0;
+}
+.markets-home .markets-cohort-coverage dt,
+.markets-home .markets-cohort-details > p,
+.markets-home .markets-cohort-limits {
+  color: var(--markets-muted);
+}
+.markets-home .markets-cohort-coverage dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 @media (min-width: 1001px) {
   .markets-home .markets-table th:first-child {
     width: 52%;

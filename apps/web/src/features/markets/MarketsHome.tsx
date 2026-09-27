@@ -30,6 +30,8 @@ import { useMarketsSnapshot } from "./useMarketsSnapshot";
 import { useBeaReleaseAgenda } from "./useBeaReleaseAgenda";
 import { BeaReleaseAgenda } from "./BeaReleaseAgenda";
 import { MarketBoardPicker } from "./MarketBoardPicker";
+import { MarketCohortComparison } from "./MarketCohortComparison";
+import { deriveMarketCohortComparison } from "./market-cohort-comparison";
 import "./markets.css";
 
 export interface MarketsHomeProps {
@@ -532,6 +534,10 @@ export function MarketsBoardView(props: MarketsBoardViewProps) {
           ) : null}
         </section>
       </div>
+      <MarketCohortComparison
+        model={deriveMarketCohortComparison(snapshot)}
+        cohortName={cohortName}
+      />
       <details className="markets-sources">
         <summary>Data sources and price conventions</summary>
         <p>

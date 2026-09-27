@@ -1,61 +1,55 @@
 # Current work
 
-Updated September 26, 2026. Build a personal Investing.com-style platform, then
+Updated September 27, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
 sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a85 Markets for My Watchlist
+## Active outcome: a86 compare the loaded Markets board
 
-Let the owner choose up to six admitted U.S. common stocks from My Watchlist,
-load their dated EOD prices, inspect charts and scoped movers, then open company
-research and return to the same cohort. Annual financials are not a prerequisite.
-The [specification](../specs/006-markets-watchlist/spec.md),
-[plan](../specs/006-markets-watchlist/plan.md) and
-[tasks](../specs/006-markets-watchlist/tasks.md) define behavior and acceptance.
-Implementation, focused checks and the production web build are complete.
-Nine synthetic Brave groups cover selection, loading, failures, navigation,
-notes, membership changes, session loss and narrow layouts. Final release gates
-and limited live verification are pending; the accepted a84 app remains running.
+Add a compact shared-date comparison beneath the loaded board. Show each
+company's adjusted-price change and maximum drawdown over observations present
+for every member, with the actual dates/count and a coverage disclosure. The
+[specification](../specs/007-markets-cohort-comparison/spec.md),
+[plan](../specs/007-markets-cohort-comparison/plan.md) and
+[tasks](../specs/007-markets-cohort-comparison/tasks.md) define acceptance.
+Implementation and verification are in progress; a85 remains the accepted app.
 
-Both default suggestions and watchlist selections load explicitly. This replaces
-M1's automatic entry acquisition. One mode/selection draft retains checkbox
-choices across modes; one accepted snapshot carries exact cohort identity and
-observation dates. The picker does not save or reorder My Watchlist.
+Reuse the pure comparison engine with a maximum of six series. Preserve exact
+decimal calculations and validation before date intersection. Admit the whole
+expected cohort; never silently omit a failed or mismatched member. One company,
+incomplete histories and insufficient shared observations have explicit states.
+This is a shared window within loaded 1M histories, not a promised full month or
+independently reconstructed total return. Missing observations can hide declines.
 
-Local catalog admission precedes the single EOD loop. Saved members use the
-exact-listing client and all eleven identity fields, with no ticker substitution.
-A shared fifteen-minute/four-start rolling-hour budget is charged immediately
-before the first EOD request; wholly inadmissible selections consume no slot.
-At six companies, this board permits at most 24 EOD GETs per rolling hour. Other
-research tools share the provider account. No entitlement claim follows from
-that bound. No new API, storage schema, dependency or provider operation is needed.
+Derive from the same matching snapshot used by the board. Existing draft,
+session/catalog/member guards, Back, total-failure retention and partial-result
+replacement continue to govern it. No new selection, cache, acquisition owner,
+API, schema, dependency or chart. Both board modes still load explicitly; the
+fifteen-minute/four-start rolling-hour budget and independent BEA agenda remain.
 
-Keep a same-cohort accepted snapshot after a wholly failed refresh, including
-row-level failures. A usable partial result replaces it as a whole. A changed
-draft must not display old prices under its new labels. Preserve synchronous
-session/view/selected-member guards, note drafts, matching company handoff and
-independent BEA agenda state. Notes, saved versions and unrelated membership
-edits do not invalidate unchanged selected identities.
-
-Spec owns loader/admission/tests; Performance owns the hook/lifetime/tests;
-Finance owns picker/presentation/CSS/tests; root owns the identity-only workspace
-bridge, integration, specifications and release coordination. Exact ownership and
-later evidence are in CURRENT and `tmp/markets-watchlist/`. Use synthetic records
-for mutation QA and one existing admitted cohort for bounded live verification.
-Do not create owner records to obtain a populated test result.
+Spec owns the engine and tests; Performance owns the pure snapshot adapter and
+tests; Finance owns the table, tests and scoped styles; root owns composition,
+integration, specifications and release. See CURRENT and
+`tmp/markets-cohort-comparison/`. Mutation and adverse cases use synthetic records.
+Limited live QA permits one default-board load, at most three existing EOD GETs,
+without retries or owner writes. This feature itself adds no requests.
 
 ## Accepted runtime and preserved work
 
-The BEA agenda release `9c3dee7bacdbb6799925e5b4d04e2675ade6be48`, feature
-`7b0a3eefc9ba85aebc34bacae3b20a22838043f6`, is accepted, normally pushed and
-running with build `tfssNu3LdvQ1Mr2L76IDz`. Its
-[final independent review](../../tmp/bea-release-agenda-v2/final-acceptance-independent-review.json)
-records 9,360 native passes, nine existing skips, 25 typechecks, 24 builds,
-440 healthy samples, six successful required hosted jobs, seven carried
-synthetic Brave groups and six limited live groups.
+Markets watchlist release `3aaa62206dcbc929a15c0c3b16ace5759c977d84`, feature
+`2056bd4e3480b1ebc544009c78ed7c4b026dcc61`, is accepted, normally pushed and
+running with build `fhvAHY2sO_Gv5b7mr8DF4`. Its
+[final independent review](../../tmp/markets-watchlist/final-acceptance-independent-review.json)
+records 9,437 native passes, nine existing skips, 25 typechecks, 24 builds,
+414 healthy samples, five successful required hosted jobs, nine synthetic
+Brave groups and six limited live groups. Live QA used one existing watchlist
+company and one explicit load, then verified chart focus, Research/Back and
+desktop/390px layouts. No owner record was changed. Multi-company and adverse
+states retain synthetic coverage; the source-derived one-EOD ceiling is not a
+measured upstream count.
 
-The live BEA load showed six scheduled events, Eastern times and a dated 30-day
+The preceding live BEA load showed six scheduled events, Eastern times and a dated 30-day
 window, with four simultaneous series kept separate. Phone-width focus and
 Discover/Back retention passed. Research/Back, adverse refreshes, DST and session
 retirement remain synthetic coverage. This is BEA schedule coverage without
@@ -63,11 +57,11 @@ forecasts, released values, earnings, news or a complete economic calendar.
 
 The first a84 candidate failed the strict OpenAPI route-list assertion. Its
 revision, checkout and evidence remain preserved; the replacement added the
-missing literal without relaxing the assertion. All a84 and older observers are
+missing literal without relaxing the assertion. All a85 and older observers are
 terminal. Used captures, stop helpers and reservations must not run again.
 
 Use `markets-home/` for development. Preserve the parked `research-cockpit/`
-changes, healthy a84 runtime and actual a83/a81 rollback manifests and checkouts
+changes, healthy a85 runtime and actual a84/a83/a81 rollback manifests and checkouts
 recorded in CURRENT. Historical process IDs are never future action authority.
 The prior valuation diagnostic returned HTTP 400 before body parsing. No request
 defect or entitlement denial was established; its operation budget is consumed.
