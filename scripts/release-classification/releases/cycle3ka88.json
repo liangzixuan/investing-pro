@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "caseNumber": 88,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "4a033698634ab217af21de9f0332c95b07941abc",
+  "featureRevision": "c2550b3c0c9520480402c7dc1012ed4363e01c70",
+  "featureCount": 277,
+  "closureCount": 278,
+  "featureChanges": [
+    {
+      "path": "apps/web/src/features/research/PersonalFilingMonitor.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalFilingMonitor.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/SecurityDiscoveryWorkspace.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" },
+    { "path": "docs/PERSONAL_FILING_MONITOR.md", "status": "M" },
+    { "path": "specs/009-filing-inbox-research/plan.md", "status": "A" },
+    { "path": "specs/009-filing-inbox-research/spec.md", "status": "A" },
+    { "path": "specs/009-filing-inbox-research/tasks.md", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka88.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka88.json",
+  "presentation": {
+    "featureDescription": "Filing inbox Research and Back without acquisition",
+    "closureDescription": "generated routing closure for filing inbox Research and Back",
+    "inventoryDescription": "Monitor Research actions, exact identity guards, SEC entry and retained inbox navigation",
+    "testBinding": "filingInboxResearch",
+    "routingDescription": "Open an existing filing inbox company in SEC Research and return without additional acquisition",
+    "summaryDescription": "open a retained filing inbox company in Research and return to the same inbox"
+  }
+}
