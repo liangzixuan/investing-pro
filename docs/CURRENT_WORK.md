@@ -1,11 +1,40 @@
 # Current work
 
-Updated September 27, 2026. Build a personal Investing.com-style platform, then
+Updated September 28, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
-sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
+sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
+order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a89 indexed Markets comparison
+## Active outcome: Android client foundation
+
+The owner approved working toward a personal computer/Android launch before
+November, with Android first and a signed native container sharing the React UI.
+This Windows PC will host the data service while it is on and connected.
+The [Android guide](./ANDROID_CLIENT.md) and
+[specification](../specs/012-android-client/spec.md) define this first outcome.
+It separates shared client composition from Next routing, builds a bundled
+mobile entry and adds the native Android project. The first build is explicitly
+disconnected; secure shared data access, independent sessions, physical-device
+verification and release signing remain later acceptance steps.
+
+Development uses `android-launch` on `codex/android-launch`, based on accepted
+a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is
+`59fqkV8AwtuNStJkwXwuW`; exact runtime/rollback evidence stays in workspace CURRENT.
+A90 Previous/Next is parked intact in `markets-home` at `dc63dfa1`, with its
+feature/candidate refs and interrupted native evidence preserved. It is not an
+accepted release. This launch work does not resume the expired heartbeat window.
+
+Root owns mobile build/native configuration, focused tests, integration and
+guides. The shared-client agent owns the navigation/component seam and tests;
+toolchain setup and independent source review have separate ownership. Preserve
+the accepted desktop runtime and unrelated parked source. No provider requests,
+owner-record QA writes or remote exposure are included.
+
+## A89 implementation context (released)
+
+This is the historical pre-acceptance checkpoint. Workspace CURRENT and the
+accepted a89 review supersede its pending-release statements.
 
 Plot every company in the complete loaded two-to-six-member board on the same
 observed dates, starting each line at 100. Reuse the Research comparison chart,

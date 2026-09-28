@@ -1,7 +1,6 @@
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MarketsHomeProps } from "../markets/MarketsHome";
-import type { SecurityDiscoveryWorkspaceProps } from "../research/SecurityDiscoveryWorkspace";
+import type { PersonalWorkspaceClientProps } from "./PersonalWorkspaceClient";
 
 const navigation = vi.hoisted(() => ({
   pathname: "/markets",
@@ -10,23 +9,21 @@ const navigation = vi.hoisted(() => ({
 }));
 const components = vi.hoisted(() => ({
   Workspace: () => null,
-  Markets: () => null,
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useSearchParams: () => ({ get: () => navigation.view }),
   useRouter: () => ({ push: navigation.push }),
 }));
-vi.mock("../research/SecurityDiscoveryWorkspace", () => ({
-  SecurityDiscoveryWorkspace: components.Workspace,
+vi.mock("./PersonalWorkspaceClient", () => ({
+  PersonalWorkspaceClient: components.Workspace,
 }));
-vi.mock("../markets/MarketsHome", () => ({ MarketsHome: components.Markets }));
 import { PersonalWorkspaceRoutes } from "./PersonalWorkspaceRoutes";
 
 function render() {
   return PersonalWorkspaceRoutes({
     authMode: "local",
-  }) as ReactElement<SecurityDiscoveryWorkspaceProps>;
+  }) as ReactElement<PersonalWorkspaceClientProps>;
 }
 beforeEach(() => {
   navigation.pathname = "/markets";
@@ -57,34 +54,16 @@ describe("persistent personal workspace route bridge", () => {
     }
   });
   it("leaves focus placement to the shared workspace instead of scrolling the document on navigation", () => {
-    render().props.onNavigate?.("/company/listing%3Aone");
+    render().props.navigation.navigate("/company/listing%3Aone");
     expect(navigation.push).toHaveBeenCalledExactlyOnceWith(
       "/company/listing%3Aone",
       { scroll: false },
     );
   });
-  it("forwards the same guarded Markets facade to the mounted view", () => {
-    const props: MarketsHomeProps = {
-      active: false,
-      enabled: true,
-      catalogSnapshotSha256: "sha256:" + "a".repeat(64),
-      sessionKey: 5,
-      providerStatus: null,
-      watchlist: { status: "unavailable", members: [] },
-      isWatchlistCurrent: () => false,
-      isCurrent: () => true,
-      isActive: () => false,
-      onActivityStart: () => () => true,
-      onSessionUnavailable: vi.fn(),
-      onOpenCompany: vi.fn(),
-    };
-    const view = render().props.renderMarkets?.(
-      props,
-    ) as ReactElement<MarketsHomeProps>;
-    expect(view.type).toBe(components.Markets);
-    expect(view.props).toEqual(props);
-    expect(view.props.isCurrent).toBe(props.isCurrent);
-    expect(view.props.onOpenCompany).toBe(props.onOpenCompany);
+  it("keeps ordinary desktop URLs for native browser link behaviors", () => {
+    expect(render().props.navigation.href("/company/listing%3Aone")).toBe(
+      "/company/listing%3Aone",
+    );
   });
   it("passes an invalid direct URL to the existing unavailable view without inventing a listing", () => {
     navigation.pathname = "/company/UPPERCASE";

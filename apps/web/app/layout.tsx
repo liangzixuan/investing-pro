@@ -8,13 +8,7 @@ import {
   resolveOwnerAuthMode,
 } from "@/lib/web-mode";
 
-import "./globals.css";
-import "@/features/workspace/workspace.css";
-import "@/features/research/company-overview.css";
-import "@/features/research/personal-portfolio.css";
-import "@/features/research/personal-portfolio-ledger.css";
-import "@/features/research/personal-portfolio-history.css";
-import "@/features/research/personal-portfolio-valuation-history.css";
+import "@/workspace-styles.css";
 
 export const metadata: Metadata = {
   title: isPersonalWorkspaceWebMode(process.env.RESEARCH_COCKPIT_WEB_MODE)

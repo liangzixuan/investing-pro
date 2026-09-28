@@ -2097,6 +2097,28 @@ const MAX_TYPESCRIPT_CONFIG_BYTES = 1_048_576;
 const MAX_TYPESCRIPT_CONFIG_CHAIN_DEPTH = 32;
 const MAX_TYPESCRIPT_CONFIG_FILES = 128;
 const violations: string[] = [];
+const androidGeneratedDirectories = new Set<string>();
+for (const generatedPath of [
+  "apps/web/android/.gradle",
+  "apps/web/android/build",
+  "apps/web/android/app/build",
+  "apps/web/android/app/src/main/assets/public",
+  "apps/web/android/capacitor-cordova-android-plugins",
+]) {
+  if (
+    gitPathDisposition("ls-files", generatedPath) !== false ||
+    gitPathDisposition(
+      "check-ignore",
+      `${generatedPath}/.boundary-output-probe`,
+    ) !== true
+  ) {
+    violations.push(
+      `${generatedPath}: Android build output must be ignored and contain no tracked source`,
+    );
+  } else {
+    androidGeneratedDirectories.add(resolvePath(root, generatedPath));
+  }
+}
 const releaseRootManifest: unknown = JSON.parse(
   await readFile(join(root, "package.json"), "utf8"),
 );
@@ -27184,6 +27206,11 @@ async function walk(directory: string): Promise<string[]> {
   for (const entry of entries) {
     if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
     const path = join(directory, entry.name);
+    if (
+      entry.isDirectory() &&
+      androidGeneratedDirectories.has(resolvePath(path))
+    )
+      continue;
     if (entry.isDirectory()) output.push(...(await walk(path)));
     else output.push(path);
   }

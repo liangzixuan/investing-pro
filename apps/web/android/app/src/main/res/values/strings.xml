@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Investment</string>
+    <string name="title_activity_main">Investment</string>
+    <string name="package_name">local.investment.personal</string>
+    <string name="custom_url_scheme">local.investment.personal</string>
+</resources>

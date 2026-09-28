@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { WorkspaceLink } from "../workspace/WorkspaceNavigation";
 import { workspaceTaskHref } from "../workspace/workspace-route";
 import {
   marketBoardIdentityKey,
@@ -118,10 +118,12 @@ export function MarketBoardPicker(props: MarketBoardPickerProps) {
             </p>
           )}
           <div className="markets-picker-links">
-            <Link href={workspaceTaskHref("watchlist")}>Open My Watchlist</Link>
-            <Link href={workspaceTaskHref("discover")}>
+            <WorkspaceLink href={workspaceTaskHref("watchlist")}>
+              Open My Watchlist
+            </WorkspaceLink>
+            <WorkspaceLink href={workspaceTaskHref("discover")}>
               Find companies in Discover
-            </Link>
+            </WorkspaceLink>
           </div>
         </>
       )}

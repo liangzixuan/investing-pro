@@ -1,8 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { SecurityDiscoveryWorkspace } from "../research/SecurityDiscoveryWorkspace";
-import { MarketsHome } from "../markets/MarketsHome";
+import { PersonalWorkspaceClient } from "./PersonalWorkspaceClient";
 import { parseWorkspaceRoute } from "./workspace-route";
 
 export function PersonalWorkspaceRoutes({
@@ -15,11 +14,13 @@ export function PersonalWorkspaceRoutes({
   const router = useRouter();
   const route = parseWorkspaceRoute(pathname, search.get("view"));
   return (
-    <SecurityDiscoveryWorkspace
+    <PersonalWorkspaceClient
       authMode={authMode}
       route={route}
-      onNavigate={(href) => router.push(href, { scroll: false })}
-      renderMarkets={(props) => <MarketsHome {...props} />}
+      navigation={{
+        href: (path) => path,
+        navigate: (path) => router.push(path, { scroll: false }),
+      }}
     />
   );
 }

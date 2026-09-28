@@ -2,17 +2,26 @@
 
 This file tracks direct runtime packages. The lockfile and automated SBOM will remain the full dependency inventory.
 
-| Package           | Version | License    | Use                                |
-| ----------------- | ------: | ---------- | ---------------------------------- |
-| Next.js           |  16.3.1 | MIT        | Web framework                      |
-| React / React DOM |  19.2.8 | MIT        | UI runtime                         |
-| Apache ECharts    |   6.1.0 | Apache-2.0 | Analytical chart rendering         |
-| Fastify           |  5.12.1 | MIT        | Demo REST API                      |
-| @fastify/cors     |  11.3.0 | MIT        | Local web/API boundary             |
-| @fastify/helmet   |  13.1.0 | MIT        | HTTP security headers              |
-| decimal.js        |  10.6.0 | MIT        | Deterministic decimal calculations |
-| node-postgres     |  8.23.0 | MIT        | Single-client PostgreSQL reads     |
-| @rgrove/parse-xml |   5.0.0 | ISC        | Federal Reserve RSS parsing        |
+| Package                  | Version | License    | Use                                |
+| ------------------------ | ------: | ---------- | ---------------------------------- |
+| Next.js                  |  16.3.1 | MIT        | Web framework                      |
+| React / React DOM        |  19.2.8 | MIT        | UI runtime                         |
+| Apache ECharts           |   6.1.0 | Apache-2.0 | Analytical chart rendering         |
+| Fastify                  |  5.12.1 | MIT        | Demo REST API                      |
+| @fastify/cors            |  11.3.0 | MIT        | Local web/API boundary             |
+| @fastify/helmet          |  13.1.0 | MIT        | HTTP security headers              |
+| decimal.js               |  10.6.0 | MIT        | Deterministic decimal calculations |
+| node-postgres            |  8.23.0 | MIT        | Single-client PostgreSQL reads     |
+| @rgrove/parse-xml        |   5.0.0 | ISC        | Federal Reserve RSS parsing        |
+| Capacitor core / Android |   8.5.2 | MIT        | Native application runtime         |
+| Capacitor App            |   8.1.1 | MIT        | Native application lifecycle       |
+| React Router             |   8.4.0 | MIT        | Bundled client routing             |
+
+The bundled Android client includes the installed client runtime license texts
+and notices in [third-party-notices.txt](apps/web/mobile/third-party-notices.txt),
+available through its Open-source notices disclosure. The native Android
+dependency inventory must also be checked against the resolved Gradle build
+before distributing an APK.
 
 ## XML parser license
 

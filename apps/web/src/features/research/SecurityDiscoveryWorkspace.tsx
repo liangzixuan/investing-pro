@@ -17,7 +17,10 @@ import {
   isPersonalSavedManualPeerIdentity,
 } from "@research-cockpit/contracts";
 import type { PersonalHistoricalMultipleValuationMetric } from "@research-cockpit/personal-market-analytics";
-import Link from "next/link";
+import {
+  WorkspaceLink,
+  WorkspaceSkipLink,
+} from "../workspace/WorkspaceNavigation";
 import { WorkspaceSearch } from "../workspace/WorkspaceSearch";
 import type { MarketsHomeProps } from "../markets/MarketsHome";
 import {
@@ -2783,17 +2786,17 @@ export function SecurityDiscoveryWorkspace({
 
   return (
     <div className="research-desk">
-      <a className="skip-link" href="#main-content">
+      <WorkspaceSkipLink className="skip-link" targetId="main-content">
         Skip to main content
-      </a>
+      </WorkspaceSkipLink>
       <header className="app-header personal-app-header research-desk-header">
         <div className="workspace-utility-row">
-          <Link
+          <WorkspaceLink
             className="wordmark workspace-brand"
             href={route === undefined ? "/discover" : "/markets"}
           >
             Research <strong>Cockpit</strong>
-          </Link>
+          </WorkspaceLink>
           {route !== undefined && (
             <WorkspaceSearch
               query={query}
@@ -2884,6 +2887,7 @@ export function SecurityDiscoveryWorkspace({
       <main
         className="research-shell discovery-shell research-desk-main"
         id="main-content"
+        tabIndex={-1}
       >
         {renderMarkets !== undefined && (
           <div hidden={!marketsActive}>{renderMarkets(marketProps)}</div>
