@@ -1,4 +1,7 @@
 import {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
   PERSONAL_WATCHLIST_FILINGS_LIMITS,
   type PersonalSecIssuerFilingsDto,
   type PersonalWatchlistFilingDto,
@@ -28,11 +31,6 @@ import {
   PersonalSecFilingsProviderError,
   type PersonalSecFilingsProvider,
 } from "./personal-sec-filings-provider";
-import {
-  isMainWatchlistPayload,
-  membershipMatchesResult,
-  type MainWatchlistPayload,
-} from "./workspace-watchlist-routes";
 
 export const PERSONAL_WATCHLIST_FILINGS_PATH =
   "/v1/personal-filing/workspace/watchlist-filings" as const;

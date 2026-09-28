@@ -6,17 +6,22 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: Android client foundation
+## Active outcome: Appwrite shared watchlist storage
 
 The owner approved working toward a personal computer/Android launch before
 November, with Android first and a signed native container sharing the React UI.
-This Windows PC will host the data service while it is on and connected.
+The owner selected the existing Appwrite Education project as the hosting
+candidate, superseding the PC/Tailscale plan. A private, data-free Node function
+has executed successfully; this does not establish application persistence,
+authentication or phone access.
 The [Android guide](./ANDROID_CLIENT.md) and
 [specification](../specs/012-android-client/spec.md) define this first outcome.
-It separates shared client composition from Next routing, builds a bundled
-mobile entry and adds the native Android project. The first build is explicitly
-disconnected; secure shared data access, independent sessions, physical-device
-verification and release signing remain later acceptance steps.
+The client foundation is committed at `f4674a8f` and has produced a debug APK.
+It remains disconnected. The current storage slice extracts the existing pure
+watchlist validation and adds a server-only Appwrite adapter with atomic version
+updates and durable command receipts. It is not wired to an application route.
+Local transaction tests precede isolated cloud race/rollback tests, managed
+sessions and shared UI integration. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
 
 Development uses `android-launch` on `codex/android-launch`, based on accepted
 a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is
@@ -25,11 +30,13 @@ A90 Previous/Next is parked intact in `markets-home` at `dc63dfa1`, with its
 feature/candidate refs and interrupted native evidence preserved. It is not an
 accepted release. This launch work does not resume the expired heartbeat window.
 
-Root owns mobile build/native configuration, focused tests, integration and
-guides. The shared-client agent owns the navigation/component seam and tests;
-toolchain setup and independent source review have separate ownership. Preserve
-the accepted desktop runtime and unrelated parked source. No provider requests,
-owner-record QA writes or remote exposure are included.
+Root owns dependency/lockfile, integration, notices and guides. The contract agent
+owns pure validation and the unchanged local route; the storage agent owns the
+Appwrite repository and transaction tests. Review remains independent. A separate
+data-free copy of the existing mobile assets is prepared for BrowserStack website
+testing. Native App Live attempts established no device coverage. Preserve the
+accepted desktop runtime, disconnected APK and unrelated parked source. No owner
+data migration or provider requests are included.
 
 ## A89 implementation context (released)
 

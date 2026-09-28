@@ -10027,8 +10027,19 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         "PERSONAL_SECURITY_MASTER_LIMITS",
         "searchPersonalSecurityMaster",
         "type PersonalSecurityMasterCatalog",
-        "type PersonalSecurityMasterSearchResult",
       ],
+    ],
+    [
+      "apps/api/src/appwrite-watchlist-repository.ts",
+      [
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "searchPersonalSecurityMaster",
+        "type PersonalSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/appwrite-watchlist-repository.test.ts",
+      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
     ],
     [
       "apps/api/src/workspace-portfolio-routes.ts",

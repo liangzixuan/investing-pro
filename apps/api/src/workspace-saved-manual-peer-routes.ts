@@ -1,4 +1,7 @@
 import {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
   isPersonalSavedManualPeerPayload,
   isPersonalSavedManualPeerPutRequest,
   isPersonalSavedManualPeerResolveRequest,
@@ -30,11 +33,6 @@ import {
   PERSONAL_OWNER_INTENT_HEADER_NAME,
   sendPersonalOwnerSessionProblem,
 } from "./personal-owner-session-routes";
-import {
-  isMainWatchlistPayload,
-  membershipMatchesResult,
-  type MainWatchlistPayload,
-} from "./workspace-watchlist-routes";
 
 export const PERSONAL_SAVED_MANUAL_PEER_PATH =
   "/v1/personal-filing/workspace/manual-peer-group" as const;

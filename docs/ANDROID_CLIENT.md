@@ -2,8 +2,9 @@
 
 The personal launch targets computer and Android use before November 2026.
 The Android app bundles the existing React workspace with Capacitor. Desktop
-continues to use Next.js. This Windows PC will host the shared data service while
-it is on and connected. Native iOS remains a later platform with separate build,
+continues to use Next.js. The owner selected the existing Appwrite Education
+project for the shared service; its application storage and sessions are being
+verified before connecting the bundle. Native iOS remains a later platform with separate build,
 signing and device requirements.
 
 ## Current scope
@@ -54,10 +55,11 @@ desktop browser running the bundle.
 
 ## Next acceptance steps
 
-1. Implement authenticated access from the phone to this Windows PC over a
-   reviewed HTTPS/private-network path. Keep the existing local-access endpoint
-   loopback-only. Support independent device sessions and server-held provider
-   credentials.
+1. Verify the Appwrite storage adapter with invented data, then implement managed
+   authentication and one exact HTTPS service origin. Keep the local-access
+   endpoint loopback-only. Support independent device sessions and server-held
+   provider credentials. A successful private health function is only a runtime
+   proof; see [Appwrite storage](./APPWRITE_WATCHLIST.md).
 2. Install on the owner's Android phone, verify launch, Back, focus, touch,
    external links and background/resume, and measure chart/startup performance.
 3. Complete a shared watchlist/note journey with conflict handling and an
@@ -66,6 +68,8 @@ desktop browser running the bundle.
 4. Prepare protected release signing, install/upgrade evidence and operation
    outside a Codex session. Test recovery without changing real owner records.
 
-The service will be unavailable when the host PC is off, asleep or disconnected.
-There is no public store release, remote service activation or owner-data
-migration in this foundation.
+The PC/Tailscale host plan is superseded. The disconnected foundation still has
+no public store release, connected phone session or owner-data migration.
+BrowserStack Live/Automate website plans can supplement browser checks. The
+attempted App Live sessions produced no native-device coverage; physical Pixel
+10 Pro XL / Android 17 acceptance remains required.
