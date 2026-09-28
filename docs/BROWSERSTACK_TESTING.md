@@ -8,13 +8,45 @@ separate from browser coverage.
 
 Dependency installation and repository configuration are one-time setup.
 Each `run-web.ts --run` invocation starts one cloud browser smoke test and exits
-when the runner finishes. It does not start a daemon, schedule later tests or run
-automatically after code changes. Run it after a meaningful web-interface change
-and before release acceptance, once the intended build is deployed to the preview.
+when the runner finishes. It does not start a daemon. GitHub Actions can invoke
+the same command automatically as described below. For a manual check, run it
+after a meaningful web-interface change and before release acceptance, once the
+intended build is deployed to the preview.
 
 The installed website tools are Playwright Test 1.59.0 and BrowserStack Node SDK
 1.70.2. They are development dependencies. The configuration uses one website
 platform, one worker, one smoke test and zero test retries.
+
+## GitHub Actions
+
+The `BrowserStack deployed-preview smoke` workflow runs on pushes to `main` and
+`codex/android-launch` when web/shared code, browser test configuration or
+dependencies change. Documentation-only changes do not trigger it. It has one
+Ubuntu job, one browser session, a ten-minute job limit and a five-minute remote
+step limit. Runs share a concurrency group; a new push does not cancel a running
+test. There is no schedule, pull-request secret exposure or native app test.
+
+Set these repository secrets once in
+[GitHub Actions secrets](https://github.com/liangzixuan/investing-pro/settings/secrets/actions):
+
+- `BROWSERSTACK_USERNAME`: the automation username.
+- `BROWSERSTACK_ACCESS_KEY`: the current access key.
+
+GitHub supplies them only to the test step, after dependency installation.
+Missing secrets fail the step before a BrowserStack session starts. The workflow
+does not upload SDK logs, screenshots or other artifacts. It preserves the
+existing release gates and reports its own result separately.
+
+After the workflow is on the default branch, its **Run workflow** control also
+supports manual checks. A failed run can be rerun from its Actions page after its
+cause is fixed. No PowerShell window or running owner PC is needed for GitHub
+runs, and rotating the BrowserStack key requires updating the stored secret.
+
+This workflow checks the existing hosted preview. It neither deploys that site
+nor proves its assets match the triggering commit. The checkout SHA in its
+summary identifies the test code only. Deploy the intended preview before using
+its result as evidence for an interface change. Publishing the workflow and
+setting secrets are prerequisites; source validation is not a successful CI run.
 
 ## Credentials and commands
 
@@ -44,7 +76,7 @@ pnpm test:browserstack:web
 ```
 
 This runs `tsx scripts/browserstack/run-web.ts --run`. Each invocation starts a
-new test. It is separate from the normal unit-test and release commands.
+new test. The command remains available locally alongside the separate CI job.
 
 ## Target and coverage
 
@@ -89,3 +121,4 @@ redacted evidence. Collection, input checks and compilation are not remote passe
 - [Playwright SDK integration](https://www.browserstack.com/docs/automate/playwright/getting-started/nodejs/integrate-your-tests)
 - [Supported Playwright platforms](https://www.browserstack.com/docs/automate/playwright/browsers-and-os)
 - [SDK release notes](https://www.browserstack.com/docs/sdk/release-notes)
+- [GitHub Actions secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)

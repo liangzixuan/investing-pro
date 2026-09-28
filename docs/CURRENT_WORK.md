@@ -15,8 +15,13 @@ do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING
 for the explicit website command and its scope. One disconnected website session
 passed on Windows 11 / Chrome 154; the build-level status and owner command exit
 remain qualified in workspace CURRENT. Setup is one-time, while each command
-invocation starts a separate test run. Automatic CI runs are not configured.
-The Appwrite storage work remains the next product outcome.
+invocation starts a separate test run. CI publication and secret setup remain pending.
+The owner has now requested CI automation: a separate deployed-preview workflow
+is being added for relevant pushes to main and codex/android-launch. Publishing,
+private GitHub Actions secret setup and an actual hosted result are required
+before calling it operational. The manually deployed preview remains distinct
+from the triggering source revision. The Appwrite storage work remains the next
+product outcome.
 
 ## Active outcome: Appwrite shared watchlist storage
 

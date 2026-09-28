@@ -1,0 +1,71 @@
+name: BrowserStack deployed-preview smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, codex/android-launch]
+    paths:
+      - .github/workflows/browserstack-web.yml
+      - apps/web/**
+      - modules/research-core/**
+      - packages/contracts/**
+      - packages/personal-financial-analytics/**
+      - packages/personal-market-analytics/**
+      - scripts/browserstack/disconnected.pw.ts
+      - scripts/browserstack/playwright.config.ts
+      - scripts/browserstack/run-web.ts
+      - browserstack.yml
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.json
+      - tsconfig.base.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browserstack-deployed-preview-smoke
+  cancel-in-progress: false
+
+jobs:
+  browser-smoke:
+    name: Test the deployed preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out test source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Run one browser smoke (BrowserStack secrets required)
+        timeout-minutes: 5
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+        run: pnpm exec tsx scripts/browserstack/run-web.ts --run
+
+      - name: Record preview target and test source
+        if: always()
+        shell: bash
+        run: |
+          {
+            printf '%s\n\n' 'Target host: investment-device-preview.appwrite.network'
+            printf 'Test-code SHA: %s\n\n' "$GITHUB_SHA"
+            printf '%s\n' 'This checks the manually deployed preview. Its assets are not bound to the test-code SHA. No deployment or release acceptance is performed.'
+          } >> "$GITHUB_STEP_SUMMARY"
