@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "caseNumber": 89,
+  "baselineRevision": "62c01dafe305ddd43c75688e0225163b3abdf6df",
+  "predecessorRevision": "bf5113cdd0e0a3708051620bfc5a590f5c2ad83a",
+  "featureRevision": "e2818fc9fce8708e21fbb0af0919b2340c2b1420",
+  "featureCount": 279,
+  "closureCount": 280,
+  "featureChanges": [
+    { "path": "apps/web/app/globals.css", "status": "M" },
+    {
+      "path": "apps/web/src/features/markets/MarketCohortComparison.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketCohortComparison.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/markets/MarketsHome.test.tsx",
+      "status": "M"
+    },
+    { "path": "apps/web/src/features/markets/MarketsHome.tsx", "status": "M" },
+    {
+      "path": "apps/web/src/features/research/PersonalComparisonPerformance.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalComparisonPriceChart.test.tsx",
+      "status": "M"
+    },
+    {
+      "path": "apps/web/src/features/research/PersonalComparisonPriceChart.tsx",
+      "status": "M"
+    },
+    { "path": "docs/CURRENT_WORK.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPANY_RESEARCH.md", "status": "M" },
+    { "path": "docs/PERSONAL_COMPARISON_PRICES.md", "status": "M" },
+    { "path": "specs/010-markets-indexed-comparison/plan.md", "status": "A" },
+    { "path": "specs/010-markets-indexed-comparison/spec.md", "status": "A" },
+    { "path": "specs/010-markets-indexed-comparison/tasks.md", "status": "A" }
+  ],
+  "closureChanges": [
+    { "path": ".github/workflows/filing-parser-acceptance.yml", "status": "M" },
+    {
+      "path": ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": ".github/workflows/filing-payload-custody-acceptance.yml",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.test.ts",
+      "status": "M"
+    },
+    {
+      "path": "packages/filing-payload-custody/src/filing-payload-custody-evidence-verifier.ts",
+      "status": "M"
+    },
+    {
+      "path": "scripts/classify-filing-parser-cross-engine-source.sh",
+      "status": "M"
+    },
+    {
+      "path": "scripts/release-classification/releases/cycle3ka89.json",
+      "status": "A"
+    }
+  ],
+  "descriptorPath": "scripts/release-classification/releases/cycle3ka89.json",
+  "presentation": {
+    "featureDescription": "Indexed shared-date Markets comparison without acquisition",
+    "closureDescription": "generated routing closure for indexed Markets comparison",
+    "inventoryDescription": "Shared comparison chart, six series styles, exact values and stable snapshot inspection",
+    "testBinding": "marketsIndexedComparison",
+    "routingDescription": "Compare every loaded Markets member on shared dates without additional acquisition",
+    "summaryDescription": "show indexed shared-date comparison for the complete loaded Markets board"
+  }
+}
