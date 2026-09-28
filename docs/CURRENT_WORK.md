@@ -6,6 +6,18 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
+## BrowserStack setup
+
+The owner approved both Automate/Playwright website testing and App Automate/
+Appium testing for the installed Android app. The signed-in App Automate dashboard
+shows 100 minutes remaining on its free plan; the website Automate plan separately
+has one parallel session. Development-only test runners and the initial disconnected
+smokes are described in [BrowserStack testing](./BROWSERSTACK_TESTING.md). Real
+account credentials, an App Automate upload ID and a verified Android device/OS
+are required for remote execution. Test discovery and configuration checks do not
+establish remote acceptance. The Appwrite storage work remains the next product
+outcome; this tooling does not alter the accepted local runtime or owner records.
+
 ## Active outcome: Appwrite shared watchlist storage
 
 The owner approved working toward a personal computer/Android launch before
