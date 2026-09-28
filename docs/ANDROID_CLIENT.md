@@ -70,6 +70,9 @@ desktop browser running the bundle.
 
 The PC/Tailscale host plan is superseded. The disconnected foundation still has
 no public store release, connected phone session or owner-data migration.
-BrowserStack Automate/Playwright covers the website and App Automate/Appium covers the installed testing copy. See [BrowserStack testing](./BROWSERSTACK_TESTING.md) for setup, verified account allowance and execution limits. The
-attempted App Live sessions produced no native-device coverage; physical Pixel
-10 Pro XL / Android 17 acceptance remains required.
+The owner selected BrowserStack Automate/Playwright for browser tests only;
+see [BrowserStack testing](./BROWSERSTACK_TESTING.md). Installed app testing uses
+the owner's Pixel phones, starting with Pixel 10 Pro XL / Android 17. The earlier
+App Automate upload handoff is cancelled. Prior App Live attempts established no
+native-device coverage. Verify installation, Android Back, touch, background/resume
+and upgrade preservation on the actual phones.

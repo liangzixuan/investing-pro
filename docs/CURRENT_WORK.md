@@ -8,15 +8,15 @@ workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
 ## BrowserStack setup
 
-The owner approved both Automate/Playwright website testing and App Automate/
-Appium testing for the installed Android app. The signed-in App Automate dashboard
-shows 100 minutes remaining on its free plan; the website Automate plan separately
-has one parallel session. Development-only test runners and the initial disconnected
-smokes are described in [BrowserStack testing](./BROWSERSTACK_TESTING.md). Real
-account credentials, an App Automate upload ID and a verified Android device/OS
-are required for remote execution. Test discovery and configuration checks do not
-establish remote acceptance. The Appwrite storage work remains the next product
-outcome; this tooling does not alter the accepted local runtime or owner records.
+The owner selected BrowserStack Automate/Playwright for browser tests only.
+Installed app tests will use the owner's Pixel phones, starting with the confirmed
+Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
+do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
+for the explicit website command and its scope. One disconnected website session
+passed on Windows 11 / Chrome 154; the build-level status and owner command exit
+remain qualified in workspace CURRENT. Setup is one-time, while each command
+invocation starts a separate test run. Automatic CI runs are not configured.
+The Appwrite storage work remains the next product outcome.
 
 ## Active outcome: Appwrite shared watchlist storage
 

@@ -1,101 +1,91 @@
 # BrowserStack testing
 
-The shared React interface has two test targets: the hosted website and the
-installed Capacitor Android app. Use Automate with Playwright for the website
-and App Automate with Appium through WebdriverIO for the APK. These development
-packages do not enter the client bundle. BrowserStack hosts the Appium server;
-no local Appium server or driver installation is needed for these cloud tests.
+Use BrowserStack for browser tests only. Test the installed Android app on the
+owner's Pixel phones. Physical Pixel 10 Pro XL / Android 17 acceptance remains
+separate from browser coverage.
 
-## Account status
+## When to run
 
-On September 28, 2026, the signed-in account's App Automate dashboard displayed
-**100 minutes remaining on its free plan**. The Current Plans panel separately
-listed Live Desktop & Mobile for one user and Automate Desktop & Mobile for one
-parallel test, both extended trials. The free App Automate allowance is useful
-for bounded Android smoke runs; it is not evidence of an extended or unlimited
-App Automate subscription. Saved observations are in workspace
-`tmp/browserstack-evaluation/app-automate-access.txt` and the adjacent screenshot.
+Dependency installation and repository configuration are one-time setup.
+Each `run-web.ts --run` invocation starts one cloud browser smoke test and exits
+when the runner finishes. It does not start a daemon, schedule later tests or run
+automatically after code changes. Run it after a meaningful web-interface change
+and before release acceptance, once the intended build is deployed to the preview.
 
-## Installed setup
-
-- Playwright Test 1.59.0 and BrowserStack Node SDK 1.70.2 for website automation.
-  Playwright 1.59 is listed with Android support in the provider's compatibility
-  table. Keep client/platform versions aligned when expanding the matrix.
-- WebdriverIO 9.32.0 as the Appium client for Android.
-- One website platform, one worker, one smoke test and zero test retries.
-- One Android session per explicit invocation, zero connection retries, finite
-  command waits, stage-only results and session cleanup in `finally`.
-
-The first SDK installation stopped at blocked transitive install scripts. The
-final install explicitly disables local Edge/Firefox driver downloads and the
-protobufjs install script, retains esbuild's existing permission and adds no
-package-age exception. These local drivers are unnecessary for the remote grid.
-The SDK has its own BrowserStack license and is confined to development use.
+The installed website tools are Playwright Test 1.59.0 and BrowserStack Node SDK
+1.70.2. They are development dependencies. The configuration uses one website
+platform, one worker, one smoke test and zero test retries.
 
 ## Credentials and commands
 
-Supply `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY` privately as process
-environment variables. Browser sign-in alone does not authenticate the runners.
-Do not put keys in this guide, YAML, command arguments, Git, screenshots or chat.
-The runners do not load saved CLI credentials. Local SDK logs are ignored and
-must be treated as potentially sensitive; only share reviewed, redacted evidence.
-Do not run the SDK's credential-writing setup command.
+Keep `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY` private in the process
+environment of the owner's PowerShell session. They remain available to commands
+launched from that session until it closes; a new PowerShell session needs them
+supplied privately again. Browser sign-in alone does not authenticate the runner.
+The wrapper does not save these credentials or load saved CLI credentials.
+Do not put keys in command arguments, YAML, Git, screenshots or chat, and do not
+run the SDK's credential-writing setup command.
 
 From the repository, using its pinned pnpm version:
 
 ```sh
 pnpm test:browserstack:web:list
 pnpm test:browserstack:web:check
-pnpm test:browserstack:android:check
 ```
 
-Listing only collects the website test. Check commands validate inputs without
-starting a session and fail with exit 2 when inputs are missing. They do not
-prove authentication, device availability or test success. Actual remote runs
-are explicit and separate from the normal unit-test and release commands:
+Listing only collects the test and needs no credentials. The check validates
+that the required environment inputs are present without authenticating or
+starting a session; missing inputs produce exit 2. Neither proves test success.
+
+Start one remote test when needed:
 
 ```sh
 pnpm test:browserstack:web
-pnpm test:browserstack:android
 ```
 
-The Android runner additionally needs `BROWSERSTACK_APP_ID` (the `bs://` ID for
-our uploaded disconnected APK), `ANDROID_DEVICE` and `ANDROID_OS_VERSION` from
-current App Automate inventory. Do not reuse an App Live upload ID by assumption
-or invent a Pixel/OS combination. No upload is performed by these scripts.
+This runs `tsx scripts/browserstack/run-web.ts --run`. Each invocation starts a
+new test. It is separate from the normal unit-test and release commands.
 
-## Initial coverage
+## Target and coverage
 
-The website smoke targets only
-`https://investment-device-preview.appwrite.network`. It checks startup,
-disconnected controls, notices, 390px/1440px layout and hash navigation/Back.
-Requests are restricted to that preview's public document and bundled assets.
-The first remote platform is Windows 11 / Chrome. Narrow desktop viewport checks
-are not Android device coverage. Add a separately verified real Android browser
-configuration after the initial authenticated run works.
+The smoke targets only
+`https://investment-device-preview.appwrite.network`. It checks Markets startup,
+disabled data controls, unloaded prices, bundled notices, 390px/1440px layout and
+hash navigation with browser Back. Requests are restricted to the preview's
+public document and bundled assets. The configured platform is Windows 11 /
+Chrome; narrow desktop viewports do not establish Android device coverage.
 
-The Android smoke checks the `local.investment.personal` package, the matching
-localhost WebView, disconnected Markets, notices, background/resume and Android
-Back at the root followed by reopening. BrowserStack instruments its uploaded
-testing copy to expose the WebView. This does not establish the behavior of the
-unmodified APK on the owner's physical Pixel 10 Pro XL / Android 17.
+The target serves the deployed disconnected mobile bundle. Editing local source
+does not update that site. Rebuild and deploy the intended preview assets before
+using this test to assess a changed interface. A pass covers the deployed assets
+at the time of the run, not unshipped local edits.
 
-Both suites use the existing disconnected foundation. They perform no owner
-sign-in, data migration, watchlist writes or provider loads. Connected Appwrite
-sessions and shared-data journeys require their own fixtures and acceptance.
-Never count collection, configuration checks or compilation as remote passes.
+The smoke performs no owner sign-in, data migration, watchlist writes or provider
+loads. Connected Appwrite sessions and shared-data journeys need their own
+fixtures and acceptance. Native installation, Android Back, background/resume
+and daily use must be checked on the owner's Pixel phones.
+
+## Observed result
+
+On September 28, 2026 at 23:04:16 UTC, the first remote session showed **Passed**
+on Windows 11 / Chrome 154, with a duration of 13 seconds. The build header still
+showed **Running**, and the owner's PowerShell exit result was not observed.
+This records a session pass; completion of the overall build and runner remains
+unverified. See the
+[first-session receipt](../../tmp/browserstack-evaluation/web-smoke-first-session.json).
+
+## Results and capture
 
 The SDK configuration disables Local tunneling, optional reporting, automatic
 troubleshooting-log capture, Percy, accessibility automation, video, network and
-console capture. Our wrapper fixes the config/log location and discards inherited
+console capture. The wrapper fixes the config/log location and discards inherited
 BrowserStack/Percy overrides except credentials. It does not forward raw SDK
-streams. Inspect the matching Automate build for actual job results. Appium
-returns finite stage/status metadata and marks the remote session result.
+streams. Inspect the matching Automate build for actual session and build results.
+Local SDK logs are ignored and may contain credentials; share only reviewed,
+redacted evidence. Collection, input checks and compilation are not remote passes.
 
 ## References
 
 - [Playwright SDK integration](https://www.browserstack.com/docs/automate/playwright/getting-started/nodejs/integrate-your-tests)
 - [Supported Playwright platforms](https://www.browserstack.com/docs/automate/playwright/browsers-and-os)
-- [Appium with WebdriverIO](https://www.browserstack.com/docs/app-automate/appium/getting-started/nodejs/webdriverio)
-- [WebView testing copies](https://www.browserstack.com/docs/app-automate/appium/troubleshooting/app-webview)
 - [SDK release notes](https://www.browserstack.com/docs/sdk/release-notes)
