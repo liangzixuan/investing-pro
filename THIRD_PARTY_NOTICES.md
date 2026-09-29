@@ -17,6 +17,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | Capacitor App            |   8.1.1 | MIT          | Native application lifecycle       |
 | React Router             |   8.4.0 | MIT          | Bundled client routing             |
 | Appwrite Node SDK        |  29.0.0 | BSD-3-Clause | Managed watchlist storage adapter  |
+| Undici                   |  6.29.0 | MIT          | Bounded Appwrite HTTP transport    |
 
 The bundled Android client includes the installed client runtime license texts
 and notices in [third-party-notices.txt](apps/web/mobile/third-party-notices.txt),

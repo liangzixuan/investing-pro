@@ -48,11 +48,32 @@ same key and resolve against its receipt before claiming success or submitting a
 new edit. There are no automatic mutation retries. An ordinary stale edit leaves
 the user's draft intact for review in the later UI integration.
 
-The installed SDK exposes no request timeout or cancellation parameter on these
-operations. This repository bounds operation count and transaction lifetime; it
-does not claim a transport deadline. A reviewed server composition must provide
-request cancellation and response bounds before this adapter serves application
-traffic. A timer that returns while a write continues would not meet that need.
+The server composition in `apps/api/src/appwrite-transport.ts` retains the SDK's
+request serialization and integer decoding. It gives one server operation a
+shared twelve-second lifetime, two seconds per request, and at most twenty HTTP
+dispatch attempts. It stops starting ordinary mutations after nine seconds and
+reserves the final dispatch slot for transaction rollback. Reads and rollback
+still obey the total lifetime and budget. These are ceilings, not latency claims
+or a guarantee that every failed transaction can be reconciled in that time.
+
+The composition fixes an HTTPS `/v1` endpoint, rejects altered authority and
+redirects, and supports the JSON GET/POST/PATCH calls used by this repository.
+Its private Undici HTTP/1 agent disables pipelining; the dispatcher rejects 421
+before fetch's internal retry. Responses must be JSON with identity encoding;
+the byte counter rejects more than 1 MiB before forwarding excess bytes to the
+SDK. A per-request AbortSignal cancels rejected responses and ignores subsequent
+body callbacks. Upstream warning text never reaches the SDK logger, and errors
+retain only a finite status and the exact `row_not_found` absence classification.
+There is no global fetch, dispatcher or logging patch.
+
+Create one transport per server operation or reviewed proof phase, configure its
+SDK client with the server-owned project credential, share it across that phase's
+repository instances, and await `close()` in `finally`. Do not create a new budget
+for each row call. The transport's dispatch counter does not measure upstream
+server execution. Cancelling a client request cannot undo an already dispatched
+commit; `commit_unknown` and receipt reconciliation remain necessary. Actual
+Appwrite response encoding, permissions and cloud transactions still need the
+isolated proof. The composition is not yet connected to an application route.
 
 ## Acceptance stages
 

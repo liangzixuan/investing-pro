@@ -46,6 +46,11 @@ const exactVersion =
   /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const noticeGroups: readonly NoticeGroup[] = Object.freeze([
   Object.freeze({
+    label: "Undici",
+    packages: Object.freeze(["undici"]),
+    use: "Bounded Appwrite HTTP transport",
+  }),
+  Object.freeze({
     label: "Appwrite Node SDK",
     packages: Object.freeze(["node-appwrite"]),
     use: "Managed watchlist storage adapter",

@@ -39,11 +39,14 @@ authentication or phone access.
 The [Android guide](./ANDROID_CLIENT.md) and
 [specification](../specs/012-android-client/spec.md) define this first outcome.
 The client foundation is committed at `f4674a8f` and has produced a debug APK.
-It remains disconnected. The current storage slice extracts the existing pure
-watchlist validation and adds a server-only Appwrite adapter with atomic version
-updates and durable command receipts. It is not wired to an application route.
-Local transaction tests precede isolated cloud race/rollback tests, managed
-sessions and shared UI integration. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
+It remains disconnected. Shared watchlist validation and the server-only
+Appwrite repository are implemented at `e71c9021`, with atomic version updates
+and durable command receipts. A separate server transport now bounds SDK
+requests, cancels expired I/O and prevents response warnings or error bodies
+from reaching logs. It preserves the official SDK's serialization and integer
+decoding through a private Undici dispatcher. This remains unwired to application
+routes. Isolated cloud race/rollback tests, managed sessions and shared UI
+integration follow local validation. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
 
 Development uses `android-launch` on `codex/android-launch`, based on accepted
 a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is

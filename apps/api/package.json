@@ -32,6 +32,7 @@
     "@research-cockpit/research-state": "workspace:*",
     "@rgrove/parse-xml": "5.0.0",
     "fastify": "5.12.1",
-    "node-appwrite": "29.0.0"
+    "node-appwrite": "29.0.0",
+    "undici": "6.29.0"
   }
 }

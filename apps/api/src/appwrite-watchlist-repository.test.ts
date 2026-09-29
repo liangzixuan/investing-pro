@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { createServer } from "node:http";
+import { connect } from "node:net";
 
 import type { MainWatchlistPayload } from "@research-cockpit/contracts";
 import {
@@ -6,8 +8,10 @@ import {
   searchPersonalSecurityMaster,
 } from "@research-cockpit/personal-security-master";
 import { AppwriteException, Client, TablesDB } from "node-appwrite";
+import { Agent } from "undici";
 import { describe, expect, it, vi } from "vitest";
 
+import { createAppwriteTransport } from "./appwrite-transport";
 import {
   appwriteWatchlistStore,
   createAppwriteWatchlistRepository,
@@ -467,6 +471,134 @@ describe("Appwrite main watchlist repository", () => {
       ]);
     },
   );
+
+  it("reports a truncated native commit response as unknown without rollback or retry", async () => {
+    const { options, command } = fixture();
+    const endpoint = "https://appwrite.example.invalid/v1";
+    const transactionId = "synthetic-interrupted-commit";
+    const rowsPath = `/v1/tablesdb/${options.databaseId}/tables`;
+    const transactionPath = "/v1/tablesdb/transactions";
+    const calls: { method: string; path: string; body: string }[] = [];
+    const server = createServer((request, response) => {
+      let body = "";
+      request.setEncoding("utf8");
+      request.on("data", (chunk: string) => {
+        body += chunk;
+      });
+      request.on("end", () => {
+        calls.push({ method: request.method!, path: request.url!, body });
+        if (calls.length === 6) {
+          response.socket!.end(
+            'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{"status":',
+          );
+          return;
+        }
+        response.setHeader("content-type", "application/json");
+        response.statusCode =
+          calls.length <= 2 ? 404 : calls.length <= 5 ? 201 : 500;
+        response.end(
+          JSON.stringify(
+            calls.length <= 2
+              ? { message: "Missing invented row", type: "row_not_found" }
+              : calls.length === 3
+                ? { $id: transactionId, status: "pending" }
+                : {},
+          ),
+        );
+      });
+    });
+    let dispatcher: Agent | undefined;
+    let transport: ReturnType<typeof createAppwriteTransport> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(0, "127.0.0.1", () => resolve());
+      });
+      const address = server.address();
+      if (address === null || typeof address === "string")
+        throw new Error("Missing synthetic server address");
+      dispatcher = new Agent({
+        allowH2: false,
+        pipelining: 0,
+        // Only this test maps the fixed synthetic HTTPS host to a local socket.
+        connect: (target, callback) => {
+          if (
+            target.hostname !== "appwrite.example.invalid" ||
+            target.protocol !== "https:"
+          ) {
+            callback(new Error("Unexpected synthetic target"), null);
+            return;
+          }
+          const socket = connect({ host: "127.0.0.1", port: address.port });
+          const onError = (error: Error) => callback(error, null);
+          socket.once("error", onError);
+          socket.once("connect", () => {
+            socket.off("error", onError);
+            callback(null, socket);
+          });
+        },
+      });
+      transport = createAppwriteTransport({ endpoint, dispatcher });
+      const repository = createAppwriteWatchlistRepository({
+        ...options,
+        store: appwriteWatchlistStore(new TablesDB(transport.client)),
+      });
+      await expect(repository.put(OWNER, command())).rejects.toMatchObject({
+        code: "commit_unknown",
+        message: "commit_unknown",
+      });
+      expect(calls.map(({ method }) => method)).toEqual([
+        "GET",
+        "GET",
+        "POST",
+        "POST",
+        "POST",
+        "PATCH",
+      ]);
+      expect(calls[0]!.path).toMatch(
+        new RegExp(`^${rowsPath}/receipts/rows/r[a-f0-9]{32}$`, "u"),
+      );
+      expect(calls[1]!.path).toMatch(
+        new RegExp(`^${rowsPath}/watchlists/rows/w[a-f0-9]{32}$`, "u"),
+      );
+      expect(calls.slice(2).map(({ path }) => path)).toEqual([
+        transactionPath,
+        `${rowsPath}/watchlists/rows`,
+        `${rowsPath}/receipts/rows`,
+        `${transactionPath}/${transactionId}`,
+      ]);
+      expect(calls.slice(0, 2).map(({ body }) => body)).toEqual(["", ""]);
+      expect(JSON.parse(calls[2]!.body)).toEqual({ ttl: 30 });
+      for (const [write, read] of [
+        [3, 1],
+        [4, 0],
+      ] as const) {
+        expect(JSON.parse(calls[write]!.body)).toMatchObject({
+          rowId: calls[read]!.path.split("/").at(-1),
+          permissions: [],
+          transactionId,
+          data: { ownerId: OWNER.userId, watchlistId: "main", version: 1 },
+        });
+      }
+      expect(JSON.parse(calls[5]!.body)).toEqual({ commit: true });
+      expect(transport.snapshot()).toEqual({
+        requests: 6,
+        lastStatus: 200,
+        closed: false,
+      });
+    } finally {
+      try {
+        if (transport) await transport.close();
+        else await dispatcher?.destroy();
+      } finally {
+        server.closeAllConnections();
+        if (server.listening)
+          await new Promise<void>((resolve, reject) =>
+            server.close((error) => (error ? reject(error) : resolve())),
+          );
+      }
+    }
+  });
 
   it("does not roll back an uncertain in-flight commit; same-key resubmission has one winner", async () => {
     const { store, repository, command } = fixture();

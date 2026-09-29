@@ -95,6 +95,9 @@ importers:
       node-appwrite:
         specifier: 29.0.0
         version: 29.0.0
+      undici:
+        specifier: 6.29.0
+        version: 6.29.0
 
   apps/web:
     dependencies:
