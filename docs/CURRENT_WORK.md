@@ -6,22 +6,27 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## BrowserStack setup
+## BrowserStack browser CI
 
 The owner selected BrowserStack Automate/Playwright for browser tests only.
 Installed app tests will use the owner's Pixel phones, starting with the confirmed
 Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
 do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
-for the explicit website command and its scope. One disconnected website session
-passed on Windows 11 / Chrome 154; the build-level status and owner command exit
-remain qualified in workspace CURRENT. Setup is one-time, while each command
-invocation starts a separate test run. CI publication and secret setup remain pending.
-The owner has now requested CI automation: a separate deployed-preview workflow
-is being added for relevant pushes to main and codex/android-launch. Publishing,
-private GitHub Actions secret setup and an actual hosted result are required
-before calling it operational. The manually deployed preview remains distinct
-from the triggering source revision. The Appwrite storage work remains the next
-product outcome.
+for commands, triggers and evidence limits. The separate deployed-preview workflow
+is published on `codex/android-launch`, and both repository secret names were
+verified without inspecting their values. GitHub run `36499410858`, attempt 2 at
+`50add08`, succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
+1 minute 6 seconds; its 31-second test step reported that the BrowserStack website
+runner completed successfully.
+
+BrowserStack listed `disconnected-web-smoke #CI 36499410858`, but its detail route
+and then the project list redirected to `request_access`. The new session,
+platform/result and terminal BrowserStack build state remain independently
+unverified. The earlier 13-second Windows 11 / Chrome 154 session is separate
+evidence. Merging the workflow into `main` and default-branch manual dispatch
+remain pending. Setup is one-time; each command or eligible push starts a new
+test. The manually deployed preview remains distinct from the test-code revision.
+The Appwrite storage work remains the next product outcome.
 
 ## Active outcome: Appwrite shared watchlist storage
 

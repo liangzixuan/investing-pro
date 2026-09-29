@@ -26,8 +26,9 @@ Ubuntu job, one browser session, a ten-minute job limit and a five-minute remote
 step limit. Runs share a concurrency group; a new push does not cancel a running
 test. There is no schedule, pull-request secret exposure or native app test.
 
-Set these repository secrets once in
-[GitHub Actions secrets](https://github.com/liangzixuan/investing-pro/settings/secrets/actions):
+These repository secrets are configured in
+[GitHub Actions secrets](https://github.com/liangzixuan/investing-pro/settings/secrets/actions).
+Their names were verified without inspecting their values:
 
 - `BROWSERSTACK_USERNAME`: the automation username.
 - `BROWSERSTACK_ACCESS_KEY`: the current access key.
@@ -37,16 +38,17 @@ Missing secrets fail the step before a BrowserStack session starts. The workflow
 does not upload SDK logs, screenshots or other artifacts. It preserves the
 existing release gates and reports its own result separately.
 
-After the workflow is on the default branch, its **Run workflow** control also
-supports manual checks. A failed run can be rerun from its Actions page after its
-cause is fixed. No PowerShell window or running owner PC is needed for GitHub
-runs, and rotating the BrowserStack key requires updating the stored secret.
+The workflow is published on `codex/android-launch`. Merging it into `main` and
+enabling its default-branch **Run workflow** control remain pending. A failed run
+can be rerun from its Actions page after its cause is fixed. No PowerShell window
+or running owner PC is needed for GitHub runs, and rotating the BrowserStack key
+requires updating the stored secret.
 
 This workflow checks the existing hosted preview. It neither deploys that site
 nor proves its assets match the triggering commit. The checkout SHA in its
 summary identifies the test code only. Deploy the intended preview before using
-its result as evidence for an interface change. Publishing the workflow and
-setting secrets are prerequisites; source validation is not a successful CI run.
+its result as evidence for an interface change. The hosted runner has passed as
+recorded below; independent BrowserStack session details remain unverified.
 
 ## Credentials and commands
 
@@ -97,13 +99,25 @@ loads. Connected Appwrite sessions and shared-data journeys need their own
 fixtures and acceptance. Native installation, Android Back, background/resume
 and daily use must be checked on the owner's Pixel phones.
 
-## Observed result
+## Observed results
 
-On September 28, 2026 at 23:04:16 UTC, the first remote session showed **Passed**
-on Windows 11 / Chrome 154, with a duration of 13 seconds. The build header still
-showed **Running**, and the owner's PowerShell exit result was not observed.
-This records a session pass; completion of the overall build and runner remains
-unverified. See the
+GitHub [run 36499410858, attempt 2](https://github.com/liangzixuan/investing-pro/actions/runs/36499410858/attempts/2)
+at `50add08` succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
+1 minute 6 seconds. Its 31-second test step printed:
+
+> BrowserStack website runner completed successfully. Review the matching build in Automate.
+
+The BrowserStack build list showed `disconnected-web-smoke #CI 36499410858`.
+Opening that entry's details and then the project list redirected to
+`request_access`. The new session's identity, platform and result, and the
+BrowserStack build's terminal state, remain independently unverified. The GitHub
+result establishes that the published workflow ran successfully with its
+configured credentials.
+
+An earlier manual session on September 28, 2026 at 23:04:16 UTC showed **Passed**
+on Windows 11 / Chrome 154, with a duration of 13 seconds. That build's header
+still showed **Running**, and the owner's PowerShell exit result was not observed.
+This separate session does not establish the new CI session's result. See the
 [first-session receipt](../../tmp/browserstack-evaluation/web-smoke-first-session.json).
 
 ## Results and capture
