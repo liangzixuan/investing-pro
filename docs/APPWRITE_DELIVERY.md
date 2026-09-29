@@ -62,10 +62,11 @@ command arguments, proof artifacts or source.
 
 Staging is the existing project `6abac57a0007b7c1a671`, site
 `6abadfd3003d87db016b`, at `investment-device-preview.appwrite.network`, using the
-fixed NYC Appwrite endpoint. Production needs a separate Static/Other site in
-that same project and its public ID in the production environment variable
-`APPWRITE_PRODUCTION_SITE_ID`. The helper rejects the staging ID as production.
-No production site has yet been provisioned or accepted by this implementation.
+fixed NYC Appwrite endpoint. Production uses the separate Static/Other site
+`investment-production` in that same project. Its public ID is configured in
+the production environment variable `APPWRITE_PRODUCTION_SITE_ID`. The helper
+rejects the staging ID as production. The site exists with no deployment;
+creating it does not establish a release.
 
 Both sites must be enabled, use the static adapter, `index.html` fallback, no
 Git integration and no function scopes. Deployment retention must be disabled
@@ -107,7 +108,7 @@ Current status: the delivery implementation has passed local checks and source
 review. Both GitHub environments are restricted to `main`; production requires
 the owner's review. The staging secret name is confirmed, but no cloud run has
 yet verified the credential. Default-branch integration, passing checks,
-production credentials/site configuration and the first observed
+the separate production credential and the first observed
 staging/test/promotion run remain pending. See the
 [current filing acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) for the
 CI provenance repair prompted by PR 11. Backend

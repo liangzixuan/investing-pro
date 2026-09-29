@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
 import {
+  lstat,
   mkdir,
   mkdtemp,
   readFile,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -1008,18 +1010,34 @@ describe("current parser source admission", () => {
 
   it("rejects repository grafts even when an ambient override hides them", async () => {
     const { directory, anchor } = await currentSourceFixture();
+    const defaultGraftEnvironment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+      ),
+    );
     const graftsPath = (
-      await gitOutput([
-        "-C",
-        directory,
-        "rev-parse",
-        "--path-format=absolute",
-        "--git-path",
-        "info/grafts",
-      ])
+      await gitOutput(
+        [
+          "-C",
+          directory,
+          "rev-parse",
+          "--path-format=absolute",
+          "--git-path",
+          "info/grafts",
+        ],
+        defaultGraftEnvironment,
+      )
     ).trim();
     await mkdir(dirname(graftsPath), { recursive: true });
+    expect(await realpath(dirname(graftsPath))).toBe(
+      await realpath(join(directory, ".git", "info")),
+    );
     await writeFile(graftsPath, `${anchor}\n`);
+    const graftsStat = await lstat(graftsPath);
+    expect(graftsStat.isFile()).toBe(true);
+    expect(graftsStat.isSymbolicLink()).toBe(false);
+    expect(graftsStat.size).toBe(41);
+    expect(await readFile(graftsPath, "utf8")).toBe(`${anchor}\n`);
     await expect(
       verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
         "source.txt",

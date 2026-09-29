@@ -1,5 +1,12 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -33805,8 +33812,17 @@ describe("current payload source provenance", () => {
       ),
     ).rejects.toThrow();
     await fixture.git("checkout", "--quiet", "--orphan", "unrelated");
+    await writeFile(
+      join(fixture.repository, "source.txt"),
+      "unrelated source\n",
+    );
     await fixture.commit();
     const unrelated = (await fixture.git("rev-parse", "HEAD")).trim();
+    expect(unrelated).not.toBe(fixture.anchor);
+    expect(
+      await fixture.git("rev-list", "--parents", "-n", "1", unrelated),
+    ).toBe(`${unrelated}\n`);
+    expect(await fixture.git("status", "--porcelain=v1")).toBe("");
     await expect(
       verifyFilingPayloadCustodyCurrentSourceSnapshot(
         fixture.repository,
@@ -33908,8 +33924,14 @@ describe("current payload source provenance", () => {
     );
     await mkdir(substitute);
     await writeFile(join(substitute, "source.txt"), "substitute\n");
+    await writeFile(
+      join(fixture.repository, ".git", "info", "exclude"),
+      "\n/nested\n",
+      { flag: "a" },
+    );
     await rm(nested, { recursive: true });
     await symlink(substitute, nested, "junction");
+    expect((await lstat(nested)).isSymbolicLink()).toBe(true);
     expect(await fixture.git("status", "--porcelain=v1")).toBe("");
     await expect(
       verifyFilingPayloadCustodyCurrentSourceSnapshot(
