@@ -64,7 +64,8 @@ Source preparation does not establish cloud acceptance. The new workflow still
 needs default-branch integration, Appwrite environment credentials and its first
 observed run. It shares concurrency with the existing preview smoke. Once the
 new release path is proved, retire the old push trigger to avoid duplicate runs.
-No Appium, App Automate or extra BrowserStack platform has been added.
+The native Appium runner is removed; native app acceptance uses the owner's
+Pixel phones.
 
 ## Credentials and commands
 

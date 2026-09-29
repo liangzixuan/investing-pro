@@ -40,9 +40,7 @@
     "verify": "pnpm format:check && pnpm lint && pnpm guardrails && pnpm typecheck && pnpm peers check && pnpm test && pnpm build",
     "test:browserstack:web:list": "playwright test --config=scripts/browserstack/playwright.config.ts --list",
     "test:browserstack:web:check": "tsx scripts/browserstack/run-web.ts --check",
-    "test:browserstack:web": "tsx scripts/browserstack/run-web.ts --run",
-    "test:browserstack:android:check": "tsx scripts/browserstack/appium-smoke.ts --check",
-    "test:browserstack:android": "tsx scripts/browserstack/appium-smoke.ts --run"
+    "test:browserstack:web": "tsx scripts/browserstack/run-web.ts --run"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -61,7 +59,6 @@
     "tsx": "4.23.12",
     "typescript": "5.9.3",
     "typescript-eslint": "8.67.0",
-    "vitest": "4.1.10",
-    "webdriverio": "9.32.0"
+    "vitest": "4.1.10"
   }
 }
