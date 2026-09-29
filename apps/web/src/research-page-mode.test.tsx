@@ -44,15 +44,7 @@ vi.mock("@/features/workspace/PersonalWorkspaceRoutes", () => ({
 vi.mock("@/features/research/LegacyLocalStateCleanup", () => ({
   LegacyLocalStateCleanup: () => null,
 }));
-vi.mock("@/features/workspace/workspace.css", () => ({}));
-vi.mock("@/features/research/company-overview.css", () => ({}));
-vi.mock("@/features/research/personal-portfolio.css", () => ({}));
-vi.mock("@/features/research/personal-portfolio-ledger.css", () => ({}));
-vi.mock("@/features/research/personal-portfolio-history.css", () => ({}));
-vi.mock(
-  "@/features/research/personal-portfolio-valuation-history.css",
-  () => ({}),
-);
+vi.mock("@/workspace-styles.css", () => ({}));
 vi.mock("@/lib/web-mode", () => import("./lib/web-mode"));
 
 afterEach(() => vi.unstubAllEnvs());
