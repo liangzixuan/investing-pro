@@ -1,7 +1,12 @@
 import { defineConfig } from "@playwright/test";
 
-export const previewOrigin =
-  "https://investment-device-preview.appwrite.network";
+import { resolveWebTarget } from "./web-target";
+
+export const webTarget = resolveWebTarget(
+  process.env.INVESTMENT_BROWSERSTACK_WEB_MODE ?? "preview",
+  process.env.INVESTMENT_EXPECTED_BUILD_SHA,
+);
+export const previewOrigin = webTarget.origin;
 
 export default defineConfig({
   testDir: ".",
@@ -27,6 +32,12 @@ export default defineConfig({
     video: "off",
   },
   projects: [
-    { name: "disconnected-preview", use: { browserName: "chromium" } },
+    {
+      name:
+        webTarget.mode === "staging"
+          ? "disconnected-staging"
+          : "disconnected-preview",
+      use: { browserName: "chromium" },
+    },
   ],
 });

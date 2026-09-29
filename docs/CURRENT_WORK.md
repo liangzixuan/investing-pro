@@ -6,6 +6,17 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
+## Approved delivery integration
+
+The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
+build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
+describes the prepared static-site pipeline, source-check proof, artifact and
+credential setup. Its first target is the disconnected client; the cloud storage
+proof below remains the prerequisite for a connected product. Local checks and
+source review do not establish a cloud deployment. Main integration, environment
+keys, a separate production site and the first observed run remain pending.
+The existing preview smoke keeps its qualified status until replacement passes.
+
 ## BrowserStack browser CI
 
 The owner selected BrowserStack Automate/Playwright for browser tests only.

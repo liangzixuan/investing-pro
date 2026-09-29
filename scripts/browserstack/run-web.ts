@@ -2,14 +2,24 @@ import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { resolveWebRun } from "./web-target";
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const mode = process.argv[2];
-if (process.argv.length !== 3 || (mode !== "--check" && mode !== "--run")) {
-  console.error(
-    "Use --check for local configuration or --run for one remote smoke.",
-  );
-  process.exitCode = 2;
-} else {
+
+function main() {
+  let input: ReturnType<typeof resolveWebRun>;
+  try {
+    input = resolveWebRun(
+      process.argv.slice(2),
+      process.env.INVESTMENT_EXPECTED_BUILD_SHA,
+    );
+  } catch (error) {
+    console.error(
+      error instanceof Error ? error.message : "Invalid website inputs.",
+    );
+    process.exitCode = 2;
+    return;
+  }
   const missing = ["BROWSERSTACK_USERNAME", "BROWSERSTACK_ACCESS_KEY"].filter(
     (name) => !process.env[name]?.trim(),
   );
@@ -19,7 +29,7 @@ if (process.argv.length !== 3 || (mode !== "--check" && mode !== "--run")) {
       "No remote test started. Supply credentials privately in this process environment.",
     );
     process.exitCode = 2;
-  } else if (mode === "--check") {
+  } else if (!input.run) {
     console.log(
       "Required website inputs are present. No authentication or remote test performed.",
     );
@@ -42,13 +52,20 @@ if (process.argv.length !== 3 || (mode !== "--check" && mode !== "--run")) {
         env: {
           ...Object.fromEntries(
             Object.entries(process.env).filter(
-              ([name]) => !/^(?:BROWSERSTACK_|PERCY_)/iu.test(name),
+              ([name]) =>
+                !/^(?:BROWSERSTACK_|PERCY_|INVESTMENT_BROWSERSTACK_WEB_MODE$|INVESTMENT_EXPECTED_BUILD_SHA$)/iu.test(
+                  name,
+                ),
             ),
           ),
           BROWSERSTACK_USERNAME: process.env.BROWSERSTACK_USERNAME,
           BROWSERSTACK_ACCESS_KEY: process.env.BROWSERSTACK_ACCESS_KEY,
           BROWSERSTACK_LOG_DIR: resolve(root, "logs/browserstack"),
           BROWSERSTACK_CONFIG_FILE: resolve(root, "browserstack.yml"),
+          INVESTMENT_BROWSERSTACK_WEB_MODE: input.target.mode,
+          ...(input.target.mode === "staging"
+            ? { INVESTMENT_EXPECTED_BUILD_SHA: input.target.expectedBuildSha }
+            : {}),
         },
         // SDK error messages may contain capabilities. Do not forward raw streams.
         stdio: ["ignore", "ignore", "ignore"],
@@ -69,3 +86,5 @@ if (process.argv.length !== 3 || (mode !== "--check" && mode !== "--run")) {
     });
   }
 }
+
+main();

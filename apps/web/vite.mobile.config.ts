@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
+import { buildIdentity } from "./build-identity";
 
 const mobileRoot = fileURLToPath(new URL("./mobile", import.meta.url));
+const sourceSha = buildIdentity(process.env.INVESTMENT_BUILD_SHA);
 
 function clientBoundary(): Plugin {
   return {
@@ -30,7 +32,22 @@ export default defineConfig({
     "process.env.NEXT_PUBLIC_API_BASE_URL": JSON.stringify(""),
   },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-  plugins: [clientBoundary()],
+  plugins: [
+    clientBoundary(),
+    {
+      name: "public-build-identity",
+      transformIndexHtml: () =>
+        sourceSha
+          ? [
+              {
+                tag: "meta",
+                attrs: { name: "investment-build-sha", content: sourceSha },
+                injectTo: "head",
+              },
+            ]
+          : [],
+    },
+  ],
   build: {
     outDir: fileURLToPath(new URL("./dist/mobile", import.meta.url)),
     emptyOutDir: true,

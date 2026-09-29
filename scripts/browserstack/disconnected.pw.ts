@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { previewOrigin } from "./playwright.config";
+import { previewOrigin, webTarget } from "./playwright.config";
 
-test("disconnected preview opens Markets, notices and hash routes", async ({
-  context,
-  page,
-}) => {
+const title =
+  webTarget.mode === "staging"
+    ? "exact-build disconnected staging opens Markets, notices and hash routes"
+    : "disconnected preview opens Markets, notices and hash routes";
+
+test(title, async ({ context, page }) => {
   let blockedRequests = 0;
   let pageErrors = 0;
   page.on("pageerror", () => {
@@ -47,6 +49,14 @@ test("disconnected preview opens Markets, notices and hash routes", async ({
   await test.step("Startup shows the disconnected Markets surface", async () => {
     const response = await page.goto("/", { waitUntil: "domcontentloaded" });
     expect(response?.status()).toBe(200);
+    if (webTarget.mode === "staging") {
+      const marker = page.locator('meta[name="investment-build-sha"]');
+      await expect(marker, "Exactly one public build identity").toHaveCount(1);
+      await expect(
+        marker,
+        "Deployed source matches the validated pipeline SHA",
+      ).toHaveAttribute("content", webTarget.expectedBuildSha);
+    }
     await expect(page).toHaveTitle("Investment");
     await expect(page).toHaveURL(`${previewOrigin}/#/markets`);
     await expect(markets).toBeVisible();

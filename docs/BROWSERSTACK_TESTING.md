@@ -50,6 +50,22 @@ summary identifies the test code only. Deploy the intended preview before using
 its result as evidence for an interface change. The hosted runner has passed as
 recorded below; independent BrowserStack session details remain unverified.
 
+## Exact-build staging pipeline
+
+The approved [Appwrite delivery workflow](./APPWRITE_DELIVERY.md) adds a separate
+staging mode. It deploys a SHA-labelled artifact and calls
+`run-web.ts --run-staging` with `INVESTMENT_EXPECTED_BUILD_SHA`. The test requires
+one matching public commit marker before interacting with the page. The ordinary
+`--run` mode rejects an expected SHA so it cannot silently stand in for this check.
+`--check-staging` validates inputs without a remote session. The runner supplies
+its internal child mode; callers do not need to set it.
+
+Source preparation does not establish cloud acceptance. The new workflow still
+needs default-branch integration, Appwrite environment credentials and its first
+observed run. It shares concurrency with the existing preview smoke. Once the
+new release path is proved, retire the old push trigger to avoid duplicate runs.
+No Appium, App Automate or extra BrowserStack platform has been added.
+
 ## Credentials and commands
 
 Keep `BROWSERSTACK_USERNAME` and `BROWSERSTACK_ACCESS_KEY` private in the process

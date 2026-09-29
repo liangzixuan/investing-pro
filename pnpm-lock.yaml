@@ -14,6 +14,9 @@ importers:
       '@playwright/test':
         specifier: 1.59.0
         version: 1.59.0
+      '@types/js-yaml':
+        specifier: 4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: 26.2.0
         version: 26.2.0
@@ -32,6 +35,12 @@ importers:
       globals:
         specifier: 17.11.0
         version: 17.11.0
+      js-yaml:
+        specifier: 4.3.2
+        version: 4.3.2
+      minimatch:
+        specifier: 10.2.6
+        version: 10.2.6
       prettier:
         specifier: 3.9.6
         version: 3.9.6

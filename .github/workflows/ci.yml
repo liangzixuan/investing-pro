@@ -85,3 +85,19 @@ jobs:
 
       - name: Run the release gate
         run: pnpm verify
+
+      - name: Verify deployment tooling
+        run: pnpm test:delivery
+
+      - name: Capture public source provenance for deployment
+        if: runner.os == 'Linux' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm exec tsx scripts/appwrite/github-checks.ts capture --output dist/source-proof.json
+
+      - name: Retain the source proof for this CI attempt
+        if: runner.os == 'Linux' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: source-proof-${{ github.run_attempt }}
+          path: dist/source-proof.json
+          if-no-files-found: error
+          retention-days: 30
