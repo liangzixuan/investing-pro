@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_BASELINE,
@@ -41,6 +41,8 @@ import {
 } from "./filing-parser-cross-engine-execution-evidence";
 
 import {
+  assertFilingParserCrossEngineCurrentGitAuthority,
+  verifyFilingParserCrossEngineCurrentSourceSnapshot,
   cleanFilingParserCrossEngineExecutionGitEnvironment,
   filingParserCrossEngineExecutionCorrectiveChainAllowed,
   filingParserCrossEngineExecutionFileSizeAllowed,
@@ -64,6 +66,7 @@ const V3_FIXTURE_EXTRA_PATH =
   "fixtures/synthetic/filing-parser-cross-engine-execution/v3/offline-review-extra-source.txt";
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -592,9 +595,18 @@ async function v3RepositoryFixture() {
   runGit(git, repository, ["init", "--quiet"]);
   const fixtureObjectDirectory = join(repository, ".git", "objects");
   await rm(fixtureObjectDirectory, { force: true, recursive: true });
-  await cp(join(sourceRepository, ".git", "objects"), fixtureObjectDirectory, {
-    recursive: true,
-  });
+  await cp(
+    runGit(git, sourceRepository, [
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-path",
+      "objects",
+    ]).trim(),
+    fixtureObjectDirectory,
+    {
+      recursive: true,
+    },
+  );
   runGit(git, repository, [
     "checkout",
     "--quiet",
@@ -837,9 +849,18 @@ async function v2RepositoryFixture() {
   runGit(git, repository, ["init", "--quiet"]);
   const fixtureObjectDirectory = join(repository, ".git", "objects");
   await rm(fixtureObjectDirectory, { force: true, recursive: true });
-  await cp(join(sourceRepository, ".git", "objects"), fixtureObjectDirectory, {
-    recursive: true,
-  });
+  await cp(
+    runGit(git, sourceRepository, [
+      "rev-parse",
+      "--path-format=absolute",
+      "--git-path",
+      "objects",
+    ]).trim(),
+    fixtureObjectDirectory,
+    {
+      recursive: true,
+    },
+  );
   runGit(git, repository, [
     "checkout",
     "--quiet",
@@ -1041,3 +1062,173 @@ function runGit(
 function sha256(bytes: Uint8Array): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
+
+async function currentSourceFixture() {
+  const repository = await mkdtemp(
+    join(await realpath(tmpdir()), "cross-engine-current-"),
+  );
+  temporaryDirectories.push(repository);
+  const git = trustedGitPath();
+  const run = (args: readonly string[]) => runGit(git, repository, args).trim();
+  run(["init", "-b", "main"]);
+  run(["config", "user.name", "Synthetic fixture"]);
+  run(["config", "user.email", "synthetic@example.invalid"]);
+  await writeFile(join(repository, "source.txt"), "synthetic anchor\n");
+  run(["add", "source.txt"]);
+  run(["commit", "-m", "anchor"]);
+  const anchor = run(["rev-parse", "HEAD"]);
+  await writeFile(join(repository, "source.txt"), "synthetic current\n");
+  run(["add", "source.txt"]);
+  run(["commit", "-m", "ordinary descendant"]);
+  return { repository, anchor, run, revision: run(["rev-parse", "HEAD"]) };
+}
+
+describe("current cross-engine source snapshot", () => {
+  beforeEach(() => {
+    // Synthetic Git fixtures have no ambient authority or graft configuration.
+    for (const key of Object.keys(process.env))
+      if (key.toUpperCase().startsWith("GIT_")) vi.stubEnv(key, undefined);
+  });
+  it("admits ordinary descendants and two-parent merges using actual current bytes", async () => {
+    const f = await currentSourceFixture();
+    const first = await verifyFilingParserCrossEngineCurrentSourceSnapshot(
+      f.repository,
+      f.revision,
+      f.anchor,
+      ["source.txt"],
+    );
+    expect(first).toEqual([
+      {
+        path: "source.txt",
+        sha256: sha256(new TextEncoder().encode("synthetic current\n")),
+      },
+    ]);
+    f.run(["checkout", "-b", "side", f.anchor]);
+    await writeFile(join(f.repository, "side.txt"), "synthetic side\n");
+    f.run(["add", "side.txt"]);
+    f.run(["commit", "-m", "side"]);
+    f.run(["checkout", "main"]);
+    f.run(["merge", "--no-ff", "side", "-m", "two-parent merge"]);
+    const revision = f.run(["rev-parse", "HEAD"]);
+    expect(
+      f.run(["rev-list", "--parents", "-n", "1", revision]).split(" "),
+    ).toHaveLength(3);
+    await expect(
+      verifyFilingParserCrossEngineCurrentSourceSnapshot(
+        f.repository,
+        revision,
+        f.anchor,
+        ["source.txt"],
+      ),
+    ).resolves.toEqual(first);
+  }, 30_000);
+  it.each([
+    "wrong-head",
+    "dirty",
+    "untracked",
+    "missing",
+    "executable",
+    "symlink-mode",
+    "hidden-drift",
+    "replacement",
+    "default-graft",
+    "ambient-graft",
+  ])(
+    "rejects %s before admitting a source snapshot",
+    async (kind) => {
+      const f = await currentSourceFixture();
+      let revision = f.revision;
+      if (kind === "wrong-head") revision = f.anchor;
+      if (kind === "dirty")
+        await writeFile(join(f.repository, "source.txt"), "changed\n");
+      if (kind === "untracked")
+        await writeFile(join(f.repository, "extra.txt"), "extra\n");
+      if (kind === "missing") await rm(join(f.repository, "source.txt"));
+      if (kind === "executable") {
+        f.run(["update-index", "--chmod=+x", "source.txt"]);
+        f.run(["commit", "-m", "wrong mode"]);
+        revision = f.run(["rev-parse", "HEAD"]);
+      }
+      if (kind === "symlink-mode") {
+        const blob = f.run(["rev-parse", "HEAD:source.txt"]);
+        f.run(["update-index", "--cacheinfo", `120000,${blob},source.txt`]);
+        f.run(["commit", "-m", "wrong symlink mode"]);
+        revision = f.run(["rev-parse", "HEAD"]);
+      }
+      if (kind === "hidden-drift") {
+        f.run(["update-index", "--assume-unchanged", "source.txt"]);
+        await writeFile(join(f.repository, "source.txt"), "hidden mutation\n");
+        expect(f.run(["status", "--porcelain=v1"])).toBe("");
+      }
+      if (kind === "replacement") f.run(["replace", f.revision, f.anchor]);
+      if (kind === "default-graft")
+        await writeFile(
+          join(f.repository, ".git", "info", "grafts"),
+          f.revision + "\n",
+        );
+      if (kind === "ambient-graft") {
+        const graft = join(f.repository, ".git", "ambient-grafts");
+        await writeFile(graft, f.revision + "\n");
+        vi.stubEnv("GIT_GRAFT_FILE", graft);
+      }
+      await expect(
+        verifyFilingParserCrossEngineCurrentSourceSnapshot(
+          f.repository,
+          revision,
+          f.anchor,
+          ["source.txt"],
+        ),
+      ).rejects.toThrow();
+    },
+    30_000,
+  );
+  it.each([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_SHALLOW_FILE",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_KEY_0",
+    "GIT_CONFIG_VALUE_0",
+  ])("rejects ambient authority %s before Git is called", (key) => {
+    vi.stubEnv(key, "synthetic-invalid-authority");
+    expect(() => assertFilingParserCrossEngineCurrentGitAuthority()).toThrow();
+  });
+  it("rejects unrelated ancestry and invalid source inventories", async () => {
+    const f = await currentSourceFixture();
+    f.run(["checkout", "--orphan", "unrelated"]);
+    f.run(["commit", "-m", "unrelated"]);
+    const revision = f.run(["rev-parse", "HEAD"]);
+    await expect(
+      verifyFilingParserCrossEngineCurrentSourceSnapshot(
+        f.repository,
+        revision,
+        f.anchor,
+        ["source.txt"],
+      ),
+    ).rejects.toThrow();
+    for (const paths of [
+      [],
+      ["source.txt", "source.txt"],
+      ["../source.txt"],
+      ["absent.txt"],
+    ])
+      await expect(
+        verifyFilingParserCrossEngineCurrentSourceSnapshot(
+          f.repository,
+          revision,
+          revision,
+          paths,
+        ),
+      ).rejects.toThrow();
+  }, 30_000);
+});

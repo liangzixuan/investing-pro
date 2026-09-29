@@ -6,7 +6,9 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -22,6 +24,8 @@ import {
   inspectRelease,
   parseReleaseDescriptor,
   RELEASE_DIRECTORY,
+  runReleaseClassification,
+  verifyArchivedRelease,
   verifyGeneratedHistory,
   writeReleaseOutputs,
 } from "./release-classification.js";
@@ -155,6 +159,25 @@ function temporaryWorkspace(): string {
   }
   writeFileSync(join(root, "unrelated.txt"), "preserve this local file\n");
   return root;
+}
+
+function archiveWorkspace(): string {
+  const root = temporaryWorkspace();
+  for (const [path, text] of nextOutputs)
+    writeFileSync(join(root, path), text, "utf8");
+  return root;
+}
+
+function archiveReader(
+  git: ReleaseGitReader = reader(),
+  head = "5".repeat(40),
+): ReleaseGitReader {
+  return {
+    ...git,
+    head: () => head,
+    ancestor: (ancestor, pin) =>
+      (ancestor === closure15 && pin === head) || git.ancestor(ancestor, pin),
+  };
 }
 
 function digest(text: string): string {
@@ -332,5 +355,202 @@ describe("generated history and writes across successive declared releases", () 
         },
       }),
     ).rejects.toThrow(/binding is already used/u);
+  });
+});
+
+describe("current default verifies only the retained classification archive", () => {
+  it.each(["closure", "descendant", "two-parent merge"])(
+    "accepts a %s with evolved current adapters without writing or accepting current execution",
+    async (kind) => {
+      const root = archiveWorkspace();
+      for (const path of RELEASE_CLASSIFICATION_ADAPTER_PATHS)
+        writeFileSync(join(root, path), "current source checked separately\n");
+      const git = archiveReader(
+        reader(),
+        kind === "closure" ? closure15 : "5".repeat(40),
+      );
+      const current = {
+        ...git,
+        parents: (pin: string) =>
+          pin === git.head() && pin !== closure15
+            ? kind === "two-parent merge"
+              ? [closure15, "6".repeat(40)]
+              : [closure15]
+            : git.parents(pin),
+      };
+      const before = snapshot(root);
+      const result = await verifyArchivedRelease(
+        root,
+        next,
+        closure15,
+        current,
+      );
+      expect(result).toContain(`archive cycle3ka15 at ${closure15}`);
+      expect(result).toContain(
+        "all 9 archived outputs match; check wrote nothing",
+      );
+      expect(result).toContain(
+        "Current source and execution acceptance require their separate gates.",
+      );
+      expect(snapshot(root)).toEqual(before);
+    },
+    30_000,
+  );
+
+  it.each(["older", "latest", "missing", "extra", "renamed"])(
+    "rejects an installed registry with a %s descriptor change without writing",
+    async (kind) => {
+      const root = archiveWorkspace();
+      const older = join(root, prior.descriptorPath);
+      const latest = join(root, next.descriptorPath);
+      if (kind === "older" || kind === "latest")
+        writeFileSync(
+          kind === "older" ? older : latest,
+          "changed descriptor\n",
+        );
+      else if (kind === "missing") unlinkSync(latest);
+      else if (kind === "extra")
+        writeFileSync(join(root, RELEASE_DIRECTORY, "cycle3ka16.json"), "{}\n");
+      else renameSync(latest, join(root, RELEASE_DIRECTORY, "renamed.json"));
+      const before = snapshot(root);
+      await expect(
+        verifyArchivedRelease(root, next, closure15, archiveReader()),
+      ).rejects.toThrow(
+        /installed archived descriptor|archive registry|release registry entry/u,
+      );
+      expect(snapshot(root)).toEqual(before);
+    },
+  );
+
+  it.each([...RELEASE_CLASSIFICATION_ADAPTER_PATHS, next.descriptorPath])(
+    "rejects changed archived output %s without writing",
+    async (path) => {
+      const root = archiveWorkspace();
+      const git = archiveReader();
+      const changed = `${git.blob(closure15, path)}\n`;
+      // Let the descriptor pass registry equality so its canonical renderer
+      // comparison, like each adapter's comparison, must detect the mutation.
+      if (path === next.descriptorPath)
+        writeFileSync(join(root, path), changed);
+      const before = snapshot(root);
+      await expect(
+        verifyArchivedRelease(root, next, closure15, {
+          ...git,
+          blob: (pin, candidate) =>
+            pin === closure15 && candidate === path
+              ? changed
+              : git.blob(pin, candidate),
+        }),
+      ).rejects.toThrow(/generated archived closure/u);
+      expect(snapshot(root)).toEqual(before);
+    },
+    30_000,
+  );
+
+  it.each(["parents", "total count", "first-parent count", "inventory"])(
+    "rejects a changed archive closure %s",
+    async (kind) => {
+      const root = archiveWorkspace();
+      const git = archiveReader();
+      await expect(
+        verifyArchivedRelease(root, next, closure15, {
+          ...git,
+          parents: (pin) =>
+            kind === "parents" && pin === closure15
+              ? [feature15, feature14]
+              : git.parents(pin),
+          count: (baseline, pin, firstParent) =>
+            pin === closure15 &&
+            ((kind === "total count" && !firstParent) ||
+              (kind === "first-parent count" && firstParent))
+              ? git.count(baseline, pin, firstParent) + 1
+              : git.count(baseline, pin, firstParent),
+          changes: (parent, pin) =>
+            kind === "inventory" && pin === closure15
+              ? next.closureChanges.slice(1)
+              : git.changes(parent, pin),
+        }),
+      ).rejects.toThrow(
+        /closure parent|total\/first-parent count|closure inventory/u,
+      );
+    },
+  );
+
+  it("rejects an inherited renderer mutation even if the latest archive is regenerated from it", async () => {
+    const path = RELEASE_CLASSIFICATION_ADAPTER_PATHS[0];
+    const corruptPrior = new Map(priorOutputs);
+    corruptPrior.set(
+      path,
+      `${priorOutputs.get(path) ?? ""}# inherited mutation\n`,
+    );
+    const corruptNext = await generateReleaseOutputs(
+      adapters(corruptPrior),
+      next,
+    );
+    const root = archiveWorkspace();
+    const before = snapshot(root);
+    await expect(
+      verifyArchivedRelease(
+        root,
+        next,
+        closure15,
+        archiveReader(reader(corruptPrior, corruptNext)),
+      ),
+    ).rejects.toThrow(/generated historical closure/u);
+    expect(snapshot(root)).toEqual(before);
+  }, 30_000);
+
+  it.each(["missing", "unrelated"])(
+    "rejects a %s anchor without falling back to current adapters",
+    async (kind) => {
+      const root = archiveWorkspace();
+      const git = archiveReader();
+      const before = snapshot(root);
+      await expect(
+        verifyArchivedRelease(root, next, closure15, {
+          ...git,
+          ancestor: () => {
+            if (kind === "missing") throw new Error("Missing archive commit");
+            return false;
+          },
+        }),
+      ).rejects.toThrow(/Missing archive commit|archive is not an ancestor/u);
+      expect(snapshot(root)).toEqual(before);
+    },
+  );
+
+  it("requires the fixed a89 archive on the no-argument CLI even with no installed descriptors", async () => {
+    const root = mkdtempSync(join(ownedTemporaryRoot, temporaryPrefix));
+    directories.push(root);
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => !/^(?:GIT_|NODE_OPTIONS$)/iu.test(key),
+      ),
+    );
+    const args = [
+      "-c",
+      `safe.directory=${root.replaceAll("\\", "/")}`,
+      "-c",
+      "user.name=Release Test",
+      "-c",
+      "user.email=release-test@example.invalid",
+      "-C",
+      root,
+    ];
+    for (const command of [
+      ["init", "--quiet"],
+      ["commit", "--quiet", "--allow-empty", "-m", "unrelated synthetic root"],
+    ])
+      execFileSync("git", [...args, ...command], {
+        env,
+        windowsHide: true,
+        stdio: "pipe",
+        timeout: 30_000,
+      });
+    const before = snapshot(root);
+    await expect(runReleaseClassification([], root)).rejects.toThrow(
+      "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e:scripts/release-classification/releases/cycle3ka89.json",
+    );
+    expect(snapshot(root)).toEqual(before);
   });
 });

@@ -1,11 +1,91 @@
 # Current work
 
-Updated September 27, 2026. Build a personal Investing.com-style platform, then
+Updated September 28, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
-sources. The [product roadmap](./PRODUCT_ROADMAP.md) owns scope and delivery order;
+sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
+order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
-## Active outcome: a89 indexed Markets comparison
+## Approved delivery integration
+
+The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
+build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
+describes the prepared static-site pipeline, source-check proof, artifact and
+credential setup. Its first target is the disconnected client; the cloud storage
+proof below remains the prerequisite for a connected product. Local checks and
+source review do not establish a cloud deployment. Main integration and the first
+observed run remain pending. The separate `investment-production` site exists
+with no deployment, and its public ID is configured in GitHub. Both GitHub
+environments are configured; the owner saved the staging deployment secret,
+whose name was verified without reading its value. Production still needs its
+own credential. PR 11 exposed historical revision restrictions in
+filing acceptance and an obsolete page-mode stylesheet mock. The
+[current acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) separates new
+execution evidence from retained historical records. Required hosted success
+remains pending while these repairs are verified.
+The existing preview smoke keeps its qualified status until replacement passes.
+
+## BrowserStack browser CI
+
+The owner selected BrowserStack Automate/Playwright for browser tests only.
+Installed app tests will use the owner's Pixel phones, starting with the confirmed
+Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
+do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
+for commands, triggers and evidence limits. The separate deployed-preview workflow
+is published on `codex/android-launch`, and both repository secret names were
+verified without inspecting their values. GitHub run `36499410858`, attempt 2 at
+`50add08`, succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
+1 minute 6 seconds; its 31-second test step reported that the BrowserStack website
+runner completed successfully.
+
+BrowserStack listed `disconnected-web-smoke #CI 36499410858`, but its detail route
+and then the project list redirected to `request_access`. The new session,
+platform/result and terminal BrowserStack build state remain independently
+unverified. The earlier 13-second Windows 11 / Chrome 154 session is separate
+evidence. Merging the workflow into `main` and default-branch manual dispatch
+remain pending. Setup is one-time; each command or eligible push starts a new
+test. The manually deployed preview remains distinct from the test-code revision.
+The Appwrite storage work remains the next product outcome.
+
+## Active outcome: Appwrite shared watchlist storage
+
+The owner approved working toward a personal computer/Android launch before
+November, with Android first and a signed native container sharing the React UI.
+The owner selected the existing Appwrite Education project as the hosting
+candidate, superseding the PC/Tailscale plan. A private, data-free Node function
+has executed successfully; this does not establish application persistence,
+authentication or phone access.
+The [Android guide](./ANDROID_CLIENT.md) and
+[specification](../specs/012-android-client/spec.md) define this first outcome.
+The client foundation is committed at `f4674a8f` and has produced a debug APK.
+It remains disconnected. Shared watchlist validation and the server-only
+Appwrite repository are implemented at `e71c9021`, with atomic version updates
+and durable command receipts. A separate server transport now bounds SDK
+requests, cancels expired I/O and prevents response warnings or error bodies
+from reaching logs. It preserves the official SDK's serialization and integer
+decoding through a private Undici dispatcher. This remains unwired to application
+routes. Isolated cloud race/rollback tests, managed sessions and shared UI
+integration follow local validation. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
+
+Development uses `android-launch` on `codex/android-launch`, based on accepted
+a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is
+`59fqkV8AwtuNStJkwXwuW`; exact runtime/rollback evidence stays in workspace CURRENT.
+A90 Previous/Next is parked intact in `markets-home` at `dc63dfa1`, with its
+feature/candidate refs and interrupted native evidence preserved. It is not an
+accepted release. This launch work does not resume the expired heartbeat window.
+
+Root owns dependency/lockfile, integration, notices and guides. The contract agent
+owns pure validation and the unchanged local route; the storage agent owns the
+Appwrite repository and transaction tests. Review remains independent. A separate
+data-free copy of the existing mobile assets is prepared for BrowserStack website
+testing. Native App Live attempts established no device coverage. Preserve the
+accepted desktop runtime, disconnected APK and unrelated parked source. No owner
+data migration or provider requests are included.
+
+## A89 implementation context (released)
+
+This is the historical pre-acceptance checkpoint. Workspace CURRENT and the
+accepted a89 review supersede its pending-release statements.
 
 Plot every company in the complete loaded two-to-six-member board on the same
 observed dates, starting each line at 100. Reuse the Research comparison chart,

@@ -1,5 +1,11 @@
 export type DataMode = "synthetic";
 export {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
+  type WatchlistMembership,
+} from "./personal-watchlist";
+export {
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS,
   type PersonalSecQuarterlyConcept,

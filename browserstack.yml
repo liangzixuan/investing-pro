@@ -1,0 +1,22 @@
+# Credentials come from BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY.
+framework: playwright
+platforms:
+  - os: Windows
+    osVersion: "11"
+    browserName: chrome
+    browserVersion: latest
+parallelsPerPlatform: 1
+projectName: Investment
+buildName: disconnected-web-smoke
+browserstackLocal: false
+browserstackAutomation: true
+testObservability: false
+testReporting: false
+disableAutoCaptureLogs: true
+logDir: logs/browserstack
+percy: false
+accessibility: false
+networkLogs: false
+consoleLogs: disable
+debug: false
+video: false

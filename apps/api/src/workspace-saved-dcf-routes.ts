@@ -1,4 +1,7 @@
 import {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
   isPersonalSavedDcfPayload,
   isPersonalSavedDcfPutRequest,
   isPersonalSavedDcfResolveRequest,
@@ -33,11 +36,6 @@ import {
   PERSONAL_OWNER_INTENT_HEADER_NAME,
   sendPersonalOwnerSessionProblem,
 } from "./personal-owner-session-routes";
-import {
-  isMainWatchlistPayload,
-  membershipMatchesResult,
-  type MainWatchlistPayload,
-} from "./workspace-watchlist-routes";
 
 export const PERSONAL_SAVED_DCF_PATH =
   "/v1/personal-filing/workspace/dcf-assumptions" as const;

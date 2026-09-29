@@ -16,6 +16,8 @@ import {
   FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_NOT_PROVEN,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION,
+  FILING_PAYLOAD_CUSTODY_EVIDENCE_VERSION,
+  FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_WORKFLOW,
   createFilingPayloadCustodyEvidence,
@@ -27,7 +29,7 @@ import {
   gitArgumentsWithoutReplacementObjects,
   gitEnvironmentWithoutGrafts,
   hasNonEmptyStderr,
-  verifyCycle2cCommitBoundary,
+  verifyCurrentFilingPayloadCustodySourceBoundary,
 } from "./filing-payload-custody-evidence-verifier";
 import {
   FILING_PAYLOAD_CUSTODY_ALGORITHM,
@@ -44,7 +46,7 @@ import {
 } from "./payload-custody";
 import { buildFilingPayloadCustodyAcceptanceCases } from "./test-payload-builder";
 
-const EVIDENCE_FILE_NAME = "research-cockpit-filing-payload-custody-v1.json";
+const EVIDENCE_FILE_NAME = "research-cockpit-filing-payload-custody-v2.json";
 const MAX_COMMAND_BYTES = 4_194_304;
 const COMMAND_TIMEOUT_MILLISECONDS = 30_000;
 
@@ -82,22 +84,17 @@ async function main(): Promise<void> {
   if (
     process.env.CI !== "true" ||
     process.platform !== "linux" ||
-    process.arch !== "x64" ||
-    (
-      await git(repositoryPath, [
-        "status",
-        "--porcelain=v1",
-        "-z",
-        "--untracked-files=all",
-      ])
-    ).byteLength !== 0
+    process.arch !== "x64"
   )
     fail();
-  const revision = text(await git(repositoryPath, ["rev-parse", "HEAD"]));
+  const revision = requiredEnvironment("GITHUB_SHA");
   if (!/^[0-9a-f]{40}$/u.test(revision)) fail();
 
   stage = "commit_boundary";
-  await verifyCycle2cCommitBoundary(repositoryPath, revision);
+  await verifyCurrentFilingPayloadCustodySourceBoundary(
+    repositoryPath,
+    revision,
+  );
 
   stage = "source_hashes";
   const committed = new Map<string, Uint8Array>();
@@ -271,12 +268,18 @@ async function main(): Promise<void> {
     pnpm: text(await commandOutput("pnpm", ["--version"])),
   });
 
+  stage = "commit_boundary";
+  await verifyCurrentFilingPayloadCustodySourceBoundary(
+    repositoryPath,
+    revision,
+  );
+
   stage = "evidence";
   const evidence = createFilingPayloadCustodyEvidence({
     checksPassed: FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS,
     claim: FILING_PAYLOAD_CUSTODY_CLAIM,
     completedAt: new Date().toISOString(),
-    evidenceVersion: 1,
+    evidenceVersion: FILING_PAYLOAD_CUSTODY_EVIDENCE_VERSION,
     fixtureManifestSha256,
     lifecycle: {
       auditValueFree: true,
@@ -311,6 +314,7 @@ async function main(): Promise<void> {
       tagBytes: FILING_PAYLOAD_CUSTODY_ALGORITHM.tagBytes,
     },
     schemaVersion: FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION,
+    sourceBoundary: FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
     sourceHashes,
     startedAt,
     status: "passed",

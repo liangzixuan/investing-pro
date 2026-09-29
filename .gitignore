@@ -4,6 +4,10 @@ dist/
 coverage/
 playwright-report/
 test-results/
+logs/
+/log/
+browserstack-sdk.log*
+.browserstack/
 .env
 .env.local
 .npmrc

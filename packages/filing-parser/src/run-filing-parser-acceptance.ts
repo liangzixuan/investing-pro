@@ -28,6 +28,7 @@ import {
   FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
+  FILING_PARSER_SOURCE_BOUNDARY,
   FilingParserContainerInspectionError,
   FilingParserImageInspectionError,
   createFilingParserEvidence,
@@ -40,7 +41,7 @@ import {
   type FilingParserEvidenceSourceHash,
   type FilingParserImageInspectionCheckCode,
 } from "./filing-parser-evidence";
-import { verifyCycle2aCommitBoundary } from "./filing-parser-evidence-verifier";
+import { verifyCurrentFilingParserSourceBoundary } from "./filing-parser-evidence-verifier";
 import { buildParserSecurityCases } from "./test-archive-builder";
 
 const EXPECTED_IMAGE =
@@ -50,7 +51,7 @@ const BASE_INDEX_DIGEST =
 const BASE_PLATFORM_MANIFEST_DIGEST =
   "sha256:6e13e65c55e33adf203d77ee371cf8bf5d81bd4902ef07565721f46bf44917af" as const;
 const SIGNING_KEY_ID = "cycle2a-ephemeral-ed25519-v1";
-const EVIDENCE_FILE_NAME = "research-cockpit-filing-parser-isolation-v1.json";
+const EVIDENCE_FILE_NAME = "research-cockpit-filing-parser-isolation-v2.json";
 const MAX_COMMAND_OUTPUT_BYTES = 4_194_304;
 
 type FilingParserAcceptanceStage =
@@ -104,25 +105,9 @@ async function main(): Promise<void> {
   const environment = acceptanceEnvironment();
   const startedAt = new Date().toISOString();
   const repositoryPath = resolve(process.cwd());
-  acceptanceStage = "revision";
-  const revision = oneLine(
-    await checkedCommandStdout("git", ["rev-parse", "HEAD"], 5_000),
-  );
-  if (revision !== environment.revision) fail();
-  acceptanceStage = "worktree";
-  const worktree = await runCommand(
-    "git",
-    ["status", "--porcelain=v1", "--untracked-files=all"],
-    5_000,
-  );
-  if (
-    worktree.exitCode !== 0 ||
-    worktree.stdout.byteLength !== 0 ||
-    worktree.stderr.byteLength !== 0
-  )
-    fail();
+  const revision = environment.revision;
   acceptanceStage = "commit_boundary";
-  await verifyCycle2aCommitBoundary(repositoryPath, revision);
+  await verifyCurrentFilingParserSourceBoundary(repositoryPath, revision);
 
   acceptanceStage = "source_hashes";
   const sourceHashes = await committedSourceHashes(repositoryPath, revision);
@@ -261,6 +246,8 @@ async function main(): Promise<void> {
     const accepted = outcomes.filter(
       (outcome) => outcome.observedStatus === "accepted",
     ).length;
+    acceptanceStage = "commit_boundary";
+    await verifyCurrentFilingParserSourceBoundary(repositoryPath, revision);
     const completedAt = new Date().toISOString();
     acceptanceStage = "evidence_construction";
     const evidence = createFilingParserEvidence({
@@ -268,7 +255,7 @@ async function main(): Promise<void> {
       checksPassed: FILING_PARSER_EVIDENCE_CHECKS,
       claim: FILING_PARSER_EVIDENCE_CLAIM,
       completedAt,
-      evidenceVersion: 1,
+      evidenceVersion: 2,
       fixtureManifestSha256,
       image: {
         architecture: "amd64",
@@ -281,6 +268,7 @@ async function main(): Promise<void> {
       notProven: FILING_PARSER_EVIDENCE_NOT_PROVEN,
       repository: environment.repository,
       revision,
+      sourceBoundary: FILING_PARSER_SOURCE_BOUNDARY,
       runtime: {
         capabilitiesDropped: ["ALL"],
         containerUser: "65532:65532",

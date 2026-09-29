@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import { constants, type Stats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { isAbsolute } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { types as utilTypes } from "node:util";
 
 import {
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
+  FILING_PARSER_SOURCE_BOUNDARY,
   filingParserEvidenceSha256,
   parseCanonicalFilingParserEvidence,
   type FilingParserEvidence,
@@ -12059,19 +12060,11 @@ async function verifyFilingParserEvidenceOfflineInternal(
   )
     invalidReview();
 
-  const repositoryPath = await realpath(normalizedOptions.repositoryPath);
-  const repositoryStat = await lstat(repositoryPath);
-  if (!repositoryStat.isDirectory() || repositoryStat.isSymbolicLink())
-    invalidReview();
-  await git(
-    repositoryPath,
-    ["cat-file", "-e", `${normalizedOptions.expectedRevision}^{commit}`],
-    0,
-  );
-  await verifyCycle2aCommitBoundary(
-    repositoryPath,
+  await verifyCurrentFilingParserSourceBoundary(
+    normalizedOptions.repositoryPath,
     normalizedOptions.expectedRevision,
   );
+  const repositoryPath = await realpath(normalizedOptions.repositoryPath);
 
   const committedSources = new Map<string, Uint8Array>();
   for (
@@ -12264,173 +12257,180 @@ function verifyFixtureManifestChain(
     invalidReview();
 }
 
-export async function verifyCycle2aCommitBoundary(
+export async function verifyCurrentFilingParserSourceBoundary(
   repositoryPath: string,
   revision: string,
 ): Promise<void> {
-  await verifyNoEffectiveFilingParserGitGrafts(repositoryPath);
-  await git(
-    repositoryPath,
-    ["cat-file", "-e", `${CYCLE_2A_BASELINE_REVISION}^{commit}`],
-    0,
-  );
-  await git(
-    repositoryPath,
-    ["merge-base", "--is-ancestor", CYCLE_2A_BASELINE_REVISION, revision],
-    0,
-  );
-  const cycle2zBaselineDiffPaths = await cycle2zTransitionSurfaceDiffPaths(
+  await verifyFilingParserCurrentSourceSnapshot(
     repositoryPath,
     revision,
+    FILING_PARSER_SOURCE_BOUNDARY.historicalAnchor,
+    FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   );
-  const cycle2zRoutingRequired = isCycle2zTransitionRoutingRequired(
-    cycle2zBaselineDiffPaths,
+  await verifyCycle2aCommitBoundary(
+    repositoryPath,
+    FILING_PARSER_SOURCE_BOUNDARY.historicalAnchor,
   );
-  if (cycle2zRoutingRequired)
-    await verifyCycle2zTransition(repositoryPath, revision);
-  const cycle2xBaselineDiffPaths = await cycle2xTransitionSurfaceDiffPaths(
+  await verifyCurrentFilingParserDomainTrees(repositoryPath, revision, true);
+  await verifyFilingParserCurrentSourceSnapshot(
     repositoryPath,
     revision,
+    FILING_PARSER_SOURCE_BOUNDARY.historicalAnchor,
+    FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   );
-  const cycle2xRoutingRequired = isCycle2xTransitionRoutingRequired(
-    cycle2xBaselineDiffPaths,
-  );
-  if (!cycle2zRoutingRequired && cycle2xRoutingRequired)
-    await verifyCycle2xTransition(repositoryPath, revision);
-  const cycle2wBaselineDiffPaths = await cycle2wTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2wRoutingRequired = isCycle2wTransitionRoutingRequired(
-    cycle2wBaselineDiffPaths,
-  );
+}
+
+/** @internal The production boundary supplies the fixed anchor and full inventory. */
+export async function verifyFilingParserCurrentSourceSnapshot(
+  repositoryPath: string,
+  revision: string,
+  historicalAnchor: string,
+  sourcePaths: readonly string[],
+): Promise<void> {
   if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    cycle2wRoutingRequired
+    !COMMIT_SHA.test(revision) ||
+    !COMMIT_SHA.test(historicalAnchor) ||
+    sourcePaths.length === 0 ||
+    new Set(sourcePaths).size !== sourcePaths.length
   )
-    await verifyCycle2wTransition(repositoryPath, revision);
-  const cycle2vBaselineDiffPaths = await cycle2vTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2vRoutingRequired = isCycle2vTransitionRoutingRequired(
-    cycle2vBaselineDiffPaths,
-  );
-  if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    !cycle2wRoutingRequired &&
-    cycle2vRoutingRequired
-  )
-    await verifyCycle2vTransition(repositoryPath, revision);
-  const cycle2uBaselineDiffPaths = await cycle2uTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2uRoutingRequired = isCycle2uTransitionRoutingRequired(
-    cycle2uBaselineDiffPaths,
-  );
-  if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    !cycle2wRoutingRequired &&
-    !cycle2vRoutingRequired &&
-    cycle2uRoutingRequired
-  )
-    await verifyCycle2uTransition(repositoryPath, revision);
-  const cycle2sBaselineDiffPaths = await cycle2sTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2sRoutingRequired = isCycle2sTransitionRoutingRequired(
-    cycle2sBaselineDiffPaths,
-  );
-  if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    !cycle2wRoutingRequired &&
-    !cycle2vRoutingRequired &&
-    !cycle2uRoutingRequired &&
-    cycle2sRoutingRequired
-  )
-    await verifyCycle2sTransition(repositoryPath, revision);
-  const cycle2rBaselineDiffPaths = await cycle2rTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2rRoutingRequired = isCycle2rTransitionRoutingRequired(
-    cycle2rBaselineDiffPaths,
-  );
-  if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    !cycle2wRoutingRequired &&
-    !cycle2vRoutingRequired &&
-    !cycle2uRoutingRequired &&
-    !cycle2sRoutingRequired &&
-    cycle2rRoutingRequired
-  )
-    await verifyCycle2rTransition(repositoryPath, revision);
-  const cycle2qBaselineDiffPaths = await cycle2qTransitionSurfaceDiffPaths(
-    repositoryPath,
-    revision,
-  );
-  const cycle2qRoutingRequired = isCycle2qTransitionRoutingRequired(
-    cycle2qBaselineDiffPaths,
-  );
-  if (
-    !cycle2zRoutingRequired &&
-    !cycle2xRoutingRequired &&
-    !cycle2wRoutingRequired &&
-    !cycle2vRoutingRequired &&
-    !cycle2uRoutingRequired &&
-    !cycle2sRoutingRequired &&
-    !cycle2rRoutingRequired &&
-    cycle2qRoutingRequired
-  )
-    await verifyCycle2qTransition(repositoryPath, revision);
-  const diff = splitNul(
-    await git(repositoryPath, [
-      "diff",
-      "--name-status",
-      "--no-renames",
-      "-z",
-      CYCLE_2A_BASELINE_REVISION,
-      revision,
-      "--",
-    ]),
-  );
-  if (diff.length % 2 !== 0) invalidReview();
-  const diffEntries: Array<{
-    readonly path: string;
-    readonly status: string;
-  }> = [];
-  for (let index = 0; index < diff.length; index += 2) {
-    const status = diff[index];
-    const path = diff[index + 1];
+    invalidReview();
+  const overrides = new Set([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_SHALLOW_FILE",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+  ]);
+  for (const [key, value] of Object.entries(process.env)) {
+    const name = key.toUpperCase();
     if (
-      !cycle2zRoutingRequired &&
-      !cycle2xRoutingRequired &&
-      !cycle2wRoutingRequired &&
-      !cycle2vRoutingRequired &&
-      !cycle2uRoutingRequired &&
-      !cycle2sRoutingRequired &&
-      !cycle2rRoutingRequired &&
-      !cycle2qRoutingRequired &&
-      !isCycle2aCommitDiffEntryAllowed(status, path) &&
-      !isPnpmDependencyPolicyMaintenanceNpmrcDeletionDiffEntryAllowed(
-        status,
-        path,
-      ) &&
-      !isCycle2hPreBaselineCumulativeDiffEntry(status, path) &&
-      !isCycle2mPreBaselineCumulativeDiffEntryAllowed(status, path)
+      value !== undefined &&
+      value !== "" &&
+      (overrides.has(name) || /^GIT_CONFIG_(?:KEY|VALUE)_/u.test(name))
     )
       invalidReview();
-    if (status === undefined || path === undefined) invalidReview();
-    diffEntries.push(Object.freeze({ path, status }));
   }
+  const directory = await lstat(repositoryPath);
+  if (!directory.isDirectory() || directory.isSymbolicLink()) invalidReview();
+  const root = await realpath(repositoryPath);
+  if (root !== resolve(repositoryPath)) invalidReview();
+  await verifyNoEffectiveFilingParserGitGrafts(root);
+  await verifyNoEffectiveFilingParserGitGrafts(
+    root,
+    Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+      ),
+    ),
+  );
+  const topLevel = Buffer.from(
+    await git(
+      root,
+      ["rev-parse", "--path-format=absolute", "--show-toplevel"],
+      MAX_GIT_PATH_BYTES,
+    ),
+  )
+    .toString("utf8")
+    .trimEnd();
+  if ((await realpath(topLevel)) !== root) invalidReview();
+  if (
+    (
+      await git(
+        root,
+        ["for-each-ref", "--format=%(refname)", "refs/replace/"],
+        MAX_GIT_PATH_BYTES,
+      )
+    ).byteLength !== 0
+  )
+    invalidReview();
+  const actualRevision = await git(root, ["rev-parse", "--verify", "HEAD"], 41);
+  if (Buffer.from(actualRevision).toString("utf8") !== `${revision}\n`)
+    invalidReview();
+  if (
+    Buffer.from(await git(root, ["cat-file", "-t", revision], 32)).toString(
+      "utf8",
+    ) !== "commit\n"
+  )
+    invalidReview();
+  if (
+    (
+      await git(
+        root,
+        ["status", "--porcelain=v1", "--untracked-files=all"],
+        MAX_GIT_PATH_BYTES,
+      )
+    ).byteLength !== 0
+  )
+    invalidReview();
+  await git(root, ["cat-file", "-e", `${historicalAnchor}^{commit}`], 0);
+  await git(
+    root,
+    ["merge-base", "--is-ancestor", historicalAnchor, revision],
+    0,
+  );
+  for (const path of sourcePaths) {
+    const parts = path.split("/");
+    if (
+      parts.some(
+        (part) =>
+          !/^[A-Za-z0-9_.-]+$/u.test(part) || part === "." || part === "..",
+      )
+    )
+      invalidReview();
+    const tree = await git(root, ["ls-tree", "-z", revision, "--", path]);
+    const entries = splitNul(tree);
+    if (
+      entries.length !== 1 ||
+      /^100644 blob [0-9a-f]{40}\t(.+)$/u.exec(entries[0] ?? "")?.[1] !== path
+    )
+      invalidReview();
+    let parent = root;
+    for (const part of parts.slice(0, -1)) {
+      parent = join(parent, part);
+      const stat = await lstat(parent);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) invalidReview();
+    }
+    const committed = await git(root, ["show", `${revision}:${path}`]);
+    const working = await readSmallRegularFile(
+      join(root, path),
+      MAX_GIT_BLOB_BYTES,
+    );
+    if (sha256(working) !== sha256(committed)) invalidReview();
+  }
+  const finalRevision = await git(root, ["rev-parse", "--verify", "HEAD"], 41);
+  if (Buffer.from(finalRevision).toString("utf8") !== `${revision}\n`)
+    invalidReview();
+  if (
+    (
+      await git(
+        root,
+        ["status", "--porcelain=v1", "--untracked-files=all"],
+        MAX_GIT_PATH_BYTES,
+      )
+    ).byteLength !== 0
+  )
+    invalidReview();
+}
 
+async function verifyCurrentFilingParserDomainTrees(
+  repositoryPath: string,
+  revision: string,
+  currentEvidence = false,
+): Promise<{
+  normalizationPaths: string[];
+  comparisonPaths: string[];
+  qualityMeasurementPaths: string[];
+  qualityPrecommitmentPaths: string[];
+}> {
   const evidenceNoteTreeEntries = splitNul(
     await git(repositoryPath, [
       "ls-tree",
@@ -12658,9 +12658,210 @@ export async function verifyCycle2aCommitBoundary(
   if (
     !isCycle2kAcceptanceTreeAllowed(cycle2kAcceptancePaths) &&
     !isCycle2mAcceptanceTreeAllowed(cycle2kAcceptancePaths) &&
-    !isCycle2oAcceptanceTreeAllowed(cycle2kAcceptancePaths)
+    !isCycle2oAcceptanceTreeAllowed(cycle2kAcceptancePaths) &&
+    !(
+      currentEvidence &&
+      isCurrentFilingParserCrossEngineAcceptanceTreeAllowed(
+        cycle2kAcceptancePaths,
+      )
+    )
   )
     invalidReview();
+  return {
+    normalizationPaths,
+    comparisonPaths,
+    qualityMeasurementPaths,
+    qualityPrecommitmentPaths,
+  };
+}
+
+/** @internal The current V6 tree adds exactly two reviewed evidence files. */
+export function isCurrentFilingParserCrossEngineAcceptanceTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return exactPathList(
+    paths,
+    [
+      ...CYCLE_2O_ACCEPTANCE_SUCCESSOR_TREE,
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.test.ts",
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.ts",
+    ].sort(),
+  );
+}
+
+export async function verifyCycle2aCommitBoundary(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await verifyNoEffectiveFilingParserGitGrafts(repositoryPath);
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${CYCLE_2A_BASELINE_REVISION}^{commit}`],
+    0,
+  );
+  await git(
+    repositoryPath,
+    ["merge-base", "--is-ancestor", CYCLE_2A_BASELINE_REVISION, revision],
+    0,
+  );
+  const cycle2zBaselineDiffPaths = await cycle2zTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2zRoutingRequired = isCycle2zTransitionRoutingRequired(
+    cycle2zBaselineDiffPaths,
+  );
+  if (cycle2zRoutingRequired)
+    await verifyCycle2zTransition(repositoryPath, revision);
+  const cycle2xBaselineDiffPaths = await cycle2xTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2xRoutingRequired = isCycle2xTransitionRoutingRequired(
+    cycle2xBaselineDiffPaths,
+  );
+  if (!cycle2zRoutingRequired && cycle2xRoutingRequired)
+    await verifyCycle2xTransition(repositoryPath, revision);
+  const cycle2wBaselineDiffPaths = await cycle2wTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2wRoutingRequired = isCycle2wTransitionRoutingRequired(
+    cycle2wBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    cycle2wRoutingRequired
+  )
+    await verifyCycle2wTransition(repositoryPath, revision);
+  const cycle2vBaselineDiffPaths = await cycle2vTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2vRoutingRequired = isCycle2vTransitionRoutingRequired(
+    cycle2vBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    !cycle2wRoutingRequired &&
+    cycle2vRoutingRequired
+  )
+    await verifyCycle2vTransition(repositoryPath, revision);
+  const cycle2uBaselineDiffPaths = await cycle2uTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2uRoutingRequired = isCycle2uTransitionRoutingRequired(
+    cycle2uBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    !cycle2wRoutingRequired &&
+    !cycle2vRoutingRequired &&
+    cycle2uRoutingRequired
+  )
+    await verifyCycle2uTransition(repositoryPath, revision);
+  const cycle2sBaselineDiffPaths = await cycle2sTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2sRoutingRequired = isCycle2sTransitionRoutingRequired(
+    cycle2sBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    !cycle2wRoutingRequired &&
+    !cycle2vRoutingRequired &&
+    !cycle2uRoutingRequired &&
+    cycle2sRoutingRequired
+  )
+    await verifyCycle2sTransition(repositoryPath, revision);
+  const cycle2rBaselineDiffPaths = await cycle2rTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2rRoutingRequired = isCycle2rTransitionRoutingRequired(
+    cycle2rBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    !cycle2wRoutingRequired &&
+    !cycle2vRoutingRequired &&
+    !cycle2uRoutingRequired &&
+    !cycle2sRoutingRequired &&
+    cycle2rRoutingRequired
+  )
+    await verifyCycle2rTransition(repositoryPath, revision);
+  const cycle2qBaselineDiffPaths = await cycle2qTransitionSurfaceDiffPaths(
+    repositoryPath,
+    revision,
+  );
+  const cycle2qRoutingRequired = isCycle2qTransitionRoutingRequired(
+    cycle2qBaselineDiffPaths,
+  );
+  if (
+    !cycle2zRoutingRequired &&
+    !cycle2xRoutingRequired &&
+    !cycle2wRoutingRequired &&
+    !cycle2vRoutingRequired &&
+    !cycle2uRoutingRequired &&
+    !cycle2sRoutingRequired &&
+    !cycle2rRoutingRequired &&
+    cycle2qRoutingRequired
+  )
+    await verifyCycle2qTransition(repositoryPath, revision);
+  const diff = splitNul(
+    await git(repositoryPath, [
+      "diff",
+      "--name-status",
+      "--no-renames",
+      "-z",
+      CYCLE_2A_BASELINE_REVISION,
+      revision,
+      "--",
+    ]),
+  );
+  if (diff.length % 2 !== 0) invalidReview();
+  const diffEntries: Array<{
+    readonly path: string;
+    readonly status: string;
+  }> = [];
+  for (let index = 0; index < diff.length; index += 2) {
+    const status = diff[index];
+    const path = diff[index + 1];
+    if (
+      !cycle2zRoutingRequired &&
+      !cycle2xRoutingRequired &&
+      !cycle2wRoutingRequired &&
+      !cycle2vRoutingRequired &&
+      !cycle2uRoutingRequired &&
+      !cycle2sRoutingRequired &&
+      !cycle2rRoutingRequired &&
+      !cycle2qRoutingRequired &&
+      !isCycle2aCommitDiffEntryAllowed(status, path) &&
+      !isPnpmDependencyPolicyMaintenanceNpmrcDeletionDiffEntryAllowed(
+        status,
+        path,
+      ) &&
+      !isCycle2hPreBaselineCumulativeDiffEntry(status, path) &&
+      !isCycle2mPreBaselineCumulativeDiffEntryAllowed(status, path)
+    )
+      invalidReview();
+    if (status === undefined || path === undefined) invalidReview();
+    diffEntries.push(Object.freeze({ path, status }));
+  }
+
+  const {
+    normalizationPaths,
+    comparisonPaths,
+    qualityMeasurementPaths,
+    qualityPrecommitmentPaths,
+  } = await verifyCurrentFilingParserDomainTrees(repositoryPath, revision);
 
   const cycle2pBaselineDiffPaths = await cycle2pTransitionSurfaceDiffPaths(
     repositoryPath,

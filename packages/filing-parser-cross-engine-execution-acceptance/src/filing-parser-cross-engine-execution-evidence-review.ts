@@ -1,4 +1,9 @@
 import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS,
+} from "./filing-parser-cross-engine-execution-evidence-v6";
+import {
   verifyFilingParserCrossEngineExecutionEvidenceOffline,
   type FilingParserCrossEngineExecutionEvidenceReview,
   type FilingParserCrossEngineExecutionEvidenceReviewOptions,
@@ -13,6 +18,7 @@ import {
 import {
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
   FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+  filingParserCrossEngineEvidenceCanonicalJson,
 } from "./filing-parser-cross-engine-execution-evidence-v5";
 
 export async function reviewFilingParserCrossEngineExecutionEvidence(
@@ -86,6 +92,18 @@ export function filingParserCrossEngineExecutionEvidenceReviewStdout(
   try {
     if (
       review.verdict !== "offline_consistent" ||
+      ("evidenceVersion" in review &&
+        review.evidenceVersion === 6 &&
+        (filingParserCrossEngineEvidenceCanonicalJson(review.sourceBoundary) !==
+          filingParserCrossEngineEvidenceCanonicalJson(
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+          ) ||
+          filingParserCrossEngineEvidenceCanonicalJson(review.historicalV5) !==
+            filingParserCrossEngineEvidenceCanonicalJson(
+              FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+            ) ||
+          review.sourceCount !==
+            FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS.length)) ||
       ("evidenceVersion" in review &&
         review.evidenceVersion === 5 &&
         (review.baseline !==

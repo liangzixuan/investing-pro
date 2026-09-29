@@ -17,6 +17,7 @@ import {
 } from "./filing-parser-cross-engine-execution-evidence-v5";
 
 import {
+  filingParserCrossEngineCurrentSourceMode,
   ACCEPTANCE_PHASES,
   NODE_IMAGE_INSPECTION_PROFILE,
   PYTHON_IMAGE_INSPECTION_PROFILE,
@@ -362,13 +363,13 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
       ).toThrow("acceptance failed");
   });
 
-  it("writes only canonical v5 evidence after image removal", () => {
+  it("writes canonical current or historical evidence after image removal", () => {
     const removal = runnerSource.indexOf('markPhase("image_removal")');
     const write = runnerSource.indexOf('markPhase("evidence_write")');
     expect(removal).toBeGreaterThan(0);
     expect(write).toBeGreaterThan(removal);
-    expect(runnerSource).toContain(
-      "serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5(evidence)",
+    expect(runnerSource).toMatch(
+      /serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5\(\s*evidence,?\s*\)/u,
     );
     expect(runnerSource).toContain(
       "research-cockpit-filing-parser-cross-engine-execution-v5.json",
@@ -409,10 +410,10 @@ describe("Cycle 2o custody-quality-composition live acceptance", () => {
       'corrective_sha256" == "5104d3ef85cfcee8e62010d9a76e3efbf0479dcf7f777fa784e956620b02df63"',
     );
     expect(workflowSource).toContain(
-      "research-cockpit-filing-parser-cross-engine-execution-v5.json",
+      "research-cockpit-filing-parser-cross-engine-execution-v${{ steps.current_source.outputs.required == 'true' && '6' || '5' }}.json",
     );
     expect(workflowSource).toContain(
-      "filing-parser-cross-engine-execution-evidence-v5-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}",
+      "filing-parser-cross-engine-execution-evidence-v${{ steps.current_source.outputs.required == 'true' && '6' || '5' }}-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}",
     );
     expect(workflowSource).toContain(
       "pnpm --filter @research-cockpit/filing-parser-quality-composition test",
@@ -492,3 +493,81 @@ function validImageInspection(
     },
   ];
 }
+
+describe("current-source acceptance routing", () => {
+  it("accepts only the explicit current flag or historical absence", () => {
+    expect(filingParserCrossEngineCurrentSourceMode("true")).toBe(true);
+    expect(filingParserCrossEngineCurrentSourceMode(undefined)).toBe(false);
+    expect(filingParserCrossEngineCurrentSourceMode("")).toBe(false);
+    for (const value of ["false", "TRUE", "1", " true", "true\n"])
+      expect(() => filingParserCrossEngineCurrentSourceMode(value)).toThrow();
+  });
+  it("checks current authority before the first Git command and rechecks after image removal", () => {
+    const start = runnerSource.indexOf("async function main(");
+    const authority = runnerSource.indexOf(
+      "assertFilingParserCrossEngineCurrentGitAuthority();",
+      start,
+    );
+    const firstGit = runnerSource.indexOf('checkedCommand("git"', start);
+    expect(authority).toBeGreaterThan(start);
+    expect(authority).toBeLessThan(firstGit);
+    const finalCheck = runnerSource.indexOf("const finalHashes =");
+    expect(finalCheck).toBeGreaterThan(
+      runnerSource.indexOf('markPhase("image_removal")'),
+    );
+    expect(finalCheck).toBeLessThan(
+      runnerSource.indexOf('markPhase("evidence_write")'),
+    );
+  });
+  it.each([
+    [true, false, true],
+    [true, true, true],
+    [false, true, true],
+    [false, false, false],
+  ])(
+    "routes current=%s exactV5=%s to full execution=%s",
+    (current, exact, expected) => {
+      const sections = workflowSource.split(/(?= {6}- name: )/u);
+      const guarded = sections.filter((section) =>
+        / {8}id: (?:cycle\w+_source|admission_validity_bridge|legacy_bridge)\n/u.test(
+          section,
+        ),
+      );
+      expect(guarded).toHaveLength(13);
+      for (const section of guarded)
+        expect(section).toMatch(
+          /if: \$\{\{ steps\.current_source\.outputs\.required != 'true'(?: && \(.+\))? \}\}/u,
+        );
+      const execution = sections.filter((section) =>
+        /^ {6}- name: (?:Run cross-engine|Independently review|Upload filing)/u.test(
+          section,
+        ),
+      );
+      expect(execution).toHaveLength(3);
+      const condition =
+        "success() && (steps.current_source.outputs.required == 'true' || steps.cycle2o_source.outputs.exact == 'true')";
+      for (const section of execution) {
+        expect(section).toContain("if: ${{ " + condition + " }}");
+        const evaluated = condition
+          .replace("success()", "true")
+          .replace(
+            "steps.current_source.outputs.required == 'true'",
+            String(current),
+          )
+          .replace(
+            "steps.cycle2o_source.outputs.exact == 'true'",
+            String(exact),
+          );
+        expect(evaluated).toBe("true && (" + current + " || " + exact + ")");
+        expect(current || exact).toBe(expected);
+      }
+      expect(
+        sections.find((section) =>
+          section.startsWith("      - name: Record exact non-evidence route"),
+        ),
+      ).toContain(
+        "steps.current_source.outputs.required != 'true' && steps.cycle2o_source.outputs.exact != 'true'",
+      );
+    },
+  );
+});

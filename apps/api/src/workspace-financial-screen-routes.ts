@@ -1,4 +1,7 @@
 import {
+  isMainWatchlistPayload,
+  membershipMatchesResult,
+  type MainWatchlistPayload,
   isPersonalFinancialComparisonSelectionPayload,
   isPersonalFinancialComparisonSelectionPutRequest,
   isPersonalFinancialComparisonSelectionResolveRequest,
@@ -45,11 +48,6 @@ import {
   PersonalSecFinancialProviderError,
   type PersonalSecFinancialProvider,
 } from "./personal-sec-financial-provider";
-import {
-  isMainWatchlistPayload,
-  membershipMatchesResult,
-  type MainWatchlistPayload,
-} from "./workspace-watchlist-routes";
 
 export const PERSONAL_FINANCIAL_SCREEN_PATH =
   "/v1/personal-filing/workspace/financial-screen" as const;

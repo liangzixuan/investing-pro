@@ -1,0 +1,28 @@
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.mobile-connection-notice {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-deep);
+  color: var(--ink);
+  font-size: 0.875rem;
+}
+
+.mobile-connection-notice p {
+  margin: 0.25rem 0 0;
+}
+
+.mobile-license-notices {
+  padding: 1rem;
+  font-size: 0.875rem;
+}
+
+.mobile-license-notices pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -38,6 +38,27 @@ import {
   parseCanonicalFilingParserCrossEngineExecutionEvidenceV5,
 } from "./filing-parser-cross-engine-execution-evidence-v5";
 
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS,
+  parseCanonicalFilingParserCrossEngineExecutionEvidenceV6,
+} from "./filing-parser-cross-engine-execution-evidence-v6";
+
+export interface FilingParserCrossEngineExecutionEvidenceReviewV6 {
+  readonly artifactName: string;
+  readonly evidenceSha256: `sha256:${string}`;
+  readonly evidenceVersion: 6;
+  readonly historicalV5: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY;
+  readonly sourceBoundary: typeof FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY;
+  readonly repository: string;
+  readonly revision: string;
+  readonly runAttempt: number;
+  readonly runId: string;
+  readonly sourceCount: number;
+  readonly verdict: "offline_consistent";
+}
+
 export interface FilingParserCrossEngineExecutionEvidenceReviewOptions {
   readonly evidencePath: string;
   readonly expectedArtifactName: string;
@@ -117,6 +138,7 @@ export interface FilingParserCrossEngineExecutionEvidenceReviewV4 {
 }
 
 export type FilingParserCrossEngineExecutionEvidenceReview =
+  | FilingParserCrossEngineExecutionEvidenceReviewV6
   | FilingParserCrossEngineExecutionEvidenceReviewV5
   | FilingParserCrossEngineExecutionEvidenceReviewV1
   | FilingParserCrossEngineExecutionEvidenceReviewV2
@@ -135,6 +157,16 @@ const CYCLE_2O_SOURCE_REVISION =
   "46408ec875755ef531c124846143e9b619c1961f" as const;
 
 export async function verifyFilingParserCrossEngineExecutionEvidenceOffline(
+  options: FilingParserCrossEngineExecutionEvidenceReviewOptions,
+): Promise<FilingParserCrossEngineExecutionEvidenceReview> {
+  try {
+    return await verifyOfflineV6(options);
+  } catch {
+    return verifyHistoricalEvidence(options);
+  }
+}
+
+async function verifyHistoricalEvidence(
   options: FilingParserCrossEngineExecutionEvidenceReviewOptions,
 ): Promise<FilingParserCrossEngineExecutionEvidenceReview> {
   try {
@@ -158,6 +190,285 @@ export async function verifyFilingParserCrossEngineExecutionEvidenceOffline(
       }
     }
   }
+}
+
+// Reject ambient Git authority before any Git read in a current-source run.
+export function assertFilingParserCrossEngineCurrentGitAuthority(): void {
+  const overrides = new Set([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_SHALLOW_FILE",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+  ]);
+  for (const [key, value] of Object.entries(process.env)) {
+    const name = key.toUpperCase();
+    if (
+      value !== undefined &&
+      value !== "" &&
+      (overrides.has(name) || /^GIT_CONFIG_(?:KEY|VALUE)_/u.test(name))
+    )
+      invalid();
+  }
+}
+
+// Internal parameterized seam permits real local Git fixtures. Production always
+// supplies the fixed V6 anchor and complete inventory below.
+export async function verifyFilingParserCrossEngineCurrentSourceSnapshot(
+  repositoryPath: string,
+  revision: string,
+  historicalAnchor: string,
+  sourcePaths: readonly string[],
+): Promise<
+  readonly { readonly path: string; readonly sha256: `sha256:${string}` }[]
+> {
+  assertFilingParserCrossEngineCurrentGitAuthority();
+  if (
+    !COMMIT.test(revision) ||
+    !COMMIT.test(historicalAnchor) ||
+    sourcePaths.length === 0 ||
+    new Set(sourcePaths).size !== sourcePaths.length
+  )
+    invalid();
+  const directory = await lstat(repositoryPath);
+  if (!directory.isDirectory() || directory.isSymbolicLink()) invalid();
+  const root = await realpath(repositoryPath);
+  if (!samePath(root, resolve(repositoryPath))) invalid();
+  const git = async (args: readonly string[]) =>
+    (await checkedCommand(root, "git", args)).stdout;
+  const commonDirectory = exactLine(
+    await git(["rev-parse", "--path-format=absolute", "--git-common-dir"]),
+  );
+  const defaultGrafts = join(commonDirectory, "info", "grafts");
+  const ambientGrafts = Object.entries(process.env).find(
+    ([key]) => key.toUpperCase() === "GIT_GRAFT_FILE",
+  )?.[1];
+  for (const graftPath of new Set([
+    defaultGrafts,
+    ...(ambientGrafts ? [resolve(root, ambientGrafts)] : []),
+  ])) {
+    try {
+      const stat = await lstat(graftPath);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== 0) invalid();
+    } catch (error) {
+      if (!(
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ))
+        throw error;
+    }
+  }
+  const top = exactLine(
+    await git(["rev-parse", "--path-format=absolute", "--show-toplevel"]),
+  );
+  if (!samePath(await realpath(top), root)) invalid();
+  if (
+    (await git(["for-each-ref", "--format=%(refname)", "refs/replace/"]))
+      .byteLength !== 0
+  )
+    invalid();
+  const checkHead = async () => {
+    if (
+      exactLine(await git(["rev-parse", "--verify", "HEAD"])) !== revision ||
+      (await git(["status", "--porcelain=v1", "--untracked-files=all"]))
+        .byteLength !== 0
+    )
+      invalid();
+  };
+  await checkHead();
+  if (exactLine(await git(["cat-file", "-t", revision])) !== "commit")
+    invalid();
+  await git(["cat-file", "-e", `${historicalAnchor}^{commit}`]);
+  await git(["merge-base", "--is-ancestor", historicalAnchor, revision]);
+  const hashes: { path: string; sha256: `sha256:${string}` }[] = [];
+  for (const sourcePath of sourcePaths) {
+    const parts = sourcePath.split("/");
+    if (
+      parts.some(
+        (part) =>
+          !/^[A-Za-z0-9_.-]+$/u.test(part) || part === "." || part === "..",
+      )
+    )
+      invalid();
+    const entry = new TextDecoder("utf-8", { fatal: true }).decode(
+      await git(["ls-tree", "-z", revision, "--", sourcePath]),
+    );
+    if (
+      /^100644 blob [0-9a-f]{40}\t([^\0]+)\0$/u.exec(entry)?.[1] !== sourcePath
+    )
+      invalid();
+    let parent = root;
+    for (const part of parts.slice(0, -1)) {
+      parent = join(parent, part);
+      const stat = await lstat(parent);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) invalid();
+    }
+    const committed = await git(["show", `${revision}:${sourcePath}`]);
+    if (committed.byteLength === 0 || committed.byteLength > MAX_SOURCE_BYTES)
+      invalid();
+    const local = await readExactRegularFile(
+      join(root, sourcePath),
+      MAX_SOURCE_BYTES,
+    );
+    if (!exactBytes(local, committed)) invalid();
+    hashes.push(Object.freeze({ path: sourcePath, sha256: sha256(committed) }));
+  }
+  await checkHead();
+  return Object.freeze(hashes);
+}
+
+export async function verifyFilingParserCrossEngineCurrentSourceBoundary(
+  repositoryPath: string,
+  revision: string,
+) {
+  assertFilingParserCrossEngineCurrentGitAuthority();
+  const paths = FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS;
+  const anchor =
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY.historicalAnchor;
+  await verifyFilingParserCrossEngineCurrentSourceSnapshot(
+    repositoryPath,
+    revision,
+    anchor,
+    paths,
+  );
+  await verifyHistoricalV5Boundary(repositoryPath);
+  // Re-read current sources after historical validation; this is the final admission.
+  return verifyFilingParserCrossEngineCurrentSourceSnapshot(
+    repositoryPath,
+    revision,
+    anchor,
+    paths,
+  );
+}
+
+async function verifyHistoricalV5Boundary(
+  repositoryPath: string,
+): Promise<void> {
+  const h = FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY;
+  const git = async (args: readonly string[]) =>
+    (await checkedCommand(repositoryPath, "git", args)).stdout;
+  for (const revision of [
+    h.baseline,
+    h.sourceRevision,
+    h.correctiveRevision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY.sourceRevision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY.sourceRevision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY.maintenance
+      .revision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY.sourceRevision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY.sourceRevision,
+  ])
+    await git(["cat-file", "-e", `${revision}^{commit}`]);
+  const range = `${h.baseline}..${h.correctiveRevision}`;
+  if (
+    !filingParserCrossEngineExecutionV5ChainAllowed(
+      exactLine(await git(["merge-base", h.baseline, h.correctiveRevision])),
+      exactLine(await git(["rev-list", "--count", range])),
+      exactLine(await git(["rev-list", "--first-parent", "--count", range])),
+      h.correctiveRevision,
+      exactLine(
+        await git([
+          "rev-list",
+          "--parents",
+          "--max-count=1",
+          h.correctiveRevision,
+        ]),
+      ),
+      exactLine(
+        await git(["rev-list", "--parents", "--max-count=1", h.sourceRevision]),
+      ),
+    )
+  )
+    invalid();
+  const transition = await git([
+    "diff",
+    "--name-status",
+    "--no-renames",
+    "-z",
+    h.baseline,
+    h.correctiveRevision,
+    "--",
+  ]);
+  if (
+    !filingParserCrossEngineExecutionV5TransitionAllowed(
+      parseTransition(transition).length,
+      sha256(transition),
+    )
+  )
+    invalid();
+  const corrective = await git([
+    "diff",
+    "--name-status",
+    "--no-renames",
+    "-z",
+    h.sourceRevision,
+    h.correctiveRevision,
+    "--",
+  ]);
+  if (
+    !filingParserCrossEngineExecutionV5CorrectiveTransitionAllowed(
+      parseTransition(corrective).length,
+      sha256(corrective),
+    )
+  )
+    invalid();
+  await git([
+    "merge-base",
+    "--is-ancestor",
+    h.correctiveRevision,
+    FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY.historicalAnchor,
+  ]);
+}
+
+async function verifyOfflineV6(
+  options: FilingParserCrossEngineExecutionEvidenceReviewOptions,
+): Promise<FilingParserCrossEngineExecutionEvidenceReviewV6> {
+  validateOptions(options);
+  assertFilingParserCrossEngineCurrentGitAuthority();
+  const bytes = await readExactRegularFile(
+    options.evidencePath,
+    MAX_EVIDENCE_BYTES,
+  );
+  if (sha256(bytes) !== options.expectedEvidenceSha256) invalid();
+  const evidence =
+    parseCanonicalFilingParserCrossEngineExecutionEvidenceV6(bytes);
+  if (
+    evidence.repository !== options.expectedRepository ||
+    evidence.revision !== options.expectedRevision ||
+    evidence.workflow.runId !== options.expectedRunId ||
+    evidence.workflow.runAttempt !== options.expectedRunAttempt ||
+    evidence.workflow.artifactName !== options.expectedArtifactName
+  )
+    invalid();
+  const hashes = await verifyFilingParserCrossEngineCurrentSourceBoundary(
+    options.repositoryPath,
+    options.expectedRevision,
+  );
+  if (JSON.stringify(hashes) !== JSON.stringify(evidence.sourceHashes))
+    invalid();
+  return Object.freeze({
+    artifactName: evidence.workflow.artifactName,
+    evidenceSha256: options.expectedEvidenceSha256,
+    evidenceVersion: 6 as const,
+    historicalV5: evidence.historicalV5,
+    sourceBoundary: evidence.sourceBoundary,
+    repository: evidence.repository,
+    revision: evidence.revision,
+    runAttempt: evidence.workflow.runAttempt,
+    runId: evidence.workflow.runId,
+    sourceCount: hashes.length,
+    verdict: "offline_consistent" as const,
+  });
 }
 
 async function verifyOfflineV5(
