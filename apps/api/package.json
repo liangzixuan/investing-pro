@@ -20,6 +20,7 @@
     "test": "vitest run --no-file-parallelism"
   },
   "dependencies": {
+    "@clerk/backend": "3.20.1",
     "@fastify/cors": "11.3.0",
     "@fastify/helmet": "13.1.0",
     "@research-cockpit/connected-source-policy": "workspace:*",

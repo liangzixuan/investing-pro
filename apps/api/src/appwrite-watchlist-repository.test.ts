@@ -88,6 +88,8 @@ class AtomicStore implements AppwriteWatchlistStore {
   createTransaction(input: Input<"createTransaction">) {
     return Promise.resolve().then(() => {
       this.visit("createTransaction", input);
+      if (!Number.isInteger(input.ttl) || input.ttl < 60 || input.ttl > 3600)
+        throw new AppwriteException("Synthetic invalid transaction TTL", 400);
       const id = `transaction-${++this.next}`;
       this.transactions.set(id, { base: new Map(), rows: new Map() });
       return { $id: id, status: "pending" };
@@ -145,7 +147,7 @@ class AtomicStore implements AppwriteWatchlistStore {
     if (input.rollback) {
       if (this.rollbackFails) throw new Error("Synthetic rollback failure");
       this.transactions.delete(input.transactionId);
-      return { $id: input.transactionId, status: "rolled_back" };
+      return { $id: input.transactionId, status: "failed" };
     }
     const hook = this.beforeCommit;
     this.beforeCommit = undefined;
@@ -568,7 +570,7 @@ describe("Appwrite main watchlist repository", () => {
         `${transactionPath}/${transactionId}`,
       ]);
       expect(calls.slice(0, 2).map(({ body }) => body)).toEqual(["", ""]);
-      expect(JSON.parse(calls[2]!.body)).toEqual({ ttl: 30 });
+      expect(JSON.parse(calls[2]!.body)).toEqual({ ttl: 60 });
       for (const [write, read] of [
         [3, 1],
         [4, 0],
@@ -616,6 +618,118 @@ describe("Appwrite main watchlist repository", () => {
     expect(store.receipts()).toHaveLength(1);
     expect(store.current().version).toBe(1);
   });
+
+  it("reconciles a typed commit-time limit with an observed advance and never retries or rolls back", async () => {
+    const { store, repository, command } = fixture();
+    await repository.put(OWNER, command());
+    const before = store.calls.length;
+    store.beforeCommit = async () => {
+      await repository.put(OWNER, command(1, "winner", "Winner"));
+      throw new AppwriteException(
+        "Private response",
+        400,
+        "attribute_limit_exceeded",
+      );
+    };
+    await expect(
+      repository.put(OWNER, command(1, "loser")),
+    ).rejects.toMatchObject({ code: "conflict" });
+    expect(store.current().version).toBe(2);
+    expect(store.receipts()).toHaveLength(2);
+    expect(
+      store.calls
+        .slice(before)
+        .filter((call) => (call.input as Input<"updateTransaction">).rollback),
+    ).toHaveLength(0);
+    expect(store.calls.slice(-2).map((call) => call.operation)).toEqual([
+      "getRow",
+      "getRow",
+    ]);
+  });
+
+  it.each([false, true])(
+    "reconciles a typed commit limit against the exact same-key receipt (changed=%s)",
+    async (changed) => {
+      const { store, repository, command } = fixture();
+      await repository.put(OWNER, command());
+      const input = command(1, "same", "Draft");
+      store.beforeCommit = async () => {
+        await repository.put(
+          OWNER,
+          changed ? command(1, "same", "Other") : input,
+        );
+        throw new AppwriteException(
+          "Private response",
+          400,
+          "attribute_limit_exceeded",
+        );
+      };
+      const result = repository.put(OWNER, input);
+      if (changed)
+        await expect(result).rejects.toMatchObject({
+          code: "idempotency_conflict",
+        });
+      else
+        await expect(result).resolves.toMatchObject({
+          version: 2,
+          replayed: true,
+        });
+      expect(store.receipts()).toHaveLength(2);
+    },
+  );
+
+  it.each(["no_advance", "receipt_unreadable", "current_unreadable"] as const)(
+    "retains commit_unknown for a typed limit with %s",
+    async (condition) => {
+      const { store, repository, command } = fixture();
+      await repository.put(OWNER, command());
+      store.beforeCommit = () => {
+        const failRead = () => {
+          store.fail = {
+            operation: "getRow",
+            error: new AppwriteException("Private response", 503),
+          };
+        };
+        if (condition === "receipt_unreadable") failRead();
+        if (condition === "current_unreadable")
+          store.beforeRead = () => {
+            failRead();
+            return Promise.resolve();
+          };
+        throw new AppwriteException(
+          "Private response",
+          400,
+          "attribute_limit_exceeded",
+        );
+      };
+      await expect(
+        repository.put(OWNER, command(1, "loser")),
+      ).rejects.toMatchObject({ code: "commit_unknown" });
+      expect(store.current().version).toBe(1);
+      expect(store.receipts()).toHaveLength(1);
+      expect(
+        store.calls.filter(
+          (call) => (call.input as Input<"updateTransaction">).rollback,
+        ),
+      ).toHaveLength(0);
+    },
+  );
+
+  it.each(["request_failed", "general_argument_invalid", "other"])(
+    "keeps commit400/%s unknown even when another writer advanced",
+    async (type) => {
+      const { store, repository, command } = fixture();
+      await repository.put(OWNER, command());
+      store.beforeCommit = async () => {
+        await repository.put(OWNER, command(1, "winner"));
+        throw new AppwriteException("Private response", 400, type);
+      };
+      await expect(
+        repository.put(OWNER, command(1, "loser")),
+      ).rejects.toMatchObject({ code: "commit_unknown" });
+      expect(store.current().version).toBe(2);
+    },
+  );
 
   it("does not misclassify an unrelated increment 400 as a version conflict", async () => {
     const { store, repository, command } = fixture();
@@ -875,7 +989,7 @@ describe("Appwrite main watchlist repository", () => {
       .spyOn(client, "call")
       .mockResolvedValue({ $id: "synthetic", status: "pending" });
     const adapter = appwriteWatchlistStore(new TablesDB(client));
-    await adapter.createTransaction({ ttl: 30 });
+    await adapter.createTransaction({ ttl: 60 });
     await adapter.incrementRowColumn({
       databaseId: "db",
       tableId: "table",

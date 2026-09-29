@@ -1,5 +1,10 @@
 # Third-party notices
 
+Clerk Backend's `standardwebhooks` dependency includes `fast-sha256` 1.3.0
+under the Unlicense. It is used only in the server dependency graph. The license
+permits use, modification and distribution and disclaims warranty. The exact
+package/version is recorded as a license-policy exception.
+
 This file tracks direct runtime packages. The lockfile and automated SBOM will remain the full dependency inventory.
 
 | Package                  | Version | License      | Use                                |
@@ -18,6 +23,12 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | React Router             |   8.4.0 | MIT          | Bundled client routing             |
 | Appwrite Node SDK        |  29.0.0 | BSD-3-Clause | Managed watchlist storage adapter  |
 | Undici                   |  6.29.0 | MIT          | Bounded Appwrite HTTP transport    |
+| Clerk React SDK          |  6.17.2 | MIT          | Isolated browser sign-in trial     |
+| Clerk Backend SDK        |  3.20.1 | MIT          | Trial session verification         |
+
+The isolated native sign-in trial also uses Clerk Android API 1.1.9 (MIT), Kotlin
+2.4.20 and Kotlin coroutines Android 1.11.0 (Apache-2.0). Its resolved Android
+dependency inventory and bundled notices are part of APK acceptance.
 
 The bundled Android client includes the installed client runtime license texts
 and notices in [third-party-notices.txt](apps/web/mobile/third-party-notices.txt),

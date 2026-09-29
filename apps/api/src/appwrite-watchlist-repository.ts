@@ -287,7 +287,7 @@ export function createAppwriteWatchlistRepository(
           (current !== null && committedAt < current.updatedAt)
         )
           throw new WatchlistRepositoryError("unavailable");
-        const transaction = await store.createTransaction({ ttl: 30 });
+        const transaction = await store.createTransaction({ ttl: 60 });
         if (
           !object(transaction) ||
           typeof transaction.$id !== "string" ||
@@ -398,6 +398,34 @@ export function createAppwriteWatchlistRepository(
           });
           if (previous !== null) return previous;
           throw new WatchlistRepositoryError("conflict");
+        }
+        if (
+          commitStarted &&
+          error instanceof AppwriteException &&
+          error.code === 400 &&
+          error.type === "attribute_limit_exceeded"
+        ) {
+          const previous = await replay(
+            userId,
+            key,
+            requestDigest,
+            expectedVersion,
+            payloadDigest,
+          ).catch((readError: unknown) => {
+            if (
+              readError instanceof WatchlistRepositoryError &&
+              readError.code === "idempotency_conflict"
+            )
+              throw readError;
+            throw new WatchlistRepositoryError("commit_unknown");
+          });
+          if (previous !== null) return previous;
+          const current = await readCurrent(userId).catch(() => {
+            throw new WatchlistRepositoryError("commit_unknown");
+          });
+          if (current !== null && current.version > expectedVersion)
+            throw new WatchlistRepositoryError("conflict");
+          throw new WatchlistRepositoryError("commit_unknown");
         }
         if (incrementRejected) {
           // Appwrite 400 has several causes. Only an observed advance proves conflict.

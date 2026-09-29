@@ -1,9 +1,12 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
+const clerkTrial = process.env.INVESTMENT_CLIENT_PROFILE === "clerk-trial";
 const config: CapacitorConfig = {
-  appId: "local.investment.personal",
-  appName: "Investment",
-  webDir: "dist/mobile",
+  appId: clerkTrial
+    ? "local.investment.personal.clerktrial"
+    : "local.investment.personal",
+  appName: clerkTrial ? "Investment Trial" : "Investment",
+  webDir: clerkTrial ? "dist/clerk-trial" : "dist/mobile",
   loggingBehavior: "none",
   android: {
     allowMixedContent: false,

@@ -3,9 +3,10 @@
 The personal launch targets computer and Android use before November 2026.
 The Android app bundles the existing React workspace with Capacitor. Desktop
 continues to use Next.js. The owner selected the existing Appwrite Education
-project for the shared service; its application storage and sessions are being
-verified before connecting the bundle. Native iOS remains a later platform with separate build,
-signing and device requirements.
+project for the shared service. Isolated storage evidence is accepted for the
+separate Clerk trial; signed-in browser and physical Pixel sessions remain
+unverified. Native iOS remains a later platform with separate build, signing and
+device requirements.
 
 ## Current scope
 
@@ -27,6 +28,13 @@ and public-directory copying, and rejects Next/server/database/vault modules in
 the client graph. The Android project loads `dist/mobile`, with no development
 server URL or mixed-content exception. Signing keys, generated assets, SDK paths
 and build outputs stay out of Git. Public client-library notices are bundled.
+
+The separate [Clerk trial](./CLERK_TRIAL.md) uses `dist/clerk-trial` and application
+ID `local.investment.personal.clerktrial`. Its
+[debug APK packaging review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
+accepted the package identity, signature and bundled assets. The ordinary profile
+and build commands below remain disconnected. Neither packaging nor the trial's
+public website checks establish an installed phone session.
 
 ## Build
 
@@ -55,16 +63,20 @@ desktop browser running the bundle.
 
 ## Next acceptance steps
 
-1. Verify the Appwrite storage adapter with invented data, then implement managed
-   authentication and one exact HTTPS service origin. Keep the local-access
-   endpoint loopback-only. Support independent device sessions and server-held
-   provider credentials. A successful private health function is only a runtime
-   proof; see [Appwrite storage](./APPWRITE_WATCHLIST.md).
-2. Install on the owner's Android phone, verify launch, Back, focus, touch,
-   external links and background/resume, and measure chart/startup performance.
-3. Complete a shared watchlist/note journey with conflict handling and an
-   explicit disconnected state. Do not introduce offline edits before they have
-   a defined conflict and persistence policy.
+1. Verify the trial's official Clerk sign-in in external Brave and on the owner's
+   Pixel. The API and website are active, and the
+   [isolated storage review](../../tmp/clerk-trial/storage-cloud-actual-independent-review.json)
+   accepts seven scenarios with a qualified overlap result. Signed-in browser
+   and physical Pixel acceptance remain pending; see
+   [Appwrite storage](./APPWRITE_WATCHLIST.md) for proof limits.
+2. Install the exact accepted trial APK and verify hosted callback/cancellation,
+   Android Back, focus, touch, external links, background/resume and
+   force-stop/relaunch persistence.
+3. Complete the synthetic shared watchlist/note journey, stale-draft handling,
+   explicit uncertain-save reconciliation and independent sign-out. Keep the
+   local-access endpoint loopback-only. Connecting the ordinary workspace and
+   measuring its chart/startup performance remain separate work; offline edits
+   need a defined conflict and persistence policy.
 4. Prepare protected release signing, install/upgrade evidence and operation
    outside a Codex session. Test recovery without changing real owner records.
 

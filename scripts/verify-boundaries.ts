@@ -10066,6 +10066,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/clerk-trial-catalog.ts",
+      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+    ],
+    [
       "apps/api/src/appwrite-watchlist-repository.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",

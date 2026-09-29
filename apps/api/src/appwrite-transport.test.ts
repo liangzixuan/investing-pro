@@ -204,6 +204,56 @@ describe("Appwrite bounded SDK transport", () => {
     });
   });
 
+  it.each([
+    "attribute_limit_exceeded",
+    "transaction_conflict",
+    "transaction_failed",
+    "document_invalid_structure",
+    "row_invalid_structure",
+    "general_argument_invalid",
+  ])(
+    "retains only the finite diagnostic type %s without private error text",
+    async (type) => {
+      const f = fixture();
+      reply(
+        f,
+        400,
+        JSON.stringify({
+          message: "synthetic-private-record",
+          type,
+          extra: "synthetic-private-body",
+        }),
+      );
+      const error: unknown = await f.read().catch((value: unknown) => value);
+      expect(error).toMatchObject({
+        code: 400,
+        type,
+        message: "Appwrite request failed.",
+        response: "",
+      });
+      expect(error).not.toHaveProperty("cause");
+      expect(JSON.stringify(error)).not.toContain("synthetic-private");
+      expect(f.snapshot().requests).toBe(1);
+    },
+  );
+
+  it("does not preserve a row absence type under a non-404 status", async () => {
+    const f = fixture();
+    reply(
+      f,
+      400,
+      JSON.stringify({
+        message: "synthetic-private-record",
+        type: "row_not_found",
+      }),
+    );
+    await expect(f.read()).rejects.toMatchObject({
+      code: 400,
+      type: "request_failed",
+      response: "",
+    });
+  });
+
   it("removes upstream warnings and strips error payloads while retaining exact absence", async () => {
     const warning = vi
       .spyOn(console, "warn")

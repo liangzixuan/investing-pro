@@ -33,6 +33,15 @@ type Failure =
   | "request_limit"
   | "closed";
 
+const ERROR_TYPES = new Set([
+  "attribute_limit_exceeded",
+  "transaction_conflict",
+  "transaction_failed",
+  "document_invalid_structure",
+  "row_invalid_structure",
+  "general_argument_invalid",
+]);
+
 function failure(type: Failure): AppwriteException {
   return new AppwriteException(
     "Appwrite transport rejected the request.",
@@ -271,7 +280,7 @@ export function createAppwriteTransport(options: Options) {
         assertActive();
         return result;
       } catch (error) {
-        // Preserve the status needed for conflicts and the one exact absence type.
+        // Keep only finite diagnostic types and the exact row absence type.
         // Raw SDK messages/responses can contain records; no cause is attached.
         const code =
           error instanceof AppwriteException &&
@@ -285,7 +294,11 @@ export function createAppwriteTransport(options: Options) {
           error instanceof AppwriteException &&
           error.type === "row_not_found"
             ? "row_not_found"
-            : "request_failed";
+            : code !== 0 &&
+                error instanceof AppwriteException &&
+                ERROR_TYPES.has(error.type)
+              ? error.type
+              : "request_failed";
         throw new AppwriteException("Appwrite request failed.", code, type);
       }
     }

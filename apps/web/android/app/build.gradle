@@ -1,20 +1,41 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def investmentClerkTrial = providers.gradleProperty('investmentClerkTrial').orNull == 'true'
+def clerkPublishableKey = investmentClerkTrial
+    ? providers.environmentVariable('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY').orNull
+    : ''
+if (investmentClerkTrial && !(clerkPublishableKey ==~ /pk_test_[A-Za-z0-9_-]+/)) {
+    throw new GradleException('The Clerk trial requires its development publishable key.')
+}
 
 android {
     namespace = "local.investment.personal"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "local.investment.personal"
+        if (investmentClerkTrial) {
+            applicationIdSuffix '.clerktrial'
+        }
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [investmentAppLabel: investmentClerkTrial ? 'Investment Trial' : 'Investment']
+        buildConfigField 'boolean', 'CLERK_TRIAL_ENABLED', investmentClerkTrial.toString()
+        buildConfigField 'String', 'CLERK_PUBLISHABLE_KEY', '"' + clerkPublishableKey + '"'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        buildConfig true
+    }
+    kotlinOptions {
+        jvmTarget = '21'
     }
     buildTypes {
         release {
@@ -36,6 +57,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation 'com.clerk:clerk-android-api:1.1.9'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
