@@ -35,6 +35,20 @@ Cross-engine verification retains its historical transition assertions at
 the existing case, image, runtime, custody and quality predicates. A historical
 routing success is not current execution evidence.
 
+## Historical classification archive
+
+The default `release:classify` check verifies the fixed historical closure
+`65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. HEAD must descend from that commit,
+and the installed descriptor registry must match its complete cases 14 through 89. The existing renderer and historical graph checks verify all nine generated
+output blobs at that closure, including the latest descriptor. A missing or
+unrelated anchor, changed registry or changed archived output fails the check.
+
+Current workflow and verifier files may evolve under the source, boundary and
+execution gates described here. The archive check writes nothing and does not
+accept current execution. Explicit `--descriptor` and `--descriptor ... --write`
+retain the historical generation workflow; they are not used by the default
+archive check. No new numbered release is needed to check current source.
+
 ## Artifacts and release use
 
 Current parser and payload artifacts use `v2` names. Current cross-engine

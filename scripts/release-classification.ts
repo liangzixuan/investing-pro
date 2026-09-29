@@ -28,6 +28,9 @@ export const CLASSIFICATION_BASELINE =
   "62c01dafe305ddd43c75688e0225163b3abdf6df";
 export const BOOTSTRAP_PREDECESSOR = "9edb8cbe47b9847ff1264a1e04507738dfaf3d3c";
 export const RELEASE_DIRECTORY = "scripts/release-classification/releases";
+export const CLASSIFICATION_ARCHIVE_REVISION =
+  "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e";
+const CLASSIFICATION_ARCHIVE_DESCRIPTOR = `${RELEASE_DIRECTORY}/cycle3ka89.json`;
 const MAX_DESCRIPTOR_BYTES = 64_000;
 const MAX_GIT_BYTES = 8_000_000;
 export const GENERATOR_WATCHES = [
@@ -787,6 +790,51 @@ export async function writeReleaseOutputs(
   }
 }
 
+/** Verify the retained archive; current adapters have separate acceptance gates. */
+export async function verifyArchivedRelease(
+  repository: string,
+  descriptor: ReleaseDescriptor,
+  closure: string,
+  git: ReleaseGitReader,
+): Promise<string> {
+  requireCondition(
+    git.ancestor(revision(closure), git.head()),
+    "Classification archive is not an ancestor of HEAD",
+  );
+  const directory = outputPath(repository, RELEASE_DIRECTORY);
+  const names = orderedReleaseRegistry(
+    existsSync(directory) ? readdirSync(directory) : [],
+  );
+  same(
+    names,
+    Array.from(
+      { length: descriptor.caseNumber - 13 },
+      (_, index) => `cycle3ka${index + 14}.json`,
+    ),
+    "installed archive registry",
+  );
+  for (const name of names) {
+    const path = `${RELEASE_DIRECTORY}/${name}`;
+    const input = outputPath(repository, path);
+    requireCondition(
+      lstatSync(input).size <= MAX_DESCRIPTOR_BYTES,
+      "Descriptor exceeds size limit",
+    );
+    same(
+      readFileSync(input, "utf8").replaceAll("\r\n", "\n"),
+      git.blob(closure, path),
+      `installed archived descriptor ${path}`,
+    );
+  }
+  assertClosure(descriptor, closure, git);
+  const sources = inspectRelease(descriptor, git);
+  await verifyGeneratedHistory(descriptor, git);
+  const outputs = await generateReleaseOutputs(sources, descriptor);
+  for (const [path, text] of outputs)
+    same(git.blob(closure, path), text, `generated archived closure ${path}`);
+  return `Release classification archive cycle3ka${descriptor.caseNumber} at ${closure}: installed registry and all ${outputs.size} archived outputs match; check wrote nothing. Current source and execution acceptance require their separate gates.`;
+}
+
 export async function runReleaseClassification(
   args: readonly string[],
   repository: string,
@@ -800,63 +848,36 @@ export async function runReleaseClassification(
     "Usage: release:classify [--descriptor <reviewed-external.json> [--write]]",
   );
   const git = createReleaseGitReader(repository);
-  let text: string;
-  let installedPath: string | undefined;
   if (args.length === 0) {
-    const directory = outputPath(repository, RELEASE_DIRECTORY);
-    const names = orderedReleaseRegistry(
-      existsSync(directory) ? readdirSync(directory) : [],
+    const descriptor = parseReleaseDescriptor(
+      git.blob(
+        CLASSIFICATION_ARCHIVE_REVISION,
+        CLASSIFICATION_ARCHIVE_DESCRIPTOR,
+      ),
+      CLASSIFICATION_ARCHIVE_DESCRIPTOR,
     );
-    if (names.length === 0) {
-      requireCondition(
-        git.head() === BOOTSTRAP_PREDECESSOR ||
-          JSON.stringify(git.parents(git.head())) ===
-            JSON.stringify([BOOTSTRAP_PREDECESSOR]),
-        "Missing installed release descriptor",
-      );
-      return "Release classification: manual bootstrap feature; no installed descriptor yet.";
-    }
-    installedPath = `${RELEASE_DIRECTORY}/${names.at(-1) ?? ""}`;
-    const input = outputPath(repository, installedPath);
-    requireCondition(
-      lstatSync(input).size <= MAX_DESCRIPTOR_BYTES,
-      "Descriptor exceeds size limit",
+    return verifyArchivedRelease(
+      repository,
+      descriptor,
+      CLASSIFICATION_ARCHIVE_REVISION,
+      git,
     );
-    text = readFileSync(input, "utf8");
-  } else {
-    const input = realpathSync(resolve(args[1] ?? ""));
-    if (args[2] === "--write") {
-      const local = relative(realpathSync(repository), input);
-      requireCondition(
-        isAbsolute(local) || local === ".." || local.startsWith(`..${sep}`),
-        "Write descriptor must be supplied outside the clean repository",
-      );
-    }
-    requireCondition(
-      lstatSync(input).size <= MAX_DESCRIPTOR_BYTES,
-      "Descriptor exceeds size limit",
-    );
-    text = readFileSync(input, "utf8");
   }
-  const descriptor = parseReleaseDescriptor(text, installedPath);
+  const input = realpathSync(resolve(args[1] ?? ""));
+  if (args[2] === "--write") {
+    const local = relative(realpathSync(repository), input);
+    requireCondition(
+      isAbsolute(local) || local === ".." || local.startsWith(`..${sep}`),
+      "Write descriptor must be supplied outside the clean repository",
+    );
+  }
+  requireCondition(
+    lstatSync(input).size <= MAX_DESCRIPTOR_BYTES,
+    "Descriptor exceeds size limit",
+  );
+  const descriptor = parseReleaseDescriptor(readFileSync(input, "utf8"));
   const sources = inspectRelease(descriptor, git);
   await verifyGeneratedHistory(descriptor, git);
-  if (args.length === 0)
-    for (
-      let caseNumber = 14;
-      caseNumber < descriptor.caseNumber;
-      caseNumber++
-    ) {
-      const path = `${RELEASE_DIRECTORY}/cycle3ka${caseNumber}.json`;
-      same(
-        readFileSync(outputPath(repository, path), "utf8").replaceAll(
-          "\r\n",
-          "\n",
-        ),
-        git.blob(descriptor.featureRevision, path),
-        `installed historical descriptor ${path}`,
-      );
-    }
   const outputs = await generateReleaseOutputs(sources, descriptor);
   if (args[2] === "--write") {
     await writeReleaseOutputs(repository, descriptor, outputs, git);
