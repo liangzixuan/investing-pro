@@ -2,10 +2,11 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
-import { isAbsolute } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 import {
   FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
+  FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
   filingPayloadCustodyEvidenceSha256,
   parseCanonicalFilingPayloadCustodyEvidence,
   type FilingPayloadCustodyEvidence,
@@ -11989,18 +11990,11 @@ export async function verifyFilingPayloadCustodyEvidenceOffline(
     )
       invalid();
 
-    const repositoryPath = await realpath(normalizedOptions.repositoryPath);
-    const repository = await lstat(repositoryPath);
-    if (!repository.isDirectory() || repository.isSymbolicLink()) invalid();
-    await git(
-      repositoryPath,
-      ["cat-file", "-e", `${normalizedOptions.expectedRevision}^{commit}`],
-      0,
-    );
-    await verifyCycle2cCommitBoundary(
-      repositoryPath,
+    await verifyCurrentFilingPayloadCustodySourceBoundary(
+      normalizedOptions.repositoryPath,
       normalizedOptions.expectedRevision,
     );
+    const repositoryPath = await realpath(normalizedOptions.repositoryPath);
 
     const committed = new Map<string, Uint8Array>();
     for (
@@ -12045,6 +12039,147 @@ export async function verifyFilingPayloadCustodyEvidenceOffline(
   } catch {
     return invalid();
   }
+}
+
+/** Verifies the actual checkout while preserving the fixed historical boundary. */
+export async function verifyCurrentFilingPayloadCustodySourceBoundary(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await verifyFilingPayloadCustodyCurrentSourceSnapshot(
+    repositoryPath,
+    revision,
+    FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY.historicalAnchor,
+    FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
+  );
+  await verifyCycle2cCommitBoundary(
+    repositoryPath,
+    FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY.historicalAnchor,
+  );
+  await verifyFilingPayloadCustodyDomainTrees(repositoryPath, revision, true);
+  await verifyFilingPayloadCustodyCurrentSourceSnapshot(
+    repositoryPath,
+    revision,
+    FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY.historicalAnchor,
+    FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
+  );
+}
+
+/** @internal Actual Git/file provenance primitive for synthetic repository tests. */
+export async function verifyFilingPayloadCustodyCurrentSourceSnapshot(
+  repositoryPath: string,
+  revision: string,
+  historicalAnchor: string,
+  sourcePaths: readonly string[],
+): Promise<void> {
+  if (
+    !/^[0-9a-f]{40}$/u.test(revision) ||
+    !/^[0-9a-f]{40}$/u.test(historicalAnchor) ||
+    sourcePaths.length === 0 ||
+    new Set(sourcePaths).size !== sourcePaths.length ||
+    sourcePaths.some(
+      (path) =>
+        !/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/u.test(path) ||
+        path.split("/").some((part) => part === "." || part === ".."),
+    )
+  )
+    invalid();
+  for (const [key, value] of Object.entries(process.env)) {
+    if (
+      value !== undefined &&
+      value.length !== 0 &&
+      /^GIT_(?:DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|COMMON_DIR|SHALLOW_FILE|REPLACE_REF_BASE|NAMESPACE|CONFIG(?:_COUNT|_PARAMETERS|_KEY_.*|_VALUE_.*|_GLOBAL|_SYSTEM)?)$/iu.test(
+        key,
+      )
+    )
+      invalid();
+  }
+  const repository = await lstat(repositoryPath);
+  if (!repository.isDirectory() || repository.isSymbolicLink()) invalid();
+  const canonicalRepository = await realpath(repositoryPath);
+  if (canonicalRepository !== resolve(repositoryPath)) invalid();
+  const topLevel = decodeCycle2cAbsoluteGitPath(
+    await git(
+      repositoryPath,
+      ["rev-parse", "--show-toplevel"],
+      MAX_GIT_PATH_BYTES,
+    ),
+  );
+  if (resolve(topLevel) !== canonicalRepository) invalid();
+  const revisionType = await git(
+    repositoryPath,
+    ["cat-file", "-t", revision],
+    16,
+  );
+  if (Buffer.from(revisionType).toString("utf8") !== "commit\n") invalid();
+  await verifyCurrentCheckoutState(repositoryPath, revision);
+  await git(
+    repositoryPath,
+    ["cat-file", "-e", `${historicalAnchor}^{commit}`],
+    0,
+  );
+  await git(
+    repositoryPath,
+    ["merge-base", "--is-ancestor", historicalAnchor, revision],
+    0,
+  );
+  for (const path of sourcePaths) {
+    const entries = await tree(repositoryPath, revision, path);
+    if (!exactList(entries, [path])) invalid();
+    let workingPath = canonicalRepository;
+    const parts = path.split("/");
+    for (const part of parts.slice(0, -1)) {
+      workingPath = join(workingPath, part);
+      const directory = await lstat(workingPath);
+      if (!directory.isDirectory() || directory.isSymbolicLink()) invalid();
+    }
+    workingPath = join(workingPath, parts.at(-1) ?? invalid());
+    if ((await realpath(workingPath)) !== workingPath) invalid();
+    const working = await readSmallRegularFile(workingPath, MAX_GIT_BYTES);
+    const committed = await git(repositoryPath, [
+      "show",
+      `${revision}:${path}`,
+    ]);
+    if (sha256(working) !== sha256(committed)) invalid();
+  }
+  await verifyCurrentCheckoutState(repositoryPath, revision);
+}
+
+async function verifyCurrentCheckoutState(
+  repositoryPath: string,
+  revision: string,
+): Promise<void> {
+  await verifyNoEffectiveGitGrafts(repositoryPath);
+  await verifyNoEffectiveGitGrafts(
+    repositoryPath,
+    Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => key.toUpperCase() !== "GIT_GRAFT_FILE",
+      ),
+    ),
+  );
+  if (
+    (
+      await git(repositoryPath, [
+        "for-each-ref",
+        "--format=%(refname)",
+        "refs/replace/",
+      ])
+    ).byteLength !== 0 ||
+    decodeGitRevisionLine(
+      await git(repositoryPath, ["rev-parse", "HEAD"], 64),
+    ) !== revision ||
+    (
+      await git(repositoryPath, [
+        "status",
+        "--porcelain=v1",
+        "-z",
+        "--untracked-files=all",
+        "--ignore-submodules=none",
+      ])
+    ).byteLength !== 0
+  )
+    invalid();
 }
 
 export async function verifyCycle2cCommitBoundary(
@@ -12201,79 +12336,12 @@ export async function verifyCycle2cCommitBoundary(
     !isCycle2cCommitDiffSetAllowed(entries)
   )
     invalid();
-  const packageTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-payload-custody",
-  );
-  const fixtureTree = await tree(
-    repositoryPath,
-    revision,
-    "fixtures/synthetic/filing-payload-custody/v1",
-  );
-  const normalizationTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-fact-normalization",
-  );
-  const comparisonTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-fact-comparison",
-  );
-  const qualityMeasurementTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-quality-measurement",
-  );
-  const qualityPrecommitmentTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-quality-precommitment",
-  );
-  const handoffTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-parser-normalization-handoff",
-  );
-  const cycle2jCoreTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-parser-normalization-execution",
-  );
-  const cycle2jAcceptanceTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-parser-normalization-execution-acceptance",
-  );
-  const cycle2kCoreTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-parser-cross-engine-execution",
-  );
-  const cycle2kAcceptanceTree = await tree(
-    repositoryPath,
-    revision,
-    "packages/filing-parser-cross-engine-execution-acceptance",
-  );
-  if (
-    (!exactList(packageTree, EXPECTED_PACKAGE_TREE) &&
-      !isCycle2oCustodyTreeAllowed(packageTree)) ||
-    !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
-    !isCycle2dNormalizationTreeAllowed(normalizationTree) ||
-    !isCycle2eComparisonTreeAllowed(comparisonTree) ||
-    !isCycle2fQualityMeasurementTreeAllowed(qualityMeasurementTree) ||
-    !isCycle2gQualityPrecommitmentTreeAllowed(qualityPrecommitmentTree) ||
-    !isCycle2iHandoffTreeAllowed(handoffTree) ||
-    !isCycle2jCoreTreeAllowed(cycle2jCoreTree) ||
-    !isCycle2jAcceptanceTreeAllowed(cycle2jAcceptanceTree) ||
-    (!isCycle2kCoreTreeAllowed(cycle2kCoreTree) &&
-      !isCycle2mCoreTreeAllowed(cycle2kCoreTree)) ||
-    (!isCycle2kAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
-      !isCycle2mAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
-      !isCycle2oAcceptanceTreeAllowed(cycle2kAcceptanceTree))
-  )
-    invalid();
+  const {
+    normalizationTree,
+    comparisonTree,
+    qualityMeasurementTree,
+    qualityPrecommitmentTree,
+  } = await verifyFilingPayloadCustodyDomainTrees(repositoryPath, revision);
   const cycle2pSurfaceDiffPaths = await cycle2pTransitionSurfaceDiffPaths(
     repositoryPath,
     revision,
@@ -12422,6 +12490,117 @@ export async function verifyCycle2cCommitBoundary(
     await verifyCycle2eTransition(repositoryPath, revision);
   else if (normalizationTree.length > 0)
     await verifyCycle2dTransition(repositoryPath, revision);
+}
+
+async function verifyFilingPayloadCustodyDomainTrees(
+  repositoryPath: string,
+  revision: string,
+  currentEvidence = false,
+): Promise<{
+  readonly normalizationTree: readonly string[];
+  readonly comparisonTree: readonly string[];
+  readonly qualityMeasurementTree: readonly string[];
+  readonly qualityPrecommitmentTree: readonly string[];
+}> {
+  const packageTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-payload-custody",
+  );
+  const fixtureTree = await tree(
+    repositoryPath,
+    revision,
+    "fixtures/synthetic/filing-payload-custody/v1",
+  );
+  const normalizationTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-fact-normalization",
+  );
+  const comparisonTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-fact-comparison",
+  );
+  const qualityMeasurementTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-quality-measurement",
+  );
+  const qualityPrecommitmentTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-quality-precommitment",
+  );
+  const handoffTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-normalization-handoff",
+  );
+  const cycle2jCoreTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-normalization-execution",
+  );
+  const cycle2jAcceptanceTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-normalization-execution-acceptance",
+  );
+  const cycle2kCoreTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution",
+  );
+  const cycle2kAcceptanceTree = await tree(
+    repositoryPath,
+    revision,
+    "packages/filing-parser-cross-engine-execution-acceptance",
+  );
+  if (
+    (!exactList(packageTree, EXPECTED_PACKAGE_TREE) &&
+      !isCycle2oCustodyTreeAllowed(packageTree)) ||
+    !exactList(fixtureTree, EXPECTED_FIXTURE_TREE) ||
+    !isCycle2dNormalizationTreeAllowed(normalizationTree) ||
+    !isCycle2eComparisonTreeAllowed(comparisonTree) ||
+    !isCycle2fQualityMeasurementTreeAllowed(qualityMeasurementTree) ||
+    !isCycle2gQualityPrecommitmentTreeAllowed(qualityPrecommitmentTree) ||
+    !isCycle2iHandoffTreeAllowed(handoffTree) ||
+    !isCycle2jCoreTreeAllowed(cycle2jCoreTree) ||
+    !isCycle2jAcceptanceTreeAllowed(cycle2jAcceptanceTree) ||
+    (!isCycle2kCoreTreeAllowed(cycle2kCoreTree) &&
+      !isCycle2mCoreTreeAllowed(cycle2kCoreTree)) ||
+    (!isCycle2kAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
+      !isCycle2mAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
+      !isCycle2oAcceptanceTreeAllowed(cycle2kAcceptanceTree) &&
+      !(
+        currentEvidence &&
+        isCurrentFilingPayloadCustodyCrossEngineAcceptanceTreeAllowed(
+          cycle2kAcceptanceTree,
+        )
+      ))
+  )
+    invalid();
+  return {
+    normalizationTree,
+    comparisonTree,
+    qualityMeasurementTree,
+    qualityPrecommitmentTree,
+  };
+}
+
+/** @internal The current V6 tree adds exactly two reviewed evidence files. */
+export function isCurrentFilingPayloadCustodyCrossEngineAcceptanceTreeAllowed(
+  paths: readonly string[],
+): boolean {
+  return exactList(
+    paths,
+    [
+      ...CYCLE_2O_ACCEPTANCE_PACKAGE_TREE,
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.test.ts",
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.ts",
+    ].sort(),
+  );
 }
 
 /** @internal Exact commit-boundary regression seam. */

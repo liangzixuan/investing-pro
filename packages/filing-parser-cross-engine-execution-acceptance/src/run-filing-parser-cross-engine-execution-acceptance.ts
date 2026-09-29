@@ -58,6 +58,16 @@ import {
   type FilingParserCrossEngineExecutionEvidenceV5Invocation,
   type FilingParserCrossEngineExecutionEvidenceV5ValidationStage,
 } from "./filing-parser-cross-engine-execution-evidence-v5";
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+  createFilingParserCrossEngineExecutionEvidenceV6,
+  serializeCanonicalFilingParserCrossEngineExecutionEvidenceV6,
+} from "./filing-parser-cross-engine-execution-evidence-v6";
+import {
+  assertFilingParserCrossEngineCurrentGitAuthority,
+  verifyFilingParserCrossEngineCurrentSourceBoundary,
+} from "./filing-parser-cross-engine-execution-evidence-verifier";
 import { buildCycle2nFilingParserQualityDocuments } from "./test-filing-parser-cross-engine-execution-evidence-builder";
 
 const PYTHON_BASE_INDEX_DIGEST =
@@ -396,6 +406,14 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
   const environment = acceptanceEnvironment();
   const startedAt = new Date().toISOString();
   markPhase("repository_anchor");
+  if (environment.currentSource)
+    assertFilingParserCrossEngineCurrentGitAuthority();
+  const currentHashes = environment.currentSource
+    ? await verifyFilingParserCrossEngineCurrentSourceBoundary(
+        process.cwd(),
+        environment.revision,
+      )
+    : null;
   const revision = decodeExactLine(
     (await checkedCommand("git", ["rev-parse", "HEAD"], 5_000)).stdout,
   );
@@ -409,13 +427,14 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
     fail();
 
   markPhase("source_inventory");
-  const transition = await exactCycle2oTransition(revision);
+  const transition = environment.currentSource
+    ? []
+    : await exactCycle2oTransition(revision);
   const requiredSourcePaths =
     filingParserCrossEngineExecutionV5RequiredSourcePaths(transition);
-  const sourceHashes = await committedSourceHashes(
-    revision,
-    requiredSourcePaths,
-  );
+  const sourceHashes =
+    currentHashes ??
+    (await committedSourceHashes(revision, requiredSourcePaths));
   const fixtureManifestSha256 = requiredSourceHash(
     sourceHashes,
     "fixtures/synthetic/filing-parser-cross-engine-execution/v5/manifest.json",
@@ -637,124 +656,137 @@ async function main(markPhase: AcceptancePhaseMarker): Promise<void> {
       tamperedOutcome,
       swappedOutcome,
     ] as const);
-    const evidence =
-      createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance(
-        {
-          baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
-          caseOutcomes: outcomes,
-          checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
-          claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
-          completedAt,
-          custodyValidation: Object.freeze({
-            archivePair: "exact_frozen_original_amendment_pair" as const,
-            authenticatedReadback:
-              "only_owned_readback_enters_cycle2n" as const,
-            cleanup: "complete_before_publication" as const,
-            outerBindings: "custody_pair_and_unchanged_cycle2n_bound" as const,
-          }),
-          engines: Object.freeze([
-            Object.freeze({
-              architecture: "amd64" as const,
-              baseIndexDigest: pythonMetadata.indexDigest,
-              basePlatformManifestDigest: pythonMetadata.platformManifestDigest,
-              builtImageId: pythonImageId,
-              engineId: PYTHON_ENGINE_ID,
-              implementationSha256: pythonImplementationSha256,
-              implementationSourceHashes: pythonSources,
-              operatingSystem: "linux" as const,
-              role: "python-primary" as const,
-              runtimeVersion: "Python 3.12.13",
-            }),
-            Object.freeze({
-              architecture: "amd64" as const,
-              baseIndexDigest: nodeMetadata.indexDigest,
-              basePlatformManifestDigest: nodeMetadata.platformManifestDigest,
-              builtImageId: nodeImageId,
-              engineId: NODE_ENGINE_ID,
-              implementationSha256: nodeImplementationSha256,
-              implementationSourceHashes: nodeSources,
-              operatingSystem: "linux" as const,
-              role: "node-secondary" as const,
-              runtimeVersion: "Node v24.19.0",
-            }),
-          ] as const),
-          evidenceVersion: 5 as const,
-          fixtureManifestSha256,
-          historicalV1:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
-          historicalV2:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
-          historicalV3:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
-          historicalV4:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
-          notProven:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
-          repository: environment.repository,
-          revision,
-          runtime: Object.freeze({
-            authenticatedReadbackCount: 8 as const,
-            capabilitiesDropped: Object.freeze(["ALL"] as const),
-            custodyCommitCount: 4 as const,
-            custodyCleanupCount: 4 as const,
-            directExecutionCount: 4 as const,
-            engineCount: 2 as const,
-            networkMode: "none" as const,
-            readOnlyRootFilesystem: true as const,
-            successfulEvaluationCount: 3 as const,
-            successfulLifecycleReceiptCount: 16 as const,
-            zeroResidue: true as const,
-          }),
-          schemaVersion:
-            FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
-          sourceHashes,
-          startedAt,
-          status: "passed" as const,
-          summary: Object.freeze({
-            candidateCommitmentsStable: true as const,
-            candidateObservationsStable: true as const,
-            custodyBindingsDistinct: true as const,
-            evaluatedNotMet: 1 as const,
-            measurementStable: true as const,
-            quarantined: 5 as const,
-            sourceBindingsStable: true as const,
-            total: 6 as const,
-          }),
-          synthetic: true as const,
-          tools,
-          transition: Object.freeze({
-            entries: transition,
-            pathCount: transition.length,
-          }),
-          workflow: Object.freeze({
-            artifactName: `filing-parser-cross-engine-execution-evidence-v5-${revision}-${environment.runAttempt}`,
-            event: environment.event,
-            job: "acceptance" as const,
-            ref: environment.ref,
-            runAttempt: environment.runAttempt,
-            runId: environment.runId,
-            workflowName:
-              FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
-          }),
-        },
-        (stage) => {
-          markPhase(
-            filingParserCrossEngineExecutionEvidenceV5ValidationPhase(stage),
-          );
-        },
+    const evidenceInput = {
+      baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+      caseOutcomes: outcomes,
+      checksPassed: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS,
+      claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+      completedAt,
+      custodyValidation: Object.freeze({
+        archivePair: "exact_frozen_original_amendment_pair" as const,
+        authenticatedReadback: "only_owned_readback_enters_cycle2n" as const,
+        cleanup: "complete_before_publication" as const,
+        outerBindings: "custody_pair_and_unchanged_cycle2n_bound" as const,
+      }),
+      engines: Object.freeze([
+        Object.freeze({
+          architecture: "amd64" as const,
+          baseIndexDigest: pythonMetadata.indexDigest,
+          basePlatformManifestDigest: pythonMetadata.platformManifestDigest,
+          builtImageId: pythonImageId,
+          engineId: PYTHON_ENGINE_ID,
+          implementationSha256: pythonImplementationSha256,
+          implementationSourceHashes: pythonSources,
+          operatingSystem: "linux" as const,
+          role: "python-primary" as const,
+          runtimeVersion: "Python 3.12.13",
+        }),
+        Object.freeze({
+          architecture: "amd64" as const,
+          baseIndexDigest: nodeMetadata.indexDigest,
+          basePlatformManifestDigest: nodeMetadata.platformManifestDigest,
+          builtImageId: nodeImageId,
+          engineId: NODE_ENGINE_ID,
+          implementationSha256: nodeImplementationSha256,
+          implementationSourceHashes: nodeSources,
+          operatingSystem: "linux" as const,
+          role: "node-secondary" as const,
+          runtimeVersion: "Node v24.19.0",
+        }),
+      ] as const),
+      evidenceVersion: 5 as const,
+      fixtureManifestSha256,
+      historicalV1: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+      historicalV2: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+      historicalV3: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+      historicalV4: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+      notProven: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN,
+      repository: environment.repository,
+      revision,
+      runtime: Object.freeze({
+        authenticatedReadbackCount: 8 as const,
+        capabilitiesDropped: Object.freeze(["ALL"] as const),
+        custodyCommitCount: 4 as const,
+        custodyCleanupCount: 4 as const,
+        directExecutionCount: 4 as const,
+        engineCount: 2 as const,
+        networkMode: "none" as const,
+        readOnlyRootFilesystem: true as const,
+        successfulEvaluationCount: 3 as const,
+        successfulLifecycleReceiptCount: 16 as const,
+        zeroResidue: true as const,
+      }),
+      schemaVersion:
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
+      sourceHashes,
+      startedAt,
+      status: "passed" as const,
+      summary: Object.freeze({
+        candidateCommitmentsStable: true as const,
+        candidateObservationsStable: true as const,
+        custodyBindingsDistinct: true as const,
+        evaluatedNotMet: 1 as const,
+        measurementStable: true as const,
+        quarantined: 5 as const,
+        sourceBindingsStable: true as const,
+        total: 6 as const,
+      }),
+      synthetic: true as const,
+      tools,
+      transition: Object.freeze({
+        entries: transition,
+        pathCount: transition.length,
+      }),
+      workflow: Object.freeze({
+        artifactName: `filing-parser-cross-engine-execution-evidence-v5-${revision}-${environment.runAttempt}`,
+        event: environment.event,
+        job: "acceptance" as const,
+        ref: environment.ref,
+        runAttempt: environment.runAttempt,
+        runId: environment.runId,
+        workflowName: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW,
+      }),
+    };
+    const markValidationStage = (
+      stage: FilingParserCrossEngineExecutionEvidenceV5ValidationStage,
+    ) => {
+      markPhase(
+        filingParserCrossEngineExecutionEvidenceV5ValidationPhase(stage),
       );
+    };
+    const evidence = environment.currentSource
+      ? createFilingParserCrossEngineExecutionEvidenceV6(
+          filingParserCrossEngineCurrentEvidenceInput(evidenceInput),
+          markValidationStage,
+        )
+      : createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance(
+          evidenceInput,
+          markValidationStage,
+        );
 
     markPhase("image_removal");
     await removeImage(pythonImageId);
     pythonImageId = null;
     await removeImage(nodeImageId);
     nodeImageId = null;
+    if (environment.currentSource) {
+      const finalHashes =
+        await verifyFilingParserCrossEngineCurrentSourceBoundary(
+          process.cwd(),
+          revision,
+        );
+      if (JSON.stringify(finalHashes) !== JSON.stringify(sourceHashes)) fail();
+    }
     markPhase("evidence_write");
     temporaryEvidencePath = `${environment.evidencePath}.tmp`;
     await assertPathAbsent(temporaryEvidencePath);
     await writeFile(
       temporaryEvidencePath,
-      serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5(evidence),
+      evidence.evidenceVersion === 6
+        ? serializeCanonicalFilingParserCrossEngineExecutionEvidenceV6(evidence)
+        : serializeCanonicalFilingParserCrossEngineExecutionEvidenceV5(
+            evidence,
+          ),
       { encoding: "utf8", flag: "wx", mode: 0o600 },
     );
     await assertPathAbsent(environment.evidencePath);
@@ -1743,6 +1775,7 @@ interface AcceptanceEnvironment {
   readonly runAttempt: number;
   readonly runId: string;
   readonly runnerTemp: string;
+  readonly currentSource: boolean;
 }
 
 function acceptanceEnvironment(): AcceptanceEnvironment {
@@ -1756,6 +1789,9 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
       FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW
   )
     fail();
+  const currentSource = filingParserCrossEngineCurrentSourceMode(
+    process.env.FILING_PARSER_CROSS_ENGINE_EXECUTION_CURRENT_SOURCE,
+  );
   const evidencePath = requiredEnvironment(
     "FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_PATH",
   );
@@ -1764,11 +1800,20 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
   if (
     !isAbsolute(evidencePath) ||
     !isAbsolute(runnerTemp) ||
-    resolve(evidencePath) !== resolve(join(runnerTemp, EVIDENCE_FILE)) ||
+    resolve(evidencePath) !==
+      resolve(
+        join(
+          runnerTemp,
+          currentSource
+            ? "research-cockpit-filing-parser-cross-engine-execution-v6.json"
+            : EVIDENCE_FILE,
+        ),
+      ) ||
     !["push", "workflow_dispatch"].includes(event)
   )
     fail();
   return Object.freeze({
+    currentSource,
     evidencePath,
     event: event as AcceptanceEnvironment["event"],
     ref: requiredEnvironment("GITHUB_REF"),
@@ -1778,6 +1823,37 @@ function acceptanceEnvironment(): AcceptanceEnvironment {
     runId: requiredEnvironment("GITHUB_RUN_ID"),
     runnerTemp,
   });
+}
+
+export function filingParserCrossEngineCurrentSourceMode(
+  value: string | undefined,
+): boolean {
+  if (value === undefined || value === "") return false;
+  if (value !== "true") fail();
+  return true;
+}
+
+export function filingParserCrossEngineCurrentEvidenceInput(
+  value: Parameters<
+    typeof createFilingParserCrossEngineExecutionEvidenceV5ForAcceptance
+  >[0],
+): Parameters<typeof createFilingParserCrossEngineExecutionEvidenceV6>[0] {
+  // The candidate carries unchanged execution results. Discard historical-run
+  // provenance before validating it as current evidence; never relabel a V5 pass.
+  const { baseline, transition, ...domain } = value;
+  void baseline;
+  void transition;
+  return {
+    ...domain,
+    evidenceVersion: 6,
+    schemaVersion: "6.0.0",
+    sourceBoundary: FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+    historicalV5: FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+    workflow: {
+      ...domain.workflow,
+      artifactName: `filing-parser-cross-engine-execution-evidence-v6-${value.revision}-${value.workflow.runAttempt}`,
+    },
+  };
 }
 
 function requiredEnvironment(key: string): string {

@@ -13,8 +13,15 @@ build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
 describes the prepared static-site pipeline, source-check proof, artifact and
 credential setup. Its first target is the disconnected client; the cloud storage
 proof below remains the prerequisite for a connected product. Local checks and
-source review do not establish a cloud deployment. Main integration, environment
-keys, a separate production site and the first observed run remain pending.
+source review do not establish a cloud deployment. Main integration, a separate
+production site and the first observed run remain pending. Both GitHub
+environments are configured; the owner saved the staging deployment secret,
+whose name was verified without reading its value. Production still needs its
+own credential and site ID. PR 11 exposed historical revision restrictions in
+filing acceptance and an obsolete page-mode stylesheet mock. The
+[current acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) separates new
+execution evidence from retained historical records. Required hosted success
+remains pending while these repairs are verified.
 The existing preview smoke keeps its qualified status until replacement passes.
 
 ## BrowserStack browser CI

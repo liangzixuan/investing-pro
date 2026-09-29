@@ -10,13 +10,16 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   filingParserEvidenceReviewOptionsFromArguments,
   filingParserEvidenceReviewStdout,
 } from "./filing-parser-evidence-review";
 import {
+  verifyCurrentFilingParserSourceBoundary,
+  verifyFilingParserCurrentSourceSnapshot,
+  isCurrentFilingParserCrossEngineAcceptanceTreeAllowed,
   decodeFilingParserAbsoluteGitPath,
   filingParserGitArgumentsWithoutReplacementObjects,
   filingParserGitEnvironmentWithoutGrafts,
@@ -698,6 +701,387 @@ import {
 } from "./filing-parser-evidence-verifier";
 
 const temporaryDirectories: string[] = [];
+
+async function currentSourceFixture(): Promise<{
+  directory: string;
+  anchor: string;
+}> {
+  for (const key of Object.keys(process.env)) {
+    if (
+      /^GIT_(?:DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|COMMON_DIR|SHALLOW_FILE|REPLACE_REF_BASE|NAMESPACE|CONFIG(?:_.*)?|GRAFT_FILE)$/iu.test(
+        key,
+      )
+    ) {
+      vi.stubEnv(key, undefined);
+    }
+  }
+  const directory = await mkdtemp(join(tmpdir(), "parser-current-source-"));
+  temporaryDirectories.push(directory);
+  await gitOutput(["init", "--quiet", "--initial-branch=main", directory]);
+  await gitOutput(["-C", directory, "config", "core.autocrlf", "false"]);
+  await gitOutput(["-C", directory, "config", "user.name", "Evidence Test"]);
+  await gitOutput([
+    "-C",
+    directory,
+    "config",
+    "user.email",
+    "evidence@example.invalid",
+  ]);
+  await gitOutput(["-C", directory, "config", "commit.gpgsign", "false"]);
+  await writeFile(join(directory, "source.txt"), "committed source\n");
+  await gitOutput(["-C", directory, "add", "source.txt"]);
+  await gitOutput(["-C", directory, "commit", "--quiet", "-m", "anchor"]);
+  return {
+    directory,
+    anchor: (await gitOutput(["-C", directory, "rev-parse", "HEAD"])).trim(),
+  };
+}
+
+describe("current parser source admission", () => {
+  it("admits only the exact reviewed V6 tree without changing historical admission", () => {
+    const tree = [
+      ...CYCLE_2O_ACCEPTANCE_TREE,
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.test.ts",
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.ts",
+    ].sort();
+    expect(isCurrentFilingParserCrossEngineAcceptanceTreeAllowed(tree)).toBe(
+      true,
+    );
+    expect(isCycle2oAcceptanceTreeAllowed(tree)).toBe(false);
+    for (const changed of [
+      tree.slice(1),
+      [...tree, "unexpected.ts"].sort(),
+      [...tree].reverse(),
+      [...tree, tree[0]!].sort(),
+      CYCLE_2O_ACCEPTANCE_TREE,
+    ]) {
+      expect(
+        isCurrentFilingParserCrossEngineAcceptanceTreeAllowed(changed),
+      ).toBe(false);
+    }
+  });
+
+  it("admits ordinary descendants and actual two-parent merges without counters", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    await writeFile(join(directory, "main.txt"), "main\n");
+    await gitOutput(["-C", directory, "add", "main.txt"]);
+    await gitOutput([
+      "-C",
+      directory,
+      "commit",
+      "--quiet",
+      "-m",
+      "ordinary descendant",
+    ]);
+    const descendant = (
+      await gitOutput(["-C", directory, "rev-parse", "HEAD"])
+    ).trim();
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, descendant, anchor, [
+        "source.txt",
+      ]),
+    ).resolves.toBeUndefined();
+    await gitOutput([
+      "-C",
+      directory,
+      "checkout",
+      "--quiet",
+      "-b",
+      "feature",
+      anchor,
+    ]);
+    await writeFile(join(directory, "feature.txt"), "feature\n");
+    await gitOutput(["-C", directory, "add", "feature.txt"]);
+    await gitOutput(["-C", directory, "commit", "--quiet", "-m", "feature"]);
+    await gitOutput(["-C", directory, "checkout", "--quiet", "main"]);
+    await gitOutput([
+      "-C",
+      directory,
+      "merge",
+      "--quiet",
+      "--no-ff",
+      "feature",
+      "-m",
+      "integration",
+    ]);
+    const merge = (
+      await gitOutput(["-C", directory, "rev-parse", "HEAD"])
+    ).trim();
+    expect(
+      (
+        await gitOutput([
+          "-C",
+          directory,
+          "rev-list",
+          "--parents",
+          "-n",
+          "1",
+          "HEAD",
+        ])
+      )
+        .trim()
+        .split(" "),
+    ).toHaveLength(3);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, merge, anchor, [
+        "source.txt",
+      ]),
+    ).resolves.toBeUndefined();
+    await expect(
+      verifyCurrentFilingParserSourceBoundary(directory, merge),
+    ).rejects.toThrow();
+  }, 30_000);
+
+  it("rejects malformed or mismatched revisions and missing or unrelated anchors", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    for (const revision of ["HEAD", anchor.toUpperCase(), "a".repeat(40)]) {
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(directory, revision, anchor, [
+          "source.txt",
+        ]),
+      ).rejects.toThrow();
+    }
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(
+        directory,
+        anchor,
+        "a".repeat(40),
+        ["source.txt"],
+      ),
+    ).rejects.toThrow();
+    const tree = (
+      await gitOutput(["-C", directory, "rev-parse", "HEAD^{tree}"])
+    ).trim();
+    const unrelated = (
+      await gitOutput([
+        "-C",
+        directory,
+        "commit-tree",
+        tree,
+        "-m",
+        "unrelated root",
+      ])
+    ).trim();
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, unrelated, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("rejects tracked and untracked changes", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    await writeFile(join(directory, "source.txt"), "changed\n");
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+    await writeFile(join(directory, "source.txt"), "committed source\n");
+    await writeFile(join(directory, "untracked.txt"), "extra\n");
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("requires a commit object even when HEAD names an annotated tag", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    await gitOutput([
+      "-C",
+      directory,
+      "tag",
+      "-a",
+      "annotated",
+      "-m",
+      "tag object",
+    ]);
+    const tag = (
+      await gitOutput(["-C", directory, "rev-parse", "refs/tags/annotated"])
+    ).trim();
+    await gitOutput([
+      "-C",
+      directory,
+      "symbolic-ref",
+      "HEAD",
+      "refs/tags/annotated",
+    ]);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, tag, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it.each(["assume-unchanged", "skip-worktree"])(
+    "rejects source substitution hidden by %s",
+    async (flag) => {
+      const { directory, anchor } = await currentSourceFixture();
+      await gitOutput([
+        "-C",
+        directory,
+        "update-index",
+        `--${flag}`,
+        "source.txt",
+      ]);
+      await writeFile(join(directory, "source.txt"), "substituted source\n");
+      expect(
+        await gitOutput(["-C", directory, "status", "--porcelain=v1"]),
+      ).toBe("");
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+          "source.txt",
+        ]),
+      ).rejects.toThrow();
+    },
+  );
+
+  it("rejects missing inputs and nonregular committed modes", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    for (const paths of [
+      [],
+      ["source.txt", "source.txt"],
+      ["../source.txt"],
+      ["missing.txt"],
+    ]) {
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(
+          directory,
+          anchor,
+          anchor,
+          paths,
+        ),
+      ).rejects.toThrow();
+    }
+    await gitOutput([
+      "-C",
+      directory,
+      "update-index",
+      "--chmod=+x",
+      "source.txt",
+    ]);
+    await gitOutput([
+      "-C",
+      directory,
+      "commit",
+      "--quiet",
+      "-m",
+      "changed mode",
+    ]);
+    const revision = (
+      await gitOutput(["-C", directory, "rev-parse", "HEAD"])
+    ).trim();
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, revision, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("requires the exact repository root", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    const child = join(directory, "nested");
+    await mkdir(child);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(child, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("rejects replacement refs even when Git replacement is disabled", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    await gitOutput([
+      "-C",
+      directory,
+      "update-ref",
+      `refs/replace/${anchor}`,
+      anchor,
+    ]);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("rejects repository grafts even when an ambient override hides them", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    const graftsPath = (
+      await gitOutput([
+        "-C",
+        directory,
+        "rev-parse",
+        "--path-format=absolute",
+        "--git-path",
+        "info/grafts",
+      ])
+    ).trim();
+    await mkdir(dirname(graftsPath), { recursive: true });
+    await writeFile(graftsPath, `${anchor}\n`);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+    const empty = join(directory, ".git", "empty-grafts");
+    await writeFile(empty, "");
+    vi.stubEnv("GIT_GRAFT_FILE", empty);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it.each([
+    "GIT_REPLACE_REF_BASE",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_KEY_0",
+    "GIT_CONFIG_VALUE_0",
+    "GIT_NAMESPACE",
+  ])(
+    "rejects inherited authority override %s before Git reads",
+    async (key) => {
+      const { directory, anchor } = await currentSourceFixture();
+      vi.stubEnv(key, "substituted");
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+          "source.txt",
+        ]),
+      ).rejects.toThrow();
+    },
+  );
+
+  it("rejects revision movement before a final receipt recheck", async () => {
+    const { directory, anchor } = await currentSourceFixture();
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).resolves.toBeUndefined();
+    await writeFile(join(directory, "other.txt"), "new revision\n");
+    await gitOutput(["-C", directory, "add", "other.txt"]);
+    await gitOutput([
+      "-C",
+      directory,
+      "commit",
+      "--quiet",
+      "-m",
+      "moved during run",
+    ]);
+    await expect(
+      verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+        "source.txt",
+      ]),
+    ).rejects.toThrow();
+  });
+});
 const HASH = `sha256:${"a".repeat(64)}` as const;
 const ADMISSION_VALIDITY_BRIDGE_BASELINE_REVISION =
   "7243f16df0c4bd8691ff11fa037085e3beb3447e" as const;
@@ -11682,6 +12066,7 @@ function gitOutput(
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryDirectories
       .splice(0)

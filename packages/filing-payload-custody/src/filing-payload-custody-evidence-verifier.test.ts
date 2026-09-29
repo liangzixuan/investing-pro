@@ -1,11 +1,14 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  isCurrentFilingPayloadCustodyCrossEngineAcceptanceTreeAllowed,
+  verifyFilingPayloadCustodyCurrentSourceSnapshot,
+  verifyCurrentFilingPayloadCustodySourceBoundary,
   cycle2zTransitionSurfaceDiffPaths,
   decodeCycle2cAbsoluteGitPath,
   decodeCycle2cGitNulList,
@@ -12039,6 +12042,7 @@ function gitOutput(
 }
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(
     temporaryDirectories
       .splice(0)
@@ -33710,3 +33714,309 @@ describe("offline filing payload custody evidence review", () => {
     ).rejects.toThrow("Offline filing payload custody evidence review failed.");
   });
 });
+
+describe("current payload source provenance", () => {
+  it("admits only the exact reviewed V6 tree without changing historical admission", () => {
+    const tree = [
+      ...CYCLE_2O_ACCEPTANCE_TREE,
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.test.ts",
+      "packages/filing-parser-cross-engine-execution-acceptance/src/filing-parser-cross-engine-execution-evidence-v6.ts",
+    ].sort();
+    expect(
+      isCurrentFilingPayloadCustodyCrossEngineAcceptanceTreeAllowed(tree),
+    ).toBe(true);
+    expect(isCycle2oAcceptanceTreeAllowed(tree)).toBe(false);
+    for (const changed of [
+      tree.slice(1),
+      [...tree, "unexpected.ts"].sort(),
+      [...tree].reverse(),
+      [...tree, tree[0]!].sort(),
+      CYCLE_2O_ACCEPTANCE_TREE,
+    ]) {
+      expect(
+        isCurrentFilingPayloadCustodyCrossEngineAcceptanceTreeAllowed(changed),
+      ).toBe(false);
+    }
+  });
+  it("admits descendants and a real two-parent merge without commit counters", async () => {
+    const fixture = await currentSourceFixture();
+    await fixture.verify();
+    await fixture.git("checkout", "--quiet", "-b", "branch");
+    await writeFile(join(fixture.repository, "branch.txt"), "branch\n");
+    await fixture.commit();
+    await fixture.git("checkout", "--quiet", "--detach", fixture.anchor);
+    await writeFile(join(fixture.repository, "main.txt"), "main\n");
+    await fixture.commit();
+    await fixture.git("merge", "--quiet", "--no-ff", "-m", "merge", "branch");
+    const merged = (await fixture.git("rev-parse", "HEAD")).trim();
+    expect(
+      (await fixture.git("rev-list", "--parents", "-n", "1", merged))
+        .trim()
+        .split(" "),
+    ).toHaveLength(3);
+    await verifyFilingPayloadCustodyCurrentSourceSnapshot(
+      fixture.repository,
+      merged,
+      fixture.anchor,
+      fixture.paths,
+    );
+  }, 30_000);
+
+  it.each(["HEAD", "a".repeat(39), "A".repeat(40), "a".repeat(40)])(
+    "rejects malformed or mismatched revision %s",
+    async (revision) => {
+      const fixture = await currentSourceFixture();
+      await expect(
+        verifyFilingPayloadCustodyCurrentSourceSnapshot(
+          fixture.repository,
+          revision,
+          fixture.anchor,
+          fixture.paths,
+        ),
+      ).rejects.toThrow();
+    },
+  );
+
+  it("rejects an annotated tag object even when HEAD names that object", async () => {
+    const fixture = await currentSourceFixture();
+    await fixture.git("tag", "--annotate", "annotated", "--message", "tag");
+    const tag = (await fixture.git("rev-parse", "refs/tags/annotated")).trim();
+    expect(await fixture.git("cat-file", "-t", tag)).toBe("tag\n");
+    await fixture.git("symbolic-ref", "HEAD", "refs/tags/annotated");
+    expect((await fixture.git("rev-parse", "HEAD")).trim()).toBe(tag);
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        tag,
+        fixture.anchor,
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects missing anchors and unrelated actual history", async () => {
+    const fixture = await currentSourceFixture();
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        fixture.anchor,
+        "f".repeat(40),
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+    await fixture.git("checkout", "--quiet", "--orphan", "unrelated");
+    await fixture.commit();
+    const unrelated = (await fixture.git("rev-parse", "HEAD")).trim();
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        unrelated,
+        fixture.anchor,
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+    // The production wrapper never accepts this fixture's caller-selected anchor.
+    await expect(
+      verifyCurrentFilingPayloadCustodySourceBoundary(
+        fixture.repository,
+        unrelated,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it.each(["tracked", "untracked"])("rejects %s changes", async (kind) => {
+    const fixture = await currentSourceFixture();
+    await writeFile(
+      join(fixture.repository, kind === "tracked" ? "source.txt" : "new.txt"),
+      "changed\n",
+    );
+    await expect(fixture.verify()).rejects.toThrow();
+  });
+
+  it.each(["--assume-unchanged", "--skip-worktree"])(
+    "rejects a source edit hidden by %s",
+    async (flag) => {
+      const fixture = await currentSourceFixture();
+      await fixture.git("update-index", flag, "source.txt");
+      await writeFile(
+        join(fixture.repository, "source.txt"),
+        "hidden change\n",
+      );
+      expect(await fixture.git("status", "--porcelain=v1")).toBe("");
+      await expect(fixture.verify()).rejects.toThrow();
+    },
+  );
+
+  it("rejects committed missing sources and executable file modes", async () => {
+    const fixture = await currentSourceFixture();
+    await fixture.git("update-index", "--chmod=+x", "source.txt");
+    await fixture.git("commit", "--quiet", "-m", "mode");
+    let revision = (await fixture.git("rev-parse", "HEAD")).trim();
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        revision,
+        fixture.anchor,
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+    await fixture.git("rm", "--quiet", "source.txt");
+    await fixture.git("commit", "--quiet", "-m", "missing");
+    revision = (await fixture.git("rev-parse", "HEAD")).trim();
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        revision,
+        fixture.anchor,
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a repository junction and replacement refs", async () => {
+    const fixture = await currentSourceFixture();
+    const alias = join(dirname(fixture.repository), "alias");
+    await symlink(fixture.repository, alias, "junction");
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        alias,
+        fixture.anchor,
+        fixture.anchor,
+        fixture.paths,
+      ),
+    ).rejects.toThrow();
+    await fixture.git(
+      "update-ref",
+      `refs/replace/${fixture.anchor}`,
+      fixture.anchor,
+    );
+    await expect(fixture.verify()).rejects.toThrow();
+  });
+
+  it("rejects source directory substitution hidden from status", async () => {
+    const fixture = await currentSourceFixture();
+    const nested = join(fixture.repository, "nested");
+    const substitute = join(dirname(fixture.repository), "substitute");
+    await mkdir(nested);
+    await writeFile(join(nested, "source.txt"), "original\n");
+    await fixture.commit();
+    const revision = (await fixture.git("rev-parse", "HEAD")).trim();
+    await fixture.git(
+      "update-index",
+      "--assume-unchanged",
+      "nested/source.txt",
+    );
+    await mkdir(substitute);
+    await writeFile(join(substitute, "source.txt"), "substitute\n");
+    await rm(nested, { recursive: true });
+    await symlink(substitute, nested, "junction");
+    expect(await fixture.git("status", "--porcelain=v1")).toBe("");
+    await expect(
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        fixture.repository,
+        revision,
+        fixture.anchor,
+        ["nested/source.txt"],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects effective grafts even when an empty override hides the default path", async () => {
+    const fixture = await currentSourceFixture();
+    const grafts = join(fixture.repository, ".git", "info", "grafts");
+    await writeFile(grafts, `${fixture.anchor}\n`);
+    await expect(fixture.verify()).rejects.toThrow();
+    const emptyOverride = join(dirname(fixture.repository), "empty-grafts");
+    await writeFile(emptyOverride, "");
+    vi.stubEnv("GIT_GRAFT_FILE", emptyOverride);
+    await expect(fixture.verify()).rejects.toThrow();
+  });
+
+  it.each([
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_SHALLOW_FILE",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG",
+    "GIT_CONFIG_COUNT",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_KEY_0",
+    "GIT_CONFIG_VALUE_0",
+    "GIT_CONFIG_GLOBAL",
+    "GIT_CONFIG_SYSTEM",
+    "git_replace_ref_base",
+  ])("rejects authority override %s before Git", async (key) => {
+    const fixture = await currentSourceFixture();
+    vi.stubEnv(key, "injected");
+    await expect(fixture.verify()).rejects.toThrow();
+  });
+
+  it("allows prompt configuration and catches revision movement on final admission", async () => {
+    const fixture = await currentSourceFixture();
+    vi.stubEnv("GIT_TERMINAL_PROMPT", "0");
+    await fixture.verify();
+    await writeFile(join(fixture.repository, "other.txt"), "next\n");
+    await fixture.commit();
+    await expect(fixture.verify()).rejects.toThrow();
+  });
+});
+
+async function currentSourceFixture() {
+  // Synthetic repositories must not inherit the tool shell's Git config injection.
+  for (const key of Object.keys(process.env)) {
+    if (
+      /^GIT_(?:DIR|WORK_TREE|INDEX_FILE|OBJECT_DIRECTORY|ALTERNATE_OBJECT_DIRECTORIES|COMMON_DIR|SHALLOW_FILE|REPLACE_REF_BASE|NAMESPACE|GRAFT_FILE|CONFIG(?:_COUNT|_PARAMETERS|_KEY_.*|_VALUE_.*|_GLOBAL|_SYSTEM)?)$/iu.test(
+        key,
+      )
+    ) {
+      vi.stubEnv(key, undefined);
+    }
+  }
+  const directory = await mkdtemp(join(tmpdir(), "payload-current-source-"));
+  temporaryDirectories.push(directory);
+  const repository = join(directory, "repository");
+  await gitOutput(["init", "--quiet", repository]);
+  const git = (...args: string[]) =>
+    gitOutput([
+      "-C",
+      repository,
+      "-c",
+      "user.name=Evidence Test",
+      "-c",
+      "user.email=evidence@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "-c",
+      "core.autocrlf=false",
+      ...args,
+    ]);
+  await git("config", "core.autocrlf", "false");
+  await git("config", "core.filemode", "false");
+  await writeFile(join(repository, "source.txt"), "source\n");
+  const commit = async () => {
+    await git("add", "--all");
+    await git("commit", "--quiet", "-m", "fixture");
+  };
+  await commit();
+  const anchor = (await git("rev-parse", "HEAD")).trim();
+  const paths = ["source.txt"] as const;
+  return {
+    repository,
+    anchor,
+    paths,
+    git,
+    commit,
+    verify: () =>
+      verifyFilingPayloadCustodyCurrentSourceSnapshot(
+        repository,
+        anchor,
+        anchor,
+        paths,
+      ),
+  };
+}

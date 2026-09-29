@@ -6,15 +6,20 @@ import {
   type FilingParserQuarantineCode,
 } from "./parser-boundary";
 
-export const FILING_PARSER_EVIDENCE_SCHEMA_VERSION = "1.0.0" as const;
-export const FILING_PARSER_EVIDENCE_VERSION = 1 as const;
+export const FILING_PARSER_EVIDENCE_SCHEMA_VERSION = "2.0.0" as const;
+export const FILING_PARSER_EVIDENCE_VERSION = 2 as const;
+export const FILING_PARSER_SOURCE_BOUNDARY = Object.freeze({
+  policy: "current_source_with_preserved_history_v1",
+  historicalAnchor: "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e",
+} as const);
 export const FILING_PARSER_EVIDENCE_CLAIM =
   "bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding" as const;
 export const FILING_PARSER_EVIDENCE_WORKFLOW =
   "Filing parser isolation acceptance" as const;
 
 export const FILING_PARSER_EVIDENCE_CHECKS = [
-  "historical_b1_b14_and_cycle_1c_preservation",
+  "historical_b1_b14_and_cycle_1c_preservation_at_reviewed_anchor",
+  "exact_current_revision_clean_committed_sources_and_domain_invariants",
   "pinned_python_3_12_zero_pip_worker",
   "numeric_nonroot_dropped_capabilities_and_no_new_privileges",
   "network_none_no_published_ports_and_no_worker_listener",
@@ -159,6 +164,7 @@ export interface FilingParserEvidence {
     readonly zeroResidue: true;
   };
   readonly schemaVersion: typeof FILING_PARSER_EVIDENCE_SCHEMA_VERSION;
+  readonly sourceBoundary: typeof FILING_PARSER_SOURCE_BOUNDARY;
   readonly sourceHashes: readonly FilingParserEvidenceSourceHash[];
   readonly startedAt: string;
   readonly status: "passed";
@@ -564,6 +570,7 @@ function normalizeEvidence(value: unknown): FilingParserEvidence {
     "revision",
     "runtime",
     "schemaVersion",
+    "sourceBoundary",
     "sourceHashes",
     "startedAt",
     "status",
@@ -581,6 +588,16 @@ function normalizeEvidence(value: unknown): FilingParserEvidence {
   )
     return invalidEvidence();
   const startedAt = isoUtc(record.startedAt);
+  const sourceBoundary = exactRecord(record.sourceBoundary, [
+    "historicalAnchor",
+    "policy",
+  ]);
+  if (
+    sourceBoundary.historicalAnchor !==
+      FILING_PARSER_SOURCE_BOUNDARY.historicalAnchor ||
+    sourceBoundary.policy !== FILING_PARSER_SOURCE_BOUNDARY.policy
+  )
+    return invalidEvidence();
   const completedAt = isoUtc(record.completedAt);
   if (Date.parse(completedAt) < Date.parse(startedAt)) return invalidEvidence();
   const sourceHashes = normalizeSourceHashes(record.sourceHashes);
@@ -658,6 +675,7 @@ function normalizeEvidence(value: unknown): FilingParserEvidence {
     revision: stringMatching(record.revision, COMMIT_SHA),
     runtime: normalizeRuntime(record.runtime),
     schemaVersion: FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
+    sourceBoundary: FILING_PARSER_SOURCE_BOUNDARY,
     sourceHashes,
     startedAt,
     status: "passed" as const,

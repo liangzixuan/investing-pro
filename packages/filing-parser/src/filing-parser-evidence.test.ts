@@ -8,6 +8,7 @@ import {
   FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
   FILING_PARSER_EVIDENCE_SOURCE_PATHS,
   FILING_PARSER_EVIDENCE_WORKFLOW,
+  FILING_PARSER_SOURCE_BOUNDARY,
   FILING_PARSER_IMAGE_INSPECTION_CHECK_CODES,
   FilingParserContainerInspectionError,
   FilingParserImageInspectionError,
@@ -25,12 +26,12 @@ import {
 const HASH_A = `sha256:${"a".repeat(64)}` as const;
 const HASH_B = `sha256:${"b".repeat(64)}` as const;
 
-describe("filing parser evidence v1", () => {
-  it("freezes the exact claim, 16 checks, 16 nonclaims, and 26 source blobs", () => {
+describe("filing parser evidence v2", () => {
+  it("freezes the exact claim, 17 checks, 16 nonclaims, and 26 source blobs", () => {
     expect(FILING_PARSER_EVIDENCE_CLAIM).toBe(
       "bounded_synthetic_one_shot_filing_parser_isolation_quarantine_replay_and_provenance_binding",
     );
-    expect(FILING_PARSER_EVIDENCE_CHECKS).toHaveLength(16);
+    expect(FILING_PARSER_EVIDENCE_CHECKS).toHaveLength(17);
     expect(FILING_PARSER_EVIDENCE_NOT_PROVEN).toHaveLength(16);
     expect(FILING_PARSER_EVIDENCE_SOURCE_PATHS).toHaveLength(26);
     expect(new Set(FILING_PARSER_EVIDENCE_SOURCE_PATHS).size).toBe(26);
@@ -60,6 +61,37 @@ describe("filing parser evidence v1", () => {
       quarantined: 1,
       total: 3,
     });
+    expect(parsed.sourceBoundary).toEqual(FILING_PARSER_SOURCE_BOUNDARY);
+    expect(Object.isFrozen(parsed.sourceBoundary)).toBe(true);
+  });
+
+  it("rejects legacy evidence and substituted current-source authority", () => {
+    const evidence = createFilingParserEvidence(input());
+    for (const mutation of [
+      { ...evidence, evidenceVersion: 1, schemaVersion: "1.0.0" },
+      { ...evidence, sourceBoundary: undefined },
+      {
+        ...evidence,
+        sourceBoundary: { ...evidence.sourceBoundary, extra: true },
+      },
+      {
+        ...evidence,
+        sourceBoundary: { ...evidence.sourceBoundary, policy: "legacy" },
+      },
+      {
+        ...evidence,
+        sourceBoundary: {
+          ...evidence.sourceBoundary,
+          historicalAnchor: "a".repeat(40),
+        },
+      },
+    ]) {
+      expect(() =>
+        createFilingParserEvidence(
+          mutation as unknown as FilingParserEvidenceInput,
+        ),
+      ).toThrow("Filing parser evidence is invalid.");
+    }
   });
 
   it("rejects noncanonical, mixed-image, count, source, check, and nonclaim records", () => {
@@ -121,8 +153,8 @@ describe("filing parser evidence v1", () => {
       parseCanonicalFilingParserEvidence(
         new TextEncoder().encode(
           serialized.replace(
-            '"schemaVersion":"1.0.0"',
-            '"schemaVersion":"1.0.0","schemaVersion":"1.0.0"',
+            '"schemaVersion":"2.0.0"',
+            '"schemaVersion":"2.0.0","schemaVersion":"2.0.0"',
           ),
         ),
       ),
@@ -702,7 +734,7 @@ function input(): FilingParserEvidenceInput {
     checksPassed: FILING_PARSER_EVIDENCE_CHECKS,
     claim: FILING_PARSER_EVIDENCE_CLAIM,
     completedAt: "2026-08-20T20:01:00.000Z",
-    evidenceVersion: 1,
+    evidenceVersion: 2,
     fixtureManifestSha256: HASH_A,
     image: {
       architecture: "amd64",
@@ -734,6 +766,7 @@ function input(): FilingParserEvidenceInput {
       zeroResidue: true,
     },
     schemaVersion: FILING_PARSER_EVIDENCE_SCHEMA_VERSION,
+    sourceBoundary: FILING_PARSER_SOURCE_BOUNDARY,
     sourceHashes: FILING_PARSER_EVIDENCE_SOURCE_PATHS.map((path) => ({
       path,
       sha256: HASH_A,

@@ -8,8 +8,12 @@ import {
   FILING_PAYLOAD_CUSTODY_RETENTION_POLICY,
 } from "./payload-custody";
 
-export const FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION = "1.0.0" as const;
-export const FILING_PAYLOAD_CUSTODY_EVIDENCE_VERSION = 1 as const;
+export const FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION = "2.0.0" as const;
+export const FILING_PAYLOAD_CUSTODY_EVIDENCE_VERSION = 2 as const;
+export const FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY = Object.freeze({
+  policy: "current_source_with_preserved_history_v1",
+  historicalAnchor: "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e",
+} as const);
 export const FILING_PAYLOAD_CUSTODY_EVIDENCE_WORKFLOW =
   "Filing payload custody acceptance" as const;
 
@@ -29,7 +33,8 @@ export const FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS = [
   "read_expire_delete_serialization_and_terminal_no_resurrection",
   "logical_key_forget_decrypt_denial_and_idempotent_cleanup",
   "aggregate_value_free_audit_error_and_canary_leakage_rejection",
-  "no_network_parser_database_api_web_queue_and_cycle2a_schema_check_nonclaim_source_set_artifact_preservation",
+  "no_network_parser_database_api_web_queue_and_cycle2a_schema_check_nonclaim_source_set_artifact_preservation_at_historical_anchor",
+  "current_revision_committed_sources_and_domain_tree_invariants",
 ] as const;
 
 export const FILING_PAYLOAD_CUSTODY_EVIDENCE_NOT_PROVEN = [
@@ -136,6 +141,7 @@ export interface FilingPayloadCustodyEvidence {
     readonly tagBytes: typeof FILING_PAYLOAD_CUSTODY_ALGORITHM.tagBytes;
   };
   readonly schemaVersion: typeof FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION;
+  readonly sourceBoundary: typeof FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY;
   readonly sourceHashes: readonly FilingPayloadCustodyEvidenceSourceHash[];
   readonly startedAt: string;
   readonly status: "passed";
@@ -217,6 +223,7 @@ function normalizeEvidence(value: unknown): FilingPayloadCustodyEvidence {
     "revision",
     "runtime",
     "schemaVersion",
+    "sourceBoundary",
     "sourceHashes",
     "startedAt",
     "status",
@@ -314,6 +321,16 @@ function normalizeEvidence(value: unknown): FilingPayloadCustodyEvidence {
   )
     invalid();
 
+  const sourceBoundary = exactRecord(record.sourceBoundary, [
+    "policy",
+    "historicalAnchor",
+  ]);
+  if (
+    sourceBoundary.policy !== FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY.policy ||
+    sourceBoundary.historicalAnchor !==
+      FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY.historicalAnchor
+  )
+    invalid();
   const sourceHashes = normalizeSources(record.sourceHashes);
   const tools = exactRecord(
     record.tools,
@@ -358,6 +375,7 @@ function normalizeEvidence(value: unknown): FilingPayloadCustodyEvidence {
     revision: record.revision,
     runtime: { ...runtime },
     schemaVersion: FILING_PAYLOAD_CUSTODY_EVIDENCE_SCHEMA_VERSION,
+    sourceBoundary: FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
     sourceHashes,
     startedAt: record.startedAt,
     status: "passed",

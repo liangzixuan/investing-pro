@@ -6,6 +6,7 @@ import {
   FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_NOT_PROVEN,
   FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS,
+  FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
   createFilingPayloadCustodyEvidence,
   filingPayloadCustodyEvidenceSha256,
   parseCanonicalFilingPayloadCustodyEvidence,
@@ -19,14 +20,14 @@ import {
 
 const HASH = `sha256:${"a".repeat(64)}` as const;
 
-describe("filing payload custody evidence v1", () => {
+describe("filing payload custody evidence v2", () => {
   it("freezes the exact claim, checks, nonclaims, and ordered source set", () => {
     expect(FILING_PAYLOAD_CUSTODY_CLAIM).toBe(
       "bounded_synthetic_filing_payload_integrity_custody_and_logical_key_unavailability",
     );
-    expect(FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS).toHaveLength(16);
+    expect(FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS).toHaveLength(17);
     expect(FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS[15]).toBe(
-      "no_network_parser_database_api_web_queue_and_cycle2a_schema_check_nonclaim_source_set_artifact_preservation",
+      "no_network_parser_database_api_web_queue_and_cycle2a_schema_check_nonclaim_source_set_artifact_preservation_at_historical_anchor",
     );
     expect(FILING_PAYLOAD_CUSTODY_EVIDENCE_NOT_PROVEN).toHaveLength(16);
     expect(FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS).toHaveLength(29);
@@ -112,12 +113,47 @@ describe("filing payload custody evidence v1", () => {
       parseCanonicalFilingPayloadCustodyEvidence(
         new TextEncoder().encode(
           serialized.replace(
-            '"schemaVersion":"1.0.0"',
-            '"schemaVersion":"1.0.0","schemaVersion":"1.0.0"',
+            '"schemaVersion":"2.0.0"',
+            '"schemaVersion":"2.0.0","schemaVersion":"2.0.0"',
           ),
         ),
       ),
     ).toThrow("Filing payload custody evidence is invalid.");
+  });
+
+  it("requires the v2 closed current-source preservation policy", () => {
+    const valid = input();
+    const mutations = [
+      { ...valid, schemaVersion: "1.0.0" },
+      { ...valid, evidenceVersion: 1 },
+      { ...valid, sourceBoundary: undefined },
+      {
+        ...valid,
+        sourceBoundary: { ...valid.sourceBoundary, unexpected: true },
+      },
+      {
+        ...valid,
+        sourceBoundary: { ...valid.sourceBoundary, policy: "historical_only" },
+      },
+      {
+        ...valid,
+        sourceBoundary: {
+          ...valid.sourceBoundary,
+          historicalAnchor: "a".repeat(40),
+        },
+      },
+    ];
+    for (const mutation of mutations) {
+      expect(() =>
+        createFilingPayloadCustodyEvidence(mutation as never),
+      ).toThrow();
+    }
+    const evidence = createFilingPayloadCustodyEvidence(valid);
+    expect(evidence.sourceBoundary).toEqual({
+      policy: "current_source_with_preserved_history_v1",
+      historicalAnchor: "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e",
+    });
+    expect(Object.isFrozen(evidence.sourceBoundary)).toBe(true);
   });
 
   it("pins trusted output custody and direct key, DEK, nonce, and canary observations", async () => {
@@ -148,7 +184,7 @@ function input(): FilingPayloadCustodyEvidenceInput {
     checksPassed: FILING_PAYLOAD_CUSTODY_EVIDENCE_CHECKS,
     claim: FILING_PAYLOAD_CUSTODY_CLAIM,
     completedAt: "2026-08-21T01:00:01.000Z",
-    evidenceVersion: 1,
+    evidenceVersion: 2,
     fixtureManifestSha256: HASH,
     lifecycle: {
       auditValueFree: true,
@@ -181,7 +217,8 @@ function input(): FilingPayloadCustodyEvidenceInput {
       retentionMilliseconds: 86_400_000,
       tagBytes: 16,
     },
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
+    sourceBoundary: FILING_PAYLOAD_CUSTODY_SOURCE_BOUNDARY,
     sourceHashes: FILING_PAYLOAD_CUSTODY_EVIDENCE_SOURCE_PATHS.map((path) => ({
       path,
       sha256: HASH,

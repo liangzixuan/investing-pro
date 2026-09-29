@@ -389,6 +389,102 @@ function normalize(
     fail();
   markStage?.("historical_evidence");
 
+  let entries: FilingParserCrossEngineExecutionEvidenceTransitionEntry[] = [];
+  const domain = normalizeFilingParserCrossEngineExecutionDomain(
+    root,
+    () => {
+      const transition = exactRecord(root.transition, ["entries", "pathCount"]);
+      entries = denseArray(transition.entries).map(normalizeTransitionEntry);
+      if (
+        transition.pathCount !== entries.length ||
+        entries.length === 0 ||
+        entries.some(
+          (entry, index) => index > 0 && entry.path <= entries[index - 1]!.path,
+        )
+      )
+        fail();
+
+      return filingParserCrossEngineExecutionV5RequiredSourcePaths(entries);
+    },
+    markStage,
+  );
+  const workflow = exactRecord(root.workflow, [
+    "artifactName",
+    "event",
+    "job",
+    "ref",
+    "runAttempt",
+    "runId",
+    "workflowName",
+  ]);
+  if (
+    workflow.artifactName !==
+      `filing-parser-cross-engine-execution-evidence-v5-${root.revision}-${String(workflow.runAttempt)}` ||
+    typeof workflow.event !== "string" ||
+    workflow.event.length === 0 ||
+    workflow.job !== "acceptance" ||
+    typeof workflow.ref !== "string" ||
+    workflow.ref.length === 0 ||
+    !Number.isSafeInteger(workflow.runAttempt) ||
+    (workflow.runAttempt as number) < 1 ||
+    typeof workflow.runId !== "string" ||
+    !/^[1-9][0-9]*$/u.test(workflow.runId) ||
+    workflow.workflowName !==
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW
+  )
+    fail();
+  markStage?.("workflow");
+
+  const normalized = deepFreeze({
+    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+    caseOutcomes: domain.caseOutcomes,
+    checksPassed: [...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS],
+    claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
+    completedAt: root.completedAt,
+    custodyValidation: domain.custodyValidation,
+    engines: domain.engines,
+    evidenceVersion: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VERSION,
+    fixtureManifestSha256: root.fixtureManifestSha256,
+    historicalV1: plainClone(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
+    ),
+    historicalV2: plainClone(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
+    ),
+    historicalV3: plainClone(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
+    ),
+    historicalV4: plainClone(
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
+    ),
+    notProven: [...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN],
+    repository: root.repository,
+    revision: root.revision,
+    runtime: domain.runtime,
+    schemaVersion:
+      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
+    sourceHashes: domain.sourceHashes,
+    startedAt: root.startedAt,
+    status: "passed" as const,
+    summary: domain.summary,
+    synthetic: true as const,
+    tools: domain.tools,
+    transition: { entries, pathCount: entries.length },
+    workflow,
+  }) as unknown as FilingParserCrossEngineExecutionEvidenceV5;
+  markStage?.("canonical_freeze");
+  return normalized;
+}
+
+// Shared execution assertions for historical V5 and current-source V6 evidence.
+// The caller owns provenance; all outcome, custody, engine and runtime checks stay here.
+export function normalizeFilingParserCrossEngineExecutionDomain(
+  root: Record<string, unknown>,
+  resolveSourcePaths: () => readonly string[],
+  markStage?: (
+    stage: FilingParserCrossEngineExecutionEvidenceV5ValidationStage,
+  ) => void,
+) {
   const outcomes = denseArray(root.caseOutcomes);
   if (outcomes.length !== 6) fail();
   const normalizedOutcomes = outcomes.map((outcome, index) =>
@@ -402,16 +498,7 @@ function normalize(
   markStage?.("custody_bindings");
   markStage?.("quality_bindings");
 
-  const transition = exactRecord(root.transition, ["entries", "pathCount"]);
-  const entries = denseArray(transition.entries).map(normalizeTransitionEntry);
-  if (
-    transition.pathCount !== entries.length ||
-    entries.length === 0 ||
-    entries.some(
-      (entry, index) => index > 0 && entry.path <= entries[index - 1]!.path,
-    )
-  )
-    fail();
+  const requiredPaths = resolveSourcePaths();
   markStage?.("transition");
 
   const custodyValidation = exactRecord(root.custodyValidation, [
@@ -475,8 +562,6 @@ function normalize(
   markStage?.("runtime");
 
   const sourceHashes = denseArray(root.sourceHashes).map(normalizeSourceHash);
-  const requiredPaths =
-    filingParserCrossEngineExecutionV5RequiredSourcePaths(entries);
   if (
     sourceHashes.length !== requiredPaths.length ||
     sourceHashes.some((entry, index) => entry.path !== requiredPaths[index])
@@ -535,73 +620,23 @@ function normalize(
   )
     fail();
   markStage?.("tools_contract");
-  const workflow = exactRecord(root.workflow, [
-    "artifactName",
-    "event",
-    "job",
-    "ref",
-    "runAttempt",
-    "runId",
-    "workflowName",
-  ]);
-  if (
-    workflow.artifactName !==
-      `filing-parser-cross-engine-execution-evidence-v5-${root.revision}-${String(workflow.runAttempt)}` ||
-    typeof workflow.event !== "string" ||
-    workflow.event.length === 0 ||
-    workflow.job !== "acceptance" ||
-    typeof workflow.ref !== "string" ||
-    workflow.ref.length === 0 ||
-    !Number.isSafeInteger(workflow.runAttempt) ||
-    (workflow.runAttempt as number) < 1 ||
-    typeof workflow.runId !== "string" ||
-    !/^[1-9][0-9]*$/u.test(workflow.runId) ||
-    workflow.workflowName !==
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_WORKFLOW
-  )
-    fail();
-  markStage?.("workflow");
-
-  const normalized = deepFreeze({
-    baseline: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_BASELINE,
+  return {
     caseOutcomes: normalizedOutcomes,
-    checksPassed: [...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CHECKS],
-    claim: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_CLAIM,
-    completedAt: root.completedAt,
     custodyValidation,
     engines,
-    evidenceVersion: FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_VERSION,
     fixtureManifestSha256: root.fixtureManifestSha256,
-    historicalV1: plainClone(
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V1_HISTORY,
-    ),
-    historicalV2: plainClone(
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V2_HISTORY,
-    ),
-    historicalV3: plainClone(
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V3_HISTORY,
-    ),
-    historicalV4: plainClone(
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V4_HISTORY,
-    ),
-    notProven: [...FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_NOT_PROVEN],
-    repository: root.repository,
-    revision: root.revision,
     runtime: normalizedRuntime,
-    schemaVersion:
-      FILING_PARSER_CROSS_ENGINE_EXECUTION_EVIDENCE_V5_SCHEMA_VERSION,
     sourceHashes,
-    startedAt: root.startedAt,
-    status: "passed" as const,
     summary,
-    synthetic: true as const,
     tools,
-    transition: { entries, pathCount: entries.length },
-    workflow,
-  }) as unknown as FilingParserCrossEngineExecutionEvidenceV5;
-  markStage?.("canonical_freeze");
-  return normalized;
+  };
 }
+
+export {
+  canonicalJson as filingParserCrossEngineEvidenceCanonicalJson,
+  plainClone as filingParserCrossEngineEvidenceSnapshot,
+  deepFreeze as freezeFilingParserCrossEngineEvidence,
+};
 
 function normalizeOutcome(
   value: unknown,

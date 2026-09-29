@@ -73,6 +73,40 @@ const commandSurfaceExtensions = new Set([
 const filingParserCrossEngineSourceClassifierPath =
   "scripts/classify-filing-parser-cross-engine-source.sh";
 const filingParserCrossEngineSourceClassifierCommand = `bash --noprofile --norc -e -o pipefail ${filingParserCrossEngineSourceClassifierPath}`;
+const filingParserCrossEngineCurrentExecutionCondition =
+  "${{ success() && (steps.current_source.outputs.required == 'true' || steps.cycle2o_source.outputs.exact == 'true') }}";
+const filingParserCrossEngineCurrentSelector = [
+  "        id: current_source",
+  "        shell: bash --noprofile --norc -e -o pipefail {0}",
+  "        run: |",
+  '          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+  '          if git merge-base --is-ancestor 65cb08c94dd8767d1a59b01dd1b7a355d5c5667e "$GITHUB_SHA"; then',
+  "            echo 'required=true' >> \"$GITHUB_OUTPUT\"",
+  "          else",
+  "            echo 'required=false' >> \"$GITHUB_OUTPUT\"",
+  "          fi",
+].join("\n");
+const filingParserCrossEngineHistoricalClassifierIds = [
+  "cycle3e_source",
+  "cycle2x_source",
+  "cycle2w_source",
+  "cycle2v_source",
+  "cycle2u_source",
+  "cycle2s_source",
+  "cycle2r_source",
+  "cycle2q_source",
+  "cycle2p_source",
+  "cycle2o_source",
+  "admission_validity_bridge",
+  "cycle2n_source",
+  "legacy_bridge",
+] as const;
+const filingParserCrossEngineCurrentExecutionStepNames = [
+  "Run cross-engine parser execution acceptance",
+  "Independently review canonical evidence against the exact commit",
+  "Upload filing parser cross-engine execution evidence",
+] as const;
+
 const forbiddenText = [
   /investing\.com/i,
   /investing[_ -]?pro/i,
@@ -833,6 +867,8 @@ const filingParserCrossEngineExecutionAcceptanceSourceNames = [
   "filing-parser-cross-engine-execution-evidence-review.ts",
   "filing-parser-cross-engine-execution-evidence-v5.test.ts",
   "filing-parser-cross-engine-execution-evidence-v5.ts",
+  "filing-parser-cross-engine-execution-evidence-v6.test.ts",
+  "filing-parser-cross-engine-execution-evidence-v6.ts",
   "filing-parser-cross-engine-execution-evidence-verifier-v5.test.ts",
   "filing-parser-cross-engine-execution-evidence-verifier-v5.ts",
   "filing-parser-cross-engine-execution-evidence-verifier.test.ts",
@@ -13354,7 +13390,7 @@ async function personalFilingCorpusBoundaryViolations(): Promise<string[]> {
     "Cycle 2r is a personal local payload-identity route only.",
     'if [[ "${{ steps.cycle2q_source.outputs.exact }}" == "true" ]]; then',
     "Cycle 2q is a personal-use profile route only.",
-    "if: ${{ success() && steps.cycle2o_source.outputs.exact == 'true' }}",
+    `if: ${filingParserCrossEngineCurrentExecutionCondition}`,
   ])
     if (!workflow.includes(required))
       found.push(
@@ -13808,6 +13844,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     [
       `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-review.test.ts`,
       [
+        "./filing-parser-cross-engine-execution-evidence-v6",
         "vitest",
         "./filing-parser-cross-engine-execution-evidence",
         "./filing-parser-cross-engine-execution-evidence-review",
@@ -13816,6 +13853,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     [
       `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-review.ts`,
       [
+        "./filing-parser-cross-engine-execution-evidence-v6",
         "./filing-parser-cross-engine-execution-evidence-verifier",
         "./filing-parser-cross-engine-execution-evidence",
         "./filing-parser-cross-engine-execution-evidence-v5",
@@ -13838,6 +13876,22 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
         "node:util",
         filingParserCustodyQualityCompositionModule,
         "./filing-parser-cross-engine-execution-evidence",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-v6.test.ts`,
+      [
+        "vitest",
+        "./filing-parser-cross-engine-execution-evidence-v6",
+        "./test-filing-parser-cross-engine-execution-evidence-builder",
+      ],
+    ],
+    [
+      `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-v6.ts`,
+      [
+        "node:crypto",
+        "./filing-parser-cross-engine-execution-evidence",
+        "./filing-parser-cross-engine-execution-evidence-v5",
       ],
     ],
     [
@@ -13882,6 +13936,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
         "./filing-parser-cross-engine-execution-evidence",
         "./filing-parser-cross-engine-execution-evidence-verifier-v5",
         "./filing-parser-cross-engine-execution-evidence-v5",
+        "./filing-parser-cross-engine-execution-evidence-v6",
       ],
     ],
     [
@@ -13930,6 +13985,8 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
         filingParserCustodyQualityCompositionModule,
         "./filing-parser-cross-engine-execution-evidence",
         "./filing-parser-cross-engine-execution-evidence-v5",
+        "./filing-parser-cross-engine-execution-evidence-v6",
+        "./filing-parser-cross-engine-execution-evidence-verifier",
         "./test-filing-parser-cross-engine-execution-evidence-builder",
       ],
     ],
@@ -14139,6 +14196,9 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
   const sourceClassifierViolation =
     filingParserCrossEngineSourceClassifierWorkflowViolation(workflow);
   if (sourceClassifierViolation !== null) found.push(sourceClassifierViolation);
+  const currentSourceViolation =
+    filingParserCrossEngineCurrentSourceWorkflowViolation(workflow);
+  if (currentSourceViolation !== null) found.push(currentSourceViolation);
   const classifierFixture = [
     "jobs:",
     "  acceptance:",
@@ -14198,6 +14258,96 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     )
   )
     throw new Error("Cross-engine source-classifier workflow guard regressed");
+  const currentSourceFixture = [
+    "jobs:",
+    "  acceptance:",
+    "    steps:",
+    "      - name: Select current source",
+    filingParserCrossEngineCurrentSelector,
+    ...filingParserCrossEngineHistoricalClassifierIds.flatMap((id) => [
+      `      - name: Classify ${id}`,
+      `        id: ${id}`,
+      `        if: ${filingParserCrossEngineHistoricalCondition(id)}`,
+      "        shell: bash",
+      `        run: ${id === "cycle3e_source" ? filingParserCrossEngineSourceClassifierCommand : "echo historical"}`,
+    ]),
+    ...filingParserCrossEngineCurrentExecutionStepNames.flatMap((name) => [
+      `      - name: ${name}`,
+      `        if: ${filingParserCrossEngineCurrentExecutionCondition}`,
+      "        run: echo operation",
+    ]),
+    "      - name: Record exact non-evidence route or reject an unrecognized route",
+    "        if: ${{ steps.current_source.outputs.required != 'true' && steps.cycle2o_source.outputs.exact != 'true' }}",
+    "        run: |",
+    '          test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    '          test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v6.json"',
+    "",
+  ].join("\n");
+  const currentSourceMutations = [
+    currentSourceFixture.replace(filingParserCrossEngineCurrentSelector, ""),
+    currentSourceFixture.replace(
+      'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"',
+      "true",
+    ),
+    currentSourceFixture.replace(
+      "65cb08c94dd8767d1a59b01dd1b7a355d5c5667e",
+      "0".repeat(40),
+    ),
+    currentSourceFixture.replace(
+      "bash --noprofile --norc -e -o pipefail {0}",
+      "bash",
+    ),
+    currentSourceFixture.replace(
+      "        id: current_source",
+      "        working-directory: packages\n        id: current_source",
+    ),
+    currentSourceFixture.replace(
+      "        shell: bash --noprofile",
+      "        env:\n          BASH_ENV: unreviewed.sh\n        shell: bash --noprofile",
+    ),
+    currentSourceFixture.replace(
+      "    steps:",
+      "    defaults:\n      run:\n        working-directory: packages\n    steps:",
+    ),
+    currentSourceFixture.replace(
+      "steps.current_source.outputs.required != 'true' && (success())",
+      "success()",
+    ),
+    currentSourceFixture.replace("(success())", "(${{ success() }})"),
+    currentSourceFixture.replace(
+      filingParserCrossEngineHistoricalCondition("cycle2w_source"),
+      "${{ steps.current_source.outputs.required != 'true' && (success()) || true || (success()) }}",
+    ),
+    ...filingParserCrossEngineCurrentExecutionStepNames.map((name) =>
+      currentSourceFixture.replace(
+        `      - name: ${name}\n        if: ${filingParserCrossEngineCurrentExecutionCondition}`,
+        `      - name: ${name}\n        if: \${{ success() && steps.cycle2o_source.outputs.exact == 'true' }}`,
+      ),
+    ),
+    currentSourceFixture.replace(
+      "steps.current_source.outputs.required != 'true' && steps.cycle2o_source.outputs.exact != 'true'",
+      "steps.cycle2o_source.outputs.exact != 'true'",
+    ),
+    currentSourceFixture.replace(
+      'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v6.json"',
+      "true",
+    ),
+    currentSourceFixture + currentSourceFixture,
+  ];
+  if (
+    filingParserCrossEngineCurrentSourceWorkflowViolation(
+      currentSourceFixture,
+    ) !== null ||
+    filingParserCrossEngineSourceClassifierWorkflowViolation(
+      currentSourceFixture,
+    ) !== null ||
+    currentSourceMutations.some(
+      (candidate) =>
+        filingParserCrossEngineCurrentSourceWorkflowViolation(candidate) ===
+        null,
+    )
+  )
+    throw new Error("Cross-engine current-source workflow guard regressed");
   const cycle2oVerifier = await cycle2kText(
     `${filingParserCrossEngineExecutionAcceptanceSourcePrefix}filing-parser-cross-engine-execution-evidence-verifier.ts`,
     found,
@@ -14281,7 +14431,7 @@ async function filingParserCrossEngineExecutionBoundaryViolations(): Promise<
     "pnpm guardrails:filing-parser-cross-engine-execution-fixtures",
     "pnpm filing-parser-cross-engine-execution:acceptance",
     "pnpm filing-parser-cross-engine-execution:evidence-review",
-    "if: ${{ success() }}",
+    `if: ${filingParserCrossEngineCurrentExecutionCondition}`,
   ])
     if (!workflow.includes(command))
       found.push(`Cycle 2k workflow is missing exact command ${command}`);
@@ -17662,7 +17812,11 @@ function filingParserCrossEngineSourceClassifierWorkflowViolation(
     .trimEnd();
   const expected = [
     "        id: cycle3e_source",
-    "        if: ${{ success() }}",
+    entries.some(
+      (entry) => entry.key === "id" && entry.value === "current_source",
+    )
+      ? "        if: ${{ steps.current_source.outputs.required != 'true' && (success()) }}"
+      : "        if: ${{ success() }}",
     "        shell: bash",
     `        run: ${filingParserCrossEngineSourceClassifierCommand}`,
   ].join("\n");
@@ -17677,6 +17831,127 @@ function filingParserCrossEngineSourceClassifierWorkflowViolation(
     )
   )
     return "Cross-engine source classifier must retain its exact Bash caller and repository working directory";
+  return null;
+}
+
+function filingParserCrossEngineHistoricalCondition(
+  id: (typeof filingParserCrossEngineHistoricalClassifierIds)[number],
+): string {
+  const exclusions = filingParserCrossEngineHistoricalClassifierIds
+    .slice(1, filingParserCrossEngineHistoricalClassifierIds.indexOf(id))
+    .map((previous) => ` && steps.${previous}.outputs.exact != 'true'`)
+    .join("");
+  return `\${{ steps.current_source.outputs.required != 'true' && (success()${exclusions}) }}`;
+}
+
+function filingParserCrossEngineCurrentSourceWorkflowViolation(
+  workflow: string,
+): string | null {
+  const lines = workflow.replaceAll("\r\n", "\n").split("\n");
+  const entries = githubWorkflowYamlEntries(lines);
+  const step = (key: "id" | "name", value: string) => {
+    const matches = entries.filter(
+      (entry) =>
+        entry.key === key && entry.value === value && entry.keyIndent === 8,
+    );
+    const start = matches[0];
+    if (matches.length !== 1 || start === undefined) return null;
+    const end =
+      entries.find(
+        (entry) =>
+          entry.lineIndex > start.lineIndex &&
+          entry.sequence &&
+          entry.indent === 6,
+      )?.lineIndex ?? lines.length;
+    return {
+      start,
+      end,
+      body: lines.slice(start.lineIndex, end).join("\n").trimEnd(),
+    };
+  };
+  const selector = step("id", "current_source");
+  if (
+    selector === null ||
+    selector.body !== filingParserCrossEngineCurrentSelector ||
+    !/^ {6}- name: .+$/u.test(lines[selector.start.lineIndex - 1] ?? "")
+  )
+    return "Cross-engine current-source selector must bind actual HEAD and fixed ancestor with the exact Bash caller";
+  if (
+    entries.some(
+      (entry) =>
+        entry.lineIndex < selector.start.lineIndex &&
+        entry.keyIndent <= 4 &&
+        entry.key === "defaults",
+    )
+  )
+    return "Cross-engine current-source selector must use the repository working directory";
+  for (const id of filingParserCrossEngineHistoricalClassifierIds) {
+    const historical = step("id", id);
+    const conditions =
+      historical === null
+        ? []
+        : entries.filter(
+            (entry) =>
+              entry.lineIndex > historical.start.lineIndex &&
+              entry.lineIndex < historical.end &&
+              entry.keyIndent === 8 &&
+              entry.key === "if",
+          );
+    if (
+      historical === null ||
+      historical.start.lineIndex <= selector.start.lineIndex ||
+      conditions.length !== 1 ||
+      conditions[0]!.value !== filingParserCrossEngineHistoricalCondition(id)
+    )
+      return `Cross-engine historical classifier ${id} must exclude the current-source route`;
+  }
+  for (const name of filingParserCrossEngineCurrentExecutionStepNames) {
+    const operation = step("name", name);
+    const conditions =
+      operation === null
+        ? []
+        : entries.filter(
+            (entry) =>
+              entry.lineIndex > operation.start.lineIndex &&
+              entry.lineIndex < operation.end &&
+              entry.keyIndent === 8 &&
+              entry.key === "if",
+          );
+    if (
+      operation === null ||
+      operation.start.lineIndex <= selector.start.lineIndex ||
+      conditions.length !== 1 ||
+      conditions[0]!.value !== filingParserCrossEngineCurrentExecutionCondition
+    )
+      return `Cross-engine current-source route requires successful ${name}`;
+  }
+  const noEvidence = step(
+    "name",
+    "Record exact non-evidence route or reject an unrecognized route",
+  );
+  const noEvidenceConditions =
+    noEvidence === null
+      ? []
+      : entries.filter(
+          (entry) =>
+            entry.lineIndex > noEvidence.start.lineIndex &&
+            entry.lineIndex < noEvidence.end &&
+            entry.keyIndent === 8 &&
+            entry.key === "if",
+        );
+  if (
+    noEvidence === null ||
+    noEvidenceConditions.length !== 1 ||
+    noEvidenceConditions[0]!.value !==
+      "${{ steps.current_source.outputs.required != 'true' && steps.cycle2o_source.outputs.exact != 'true' }}" ||
+    !noEvidence.body.includes(
+      'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v5.json"',
+    ) ||
+    !noEvidence.body.includes(
+      'test ! -e "$RUNNER_TEMP/research-cockpit-filing-parser-cross-engine-execution-v6.json"',
+    )
+  )
+    return "Cross-engine non-evidence route must exclude current execution and reject both v5 and v6 artifacts";
   return null;
 }
 

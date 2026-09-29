@@ -103,9 +103,14 @@ also part of their existing workspace test discovery. A static production build
 and archive check establish local packaging only. Source review, tests and a
 prepared workflow do not establish a successful cloud deployment.
 
-Current status: the implementation has passed local checks and source review.
-Default-branch integration, environment secrets, production-site configuration
-and the first observed staging/test/promotion run remain pending. Backend
+Current status: the delivery implementation has passed local checks and source
+review. Both GitHub environments are restricted to `main`; production requires
+the owner's review. The staging secret name is confirmed, but no cloud run has
+yet verified the credential. Default-branch integration, passing checks,
+production credentials/site configuration and the first observed
+staging/test/promotion run remain pending. See the
+[current filing acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) for the
+CI provenance repair prompted by PR 11. Backend
 functions, schema migrations, storage proofs and Android signing are not
 performed by this static-site workflow.
 

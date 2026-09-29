@@ -1,3 +1,8 @@
+import {
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+  FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS,
+} from "./filing-parser-cross-engine-execution-evidence-v6";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -189,4 +194,44 @@ describe("filing parser cross-engine execution evidence review", () => {
       }),
     ).toThrow();
   });
+});
+
+it("reviews V6 only with its exact current-source and historical contract", () => {
+  const review = {
+    artifactName: "artifact",
+    evidenceSha256: `sha256:${"a".repeat(64)}` as const,
+    evidenceVersion: 6 as const,
+    historicalV5: FILING_PARSER_CROSS_ENGINE_EXECUTION_V5_HISTORICAL_BOUNDARY,
+    sourceBoundary: {
+      historicalAnchor:
+        FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY.historicalAnchor,
+      policy: FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_BOUNDARY.policy,
+    },
+    repository: "owner/repo",
+    revision: "b".repeat(40),
+    runAttempt: 1,
+    runId: "123",
+    sourceCount: FILING_PARSER_CROSS_ENGINE_EXECUTION_V6_SOURCE_PATHS.length,
+    verdict: "offline_consistent" as const,
+  };
+  expect(
+    JSON.parse(filingParserCrossEngineExecutionEvidenceReviewStdout(review)),
+  ).toEqual(review);
+  for (const changed of [
+    { ...review, sourceCount: 0 },
+    {
+      ...review,
+      sourceBoundary: { ...review.sourceBoundary, policy: "historical_skip" },
+    },
+    {
+      ...review,
+      historicalV5: {
+        ...review.historicalV5,
+        correctiveRevision: "b".repeat(40),
+      },
+    },
+  ])
+    expect(() =>
+      filingParserCrossEngineExecutionEvidenceReviewStdout(changed as never),
+    ).toThrow();
 });
