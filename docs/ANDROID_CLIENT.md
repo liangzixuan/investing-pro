@@ -4,8 +4,9 @@ The personal launch targets computer and Android use before November 2026.
 The Android app bundles the existing React workspace with Capacitor. Desktop
 continues to use Next.js. The owner selected the existing Appwrite Education
 project for the shared service. Isolated storage evidence is accepted for the
-separate Clerk trial; signed-in browser and physical Pixel sessions remain
-unverified. Native iOS remains a later platform with separate build, signing and
+separate Clerk trial. Root verified a signed-in desktop reload, and the owner
+reported passing its Pixel checklist. Upgrade persistence and production
+configuration remain pending. Native iOS remains a later platform with build, signing and
 device requirements.
 
 ## Current scope
@@ -34,7 +35,9 @@ ID `local.investment.personal.clerktrial`. Its
 [debug APK packaging review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
 accepted the package identity, signature and bundled assets. The ordinary profile
 and build commands below remain disconnected. Neither packaging nor the trial's
-public website checks establish an installed phone session.
+public website checks establish an installed phone session. The separate
+[owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) records successful
+phone checklist results; it is not an agent-captured device trace.
 
 ## Build
 
@@ -63,17 +66,18 @@ desktop browser running the bundle.
 
 ## Next acceptance steps
 
-1. Verify the trial's official Clerk sign-in in external Brave and on the owner's
-   Pixel. The API and website are active, and the
+1. Preserve the completed initial trial results: root observed a signed-in Brave
+   reload, and the owner reported passing the Pixel checklist. The
    [isolated storage review](../../tmp/clerk-trial/storage-cloud-actual-independent-review.json)
-   accepts seven scenarios with a qualified overlap result. Signed-in browser
-   and physical Pixel acceptance remain pending; see
+   accepts seven scenarios with a qualified overlap result. See
    [Appwrite storage](./APPWRITE_WATCHLIST.md) for proof limits.
-2. Install the exact accepted trial APK and verify hosted callback/cancellation,
-   Android Back, focus, touch, external links, background/resume and
-   force-stop/relaunch persistence.
-3. Complete the synthetic shared watchlist/note journey, stale-draft handling,
-   explicit uncertain-save reconciliation and independent sign-out. Keep the
+2. Carry the owner-reported callback/cancellation, Android Back,
+   background/resume and force-stop/reopen results. Check same-signature upgrade
+   with a second APK; broader focus, touch and external-link behavior remain
+   separate from the completed checklist.
+3. Carry the owner-reported shared watchlist/note, stale-draft and independent
+   sign-out results. Live uncertain-save reconciliation and expired-session
+   behavior remain separate from that checklist. Keep the
    local-access endpoint loopback-only. Connecting the ordinary workspace and
    measuring its chart/startup performance remain separate work; offline edits
    need a defined conflict and persistence policy.

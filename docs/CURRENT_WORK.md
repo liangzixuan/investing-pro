@@ -16,7 +16,11 @@ records that acceptance.
 The client remains disconnected. The owner subsequently approved the separate
 [Clerk trial](./CLERK_TRIAL.md), using Appwrite storage and physical Pixel checks.
 Its API and website are active, and isolated storage evidence is accepted.
-Signed-in browser and physical Pixel acceptance remain pending.
+Root verified an authenticated desktop reload, and the owner reported passing
+the Pixel checklist, including shared data and independent sign-out. The
+[owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
+agent-observed desktop and cloud evidence. Upgrade persistence and production
+authentication configuration remain pending.
 
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
@@ -45,7 +49,8 @@ platform/result and terminal BrowserStack build state for that run remain indepe
 unverified. The earlier 13-second Windows 11 / Chrome 154 session is separate
 evidence. Setup is one-time; each command or eligible push starts a new
 test. The manually deployed preview remains distinct from the test-code revision.
-The current product outcome is signed-in desktop and Pixel use of the isolated trial.
+The initial signed-in desktop/Pixel trial has passed with the evidence limits
+recorded in the [trial guide](./CLERK_TRIAL.md).
 
 ## Active outcome: Appwrite shared watchlist storage
 
@@ -76,8 +81,10 @@ invocation. These do not establish actual packet loss or a cold process restart.
 The [public smoke receipt](../../tmp/clerk-trial/public-trial-smoke-attempt1/passed.json)
 records four matching deployed assets and four unauthenticated API boundary checks.
 The [APK review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
-accepts local packaging only. Signed-in browser, shared UI and physical Pixel
-behavior remain pending; no owner data is migrated.
+accepts local packaging only. Separately, the owner reported passing the installed
+Pixel checklist for sign-in, shared synthetic data, stale drafts, independent
+sign-out and lifecycle behavior. Same-signature upgrade remains untested, and no
+owner data is migrated.
 
 Development uses `android-launch` on `codex/android-launch`, based on accepted
 a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is

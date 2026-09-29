@@ -4,8 +4,9 @@ Appwrite is the selected hosting candidate for personal phone and desktop use.
 The storage adapter uses the official `node-appwrite` 29.0.0 server SDK and the
 existing watchlist identity and payload rules. The separate [Clerk trial](./CLERK_TRIAL.md)
 connects it to an authenticated route, a synthetic watchlist screen and an Android
-bundle. Its isolated cloud storage proof is accepted; signed-in browser and
-physical Pixel acceptance remain pending. The ordinary client stays disconnected.
+bundle. Its isolated cloud storage proof is accepted. Root verified a signed-in
+desktop reload, and the owner reported passing the Pixel checklist for shared
+data and sessions. The ordinary client stays disconnected.
 
 ## Data and authority
 
@@ -96,14 +97,15 @@ results do not establish owner migration or application session behavior.
 The API and website are active. The
 [public smoke receipt](../../tmp/clerk-trial/public-trial-smoke-attempt1/passed.json)
 records four matching deployed assets and four unauthenticated API boundary checks.
-The remaining acceptance is:
+The [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) separately
+records successful Pixel checklist results for sign-in, shared synthetic data,
+stale drafts, independent sign-out, callback/Back and lifecycle behavior. No device
+logs were collected. The remaining acceptance is:
 
-1. Verify signed-in browser and native sessions for the same allowed account,
-   denied or expired sessions, shared reads/writes, stale drafts, independent
-   sign-out and retirement of old responses. Console membership is not an
-   application session.
-2. Verify the installed Pixel app's sign-in, background/resume, force-stop,
-   relaunch and upgrade. Browser sessions do not establish native persistence.
+1. Verify live denied/expired-session behavior, response-retirement races and
+   uncertain-save recovery beyond the completed checklist and focused tests.
+2. Verify same-signature upgrade with a second APK. The owner-reported lifecycle
+   checks do not establish upgrade persistence or production release signing.
 3. Before connecting the ordinary workspace, integrate its catalog and provider
    status through the reviewed HTTPS profile. The trial's two invented entries
    do not activate that workspace or authorize owner-data migration.
@@ -112,8 +114,9 @@ The owner approved a separate [Clerk trial](./CLERK_TRIAL.md) for authentication
 with Appwrite retaining server-owned storage. This replaces the proposed
 Appwrite-cookie design within that trial. Official Clerk SDKs manage credentials;
 short-lived session tokens reach React request memory. No custom token cache or
-Appwrite Account session is added. Android encrypted persistence and independent
-device sessions still require physical-device acceptance. The ordinary
+Appwrite Account session is added. Android lifecycle and independent sign-out
+have owner-reported physical-device passes. Production session configuration
+still requires review. The ordinary
 disconnected APK retains its empty API origin and restrictive CSP; the trial has
 an explicit separate build profile. The data-free BrowserStack website copy
 cannot prove connected workflows.

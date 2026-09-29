@@ -77,7 +77,7 @@ build Android with `-PinvestmentClerkTrial=true`. Its separate application ID is
 The default profile retains `local.investment.personal`. The build rejects a
 missing development public key. No secret key belongs in an Android build.
 
-## Acceptance still required
+## Trial results and remaining acceptance
 
 The isolated trial API and website were activated on September 29. The seven
 storage scenarios have accepted evidence: six phases passed directly, and the
@@ -86,19 +86,27 @@ the harness reached its request budget. The original failed report is retained.
 The deployed website's four assets match the reviewed build; unauthenticated
 requests, an invalid origin and an unknown route returned the expected responses.
 
-The separate debug APK is built and its identity, bundled assets and signature
-are checked. These results do not establish successful browser or Pixel sign-in.
+The separate debug APK's identity, bundled assets and signature were checked.
+Root subsequently observed an authenticated desktop watchlist and explicitly
+reloaded saved version 1 with its existing synthetic note unchanged.
 
-Local tests, compilation and a debug APK are preparation. Accept the trial only
-after observing the deployed function, exact browser build, real independent
-sessions and synthetic shared reads/writes. Check stale edits, expired/denied
-sessions, and sign-out in both directions.
+On September 29 the owner reported completing all six steps of the
+[Pixel checklist](../../tmp/clerk-trial/pixel-checklist.md) successfully. The
+[acceptance record](../../tmp/clerk-trial/pixel-owner-acceptance.json) covers
+installation and hosted sign-in, shared synthetic reads/writes, stale-draft
+handling, independent sign-out in both directions, hosted callback cancellation,
+Android Back, background/resume and force-stop/reopen. The previously identified
+device is Pixel 10 Pro XL / Android 17. These are owner-reported results; no device
+logs or per-step measurements were collected. Functional sign-out does not
+establish immediate invalidation of an already issued token.
 
-The physical Pixel must also establish hosted callback/cancellation, Android Back,
-background/resume, force-stop/relaunch and same-signature upgrade persistence.
-BrowserStack covers browser behavior and cannot establish these native results.
-Keep production Clerk adoption and owner migration pending until these checks and
-the production privacy/recovery configuration are reviewed.
+The initial trial supports continuing with Clerk for authentication and Appwrite
+for hosting and storage. Same-signature upgrade persistence requires a later
+second APK. Live expired/denied-session behavior and response-retirement races
+remain covered by focused tests rather than this owner checklist. Production
+authentication, privacy/recovery configuration and release distribution still
+need review before production adoption or owner-data migration. BrowserStack
+remains browser-only and supplies no native evidence for this trial.
 
 Actual source hashes, checks and cloud results are recorded in workspace
 `CURRENT.md` and `tmp/clerk-trial`. Expected results are not acceptance.
