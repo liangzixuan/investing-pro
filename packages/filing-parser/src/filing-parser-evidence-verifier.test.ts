@@ -717,7 +717,9 @@ async function currentSourceFixture(): Promise<{
       vi.stubEnv(key, undefined);
     }
   }
-  const directory = await mkdtemp(join(tmpdir(), "parser-current-source-"));
+  const directory = await realpath(
+    await mkdtemp(join(tmpdir(), "parser-current-source-")),
+  );
   temporaryDirectories.push(directory);
   await gitOutput(["init", "--quiet", "--initial-branch=main", directory]);
   await gitOutput(["-C", directory, "config", "core.autocrlf", "false"]);
@@ -762,6 +764,43 @@ describe("current parser source admission", () => {
       ).toBe(false);
     }
   });
+
+  it.skipIf(process.platform !== "win32")(
+    "canonicalizes a Windows temporary root alias without admitting alias roots",
+    async () => {
+      const parent = await mkdtemp(
+        join(await realpath(tmpdir()), "parser-current-case-parent-"),
+      );
+      temporaryDirectories.push(parent);
+      const alias = parent.replace(
+        "parser-current-case-parent-",
+        "PARSER-CURRENT-CASE-PARENT-",
+      );
+      expect(alias).not.toBe(parent);
+      expect(await realpath(alias)).toBe(parent);
+      vi.stubEnv("TEMP", alias);
+      vi.stubEnv("TMP", alias);
+      const { directory, anchor } = await currentSourceFixture();
+      // The parent owns this nested fixture; parallel cleanup must remove it once.
+      const nestedCleanup = temporaryDirectories.indexOf(directory);
+      expect(nestedCleanup).toBeGreaterThanOrEqual(0);
+      temporaryDirectories.splice(nestedCleanup, 1);
+      expect(dirname(directory)).toBe(parent);
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(directory, anchor, anchor, [
+          "source.txt",
+        ]),
+      ).resolves.toBeUndefined();
+      await expect(
+        verifyFilingParserCurrentSourceSnapshot(
+          directory.replace(parent, alias),
+          anchor,
+          anchor,
+          ["source.txt"],
+        ),
+      ).rejects.toThrow();
+    },
+  );
 
   it("admits ordinary descendants and actual two-parent merges without counters", async () => {
     const { directory, anchor } = await currentSourceFixture();

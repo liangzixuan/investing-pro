@@ -106,9 +106,9 @@ prepared workflow do not establish a successful cloud deployment.
 
 Current status: the delivery implementation has passed local checks and source
 review. Both GitHub environments are restricted to `main`; production requires
-the owner's review. The staging secret name is confirmed, but no cloud run has
-yet verified the credential. Default-branch integration, passing checks,
-the separate production credential and the first observed
+the owner's review. The owner saved separate deployment keys, and both secret
+names are confirmed. No cloud run has yet verified either credential.
+Default-branch integration, successful required checks and the first observed
 staging/test/promotion run remain pending. See the
 [current filing acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) for the
 CI provenance repair prompted by PR 11. Backend

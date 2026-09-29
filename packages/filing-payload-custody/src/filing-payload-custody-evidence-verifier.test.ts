@@ -3,6 +3,7 @@ import {
   lstat,
   mkdir,
   mkdtemp,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -33999,7 +34000,9 @@ async function currentSourceFixture() {
       vi.stubEnv(key, undefined);
     }
   }
-  const directory = await mkdtemp(join(tmpdir(), "payload-current-source-"));
+  const directory = await realpath(
+    await mkdtemp(join(tmpdir(), "payload-current-source-")),
+  );
   temporaryDirectories.push(directory);
   const repository = join(directory, "repository");
   await gitOutput(["init", "--quiet", repository]);
