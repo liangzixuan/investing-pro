@@ -33,6 +33,7 @@ on:
       - scripts/classify-filing-parser-cross-engine-source.sh
       - scripts/release-classification*.ts
       - scripts/release-classification/**
+      - scripts/boundaries/dependency-policy.ts
       - scripts/verify-boundaries.ts
       - scripts/verify-filing-parser-fixtures.ts
       - tsconfig.base.json
@@ -68,6 +69,7 @@ on:
       - scripts/classify-filing-parser-cross-engine-source.sh
       - scripts/release-classification*.ts
       - scripts/release-classification/**
+      - scripts/boundaries/dependency-policy.ts
       - scripts/verify-boundaries.ts
       - scripts/verify-filing-parser-fixtures.ts
       - tsconfig.base.json

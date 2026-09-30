@@ -148,6 +148,23 @@ describe("main-push source proof", () => {
     ).toEqual([CHECK_WORKFLOWS[0], CHECK_WORKFLOWS[2]]);
   });
 
+  it("requires the same acceptance jobs for a dependency-policy helper change as its boundary runner", () => {
+    const runner = proofFor(["scripts/verify-boundaries.ts"]);
+    const helper = proofFor(["scripts/boundaries/dependency-policy.ts"]);
+    expect(helper.workflows).toEqual(runner.workflows);
+    expect(
+      helper.workflows
+        .filter((workflow) => workflow.required)
+        .map((workflow) => workflow.path),
+    ).toEqual([
+      CHECK_WORKFLOWS[0],
+      CHECK_WORKFLOWS[2],
+      CHECK_WORKFLOWS[3],
+      CHECK_WORKFLOWS[4],
+      CHECK_WORKFLOWS[5],
+    ]);
+  });
+
   it("uses every path in the complete push inventory, not only the final commit", () => {
     const proof = proofFor(["docs/CURRENT_WORK.md", "package.json"]);
     expect(proof.changedPaths).toEqual([
