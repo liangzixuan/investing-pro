@@ -30,8 +30,8 @@ existing workflow inventory stays unchanged.
 ## Credentials and reports
 
 The project is [Investment, 85364](https://codescene.io/projects/85364), bound to
-`liangzixuan/investing-pro` and its published `main` branch. Use PowerShell 7 as the
-signed-in Windows user from the repository root:
+`liangzixuan/investing-pro` and its published `main` branch. Use PowerShell 7.5 or
+later as the signed-in Windows user from the repository root:
 
 ```powershell
 pwsh -NoProfile -File .\scripts\codescene\Get-InvestmentCodeScene.ps1 -ProjectId 85364 -IncludeRefactoringTargets

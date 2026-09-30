@@ -51,7 +51,7 @@ function Read-CodeSceneJson([string]$Route, [switch]$AllowMissingAnalysis) {
             $buffer.Write($chunk, 0, $size)
         }
         $script:failureReason = 'response_invalid'
-        $body = [System.Text.UTF8Encoding]::new($false, $true).GetString($buffer.ToArray()) | ConvertFrom-Json -AsHashtable -Depth 100
+        $body = [System.Text.UTF8Encoding]::new($false, $true).GetString($buffer.ToArray()) | ConvertFrom-Json -AsHashtable -Depth 100 -DateKind String
         if ($body -isnot [System.Collections.IDictionary]) { Stop-Reader 'response_invalid' }
         return @{ body = $body; status = 200 }
     } finally {
