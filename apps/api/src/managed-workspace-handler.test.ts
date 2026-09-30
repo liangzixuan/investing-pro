@@ -215,6 +215,41 @@ describe("managed catalog request boundary", () => {
     },
   );
 
+  it.each([
+    [
+      "envelope before path",
+      "/v1/managed/unknown",
+      { headers: { "content-encoding": "gzip" } },
+      400,
+      "invalid_request",
+    ],
+    [
+      "path before method",
+      "/v1/managed/unknown?q=%",
+      { method: "POST" },
+      404,
+      "not_found",
+    ],
+    [
+      "method before query decoding",
+      `${SEARCH}?q=%`,
+      { method: "POST" },
+      405,
+      "method_not_allowed",
+    ],
+  ] as const)(
+    "preserves validation order: %s",
+    async (_phase, path, init, expectedStatus, error) => {
+      const f = fixture();
+      const response = await f.handler(request(path, init));
+      expect(response.status).toBe(expectedStatus);
+      expect(await response.json()).toEqual({ error });
+      expect(f.auth).not.toHaveBeenCalled();
+      expect(f.status).not.toHaveBeenCalled();
+      expect(f.search).not.toHaveBeenCalled();
+    },
+  );
+
   it("bounds the request target and decoded query in code points", async () => {
     const f = fixture();
     const maximumQuery = "\u{1f600}".repeat(

@@ -25,20 +25,46 @@ class RequestFailure extends Error {
   }
 }
 
-function admitRoute(request: Request): { readonly query: string | null } {
-  const url = new URL(request.url);
+function validateRequestTarget(request: Request, url: URL): void {
   if (
     url.pathname.length + url.search.length + url.hash.length >
       MANAGED_CATALOG_LIMITS.maximumRequestTargetCodeUnits ||
     url.username ||
     url.password ||
-    request.url.includes("#") ||
+    request.url.includes("#")
+  )
+    throw new RequestFailure(400, "invalid_request");
+}
+
+function validateReadBody(request: Request): void {
+  if (
     request.body !== null ||
     request.headers.has("content-encoding") ||
     (request.headers.has("content-length") &&
       request.headers.get("content-length") !== "0")
   )
     throw new RequestFailure(400, "invalid_request");
+}
+
+function decodeSearchQuery(search: string): string {
+  const encodedQuery = /^\?q=([^&]*)$/u.exec(search)?.[1];
+  if (encodedQuery === undefined)
+    throw new RequestFailure(400, "invalid_request");
+  let query: string;
+  try {
+    query = decodeURIComponent(encodedQuery.replaceAll("+", " "));
+  } catch {
+    throw new RequestFailure(400, "invalid_request");
+  }
+  if ([...query].length > MANAGED_CATALOG_LIMITS.searchQueryCodePoints)
+    throw new RequestFailure(400, "invalid_request");
+  return query;
+}
+
+function admitRoute(request: Request): { readonly query: string | null } {
+  const url = new URL(request.url);
+  validateRequestTarget(request, url);
+  validateReadBody(request);
   if (
     url.pathname !== MANAGED_CATALOG_STATUS_PATH &&
     url.pathname !== MANAGED_CATALOG_SEARCH_PATH
@@ -51,18 +77,7 @@ function admitRoute(request: Request): { readonly query: string | null } {
       throw new RequestFailure(400, "invalid_request");
     return { query: null };
   }
-  const encodedQuery = /^\?q=([^&]*)$/u.exec(url.search)?.[1];
-  if (encodedQuery === undefined)
-    throw new RequestFailure(400, "invalid_request");
-  let query: string;
-  try {
-    query = decodeURIComponent(encodedQuery.replaceAll("+", " "));
-  } catch {
-    throw new RequestFailure(400, "invalid_request");
-  }
-  if ([...query].length > MANAGED_CATALOG_LIMITS.searchQueryCodePoints)
-    throw new RequestFailure(400, "invalid_request");
-  return { query };
+  return { query: decodeSearchQuery(url.search) };
 }
 
 function preflight(request: Request, headers: Headers): Response {

@@ -246,6 +246,46 @@ describe("managed catalog wire contract", () => {
   });
 
   it.each([
+    {
+      phase: "identity",
+      change: { profile: "unknown_profile" },
+      laterField: "asOf",
+    },
+    {
+      phase: "chronology",
+      change: { generatedAt: "2026-09-28T00:00:00.000Z" },
+      laterField: "attribution",
+    },
+    {
+      phase: "coverage",
+      change: { coverage: { ...coverage(), totalSecurities: 99 } },
+      laterField: "contentKind",
+    },
+  ])(
+    "stops after invalid $phase before inspecting later metadata",
+    ({ change, laterField }) => {
+      let laterReads = 0;
+      const input = new Proxy(
+        { ...snapshot(), ...change },
+        {
+          get(target, key, receiver): unknown {
+            if (key === laterField) {
+              laterReads += 1;
+              throw new Error("Later metadata must remain uninspected");
+            }
+            return Reflect.get(target, key, receiver);
+          },
+        },
+      );
+      expect(parseManagedCatalogStatus({ snapshot: input })).toBeNull();
+      expect(
+        parseManagedCatalogSearch({ ...search(), snapshot: input }),
+      ).toBeNull();
+      expect(laterReads).toBe(0);
+    },
+  );
+
+  it.each([
     ["schemaVersion", "2.0.0"],
     ["profile", "personal_single_user_local_security_master"],
     ["snapshotSha256", `sha256:${"A".repeat(64)}`],

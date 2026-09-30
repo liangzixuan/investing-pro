@@ -170,9 +170,13 @@ export function parseManagedCatalogSearch(
   }
 }
 
+type SnapshotFields = {
+  readonly [Key in keyof ManagedCatalogSnapshotDto]: unknown;
+};
+
 function isSnapshot(value: unknown): value is ManagedCatalogSnapshotDto {
-  if (
-    !hasKeys(value, [
+  return (
+    hasKeys(value, [
       "schemaVersion",
       "profile",
       "snapshotSha256",
@@ -186,21 +190,44 @@ function isSnapshot(value: unknown): value is ManagedCatalogSnapshotDto {
       "coverage",
       "sources",
       "excludedCandidates",
-    ]) ||
-    value.schemaVersion !== "1.0.0" ||
-    value.profile !== "personal_single_user_managed_security_master" ||
-    typeof value.snapshotSha256 !== "string" ||
-    !DIGEST.test(value.snapshotSha256) ||
-    !isId(value.catalogId) ||
-    !isId(value.catalogVersion) ||
+    ]) &&
+    hasSnapshotIdentity(value) &&
+    hasSnapshotChronology(value) &&
+    hasSnapshotProvenance(value)
+  );
+}
+
+function hasSnapshotIdentity(value: SnapshotFields): boolean {
+  return (
+    value.schemaVersion === "1.0.0" &&
+    value.profile === "personal_single_user_managed_security_master" &&
+    typeof value.snapshotSha256 === "string" &&
+    DIGEST.test(value.snapshotSha256) &&
+    isId(value.catalogId) &&
+    isId(value.catalogVersion)
+  );
+}
+
+function hasSnapshotChronology(
+  value: SnapshotFields,
+): value is SnapshotFields &
+  Pick<ManagedCatalogSnapshotDto, "asOf" | "generatedAt" | "acquiredAt"> {
+  if (
     !isInstant(value.asOf) ||
     !isInstant(value.generatedAt) ||
     !isInstant(value.acquiredAt) ||
     value.acquiredAt > value.generatedAt ||
-    value.generatedAt > value.asOf ||
-    !isText(value.attribution, 512) ||
-    !isCoverage(value.coverage)
+    value.generatedAt > value.asOf
   )
+    return false;
+  return true;
+}
+
+function hasSnapshotProvenance(
+  value: SnapshotFields &
+    Pick<ManagedCatalogSnapshotDto, "asOf" | "generatedAt" | "acquiredAt">,
+): boolean {
+  if (!isText(value.attribution, 512) || !isCoverage(value.coverage))
     return false;
   const basis =
     value.contentKind === "redistributable_source"
