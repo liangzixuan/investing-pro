@@ -9,6 +9,11 @@ export const PERSONAL_SECURITY_MASTER_PROFILE =
 export const PERSONAL_SECURITY_MASTER_CLAIM =
   "bounded_exact_owner_local_security_master_snapshot_admitted" as const;
 
+export const MANAGED_SECURITY_MASTER_PROFILE =
+  "personal_single_user_managed_security_master" as const;
+export const MANAGED_SECURITY_MASTER_CLAIM =
+  "bounded_exact_managed_security_master_snapshot_admitted" as const;
+
 export const PERSONAL_SECURITY_MASTER_LIMITS = Object.freeze({
   aggregateArrayEntries: 600_000,
   aggregateStringCodePoints: 12_000_000,
@@ -174,6 +179,9 @@ class InternalPersonalSecurityMasterFailure extends Error {
 export type PersonalSecurityMasterContentKind =
   "owner_local_source" | "synthetic_engineering";
 
+export type ManagedSecurityMasterContentKind =
+  "redistributable_source" | "synthetic_engineering";
+
 export type PersonalSecurityMasterInstrumentType = "adr" | "common_stock";
 
 export type PersonalSecurityMasterSearchMatchKind =
@@ -192,6 +200,14 @@ export interface PersonalSecurityMasterProvenance {
   readonly sourceId: string;
   readonly sourceLocator: `owner-local-composite-manifest:sha256:${string}`;
   readonly sourceRevision: `sha256:${string}`;
+}
+
+export interface ManagedSecurityMasterProvenance extends Omit<
+  PersonalSecurityMasterProvenance,
+  "contentKind" | "sourceLocator"
+> {
+  readonly contentKind: ManagedSecurityMasterContentKind;
+  readonly sourceLocator: `managed-composite-manifest:sha256:${string}`;
 }
 
 export interface PersonalSecurityMasterProvenanceArtifact {
@@ -235,6 +251,29 @@ export interface PersonalSecurityMasterSourcePolicyCompatibility {
   readonly sourceId: string;
 }
 
+export interface ManagedSecurityMasterSourcePolicyCompatibility extends Omit<
+  PersonalSecurityMasterSourcePolicyCompatibility,
+  | "cache"
+  | "display"
+  | "export"
+  | "localOnly"
+  | "policyProfile"
+  | "redistribution"
+  | "retention"
+  | "rightsBasis"
+  | "search"
+> {
+  readonly cache: "permitted_managed";
+  readonly display: "permitted_managed";
+  readonly export: "permitted_with_attribution";
+  readonly localOnly: false;
+  readonly policyProfile: "personal_single_user_managed_connected";
+  readonly redistribution: "permitted_with_attribution";
+  readonly retention: "permitted_managed";
+  readonly rightsBasis: "reviewed_redistributable_source";
+  readonly search: "permitted_managed";
+}
+
 export interface PersonalSecurityMasterCatalogCoverage {
   readonly admittedSourceRecords: number;
   readonly activeEligibleSecurities: number;
@@ -271,6 +310,41 @@ export interface PersonalSecurityMasterCatalog {
   readonly sourcePolicyCompatibility: PersonalSecurityMasterSourcePolicyCompatibility;
   readonly status: "admitted_for_personal_local_search";
 }
+
+export interface ManagedSecurityMasterCatalogCoverage extends Omit<
+  PersonalSecurityMasterCatalogCoverage,
+  "basis"
+> {
+  readonly basis:
+    "reviewed_snapshot_only" | "synthetic_engineering_only_not_real_universe";
+}
+
+export interface ManagedSecurityMasterCatalog extends Omit<
+  PersonalSecurityMasterCatalog,
+  | "claim"
+  | "coverage"
+  | "profile"
+  | "provenance"
+  | "sourcePolicyCompatibility"
+  | "status"
+> {
+  readonly claim: typeof MANAGED_SECURITY_MASTER_CLAIM;
+  readonly coverage: ManagedSecurityMasterCatalogCoverage;
+  readonly profile: typeof MANAGED_SECURITY_MASTER_PROFILE;
+  readonly provenance: ManagedSecurityMasterProvenance;
+  readonly sourcePolicyCompatibility: ManagedSecurityMasterSourcePolicyCompatibility;
+  readonly status: "admitted_for_personal_managed_search";
+}
+
+type AdmittedCatalog =
+  PersonalSecurityMasterCatalog | ManagedSecurityMasterCatalog;
+type CatalogProvenance =
+  PersonalSecurityMasterProvenance | ManagedSecurityMasterProvenance;
+type CatalogCoverage =
+  PersonalSecurityMasterCatalogCoverage | ManagedSecurityMasterCatalogCoverage;
+type CatalogSourcePolicy =
+  | PersonalSecurityMasterSourcePolicyCompatibility
+  | ManagedSecurityMasterSourcePolicyCompatibility;
 
 export interface PersonalSecurityMasterSearchInput {
   readonly limit: number;
@@ -463,14 +537,14 @@ interface ValidatedSnapshot {
   readonly asOf: string;
   readonly catalogId: string;
   readonly catalogVersion: string;
-  readonly coverage: PersonalSecurityMasterCatalogCoverage;
+  readonly coverage: CatalogCoverage;
   readonly generatedAt: string;
   readonly issuers: readonly RawIssuer[];
-  readonly provenance: PersonalSecurityMasterProvenance;
+  readonly provenance: CatalogProvenance;
   readonly providerMappings: readonly RawProviderMapping[];
   readonly records: readonly RawSecurityRecord[];
   readonly sourceCoverage: SourceCoverage;
-  readonly sourcePolicyCompatibility: PersonalSecurityMasterSourcePolicyCompatibility;
+  readonly sourcePolicyCompatibility: CatalogSourcePolicy;
 }
 
 interface SourceCoverage {
@@ -504,9 +578,11 @@ interface SearchEntry {
 }
 
 interface CatalogState {
+  readonly profile: AdmittedCatalog["profile"];
   readonly catalogId: string;
   readonly catalogVersion: string;
-  readonly contentKind: PersonalSecurityMasterContentKind;
+  readonly contentKind:
+    PersonalSecurityMasterContentKind | ManagedSecurityMasterContentKind;
   readonly eligibleSecurities: number;
   readonly searchEntries: readonly SearchEntry[];
   readonly snapshotSha256: `sha256:${string}`;
@@ -579,41 +655,111 @@ const UINT8_ARRAY_SET = Object.getOwnPropertyDescriptor(
   TYPED_ARRAY_PROTOTYPE,
   "set",
 )?.value as typeof Uint8Array.prototype.set;
-const CATALOG_STATES = new WeakMap<
-  PersonalSecurityMasterCatalog,
-  CatalogState
->();
+const LOCAL_ADMISSION = Object.freeze({
+  profile: PERSONAL_SECURITY_MASTER_PROFILE,
+  claim: PERSONAL_SECURITY_MASTER_CLAIM,
+  status: "admitted_for_personal_local_search" as const,
+  sourceKind: "owner_local_source" as const,
+  sourceLocatorPrefix: "owner-local-composite-manifest" as const,
+  coverageBasis: "owner_declared_snapshot_only" as const,
+  policy: Object.freeze({
+    cache: "permitted_owner_local",
+    display: "permitted_owner_local",
+    export: "prohibited",
+    localOnly: true,
+    policyProfile: "personal_single_user_local_connected",
+    redistribution: "prohibited",
+    retention: "permitted_owner_local",
+    rightsBasis: "owner_reviewed_rights_compatible",
+    search: "permitted_owner_local",
+  } as const),
+});
+const MANAGED_ADMISSION = Object.freeze({
+  profile: MANAGED_SECURITY_MASTER_PROFILE,
+  claim: MANAGED_SECURITY_MASTER_CLAIM,
+  status: "admitted_for_personal_managed_search" as const,
+  sourceKind: "redistributable_source" as const,
+  sourceLocatorPrefix: "managed-composite-manifest" as const,
+  coverageBasis: "reviewed_snapshot_only" as const,
+  policy: Object.freeze({
+    cache: "permitted_managed",
+    display: "permitted_managed",
+    export: "permitted_with_attribution",
+    localOnly: false,
+    policyProfile: "personal_single_user_managed_connected",
+    redistribution: "permitted_with_attribution",
+    retention: "permitted_managed",
+    rightsBasis: "reviewed_redistributable_source",
+    search: "permitted_managed",
+  } as const),
+});
+type AdmissionProfile = typeof LOCAL_ADMISSION | typeof MANAGED_ADMISSION;
+const CATALOG_STATES = new WeakMap<AdmittedCatalog, CatalogState>();
 
 export function admitPersonalSecurityMasterSnapshot(
   input: PersonalSecurityMasterAdmissionInput,
 ): PersonalSecurityMasterCatalog {
+  if (arguments.length !== 1) {
+    throw new PersonalSecurityMasterError(
+      "PERSONAL_SECURITY_MASTER_INVALID_INPUT",
+    );
+  }
+  return admitSnapshot(input, LOCAL_ADMISSION);
+}
+
+export function admitManagedSecurityMasterSnapshot(
+  input: PersonalSecurityMasterAdmissionInput,
+): ManagedSecurityMasterCatalog {
+  if (arguments.length !== 1) {
+    throw new PersonalSecurityMasterError(
+      "PERSONAL_SECURITY_MASTER_INVALID_INPUT",
+    );
+  }
+  return admitSnapshot(input, MANAGED_ADMISSION);
+}
+
+function admitSnapshot(
+  input: PersonalSecurityMasterAdmissionInput,
+  profile: typeof LOCAL_ADMISSION,
+): PersonalSecurityMasterCatalog;
+function admitSnapshot(
+  input: PersonalSecurityMasterAdmissionInput,
+  profile: typeof MANAGED_ADMISSION,
+): ManagedSecurityMasterCatalog;
+function admitSnapshot(
+  input: PersonalSecurityMasterAdmissionInput,
+  profile: AdmissionProfile,
+): AdmittedCatalog {
   let ownedSnapshot: Uint8Array | undefined;
   try {
-    if (arguments.length !== 1) fail("PERSONAL_SECURITY_MASTER_INVALID_INPUT");
     const admission = snapshotAdmissionInput(input);
     ownedSnapshot = admission.snapshot;
     const snapshotSha256 = sha256(ownedSnapshot);
     if (snapshotSha256 !== admission.expectedSha256) {
       fail("PERSONAL_SECURITY_MASTER_DIGEST_MISMATCH");
     }
-    const validated = validateSnapshot(parseCanonicalDocument(ownedSnapshot));
+    const validated = validateSnapshot(
+      parseCanonicalDocument(ownedSnapshot),
+      profile,
+    );
     const catalog = Object.freeze({
       asOf: validated.asOf,
       catalogId: validated.catalogId,
       catalogVersion: validated.catalogVersion,
-      claim: PERSONAL_SECURITY_MASTER_CLAIM,
+      claim: profile.claim,
       coverage: validated.coverage,
       generatedAt: validated.generatedAt,
-      profile: PERSONAL_SECURITY_MASTER_PROFILE,
+      profile: profile.profile,
       provenance: validated.provenance,
       schemaVersion: PERSONAL_SECURITY_MASTER_SCHEMA_VERSION,
       snapshotSha256,
       sourcePolicyCompatibility: validated.sourcePolicyCompatibility,
-      status: "admitted_for_personal_local_search" as const,
-    });
+      status: profile.status,
+    }) as AdmittedCatalog;
     CATALOG_STATES.set(
       catalog,
       Object.freeze({
+        profile: profile.profile,
         catalogId: validated.catalogId,
         catalogVersion: validated.catalogVersion,
         contentKind: validated.provenance.contentKind,
@@ -633,7 +779,7 @@ export function admitPersonalSecurityMasterSnapshot(
 }
 
 export function searchPersonalSecurityMaster(
-  catalog: PersonalSecurityMasterCatalog,
+  catalog: PersonalSecurityMasterCatalog | ManagedSecurityMasterCatalog,
   input: PersonalSecurityMasterSearchInput,
 ): PersonalSecurityMasterSearchResponse {
   try {
@@ -648,7 +794,7 @@ export function searchPersonalSecurityMaster(
 }
 
 export function lookupPersonalSecurityMasterListing(
-  catalog: PersonalSecurityMasterCatalog,
+  catalog: PersonalSecurityMasterCatalog | ManagedSecurityMasterCatalog,
   listingId: string,
 ): PersonalSecurityMasterScreenRow | null {
   try {
@@ -673,7 +819,11 @@ export function screenPersonalSecurityMaster(
   try {
     if (arguments.length !== 2) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
     const state = CATALOG_STATES.get(catalog);
-    if (state === undefined) fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
+    if (
+      state === undefined ||
+      state.profile !== PERSONAL_SECURITY_MASTER_PROFILE
+    )
+      fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
     const request = snapshotScreenInput(input);
     if (request.snapshotSha256 !== state.snapshotSha256) {
       fail("PERSONAL_SECURITY_MASTER_SCREEN_INVALID");
@@ -693,7 +843,10 @@ export function measurePersonalSecurityMasterSearchP95(
       fail("PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID");
     }
     const state = CATALOG_STATES.get(catalog);
-    if (state === undefined) {
+    if (
+      state === undefined ||
+      state.profile !== PERSONAL_SECURITY_MASTER_PROFILE
+    ) {
       fail("PERSONAL_SECURITY_MASTER_MEASUREMENT_INVALID");
     }
     const request = snapshotMeasurementInput(input);
@@ -1180,7 +1333,10 @@ function parseCanonicalDocument(bytes: Uint8Array): unknown {
   return value;
 }
 
-function validateSnapshot(value: unknown): ValidatedSnapshot {
+function validateSnapshot(
+  value: unknown,
+  profile: AdmissionProfile,
+): ValidatedSnapshot {
   const root = exactRecord(value, [
     "asOf",
     "catalogId",
@@ -1197,7 +1353,7 @@ function validateSnapshot(value: unknown): ValidatedSnapshot {
   ]);
   if (
     root.schemaVersion !== PERSONAL_SECURITY_MASTER_SCHEMA_VERSION ||
-    root.profile !== PERSONAL_SECURITY_MASTER_PROFILE ||
+    root.profile !== profile.profile ||
     !isSafeId(root.catalogId) ||
     !isVersion(root.catalogVersion) ||
     typeof root.asOf !== "string" ||
@@ -1218,7 +1374,7 @@ function validateSnapshot(value: unknown): ValidatedSnapshot {
   const asOf = parseInstant(root.asOf);
   const generatedAt = parseInstant(root.generatedAt);
   if (generatedAt > asOf) fail("PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID");
-  const provenance = validateProvenance(root.provenance, generatedAt);
+  const provenance = validateProvenance(root.provenance, generatedAt, profile);
   const sourceCoverage = validateSourceCoverage(
     root.sourceCoverage,
     root.records.length,
@@ -1227,6 +1383,7 @@ function validateSnapshot(value: unknown): ValidatedSnapshot {
     root.sourcePolicyCompatibility,
     asOf,
     provenance,
+    profile,
   );
   const graph = validateSecurityGraph(
     root.issuers,
@@ -1240,6 +1397,7 @@ function validateSnapshot(value: unknown): ValidatedSnapshot {
     sourceCoverage,
     graph.issuers.length,
     graph.providerMappings.length,
+    profile,
   );
   return Object.freeze({
     asOf: root.asOf,
@@ -1259,7 +1417,8 @@ function validateSnapshot(value: unknown): ValidatedSnapshot {
 function validateProvenance(
   value: unknown,
   generatedAt: number,
-): PersonalSecurityMasterProvenance {
+  profile: AdmissionProfile,
+): CatalogProvenance {
   const record = exactRecord(value, [
     "acquiredAt",
     "artifacts",
@@ -1276,14 +1435,14 @@ function validateProvenance(
     record.artifacts.length >
       PERSONAL_SECURITY_MASTER_LIMITS.provenanceArtifacts ||
     !isBoundedText(record.attribution, 1, 512) ||
-    (record.contentKind !== "owner_local_source" &&
+    (record.contentKind !== profile.sourceKind &&
       record.contentKind !== "synthetic_engineering") ||
     !isSafeId(record.sourceId) ||
     !isBoundedText(record.sourceLocator, 1, 2_048) ||
     typeof record.sourceRevision !== "string" ||
     !HASH.test(record.sourceRevision) ||
     record.sourceLocator !==
-      `owner-local-composite-manifest:${record.sourceRevision}`
+      `${profile.sourceLocatorPrefix}:${record.sourceRevision}`
   ) {
     fail("PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID");
   }
@@ -1298,10 +1457,9 @@ function validateProvenance(
     attribution: record.attribution,
     contentKind: record.contentKind,
     sourceId: record.sourceId,
-    sourceLocator:
-      record.sourceLocator as `owner-local-composite-manifest:sha256:${string}`,
+    sourceLocator: record.sourceLocator as CatalogProvenance["sourceLocator"],
     sourceRevision: record.sourceRevision as `sha256:${string}`,
-  });
+  }) as CatalogProvenance;
 }
 
 function validateProvenanceArtifacts(
@@ -1351,8 +1509,9 @@ function validateProvenanceArtifacts(
 function validateSourcePolicyCompatibility(
   value: unknown,
   asOf: number,
-  provenance: PersonalSecurityMasterProvenance,
-): PersonalSecurityMasterSourcePolicyCompatibility {
+  provenance: CatalogProvenance,
+  profile: AdmissionProfile,
+): CatalogSourcePolicy {
   const record = exactRecord(value, [
     "attribution",
     "cache",
@@ -1381,30 +1540,30 @@ function validateSourcePolicyCompatibility(
   ]);
   if (
     record.attribution !== "required" ||
-    record.cache !== "permitted_owner_local" ||
+    record.cache !== profile.policy.cache ||
     record.decision !== "compatible" ||
     record.deleteOnRequest !== true ||
-    record.display !== "permitted_owner_local" ||
+    record.display !== profile.policy.display ||
     typeof record.effectiveAt !== "string" ||
     typeof record.expiresAt !== "string" ||
-    record.export !== "prohibited" ||
+    record.export !== profile.policy.export ||
     record.intendedUse !== "personal_security_research" ||
-    record.localOnly !== true ||
+    record.localOnly !== profile.policy.localOnly ||
     record.operation !== "fetch_snapshot" ||
     typeof record.policyDocumentSha256 !== "string" ||
     !HASH.test(record.policyDocumentSha256) ||
     !isSafeId(record.policyId) ||
-    record.policyProfile !== "personal_single_user_local_connected" ||
+    record.policyProfile !== profile.policy.policyProfile ||
     record.policySchemaVersion !== "1.0.0" ||
     !isVersion(record.policyVersion) ||
-    record.redistribution !== "prohibited" ||
-    record.retention !== "permitted_owner_local" ||
+    record.redistribution !== profile.policy.redistribution ||
+    record.retention !== profile.policy.retention ||
     typeof record.reviewedAt !== "string" ||
     record.revocationCheck !==
       "offline_snapshot_only_cannot_discover_later_revocation" ||
     record.revokedAt !== null ||
-    record.rightsBasis !== "owner_reviewed_rights_compatible" ||
-    record.search !== "permitted_owner_local" ||
+    record.rightsBasis !== profile.policy.rightsBasis ||
+    record.search !== profile.policy.search ||
     record.sourceId !== provenance.sourceId
   ) {
     fail("PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID");
@@ -1422,29 +1581,21 @@ function validateSourcePolicyCompatibility(
     fail("PERSONAL_SECURITY_MASTER_SNAPSHOT_INVALID");
   }
   return Object.freeze({
+    ...profile.policy,
     attribution: "required",
-    cache: "permitted_owner_local",
     decision: "compatible",
     deleteOnRequest: true,
-    display: "permitted_owner_local",
     effectiveAt: record.effectiveAt,
     expiresAt: record.expiresAt,
-    export: "prohibited",
     intendedUse: "personal_security_research",
-    localOnly: true,
     operation: "fetch_snapshot",
     policyDocumentSha256: record.policyDocumentSha256 as `sha256:${string}`,
     policyId: record.policyId,
-    policyProfile: "personal_single_user_local_connected",
     policySchemaVersion: "1.0.0",
     policyVersion: record.policyVersion,
-    redistribution: "prohibited",
-    retention: "permitted_owner_local",
     reviewedAt: record.reviewedAt,
     revocationCheck: "offline_snapshot_only_cannot_discover_later_revocation",
     revokedAt: null,
-    rightsBasis: "owner_reviewed_rights_compatible",
-    search: "permitted_owner_local",
     sourceId: record.sourceId,
   });
 }
@@ -2009,11 +2160,13 @@ function mappingTargetsExpectedEntity(
 
 function buildCoverage(
   records: readonly RawSecurityRecord[],
-  contentKind: PersonalSecurityMasterContentKind,
+  contentKind:
+    PersonalSecurityMasterContentKind | ManagedSecurityMasterContentKind,
   sourceCoverage: SourceCoverage,
   issuerCount: number,
   providerMappingCount: number,
-): PersonalSecurityMasterCatalogCoverage {
+  profile: AdmissionProfile,
+): CatalogCoverage {
   let activeEligibleSecurities = 0;
   let activeListings = 0;
   let formerTickerEntries = 0;
@@ -2048,7 +2201,7 @@ function buildCoverage(
     basis:
       contentKind === "synthetic_engineering"
         ? "synthetic_engineering_only_not_real_universe"
-        : "owner_declared_snapshot_only",
+        : profile.coverageBasis,
     eligibleSecurityBand,
     formerTickerEntries,
     ineligibleSourceRecords: sourceCoverage.ineligibleRecords,

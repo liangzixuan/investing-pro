@@ -36,8 +36,8 @@ composition, and the function uses copied values with fixed storage targets.
 Production is web only, allows the exact application origin, has no native
 exception. Its account configuration accepts null for closed admission or one
 explicitly confirmed production subject; signature, issuer, session and subject
-checks precede storage. The running API stays closed until the selected subject
-and a new deployment receive separate acceptance.
+checks precede storage. The selected production subject and its API deployment
+are now accepted; other accounts remain denied.
 
 The official public-key parser's direct runtime dependency is included in the
 license notice mapping. Profile validation keeps subject admission and origin
@@ -48,17 +48,27 @@ development and production profiles. Each profile fixes its synthetic database,
 invented identity and output directory, and the build marker binds the selected
 plan to its source. The seven scenarios keep their existing limits. Production
 schema, seven transaction scenarios and API/domain activation now have accepted
-evidence. The accepted development trial, local vault and existing disconnected
-production website remain separate.
+evidence. The accepted development trial and local vault remain separate from
+the production synthetic web journey.
 
-The active product outcome is the production web demo watchlist. Reuse its
-existing official Clerk SDK, controller and private Appwrite service. The
+The production web demo watchlist is accepted using its existing official Clerk
+SDK, controller and private Appwrite service. The
 delivery workflow builds the production client with an exact source marker and
 promotes the same archive. Staging boots an inert frame and notices without
 authentication or data requests; only the canonical production origin mounts
 Clerk. The staging check does not establish authenticated watchlist acceptance.
-The owner reported production signup complete; exact subject confirmation and
-the resulting API/client deployments remain pending in workspace CURRENT.
+The canonical desktop save/read/reload is accepted. The owner reported matching
+data and sign-out on Android Chrome on the Pixel, after which the desktop still
+loaded the same saved version without another sign-in. This is a limited
+synthetic web journey, not native production or full-workspace acceptance.
+
+The next product outcome is managed Discover and My Watchlist with real catalog
+securities. Its selected first layer is an explicit
+[managed catalog admission and offline preparation profile](./MANAGED_SECURITY_CATALOG.md).
+It shares existing identity and search logic while keeping local-only snapshots
+out of managed admission. Actual permitted source artifacts, the managed API/UI
+connection and production Android acceptance remain separate steps. The accepted
+demo's deployment and saved record stay intact.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
@@ -80,7 +90,8 @@ the Pixel checklist, including shared data and independent sign-out. The
 [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
 agent-observed desktop and cloud evidence. The owner later confirmed testing
 trial 1.1 after the update handoff; this is an overall owner report with no
-itemized device trace. The separate production service is configured and accepted; its account admission remains closed pending the confirmed subject and reviewed deployment.
+itemized device trace. The separate production service and selected-subject
+admission are now accepted for the limited synthetic web journey described above.
 
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
