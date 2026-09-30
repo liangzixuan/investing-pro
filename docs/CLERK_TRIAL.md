@@ -120,15 +120,21 @@ defines the requested phone checks. The separate
 records the subsequent confirmation. Packaging evidence and the overall owner
 report remain distinct; exact artifact evidence is in CURRENT.
 
-Production also needs an owner-controlled domain and DNS, a separate production
-instance/account allowlist, registered Android release certificate, and reviewed
-production configuration. The owner reports registering `investingpro.app`,
+Production needs an account allowlist, registered Android release certificate,
+and reviewed production client/API configuration. The owner registered `investingpro.app`,
 superseding the earlier `investmentdesk.app` selection. A separate production
 instance has now been created within the Investment Clerk application. A
 follow-up check confirmed that the development instance remains present.
-Clerk issued five required DNS records; the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md)
-records the actual configuration and remaining steps. DNS, certificates and
-production sign-in remain unverified. Google sign-in, if retained, needs the
+All six approved CNAME records are saved at Name.com, and public DNS matches the
+Appwrite target and five Clerk targets. `app.investingpro.app` serves the accepted
+static build over verified HTTPS. Clerk reports DNS, SSL and email verification
+complete. Independent requests validated the certificates on both Clerk hosts.
+The account domain and its documented `/sign-in` page returned HTTP 403 to
+unauthenticated HTTP checks, including one sign-in-page check after Clerk's
+verification completed. The cause is unresolved, and browser sign-in was not
+tested. These checks do not establish production login readiness. The
+[domain handoff](../../tmp/clerk-trial/production-domain/plan.md) records the actual
+configuration and remaining steps. Google sign-in, if retained, needs the
 owner's production OAuth configuration. The existing trial remains available
 while those inputs are prepared. [Clerk production setup](https://clerk.com/docs/guides/development/deployment/production).
 

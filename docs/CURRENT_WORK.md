@@ -66,9 +66,15 @@ registering `investingpro.app`, superseding the earlier `investmentdesk.app`
 selection. A separate production instance is now created in the Investment
 Clerk application, with the existing development instance preserved. Clerk's
 five required DNS records are retained in the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md).
-Appwrite now has a binding for `app.investingpro.app`, with the accepted static
-deployment and its original domain rule preserved. Registrar DNS, certificates
-and production sign-in remain pending; the full workspace remains disconnected.
+All six approved CNAME records are saved and match public DNS. Appwrite's
+`app.investingpro.app` binding is verified, and an HTTPS request confirmed the
+accepted static build with a valid certificate. The original domain rule and
+deployment were preserved. Clerk reports DNS, SSL and email verification complete.
+Separate HTTPS checks validated both Clerk host certificates. The account root
+and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
+including one sign-in-page check after Clerk's verification completed.
+The cause and browser sign-in remain unverified. Production client/API
+configuration is pending; the full workspace remains disconnected.
 
 ## Accepted trial and shared watchlist storage
 
