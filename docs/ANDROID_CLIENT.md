@@ -64,6 +64,41 @@ hashes and limitations are recorded in workspace `tmp/android-launch` and
 `CURRENT.md`. Do not infer physical-device acceptance from compilation or a
 desktop browser running the bundle.
 
+## Versions and release signing
+
+Each delivered update needs a higher `versionCode` and the same application ID
+and signing certificate as the installed app. Supply the public version values
+explicitly for each build:
+
+```powershell
+./gradlew.bat --no-daemon --console=plain -PinvestmentVersionCode=2 -PinvestmentVersionName=1.1 assembleDebug
+```
+
+The separate trial also requires `-PinvestmentClerkTrial=true`, its existing
+public development configuration and the trial assets. Its update must retain
+`local.investment.personal.clerktrial` and the accepted debug certificate. Install
+over the previous trial without uninstalling or clearing app data; only that
+phone check can establish session preservation through an update.
+
+Release builds use Gradle's separate release signing configuration. They require
+all four process environment inputs: `INVESTMENT_ANDROID_KEYSTORE` (an absolute
+path to an existing private keystore), `INVESTMENT_ANDROID_KEY_ALIAS`,
+`INVESTMENT_ANDROID_STORE_PASSWORD` and `INVESTMENT_ANDROID_KEY_PASSWORD`.
+Supply credentials privately through the build environment; do not place values
+in shell arguments, Git, logs or chat. Missing inputs fail before app release
+preparation/signing. The build never falls back to the debug signer. Debug builds
+do not require these release inputs.
+
+The release key still needs owner-controlled custody and a recoverable backup.
+No production key is generated or provisioned by the versioning change. The
+existing trial debug signer remains separate from the future production signer.
+The trial 1.1 APK (version code 2) built with that same certificate and unchanged
+web/Capacitor assets. Four invalid-version checks and the missing-signing-input
+check passed. The [Pixel update checklist](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-checklist.md)
+remains pending; the artifact and raw results are recorded in workspace CURRENT.
+See [Android versioning](https://developer.android.com/studio/publish/versioning)
+and [app signing](https://developer.android.com/studio/publish/app-signing).
+
 ## Next acceptance steps
 
 1. Preserve the completed initial trial results: root observed a signed-in Brave

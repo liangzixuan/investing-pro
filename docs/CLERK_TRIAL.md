@@ -101,12 +101,29 @@ logs or per-step measurements were collected. Functional sign-out does not
 establish immediate invalidation of an already issued token.
 
 The initial trial supports continuing with Clerk for authentication and Appwrite
-for hosting and storage. Same-signature upgrade persistence requires a later
-second APK. Live expired/denied-session behavior and response-retirement races
+for hosting and storage. Same-signature upgrade persistence requires installing
+the second APK over the existing trial and completing the update checklist.
+Live expired/denied-session behavior and response-retirement races
 remain covered by focused tests rather than this owner checklist. Production
 authentication, privacy/recovery configuration and release distribution still
 need review before production adoption or owner-data migration. BrowserStack
 remains browser-only and supplies no native evidence for this trial.
+
+The version 1.1 trial APK (version code 2) has built successfully with the same
+application ID, trial certificate and all eight packaged web/Capacitor assets
+as the first APK. Four invalid-version cases were rejected, and a release build
+without signing credentials failed before producing a release artifact. The
+[update checklist](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-checklist.md)
+is the remaining physical-device check. Build acceptance does not establish
+session preservation through an update; exact artifact evidence is in CURRENT.
+
+Production also needs an owner-controlled domain and DNS, a separate production
+instance/account allowlist, registered Android release certificate, and reviewed
+production configuration. The owner has no domain yet and is considering `.app`
+names through GitHub Education. No domain availability, offer eligibility,
+purchase or redemption is established here. Google sign-in, if retained, needs
+the owner's production OAuth configuration. The existing trial remains available
+while those inputs are prepared. [Clerk production setup](https://clerk.com/docs/guides/development/deployment/production).
 
 Actual source hashes, checks and cloud results are recorded in workspace
 `CURRENT.md` and `tmp/clerk-trial`. Expected results are not acceptance.

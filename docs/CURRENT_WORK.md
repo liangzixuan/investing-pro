@@ -52,7 +52,16 @@ test. The manually deployed preview remains distinct from the test-code revision
 The initial signed-in desktop/Pixel trial has passed with the evidence limits
 recorded in the [trial guide](./CLERK_TRIAL.md).
 
-## Active outcome: Appwrite shared watchlist storage
+The owner selected the next step on September 29: versioned Android updates and
+release-signing preparation. The module now accepts explicit version properties
+and uses a separate release signing configuration with required private environment
+inputs. The trial 1.1 APK (version code 2) built successfully with the original
+trial certificate and identical web assets. Four invalid-version checks and the
+missing-release-credentials check passed. Physical upgrade remains pending;
+workspace CURRENT retains the exact evidence. No production signing key or cloud authentication
+configuration is changed. A production domain is still being selected.
+
+## Accepted trial and shared watchlist storage
 
 The owner approved working toward a personal computer/Android launch before
 November, with Android first and a signed native container sharing the React UI.
