@@ -88,6 +88,39 @@ function publicKey(value: unknown): string {
   return value;
 }
 
+function checkedSubject(value: unknown, production: boolean): string | null {
+  if (production) {
+    if (value !== null) return invalid();
+    return null;
+  }
+  if (value === null) return null;
+  if (typeof value !== "string" || !/^user_[A-Za-z0-9]{1,128}$/u.test(value))
+    return invalid();
+  return value;
+}
+
+function validateOriginAgreement(
+  allowedOrigins: readonly string[],
+  authorizedParties: readonly string[],
+  production: boolean,
+): void {
+  if (allowedOrigins.length !== authorizedParties.length) return invalid();
+  if (!allowedOrigins.every((origin) => authorizedParties.includes(origin)))
+    return invalid();
+  if (!production && !allowedOrigins.includes(DEVELOPMENT_ORIGIN))
+    return invalid();
+}
+
+function nativeOriginEnabled(
+  auth: Record<string, unknown>,
+  authorizedParties: readonly string[],
+): boolean {
+  if (!Object.hasOwn(auth, "nativeOrigin")) return false;
+  if (auth.nativeOrigin !== NATIVE_ORIGIN) return invalid();
+  if (!authorizedParties.includes(NATIVE_ORIGIN)) return invalid();
+  return true;
+}
+
 /** Storage is derived locally; no caller can select a database or project. */
 export function validateClerkTrialFunctionConfiguration(
   input: unknown,
@@ -110,39 +143,20 @@ export function validateClerkTrialFunctionConfiguration(
       : issuer !== "https://allowed-lobster-3386.clerk.accounts.dev")
   )
     return invalid();
-  const allowedSubject = auth.allowedSubject;
-  if (
-    production
-      ? allowedSubject !== null
-      : allowedSubject !== null &&
-        (typeof allowedSubject !== "string" ||
-          !/^user_[A-Za-z0-9]{1,128}$/u.test(allowedSubject))
-  )
-    return invalid();
+  const allowedSubject = checkedSubject(auth.allowedSubject, production);
   const allowed = production
     ? [PRODUCTION_ORIGIN]
     : [DEVELOPMENT_ORIGIN, NATIVE_ORIGIN];
   const allowedOrigins = origins(config.allowedOrigins, allowed);
   const authorizedParties = origins(auth.authorizedParties, allowed);
-  if (
-    allowedOrigins.length !== authorizedParties.length ||
-    !allowedOrigins.every((origin) => authorizedParties.includes(origin)) ||
-    (!production && !allowedOrigins.includes(DEVELOPMENT_ORIGIN))
-  )
-    return invalid();
-  const native = Object.hasOwn(auth, "nativeOrigin");
-  if (
-    native &&
-    (auth.nativeOrigin !== NATIVE_ORIGIN ||
-      !authorizedParties.includes(NATIVE_ORIGIN))
-  )
-    return invalid();
+  validateOriginAgreement(allowedOrigins, authorizedParties, production);
+  const native = nativeOriginEnabled(auth, authorizedParties);
   return Object.freeze({
     environment,
     auth: Object.freeze({
       issuer,
       jwtKey: publicKey(auth.jwtKey),
-      allowedSubject: allowedSubject as string | null,
+      allowedSubject,
       authorizedParties: Object.freeze(authorizedParties),
       ...(native ? { nativeOrigin: NATIVE_ORIGIN } : {}),
     }),

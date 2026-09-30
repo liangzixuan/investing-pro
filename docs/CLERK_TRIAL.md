@@ -65,6 +65,8 @@ use the same checked configuration as their runtime consumer.
 For the client, set `INVESTMENT_CLERK_ENVIRONMENT`,
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `INVESTMENT_CLERK_TRIAL_API_ORIGIN`.
 The official Clerk key parser checks the environment and Frontend API host.
+Its direct `@clerk/shared` dependency is included in the runtime notice mapping
+and the client's bundled license texts.
 Development uses its matching `*.clerk.accounts.dev` host and the reviewed API
 `https://investment-clerk-api-6abac57a.appwrite.network`. Production requires
 `https://clerk.investingpro.app` and `https://api.investingpro.app`.

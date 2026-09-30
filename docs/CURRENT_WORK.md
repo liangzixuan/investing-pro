@@ -38,6 +38,10 @@ exception and requires a null allowed subject. Every production account remains
 denied before storage opens. Its distinct synthetic database and API address are
 not provisioned or accepted by these source changes.
 
+The official public-key parser's direct runtime dependency is included in the
+license notice mapping. Profile validation keeps subject admission and origin
+agreement separate, and owned-domain fixtures retain their complete case set.
+
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
 results remain separate from production sign-in and connected-workspace

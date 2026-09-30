@@ -166,11 +166,11 @@ function ownedProductionHostnameSpan(
   const prefixLength = authority[0].length - authority[1].length;
   const start = prefixLength + authority[1].lastIndexOf("@") + 1;
   const spelling = value.slice(start, start + hostname.length);
+  if (!/^[a-z.]+$/i.test(spelling)) return null;
+  if (spelling.toLowerCase() !== hostname) return null;
   if (
-    !/^[a-z.]+$/i.test(spelling) ||
-    spelling.toLowerCase() !== hostname ||
-    (start + hostname.length < authority[0].length &&
-      value[start + hostname.length] !== ":")
+    start + hostname.length < authority[0].length &&
+    value[start + hostname.length] !== ":"
   )
     return null;
   return { start, length: hostname.length };
@@ -211,16 +211,16 @@ function verifyOwnedProductionDomainTextClassifier(): void {
     forbiddenText.some((pattern) =>
       pattern.test(competitorText(path, content)),
     );
-  for (const path of ownedProductionDomainPaths) {
-    for (const host of ["app", "api", "clerk"]) {
-      for (const value of [
-        `${host}.investingpro.app`,
-        `https://${host}.investingpro.app`,
-      ]) {
-        if (matchesForbiddenText(path, JSON.stringify(value)))
-          throw new Error("Owned production domain text classifier regressed");
-      }
-    }
+  const ownedForms = ["app", "api", "clerk"].flatMap((host) => [
+    `${host}.investingpro.app`,
+    `https://${host}.investingpro.app`,
+  ]);
+  const ownedCases = [...ownedProductionDomainPaths].flatMap((path) =>
+    ownedForms.map((value) => ({ path, value })),
+  );
+  for (const { path, value } of ownedCases) {
+    if (matchesForbiddenText(path, JSON.stringify(value)))
+      throw new Error("Owned production domain text classifier regressed");
   }
   const path = "apps/web/src/clerk-trial/config.test.ts";
   for (const value of [

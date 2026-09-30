@@ -117,6 +117,72 @@ describe("explicit Clerk function profiles", () => {
     expect(Object.isFrozen(checked.storage)).toBe(true);
   });
 
+  it("rejects an invalid subject before inspecting invalid origin arrays", () => {
+    const input = development();
+    input.auth.allowedSubject = "email@example.invalid";
+    let iteratorReads = 0;
+    Object.defineProperty(input.allowedOrigins, Symbol.iterator, {
+      get() {
+        iteratorReads += 1;
+        throw new Error("Origin array must remain unread");
+      },
+    });
+    expect(() => validateClerkTrialFunctionConfiguration(input)).toThrow(
+      "Invalid Clerk function configuration",
+    );
+    expect(iteratorReads).toBe(0);
+  });
+
+  it("rejects invalid origins before inspecting invalid authorized parties", () => {
+    const input = development();
+    input.allowedOrigins = ["https://other.invalid"];
+    let iteratorReads = 0;
+    Object.defineProperty(input.auth.authorizedParties, Symbol.iterator, {
+      get() {
+        iteratorReads += 1;
+        throw new Error("Authorized parties must remain unread");
+      },
+    });
+    expect(() => validateClerkTrialFunctionConfiguration(input)).toThrow(
+      "Invalid Clerk function configuration",
+    );
+    expect(iteratorReads).toBe(0);
+  });
+
+  it("rejects unequal origin sets before reading an invalid native exception", () => {
+    const input = development();
+    input.allowedOrigins = [web];
+    input.auth.nativeOrigin = "http://localhost";
+    let nativeReads = 0;
+    input.auth = new Proxy(input.auth, {
+      get(target, key, receiver): unknown {
+        if (key === "nativeOrigin") nativeReads += 1;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect(() => validateClerkTrialFunctionConfiguration(input)).toThrow(
+      "Invalid Clerk function configuration",
+    );
+    expect(nativeReads).toBe(0);
+  });
+
+  it("rejects an invalid native exception before reading an invalid signing key", () => {
+    const input = development();
+    input.auth.nativeOrigin = "http://localhost";
+    input.auth.jwtKey = "not a public key";
+    let keyReads = 0;
+    input.auth = new Proxy(input.auth, {
+      get(target, key, receiver): unknown {
+        if (key === "jwtKey") keyReads += 1;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect(() => validateClerkTrialFunctionConfiguration(input)).toThrow(
+      "Invalid Clerk function configuration",
+    );
+    expect(keyReads).toBe(0);
+  });
+
   it.each([
     ["null", null],
     ["array", []],
