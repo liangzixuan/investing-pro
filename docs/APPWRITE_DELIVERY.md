@@ -1,9 +1,10 @@
 # Appwrite delivery
 
 The owner approved GitHub checks, Appwrite staging, BrowserStack against the
-exact build, then production promotion. This first pipeline packages the
-existing disconnected React client. Shared data, managed sessions and a usable
-connected phone build still depend on the [storage proof](./APPWRITE_WATCHLIST.md).
+exact build, then production promotion. The pipeline packages the production
+Clerk web client for the isolated demo watchlist. The accepted development APK
+and local research workspace remain separate. Production Android, owner-data
+migration and the full connected workspace are later outcomes.
 
 ## Release sequence
 
@@ -22,15 +23,20 @@ successful CI attempt.
 
 The pipeline then:
 
-1. Builds the mobile/static client once with the full commit SHA embedded in the
+1. Builds the production Clerk client once with the full commit SHA embedded in the
    document. Packaging admits only its index and hashed JavaScript/CSS assets;
    it records file and archive hashes and enforces a 4 MiB compressed limit.
 2. Uploads that archive to the fixed staging site without activation. It waits
    within a bounded deadline for a ready build, checks for an intervening site
    change, activates the candidate and confirms the site's active deployment ID.
-3. Runs the existing disconnected BrowserStack smoke. The page must contain
-   exactly one matching commit marker before UI interaction. No retries or
-   additional platform sessions are added.
+3. Runs the BrowserStack staging preview check. The same bundle boots at the
+   fixed staging origin and renders its frame, synthetic-data disclosure and
+   software notices without mounting either authentication SDK or the watchlist
+   controller. The test requires one matching commit marker, desktop and narrow
+   layouts, and no authentication or data requests. It accepts website delivery
+   and the preview UI; authenticated watchlist behavior needs separate checks at
+   the canonical production origin. No retries or additional platform sessions
+   are added.
 4. Records the artifact hashes, staging deployment and successful GitHub test
    step. If promotion was selected, a separate production job downloads those
    same bytes, checks their evidence and deploys them without rebuilding.
@@ -41,10 +47,18 @@ new active IDs. The public marker establishes document identity; artifact hashes
 bind the uploaded bytes. This is not a measured trace of every CDN asset response.
 
 GitHub Actions is the deployment controller. Do not also link these sites to an
-auto-activating production Git branch. The old preview smoke and new pipeline
-share one concurrency group while they share the staging origin and one
-BrowserStack slot. The old workflow remains qualified as a manually deployed,
-unbound preview until the new path has passed in the cloud.
+auto-activating production Git branch. The obsolete automatic disconnected-preview
+workflow is retired because it expected the previous page at this same staging
+origin. The release workflow owns the current BrowserStack gate and keeps its
+concurrency group to serialize releases. Historical preview results do not
+establish acceptance of the Clerk client.
+
+The workflow supplies the verified public Clerk publishable key, explicit
+production environment, fixed API origin and source SHA. It packages only
+`apps/web/dist/clerk-production`. Neither a backend key nor an account allowlist
+belongs in this client. The canonical `https://app.investingpro.app` origin
+mounts Clerk; the fixed staging origin is inert, and other production origins
+are rejected. Staging does not expand the API's CORS or authorized-party list.
 
 ## One-time configuration
 
@@ -65,8 +79,9 @@ Staging is the existing project `6abac57a0007b7c1a671`, site
 fixed NYC Appwrite endpoint. Production uses the separate Static/Other site
 `investment-production` in that same project. Its public ID is configured in
 the production environment variable `APPWRITE_PRODUCTION_SITE_ID`. The helper
-rejects the staging ID as production. The site exists with no deployment;
-creating it does not establish a release.
+rejects the staging ID as production. Preserve the site's current deployment as
+the rollback target; source or site configuration alone does not establish a
+new release.
 
 Both sites must be enabled, use the static adapter, `index.html` fallback, no
 Git integration and no function scopes. Deployment retention must be disabled
@@ -104,12 +119,14 @@ also part of their existing workspace test discovery. A static production build
 and archive check establish local packaging only. Source review, tests and a
 prepared workflow do not establish a successful cloud deployment.
 
-Current status: the delivery implementation has passed local checks and source
-review. Both GitHub environments are restricted to `main`; production requires
-the owner's review. The owner saved separate deployment keys, and both secret
-names are confirmed. No cloud run has yet verified either credential.
-Default-branch integration, successful required checks and the first observed
-staging/test/promotion run remain pending. See the
+The first disconnected staging/test/production flow completed on September 29
+at `a3366e6`, with independent acceptance of the original production receipt.
+Both GitHub environments are restricted to `main`; the configured production
+review remains in place. The subsequent production synthetic API, private
+storage scenarios and API domain checks are accepted separately. The Clerk
+client delivery change still needs its own exact-revision checks, BrowserStack
+result and production receipt. Workspace CURRENT records actual outcomes.
+See the
 [current filing acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) for the
 CI provenance repair prompted by PR 11. Backend
 functions, schema migrations, storage proofs and Android signing are not

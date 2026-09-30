@@ -10,7 +10,8 @@ export const previewOrigin = webTarget.origin;
 
 export default defineConfig({
   testDir: ".",
-  testMatch: "disconnected.pw.ts",
+  testMatch:
+    webTarget.mode === "staging" ? "clerk-staging.pw.ts" : "disconnected.pw.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -34,9 +35,7 @@ export default defineConfig({
   projects: [
     {
       name:
-        webTarget.mode === "staging"
-          ? "disconnected-staging"
-          : "disconnected-preview",
+        webTarget.mode === "staging" ? "clerk-staging" : "disconnected-preview",
       use: { browserName: "chromium" },
     },
   ],

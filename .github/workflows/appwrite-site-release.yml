@@ -21,7 +21,7 @@ permissions:
   contents: read
   actions: read
 
-# The old preview smoke shares this origin and the account's single test slot.
+# Serialize releases on the fixed staging origin and the account's single test slot.
 concurrency:
   group: browserstack-deployed-preview-smoke
   cancel-in-progress: false
@@ -76,10 +76,13 @@ jobs:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
         run: pnpm exec tsx scripts/appwrite/github-checks.ts verify --proof dist/source-proof/source-proof.json --ci-run-id "$CI_RUN_ID"
 
-      - name: Build the disconnected static site
+      - name: Build the production Clerk static site
         env:
           INVESTMENT_BUILD_SHA: ${{ github.sha }}
-        run: pnpm --filter @research-cockpit/web build:mobile
+          INVESTMENT_CLERK_ENVIRONMENT: production
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_live_Y2xlcmsuaW52ZXN0aW5ncHJvLmFwcCQ
+          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app
+        run: pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts
 
       - name: Package the exact artifact
         run: pnpm exec tsx scripts/appwrite/site-artifact.ts

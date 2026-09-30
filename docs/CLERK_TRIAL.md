@@ -70,7 +70,8 @@ and the client's bundled license texts.
 Development uses its matching `*.clerk.accounts.dev` host and the reviewed API
 `https://investment-clerk-api-6abac57a.appwrite.network`. Production requires
 `https://clerk.investingpro.app` and `https://api.investingpro.app`.
-The latter is a planned API address with no accepted service binding yet.
+The production API domain and HTTPS boundary checks are accepted; authenticated
+account access is a separate deployment decision.
 Environment-file discovery and public-directory copying remain disabled.
 The client accepts no server key, account allowlist or storage routing fields.
 
@@ -96,11 +97,22 @@ its optional `https://localhost` Android origin.
 
 Production accepts only issuer `https://clerk.investingpro.app` and the sole
 browser origin and authorized party `https://app.investingpro.app`. Its allowed
-subject must be `null`, so even a correctly signed session is denied before
-storage opens. It permits no native-origin exception. The production database
-is an unprovisioned synthetic target; these source profiles do not admit an
-account or connect the full workspace. Real service configuration, API binding,
-account admission and storage provisioning need separate acceptance.
+subject is either `null` or one explicitly configured Clerk `user_` ID. Null
+denies every account before storage opens; a configured ID admits only a valid
+active session from that exact production account. Confirm the account in the
+correct production instance before building its server configuration. Email,
+client-supplied identity and a development user ID cannot confer access. Keep
+the account ID out of the public client. No native-origin exception is allowed.
+The separate production database and service are provisioned and have accepted
+synthetic transaction evidence. They do not connect the full research workspace
+or migrate owner data.
+
+The production web bundle includes its source SHA and uses the existing
+[staging and promotion workflow](./APPWRITE_DELIVERY.md). At the exact staging
+origin it renders an inert preview of the real frame and notices, with neither
+SDK nor a watchlist session. Only `https://app.investingpro.app` mounts the
+production Clerk client. BrowserStack staging acceptance covers this preview;
+real sign-in, shared saves and session behavior require canonical-origin checks.
 
 Production client configuration is rejected on a native platform before either
 SDK adapter mounts. For the accepted development Android trial, set
@@ -136,9 +148,11 @@ The production service layer uses the separate database
 `investment-clerk-prod-trial-v1`. Provisioning must preserve empty client
 permissions, row security and the execution credential's existing row scopes.
 The private proof has no public execution grant, event or schedule. The API keeps
-production account admission closed. Workspace CURRENT records actual schema,
-transaction, deployment and domain outcomes; these source profiles alone do not
-establish a running service.
+production account admission closed until an exact subject is independently
+confirmed and its configuration is deployed. All seven production storage
+scenarios and the API domain/HTTPS rejection checks have accepted evidence.
+Workspace CURRENT records actual schema, transaction, deployment and account
+outcomes; source changes alone do not establish a running update.
 
 ## Trial results and remaining acceptance
 

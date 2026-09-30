@@ -17,6 +17,7 @@ import {
 } from "node:path/posix";
 import { fileURLToPath } from "node:url";
 
+import { JSON_SCHEMA, load } from "js-yaml";
 import ts from "typescript";
 
 import {
@@ -136,6 +137,7 @@ const ownedProductionDomainPaths = new Set([
   "apps/api/src/clerk-trial-function.test.ts",
   "apps/web/src/clerk-trial/config.ts",
   "apps/web/src/clerk-trial/config.test.ts",
+  "apps/web/src/clerk-trial/main.tsx",
   "apps/web/src/clerk-trial/main.test.tsx",
 ]);
 
@@ -268,6 +270,7 @@ function verifyOwnedProductionDomainTextClassifier(): void {
   }
   for (const otherPath of [
     "apps/web/src/clerk-trial/other.ts",
+    "apps/web/src/clerk-trial/main.tsx.old",
     `${path}.old`,
     "apps/api/src/clerk-trial-function.ts",
   ]) {
@@ -297,6 +300,140 @@ const forbiddenDatabaseText = [
   /(?:^|[\s'"])\.\.[\\/]/m,
   /[a-z]:[\\/]/i,
 ];
+function releaseWorkflowText(relativePath: string, content: string): string {
+  if (relativePath !== ".github/workflows/appwrite-site-release.yml")
+    return content;
+  const origin = "https://api.investingpro.app";
+  const key = "INVESTMENT_CLERK_TRIAL_API_ORIGIN";
+  const name = "Build the production Clerk static site";
+  const command =
+    "pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts";
+  const sourceLine = `          ${key}: ${origin}`;
+  const stepLine = `      - name: ${name}`;
+  if (
+    content.split(origin).length !== 2 ||
+    content.split(key).length !== 2 ||
+    content.split(stepLine).length !== 2
+  )
+    return content;
+  let workflow: unknown;
+  try {
+    workflow = load(content, { schema: JSON_SCHEMA });
+  } catch {
+    return content;
+  }
+  if (!isRecord(workflow) || !isRecord(workflow.jobs)) return content;
+  const staging = workflow.jobs.staging;
+  if (!isRecord(staging) || !Array.isArray(staging.steps)) return content;
+  const steps = staging.steps.filter(
+    (step: unknown) => isRecord(step) && step.name === name,
+  );
+  const step: unknown = steps[0];
+  if (
+    steps.length !== 1 ||
+    !isRecord(step) ||
+    step.run !== command ||
+    !isRecord(step.env) ||
+    step.env.INVESTMENT_CLERK_ENVIRONMENT !== "production" ||
+    step.env[key] !== origin
+  )
+    return content;
+  // The parsed slot owns admission; exact source lines bind only its scalar.
+  // Environment/scalar aliases and reformatted values retain the normal scans.
+  const lines = content.split("\n");
+  const start = lines.findIndex((line) => line.replace(/\r$/, "") === stepLine);
+  const end = lines.findIndex(
+    (line, index) =>
+      index > start &&
+      line.trim().length > 0 &&
+      !line.trimStart().startsWith("#") &&
+      line.search(/\S/) <= 6,
+  );
+  const buildLines = lines.slice(start, end < 0 ? undefined : end);
+  if (
+    start < 0 ||
+    !buildLines.some((line) => line.replace(/\r$/, "") === "        env:") ||
+    !buildLines.some((line) => line.replace(/\r$/, "") === sourceLine)
+  )
+    return content;
+  return content.replace(origin, "owned-production-api-origin");
+}
+
+function verifyReleaseWorkflowTextClassifier(): void {
+  const path = ".github/workflows/appwrite-site-release.yml";
+  const valid = [
+    "jobs:",
+    "  staging:",
+    "    steps:",
+    "      - name: Build the production Clerk static site",
+    "        env:",
+    "          INVESTMENT_CLERK_ENVIRONMENT: production",
+    "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
+    "        run: pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts",
+  ].join("\n");
+  const admitted = valid.replace(
+    "https://api.investingpro.app",
+    "owned-production-api-origin",
+  );
+  for (const newline of ["\n", "\r\n"]) {
+    if (
+      releaseWorkflowText(path, valid.replaceAll("\n", newline)) !==
+      admitted.replaceAll("\n", newline)
+    )
+      throw new Error("Release workflow API field classifier regressed");
+  }
+  const invalid = [
+    valid.replace("  staging:", "  production:"),
+    valid.replace("Build the production", "Build another"),
+    valid.replace("        env:", "        with:"),
+    valid.replace("ENVIRONMENT: production", "ENVIRONMENT: development"),
+    valid.replace("API_ORIGIN:", "OTHER_ORIGIN:"),
+    valid.replace("api.investingpro.app", "api.investingpro.app.evil.invalid"),
+    valid.replace("api.investingpro.app", "api.investingpro.app/path"),
+    valid.replace("https://api", "http://api"),
+    valid.replace("run: pnpm", "run: echo pnpm"),
+    valid.replace("env:", "env: &settings"),
+    valid.replace("        env:", "        env: *settings") +
+      "\n  other:\n    steps:\n      - name: other\n        env: &settings\n          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
+    valid.replace("https://api", "&origin https://api"),
+    valid.replace("env:", "env: ["),
+    valid.replace(
+      "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
+      "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: *origin",
+    ) +
+      "\n  other:\n    steps:\n      - name: other\n        env:\n          ORIGIN: &origin https://api.investingpro.app",
+    `${valid}\n# https://api.investingpro.app`,
+    `${valid}\n          INVESTMENT_CLERK_TRIAL_API_ORIGIN: other`,
+    valid.replace("  staging:", "  staging: {}\n  staging:"),
+    valid.replace("      - name:", "      - &build\n        name:"),
+    `settings: &settings\n  INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app\n${valid.replace("        env:", "        env:\n          <<: *settings").replace("          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app\n", "")}`,
+  ];
+  for (const content of invalid) {
+    if (releaseWorkflowText(path, content) !== content)
+      throw new Error("Unapproved release workflow field classifier regressed");
+  }
+  if (releaseWorkflowText(`${path}.old`, valid) !== valid)
+    throw new Error("Release workflow path scope classifier regressed");
+  for (const token of [
+    "investingpro",
+    "finviz",
+    "https://other.invalid",
+    "C:/private",
+    "../outside",
+    "pg_read_file",
+  ]) {
+    const content = `${valid}\n# ${token}`;
+    const scanned = releaseWorkflowText(path, content);
+    if (
+      !scanned.endsWith(`# ${token}`) ||
+      ![...forbiddenText, ...forbiddenDatabaseText].some((pattern) =>
+        pattern.test(scanned),
+      )
+    )
+      throw new Error("Remaining release workflow text classifier regressed");
+  }
+}
+
 const forbiddenDependencies = [
   "@ag-grid-enterprise/core",
   "@novu/api",
@@ -2743,6 +2880,7 @@ if (
   throw new Error("Boundary explicit TypeScript config classifier regressed");
 verifyDependencyPolicyClassifiers();
 verifyOwnedProductionDomainTextClassifier();
+verifyReleaseWorkflowTextClassifier();
 const gitignoreViolation = npmrcGitignoreViolation(
   await readFile(join(root, ".gitignore"), "utf8"),
 );
@@ -5302,7 +5440,8 @@ for (const file of filesToInspect) {
     ? typeScriptConfigContents.get(file)
     : await readFile(file, "utf8");
   if (content === undefined) continue;
-  const textToInspect = competitorText(relativePath, content);
+  const releaseText = releaseWorkflowText(relativePath, content);
+  const textToInspect = competitorText(relativePath, releaseText);
   for (const pattern of forbiddenText) {
     if (pattern.test(textToInspect))
       violations.push(`${relativePath}: matched ${pattern}`);
@@ -5324,7 +5463,7 @@ for (const file of filesToInspect) {
       [".ps1", ".sh", ".toml", ".yaml", ".yml"].includes(extension));
   if (isDatabaseOrContainerSurface) {
     for (const pattern of forbiddenDatabaseText) {
-      if (pattern.test(content))
+      if (pattern.test(releaseText))
         violations.push(
           `${relativePath}: prohibited database import ${pattern}`,
         );

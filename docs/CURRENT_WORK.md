@@ -34,9 +34,10 @@ The synthetic Clerk client and function require explicit development or
 production profiles. Configuration is checked before output cleanup and runtime
 composition, and the function uses copied values with fixed storage targets.
 Production is web only, allows the exact application origin, has no native
-exception and requires a null allowed subject. Every production account remains
-denied before storage opens. Its distinct synthetic database and API address are
-not provisioned or accepted by these source changes.
+exception. Its account configuration accepts null for closed admission or one
+explicitly confirmed production subject; signature, issuer, session and subject
+checks precede storage. The running API stays closed until the selected subject
+and a new deployment receive separate acceptance.
 
 The official public-key parser's direct runtime dependency is included in the
 license notice mapping. Profile validation keeps subject admission and origin
@@ -46,9 +47,18 @@ The next service layer uses the existing private transaction proof with explicit
 development and production profiles. Each profile fixes its synthetic database,
 invented identity and output directory, and the build marker binds the selected
 plan to its source. The seven scenarios keep their existing limits. Production
-schema, transaction evidence and API/domain activation need actual acceptance;
-the API continues to deny all production accounts. The accepted development
-trial, local vault and disconnected production website remain separate.
+schema, seven transaction scenarios and API/domain activation now have accepted
+evidence. The accepted development trial, local vault and existing disconnected
+production website remain separate.
+
+The active product outcome is the production web demo watchlist. Reuse its
+existing official Clerk SDK, controller and private Appwrite service. The
+delivery workflow builds the production client with an exact source marker and
+promotes the same archive. Staging boots an inert frame and notices without
+authentication or data requests; only the canonical production origin mounts
+Clerk. The staging check does not establish authenticated watchlist acceptance.
+The owner reported production signup complete; exact subject confirmation and
+the resulting API/client deployments remain pending in workspace CURRENT.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
@@ -70,15 +80,16 @@ the Pixel checklist, including shared data and independent sign-out. The
 [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
 agent-observed desktop and cloud evidence. The owner later confirmed testing
 trial 1.1 after the update handoff; this is an overall owner report with no
-itemized device trace. Production authentication service configuration and account admission remain pending.
+itemized device trace. The separate production service is configured and accepted; its account admission remains closed pending the confirmed subject and reviewed deployment.
 
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
 describes the static-site pipeline, source-check proof, artifact and credential
 setup used for that first delivery. The
 [current acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) separates new
-execution evidence from retained historical records. The legacy preview smoke
-remains a separate check of manually deployed assets.
+execution evidence from retained historical records. The obsolete automatic
+disconnected-preview workflow is retired; the release workflow owns the current
+BrowserStack gate.
 
 ## BrowserStack browser CI
 
@@ -86,8 +97,8 @@ The owner selected BrowserStack Automate/Playwright for browser tests only.
 Installed app tests will use the owner's Pixel phones, starting with the confirmed
 Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
 do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
-for commands, triggers and evidence limits. The deployed-preview workflow is now
-on `main`; manual dispatch is available from the default branch. Its earlier
+for commands and evidence limits. The original deployed-preview workflow is
+retired as part of the production client delivery change. Its earlier
 GitHub run `36499410858`, attempt 2 at
 `50add08`, succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
 1 minute 6 seconds; its 31-second test step reported that the BrowserStack website
@@ -124,9 +135,10 @@ and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
 including one sign-in-page check after Clerk's verification completed.
 The cause remains unverified. A later normal Brave navigation rendered the
 production sign-in form without entering credentials or submitting it. Successful
-sign-in and account admission remain untested. Explicit source profiles keep
-production admission closed; service configuration is pending and the full
-workspace remains disconnected.
+authenticated application access remains untested. The owner reported creating
+the production account. Its exact subject still needs confirmation; the accepted
+production service currently denies all subjects, and the full workspace remains
+disconnected.
 
 ## Accepted trial and shared watchlist storage
 

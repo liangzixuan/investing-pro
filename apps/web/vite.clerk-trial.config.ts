@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { buildIdentity } from "./build-identity";
 import {
   trialFrontendApiOrigin,
   validateTrialConfig,
@@ -14,6 +15,7 @@ const config = validateTrialConfig({
   frontendApiOrigin: trialFrontendApiOrigin(publishableKey),
 });
 const { apiOrigin, frontendApiOrigin: clerkOrigin } = config;
+const sourceSha = buildIdentity(process.env.INVESTMENT_BUILD_SHA);
 
 export default defineConfig({
   root,
@@ -24,6 +26,19 @@ export default defineConfig({
     __INVESTMENT_CLERK_TRIAL_CONFIG__: JSON.stringify(config),
   },
   plugins: [
+    {
+      name: "public-build-identity",
+      transformIndexHtml: () =>
+        sourceSha
+          ? [
+              {
+                tag: "meta",
+                attrs: { name: "investment-build-sha", content: sourceSha },
+                injectTo: "head",
+              },
+            ]
+          : [],
+    },
     {
       name: "isolated-clerk-trial",
       moduleParsed({ id }) {
