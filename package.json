@@ -46,7 +46,7 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.59.0",
     "@types/js-yaml": "4.0.9",
-    "@types/node": "26.2.0",
+    "@types/node": "26.6.3",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "browserstack-node-sdk": "1.70.2",
