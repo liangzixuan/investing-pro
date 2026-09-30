@@ -19,8 +19,9 @@ Its API and website are active, and isolated storage evidence is accepted.
 Root verified an authenticated desktop reload, and the owner reported passing
 the Pixel checklist, including shared data and independent sign-out. The
 [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
-agent-observed desktop and cloud evidence. Upgrade persistence and production
-authentication configuration remain pending.
+agent-observed desktop and cloud evidence. The owner later confirmed testing
+trial 1.1 after the update handoff; this is an overall owner report with no
+itemized device trace. Production authentication configuration remains pending.
 
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
@@ -57,9 +58,11 @@ release-signing preparation. The module now accepts explicit version properties
 and uses a separate release signing configuration with required private environment
 inputs. The trial 1.1 APK (version code 2) built successfully with the original
 trial certificate and identical web assets. Four invalid-version checks and the
-missing-release-credentials check passed. Physical upgrade remains pending;
-workspace CURRENT retains the exact evidence. No production signing key or cloud authentication
-configuration is changed. A production domain is still being selected.
+missing-release-credentials check passed. The owner confirmed testing trial 1.1
+after the update handoff; the [report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
+retains the exact statement and its limits. No production signing key or cloud
+authentication configuration is changed. The owner selected `investmentdesk.app`;
+registration, DNS and production configuration remain pending.
 
 ## Accepted trial and shared watchlist storage
 
@@ -92,8 +95,8 @@ records four matching deployed assets and four unauthenticated API boundary chec
 The [APK review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
 accepts local packaging only. Separately, the owner reported passing the installed
 Pixel checklist for sign-in, shared synthetic data, stale drafts, independent
-sign-out and lifecycle behavior. Same-signature upgrade remains untested, and no
-owner data is migrated.
+sign-out and lifecycle behavior, then confirmed testing the version 1.1 update.
+The update report supplies no per-step device evidence. No owner data is migrated.
 
 Development uses `android-launch` on `codex/android-launch`, based on accepted
 a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is

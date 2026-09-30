@@ -100,12 +100,14 @@ records four matching deployed assets and four unauthenticated API boundary chec
 The [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) separately
 records successful Pixel checklist results for sign-in, shared synthetic data,
 stale drafts, independent sign-out, callback/Back and lifecycle behavior. No device
-logs were collected. The remaining acceptance is:
+logs were collected. The owner subsequently confirmed testing trial 1.1 after
+the update handoff; the [update report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
+records that overall confirmation without itemized device outcomes. The remaining acceptance is:
 
 1. Verify live denied/expired-session behavior, response-retirement races and
    uncertain-save recovery beyond the completed checklist and focused tests.
-2. Verify same-signature upgrade with a second APK. The owner-reported lifecycle
-   checks do not establish upgrade persistence or production release signing.
+2. Verify production release signing and its install/update path. The owner
+   confirmation for the debug trial does not establish production signing.
 3. Before connecting the ordinary workspace, integrate its catalog and provider
    status through the reviewed HTTPS profile. The trial's two invented entries
    do not activate that workspace or authorize owner-data migration.

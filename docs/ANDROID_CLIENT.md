@@ -5,9 +5,10 @@ The Android app bundles the existing React workspace with Capacitor. Desktop
 continues to use Next.js. The owner selected the existing Appwrite Education
 project for the shared service. Isolated storage evidence is accepted for the
 separate Clerk trial. Root verified a signed-in desktop reload, and the owner
-reported passing its Pixel checklist. Upgrade persistence and production
-configuration remain pending. Native iOS remains a later platform with build, signing and
-device requirements.
+reported passing its Pixel checklist. The owner later confirmed testing trial
+1.1 after the update handoff, without itemized outcomes or device logs. Production
+configuration remains pending. Native iOS remains a later platform with build,
+signing and device requirements.
 
 ## Current scope
 
@@ -94,8 +95,11 @@ No production key is generated or provisioned by the versioning change. The
 existing trial debug signer remains separate from the future production signer.
 The trial 1.1 APK (version code 2) built with that same certificate and unchanged
 web/Capacitor assets. Four invalid-version checks and the missing-signing-input
-check passed. The [Pixel update checklist](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-checklist.md)
-remains pending; the artifact and raw results are recorded in workspace CURRENT.
+check passed. The owner confirmed testing 1.1 after receiving the
+[Pixel update checklist](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-checklist.md).
+The [report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
+records overall test completion; per-step results were not supplied. The artifact
+and raw packaging results are recorded in workspace CURRENT.
 See [Android versioning](https://developer.android.com/studio/publish/versioning)
 and [app signing](https://developer.android.com/studio/publish/app-signing).
 
@@ -107,9 +111,9 @@ and [app signing](https://developer.android.com/studio/publish/app-signing).
    accepts seven scenarios with a qualified overlap result. See
    [Appwrite storage](./APPWRITE_WATCHLIST.md) for proof limits.
 2. Carry the owner-reported callback/cancellation, Android Back,
-   background/resume and force-stop/reopen results. Check same-signature upgrade
-   with a second APK; broader focus, touch and external-link behavior remain
-   separate from the completed checklist.
+   background/resume and force-stop/reopen results, plus the later overall
+   trial 1.1 update-test confirmation. Broader focus, touch and external-link
+   behavior remain separate from these reports.
 3. Carry the owner-reported shared watchlist/note, stale-draft and independent
    sign-out results. Live uncertain-save reconciliation and expired-session
    behavior remain separate from that checklist. Keep the

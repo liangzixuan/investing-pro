@@ -101,8 +101,9 @@ logs or per-step measurements were collected. Functional sign-out does not
 establish immediate invalidation of an already issued token.
 
 The initial trial supports continuing with Clerk for authentication and Appwrite
-for hosting and storage. Same-signature upgrade persistence requires installing
-the second APK over the existing trial and completing the update checklist.
+for hosting and storage. The owner later confirmed testing trial 1.1 in response
+to the install-over-existing update handoff. This records overall test completion;
+no itemized outcomes or device logs were supplied.
 Live expired/denied-session behavior and response-retirement races
 remain covered by focused tests rather than this owner checklist. Production
 authentication, privacy/recovery configuration and release distribution still
@@ -114,14 +115,16 @@ application ID, trial certificate and all eight packaged web/Capacitor assets
 as the first APK. Four invalid-version cases were rejected, and a release build
 without signing credentials failed before producing a release artifact. The
 [update checklist](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-checklist.md)
-is the remaining physical-device check. Build acceptance does not establish
-session preservation through an update; exact artifact evidence is in CURRENT.
+defines the requested phone checks. The separate
+[owner report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
+records the subsequent confirmation. Packaging evidence and the overall owner
+report remain distinct; exact artifact evidence is in CURRENT.
 
 Production also needs an owner-controlled domain and DNS, a separate production
 instance/account allowlist, registered Android release certificate, and reviewed
-production configuration. The owner has no domain yet and is considering `.app`
-names through GitHub Education. No domain availability, offer eligibility,
-purchase or redemption is established here. Google sign-in, if retained, needs
+production configuration. The owner selected `investmentdesk.app` and confirmed
+the Name.com GitHub student offer is unused. Registration, the applied discount,
+DNS control and certificates have not been verified. Google sign-in, if retained, needs
 the owner's production OAuth configuration. The existing trial remains available
 while those inputs are prepared. [Clerk production setup](https://clerk.com/docs/guides/development/deployment/production).
 
