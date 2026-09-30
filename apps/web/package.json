@@ -16,6 +16,7 @@
     "@capacitor/android": "8.5.2",
     "@capacitor/app": "8.1.1",
     "@capacitor/core": "8.5.2",
+    "@clerk/react": "6.17.2",
     "@research-cockpit/contracts": "workspace:*",
     "@research-cockpit/personal-financial-analytics": "workspace:*",
     "@research-cockpit/personal-market-analytics": "workspace:*",

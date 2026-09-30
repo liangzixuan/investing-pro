@@ -41,10 +41,21 @@ const allowedLicenses = new Set([
 ]);
 const exactExceptions = new Map<string, string>([
   ["caniuse-lite@1.0.30001809", "CC-BY-4.0"],
+  ["fast-sha256@1.3.0", "Unlicense"],
 ]);
 const exactVersion =
   /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/u;
 const noticeGroups: readonly NoticeGroup[] = Object.freeze([
+  Object.freeze({
+    label: "Clerk React SDK",
+    packages: Object.freeze(["@clerk/react"]),
+    use: "Isolated browser sign-in trial",
+  }),
+  Object.freeze({
+    label: "Clerk Backend SDK",
+    packages: Object.freeze(["@clerk/backend"]),
+    use: "Trial session verification",
+  }),
   Object.freeze({
     label: "Undici",
     packages: Object.freeze(["undici"]),

@@ -1,29 +1,57 @@
 # Current work
 
-Updated September 28, 2026. Build a personal Investing.com-style platform, then
+Updated September 30, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
 sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
-workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
+Workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
+
+Use [CodeScene](./CODESCENE.md) during substantive feature reviews to inspect
+maintenance findings for the affected files. Bind reports to their analyzed
+revision, verify findings against current source, and favor small changes that
+support the planned feature. Existing tests and release requirements still apply;
+hosted code-health scores do not assess unpublished work or prove correctness.
+
+The first maintenance change separates primary-company quarterly-financial and
+valuation-history requests into `useCompanyFinancialDetailsData`. The workspace
+keeps company and session admission, navigation, metric choices, drafts and focus.
+The [research guide](./PERSONAL_COMPANY_RESEARCH.md) records the ownership boundary;
+workspace CURRENT records actual verification and publication status. The
+extraction does not connect the full workspace to the cloud or change its load
+controls.
+
+The Clerk handler keeps authentication, request cancellation and repository
+cleanup in one visible lifecycle. Private helpers handle protocol admission,
+result validation and finite error responses. Dependency-policy helpers separate
+ordered traversal from declaration checks and canonical lockfile scanning;
+compound-invalid fixtures preserve diagnostic precedence. These are maintenance
+changes to existing behavior, with actual verification recorded in workspace
+CURRENT.
 
 ## Approved delivery integration
 
+September 29 update: the first static delivery flow completed at main merge
+`a3366e6`. Independent acceptance of the original production receipt joined the
+same staging archive and production activation. The
+[actual receipt review](../../tmp/appwrite-evaluation/production-artifact-actual-independent-review.json)
+records that acceptance.
+The client remains disconnected. The owner subsequently approved the separate
+[Clerk trial](./CLERK_TRIAL.md), using Appwrite storage and physical Pixel checks.
+Its API and website are active, and isolated storage evidence is accepted.
+Root verified an authenticated desktop reload, and the owner reported passing
+the Pixel checklist, including shared data and independent sign-out. The
+[owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
+agent-observed desktop and cloud evidence. The owner later confirmed testing
+trial 1.1 after the update handoff; this is an overall owner report with no
+itemized device trace. Production authentication configuration remains pending.
+
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
-describes the prepared static-site pipeline, source-check proof, artifact and
-credential setup. Its first target is the disconnected client; the cloud storage
-proof below remains the prerequisite for a connected product. Local checks and
-source review do not establish a cloud deployment. Main integration and the first
-observed run remain pending. The separate `investment-production` site exists
-with no deployment, and its public ID is configured in GitHub. Both GitHub
-environments are configured; the owner saved the staging deployment secret,
-whose name was verified without reading its value. Production still needs its
-own credential. PR 11 exposed historical revision restrictions in
-filing acceptance and an obsolete page-mode stylesheet mock. The
+describes the static-site pipeline, source-check proof, artifact and credential
+setup used for that first delivery. The
 [current acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) separates new
-execution evidence from retained historical records. Required hosted success
-remains pending while these repairs are verified.
-The existing preview smoke keeps its qualified status until replacement passes.
+execution evidence from retained historical records. The legacy preview smoke
+remains a separate check of manually deployed assets.
 
 ## BrowserStack browser CI
 
@@ -31,23 +59,48 @@ The owner selected BrowserStack Automate/Playwright for browser tests only.
 Installed app tests will use the owner's Pixel phones, starting with the confirmed
 Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
 do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
-for commands, triggers and evidence limits. The separate deployed-preview workflow
-is published on `codex/android-launch`, and both repository secret names were
-verified without inspecting their values. GitHub run `36499410858`, attempt 2 at
+for commands, triggers and evidence limits. The deployed-preview workflow is now
+on `main`; manual dispatch is available from the default branch. Its earlier
+GitHub run `36499410858`, attempt 2 at
 `50add08`, succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
 1 minute 6 seconds; its 31-second test step reported that the BrowserStack website
 runner completed successfully.
 
 BrowserStack listed `disconnected-web-smoke #CI 36499410858`, but its detail route
 and then the project list redirected to `request_access`. The new session,
-platform/result and terminal BrowserStack build state remain independently
+platform/result and terminal BrowserStack build state for that run remain independently
 unverified. The earlier 13-second Windows 11 / Chrome 154 session is separate
-evidence. Merging the workflow into `main` and default-branch manual dispatch
-remain pending. Setup is one-time; each command or eligible push starts a new
+evidence. Setup is one-time; each command or eligible push starts a new
 test. The manually deployed preview remains distinct from the test-code revision.
-The Appwrite storage work remains the next product outcome.
+The initial signed-in desktop/Pixel trial has passed with the evidence limits
+recorded in the [trial guide](./CLERK_TRIAL.md).
 
-## Active outcome: Appwrite shared watchlist storage
+The owner selected the next step on September 29: versioned Android updates and
+release-signing preparation. The module now accepts explicit version properties
+and uses a separate release signing configuration with required private environment
+inputs. The trial 1.1 APK (version code 2) built successfully with the original
+trial certificate and identical web assets. Four invalid-version checks and the
+missing-release-credentials check passed. The owner confirmed testing trial 1.1
+after the update handoff; the [report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
+retains the exact statement and its limits. No production signing key was
+generated. The owner subsequently reported
+registering `investingpro.app`, superseding the earlier `investmentdesk.app`
+selection. A separate production instance is now created in the Investment
+Clerk application, with the existing development instance preserved. Clerk's
+five required DNS records are retained in the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md).
+All six approved CNAME records are saved and match public DNS. Appwrite's
+`app.investingpro.app` binding is verified, and an HTTPS request confirmed the
+accepted static build with a valid certificate. The original domain rule and
+deployment were preserved. Clerk reports DNS, SSL and email verification complete.
+Separate HTTPS checks validated both Clerk host certificates. The account root
+and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
+including one sign-in-page check after Clerk's verification completed.
+The cause remains unverified. A later normal Brave navigation rendered the
+production sign-in form without entering credentials or submitting it. Successful
+sign-in and account admission remain untested. Production client/API
+configuration is pending; the full workspace remains disconnected.
+
+## Accepted trial and shared watchlist storage
 
 The owner approved working toward a personal computer/Android launch before
 November, with Android first and a signed native container sharing the React UI.
@@ -63,9 +116,23 @@ Appwrite repository are implemented at `e71c9021`, with atomic version updates
 and durable command receipts. A separate server transport now bounds SDK
 requests, cancels expired I/O and prevents response warnings or error bodies
 from reaching logs. It preserves the official SDK's serialization and integer
-decoding through a private Undici dispatcher. This remains unwired to application
-routes. Isolated cloud race/rollback tests, managed sessions and shared UI
-integration follow local validation. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
+decoding through a private Undici dispatcher. The separate Clerk trial now connects
+this repository to an authenticated route, a synthetic React watchlist and an
+Android SDK session adapter. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
+
+The [isolated cloud review](../../tmp/clerk-trial/storage-cloud-actual-independent-review.json)
+accepts seven scenarios: six passed directly, and the overlap scenario was completed
+by a separate exact receipt-absence query after its final inspection reached the
+request budget. The original failed report remains retained. The uncertain-result
+case injects failure after a committed acknowledgement; reopen uses a later function
+invocation. These do not establish actual packet loss or a cold process restart.
+The [public smoke receipt](../../tmp/clerk-trial/public-trial-smoke-attempt1/passed.json)
+records four matching deployed assets and four unauthenticated API boundary checks.
+The [APK review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
+accepts local packaging only. Separately, the owner reported passing the installed
+Pixel checklist for sign-in, shared synthetic data, stale drafts, independent
+sign-out and lifecycle behavior, then confirmed testing the version 1.1 update.
+The update report supplies no per-step device evidence. No owner data is migrated.
 
 Development uses `android-launch` on `codex/android-launch`, based on accepted
 a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is
@@ -74,11 +141,8 @@ A90 Previous/Next is parked intact in `markets-home` at `dc63dfa1`, with its
 feature/candidate refs and interrupted native evidence preserved. It is not an
 accepted release. This launch work does not resume the expired heartbeat window.
 
-Root owns dependency/lockfile, integration, notices and guides. The contract agent
-owns pure validation and the unchanged local route; the storage agent owns the
-Appwrite repository and transaction tests. Review remains independent. A separate
-data-free copy of the existing mobile assets is prepared for BrowserStack website
-testing. Native App Live attempts established no device coverage. Preserve the
+Workspace CURRENT records active file ownership and independent review. Native
+App Live attempts established no device coverage. Preserve the
 accepted desktop runtime, disconnected APK and unrelated parked source. No owner
 data migration or provider requests are included.
 

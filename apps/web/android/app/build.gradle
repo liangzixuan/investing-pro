@@ -1,14 +1,56 @@
 apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def investmentClerkTrial = providers.gradleProperty('investmentClerkTrial').orNull == 'true'
+def clerkPublishableKey = investmentClerkTrial
+    ? providers.environmentVariable('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY').orNull
+    : ''
+if (investmentClerkTrial && !(clerkPublishableKey ==~ /pk_test_[A-Za-z0-9_-]+/)) {
+    throw new GradleException('The Clerk trial requires its development publishable key.')
+}
+
+def investmentVersionCode = providers.gradleProperty('investmentVersionCode').orElse('1').get()
+def investmentVersionName = providers.gradleProperty('investmentVersionName').orElse('1.0').get()
+if (!(investmentVersionCode ==~ /[1-9][0-9]{0,9}/)
+    || investmentVersionCode.toLong() > 2100000000L) {
+    throw new GradleException('investmentVersionCode must be an integer from 1 through 2100000000.')
+}
+if (!(investmentVersionName ==~ /[0-9A-Za-z][0-9A-Za-z._+-]{0,63}/)) {
+    throw new GradleException('investmentVersionName must contain 1 through 64 version characters.')
+}
+
+def releaseStorePath = providers.environmentVariable('INVESTMENT_ANDROID_KEYSTORE').orNull
+def releaseStorePassword = providers.environmentVariable('INVESTMENT_ANDROID_STORE_PASSWORD').orNull
+def releaseKeyAlias = providers.environmentVariable('INVESTMENT_ANDROID_KEY_ALIAS').orNull
+def releaseKeyPassword = providers.environmentVariable('INVESTMENT_ANDROID_KEY_PASSWORD').orNull
+
+def validateReleaseSigning = tasks.register('validateInvestmentReleaseSigning') {
+    doLast {
+        if ([releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword]
+            .any { it == null || it.isEmpty() }) {
+            throw new GradleException('Release signing requires all four INVESTMENT_ANDROID signing environment variables.')
+        }
+        if (!new File(releaseStorePath).isAbsolute()) {
+            throw new GradleException('The release keystore path must be absolute.')
+        }
+    }
+}
 
 android {
     namespace = "local.investment.personal"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "local.investment.personal"
+        if (investmentClerkTrial) {
+            applicationIdSuffix '.clerktrial'
+        }
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode investmentVersionCode.toInteger()
+        versionName investmentVersionName
+        manifestPlaceholders = [investmentAppLabel: investmentClerkTrial ? 'Investment Trial' : 'Investment']
+        buildConfigField 'boolean', 'CLERK_TRIAL_ENABLED', investmentClerkTrial.toString()
+        buildConfigField 'String', 'CLERK_PUBLISHABLE_KEY', '"' + clerkPublishableKey + '"'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,12 +58,33 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    buildFeatures {
+        buildConfig true
+    }
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+    signingConfigs {
+        release {
+            if (releaseStorePath != null && !releaseStorePath.isEmpty()) {
+                storeFile file(releaseStorePath)
+            }
+            storePassword releaseStorePassword
+            keyAlias releaseKeyAlias
+            keyPassword releaseKeyPassword
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+}
+
+tasks.matching { it.name == 'preReleaseBuild' || it.name == 'validateSigningRelease' }.configureEach {
+    dependsOn validateReleaseSigning
 }
 
 repositories {
@@ -36,6 +99,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation 'com.clerk:clerk-android-api:1.1.9'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0'
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"

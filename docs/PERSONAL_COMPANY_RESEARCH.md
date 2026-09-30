@@ -114,6 +114,14 @@ drafts. **Clear company**, a different admitted identity, catalog invalidation o
 workspace/session loss clears the company state under the existing rules.
 Pending responses and old callbacks cannot revive data from another identity.
 
+The workspace owns company admission, navigation, metric choices and drafts.
+`useCompanyFinancialDetailsData` owns the two explicit quarterly-financial and
+valuation-history requests, including their loading, error and cancellation
+state. It uses the workspace's existing session generation. Company or session
+reset retires both requests; changing the price-history range retires valuation
+history alone. These boundaries preserve same-company Back/reopen retention and
+add no automatic requests.
+
 Financial screening criteria, selected watchlist listings, display columns,
 results and comparison remain separate from company navigation. The comparison
 Research action verifies the current query, scope, snapshots and retained row
