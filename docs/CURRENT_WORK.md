@@ -1,6 +1,6 @@
 # Current work
 
-Updated September 29, 2026. Build a personal Investing.com-style platform, then
+Updated September 30, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
 sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
@@ -11,6 +11,14 @@ maintenance findings for the affected files. Bind reports to their analyzed
 revision, verify findings against current source, and favor small changes that
 support the planned feature. Existing tests and release requirements still apply;
 hosted code-health scores do not assess unpublished work or prove correctness.
+
+The first maintenance change separates primary-company quarterly-financial and
+valuation-history requests into `useCompanyFinancialDetailsData`. The workspace
+keeps company and session admission, navigation, metric choices, drafts and focus.
+The [research guide](./PERSONAL_COMPANY_RESEARCH.md) records the ownership boundary;
+workspace CURRENT records actual verification and publication status. The
+extraction does not connect the full workspace to the cloud or change its load
+controls.
 
 ## Approved delivery integration
 

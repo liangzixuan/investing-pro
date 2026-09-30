@@ -4454,6 +4454,78 @@ describe("SecurityDiscoveryWorkspace", () => {
     expect(valuation.props.requestState).toBe("idle");
   });
 
+  it("preserves quarterly data and valuation metric choices across a range change", async () => {
+    await activateWorkspace();
+    let view: unknown = await searchAndSelectMarket("ZERO");
+    requireQuarterlyFinancials(view).props.onLoad();
+    requireValuationHistory(view).props.onLoad();
+    await flushPromises();
+    view = renderWorkspace();
+    const quarterly = requireQuarterlyFinancials(view).props.financials;
+    expect(quarterly).not.toBeNull();
+    requireValuationHistory(view).props.onMetricChange("priceToBook");
+    requireHistoricalMultipleValuation(view).props.onMetricChange(
+      "priceToBook",
+    );
+    view = renderWorkspace();
+    requireMarketOverview(view).props.onLoad("5y");
+    view = renderWorkspace();
+    expect(requireQuarterlyFinancials(view).props.financials).toBe(quarterly);
+    expect(requireValuationHistory(view).props.history).toBeNull();
+    expect(requireValuationHistory(view).props.metric).toBe("priceToBook");
+    expect(requireHistoricalMultipleValuation(view).props.metric).toBe(
+      "priceToBook",
+    );
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+    await flushPromises();
+  });
+
+  it("retires both detail requests on full-identity replacement even when the listing is unchanged", async () => {
+    await activateWorkspace();
+    const quarterly = deferred<PersonalQuarterlyFinancialsDto>();
+    let rejectValuation!: (reason: unknown) => void;
+    const valuation = new Promise<PersonalValuationHistoryDto>((_, reject) => {
+      rejectValuation = reject;
+    });
+    apiMocks.fetchPersonalQuarterlyFinancials.mockReturnValueOnce(
+      quarterly.promise,
+    );
+    apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(valuation);
+    const old = await searchAndSelectMarket("ZERO");
+    const oldQuarterly = requireQuarterlyFinancials(old);
+    const oldValuation = requireValuationHistory(old);
+    oldQuarterly.props.onLoad();
+    oldValuation.props.onLoad();
+    const quarterlySignal =
+      apiMocks.fetchPersonalQuarterlyFinancials.mock.calls[0]![1];
+    const valuationSignal =
+      apiMocks.fetchPersonalValuationHistory.mock.calls[0]![1];
+    findElement<PersonalPortfolioProps>(
+      chooseDeskTask("Portfolio"),
+      componentMocks.Portfolio,
+    )!.props.onOpenResearch!({
+      ...searchResult("ZERO", "lst-zero"),
+      shareClassId: "changed-detail-share-class",
+    });
+    expect(quarterlySignal.aborted).toBe(true);
+    expect(valuationSignal.aborted).toBe(true);
+    oldQuarterly.props.onLoad();
+    oldValuation.props.onLoad();
+    quarterly.resolve(quarterlyFinancials());
+    rejectValuation(new PersonalWorkspaceApiError("session_unavailable"));
+    await flushPromises();
+    const view = renderWorkspace();
+    expect(requireQuarterlyFinancials(view).props.financials).toBeNull();
+    expect(requireQuarterlyFinancials(view).props.requestState).toBe("idle");
+    expect(requireValuationHistory(view).props.history).toBeNull();
+    expect(requireValuationHistory(view).props.errorCode).toBeNull();
+    expect(requireValuationHistory(view).props.requestState).toBe("idle");
+    expect(findOwnerSession(view)).toBeDefined();
+    expect(apiMocks.fetchPersonalQuarterlyFinancials).toHaveBeenCalledTimes(1);
+    expect(apiMocks.fetchPersonalValuationHistory).toHaveBeenCalledTimes(1);
+  });
+
   it("aborts and clears a pending valuation response when the owner session ends", async () => {
     const pending = deferred<PersonalValuationHistoryDto>();
     apiMocks.fetchPersonalValuationHistory.mockReturnValueOnce(pending.promise);

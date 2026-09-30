@@ -6,8 +6,6 @@ import type {
   PersonalPortfolioIdentity,
   PersonalAnnualFinancialsDto,
   PersonalMarketDataStatusDto,
-  PersonalQuarterlyFinancialsDto,
-  PersonalValuationHistoryDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecurityMasterScreenRowDto,
   PersonalSecurityMasterSnapshotReceiptDto,
@@ -43,7 +41,6 @@ import {
   fetchPersonalAnnualFinancials,
   fetchMainPersonalWatchlist,
   fetchPersonalMarketDataStatus,
-  fetchPersonalQuarterlyFinancials,
   fetchPersonalValuationHistory,
   fetchPersonalSecurityMasterStatus,
   membershipFromSearchResult,
@@ -67,6 +64,7 @@ import { PersonalCompanyResearchNavigation } from "./PersonalCompanyResearchNavi
 import { PersonalCompanyWatchlistAction } from "./PersonalCompanyWatchlistAction";
 import { CompanyResearchPage } from "./CompanyResearchPage";
 import { useCompanyOverviewData } from "./useCompanyOverviewData";
+import { useCompanyFinancialDetailsData } from "./useCompanyFinancialDetailsData";
 import {
   PERSONAL_MANUAL_PEER_COMPARISON_MAXIMUM_PEERS,
   type PersonalManualPeerMoveDirection,
@@ -331,22 +329,10 @@ export function SecurityDiscoveryWorkspace({
   const failedCompanyAddReloadWorkspace = useRef<LoadedWorkspace | null>(null);
   const [marketAdjustmentMode, setMarketAdjustmentMode] =
     useState<PriceAdjustmentMode>("adjusted");
-  const [quarterlyFinancials, setQuarterlyFinancials] =
-    useState<PersonalQuarterlyFinancialsDto | null>(null);
-  const [quarterlyFinancialsRequestState, setQuarterlyFinancialsRequestState] =
-    useState<"idle" | "loading">("idle");
-  const [quarterlyFinancialsErrorCode, setQuarterlyFinancialsErrorCode] =
-    useState<PersonalWorkspaceApiErrorCode | null>(null);
-  const [valuationHistory, setValuationHistory] =
-    useState<PersonalValuationHistoryDto | null>(null);
   const [valuationHistoryMetric, setValuationHistoryMetric] =
     useState<ValuationHistoryMetric>("priceToEarnings");
   const [historicalMultipleMetric, setHistoricalMultipleMetric] =
     useState<PersonalHistoricalMultipleValuationMetric>("priceToEarnings");
-  const [valuationHistoryRequestState, setValuationHistoryRequestState] =
-    useState<"idle" | "loading">("idle");
-  const [valuationHistoryErrorCode, setValuationHistoryErrorCode] =
-    useState<PersonalWorkspaceApiErrorCode | null>(null);
   const [manualPeers, setManualPeers] = useState<
     readonly WorkspaceManualPeerState[]
   >([]);
@@ -357,10 +343,6 @@ export function SecurityDiscoveryWorkspace({
   const renderedManualPeerIdentities = manualPeers.map((peer) => peer.identity);
   const workspaceEpoch = useRef(0);
   const searchEpoch = useRef(0);
-  const quarterlyFinancialsEpoch = useRef(0);
-  const quarterlyFinancialsController = useRef<AbortController | null>(null);
-  const valuationHistoryEpoch = useRef(0);
-  const valuationHistoryController = useRef<AbortController | null>(null);
   const manualPeerControllers = useRef(new Map<string, ManualPeerRequest>());
   const ownerActivityStart = useRef<OwnerSessionActivityStart | null>(null);
   const [ownerActivityReady, setOwnerActivityReady] = useState(false);
@@ -832,7 +814,7 @@ export function SecurityDiscoveryWorkspace({
     onActivityStart: handleFinancialActivityStart,
     onSessionUnavailable: clearWorkspaceForSessionLoss,
     onMarketRangeChange: () => {
-      clearValuationHistoryState(false);
+      financialDetails.clearValuationHistoryState();
       clearManualPeerValuationState();
     },
   });
@@ -847,6 +829,23 @@ export function SecurityDiscoveryWorkspace({
     loadMarketData,
     loadAnnualFinancials,
   } = companyData;
+  const financialDetails = useCompanyFinancialDetailsData({
+    selection: marketSelection,
+    range: marketRange,
+    providerStatus: marketDataStatus,
+    getSessionGeneration: () => workspaceEpoch.current,
+    onSessionUnavailable: clearWorkspaceForSessionLoss,
+  });
+  const {
+    quarterlyFinancials,
+    quarterlyFinancialsRequestState,
+    quarterlyFinancialsErrorCode,
+    valuationHistory,
+    valuationHistoryRequestState,
+    valuationHistoryErrorCode,
+    loadQuarterlyFinancials,
+    loadValuationHistory,
+  } = financialDetails;
 
   const handleOwnerSessionChange = useCallback(
     async (active: boolean, signal: AbortSignal) => {
@@ -972,14 +971,8 @@ export function SecurityDiscoveryWorkspace({
     setMarketDataStatus(null);
     setMarketSelection(null);
     setMarketAdjustmentMode("adjusted");
-    quarterlyFinancialsController.current?.abort();
-    quarterlyFinancialsController.current = null;
-    quarterlyFinancialsEpoch.current += 1;
-    setQuarterlyFinancials(null);
-    setQuarterlyFinancialsRequestState("idle");
-    setQuarterlyFinancialsErrorCode(null);
+    resetFinancialDetails();
     clearManualPeerState();
-    clearValuationHistoryState();
   }
 
   async function runSearch() {
@@ -1347,14 +1340,8 @@ export function SecurityDiscoveryWorkspace({
     companyData.reset(nextSelection, identityKey);
     setMarketSelection(nextSelection);
     setMarketAdjustmentMode("adjusted");
-    quarterlyFinancialsController.current?.abort();
-    quarterlyFinancialsController.current = null;
-    quarterlyFinancialsEpoch.current += 1;
-    setQuarterlyFinancials(null);
-    setQuarterlyFinancialsRequestState("idle");
-    setQuarterlyFinancialsErrorCode(null);
+    resetFinancialDetails();
     clearManualPeerState();
-    clearValuationHistoryState();
   }
 
   function clearSelectedCompany() {
@@ -1391,27 +1378,14 @@ export function SecurityDiscoveryWorkspace({
     companyData.reset();
     setMarketSelection(null);
     setMarketAdjustmentMode("adjusted");
-    quarterlyFinancialsController.current?.abort();
-    quarterlyFinancialsController.current = null;
-    quarterlyFinancialsEpoch.current += 1;
-    setQuarterlyFinancials(null);
-    setQuarterlyFinancialsRequestState("idle");
-    setQuarterlyFinancialsErrorCode(null);
+    resetFinancialDetails();
     clearManualPeerState();
-    clearValuationHistoryState();
   }
 
-  function clearValuationHistoryState(resetMetric = true) {
-    valuationHistoryController.current?.abort();
-    valuationHistoryController.current = null;
-    valuationHistoryEpoch.current += 1;
-    setValuationHistory(null);
-    if (resetMetric) {
-      setValuationHistoryMetric("priceToEarnings");
-      setHistoricalMultipleMetric("priceToEarnings");
-    }
-    setValuationHistoryRequestState("idle");
-    setValuationHistoryErrorCode(null);
+  function resetFinancialDetails() {
+    financialDetails.reset();
+    setValuationHistoryMetric("priceToEarnings");
+    setHistoricalMultipleMetric("priceToEarnings");
   }
 
   function abortManualPeerRequests() {
@@ -1667,136 +1641,6 @@ export function SecurityDiscoveryWorkspace({
       manualPeerControllers.current.get(listingId)?.controller === controller
     ) {
       manualPeerControllers.current.delete(listingId);
-    }
-  }
-
-  async function loadQuarterlyFinancials() {
-    const selection = marketSelection;
-    if (selection === null || quarterlyFinancialsRequestState === "loading") {
-      return;
-    }
-    if (marketDataStatus?.status === "not_configured") {
-      setQuarterlyFinancialsErrorCode("not_configured");
-      return;
-    }
-    if (marketDataStatus === null) {
-      setQuarterlyFinancialsErrorCode("unavailable");
-      return;
-    }
-
-    quarterlyFinancialsController.current?.abort();
-    const controller = new AbortController();
-    quarterlyFinancialsController.current = controller;
-    const request = ++quarterlyFinancialsEpoch.current;
-    const epoch = workspaceEpoch.current;
-    setQuarterlyFinancials(null);
-    setQuarterlyFinancialsErrorCode(null);
-    setQuarterlyFinancialsRequestState("loading");
-    try {
-      const loaded = await fetchPersonalQuarterlyFinancials(
-        {
-          listingId: selection.listingId,
-          symbol: selection.symbol,
-        },
-        controller.signal,
-      );
-      if (
-        controller.signal.aborted ||
-        epoch !== workspaceEpoch.current ||
-        request !== quarterlyFinancialsEpoch.current
-      ) {
-        return;
-      }
-      setQuarterlyFinancials(loaded);
-    } catch (error) {
-      if (
-        controller.signal.aborted ||
-        epoch !== workspaceEpoch.current ||
-        request !== quarterlyFinancialsEpoch.current
-      ) {
-        return;
-      }
-      if (isSessionUnavailable(error)) {
-        clearWorkspaceForSessionLoss();
-        return;
-      }
-      setQuarterlyFinancialsErrorCode(
-        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
-      );
-    } finally {
-      if (
-        epoch === workspaceEpoch.current &&
-        request === quarterlyFinancialsEpoch.current
-      ) {
-        quarterlyFinancialsController.current = null;
-        setQuarterlyFinancialsRequestState("idle");
-      }
-    }
-  }
-
-  async function loadValuationHistory() {
-    const selection = marketSelection;
-    if (selection === null || valuationHistoryRequestState === "loading") {
-      return;
-    }
-    if (marketDataStatus?.status === "not_configured") {
-      setValuationHistoryErrorCode("not_configured");
-      return;
-    }
-    if (marketDataStatus === null) {
-      setValuationHistoryErrorCode("unavailable");
-      return;
-    }
-
-    valuationHistoryController.current?.abort();
-    const controller = new AbortController();
-    valuationHistoryController.current = controller;
-    const request = ++valuationHistoryEpoch.current;
-    const epoch = workspaceEpoch.current;
-    const range = marketRange;
-    setValuationHistory(null);
-    setValuationHistoryErrorCode(null);
-    setValuationHistoryRequestState("loading");
-    try {
-      const loaded = await fetchPersonalValuationHistory(
-        {
-          listingId: selection.listingId,
-          range,
-          symbol: selection.symbol,
-        },
-        controller.signal,
-      );
-      if (
-        controller.signal.aborted ||
-        epoch !== workspaceEpoch.current ||
-        request !== valuationHistoryEpoch.current
-      ) {
-        return;
-      }
-      setValuationHistory(loaded);
-    } catch (error) {
-      if (
-        controller.signal.aborted ||
-        epoch !== workspaceEpoch.current ||
-        request !== valuationHistoryEpoch.current
-      ) {
-        return;
-      }
-      if (isSessionUnavailable(error)) {
-        clearWorkspaceForSessionLoss();
-        return;
-      }
-      setValuationHistoryErrorCode(
-        error instanceof PersonalWorkspaceApiError ? error.code : "unavailable",
-      );
-    } finally {
-      if (
-        epoch === workspaceEpoch.current &&
-        request === valuationHistoryEpoch.current
-      ) {
-        valuationHistoryController.current = null;
-        setValuationHistoryRequestState("idle");
-      }
     }
   }
 
