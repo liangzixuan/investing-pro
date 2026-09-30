@@ -44,7 +44,37 @@ issuer/security/share-class/listing identifiers remain distinct from ticker,
 CIK and provider identifiers. The same assignments must be retained when a
 catalog is refreshed.
 
-## Before connecting Discover and My Watchlist
+## Reviewed September 30 cohort
+
+The fixed managed cohort contains AAPL, GOOG and GOOGL: three listings for two
+issuers. GOOG and GOOGL retain separate securities, share classes and listings.
+This is a small reviewed cohort, with no price data or whole-market claim.
+
+Its original canonical snapshot digest is
+`sha256:0ff96ab386a9f1ce4ecab834706aa8da6d9b8ee9efd97f9f79908d616b43a3e4`.
+The API's formatted JSON asset reconstructs those exact canonical bytes before
+admission. Its adjacent manifest identifies public sources, issuer filing dates,
+exclusions and the retained preparation review. Full original source bodies and
+failed attempts remain outside Git. Stable opaque identity assignments must be
+reused on a later refresh.
+
+MSFT and TSM are excluded because their selected filings exceeded the acquisition
+byte limit. BRK-B is excluded because the exact mapping returned no identifier.
+The second, separately reviewed XNGS mapping batch supplied the three admitted
+listings; the first operating-MIC batch returned no matches. This does not prove
+how OpenFIGI expands operating MICs. The ISO MIC facts are a limited unofficial
+projection with attribution to the official registry. The snapshot's policy
+deadline is an application review deadline, not a source licence expiry.
+
+The managed read handler provides authenticated `GET /v1/managed/catalog` and
+`GET /v1/managed/catalog/search?q=...`, using the same fixed catalog. Its compact
+receipt exposes attribution, source dates, coverage and exclusions. Detailed
+rights declarations and internal preparation evidence remain on the server.
+Search uses the existing ranked identity search and a 25-result cap. Responses
+are bounded, private and uncached. This handler has no mounted service entrypoint
+yet; its presence in source does not change the running application.
+
+## Connecting Discover and My Watchlist
 
 Acquire a fixed, reviewable cohort from permitted original sources and retain
 the input bytes, timestamps, attribution and digests. Review every role's
@@ -63,7 +93,16 @@ Appwrite repository's full-payload, version and command-receipt rules, then
 connect the existing Discover and My Watchlist controls through a session-bound
 access interface.
 
-This source layer alone does not connect the hosted workspace or admit real
-securities. It changes no running deployment, saved data, authentication origin,
-native Android profile or local vault. Workspace `CURRENT.md` records actual
-verification and delivery; synthetic test coverage is not real catalog coverage.
+The full repository accepts the managed catalog and resolves a new membership
+by its exact listing ID, independently of search ranking or result limits. A
+matching command receipt is checked before current-catalog admission, so a
+previously committed command can still be reconciled after a catalog refresh.
+Valid historical saved records remain readable; new writes must match the
+current catalog's complete identity. The accepted demo uses its existing
+catalog and storage namespace.
+
+This source layer changes no running deployment, saved data, authentication
+origin, native Android profile or local vault. Workspace `CURRENT.md` records
+actual verification and delivery; synthetic test coverage is not real catalog
+coverage. The hosted Discover/watchlist interface and separate managed service
+remain the next integration work.

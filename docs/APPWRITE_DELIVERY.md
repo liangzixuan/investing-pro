@@ -6,6 +6,11 @@ Clerk web client for the isolated demo watchlist. The accepted development APK
 and local research workspace remain separate. Production Android, owner-data
 migration and the full connected workspace are later outcomes.
 
+The production web demo completed this flow on September 30 at main `b2172d26`.
+The [delivery status table](./CURRENT_WORK.md#delivery-status) records its site
+and API deployment IDs and the separate authenticated desktop/Pixel evidence.
+Subsequent source-only catalog work has not replaced those deployments.
+
 ## Release sequence
 
 The `Appwrite site release` workflow has one manual start on `main`. Supply the

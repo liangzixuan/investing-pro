@@ -2,9 +2,16 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { connect } from "node:net";
 
-import type { MainWatchlistPayload } from "@research-cockpit/contracts";
+import type {
+  MainWatchlistPayload,
+  WatchlistMembership,
+} from "@research-cockpit/contracts";
 import {
+  MANAGED_SECURITY_MASTER_PROFILE,
+  PERSONAL_SECURITY_MASTER_LIMITS,
+  admitManagedSecurityMasterSnapshot,
   admitPersonalSecurityMasterSnapshot,
+  lookupPersonalSecurityMasterListing,
   searchPersonalSecurityMaster,
 } from "@research-cockpit/personal-security-master";
 import { AppwriteException, Client, TablesDB } from "node-appwrite";
@@ -15,9 +22,14 @@ import { createAppwriteTransport } from "./appwrite-transport";
 import {
   appwriteWatchlistStore,
   createAppwriteWatchlistRepository,
+  type AppwriteWatchlistRepositoryOptions,
   type AppwriteWatchlistStore,
 } from "./appwrite-watchlist-repository";
-import { buildTestSecurityMasterAdmission } from "./test-personal-security-master-builder";
+import {
+  bindTestSecurityMasterDocument,
+  buildMutableTestSecurityMasterDocument,
+  buildTestSecurityMasterAdmission,
+} from "./test-personal-security-master-builder";
 import type { PutMainWatchlistCommand } from "./watchlist-repository";
 
 const OWNER = { userId: "synthetic-owner" };
@@ -180,29 +192,56 @@ class AtomicStore implements AppwriteWatchlistStore {
   }
 }
 
-function fixture(recordCount = 3) {
-  const admission = buildTestSecurityMasterAdmission(recordCount);
-  const catalog = admitPersonalSecurityMasterSnapshot(admission);
-  const memberships = [0, 1].map((index) => {
-    const result = searchPersonalSecurityMaster(catalog, {
-      query: `S${String(index).padStart(5, "0")}`,
-      limit: 1,
-    }).results[0]!;
-    return {
-      country: result.country,
-      exchangeMic: result.exchangeMic,
-      instrumentType: result.instrumentType,
-      issuerId: result.issuerId,
-      issuerName: result.issuerName,
-      listingId: result.listingId,
-      note: "Invented note",
-      securityId: result.securityId,
-      securityName: result.securityName,
-      shareClassId: result.shareClassId,
-      shareClassName: result.shareClassName,
-      symbol: result.symbol,
-    };
+function managedCatalog(document = buildMutableTestSecurityMasterDocument(3)) {
+  document.profile = MANAGED_SECURITY_MASTER_PROFILE;
+  document.provenance.sourceLocator = `managed-composite-manifest:${String(document.provenance.sourceRevision)}`;
+  Object.assign(document.sourcePolicyCompatibility, {
+    cache: "permitted_managed",
+    display: "permitted_managed",
+    export: "permitted_with_attribution",
+    localOnly: false,
+    policyProfile: "personal_single_user_managed_connected",
+    redistribution: "permitted_with_attribution",
+    retention: "permitted_managed",
+    rightsBasis: "reviewed_redistributable_source",
+    search: "permitted_managed",
   });
+  return admitManagedSecurityMasterSnapshot(
+    bindTestSecurityMasterDocument(document),
+  );
+}
+
+function membership(
+  catalog: AppwriteWatchlistRepositoryOptions["catalog"],
+  listingId: string,
+): WatchlistMembership {
+  const result = lookupPersonalSecurityMasterListing(catalog, listingId);
+  if (result === null) throw new Error("Missing synthetic listing");
+  return {
+    country: result.country,
+    exchangeMic: result.exchangeMic,
+    instrumentType: result.instrumentType,
+    issuerId: result.issuerId,
+    issuerName: result.issuerName,
+    listingId: result.listingId,
+    note: "Invented note",
+    securityId: result.securityId,
+    securityName: result.securityName,
+    shareClassId: result.shareClassId,
+    shareClassName: result.shareClassName,
+    symbol: result.symbol,
+  };
+}
+
+function fixture(
+  recordCount = 3,
+  catalog: AppwriteWatchlistRepositoryOptions["catalog"] = admitPersonalSecurityMasterSnapshot(
+    buildTestSecurityMasterAdmission(recordCount),
+  ),
+) {
+  const memberships = [0, 1].map((index) =>
+    membership(catalog, `lst-${String(index).padStart(5, "0")}`),
+  );
   const payload: MainWatchlistPayload = {
     memberships,
     name: "My Watchlist",
@@ -235,6 +274,190 @@ function fixture(recordCount = 3) {
 }
 
 describe("Appwrite main watchlist repository", () => {
+  it("admits a managed listing beyond the same-symbol search result cap", async () => {
+    const count = PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap + 1;
+    const document = buildMutableTestSecurityMasterDocument(count);
+    for (const [index, record] of document.records.entries()) {
+      const listing = record.shareClasses[0]!.listings[0]!;
+      listing.currentSymbol = "SAME";
+      listing.exchangeMic = `X${String(index).padStart(3, "0")}`;
+      for (const period of listing.tickerHistory)
+        if (period.validTo === null) period.symbol = "SAME";
+    }
+    const catalog = managedCatalog(document);
+    const listingId = `lst-${String(count - 1).padStart(5, "0")}`;
+    const capped = searchPersonalSecurityMaster(catalog, {
+      query: "SAME",
+      limit: PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap,
+    });
+    expect(capped.results).toHaveLength(count - 1);
+    expect(capped.results.some((entry) => entry.listingId === listingId)).toBe(
+      false,
+    );
+    const { repository, command } = fixture(count, catalog);
+    const input = {
+      ...command(),
+      payload: {
+        ...command().payload,
+        memberships: [membership(catalog, listingId)],
+      },
+    };
+    expect(await repository.put(OWNER, input)).toMatchObject({
+      version: 1,
+      replayed: false,
+    });
+    expect((await repository.get(OWNER))?.payload).toEqual(input.payload);
+  });
+
+  it.each([
+    ["country", "CA"],
+    ["exchangeMic", "XNYS"],
+    ["instrumentType", "common_stock"],
+    ["issuerId", "iss-forged"],
+    ["issuerName", "Forged issuer"],
+    ["listingId", "lst-missing"],
+    ["securityId", "sec-forged"],
+    ["securityName", "Forged security"],
+    ["shareClassId", "shr-forged"],
+    ["shareClassName", "Forged class"],
+    ["symbol", "FORGED"],
+  ] as const)(
+    "rejects a changed current managed %s on write and read",
+    async (field, value) => {
+      const { repository, store, command } = fixture(3, managedCatalog());
+      await repository.put(OWNER, command());
+      const input = structuredClone(command(1, "forged"));
+      Object.assign(input.payload.memberships[0]!, { [field]: value });
+      const before = store.calls.length;
+      await expect(repository.put(OWNER, input)).rejects.toMatchObject({
+        code: "invalid_request",
+      });
+      expect(store.calls.slice(before).map((call) => call.operation)).toEqual(
+        field === "country" ? [] : ["getRow"],
+      );
+      const row = store.current();
+      const payload = JSON.parse(
+        row.payloadJson as string,
+      ) as MainWatchlistPayload;
+      Object.assign(payload.memberships[0]!, { [field]: value });
+      row.payloadJson = JSON.stringify(payload);
+      row.digestSha256 = createHash("sha256")
+        .update(row.payloadJson as string)
+        .digest("hex");
+      await expect(repository.get(OWNER)).rejects.toMatchObject({
+        code: "invalid_response",
+      });
+      expect(row.version).toBe(1);
+      expect(store.receipts()).toHaveLength(1);
+    },
+  );
+
+  it("reads and replays a historical managed command whose listings are absent from the current catalog", async () => {
+    const { repository, store, command, options } = fixture(
+      3,
+      managedCatalog(),
+    );
+    const original = await repository.put(OWNER, command());
+    const document = buildMutableTestSecurityMasterDocument(3);
+    for (const record of document.records) {
+      const listing = record.shareClasses[0]!.listings[0]!;
+      const previousId = listing.listingId;
+      listing.listingId = `${String(previousId)}-current`;
+      for (const period of listing.tickerHistory)
+        period.listingId = listing.listingId;
+      for (const mapping of document.providerMappings)
+        if (
+          mapping.mappingKind === "listing" &&
+          mapping.targetId === previousId
+        )
+          mapping.targetId = listing.listingId;
+    }
+    const currentCatalog = managedCatalog(document);
+    for (const entry of command().payload.memberships)
+      expect(
+        lookupPersonalSecurityMasterListing(currentCatalog, entry.listingId),
+      ).toBeNull();
+    const changed = createAppwriteWatchlistRepository({
+      ...options,
+      catalog: currentCatalog,
+    });
+    expect((await changed.get(OWNER))?.payload).toEqual(command().payload);
+    const beforeReplay = store.calls.length;
+    expect(await changed.put(OWNER, command())).toEqual({
+      ...original,
+      replayed: true,
+    });
+    expect(
+      store.calls.slice(beforeReplay).map((call) => call.operation),
+    ).toEqual(["getRow"]);
+    const beforeStale = store.calls.length;
+    await expect(changed.put(OWNER, command(1, "stale"))).rejects.toMatchObject(
+      { code: "invalid_request" },
+    );
+    expect(
+      store.calls.slice(beforeStale).map((call) => call.operation),
+    ).toEqual(["getRow"]);
+    const currentCommand = {
+      ...command(1, "current"),
+      payload: {
+        ...command().payload,
+        snapshotSha256: currentCatalog.snapshotSha256,
+        memberships: [membership(currentCatalog, "lst-00000-current")],
+      },
+    };
+    expect(await changed.put(OWNER, currentCommand)).toMatchObject({
+      version: 2,
+      replayed: false,
+    });
+    expect(await changed.put(OWNER, command())).toEqual({
+      ...original,
+      replayed: true,
+    });
+    expect((await changed.get(OWNER))?.payload).toEqual(currentCommand.payload);
+  });
+
+  it("replays a valid receipt before current listing admission while still validating the command", async () => {
+    const { repository, store, command } = fixture(3, managedCatalog());
+    const original = await repository.put(OWNER, command());
+    const lookup = vi.spyOn(
+      await import("@research-cockpit/personal-security-master"),
+      "lookupPersonalSecurityMasterListing",
+    );
+    try {
+      const before = store.calls.length;
+      expect(await repository.put(OWNER, command())).toEqual({
+        ...original,
+        replayed: true,
+      });
+      expect(lookup).not.toHaveBeenCalled();
+      expect(store.calls.slice(before).map((call) => call.operation)).toEqual([
+        "getRow",
+      ]);
+      const malformed = {
+        ...command(),
+        payload: { ...command().payload, extra: "invalid" },
+      };
+      const beforeInvalid = store.calls.length;
+      await expect(repository.put(OWNER, malformed)).rejects.toMatchObject({
+        code: "invalid_request",
+      });
+      expect(store.calls).toHaveLength(beforeInvalid);
+      expect(lookup).not.toHaveBeenCalled();
+      for (const listingId of ["lst-missing", "x"]) {
+        const input = structuredClone(command(1, listingId));
+        Object.assign(input.payload.memberships[0]!, { listingId });
+        await expect(repository.put(OWNER, input)).rejects.toMatchObject({
+          code: "invalid_request",
+        });
+      }
+      expect(lookup).toHaveBeenCalledTimes(2);
+      expect(store.current().version).toBe(1);
+      expect(store.receipts()).toHaveLength(1);
+    } finally {
+      lookup.mockRestore();
+    }
+  });
+
   it("keeps absence distinct, commits current row and receipt atomically, and preserves order", async () => {
     const { store, repository, command } = fixture();
     expect(await repository.get(OWNER)).toBeNull();

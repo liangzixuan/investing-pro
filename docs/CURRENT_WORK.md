@@ -6,6 +6,27 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 Workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
+## Delivery status
+
+Verified September 30, 2026. Each row describes a separate product surface.
+Exact receipts and historical outcomes remain in workspace `CURRENT.md` and its
+linked handoffs; a later source merge is not a new deployment.
+
+| Surface                  | Accepted evidence                                                                                                                                         | Remaining work                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Local research app       | Preserved a89 release and encrypted vault                                                                                                                 | Managed migration and recovery are separate work.                                             |
+| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                               | Does not accept production native sign-in or signing custody.                                 |
+| Production web demo      | Main `b2172d26`; site `6abd4ff1627f9d9cc935`, API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out | Synthetic saved version 1 only; full Discover and watchlist are being connected.              |
+| Production native app    | No accepted production APK                                                                                                                                | Production auth/callbacks, private release signing, upgrade and recovery checks on the Pixel. |
+
+Keep Next.js for desktop and the shared React/Vite/Capacitor client for Android.
+Clerk supplies identity and the server enforces account/data access. Appwrite
+remains the selected managed service. The next credential-management evaluation
+is a separate scoped Doppler development trial: inspect consumer names and
+supported entitlement, prove harmless injection and failure/recovery behavior,
+then select real consumers. It must not reuse another project's secrets or infer
+native Windows readiness from that project's WSL setup.
+
 Use [CodeScene](./CODESCENE.md) during substantive feature reviews to inspect
 maintenance findings for the affected files. Bind reports to their analyzed
 revision, verify findings against current source, and favor small changes that
@@ -62,13 +83,14 @@ data and sign-out on Android Chrome on the Pixel, after which the desktop still
 loaded the same saved version without another sign-in. This is a limited
 synthetic web journey, not native production or full-workspace acceptance.
 
-The next product outcome is managed Discover and My Watchlist with real catalog
-securities. Its selected first layer is an explicit
-[managed catalog admission and offline preparation profile](./MANAGED_SECURITY_CATALOG.md).
-It shares existing identity and search logic while keeping local-only snapshots
-out of managed admission. Actual permitted source artifacts, the managed API/UI
-connection and production Android acceptance remain separate steps. The accepted
-demo's deployment and saved record stay intact.
+The active product outcome is managed Discover and My Watchlist. The
+[managed catalog](./MANAGED_SECURITY_CATALOG.md) now has a reviewed fixed cohort
+of AAPL, GOOG and GOOGL, with three candidates excluded and limited coverage
+shown explicitly. The source integration adds a compact authenticated search
+handler and adapts the existing full-payload repository to exact listing lookup
+and receipt-first reconciliation. Source admission is separate from runtime
+delivery: the managed API/UI connection and production Android acceptance remain
+pending. The accepted demo's deployment and saved record stay intact.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
@@ -146,10 +168,11 @@ and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
 including one sign-in-page check after Clerk's verification completed.
 The cause remains unverified. A later normal Brave navigation rendered the
 production sign-in form without entering credentials or submitting it. Successful
-authenticated application access remains untested. The owner reported creating
-the production account. Its exact subject still needs confirmation; the accepted
-production service currently denies all subjects, and the full workspace remains
-disconnected.
+authenticated application access was accepted later for the limited synthetic
+web journey in the status table. The owner confirmed the production subject;
+the deployed service admits that subject while retaining signature, issuer,
+session and origin checks. Full workspace and production native acceptance
+remain separate.
 
 ## Accepted trial and shared watchlist storage
 
