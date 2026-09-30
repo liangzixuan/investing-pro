@@ -91,10 +91,33 @@ it running and returned no completed analysis. The reader correctly emitted
 baseline results belong in workspace `CURRENT.md` and `tmp/codescene`, separate
 from that initial observation.
 
-The source-reviewed reader passed syntax validation and those two authenticated
-GETs. Full file/target retrieval requires a completed analysis. The first native
-PR review remains unverified: the seven open PRs at setup were dependency updates,
-and none was changed or triggered for this task. Verify the next substantive PR.
+The initial baseline later completed for published main `a3366e6`. Its weighted
+code health was 4.79 and hotspot weighted health 1.41. The saved ten-file excerpt
+is page 1 of 74; it is not a complete finding inventory.
+
+The first substantive native review ran on [PR 12](https://github.com/liangzixuan/investing-pro/pull/12),
+at head `ac235387500f437eee2bc6f593088a7b20ccd15c`.
+[CodeScene review 7747148](https://codescene.io/projects/85364/delta/results/7747148)
+failed the advisory Bare Minimum profile: 17 new files scored below 10, and five
+files had critical complexity rules. Its 107 annotations included 89 warnings
+and 18 improvement notices. These findings establish that the integration runs;
+they do not establish 107 defects.
+
+The Research workspace improved from 1.31 to 1.35. The verification runner stayed
+at 1.00 with category improvements. Extracting existing functions also moved
+their complexity findings into the new files. That relocation improves ownership
+but does not remove the underlying branching.
+
+The selected follow-up simplifies the Clerk request handler's lifecycle and the
+dependency validators. Preserve the request/cleanup failure rules and policy
+diagnostic order. Defer the native session publisher, storage-proof test model
+and report-reader refactors: each has separate lifecycle or evidence risks and
+no demonstrated product failure in this review. Keep the Research hook's session
+and stale-response guards; a generic request framework is not justified by its
+score. Review authentication and uncertain-write client branches alongside the
+planned connected-workspace changes. Do not suppress findings or weaken the
+profile to turn this check green. Later acceptance and scores belong to the
+actual new revision, recorded in workspace CURRENT and the PR evidence.
 
 An earlier API project-creation attempt returned 403 and was not retried. The
 normal provider UI subsequently created the project. Two browser approval holds

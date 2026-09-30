@@ -56,49 +56,40 @@ export function dependencyPolicyViolations(
         policyViolations.push(
           `dependency ${JSON.stringify(name)} is duplicated in ${previous} and ${section}`,
         );
-      if (name.length === 0) {
-        policyViolations.push(`${section} contains an empty dependency name`);
-        continue;
-      }
-      if (typeof specifier !== "string") {
-        policyViolations.push(
-          `${section} dependency ${JSON.stringify(name)} must have a string specifier`,
-        );
-        continue;
-      }
-      if (workspaceNames.has(name)) {
-        if (specifier !== "workspace:*")
-          policyViolations.push(
-            `workspace dependency ${JSON.stringify(name)} in ${section} must use workspace:*`,
-          );
-        continue;
-      }
-      if (name.startsWith("@research-cockpit/")) {
-        policyViolations.push(
-          `${section} dependency ${JSON.stringify(name)} uses the reserved internal scope without a matching workspace package`,
-        );
-        continue;
-      }
-      if (specifier.startsWith("workspace:")) {
-        policyViolations.push(
-          `${section} dependency ${JSON.stringify(name)} references an unknown workspace package`,
-        );
-        continue;
-      }
-      if (
-        exactDependencySections.has(section) &&
-        !plainExactSemver.test(specifier)
-      )
-        policyViolations.push(
-          `external dependency ${JSON.stringify(name)} in ${section} must use one plain exact semantic version`,
-        );
-      else if (section === "peerDependencies" && specifier.length === 0)
-        policyViolations.push(
-          `peer dependency ${JSON.stringify(name)} must have a non-empty specifier`,
-        );
+      const violation = dependencyDeclarationViolation(
+        section,
+        name,
+        specifier,
+        workspaceNames,
+      );
+      if (violation !== null) policyViolations.push(violation);
     }
   }
   return policyViolations;
+}
+
+function dependencyDeclarationViolation(
+  section: DependencySection,
+  name: string,
+  specifier: unknown,
+  workspaceNames: ReadonlySet<string>,
+): string | null {
+  if (name.length === 0) return `${section} contains an empty dependency name`;
+  if (typeof specifier !== "string")
+    return `${section} dependency ${JSON.stringify(name)} must have a string specifier`;
+  if (workspaceNames.has(name))
+    return specifier === "workspace:*"
+      ? null
+      : `workspace dependency ${JSON.stringify(name)} in ${section} must use workspace:*`;
+  if (name.startsWith("@research-cockpit/"))
+    return `${section} dependency ${JSON.stringify(name)} uses the reserved internal scope without a matching workspace package`;
+  if (specifier.startsWith("workspace:"))
+    return `${section} dependency ${JSON.stringify(name)} references an unknown workspace package`;
+  if (exactDependencySections.has(section) && !plainExactSemver.test(specifier))
+    return `external dependency ${JSON.stringify(name)} in ${section} must use one plain exact semantic version`;
+  if (section === "peerDependencies" && specifier.length === 0)
+    return `peer dependency ${JSON.stringify(name)} must have a non-empty specifier`;
+  return null;
 }
 
 export function legacyNpmrcPolicyViolation(content: string): string | null {
@@ -128,37 +119,43 @@ export function npmrcGitignoreViolation(content: string): string | null {
   return null;
 }
 
-export function pnpmLockfileHeaderViolation(content: string): string | null {
-  const lines = content.split(/\r?\n/u);
-  const meaningful = lines.filter((line) => {
-    const trimmed = line.trim();
-    return trimmed.length > 0 && !trimmed.startsWith("#");
-  });
-  if (meaningful[0] !== "lockfileVersion: '9.0'")
-    return "lockfileVersion must remain the pinned canonical 9.0 header";
-  const canonicalTopLevelLines = [
-    "lockfileVersion: '9.0'",
-    "settings:",
-    "importers:",
-    "packages:",
-    "ignoredOptionalDependencies:",
-    "snapshots:",
-  ] as const;
-  const requiredTopLevelLines = new Set<
-    (typeof canonicalTopLevelLines)[number]
-  >(["lockfileVersion: '9.0'", "settings:"]);
-  const topLevelCounts = new Map<
-    (typeof canonicalTopLevelLines)[number],
-    number
-  >(canonicalTopLevelLines.map((line) => [line, 0] as const));
+const canonicalTopLevelLines = [
+  "lockfileVersion: '9.0'",
+  "settings:",
+  "importers:",
+  "packages:",
+  "ignoredOptionalDependencies:",
+  "snapshots:",
+] as const;
+type CanonicalTopLevelLine = (typeof canonicalTopLevelLines)[number];
+const requiredTopLevelLines = new Set<CanonicalTopLevelLine>([
+  "lockfileVersion: '9.0'",
+  "settings:",
+]);
+
+interface LockfileHeaderInventory {
+  topLevelCounts: Map<CanonicalTopLevelLine, number>;
+  settingsLines: string[];
+}
+
+function isMeaningfulLockfileLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.length > 0 && !trimmed.startsWith("#");
+}
+
+function scanLockfileHeader(
+  lines: readonly string[],
+): LockfileHeaderInventory | string {
+  const topLevelCounts = new Map<CanonicalTopLevelLine, number>(
+    canonicalTopLevelLines.map((line) => [line, 0] as const),
+  );
   const settingsLines: string[] = [];
   let insideSettings = false;
   for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0 || trimmed.startsWith("#")) continue;
+    if (!isMeaningfulLockfileLine(line)) continue;
     if (!/^\s/u.test(line)) {
       insideSettings = line === "settings:";
-      const canonicalLine = line as (typeof canonicalTopLevelLines)[number];
+      const canonicalLine = line as CanonicalTopLevelLine;
       const count = topLevelCounts.get(canonicalLine);
       if (count === undefined)
         return "top-level mappings must use only the canonical generated keys";
@@ -167,15 +164,23 @@ export function pnpmLockfileHeaderViolation(content: string): string | null {
     }
     if (insideSettings) settingsLines.push(line);
   }
-  for (const [line, count] of topLevelCounts) {
-    if (
-      (requiredTopLevelLines.has(line) && count !== 1) ||
-      (!requiredTopLevelLines.has(line) && count > 1)
-    )
-      return "required top-level keys must occur once and optional keys at most once";
-  }
+  return { topLevelCounts, settingsLines };
+}
+
+export function pnpmLockfileHeaderViolation(content: string): string | null {
+  const lines = content.split(/\r?\n/u);
+  if (lines.find(isMeaningfulLockfileLine) !== "lockfileVersion: '9.0'")
+    return "lockfileVersion must remain the pinned canonical 9.0 header";
+  const inventory = scanLockfileHeader(lines);
+  if (typeof inventory === "string") return inventory;
+  const invalidMultiplicity = [...inventory.topLevelCounts].some(
+    ([line, count]) =>
+      requiredTopLevelLines.has(line) ? count !== 1 : count > 1,
+  );
+  if (invalidMultiplicity)
+    return "required top-level keys must occur once and optional keys at most once";
   if (
-    JSON.stringify(settingsLines) !==
+    JSON.stringify(inventory.settingsLines) !==
     JSON.stringify([
       "  autoInstallPeers: false",
       "  excludeLinksFromLockfile: false",

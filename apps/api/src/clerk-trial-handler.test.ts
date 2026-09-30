@@ -143,6 +143,61 @@ describe("isolated Clerk trial request handler", () => {
       ).status,
     ).toBe(403);
   });
+  it.each([
+    ["GET", "unknown", 404, "not_found"],
+    ["GET", "watchlist/", 404, "not_found"],
+    ["GET", "watchlist?extra=1", 404, "not_found"],
+    ["GET", "session#extra", 404, "not_found"],
+    ["OPTIONS", "unknown", 404, "not_found"],
+    ["POST", "session", 405, "method_not_allowed"],
+    ["PUT", "watchlist", 405, "method_not_allowed"],
+    ["DELETE", "watchlist", 405, "method_not_allowed"],
+  ] as const)(
+    "rejects %s %s before authentication or storage",
+    async (method, path, status, error) => {
+      const f = fixture();
+      const r = await f.handler(request(method, undefined, {}, path));
+      expect(r.status).toBe(status);
+      expect(await r.json()).toEqual({ error });
+      expect(r.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+      expect(r.headers.get("vary")).toBe("Origin");
+      expect(f.auth).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["session", "GET", "Authorization", 204, "GET"],
+    ["watchlist", "GET", "", 204, "GET, POST"],
+    ["watchlist", "POST", " Content-Type, AUTHORIZATION ", 204, "GET, POST"],
+    ["session", "POST", "authorization", 403, null],
+    ["watchlist", "", "authorization", 403, null],
+    ["watchlist", "GET", "authorization, x-owner", 403, null],
+  ] as const)(
+    "bounds preflight for %s with method %s and headers %s",
+    async (path, method, headers, status, methods) => {
+      const f = fixture();
+      const r = await f.handler(
+        request(
+          "OPTIONS",
+          undefined,
+          {
+            "access-control-request-method": method,
+            "access-control-request-headers": headers,
+          },
+          path,
+        ),
+      );
+      expect(r.status).toBe(status);
+      expect(r.headers.get("access-control-allow-methods")).toBe(methods);
+      expect(r.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+      expect(r.headers.has("access-control-allow-credentials")).toBe(false);
+      expect(await r.text()).toBe(
+        status === 204 ? "" : '{"error":"origin_denied"}',
+      );
+      expect(f.auth).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
   it("round trips absence, save, replay and fresh read with server-only principal", async () => {
     const f = fixture();
     expect(await (await f.handler(request())).json()).toEqual({
@@ -191,6 +246,32 @@ describe("isolated Clerk trial request handler", () => {
     expect(f.put).toHaveBeenCalledTimes(3);
     expect(f.close).toHaveBeenCalledTimes(3);
   });
+  it("returns an old command receipt on replay and the latest state only on GET", async () => {
+    const f = fixture();
+    await f.handler(request("POST", COMMAND));
+    const next = {
+      ...COMMAND,
+      expectedVersion: 1,
+      idempotencyKey: "synthetic-command-two",
+      selected: ["DEMO_A"],
+      note: "Newer invented note",
+    };
+    await f.handler(request("POST", next));
+    expect(await (await f.handler(request("POST", COMMAND))).json()).toEqual({
+      version: 1,
+      selected: COMMAND.selected,
+      note: COMMAND.note,
+      replayed: true,
+    });
+    expect(await (await f.handler(request())).json()).toEqual({
+      version: 2,
+      selected: next.selected,
+      note: next.note,
+    });
+    expect(f.put).toHaveBeenCalledTimes(3);
+    expect(f.get).toHaveBeenCalledTimes(1);
+    expect(f.close).toHaveBeenCalledTimes(4);
+  });
   it.each([
     { ...COMMAND, userId: "attacker" },
     { ...COMMAND, ownerId: "attacker" },
@@ -233,6 +314,9 @@ describe("isolated Clerk trial request handler", () => {
     ).toBe(415);
   });
   it.each([
+    "invalid_request",
+    "conflict",
+    "idempotency_conflict",
     "commit_unknown",
     "unavailable",
     "access_denied",
@@ -243,6 +327,17 @@ describe("isolated Clerk trial request handler", () => {
       const f = fixture();
       f.put.mockRejectedValue(new WatchlistRepositoryError(code));
       const r = await f.handler(request("POST", COMMAND));
+      expect(r.status).toBe(
+        {
+          invalid_request: 400,
+          access_denied: 403,
+          conflict: 409,
+          idempotency_conflict: 409,
+          commit_unknown: 503,
+          unavailable: 503,
+          invalid_response: 503,
+        }[code],
+      );
       expect(await r.json()).toEqual({
         error: code === "invalid_response" ? "commit_unknown" : code,
       });
@@ -257,6 +352,108 @@ describe("isolated Clerk trial request handler", () => {
     expect(r.status).toBe(503);
     expect(await r.text()).toBe('{"error":"commit_unknown"}');
     expect(f.put).toHaveBeenCalledTimes(1);
+    expect(f.close).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    ["GET", "success", "unavailable"],
+    ["GET", "access_denied", "unavailable"],
+    ["POST", "conflict", "commit_unknown"],
+    ["POST", "unexpected", "commit_unknown"],
+  ] as const)(
+    "lets cleanup failure override %s %s without retrying",
+    async (method, outcome, error) => {
+      const f = fixture();
+      if (outcome === "access_denied")
+        f.get.mockRejectedValue(new WatchlistRepositoryError("access_denied"));
+      if (outcome === "conflict")
+        f.put.mockRejectedValue(new WatchlistRepositoryError("conflict"));
+      if (outcome === "unexpected")
+        f.put.mockRejectedValue(new Error("untrusted upstream details"));
+      f.close.mockRejectedValue(new Error("private cleanup details"));
+      const r = await f.handler(
+        request(method, method === "POST" ? COMMAND : undefined),
+      );
+      expect(r.status).toBe(503);
+      expect(await r.json()).toEqual({ error });
+      expect(f.get).toHaveBeenCalledTimes(method === "GET" ? 1 : 0);
+      expect(f.put).toHaveBeenCalledTimes(method === "POST" ? 1 : 0);
+      expect(f.close).toHaveBeenCalledTimes(1);
+    },
+  );
+  it.each(["GET", "POST"])(
+    "reports an unexpected %s data failure without leaking details",
+    async (method) => {
+      const f = fixture();
+      f.get.mockRejectedValue(new Error("private read details"));
+      f.put.mockRejectedValue(new Error("private write details"));
+      const r = await f.handler(
+        request(method, method === "POST" ? COMMAND : undefined),
+      );
+      expect(r.status).toBe(503);
+      expect(await r.json()).toEqual({
+        error: method === "POST" ? "commit_unknown" : "unavailable",
+      });
+      expect(f.close).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("does not call close or mark a write started when repository acquisition fails", async () => {
+    const f = fixture();
+    f.openRepository.mockRejectedValue(
+      new Error("private acquisition details"),
+    );
+    const r = await f.handler(request("POST", COMMAND));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "unavailable" });
+    expect(f.openRepository).toHaveBeenCalledTimes(1);
+    expect(f.get).not.toHaveBeenCalled();
+    expect(f.put).not.toHaveBeenCalled();
+    expect(f.close).not.toHaveBeenCalled();
+  });
+  it.each([
+    { id: "other" },
+    { version: 0 },
+    { version: 1.5 },
+    { version: Number.MAX_SAFE_INTEGER + 1 },
+    { version: "1" },
+  ])("rejects malformed read metadata %# and closes storage", async (patch) => {
+    const f = fixture();
+    f.get.mockResolvedValue({
+      id: "main",
+      version: 1,
+      payload: toClerkTrialPayload(["DEMO_A"], ""),
+      createdAt: "",
+      updatedAt: "",
+      ...patch,
+    } as MainWatchlistRecord);
+    const r = await f.handler(request());
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "unavailable" });
+    expect(f.get).toHaveBeenCalledTimes(1);
+    expect(f.close).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { id: "other" },
+    { version: 0 },
+    { version: 2 },
+    { version: 1.5 },
+    { version: Number.MAX_SAFE_INTEGER + 1 },
+    { version: "1" },
+    { replayed: "false" },
+  ])("treats malformed write receipt %# as uncertain", async (patch) => {
+    const f = fixture();
+    f.put.mockResolvedValue({
+      id: "main",
+      version: 1,
+      replayed: false,
+      digestSha256: "0".repeat(64),
+      committedAt: "2026-09-29T00:00:00.000Z",
+      ...patch,
+    } as Awaited<ReturnType<typeof f.put>>);
+    const r = await f.handler(request("POST", COMMAND));
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: "commit_unknown" });
+    expect(f.put).toHaveBeenCalledTimes(1);
+    expect(f.close).toHaveBeenCalledTimes(1);
   });
   it("rejects stored foreign data instead of silently omitting members", async () => {
     const f = fixture();
@@ -283,6 +480,74 @@ describe("isolated Clerk trial request handler", () => {
     expect((await f.handler(r)).status).toBe(408);
     expect(f.openRepository).not.toHaveBeenCalled();
   });
+  it("stops after authentication if the request was aborted during auth", async () => {
+    const f = fixture();
+    const controller = new AbortController();
+    const r = new Request(request("POST", COMMAND), {
+      signal: controller.signal,
+    });
+    f.auth.mockImplementationOnce(() => {
+      controller.abort();
+      return Promise.resolve({ status: "allowed", principal: OWNER });
+    });
+    const response = await f.handler(r);
+    expect(response.status).toBe(408);
+    expect(await response.json()).toEqual({ error: "request_timeout" });
+    expect(r.bodyUsed).toBe(false);
+    expect(f.openRepository).not.toHaveBeenCalled();
+    expect(f.close).not.toHaveBeenCalled();
+  });
+  it("stops after body completion if the request was aborted while reading", async () => {
+    const f = fixture();
+    const controller = new AbortController();
+    const pull = vi.fn(
+      (stream: ReadableStreamDefaultController<Uint8Array>) => {
+        expect(f.auth).toHaveBeenCalledTimes(1);
+        controller.abort();
+        stream.enqueue(new TextEncoder().encode(JSON.stringify(COMMAND)));
+        stream.close();
+      },
+    );
+    const r = new Request("https://api.example.invalid/v1/trial/watchlist", {
+      method: "POST",
+      headers: { origin: ORIGIN, "content-type": "application/json" },
+      body: new ReadableStream<Uint8Array>({ pull }, { highWaterMark: 0 }),
+      signal: controller.signal,
+      duplex: "half",
+    } as RequestInit);
+    const response = await f.handler(r);
+    expect(response.status).toBe(408);
+    expect(await response.json()).toEqual({ error: "request_timeout" });
+    expect(pull).toHaveBeenCalledTimes(1);
+    expect(r.bodyUsed).toBe(true);
+    expect(f.openRepository).not.toHaveBeenCalled();
+    expect(f.close).not.toHaveBeenCalled();
+  });
+  it.each(["GET", "POST"])(
+    "closes an acquired %s operation without a data call when acquisition finishes after abort",
+    async (method) => {
+      const f = fixture();
+      const controller = new AbortController();
+      f.openRepository.mockImplementationOnce(() => {
+        controller.abort();
+        return Promise.resolve({
+          repository: { get: f.get, put: f.put },
+          close: f.close,
+        });
+      });
+      const r = new Request(
+        request(method, method === "POST" ? COMMAND : undefined),
+        { signal: controller.signal },
+      );
+      const response = await f.handler(r);
+      expect(response.status).toBe(408);
+      expect(await response.json()).toEqual({ error: "request_timeout" });
+      expect(f.openRepository).toHaveBeenCalledTimes(1);
+      expect(f.get).not.toHaveBeenCalled();
+      expect(f.put).not.toHaveBeenCalled();
+      expect(f.close).toHaveBeenCalledTimes(1);
+    },
+  );
   it("times out a stalled body and never opens storage", async () => {
     vi.useFakeTimers();
     try {

@@ -131,8 +131,11 @@ static build over verified HTTPS. Clerk reports DNS, SSL and email verification
 complete. Independent requests validated the certificates on both Clerk hosts.
 The account domain and its documented `/sign-in` page returned HTTP 403 to
 unauthenticated HTTP checks, including one sign-in-page check after Clerk's
-verification completed. The cause is unresolved, and browser sign-in was not
-tested. These checks do not establish production login readiness. The
+verification completed. The cause is unresolved. A later normal Brave navigation
+rendered the production sign-in form with its email and Google options. No
+credentials or account choice were entered, and no form was submitted. This
+verifies page rendering only; successful production sign-in, callbacks and
+account admission remain untested. The
 [domain handoff](../../tmp/clerk-trial/production-domain/plan.md) records the actual
 configuration and remaining steps. Google sign-in, if retained, needs the
 owner's production OAuth configuration. The existing trial remains available

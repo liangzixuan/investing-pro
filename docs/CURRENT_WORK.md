@@ -20,6 +20,14 @@ workspace CURRENT records actual verification and publication status. The
 extraction does not connect the full workspace to the cloud or change its load
 controls.
 
+The Clerk handler keeps authentication, request cancellation and repository
+cleanup in one visible lifecycle. Private helpers handle protocol admission,
+result validation and finite error responses. Dependency-policy helpers separate
+ordered traversal from declaration checks and canonical lockfile scanning;
+compound-invalid fixtures preserve diagnostic precedence. These are maintenance
+changes to existing behavior, with actual verification recorded in workspace
+CURRENT.
+
 ## Approved delivery integration
 
 September 29 update: the first static delivery flow completed at main merge
@@ -87,7 +95,9 @@ deployment were preserved. Clerk reports DNS, SSL and email verification complet
 Separate HTTPS checks validated both Clerk host certificates. The account root
 and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
 including one sign-in-page check after Clerk's verification completed.
-The cause and browser sign-in remain unverified. Production client/API
+The cause remains unverified. A later normal Brave navigation rendered the
+production sign-in form without entering credentials or submitting it. Successful
+sign-in and account admission remain untested. Production client/API
 configuration is pending; the full workspace remains disconnected.
 
 ## Accepted trial and shared watchlist storage

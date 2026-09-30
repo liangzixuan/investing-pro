@@ -5,7 +5,11 @@ import {
 } from "./clerk-trial-catalog";
 import {
   WatchlistRepositoryError,
+  type MainWatchlistReceipt,
+  type MainWatchlistRecord,
   type MainWatchlistRepository,
+  type PutMainWatchlistCommand,
+  type WatchlistRepositoryErrorCode,
 } from "./watchlist-repository";
 
 export interface ClerkTrialRepositoryOperation {
@@ -103,6 +107,128 @@ async function readCommand(request: Request) {
   }
 }
 
+function allowsMethod(method: string, path: string) {
+  return method === "GET" || (method === "POST" && path === PATHS[1]);
+}
+
+function admitRoute(request: Request) {
+  const url = new URL(request.url);
+  if (
+    !PATHS.includes(url.pathname) ||
+    url.search ||
+    url.hash ||
+    url.username ||
+    url.password
+  )
+    throw new RequestFailure(404, "not_found");
+  if (
+    request.method !== "OPTIONS" &&
+    !allowsMethod(request.method, url.pathname)
+  )
+    throw new RequestFailure(405, "method_not_allowed");
+  return url.pathname;
+}
+
+function preflightResponse(request: Request, path: string, headers: Headers) {
+  const method = request.headers.get("access-control-request-method");
+  const requested = (
+    request.headers.get("access-control-request-headers") ?? ""
+  )
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  if (
+    !method ||
+    !allowsMethod(method, path) ||
+    requested.some(
+      (entry) => !["authorization", "content-type"].includes(entry),
+    )
+  )
+    throw new RequestFailure(403, "origin_denied");
+  headers.set(
+    "access-control-allow-methods",
+    path === PATHS[0] ? "GET" : "GET, POST",
+  );
+  headers.set("access-control-allow-headers", "Authorization, Content-Type");
+  headers.set(
+    "vary",
+    "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+  );
+  return new Response(null, { status: 204, headers });
+}
+
+function readResult(record: MainWatchlistRecord | null) {
+  if (
+    record !== null &&
+    (record.id !== "main" ||
+      !Number.isSafeInteger(record.version) ||
+      record.version < 1)
+  )
+    throw new WatchlistRepositoryError("invalid_response");
+  return record === null
+    ? { version: 0, selected: [], note: "" }
+    : { version: record.version, ...fromClerkTrialPayload(record.payload) };
+}
+
+function writeResult(
+  receipt: MainWatchlistReceipt,
+  command: PutMainWatchlistCommand,
+) {
+  if (
+    receipt.id !== "main" ||
+    !Number.isSafeInteger(receipt.version) ||
+    receipt.version !== command.expectedVersion + 1 ||
+    typeof receipt.replayed !== "boolean"
+  )
+    throw new WatchlistRepositoryError("commit_unknown");
+  return {
+    version: receipt.version,
+    ...fromClerkTrialPayload(command.payload),
+    replayed: receipt.replayed,
+  };
+}
+
+function repositoryErrorStatus(code: WatchlistRepositoryErrorCode) {
+  switch (code) {
+    case "invalid_request":
+      return 400;
+    case "access_denied":
+      return 403;
+    case "conflict":
+    case "idempotency_conflict":
+      return 409;
+    default:
+      return 503;
+  }
+}
+
+function unavailableResponse(writeStarted: boolean, headers: Headers) {
+  return new Response(
+    JSON.stringify({ error: writeStarted ? "commit_unknown" : "unavailable" }),
+    { status: 503, headers },
+  );
+}
+
+function errorResponse(
+  error: unknown,
+  writeStarted: boolean,
+  headers: Headers,
+) {
+  if (error instanceof RequestFailure)
+    return new Response(JSON.stringify({ error: error.code }), {
+      status: error.status,
+      headers,
+    });
+  if (!(error instanceof WatchlistRepositoryError))
+    return unavailableResponse(writeStarted, headers);
+  if (error.code === "invalid_response")
+    return unavailableResponse(writeStarted, headers);
+  return new Response(JSON.stringify({ error: error.code }), {
+    status: repositoryErrorStatus(error.code),
+    headers,
+  });
+}
+
 /** Cloud-only request boundary. Local owner session routes remain unchanged. */
 export function createClerkTrialHandler(options: ClerkTrialHandlerOptions) {
   if (
@@ -131,53 +257,9 @@ export function createClerkTrialHandler(options: ClerkTrialHandlerOptions) {
     let writeStarted = false;
     let response: Response;
     try {
-      const url = new URL(request.url);
-      if (
-        !PATHS.includes(url.pathname) ||
-        url.search ||
-        url.hash ||
-        url.username ||
-        url.password
-      )
-        return respond(404, { error: "not_found" });
-      if (request.method === "OPTIONS") {
-        const method = request.headers.get("access-control-request-method");
-        const requested = (
-          request.headers.get("access-control-request-headers") ?? ""
-        )
-          .split(",")
-          .map((entry) => entry.trim().toLowerCase())
-          .filter(Boolean);
-        if (
-          !method ||
-          !(
-            method === "GET" ||
-            (method === "POST" && url.pathname === PATHS[1])
-          ) ||
-          requested.some(
-            (entry) => !["authorization", "content-type"].includes(entry),
-          )
-        )
-          return respond(403, { error: "origin_denied" });
-        headers.set(
-          "access-control-allow-methods",
-          url.pathname === PATHS[0] ? "GET" : "GET, POST",
-        );
-        headers.set(
-          "access-control-allow-headers",
-          "Authorization, Content-Type",
-        );
-        headers.set(
-          "vary",
-          "Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
-        );
-        return new Response(null, { status: 204, headers });
-      }
-      if (!(
-        request.method === "GET" ||
-        (request.method === "POST" && url.pathname === PATHS[1])
-      ))
-        return respond(405, { error: "method_not_allowed" });
+      const path = admitRoute(request);
+      if (request.method === "OPTIONS")
+        return preflightResponse(request, path, headers);
       const auth = await authenticate(request);
       if (auth.status !== "allowed")
         return respond(auth.status === "access_denied" ? 403 : 401, {
@@ -185,7 +267,7 @@ export function createClerkTrialHandler(options: ClerkTrialHandlerOptions) {
         });
       if (request.signal.aborted)
         throw new RequestFailure(408, "request_timeout");
-      if (url.pathname === PATHS[0])
+      if (path === PATHS[0])
         return respond(200, { signedIn: true, allowed: true });
       const command =
         request.method === "POST" ? await readCommand(request) : undefined;
@@ -197,68 +279,19 @@ export function createClerkTrialHandler(options: ClerkTrialHandlerOptions) {
       if (command) {
         writeStarted = true;
         const receipt = await operation.repository.put(auth.principal, command);
-        if (
-          receipt.id !== "main" ||
-          !Number.isSafeInteger(receipt.version) ||
-          receipt.version !== command.expectedVersion + 1 ||
-          typeof receipt.replayed !== "boolean"
-        )
-          throw new WatchlistRepositoryError("commit_unknown");
-        response = respond(200, {
-          version: receipt.version,
-          ...fromClerkTrialPayload(command.payload),
-          replayed: receipt.replayed,
-        });
+        response = respond(200, writeResult(receipt, command));
       } else {
         const record = await operation.repository.get(auth.principal);
-        if (
-          record !== null &&
-          (record.id !== "main" ||
-            !Number.isSafeInteger(record.version) ||
-            record.version < 1)
-        )
-          throw new WatchlistRepositoryError("invalid_response");
-        response = respond(
-          200,
-          record === null
-            ? { version: 0, selected: [], note: "" }
-            : {
-                version: record.version,
-                ...fromClerkTrialPayload(record.payload),
-              },
-        );
+        response = respond(200, readResult(record));
       }
     } catch (error) {
-      if (error instanceof RequestFailure)
-        response = respond(error.status, { error: error.code });
-      else if (error instanceof WatchlistRepositoryError) {
-        const code =
-          error.code === "invalid_response"
-            ? writeStarted
-              ? "commit_unknown"
-              : "unavailable"
-            : error.code;
-        const status =
-          code === "invalid_request"
-            ? 400
-            : code === "access_denied"
-              ? 403
-              : ["conflict", "idempotency_conflict"].includes(code)
-                ? 409
-                : 503;
-        response = respond(status, { error: code });
-      } else
-        response = respond(503, {
-          error: writeStarted ? "commit_unknown" : "unavailable",
-        });
+      response = errorResponse(error, writeStarted, headers);
     } finally {
       if (operation) {
         try {
           await operation.close();
         } catch {
-          response = respond(503, {
-            error: writeStarted ? "commit_unknown" : "unavailable",
-          });
+          response = unavailableResponse(writeStarted, headers);
         }
       }
     }

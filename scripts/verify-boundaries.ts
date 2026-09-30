@@ -18867,6 +18867,80 @@ function verifyDependencyPolicyClassifiers(): void {
     }
   }
 
+  const orderedDependencyCases: Array<{
+    manifest: Record<string, unknown>;
+    expected: string[];
+  }> = [
+    {
+      manifest: {
+        dependencies: { zeta: "^1.0.0", alpha: null, "": null },
+        devDependencies: { zeta: null, alpha: "1.0.0" },
+        optionalDependencies: { alpha: "workspace:*" },
+        peerDependencies: { zeta: "" },
+      },
+      expected: [
+        "dependencies contains an empty dependency name",
+        'dependencies dependency "alpha" must have a string specifier',
+        'external dependency "zeta" in dependencies must use one plain exact semantic version',
+        'dependency "alpha" is duplicated in dependencies and devDependencies',
+        'dependency "zeta" is duplicated in dependencies and devDependencies',
+        'devDependencies dependency "zeta" must have a string specifier',
+        'dependency "alpha" is duplicated in dependencies and optionalDependencies',
+        'optionalDependencies dependency "alpha" references an unknown workspace package',
+        'dependency "zeta" is duplicated in dependencies and peerDependencies',
+        'peer dependency "zeta" must have a non-empty specifier',
+      ],
+    },
+    {
+      manifest: {
+        dependencies: [],
+        devDependencies: null,
+        optionalDependencies: 0,
+        peerDependencies: false,
+      },
+      expected: dependencySections.map(
+        (section) => `${section} must be an object`,
+      ),
+    },
+    {
+      manifest: { dependencies: { [internalName]: null } },
+      expected: [
+        `dependencies dependency ${JSON.stringify(internalName)} must have a string specifier`,
+      ],
+    },
+    {
+      manifest: { dependencies: { [internalName]: "workspace:^" } },
+      expected: [
+        `workspace dependency ${JSON.stringify(internalName)} in dependencies must use workspace:*`,
+      ],
+    },
+    {
+      manifest: {
+        dependencies: {
+          "@research-cockpit/not-a-workspace-package": "workspace:*",
+        },
+      },
+      expected: [
+        'dependencies dependency "@research-cockpit/not-a-workspace-package" uses the reserved internal scope without a matching workspace package',
+      ],
+    },
+    {
+      manifest: { peerDependencies: { unknown: "workspace:^" } },
+      expected: [
+        'peerDependencies dependency "unknown" references an unknown workspace package',
+      ],
+    },
+  ];
+  for (const { manifest, expected } of orderedDependencyCases) {
+    if (
+      JSON.stringify(dependencyPolicyViolations(manifest, workspaceNames)) !==
+      JSON.stringify(expected)
+    )
+      throw new Error(
+        "Dependency pin policy changed diagnostic order or precedence",
+      );
+  }
+
   const secretCanary = "dependency-policy-secret-canary";
   if (
     legacyNpmrcPolicyViolation(
@@ -18977,6 +19051,50 @@ importers:
   for (const invalid of invalidLockfiles) {
     if (pnpmLockfileHeaderViolation(invalid) === null)
       throw new Error("Lockfile policy admitted a non-canonical header");
+  }
+
+  const orderedLockfileCases: Array<{
+    content: string;
+    expected: string | null;
+  }> = [
+    {
+      content: `${validLockfile.replace("'9.0'", "'8.0'")}unknown:\nsettings:\n`,
+      expected: "lockfileVersion must remain the pinned canonical 9.0 header",
+    },
+    {
+      content: `${validLockfile.replace("autoInstallPeers: false", "autoInstallPeers: true")}settings:\nunknown:\n`,
+      expected: "top-level mappings must use only the canonical generated keys",
+    },
+    {
+      content: `${validLockfile.replace("autoInstallPeers: false", "autoInstallPeers: true")}importers:\n`,
+      expected:
+        "required top-level keys must occur once and optional keys at most once",
+    },
+    {
+      content: "lockfileVersion: '9.0'\nimporters:\n  autoInstallPeers: true\n",
+      expected:
+        "required top-level keys must occur once and optional keys at most once",
+    },
+    {
+      content: validLockfile.replace(
+        "autoInstallPeers: false",
+        "autoInstallPeers: true",
+      ),
+      expected:
+        "settings must contain only the exact canonical generated values",
+    },
+    {
+      content:
+        `# generated\n\n${validLockfile.replace("settings:\n", "settings:\n  # canonical settings\n\n")}`.replaceAll(
+          "\n",
+          "\r\n",
+        ),
+      expected: null,
+    },
+  ];
+  for (const { content, expected } of orderedLockfileCases) {
+    if (pnpmLockfileHeaderViolation(content) !== expected)
+      throw new Error("Lockfile policy changed first-diagnostic precedence");
   }
 
   const validEffectivePnpmSettings = {
