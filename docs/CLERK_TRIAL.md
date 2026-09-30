@@ -122,10 +122,14 @@ report remain distinct; exact artifact evidence is in CURRENT.
 
 Production also needs an owner-controlled domain and DNS, a separate production
 instance/account allowlist, registered Android release certificate, and reviewed
-production configuration. The owner selected `investmentdesk.app` and confirmed
-the Name.com GitHub student offer is unused. Registration, the applied discount,
-DNS control and certificates have not been verified. Google sign-in, if retained, needs
-the owner's production OAuth configuration. The existing trial remains available
+production configuration. The owner reports registering `investingpro.app`,
+superseding the earlier `investmentdesk.app` selection. A separate production
+instance has now been created within the Investment Clerk application. A
+follow-up check confirmed that the development instance remains present.
+Clerk issued five required DNS records; the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md)
+records the actual configuration and remaining steps. DNS, certificates and
+production sign-in remain unverified. Google sign-in, if retained, needs the
+owner's production OAuth configuration. The existing trial remains available
 while those inputs are prepared. [Clerk production setup](https://clerk.com/docs/guides/development/deployment/production).
 
 Actual source hashes, checks and cloud results are recorded in workspace

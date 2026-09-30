@@ -60,9 +60,15 @@ inputs. The trial 1.1 APK (version code 2) built successfully with the original
 trial certificate and identical web assets. Four invalid-version checks and the
 missing-release-credentials check passed. The owner confirmed testing trial 1.1
 after the update handoff; the [report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
-retains the exact statement and its limits. No production signing key or cloud
-authentication configuration is changed. The owner selected `investmentdesk.app`;
-registration, DNS and production configuration remain pending.
+retains the exact statement and its limits. No production signing key was
+generated. The owner subsequently reported
+registering `investingpro.app`, superseding the earlier `investmentdesk.app`
+selection. A separate production instance is now created in the Investment
+Clerk application, with the existing development instance preserved. Clerk's
+five required DNS records are retained in the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md).
+Appwrite now has a binding for `app.investingpro.app`, with the accepted static
+deployment and its original domain rule preserved. Registrar DNS, certificates
+and production sign-in remain pending; the full workspace remains disconnected.
 
 ## Accepted trial and shared watchlist storage
 
