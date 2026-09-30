@@ -26,9 +26,10 @@ vi.mock("./TrialScreen", () => ({
   },
 }));
 const config = {
-  publishableKey: "pk_test_synthetic",
-  apiOrigin: "https://api.example.invalid",
-  frontendApiOrigin: "https://clerk.example.invalid",
+  environment: "development" as const,
+  publishableKey: `pk_test_${Buffer.from("invented-trial-12.clerk.accounts.dev$").toString("base64")}`,
+  apiOrigin: "https://investment-clerk-api-6abac57a.appwrite.network",
+  frontendApiOrigin: "https://invented-trial-12.clerk.accounts.dev",
 };
 beforeEach(() => vi.clearAllMocks());
 

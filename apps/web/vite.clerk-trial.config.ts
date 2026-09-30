@@ -1,29 +1,19 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import {
+  trialFrontendApiOrigin,
+  validateTrialConfig,
+} from "./src/clerk-trial/config";
 
 const root = fileURLToPath(new URL("./clerk-trial", import.meta.url));
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const apiOrigin = process.env.INVESTMENT_CLERK_TRIAL_API_ORIGIN;
-if (!publishableKey?.startsWith("pk_test_") || !apiOrigin) {
-  throw new Error(
-    "The isolated Clerk trial needs its development public key and API origin.",
-  );
-}
-const api = new URL(apiOrigin);
-if (api.protocol !== "https:" || api.origin !== apiOrigin) {
-  throw new Error(
-    "The isolated Clerk trial requires an exact HTTPS API origin.",
-  );
-}
-const clerkHost = Buffer.from(publishableKey.slice(8), "base64")
-  .toString("utf8")
-  .replace(/\$$/u, "");
-if (!/^[a-z0-9-]+\.clerk\.accounts\.dev$/u.test(clerkHost)) {
-  throw new Error(
-    "The trial requires its separate Clerk development instance.",
-  );
-}
-const clerkOrigin = `https://${clerkHost}`;
+const config = validateTrialConfig({
+  environment: process.env.INVESTMENT_CLERK_ENVIRONMENT,
+  publishableKey,
+  apiOrigin: process.env.INVESTMENT_CLERK_TRIAL_API_ORIGIN,
+  frontendApiOrigin: trialFrontendApiOrigin(publishableKey),
+});
+const { apiOrigin, frontendApiOrigin: clerkOrigin } = config;
 
 export default defineConfig({
   root,
@@ -31,11 +21,7 @@ export default defineConfig({
   publicDir: false,
   envDir: false,
   define: {
-    __INVESTMENT_CLERK_TRIAL_CONFIG__: JSON.stringify({
-      publishableKey,
-      apiOrigin,
-      frontendApiOrigin: clerkOrigin,
-    }),
+    __INVESTMENT_CLERK_TRIAL_CONFIG__: JSON.stringify(config),
   },
   plugins: [
     {
@@ -74,7 +60,14 @@ export default defineConfig({
     },
   ],
   build: {
-    outDir: fileURLToPath(new URL("./dist/clerk-trial", import.meta.url)),
+    outDir: fileURLToPath(
+      new URL(
+        config.environment === "production"
+          ? "./dist/clerk-production"
+          : "./dist/clerk-trial",
+        import.meta.url,
+      ),
+    ),
     emptyOutDir: true,
     sourcemap: false,
     rolldownOptions: { input: `${root}/index.html` },

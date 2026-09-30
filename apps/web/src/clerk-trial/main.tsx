@@ -2,20 +2,20 @@ import { Capacitor } from "@capacitor/core";
 import { createRoot } from "react-dom/client";
 import { ClerkTrialApp } from "./ClerkTrialApp";
 import { NativeTrialApp } from "./NativeTrialApp";
-import type { ClerkTrialConfig } from "./config";
+import { validateTrialConfig } from "./config";
 import "./trial.css";
 
-declare const __INVESTMENT_CLERK_TRIAL_CONFIG__: ClerkTrialConfig;
+declare const __INVESTMENT_CLERK_TRIAL_CONFIG__: unknown;
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Missing trial root.");
-if (Capacitor.isNativePlatform() && Capacitor.getPlatform() !== "android") {
+const config = validateTrialConfig(__INVESTMENT_CLERK_TRIAL_CONFIG__);
+const native = Capacitor.isNativePlatform();
+if (native && config.environment === "production") {
+  throw new Error("The production Clerk profile supports web only.");
+}
+if (native && Capacitor.getPlatform() !== "android") {
   throw new Error("The installed trial supports Android only.");
 }
-const App =
-  Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android"
-    ? NativeTrialApp
-    : ClerkTrialApp;
-createRoot(container).render(
-  <App config={__INVESTMENT_CLERK_TRIAL_CONFIG__} />,
-);
+const App = native ? NativeTrialApp : ClerkTrialApp;
+createRoot(container).render(<App config={config} />);

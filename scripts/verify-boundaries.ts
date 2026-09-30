@@ -130,6 +130,165 @@ const forbiddenText = [
   /yahoo finance/i,
   /@?openbb/i,
 ];
+const ownedProductionDomainPaths = new Set([
+  "apps/api/src/clerk-trial-config.ts",
+  "apps/api/src/clerk-trial-config.test.ts",
+  "apps/api/src/clerk-trial-function.test.ts",
+  "apps/web/src/clerk-trial/config.ts",
+  "apps/web/src/clerk-trial/config.test.ts",
+  "apps/web/src/clerk-trial/main.test.tsx",
+]);
+
+function ownedProductionHostnameSpan(
+  value: string,
+): { start: number; length: number } | null {
+  const hosts = [
+    "app.investingpro.app",
+    "api.investingpro.app",
+    "clerk.investingpro.app",
+  ];
+  const bareHostname = /^[a-z.]+\$?$/i.test(value);
+  if (bareHostname && hosts.includes(value.toLowerCase()))
+    return { start: 0, length: value.length };
+  if (bareHostname && value.toLowerCase() === "clerk.investingpro.app$")
+    return { start: 0, length: value.length - 1 };
+  let hostname: string;
+  try {
+    hostname = new URL(value).hostname;
+  } catch {
+    return null;
+  }
+  if (!hosts.includes(hostname)) return null;
+  // URL owns hostname admission. Locate its original spelling only to preserve
+  // all other text, including userinfo, paths and queries, for the guard.
+  const authority = /^[a-z][a-z0-9+.-]*:\/\/([^/?#\\]*)/i.exec(value);
+  if (authority?.[1] === undefined) return null;
+  const prefixLength = authority[0].length - authority[1].length;
+  const start = prefixLength + authority[1].lastIndexOf("@") + 1;
+  const spelling = value.slice(start, start + hostname.length);
+  if (
+    !/^[a-z.]+$/i.test(spelling) ||
+    spelling.toLowerCase() !== hostname ||
+    (start + hostname.length < authority[0].length &&
+      value[start + hostname.length] !== ":")
+  )
+    return null;
+  return { start, length: hostname.length };
+}
+
+function competitorText(relativePath: string, content: string): string {
+  if (!ownedProductionDomainPaths.has(relativePath)) return content;
+  const source = ts.createSourceFile(
+    relativePath,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    relativePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  const spans: { start: number; length: number }[] = [];
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isStringLiteralLike(node) &&
+      node.getText(source).slice(1, -1) === node.text
+    ) {
+      const span = ownedProductionHostnameSpan(node.text);
+      if (span !== null)
+        spans.push({
+          start: node.getStart(source) + 1 + span.start,
+          length: span.length,
+        });
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  for (const span of spans.sort((left, right) => right.start - left.start))
+    content = `${content.slice(0, span.start)}owned-production-host${content.slice(span.start + span.length)}`;
+  return content;
+}
+
+function verifyOwnedProductionDomainTextClassifier(): void {
+  const matchesForbiddenText = (path: string, content: string) =>
+    forbiddenText.some((pattern) =>
+      pattern.test(competitorText(path, content)),
+    );
+  for (const path of ownedProductionDomainPaths) {
+    for (const host of ["app", "api", "clerk"]) {
+      for (const value of [
+        `${host}.investingpro.app`,
+        `https://${host}.investingpro.app`,
+      ]) {
+        if (matchesForbiddenText(path, JSON.stringify(value)))
+          throw new Error("Owned production domain text classifier regressed");
+      }
+    }
+  }
+  const path = "apps/web/src/clerk-trial/config.test.ts";
+  for (const value of [
+    '"http://api.investingpro.app"',
+    '"https://API.investingpro.app/"',
+    '"https://clerk.investingpro.app:443"',
+    '"https://user:secret@clerk.investingpro.app"',
+    '"https://api.investingpro.app?query"',
+    '"https://api.investingpro.app#fragment"',
+    '"clerk.investingpro.app$"',
+  ]) {
+    if (matchesForbiddenText(path, value))
+      throw new Error("Owned malformed-origin fixture classifier regressed");
+  }
+  for (const value of [
+    "investingpro.app",
+    "other.investingpro.app",
+    "evil.app.investingpro.app",
+    "evilapp.investingpro.app",
+    "app.investingpro.app.evil.invalid",
+    "api.investingpro.application",
+    "api.investingpro.app-evil",
+    "api.investingpro.app_evil",
+    "api.investingpro.app%2eevil",
+    "api.investingpro.app。evil",
+    "api.investingpro.appé",
+    "clerK.investingpro.app",
+    '"https://api.investingpro.app@evil.invalid"',
+    '"https://evil.invalid/api.investingpro.app"',
+    '"https://evil.invalid?next=api.investingpro.app"',
+    '"https://evil.invalid?next=https://api.investingpro.app"',
+    '"https://evil.invalid?next=@api.investingpro.app"',
+    '"https://evil.invalid#next=@api.investingpro.app"',
+    '"https://evil.invalid\\@api.investingpro.app"',
+    "\"https://evil.invalid/'api.investingpro.app'\"",
+    "\"https://evil.invalid?next='api.investingpro.app'\"",
+    '"https://api.investingpro.app/investingpro"',
+    '"https://investingpro@api.investingpro.app"',
+    '"https://api.investingpro.app?name=investingpro"',
+    '"https://%61pi.investingpro.app"',
+  ]) {
+    const source = value.startsWith('"') ? value : JSON.stringify(value);
+    if (!matchesForbiddenText(path, source))
+      throw new Error("Unowned domain text classifier regressed");
+  }
+  for (const otherPath of [
+    "apps/web/src/clerk-trial/other.ts",
+    `${path}.old`,
+    "apps/api/src/clerk-trial-function.ts",
+  ]) {
+    if (!matchesForbiddenText(otherPath, '"https://api.investingpro.app"'))
+      throw new Error("Owned domain path scope classifier regressed");
+  }
+  for (const token of [
+    "investing.com",
+    "Investing Pro",
+    "restricted_competitor_reference",
+    "investing_com_research",
+    "yfinance",
+    "finviz",
+    "yahoo finance",
+    "@openbb",
+  ]) {
+    if (!matchesForbiddenText(path, `"https://api.investingpro.app" ${token}`))
+      throw new Error("Remaining competitor text classifier regressed");
+  }
+}
+
 const forbiddenDatabaseText = [
   /\bcopy\b[\s\S]*?\bfrom\b\s+(?:program\b|['"])/i,
   /\b(?:file_fdw|postgres_fdw|dblink|lo_import|pg_read_file|pg_read_binary_file|pg_ls_dir)\b/i,
@@ -2583,6 +2742,7 @@ if (
 )
   throw new Error("Boundary explicit TypeScript config classifier regressed");
 verifyDependencyPolicyClassifiers();
+verifyOwnedProductionDomainTextClassifier();
 const gitignoreViolation = npmrcGitignoreViolation(
   await readFile(join(root, ".gitignore"), "utf8"),
 );
@@ -5142,8 +5302,9 @@ for (const file of filesToInspect) {
     ? typeScriptConfigContents.get(file)
     : await readFile(file, "utf8");
   if (content === undefined) continue;
+  const textToInspect = competitorText(relativePath, content);
   for (const pattern of forbiddenText) {
-    if (pattern.test(content))
+    if (pattern.test(textToInspect))
       violations.push(`${relativePath}: matched ${pattern}`);
   }
   const fileName = basename(file).toLowerCase();

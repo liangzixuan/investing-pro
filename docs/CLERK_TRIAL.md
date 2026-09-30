@@ -55,27 +55,59 @@ and reports that uncertainty. A later request from an empty SDK client cannot
 confirm revocation of the discarded session. Already issued JWTs remain subject
 to their expiration; local sign-out is not a claim of immediate global revocation.
 
-## Separate build profile
+## Explicit build profiles
 
-The normal mobile build remains disconnected. The trial uses
-`vite.clerk-trial.config.ts` and `dist/clerk-trial`. Its build consumes only the
-development publishable key and one exact HTTPS API origin. Environment-file
-discovery and public-directory copying are disabled. The client bundle must not
-contain the Clerk secret key, an Appwrite key, server modules, or vault code.
+The normal mobile build remains disconnected. The synthetic client and function
+require an explicit `development` or `production` environment. Missing, unknown
+or mixed configuration fails before output is created or cleaned. Both builders
+use the same checked configuration as their runtime consumer.
 
-Build with the repository's pinned Node and pnpm versions. Supply the public key
-as `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and the reviewed API origin as
-`INVESTMENT_CLERK_TRIAL_API_ORIGIN`, without printing either environment.
+For the client, set `INVESTMENT_CLERK_ENVIRONMENT`,
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `INVESTMENT_CLERK_TRIAL_API_ORIGIN`.
+The official Clerk key parser checks the environment and Frontend API host.
+Development uses its matching `*.clerk.accounts.dev` host and the reviewed API
+`https://investment-clerk-api-6abac57a.appwrite.network`. Production requires
+`https://clerk.investingpro.app` and `https://api.investingpro.app`.
+The latter is a planned API address with no accepted service binding yet.
+Environment-file discovery and public-directory copying remain disabled.
+The client accepts no server key, account allowlist or storage routing fields.
+
+Build with the repository's pinned Node and pnpm versions:
 
 ```text
 pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts
+node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts <reviewed-config-path>
 ```
 
-Set `INVESTMENT_CLIENT_PROFILE=clerk-trial` only for the trial Capacitor sync, then
-build Android with `-PinvestmentClerkTrial=true`. Its separate application ID is
+The function input contains `environment`, `auth` and `allowedOrigins`. Validation
+checks nested fields and copies the accepted configuration before composing the
+request handler. Storage endpoint, project and table names are fixed. Each
+profile selects its own fixed database; callers cannot supply routing IDs.
+The development function accepts only the existing issuer
+`https://allowed-lobster-3386.clerk.accounts.dev`, the trial website origin and
+its optional `https://localhost` Android origin.
+
+| Profile     | Client output                    | Function output                  | Synthetic database               |
+| ----------- | -------------------------------- | -------------------------------- | -------------------------------- |
+| Development | `apps/web/dist/clerk-trial`      | `dist/clerk-trial-function`      | `investment_clerk_trial_v1`      |
+| Production  | `apps/web/dist/clerk-production` | `dist/clerk-production-function` | `investment_clerk_prod_trial_v1` |
+
+Production accepts only issuer `https://clerk.investingpro.app` and the sole
+browser origin and authorized party `https://app.investingpro.app`. Its allowed
+subject must be `null`, so even a correctly signed session is denied before
+storage opens. It permits no native-origin exception. The production database
+is an unprovisioned synthetic target; these source profiles do not admit an
+account or connect the full workspace. Real service configuration, API binding,
+account admission and storage provisioning need separate acceptance.
+
+Production client configuration is rejected on a native platform before either
+SDK adapter mounts. For the accepted development Android trial, set
+`INVESTMENT_CLIENT_PROFILE=clerk-trial` only for Capacitor sync and build with
+`-PinvestmentClerkTrial=true`. Its application ID is
 `local.investment.personal.clerktrial`; it can coexist with the disconnected app.
-The default profile retains `local.investment.personal`. The build rejects a
-missing development public key. No secret key belongs in an Android build.
+The default profile retains `local.investment.personal`. No secret key belongs
+in either client bundle or an Android build. Synthetic configuration/build checks
+prove composition, not service-issued key ownership or production sign-in.
 
 ## Trial results and remaining acceptance
 
