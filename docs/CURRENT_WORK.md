@@ -6,6 +6,12 @@ sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October deliv
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
 Workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
+Use [CodeScene](./CODESCENE.md) during substantive feature reviews to inspect
+maintenance findings for the affected files. Bind reports to their analyzed
+revision, verify findings against current source, and favor small changes that
+support the planned feature. Existing tests and release requirements still apply;
+hosted code-health scores do not assess unpublished work or prove correctness.
+
 ## Approved delivery integration
 
 September 29 update: the first static delivery flow completed at main merge
