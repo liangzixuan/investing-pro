@@ -468,6 +468,8 @@ const personalSecurityMasterPackagePrefix =
 const personalSecurityMasterPackagePaths = [
   `${personalSecurityMasterPackagePrefix}package.json`,
   `${personalSecurityMasterPackagePrefix}src/index.ts`,
+  `${personalSecurityMasterPackagePrefix}src/managed-security-master.test.ts`,
+  `${personalSecurityMasterPackagePrefix}src/managed-sec-openfigi-source-preparation.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-lookup.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.security.test.ts`,
   `${personalSecurityMasterPackagePrefix}src/personal-security-master-screener.test.ts`,
@@ -10064,6 +10066,10 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation.test.ts` as const;
   const sourcePreparationSecurityTestPath =
     `${personalSecurityMasterPackagePrefix}src/sec-openfigi-v1-source-preparation-security.test.ts` as const;
+  const managedTestPath =
+    `${personalSecurityMasterPackagePrefix}src/managed-security-master.test.ts` as const;
+  const managedPreparationTestPath =
+    `${personalSecurityMasterPackagePrefix}src/managed-sec-openfigi-source-preparation.test.ts` as const;
   const allowedTestModules = new Set([
     "node:crypto",
     "node:perf_hooks",
@@ -10128,7 +10134,8 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       }
     } else if (
       path === sourcePreparationUnitTestPath ||
-      path === sourcePreparationSecurityTestPath
+      path === sourcePreparationSecurityTestPath ||
+      path === managedPreparationTestPath
     ) {
       if (
         !modules.includes("vitest") ||
@@ -10142,7 +10149,7 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
         );
       }
     } else if (
-      path === lookupUnitTestPath &&
+      (path === lookupUnitTestPath || path === managedTestPath) &&
       (!modules.includes("vitest") ||
         !modules.includes("./index") ||
         modules.some((module) => !allowedTestModules.has(module)))
@@ -10188,6 +10195,8 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   }
 
   const publicExports = [
+    ["MANAGED_SECURITY_MASTER_CLAIM", false],
+    ["MANAGED_SECURITY_MASTER_PROFILE", false],
     ["PERSONAL_SECURITY_MASTER_CHECKS", false],
     ["PERSONAL_SECURITY_MASTER_CLAIM", false],
     ["PERSONAL_SECURITY_MASTER_FAILURE_CODES", false],
@@ -10206,10 +10215,16 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ["PERSONAL_SECURITY_MASTER_SYMBOL_NORMALIZATION", false],
     ["PersonalSecurityMasterError", false],
     ["admitPersonalSecurityMasterSnapshot", false],
+    ["admitManagedSecurityMasterSnapshot", false],
     ["lookupPersonalSecurityMasterListing", false],
     ["measurePersonalSecurityMasterSearchP95", false],
     ["screenPersonalSecurityMaster", false],
     ["searchPersonalSecurityMaster", false],
+    ["ManagedSecurityMasterCatalog", true],
+    ["ManagedSecurityMasterCatalogCoverage", true],
+    ["ManagedSecurityMasterContentKind", true],
+    ["ManagedSecurityMasterProvenance", true],
+    ["ManagedSecurityMasterSourcePolicyCompatibility", true],
     ["PersonalSecurityMasterAdmissionInput", true],
     ["PersonalSecurityMasterCatalog", true],
     ["PersonalSecurityMasterCatalogCoverage", true],
@@ -10719,6 +10734,27 @@ import {
       "  type PersonalSecurityMasterCatalog,",
       "  PersonalSecurityMasterCatalog,",
     );
+  const managedSourcePreparationProbeImports =
+    exactSourcePreparationProbeImports
+      .replace(
+        "  PERSONAL_SECURITY_MASTER_PROFILE,",
+        "  MANAGED_SECURITY_MASTER_PROFILE,\n  PERSONAL_SECURITY_MASTER_PROFILE,",
+      )
+      .replace(
+        "  admitPersonalSecurityMasterSnapshot,",
+        "  admitManagedSecurityMasterSnapshot,\n  admitPersonalSecurityMasterSnapshot,",
+      )
+      .replace(
+        "  type PersonalSecurityMasterCatalog,",
+        "  type ManagedSecurityMasterCatalog,\n  type ManagedSecurityMasterContentKind,\n  type ManagedSecurityMasterSourcePolicyCompatibility,\n  type PersonalSecurityMasterCatalog,",
+      );
+  const managedAdmissionProbeCall =
+    "admitManagedSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot })";
+  const managedPreparationProbe = `${managedSourcePreparationProbeImports}
+const retainedSnapshot = new Uint8Array(3);
+const snapshotSha256 = "sha256:fixture";
+void admitPersonalSecurityMasterSnapshot({ expectedSha256: snapshotSha256, snapshot: retainedSnapshot });
+void ${managedAdmissionProbeCall};`;
   const regressions = [
     JSON.stringify(personalSecurityMasterPackagePaths) !==
       JSON.stringify([...personalSecurityMasterPackagePaths].sort()),
@@ -10919,6 +10955,47 @@ import {
       `Cycle 3e-a security-master boundary classifier ${String(regression + 1)} regressed`,
     );
   }
+  const managedRegressions = [
+    personalSecurityMasterSourcePreparationProductionViolation(
+      managedPreparationProbe,
+    ) !== null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      managedPreparationProbe.replace(managedAdmissionProbeCall, "undefined"),
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${managedPreparationProbe}\nvoid ${managedAdmissionProbeCall};`,
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      managedPreparationProbe.replace(
+        managedAdmissionProbeCall,
+        managedAdmissionProbeCall.replace(
+          "snapshot: retainedSnapshot",
+          "snapshot: copyBytes(retainedSnapshot)",
+        ),
+      ),
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      managedPreparationProbe.replace(
+        "  type ManagedSecurityMasterCatalog,",
+        "  ManagedSecurityMasterCatalog,",
+      ),
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      managedPreparationProbe.replace(
+        "  admitManagedSecurityMasterSnapshot,",
+        "  admitManagedSecurityMasterSnapshot as renamedAdmission,",
+      ),
+    ) === null,
+    personalSecurityMasterSourcePreparationProductionViolation(
+      `${managedPreparationProbe}\nvoid fetch("https://provider.example");`,
+    ) === null,
+  ];
+  const managedRegression = managedRegressions.indexOf(true);
+  if (managedRegression !== -1) {
+    throw new Error(
+      `Managed security-master boundary classifier ${String(managedRegression + 1)} regressed`,
+    );
+  }
   return found;
 }
 
@@ -11039,6 +11116,7 @@ function personalSecurityMasterMeasurementBoundaryViolation(
       (name) =>
         ![
           "admitPersonalSecurityMasterSnapshot",
+          "admitManagedSecurityMasterSnapshot",
           "lookupPersonalSecurityMasterListing",
           "measurePersonalSecurityMasterSearchP95",
           "screenPersonalSecurityMaster",
@@ -11473,6 +11551,17 @@ function personalSecurityMasterSourcePreparationProductionViolation(
     personalSecurityMasterSourcePreparationAdmissionLifecycleViolation(source);
   if (admissionLifecycleViolation !== null) return admissionLifecycleViolation;
   if (
+    findIdentifiers(source, new Set(["admitManagedSecurityMasterSnapshot"]))
+      .length > 0
+  ) {
+    const managedLifecycleViolation =
+      personalSecurityMasterSourcePreparationAdmissionLifecycleViolation(
+        source,
+        "admitManagedSecurityMasterSnapshot",
+      );
+    if (managedLifecycleViolation !== null) return managedLifecycleViolation;
+  }
+  if (
     findIdentifiers(
       source,
       new Set([
@@ -11620,47 +11709,69 @@ function isExactPersonalSecurityMasterSourcePreparationCoreImport(
     local: specifier.name.text,
     typeOnly: specifier.isTypeOnly,
   }));
-  return (
-    JSON.stringify(actual) ===
-    JSON.stringify([
-      {
-        imported: "PERSONAL_SECURITY_MASTER_PROFILE",
-        local: "PERSONAL_SECURITY_MASTER_PROFILE",
-        typeOnly: false,
-      },
-      {
-        imported: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
-        local: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
-        typeOnly: false,
-      },
-      {
-        imported: "admitPersonalSecurityMasterSnapshot",
-        local: "admitPersonalSecurityMasterSnapshot",
-        typeOnly: false,
-      },
-      {
-        imported: "PersonalSecurityMasterCatalog",
-        local: "PersonalSecurityMasterCatalog",
-        typeOnly: true,
-      },
-      {
-        imported: "PersonalSecurityMasterContentKind",
-        local: "PersonalSecurityMasterContentKind",
-        typeOnly: true,
-      },
-      {
-        imported: "PersonalSecurityMasterSourcePolicyCompatibility",
-        local: "PersonalSecurityMasterSourcePolicyCompatibility",
-        typeOnly: true,
-      },
-    ])
+  const localBindings = [
+    {
+      imported: "PERSONAL_SECURITY_MASTER_PROFILE",
+      local: "PERSONAL_SECURITY_MASTER_PROFILE",
+      typeOnly: false,
+    },
+    {
+      imported: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
+      local: "PERSONAL_SECURITY_MASTER_SCHEMA_VERSION",
+      typeOnly: false,
+    },
+    {
+      imported: "admitPersonalSecurityMasterSnapshot",
+      local: "admitPersonalSecurityMasterSnapshot",
+      typeOnly: false,
+    },
+    {
+      imported: "PersonalSecurityMasterCatalog",
+      local: "PersonalSecurityMasterCatalog",
+      typeOnly: true,
+    },
+    {
+      imported: "PersonalSecurityMasterContentKind",
+      local: "PersonalSecurityMasterContentKind",
+      typeOnly: true,
+    },
+    {
+      imported: "PersonalSecurityMasterSourcePolicyCompatibility",
+      local: "PersonalSecurityMasterSourcePolicyCompatibility",
+      typeOnly: true,
+    },
+  ];
+  const managedBindings = [
+    {
+      imported: "MANAGED_SECURITY_MASTER_PROFILE",
+      local: "MANAGED_SECURITY_MASTER_PROFILE",
+      typeOnly: false,
+    },
+    ...localBindings.slice(0, 2),
+    {
+      imported: "admitManagedSecurityMasterSnapshot",
+      local: "admitManagedSecurityMasterSnapshot",
+      typeOnly: false,
+    },
+    localBindings[2],
+    ...[
+      "ManagedSecurityMasterCatalog",
+      "ManagedSecurityMasterContentKind",
+      "ManagedSecurityMasterSourcePolicyCompatibility",
+    ].map((name) => ({ imported: name, local: name, typeOnly: true })),
+    ...localBindings.slice(3),
+  ];
+  return [localBindings, managedBindings].some(
+    (expected) => JSON.stringify(actual) === JSON.stringify(expected),
   );
 }
 
 function personalSecurityMasterSourcePreparationAdmissionLifecycleViolation(
   source: ts.SourceFile,
+  admissionName:
+    | "admitPersonalSecurityMasterSnapshot"
+    | "admitManagedSecurityMasterSnapshot" = "admitPersonalSecurityMasterSnapshot",
 ): string | null {
-  const admissionName = "admitPersonalSecurityMasterSnapshot" as const;
   const coreImports = source.statements.filter(
     (statement): statement is ts.ImportDeclaration =>
       ts.isImportDeclaration(statement) &&

@@ -1,9 +1,14 @@
 import { createHash } from "node:crypto";
 
 import {
+  MANAGED_SECURITY_MASTER_PROFILE,
   PERSONAL_SECURITY_MASTER_PROFILE,
   PERSONAL_SECURITY_MASTER_SCHEMA_VERSION,
+  admitManagedSecurityMasterSnapshot,
   admitPersonalSecurityMasterSnapshot,
+  type ManagedSecurityMasterCatalog,
+  type ManagedSecurityMasterContentKind,
+  type ManagedSecurityMasterSourcePolicyCompatibility,
   type PersonalSecurityMasterCatalog,
   type PersonalSecurityMasterContentKind,
   type PersonalSecurityMasterSourcePolicyCompatibility,
@@ -159,6 +164,43 @@ export interface SecOpenFigiV1QuarantinedSource {
 export type SecOpenFigiV1SourcePreparation =
   SecOpenFigiV1PreparedSource | SecOpenFigiV1QuarantinedSource;
 
+declare const managedCapabilityBrand: unique symbol;
+export interface ManagedSecOpenFigiV1SnapshotReadCapability {
+  readonly [managedCapabilityBrand]: "managed-sec-openfigi-v1-snapshot-read-capability";
+}
+
+export interface ManagedSecOpenFigiV1PreparedSnapshot {
+  readonly catalog: ManagedSecurityMasterCatalog;
+  readonly expectedSha256: Sha256;
+  readonly snapshot: Uint8Array;
+}
+
+export interface ManagedSecOpenFigiV1PreparedSource {
+  readonly capability: ManagedSecOpenFigiV1SnapshotReadCapability;
+  readonly readSnapshot: (
+    capability: unknown,
+  ) => ManagedSecOpenFigiV1PreparedSnapshot;
+  readonly receipt: SecOpenFigiV1SourcePreparationReceipt;
+  readonly status: "prepared" | "prepared_with_exclusions";
+}
+
+export type ManagedSecOpenFigiV1SourcePreparation =
+  ManagedSecOpenFigiV1PreparedSource | SecOpenFigiV1QuarantinedSource;
+
+type PreparationProfile = "local" | "managed";
+type PreparedCatalog =
+  PersonalSecurityMasterCatalog | ManagedSecurityMasterCatalog;
+interface InternalPreparedSource {
+  readonly capability: unknown;
+  readonly readSnapshot: (capability: unknown) => Readonly<{
+    catalog: PreparedCatalog;
+    expectedSha256: Sha256;
+    snapshot: Uint8Array;
+  }>;
+  readonly receipt: SecOpenFigiV1SourcePreparationReceipt;
+  readonly status: "prepared" | "prepared_with_exclusions";
+}
+
 interface CapturedArtifacts {
   readonly aggregatedOpenFigiMappings: Uint8Array;
   readonly isoMicRegistry: Uint8Array;
@@ -175,14 +217,17 @@ interface PreparationPlan {
   readonly staleBefore: string;
   readonly generatedAt: string;
   readonly provenance: PlanProvenance;
-  readonly sourcePolicyCompatibility: PersonalSecurityMasterSourcePolicyCompatibility;
+  readonly sourcePolicyCompatibility:
+    | PersonalSecurityMasterSourcePolicyCompatibility
+    | ManagedSecurityMasterSourcePolicyCompatibility;
 }
 
 interface PlanProvenance {
   readonly acquiredAt: string;
   readonly artifacts: readonly PlanProvenanceArtifact[];
   readonly attribution: string;
-  readonly contentKind: PersonalSecurityMasterContentKind;
+  readonly contentKind:
+    PersonalSecurityMasterContentKind | ManagedSecurityMasterContentKind;
   readonly sourceId: string;
 }
 
@@ -342,10 +387,38 @@ const UINT8_ARRAY_SET = Object.getOwnPropertyDescriptor(
 export function prepareSecOpenFigiV1Source(
   input: SecOpenFigiV1SourcePreparationInput,
 ): SecOpenFigiV1SourcePreparation {
+  if (arguments.length !== 1)
+    throw new SecOpenFigiV1SourcePreparationError(
+      "SEC_OPENFIGI_V1_INVALID_INPUT",
+    );
+  return prepareSource(input, "local");
+}
+
+export function prepareManagedSecOpenFigiV1Source(
+  input: SecOpenFigiV1SourcePreparationInput,
+): ManagedSecOpenFigiV1SourcePreparation {
+  if (arguments.length !== 1)
+    throw new SecOpenFigiV1SourcePreparationError(
+      "SEC_OPENFIGI_V1_INVALID_INPUT",
+    );
+  return prepareSource(input, "managed");
+}
+
+function prepareSource(
+  input: SecOpenFigiV1SourcePreparationInput,
+  profile: "local",
+): SecOpenFigiV1SourcePreparation;
+function prepareSource(
+  input: SecOpenFigiV1SourcePreparationInput,
+  profile: "managed",
+): ManagedSecOpenFigiV1SourcePreparation;
+function prepareSource(
+  input: SecOpenFigiV1SourcePreparationInput,
+  profile: PreparationProfile,
+): InternalPreparedSource | SecOpenFigiV1QuarantinedSource {
   let captured: CapturedArtifacts | undefined;
   let retainedSnapshot: Uint8Array | undefined;
   try {
-    if (arguments.length !== 1) fail("SEC_OPENFIGI_V1_INVALID_INPUT");
     const capturedInput = snapshotInput(input);
     captured = capturedInput.artifacts;
     assertExpectedDigests(captured, capturedInput.expectedSha256);
@@ -369,6 +442,7 @@ export function prepareSecOpenFigiV1Source(
     const plan = validatePreparationPlan(
       documents.preparationPlan,
       capturedInput.expectedSha256,
+      profile,
     );
     const candidates = validateSecCandidates(documents.secCandidates);
     const coverEvidence = validateNormalizedSecCoverEvidence(
@@ -407,13 +481,20 @@ export function prepareSecOpenFigiV1Source(
         reconciliation,
         capturedInput.expectedSha256,
         sourceBundleSha256,
+        profile,
       ),
     );
     const snapshotSha256 = sha256(retainedSnapshot);
-    const catalog = admitPersonalSecurityMasterSnapshot({
-      expectedSha256: snapshotSha256,
-      snapshot: retainedSnapshot,
-    });
+    const catalog =
+      profile === "managed"
+        ? admitManagedSecurityMasterSnapshot({
+            expectedSha256: snapshotSha256,
+            snapshot: retainedSnapshot,
+          })
+        : admitPersonalSecurityMasterSnapshot({
+            expectedSha256: snapshotSha256,
+            snapshot: retainedSnapshot,
+          });
     const receipt = makeReceipt(
       candidates.length,
       reconciliation,
@@ -431,7 +512,7 @@ export function prepareSecOpenFigiV1Source(
     let consumed = false;
     const readSnapshot = function (
       candidateCapability: unknown,
-    ): SecOpenFigiV1PreparedSnapshot {
+    ): ReturnType<InternalPreparedSource["readSnapshot"]> {
       let source: Uint8Array | undefined;
       try {
         if (consumed) fail("SEC_OPENFIGI_V1_CAPABILITY_INVALID");
@@ -537,6 +618,7 @@ function assertExpectedDigests(
 function validatePreparationPlan(
   value: unknown,
   expected: SecOpenFigiV1ExpectedSha256,
+  profile: PreparationProfile,
 ): PreparationPlan {
   const root = artifactRoot(value, "preparation_plan", [
     "artifactBindings",
@@ -582,11 +664,16 @@ function validatePreparationPlan(
       fail("SEC_OPENFIGI_V1_ARTIFACT_INVALID");
     }
   }
-  const provenance = validatePlanProvenance(root.provenance, generatedAt);
+  const provenance = validatePlanProvenance(
+    root.provenance,
+    generatedAt,
+    profile,
+  );
   const policy = validatePlanPolicy(
     root.sourcePolicyCompatibility,
     provenance,
     asOf,
+    profile,
   );
   return Object.freeze({
     asOf: root.asOf,
@@ -602,6 +689,7 @@ function validatePreparationPlan(
 function validatePlanProvenance(
   value: unknown,
   generatedAt: number,
+  profile: PreparationProfile,
 ): PlanProvenance {
   const root = exactRecord(value, [
     "acquiredAt",
@@ -614,7 +702,10 @@ function validatePlanProvenance(
     typeof root.acquiredAt !== "string" ||
     !Array.isArray(root.artifacts) ||
     !isBoundedText(root.attribution, 1, 512) ||
-    (root.contentKind !== "owner_local_source" &&
+    (root.contentKind !==
+      (profile === "managed"
+        ? "redistributable_source"
+        : "owner_local_source") &&
       root.contentKind !== "synthetic_engineering") ||
     !isSafeId(root.sourceId)
   ) {
@@ -671,7 +762,12 @@ function validatePlanProvenance(
     acquiredAt: root.acquiredAt,
     artifacts: Object.freeze(artifacts),
     attribution: root.attribution,
-    contentKind: root.contentKind,
+    contentKind:
+      root.contentKind === "synthetic_engineering"
+        ? "synthetic_engineering"
+        : profile === "managed"
+          ? "redistributable_source"
+          : "owner_local_source",
     sourceId: root.sourceId,
   });
 }
@@ -680,7 +776,34 @@ function validatePlanPolicy(
   value: unknown,
   provenance: PlanProvenance,
   asOf: number,
-): PersonalSecurityMasterSourcePolicyCompatibility {
+  profile: PreparationProfile,
+):
+  | PersonalSecurityMasterSourcePolicyCompatibility
+  | ManagedSecurityMasterSourcePolicyCompatibility {
+  const declarations =
+    profile === "managed"
+      ? ({
+          cache: "permitted_managed",
+          display: "permitted_managed",
+          export: "permitted_with_attribution",
+          localOnly: false,
+          policyProfile: "personal_single_user_managed_connected",
+          redistribution: "permitted_with_attribution",
+          retention: "permitted_managed",
+          rightsBasis: "reviewed_redistributable_source",
+          search: "permitted_managed",
+        } as const)
+      : ({
+          cache: "permitted_owner_local",
+          display: "permitted_owner_local",
+          export: "prohibited",
+          localOnly: true,
+          policyProfile: "personal_single_user_local_connected",
+          redistribution: "prohibited",
+          retention: "permitted_owner_local",
+          rightsBasis: "owner_reviewed_rights_compatible",
+          search: "permitted_owner_local",
+        } as const);
   const policy = exactRecord(value, [
     "attribution",
     "cache",
@@ -709,30 +832,30 @@ function validatePlanPolicy(
   ]);
   if (
     policy.attribution !== "required" ||
-    policy.cache !== "permitted_owner_local" ||
+    policy.cache !== declarations.cache ||
     policy.decision !== "compatible" ||
     policy.deleteOnRequest !== true ||
-    policy.display !== "permitted_owner_local" ||
+    policy.display !== declarations.display ||
     typeof policy.effectiveAt !== "string" ||
     typeof policy.expiresAt !== "string" ||
-    policy.export !== "prohibited" ||
+    policy.export !== declarations.export ||
     policy.intendedUse !== "personal_security_research" ||
-    policy.localOnly !== true ||
+    policy.localOnly !== declarations.localOnly ||
     policy.operation !== "fetch_snapshot" ||
     typeof policy.policyDocumentSha256 !== "string" ||
     !HASH.test(policy.policyDocumentSha256) ||
     !isSafeId(policy.policyId) ||
-    policy.policyProfile !== "personal_single_user_local_connected" ||
+    policy.policyProfile !== declarations.policyProfile ||
     policy.policySchemaVersion !== "1.0.0" ||
     !isSafeId(policy.policyVersion) ||
-    policy.redistribution !== "prohibited" ||
-    policy.retention !== "permitted_owner_local" ||
+    policy.redistribution !== declarations.redistribution ||
+    policy.retention !== declarations.retention ||
     typeof policy.reviewedAt !== "string" ||
     policy.revocationCheck !==
       "offline_snapshot_only_cannot_discover_later_revocation" ||
     policy.revokedAt !== null ||
-    policy.rightsBasis !== "owner_reviewed_rights_compatible" ||
-    policy.search !== "permitted_owner_local" ||
+    policy.rightsBasis !== declarations.rightsBasis ||
+    policy.search !== declarations.search ||
     policy.sourceId !== provenance.sourceId
   ) {
     fail("SEC_OPENFIGI_V1_ARTIFACT_INVALID");
@@ -750,29 +873,21 @@ function validatePlanPolicy(
     fail("SEC_OPENFIGI_V1_ARTIFACT_INVALID");
   }
   return Object.freeze({
+    ...declarations,
     attribution: "required",
-    cache: "permitted_owner_local",
     decision: "compatible",
     deleteOnRequest: true,
-    display: "permitted_owner_local",
     effectiveAt: policy.effectiveAt,
     expiresAt: policy.expiresAt,
-    export: "prohibited",
     intendedUse: "personal_security_research",
-    localOnly: true,
     operation: "fetch_snapshot",
     policyDocumentSha256: policy.policyDocumentSha256 as Sha256,
     policyId: policy.policyId,
-    policyProfile: "personal_single_user_local_connected",
     policySchemaVersion: "1.0.0",
     policyVersion: policy.policyVersion,
-    redistribution: "prohibited",
-    retention: "permitted_owner_local",
     reviewedAt: policy.reviewedAt,
     revocationCheck: "offline_snapshot_only_cannot_discover_later_revocation",
     revokedAt: null,
-    rightsBasis: "owner_reviewed_rights_compatible",
-    search: "permitted_owner_local",
     sourceId: provenance.sourceId,
   });
 }
@@ -1209,6 +1324,7 @@ function buildPersonalSecurityMasterSnapshot(
   reconciliation: Reconciliation,
   expected: SecOpenFigiV1ExpectedSha256,
   sourceBundleSha256: Sha256,
+  profile: PreparationProfile,
 ): unknown {
   const issuerById = new Map<string, Readonly<Record<string, unknown>>>();
   const records: Array<Readonly<Record<string, unknown>>> = [];
@@ -1328,14 +1444,17 @@ function buildPersonalSecurityMasterSnapshot(
     catalogVersion: plan.catalogVersion,
     generatedAt: plan.generatedAt,
     issuers: Object.freeze(issuers),
-    profile: PERSONAL_SECURITY_MASTER_PROFILE,
+    profile:
+      profile === "managed"
+        ? MANAGED_SECURITY_MASTER_PROFILE
+        : PERSONAL_SECURITY_MASTER_PROFILE,
     provenance: Object.freeze({
       acquiredAt: plan.provenance.acquiredAt,
       artifacts: Object.freeze(provenanceArtifacts),
       attribution: plan.provenance.attribution,
       contentKind: plan.provenance.contentKind,
       sourceId: plan.provenance.sourceId,
-      sourceLocator: `owner-local-composite-manifest:${sourceBundleSha256}`,
+      sourceLocator: `${profile === "managed" ? "managed" : "owner-local"}-composite-manifest:${sourceBundleSha256}`,
       sourceRevision: sourceBundleSha256,
     }),
     providerMappings: Object.freeze(providerMappings),
