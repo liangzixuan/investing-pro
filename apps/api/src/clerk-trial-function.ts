@@ -5,17 +5,10 @@ import {
   appwriteWatchlistStore,
   createAppwriteWatchlistRepository,
 } from "./appwrite-watchlist-repository";
-import {
-  createClerkTrialAuth,
-  type ClerkTrialAuthOptions,
-} from "./clerk-trial-auth";
+import { createClerkTrialAuth } from "./clerk-trial-auth";
 import { CLERK_TRIAL_CATALOG } from "./clerk-trial-catalog";
+import { validateClerkTrialFunctionConfiguration } from "./clerk-trial-config";
 import { createClerkTrialHandler } from "./clerk-trial-handler";
-
-export interface ClerkTrialFunctionConfiguration {
-  readonly auth: ClerkTrialAuthOptions;
-  readonly allowedOrigins: readonly string[];
-}
 export interface ClerkTrialFunctionContext {
   readonly req: {
     readonly method: string;
@@ -39,12 +32,11 @@ export interface ClerkTrialFunctionContext {
   };
 }
 
-declare const __CLERK_TRIAL_SERVER_CONFIG__: ClerkTrialFunctionConfiguration;
+declare const __CLERK_TRIAL_SERVER_CONFIG__: unknown;
 
 /** Appwrite supplies the execution key. It never becomes request/user authority. */
-export function createClerkTrialFunction(
-  config: ClerkTrialFunctionConfiguration,
-) {
+export function createClerkTrialFunction(input: unknown) {
+  const config = validateClerkTrialFunctionConfiguration(input);
   const auth = createClerkTrialAuth(config.auth);
   return async ({ req, res }: ClerkTrialFunctionContext) => {
     try {
@@ -93,18 +85,18 @@ export function createClerkTrialFunction(
           const executionKey = req.headers["x-appwrite-key"];
           if (!executionKey) throw new Error("Execution authority unavailable");
           const transport = createAppwriteTransport({
-            endpoint: "https://nyc.cloud.appwrite.io/v1",
+            endpoint: config.storage.endpoint,
           });
           try {
             transport.client
-              .setProject("6abac57a0007b7c1a671")
+              .setProject(config.storage.projectId)
               .setKey(executionKey);
             return {
               repository: createAppwriteWatchlistRepository({
                 store: appwriteWatchlistStore(new TablesDB(transport.client)),
-                databaseId: "investment_clerk_trial_v1",
-                watchlistsTableId: "watchlists",
-                receiptsTableId: "receipts",
+                databaseId: config.storage.databaseId,
+                watchlistsTableId: config.storage.watchlistsTableId,
+                receiptsTableId: config.storage.receiptsTableId,
                 catalog: CLERK_TRIAL_CATALOG,
               }),
               close: () => transport.close(),

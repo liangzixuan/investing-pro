@@ -25,6 +25,7 @@ This file tracks direct runtime packages. The lockfile and automated SBOM will r
 | Undici                   |  6.29.0 | MIT          | Bounded Appwrite HTTP transport    |
 | Clerk React SDK          |  6.17.2 | MIT          | Isolated browser sign-in trial     |
 | Clerk Backend SDK        |  3.20.1 | MIT          | Trial session verification         |
+| Clerk shared utilities   |  4.36.0 | MIT          | Public Clerk key validation        |
 
 The isolated native sign-in trial also uses Clerk Android API 1.1.9 (MIT), Kotlin
 2.4.20 and Kotlin coroutines Android 1.11.0 (Apache-2.0). Its resolved Android

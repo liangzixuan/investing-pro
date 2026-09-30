@@ -1,22 +1,27 @@
-import { generateKeyPairSync } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { generateKeyPairSync, sign } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as appwriteTransport from "./appwrite-transport";
 import {
   createClerkTrialFunction,
   type ClerkTrialFunctionContext,
 } from "./clerk-trial-function";
 
-const key = generateKeyPairSync("rsa", { modulusLength: 2048 })
-  .publicKey.export({ type: "spki", format: "pem" })
-  .toString();
-const origin = "https://trial.example.invalid";
+const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
+const key = keys.publicKey.export({ type: "spki", format: "pem" }).toString();
+const origin = "https://investment-clerk-6abac57a.appwrite.network";
 const run = createClerkTrialFunction({
+  environment: "development",
   auth: {
-    issuer: "https://trial.clerk.accounts.dev",
+    issuer: "https://allowed-lobster-3386.clerk.accounts.dev",
     jwtKey: key,
     allowedSubject: null,
     authorizedParties: [origin],
   },
   allowedOrigins: [origin],
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 function context(
   overrides: Partial<ClerkTrialFunctionContext["req"]> = {},
@@ -100,5 +105,111 @@ describe("Appwrite Clerk trial adapter", () => {
     );
     expect(result).toMatchObject({ status: 403 });
     expect(JSON.stringify(result)).not.toContain("access-control-allow-origin");
+  });
+
+  it.each(["GET", "POST"])(
+    "denies a correctly signed production %s session before opening storage",
+    async (method) => {
+      const productionOrigin = "https://app.investingpro.app";
+      const now = Math.floor(Date.now() / 1000);
+      const claims = {
+        iss: "https://clerk.investingpro.app",
+        sub: "user_syntheticOwner",
+        azp: productionOrigin,
+        sid: "sess_productionFixture",
+        iat: now,
+        nbf: now - 1,
+        exp: now + 60,
+        v: 2,
+        sts: "active",
+      };
+      const unsigned = `${Buffer.from(JSON.stringify({ alg: "RS256", typ: "JWT", kid: "synthetic-key" })).toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}`;
+      const token = `${unsigned}.${sign("RSA-SHA256", Buffer.from(unsigned), keys.privateKey).toString("base64url")}`;
+      const input = {
+        environment: "production",
+        auth: {
+          issuer: claims.iss,
+          jwtKey: key,
+          allowedSubject: null as string | null,
+          authorizedParties: [productionOrigin],
+        },
+        allowedOrigins: [productionOrigin],
+      };
+      const productionRun = createClerkTrialFunction(input);
+      input.auth.allowedSubject = claims.sub;
+      const open = vi
+        .spyOn(appwriteTransport, "createAppwriteTransport")
+        .mockImplementation(() => {
+          throw new Error("Unexpected transport");
+        });
+      const fetch = vi.fn(() => {
+        throw new Error("Unexpected network");
+      });
+      vi.stubGlobal("fetch", fetch);
+      expect(
+        await productionRun(
+          context({
+            method,
+            path: "/v1/trial/watchlist",
+            headers: {
+              origin: productionOrigin,
+              authorization: `Bearer ${token}`,
+              "x-appwrite-key": "synthetic-service-key",
+              "content-type": "application/json",
+            },
+            bodyText:
+              method === "POST"
+                ? JSON.stringify({
+                    expectedVersion: 0,
+                    idempotencyKey: "synthetic-command-key-0001",
+                    selected: [],
+                    note: "",
+                  })
+                : "",
+          }),
+        ),
+      ).toMatchObject({ status: 403, body: { error: "access_denied" } });
+      expect(open).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not retain mutable configuration origin arrays in its request closure", async () => {
+    const input = {
+      environment: "development",
+      auth: {
+        issuer: "https://allowed-lobster-3386.clerk.accounts.dev",
+        jwtKey: key,
+        allowedSubject: null,
+        authorizedParties: [origin],
+      },
+      allowedOrigins: [origin],
+    };
+    const checkedRun = createClerkTrialFunction(input);
+    input.allowedOrigins[0] = "https://changed.invalid";
+    input.auth.authorizedParties[0] = "https://changed.invalid";
+    expect(
+      await checkedRun(
+        context({
+          method: "OPTIONS",
+          headers: {
+            origin,
+            "access-control-request-method": "GET",
+            "access-control-request-headers": "Authorization",
+          },
+        }),
+      ),
+    ).toMatchObject({ status: 204 });
+    expect(
+      await checkedRun(
+        context({ headers: { origin: "https://changed.invalid" } }),
+      ),
+    ).toMatchObject({ status: 403 });
+  });
+
+  it("rejects a missing environment before composing a function", () => {
+    expect(() =>
+      createClerkTrialFunction({ auth: {}, allowedOrigins: [] }),
+    ).toThrow("Invalid Clerk function configuration");
   });
 });

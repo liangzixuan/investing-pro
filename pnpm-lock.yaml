@@ -122,6 +122,9 @@ importers:
       '@clerk/react':
         specifier: 6.17.2
         version: 6.17.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@clerk/shared':
+        specifier: 4.36.0
+        version: 4.36.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@research-cockpit/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

@@ -57,6 +57,11 @@ const noticeGroups: readonly NoticeGroup[] = Object.freeze([
     use: "Trial session verification",
   }),
   Object.freeze({
+    label: "Clerk shared utilities",
+    packages: Object.freeze(["@clerk/shared"]),
+    use: "Public Clerk key validation",
+  }),
+  Object.freeze({
     label: "Undici",
     packages: Object.freeze(["undici"]),
     use: "Bounded Appwrite HTTP transport",

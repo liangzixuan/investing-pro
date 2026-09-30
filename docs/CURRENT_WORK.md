@@ -28,6 +28,25 @@ compound-invalid fixtures preserve diagnostic precedence. These are maintenance
 changes to existing behavior, with actual verification recorded in workspace
 CURRENT.
 
+## Production configuration
+
+The synthetic Clerk client and function require explicit development or
+production profiles. Configuration is checked before output cleanup and runtime
+composition, and the function uses copied values with fixed storage targets.
+Production is web only, allows the exact application origin, has no native
+exception and requires a null allowed subject. Every production account remains
+denied before storage opens. Its distinct synthetic database and API address are
+not provisioned or accepted by these source changes.
+
+The official public-key parser's direct runtime dependency is included in the
+license notice mapping. Profile validation keeps subject admission and origin
+agreement separate, and owned-domain fixtures retain their complete case set.
+
+The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
+remaining service work. The accepted development trial and owner-reported Pixel
+results remain separate from production sign-in and connected-workspace
+acceptance. Workspace CURRENT records actual source, checks and publication.
+
 ## Approved delivery integration
 
 September 29 update: the first static delivery flow completed at main merge
@@ -43,7 +62,7 @@ the Pixel checklist, including shared data and independent sign-out. The
 [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
 agent-observed desktop and cloud evidence. The owner later confirmed testing
 trial 1.1 after the update handoff; this is an overall owner report with no
-itemized device trace. Production authentication configuration remains pending.
+itemized device trace. Production authentication service configuration and account admission remain pending.
 
 The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
 build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
@@ -97,8 +116,9 @@ and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
 including one sign-in-page check after Clerk's verification completed.
 The cause remains unverified. A later normal Brave navigation rendered the
 production sign-in form without entering credentials or submitting it. Successful
-sign-in and account admission remain untested. Production client/API
-configuration is pending; the full workspace remains disconnected.
+sign-in and account admission remain untested. Explicit source profiles keep
+production admission closed; service configuration is pending and the full
+workspace remains disconnected.
 
 ## Accepted trial and shared watchlist storage
 
