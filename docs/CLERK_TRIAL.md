@@ -111,6 +111,35 @@ The default profile retains `local.investment.personal`. No secret key belongs
 in either client bundle or an Android build. Synthetic configuration/build checks
 prove composition, not service-issued key ownership or production sign-in.
 
+## Private storage proof profiles
+
+The private storage proof requires an explicit `development` or `production`
+build profile. The selected database, invented principal and command-key prefix
+are fixed by that profile. An HTTP request cannot select a profile or storage
+target. Missing or unknown profiles fail before output cleanup or storage opens.
+
+```text
+node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-proof.ts development
+node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-proof.ts production
+```
+
+Development builds to `dist/clerk-trial-proof`; production builds to
+`dist/clerk-production-proof`. The plan digest includes the selected target and
+invented identity. The build marker binds that plan, profile and source hashes.
+Both profiles retain the seven existing transaction scenarios and their request
+budgets, deadlines and finite traces. Development results do not establish
+production storage acceptance.
+
+The production service layer uses the separate database
+`investment_clerk_prod_trial_v1`, private proof function
+`investment_watchlist_prod_proof_v1` and API function
+`investment-clerk-prod-trial-v1`. Provisioning must preserve empty client
+permissions, row security and the execution credential's existing row scopes.
+The private proof has no public execution grant, event or schedule. The API keeps
+production account admission closed. Workspace CURRENT records actual schema,
+transaction, deployment and domain outcomes; these source profiles alone do not
+establish a running service.
+
 ## Trial results and remaining acceptance
 
 The isolated trial API and website were activated on September 29. The seven

@@ -40,9 +40,6 @@ const LIMITS: Record<ClerkTrialProofPhase, number> = {
   unknown: 12,
   reopen: 2,
 };
-const DATABASE = "investment_clerk_trial_v1";
-const PRINCIPAL = Object.freeze({ userId: "proof-watchlist-20260929-v2" });
-const KEY_PREFIX = "proof-20260929-v2-";
 const NOTES = {
   create: "Invented proof create",
   stale: "Invented proof stale winner",
@@ -50,20 +47,63 @@ const NOTES = {
   overlap: "Invented proof overlap winner",
   unknown: "Invented proof acknowledged later",
 };
-export const CLERK_TRIAL_PROOF_PLAN_SHA256 = createHash("sha256")
-  .update(
-    JSON.stringify({
-      version: 1,
-      database: DATABASE,
-      principal: PRINCIPAL.userId,
-      keys: KEY_PREFIX,
-      notes: NOTES,
-      phases: CLERK_TRIAL_PROOF_PHASES,
-      limits: LIMITS,
-      snapshot: CLERK_TRIAL_CATALOG.snapshotSha256,
-    }),
-  )
-  .digest("hex");
+export type ClerkTrialProofEnvironment = "development" | "production";
+export interface ClerkTrialProofProfile {
+  readonly environment: ClerkTrialProofEnvironment;
+  readonly database: string;
+  readonly principal: Readonly<{ userId: string }>;
+  readonly keyPrefix: string;
+  readonly planSha256: string;
+}
+function proofProfile(
+  environment: ClerkTrialProofEnvironment,
+  database: string,
+  userId: string,
+  keyPrefix: string,
+): ClerkTrialProofProfile {
+  return Object.freeze({
+    environment,
+    database,
+    principal: Object.freeze({ userId }),
+    keyPrefix,
+    planSha256: createHash("sha256")
+      .update(
+        JSON.stringify({
+          version: 1,
+          environment,
+          database,
+          principal: userId,
+          keys: keyPrefix,
+          notes: NOTES,
+          phases: CLERK_TRIAL_PROOF_PHASES,
+          limits: LIMITS,
+          snapshot: CLERK_TRIAL_CATALOG.snapshotSha256,
+        }),
+      )
+      .digest("hex"),
+  });
+}
+const PROFILES = {
+  development: proofProfile(
+    "development",
+    "investment_clerk_trial_v1",
+    "proof-watchlist-20260929-v2",
+    "proof-20260929-v2-",
+  ),
+  production: proofProfile(
+    "production",
+    "investment_clerk_prod_trial_v1",
+    "proof-watchlist-prod-20260930-v1",
+    "proof-production-20260930-v1-",
+  ),
+};
+export function validateClerkTrialProofProfile(
+  value: unknown,
+): ClerkTrialProofProfile {
+  if (value !== "development" && value !== "production")
+    throw new Error("Invalid proof profile");
+  return PROFILES[value];
+}
 
 export interface ClerkTrialProofOperation {
   newStore(): AppwriteWatchlistStore;
@@ -143,23 +183,6 @@ class ProofFailure extends Error {
 function requireProof(value: unknown): asserts value {
   if (!value) throw new ProofFailure("unexpected_result");
 }
-function command(
-  expectedVersion: number,
-  key: string,
-  note: string,
-): PutMainWatchlistCommand {
-  return {
-    expectedVersion,
-    idempotencyKey: `${KEY_PREFIX}${key}`,
-    payload: toClerkTrialPayload(["DEMO_A", "DEMO_B"], note),
-  };
-}
-function receiptId(key: string) {
-  return `r${createHash("sha256")
-    .update(JSON.stringify([PRINCIPAL.userId, "main", `${KEY_PREFIX}${key}`]))
-    .digest("hex")
-    .slice(0, 32)}`;
-}
 function repositoryCode(error: unknown): WatchlistRepositoryErrorCode | null {
   return error instanceof WatchlistRepositoryError ? error.code : null;
 }
@@ -177,15 +200,40 @@ type Hooks = {
 
 /** Each invocation is one phase. Callers must stop after a non-passing result. */
 export async function runClerkTrialStorageProof(
+  environment: ClerkTrialProofEnvironment,
   phase: ClerkTrialProofPhase,
   buildProof: string,
   factory: ClerkTrialProofFactory,
 ): Promise<ClerkTrialProofReport> {
+  const profile = validateClerkTrialProofProfile(environment);
   if (
     !CLERK_TRIAL_PROOF_PHASES.includes(phase) ||
     !/^[0-9a-f]{64}$/u.test(buildProof)
   )
     throw new Error("Invalid proof configuration");
+  function command(
+    expectedVersion: number,
+    key: string,
+    note: string,
+  ): PutMainWatchlistCommand {
+    return {
+      expectedVersion,
+      idempotencyKey: `${profile.keyPrefix}${key}`,
+      payload: toClerkTrialPayload(["DEMO_A", "DEMO_B"], note),
+    };
+  }
+  function receiptId(key: string) {
+    return `r${createHash("sha256")
+      .update(
+        JSON.stringify([
+          profile.principal.userId,
+          "main",
+          `${profile.keyPrefix}${key}`,
+        ]),
+      )
+      .digest("hex")
+      .slice(0, 32)}`;
+  }
   const started = performance.now();
   const controller = new AbortController();
   // Reserve the final second of the 12-second invocation for cancellation/close.
@@ -327,7 +375,7 @@ export async function runClerkTrialStorageProof(
                   phase === "overlap" &&
                   actor === "loser" &&
                   commitLimitRejected &&
-                  input.databaseId === DATABASE &&
+                  input.databaseId === profile.database &&
                   input.tableId === "receipts" &&
                   input.rowId === receiptId("overlap-loser") &&
                   error instanceof AppwriteException &&
@@ -405,7 +453,7 @@ export async function runClerkTrialStorageProof(
   function repository(hooks?: Hooks, actor: ProofActor = "writer") {
     return createAppwriteWatchlistRepository({
       store: store(hooks, actor),
-      databaseId: DATABASE,
+      databaseId: profile.database,
       watchlistsTableId: "watchlists",
       receiptsTableId: "receipts",
       catalog: CLERK_TRIAL_CATALOG,
@@ -417,7 +465,7 @@ export async function runClerkTrialStorageProof(
     actor: ProofActor = "writer",
   ) {
     const task = repository(hooks, actor)
-      .put(PRINCIPAL, input)
+      .put(profile.principal, input)
       .then(
         (receipt) => ({ ok: true as const, receipt }),
         (error) => ({ ok: false as const, error: error as unknown }),
@@ -446,7 +494,7 @@ export async function runClerkTrialStorageProof(
     requireProof(!result.ok && repositoryCode(result.error) === code);
   }
   async function read(version: number, note: string) {
-    const record = await repository(undefined, "read").get(PRINCIPAL);
+    const record = await repository(undefined, "read").get(profile.principal);
     observedVersion = record?.version ?? 0;
     if (version === 0) {
       requireProof(record === null);
@@ -463,7 +511,7 @@ export async function runClerkTrialStorageProof(
   async function absent(key: string) {
     try {
       await store({}, "inspection").getRow({
-        databaseId: DATABASE,
+        databaseId: profile.database,
         tableId: "receipts",
         rowId: receiptId(key),
       });
@@ -685,7 +733,7 @@ export async function runClerkTrialStorageProof(
   const report: ClerkTrialProofReport = {
     version: 1,
     buildProof,
-    planSha256: CLERK_TRIAL_PROOF_PLAN_SHA256,
+    planSha256: profile.planSha256,
     phase,
     outcome,
     observedVersion,
@@ -708,7 +756,11 @@ export async function runClerkTrialStorageProof(
 }
 
 /** Private deployment only; no phase accepts caller data or storage locations. */
-export function createClerkTrialStorageProofFunction(buildProof: string) {
+export function createClerkTrialStorageProofFunction(
+  environment: ClerkTrialProofEnvironment,
+  buildProof: string,
+) {
+  const profile = validateClerkTrialProofProfile(environment);
   if (!/^[0-9a-f]{64}$/u.test(buildProof))
     throw new Error("Invalid proof build binding");
   return async ({ req, res }: ClerkTrialFunctionContext) => {
@@ -730,6 +782,7 @@ export function createClerkTrialStorageProofFunction(buildProof: string) {
         "cache-control": "no-store",
       });
     const report = await runClerkTrialStorageProof(
+      profile.environment,
       phase,
       buildProof,
       (signal) => {

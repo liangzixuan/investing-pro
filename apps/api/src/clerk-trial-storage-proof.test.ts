@@ -5,9 +5,10 @@ import type { AppwriteWatchlistStore } from "./appwrite-watchlist-repository";
 import type { ClerkTrialFunctionContext } from "./clerk-trial-function";
 import {
   CLERK_TRIAL_PROOF_PHASES,
-  CLERK_TRIAL_PROOF_PLAN_SHA256,
   createClerkTrialStorageProofFunction,
   runClerkTrialStorageProof,
+  validateClerkTrialProofProfile,
+  type ClerkTrialProofEnvironment,
   type ClerkTrialProofFactory,
   type ClerkTrialProofPhase,
 } from "./clerk-trial-storage-proof";
@@ -180,7 +181,7 @@ class AtomicStore implements AppwriteWatchlistStore {
   }
 }
 
-function fixture() {
+function fixture(environment: ClerkTrialProofEnvironment = "development") {
   const store = new AtomicStore();
   const closed: boolean[] = [];
   const signals: AbortSignal[] = [];
@@ -199,7 +200,7 @@ function fixture() {
     };
   };
   const run = (phase: ClerkTrialProofPhase) =>
-    runClerkTrialStorageProof(phase, BUILD, factory);
+    runClerkTrialStorageProof(environment, phase, BUILD, factory);
   return { store, closed, signals, factory, run };
 }
 async function reach(
@@ -216,6 +217,99 @@ async function reach(
 afterEach(() => vi.useRealTimers());
 
 describe("bounded Clerk trial storage proof", () => {
+  it("fixes distinct frozen profile targets within the storage schema", () => {
+    const development = validateClerkTrialProofProfile("development");
+    const production = validateClerkTrialProofProfile("production");
+    expect(development).toMatchObject({
+      environment: "development",
+      database: "investment_clerk_trial_v1",
+      principal: { userId: "proof-watchlist-20260929-v2" },
+      keyPrefix: "proof-20260929-v2-",
+    });
+    expect(production).toMatchObject({
+      environment: "production",
+      database: "investment_clerk_prod_trial_v1",
+      principal: { userId: "proof-watchlist-prod-20260930-v1" },
+      keyPrefix: "proof-production-20260930-v1-",
+    });
+    expect(development.planSha256).not.toBe(production.planSha256);
+    for (const profile of [development, production]) {
+      expect(profile.principal.userId.length).toBeLessThanOrEqual(36);
+      expect(profile.planSha256).toMatch(/^[0-9a-f]{64}$/u);
+      expect(validateClerkTrialProofProfile(profile.environment)).toBe(profile);
+      expect(Object.isFrozen(profile)).toBe(true);
+      expect(Object.isFrozen(profile.principal)).toBe(true);
+      expect(Reflect.set(profile, "database", "other")).toBe(false);
+      expect(Reflect.set(profile.principal, "userId", "other")).toBe(false);
+    }
+  });
+
+  it.each(
+    [
+      undefined,
+      null,
+      "",
+      "Development",
+      "production ",
+      "other",
+      1,
+      { environment: "production" },
+      { toString: () => "production" },
+    ].map((value) => ({ value })),
+  )(
+    "rejects a missing or unknown profile before factory use: %j",
+    async ({ value }) => {
+      const factory = vi.fn();
+      expect(() => validateClerkTrialProofProfile(value)).toThrow(
+        "Invalid proof profile",
+      );
+      expect(() =>
+        createClerkTrialStorageProofFunction(
+          value as ClerkTrialProofEnvironment,
+          BUILD,
+        ),
+      ).toThrow("Invalid proof profile");
+      await expect(
+        runClerkTrialStorageProof(
+          value as ClerkTrialProofEnvironment,
+          "create",
+          BUILD,
+          factory,
+        ),
+      ).rejects.toThrow("Invalid proof profile");
+      expect(factory).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps development rows and receipts unchanged when production starts in the same store", async () => {
+    const f = fixture();
+    expect((await f.run("create")).outcome).toBe("passed");
+    const before = structuredClone([...f.store.rows]);
+    const report = await runClerkTrialStorageProof(
+      "production",
+      "create",
+      BUILD,
+      f.factory,
+    );
+    expect(report.outcome).toBe("passed");
+    expect(report.planSha256).toBe(
+      validateClerkTrialProofProfile("production").planSha256,
+    );
+    expect(f.store.rows.size).toBe(4);
+    for (const [key, row] of before) expect(f.store.rows.get(key)).toEqual(row);
+    const rows = [...f.store.rows.values()];
+    expect(new Set(rows.map((row) => row.$databaseId))).toEqual(
+      new Set(["investment_clerk_trial_v1", "investment_clerk_prod_trial_v1"]),
+    );
+    expect(new Set(rows.map((row) => row.ownerId))).toEqual(
+      new Set([
+        "proof-watchlist-20260929-v2",
+        "proof-watchlist-prod-20260930-v1",
+      ]),
+    );
+    expect(new Set(rows.map((row) => row.$id)).size).toBe(4);
+  });
+
   it("models Appwrite's transaction TTL range and uses its shortest allowed lifetime", async () => {
     const f = fixture();
     await expect(f.store.createTransaction({ ttl: 30 })).rejects.toMatchObject({
@@ -231,81 +325,92 @@ describe("bounded Clerk trial storage proof", () => {
     ]);
   });
 
-  it("runs seven explicit phases through the unchanged repository using an atomic model", async () => {
-    const f = fixture();
-    const reports = [];
-    for (const phase of CLERK_TRIAL_PROOF_PHASES)
-      reports.push(await f.run(phase));
-    expect(reports.map((report) => report.outcome)).toEqual(
-      Array(7).fill("passed"),
-    );
-    expect(reports.map((report) => report.observedVersion)).toEqual([
-      1, 2, 3, 4, 4, 5, 5,
-    ]);
-    expect(reports.map((report) => report.operationCount)).toEqual([
-      10, 13, 17, 19, 10, 10, 1,
-    ]);
-    expect(
-      reports.every(
-        (report) => report.httpDispatches === 0 && report.payloadEqual,
-      ),
-    ).toBe(true);
-    expect(reports[0]).toMatchObject({
-      replayed: true,
-      receiptEqual: true,
-      repositoryError: "idempotency_conflict",
-    });
-    expect(reports[2]).toMatchObject({
-      repositoryError: "conflict",
-      upstreamStatus: 400,
-      losingReceiptAbsent: true,
-    });
-    expect(reports[3]).toMatchObject({
-      repositoryError: "conflict",
-      upstreamStatus: 409,
-      receiptEqual: true,
-      losingReceiptAbsent: true,
-    });
-    expect(reports[4]).toMatchObject({
-      injectedFailure: "before_receipt",
-      rollbackObserved: true,
-      losingReceiptAbsent: true,
-    });
-    expect(reports[5]).toMatchObject({
-      injectedFailure: "after_commit_acknowledgment",
-      repositoryError: "commit_unknown",
-      replayed: true,
-      receiptEqual: true,
-    });
-    expect(f.store.receipts()).toHaveLength(5);
-    expect(f.store.current().version).toBe(5);
-    expect(f.closed).toEqual(Array(7).fill(true));
-    expect(f.signals.every((signal) => signal.aborted)).toBe(true);
-    for (const report of reports) {
-      expect(report.trace.length).toBeLessThanOrEqual(20);
-      expect(report.trace.map((entry) => entry.sequence)).toEqual(
-        report.trace.map((_, index) => index + 1),
+  it.each(["development", "production"] as const)(
+    "runs seven explicit %s phases through the unchanged repository using an atomic model",
+    async (environment) => {
+      const f = fixture(environment);
+      const profile = validateClerkTrialProofProfile(environment);
+      const reports = [];
+      for (const phase of CLERK_TRIAL_PROOF_PHASES)
+        reports.push(await f.run(phase));
+      expect(reports.map((report) => report.outcome)).toEqual(
+        Array(7).fill("passed"),
       );
-      for (const entry of report.trace)
-        expect(Object.keys(entry).sort()).toEqual([
-          "actor",
-          "errorType",
-          "operation",
-          "outcome",
-          "sequence",
-          "status",
-          "transactionStatus",
-        ]);
-      expect(report.buildProof).toBe(BUILD);
-      expect(report.planSha256).toBe(CLERK_TRIAL_PROOF_PLAN_SHA256);
-      expect(Buffer.byteLength(JSON.stringify(report))).toBeLessThanOrEqual(
-        8192,
-      );
-      expect(JSON.stringify(report)).not.toMatch(
-        /Invented|ownerId|proof-watchlist|transaction-|secret|payloadJson/u,
-      );
-    }
-  });
+      expect(reports.map((report) => report.observedVersion)).toEqual([
+        1, 2, 3, 4, 4, 5, 5,
+      ]);
+      expect(reports.map((report) => report.operationCount)).toEqual([
+        10, 13, 17, 19, 10, 10, 1,
+      ]);
+      expect(
+        reports.every(
+          (report) => report.httpDispatches === 0 && report.payloadEqual,
+        ),
+      ).toBe(true);
+      expect(reports[0]).toMatchObject({
+        replayed: true,
+        receiptEqual: true,
+        repositoryError: "idempotency_conflict",
+      });
+      expect(reports[2]).toMatchObject({
+        repositoryError: "conflict",
+        upstreamStatus: 400,
+        losingReceiptAbsent: true,
+      });
+      expect(reports[3]).toMatchObject({
+        repositoryError: "conflict",
+        upstreamStatus: 409,
+        receiptEqual: true,
+        losingReceiptAbsent: true,
+      });
+      expect(reports[4]).toMatchObject({
+        injectedFailure: "before_receipt",
+        rollbackObserved: true,
+        losingReceiptAbsent: true,
+      });
+      expect(reports[5]).toMatchObject({
+        injectedFailure: "after_commit_acknowledgment",
+        repositoryError: "commit_unknown",
+        replayed: true,
+        receiptEqual: true,
+      });
+      expect(f.store.receipts()).toHaveLength(5);
+      expect(f.store.current(profile.principal.userId).version).toBe(5);
+      expect(
+        [...f.store.rows.values()].every(
+          (row) =>
+            row.$databaseId === profile.database &&
+            row.ownerId === profile.principal.userId,
+        ),
+      ).toBe(true);
+      expect(f.closed).toEqual(Array(7).fill(true));
+      expect(f.signals.every((signal) => signal.aborted)).toBe(true);
+      for (const report of reports) {
+        expect(report.trace.length).toBeLessThanOrEqual(20);
+        expect(report.trace.map((entry) => entry.sequence)).toEqual(
+          report.trace.map((_, index) => index + 1),
+        );
+        for (const entry of report.trace)
+          expect(Object.keys(entry).sort()).toEqual([
+            "actor",
+            "errorType",
+            "operation",
+            "outcome",
+            "sequence",
+            "status",
+            "transactionStatus",
+          ]);
+        expect(report.buildProof).toBe(BUILD);
+        expect(report.planSha256).toBe(profile.planSha256);
+        expect(Buffer.byteLength(JSON.stringify(report))).toBeLessThanOrEqual(
+          8192,
+        );
+        expect(JSON.stringify(report)).not.toMatch(
+          /Invented|ownerId|proof-watchlist|transaction-|secret|payloadJson/u,
+        );
+      }
+    },
+  );
 
   it("orders the prestage trace after barriers and distinguishes commit-time limit reconciliation", async () => {
     const f = fixture();
@@ -762,10 +867,15 @@ describe("bounded Clerk trial storage proof", () => {
   it("bounds even a hung cleanup and reports it rather than claiming completion", async () => {
     vi.useFakeTimers();
     const f = fixture();
-    const pending = runClerkTrialStorageProof("reopen", BUILD, (signal) => ({
-      ...f.factory(signal),
-      close: () => new Promise<void>(() => undefined),
-    }));
+    const pending = runClerkTrialStorageProof(
+      "development",
+      "reopen",
+      BUILD,
+      (signal) => ({
+        ...f.factory(signal),
+        close: () => new Promise<void>(() => undefined),
+      }),
+    );
     await vi.advanceTimersByTimeAsync(1000);
     expect(await pending).toMatchObject({
       outcome: "incomplete",
@@ -778,10 +888,15 @@ describe("bounded Clerk trial storage proof", () => {
     vi.useFakeTimers();
     const f = fixture();
     f.store.beforeRead = () => new Promise<void>(() => undefined);
-    const pending = runClerkTrialStorageProof("create", BUILD, (signal) => ({
-      ...f.factory(signal),
-      close: () => new Promise<void>(() => undefined),
-    }));
+    const pending = runClerkTrialStorageProof(
+      "development",
+      "create",
+      BUILD,
+      (signal) => ({
+        ...f.factory(signal),
+        close: () => new Promise<void>(() => undefined),
+      }),
+    );
     await vi.advanceTimersByTimeAsync(12000);
     expect(await pending).toMatchObject({
       outcome: "incomplete",
@@ -794,10 +909,15 @@ describe("bounded Clerk trial storage proof", () => {
   it("reports actual transport dispatch counts separately from model operation counts", async () => {
     const f = fixture();
     expect(
-      await runClerkTrialStorageProof("create", BUILD, (signal) => ({
-        ...f.factory(signal),
-        snapshot: () => ({ requests: 9, lastStatus: 200 }),
-      })),
+      await runClerkTrialStorageProof(
+        "development",
+        "create",
+        BUILD,
+        (signal) => ({
+          ...f.factory(signal),
+          snapshot: () => ({ requests: 9, lastStatus: 200 }),
+        }),
+      ),
     ).toMatchObject({
       outcome: "passed",
       operationCount: 10,
@@ -809,13 +929,14 @@ describe("bounded Clerk trial storage proof", () => {
     const factory = vi.fn();
     await expect(
       runClerkTrialStorageProof(
+        "development",
         "other" as ClerkTrialProofPhase,
         BUILD,
         factory,
       ),
     ).rejects.toThrow("Invalid proof configuration");
     await expect(
-      runClerkTrialStorageProof("create", "missing", factory),
+      runClerkTrialStorageProof("development", "create", "missing", factory),
     ).rejects.toThrow("Invalid proof configuration");
     expect(factory).not.toHaveBeenCalled();
   });
@@ -844,7 +965,7 @@ describe("private storage proof function admission", () => {
     "rejects caller targets/data without transport construction: %j",
     async (override) => {
       const ctx = context(override);
-      await createClerkTrialStorageProofFunction(BUILD)(ctx);
+      await createClerkTrialStorageProofFunction("development", BUILD)(ctx);
       expect(ctx.res.json).toHaveBeenCalledWith(
         { error: "invalid_proof_request" },
         400,
@@ -854,7 +975,7 @@ describe("private storage proof function admission", () => {
   );
   it("requires the platform execution key and never prints it", async () => {
     const ctx = context();
-    await createClerkTrialStorageProofFunction(BUILD)(ctx);
+    await createClerkTrialStorageProofFunction("development", BUILD)(ctx);
     expect(ctx.res.json).toHaveBeenCalledWith(
       { error: "proof_authority_unavailable" },
       503,
