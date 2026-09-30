@@ -42,6 +42,14 @@ The official public-key parser's direct runtime dependency is included in the
 license notice mapping. Profile validation keeps subject admission and origin
 agreement separate, and owned-domain fixtures retain their complete case set.
 
+The next service layer uses the existing private transaction proof with explicit
+development and production profiles. Each profile fixes its synthetic database,
+invented identity and output directory, and the build marker binds the selected
+plan to its source. The seven scenarios keep their existing limits. Production
+schema, transaction evidence and API/domain activation need actual acceptance;
+the API continues to deny all production accounts. The accepted development
+trial, local vault and disconnected production website remain separate.
+
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
 results remain separate from production sign-in and connected-workspace
