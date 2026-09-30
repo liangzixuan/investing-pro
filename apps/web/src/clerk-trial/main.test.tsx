@@ -1,4 +1,5 @@
 import type { ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ClerkTrialConfig } from "./config";
 
@@ -30,6 +31,8 @@ const production: ClerkTrialConfig = {
   frontendApiOrigin: "https://clerk.investingpro.app",
 };
 const container = {};
+const productionOrigin = "https://app.investingpro.app";
+const stagingOrigin = "https://investment-device-preview.appwrite.network";
 
 beforeEach(() => {
   vi.resetModules();
@@ -38,6 +41,7 @@ beforeEach(() => {
   mounts.platform.mockReturnValue("web");
   mounts.createRoot.mockReturnValue({ render: mounts.render });
   vi.stubGlobal("document", { getElementById: () => container });
+  vi.stubGlobal("window", { location: { origin: productionOrigin } });
   vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", development);
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -93,6 +97,81 @@ describe("Clerk profile entry point", () => {
     mounts.platform.mockReturnValue("ios");
     await expect(import("./main")).rejects.toThrow(
       "The installed trial supports Android only.",
+    );
+    expect(mounts.createRoot).not.toHaveBeenCalled();
+  });
+
+  it("renders the real frame and notices at staging without mounting either SDK", async () => {
+    vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", production);
+    vi.stubGlobal("window", { location: { origin: stagingOrigin } });
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await import("./main");
+    expect(mounts.createRoot).toHaveBeenCalledExactlyOnceWith(container);
+    expect(mounts.render).toHaveBeenCalledTimes(1);
+    const element = mounts.render.mock.calls[0]?.[0] as ReactElement;
+    const html = renderToStaticMarkup(element);
+    expect(html).toContain("A shared watchlist, across your devices");
+    expect(html).toContain("Staging preview");
+    expect(html).toContain("Sign-in is available on the production site.");
+    expect(html).toContain(
+      "This preview does not start a session or load saved data.",
+    );
+    expect(html).toContain("Synthetic data only.");
+    expect(html).toContain("Software licenses");
+    expect(html).not.toContain("Your demo watchlist");
+    expect(mounts.webApp).not.toHaveBeenCalled();
+    expect(mounts.nativeApp).not.toHaveBeenCalled();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    productionOrigin.replace("https:", "http:"),
+    `${productionOrigin}:8443`,
+    `${productionOrigin}.invalid`,
+    `${stagingOrigin}:8443`,
+    `${stagingOrigin}.invalid`,
+    "https://localhost",
+    "https://unrelated.example",
+    "null",
+    undefined,
+  ])("rejects production browser origin %s before mounting", async (origin) => {
+    vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", production);
+    vi.stubGlobal("window", { location: { origin } });
+    await expect(import("./main")).rejects.toThrow(
+      "The production Clerk profile requires its approved web origin.",
+    );
+    expect(mounts.createRoot).not.toHaveBeenCalled();
+    expect(mounts.render).not.toHaveBeenCalled();
+    expect(mounts.webApp).not.toHaveBeenCalled();
+    expect(mounts.nativeApp).not.toHaveBeenCalled();
+  });
+
+  it("keeps development browser selection independent of the production preview origin", async () => {
+    vi.stubGlobal("window", { location: { origin: stagingOrigin } });
+    await import("./main");
+    const element = mounts.render.mock.calls[0]?.[0] as ReactElement;
+    expect(element.type).toBe(mounts.webApp);
+  });
+
+  it("rejects production native startup even when its reported origin matches staging", async () => {
+    vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", production);
+    vi.stubGlobal("window", { location: { origin: stagingOrigin } });
+    mounts.native.mockReturnValue(true);
+    await expect(import("./main")).rejects.toThrow(
+      "The production Clerk profile supports web only.",
+    );
+    expect(mounts.createRoot).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed configuration before considering an unsupported production origin", async () => {
+    vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", {
+      ...production,
+      apiOrigin: "https://unrelated.example",
+    });
+    vi.stubGlobal("window", { location: { origin: "null" } });
+    await expect(import("./main")).rejects.toThrow(
+      "Invalid public Clerk trial configuration.",
     );
     expect(mounts.createRoot).not.toHaveBeenCalled();
   });

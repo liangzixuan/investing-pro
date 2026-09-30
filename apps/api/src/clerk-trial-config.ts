@@ -88,11 +88,7 @@ function publicKey(value: unknown): string {
   return value;
 }
 
-function checkedSubject(value: unknown, production: boolean): string | null {
-  if (production) {
-    if (value !== null) return invalid();
-    return null;
-  }
+function checkedSubject(value: unknown): string | null {
   if (value === null) return null;
   if (typeof value !== "string" || !/^user_[A-Za-z0-9]{1,128}$/u.test(value))
     return invalid();
@@ -143,7 +139,7 @@ export function validateClerkTrialFunctionConfiguration(
       : issuer !== "https://allowed-lobster-3386.clerk.accounts.dev")
   )
     return invalid();
-  const allowedSubject = checkedSubject(auth.allowedSubject, production);
+  const allowedSubject = checkedSubject(auth.allowedSubject);
   const allowed = production
     ? [PRODUCTION_ORIGIN]
     : [DEVELOPMENT_ORIGIN, NATIVE_ORIGIN];

@@ -159,7 +159,7 @@ if (
       );
     const manifest = await packageSite(
       process.env.GITHUB_SHA,
-      "apps/web/dist/mobile",
+      "apps/web/dist/clerk-production",
       "dist/appwrite-release",
     );
     console.log(

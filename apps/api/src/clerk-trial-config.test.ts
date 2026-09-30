@@ -74,6 +74,32 @@ describe("explicit Clerk function profiles", () => {
     expect(checked.auth).not.toHaveProperty("nativeOrigin");
   });
 
+  it("copies one explicitly configured production subject while retaining web-only storage boundaries", () => {
+    const input = production();
+    input.auth.allowedSubject = "user_syntheticProductionOwner";
+    const checked = validateClerkTrialFunctionConfiguration(input);
+    input.auth.allowedSubject = "user_differentAccount";
+    expect(checked.auth.allowedSubject).toBe("user_syntheticProductionOwner");
+    expect(checked.auth.authorizedParties).toEqual([productionWeb]);
+    expect(checked.allowedOrigins).toEqual([productionWeb]);
+    expect(checked.auth).not.toHaveProperty("nativeOrigin");
+    expect(checked.storage.databaseId).toBe("investment_clerk_prod_trial_v1");
+    expect(Object.isFrozen(checked.auth)).toBe(true);
+  });
+
+  it.each([undefined, "", "user_", "user_one,user_two", ["user_one"], {}, "*"])(
+    "rejects ambiguous or missing production subject %#",
+    (subject) => {
+      const input = production();
+      expect(() =>
+        validateClerkTrialFunctionConfiguration({
+          ...input,
+          auth: { ...input.auth, allowedSubject: subject },
+        }),
+      ).toThrow("Invalid Clerk function configuration");
+    },
+  );
+
   it("checks equal origin sets without changing their explicit order", () => {
     const input = development();
     input.auth.authorizedParties.reverse();
@@ -237,10 +263,10 @@ describe("explicit Clerk function profiles", () => {
       },
     ],
     [
-      "production subject",
+      "malformed production subject",
       {
         ...production(),
-        auth: { ...production().auth, allowedSubject: "user_syntheticOwner" },
+        auth: { ...production().auth, allowedSubject: "email@example.invalid" },
       },
     ],
     [

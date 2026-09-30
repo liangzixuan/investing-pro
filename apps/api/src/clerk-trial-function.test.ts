@@ -1,6 +1,8 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as appwriteTransport from "./appwrite-transport";
+import * as watchlistRepository from "./appwrite-watchlist-repository";
+import type { MainWatchlistRepository } from "./watchlist-repository";
 import {
   createClerkTrialFunction,
   type ClerkTrialFunctionContext,
@@ -9,6 +11,57 @@ import {
 const keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const key = keys.publicKey.export({ type: "spki", format: "pem" }).toString();
 const origin = "https://investment-clerk-6abac57a.appwrite.network";
+const productionOrigin = "https://app.investingpro.app";
+const productionIssuer = "https://clerk.investingpro.app";
+const productionSubject = "user_syntheticProductionOwner";
+
+function productionConfiguration(allowedSubject: string | null) {
+  return {
+    environment: "production",
+    auth: {
+      issuer: productionIssuer,
+      jwtKey: key,
+      allowedSubject,
+      authorizedParties: [productionOrigin],
+    },
+    allowedOrigins: [productionOrigin],
+  };
+}
+
+function productionToken(
+  overrides: Record<string, unknown> = {},
+  signingKey = keys.privateKey,
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const claims = {
+    iss: productionIssuer,
+    sub: productionSubject,
+    azp: productionOrigin,
+    sid: "sess_productionFixture",
+    iat: now,
+    nbf: now - 1,
+    exp: now + 60,
+    v: 2,
+    sts: "active",
+    ...overrides,
+  };
+  const header = { alg: "RS256", typ: "JWT", kid: "synthetic-key" };
+  const unsigned = [header, claims]
+    .map((value) => Buffer.from(JSON.stringify(value)).toString("base64url"))
+    .join(".");
+  return `${unsigned}.${sign("RSA-SHA256", Buffer.from(unsigned), signingKey).toString("base64url")}`;
+}
+
+function productionRequest(token: string, requestOrigin = productionOrigin) {
+  return context({
+    path: "/v1/trial/watchlist",
+    headers: {
+      origin: requestOrigin,
+      authorization: `Bearer ${token}`,
+      "x-appwrite-key": "synthetic-service-key",
+    },
+  });
+}
 const run = createClerkTrialFunction({
   environment: "development",
   auth: {
@@ -205,6 +258,127 @@ describe("Appwrite Clerk trial adapter", () => {
         context({ headers: { origin: "https://changed.invalid" } }),
       ),
     ).toMatchObject({ status: 403 });
+  });
+
+  it("opens only the fixed production repository for the copied allowed subject and closes it after a read", async () => {
+    const input = productionConfiguration(productionSubject);
+    const productionRun = createClerkTrialFunction(input);
+    input.auth.allowedSubject = "user_differentAccount";
+    const get = vi.fn<MainWatchlistRepository["get"]>().mockResolvedValue(null);
+    const put = vi.fn<MainWatchlistRepository["put"]>();
+    const repository = vi
+      .spyOn(watchlistRepository, "createAppwriteWatchlistRepository")
+      .mockReturnValue({ get, put });
+    const open = vi.spyOn(appwriteTransport, "createAppwriteTransport");
+    const fetch = vi.fn(() => {
+      throw new Error("Unexpected network");
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    expect(
+      await productionRun(productionRequest(productionToken())),
+    ).toMatchObject({
+      status: 200,
+      body: { version: 0, selected: [], note: "" },
+      headers: { "access-control-allow-origin": productionOrigin },
+    });
+    expect(open).toHaveBeenCalledExactlyOnceWith({
+      endpoint: "https://nyc.cloud.appwrite.io/v1",
+    });
+    expect(repository).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        databaseId: "investment_clerk_prod_trial_v1",
+        watchlistsTableId: "watchlists",
+        receiptsTableId: "receipts",
+      }),
+    );
+    expect(get).toHaveBeenCalledOnce();
+    expect(get.mock.calls[0]?.[0].userId).toMatch(/^clerk-[a-f0-9]{30}$/u);
+    expect(put).not.toHaveBeenCalled();
+    const opened = open.mock.results[0]?.value as
+      ReturnType<typeof appwriteTransport.createAppwriteTransport> | undefined;
+    expect(opened?.snapshot().closed).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "different subject",
+      { sub: "user_differentAccount" },
+      productionOrigin,
+      403,
+      "access_denied",
+    ],
+    [
+      "development issuer",
+      { iss: "https://allowed-lobster-3386.clerk.accounts.dev" },
+      productionOrigin,
+      401,
+      "unauthenticated",
+    ],
+    [
+      "different authorized party",
+      { azp: "https://unrelated.invalid" },
+      productionOrigin,
+      401,
+      "unauthenticated",
+    ],
+    [
+      "missing authorized party",
+      { azp: undefined },
+      productionOrigin,
+      401,
+      "unauthenticated",
+    ],
+    [
+      "inactive session",
+      { sts: "pending" },
+      productionOrigin,
+      401,
+      "unauthenticated",
+    ],
+    ["expired session", { exp: 1 }, productionOrigin, 401, "unauthenticated"],
+    ["native origin", {}, "https://localhost", 403, "origin_denied"],
+    ["unrelated origin", {}, "https://unrelated.invalid", 403, "origin_denied"],
+  ] as const)(
+    "keeps production %s denied before storage opens",
+    async (_name, claims, requestOrigin, status, error) => {
+      const productionRun = createClerkTrialFunction(
+        productionConfiguration(productionSubject),
+      );
+      const open = vi.spyOn(appwriteTransport, "createAppwriteTransport");
+      const fetch = vi.fn(() => {
+        throw new Error("Unexpected network");
+      });
+      vi.stubGlobal("fetch", fetch);
+      expect(
+        await productionRun(
+          productionRequest(productionToken(claims), requestOrigin),
+        ),
+      ).toMatchObject({
+        status,
+        body: { error },
+      });
+      expect(open).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects another signing key even when the production subject matches", async () => {
+    const productionRun = createClerkTrialFunction(
+      productionConfiguration(productionSubject),
+    );
+    const otherKey = generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+    }).privateKey;
+    const open = vi.spyOn(appwriteTransport, "createAppwriteTransport");
+    expect(
+      await productionRun(productionRequest(productionToken({}, otherKey))),
+    ).toMatchObject({
+      status: 401,
+      body: { error: "unauthenticated" },
+    });
+    expect(open).not.toHaveBeenCalled();
   });
 
   it("rejects a missing environment before composing a function", () => {

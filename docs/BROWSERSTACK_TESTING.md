@@ -7,11 +7,10 @@ separate from browser coverage.
 ## When to run
 
 Dependency installation and repository configuration are one-time setup.
-Each `run-web.ts --run` invocation starts one cloud browser smoke test and exits
-when the runner finishes. It does not start a daemon. GitHub Actions can invoke
-the same command automatically as described below. For a manual check, run it
-after a meaningful web-interface change and before release acceptance, once the
-intended build is deployed to the preview.
+The Appwrite release workflow runs BrowserStack after deploying the exact build
+to staging and before production promotion. Each invocation starts one cloud
+browser smoke test and exits when the runner finishes. It does not start a daemon.
+No owner PC or terminal needs to remain running for GitHub releases.
 
 The installed website tools are Playwright Test 1.59.0 and BrowserStack Node SDK
 1.70.2. They are development dependencies. The configuration uses one website
@@ -19,12 +18,11 @@ platform, one worker, one smoke test and zero test retries.
 
 ## GitHub Actions
 
-The `BrowserStack deployed-preview smoke` workflow runs on pushes to `main` and
-`codex/android-launch` when web/shared code, browser test configuration or
-dependencies change. Documentation-only changes do not trigger it. It has one
-Ubuntu job, one browser session, a ten-minute job limit and a five-minute remote
-step limit. Runs share a concurrency group; a new push does not cancel a running
-test. There is no schedule, pull-request secret exposure or native app test.
+The `Appwrite site release` workflow owns the current browser gate. Its one
+staging test session uses the fixed target and exact source marker. Runs share a
+concurrency group, and a new release does not cancel a running test. The obsolete
+automatic disconnected-preview workflow is retired because staging will receive
+the Clerk client. Historical preview results remain separate evidence.
 
 These repository secrets are configured in
 [GitHub Actions secrets](https://github.com/liangzixuan/investing-pro/settings/secrets/actions).
@@ -34,38 +32,22 @@ Their names were verified without inspecting their values:
 - `BROWSERSTACK_ACCESS_KEY`: the current access key.
 
 GitHub supplies them only to the test step, after dependency installation.
-Missing secrets fail the step before a BrowserStack session starts. The workflow
-does not upload SDK logs, screenshots or other artifacts. It preserves the
-existing release gates and reports its own result separately.
-
-The workflow is published on `codex/android-launch`. Merging it into `main` and
-enabling its default-branch **Run workflow** control remain pending. A failed run
-can be rerun from its Actions page after its cause is fixed. No PowerShell window
-or running owner PC is needed for GitHub runs, and rotating the BrowserStack key
-requires updating the stored secret.
-
-This workflow checks the existing hosted preview. It neither deploys that site
-nor proves its assets match the triggering commit. The checkout SHA in its
-summary identifies the test code only. Deploy the intended preview before using
-its result as evidence for an interface change. The hosted runner has passed as
-recorded below; independent BrowserStack session details remain unverified.
+Missing secrets fail the step before a BrowserStack session starts. SDK logs are
+not uploaded; finite source, artifact and deployment receipts are retained by
+the release workflow. Rotating the key requires updating the stored secret.
 
 ## Exact-build staging pipeline
 
-The approved [Appwrite delivery workflow](./APPWRITE_DELIVERY.md) adds a separate
-staging mode. It deploys a SHA-labelled artifact and calls
-`run-web.ts --run-staging` with `INVESTMENT_EXPECTED_BUILD_SHA`. The test requires
-one matching public commit marker before interacting with the page. The ordinary
-`--run` mode rejects an expected SHA so it cannot silently stand in for this check.
-`--check-staging` validates inputs without a remote session. The runner supplies
-its internal child mode; callers do not need to set it.
+The approved [Appwrite delivery workflow](./APPWRITE_DELIVERY.md) deploys one
+SHA-labelled artifact and calls `run-web.ts --run-staging` with
+`INVESTMENT_EXPECTED_BUILD_SHA`. The test requires one matching public marker
+before interacting with the page. `--check-staging` validates inputs without a
+remote session. The runner supplies its internal child mode.
 
-Source preparation does not establish cloud acceptance. The new workflow still
-needs default-branch integration, Appwrite environment credentials and its first
-observed run. It shares concurrency with the existing preview smoke. Once the
-new release path is proved, retire the old push trigger to avoid duplicate runs.
-The native Appium runner is removed; native app acceptance uses the owner's
-Pixel phones.
+The first pipeline completed for the disconnected client on September 29.
+The production Clerk client needs its own release evidence. Source preparation,
+local execution and an older cloud pass do not establish a new cloud result.
+Production promotion reuses the same archive after the configured review.
 
 ## Credentials and commands
 
@@ -88,33 +70,35 @@ Listing only collects the test and needs no credentials. The check validates
 that the required environment inputs are present without authenticating or
 starting a session; missing inputs produce exit 2. Neither proves test success.
 
-Start one remote test when needed:
+For the current staging client, use the release workflow. A separately authorized
+manual check can use these commands with the exact deployed commit SHA and
+privately supplied credentials:
 
 ```sh
-pnpm test:browserstack:web
+pnpm exec tsx scripts/browserstack/run-web.ts --check-staging
+pnpm exec tsx scripts/browserstack/run-web.ts --run-staging
 ```
 
-This runs `tsx scripts/browserstack/run-web.ts --run`. Each invocation starts a
-new test. The command remains available locally alongside the separate CI job.
+Both require `INVESTMENT_EXPECTED_BUILD_SHA`. Each `--run-staging` invocation
+starts a new test. The older `pnpm test:browserstack:web` command selects the
+retained disconnected-preview scenario, which no longer describes staging once
+the Clerk client is deployed. It cannot substitute for the release check.
 
 ## Target and coverage
 
-The smoke targets only
-`https://investment-device-preview.appwrite.network`. It checks Markets startup,
-disabled data controls, unloaded prices, bundled notices, 390px/1440px layout and
-hash navigation with browser Back. Requests are restricted to the preview's
-public document and bundled assets. The configured platform is Windows 11 /
-Chrome; narrow desktop viewports do not establish Android device coverage.
+The staging smoke targets only
+`https://investment-device-preview.appwrite.network`. It verifies the commit
+marker, JavaScript startup, inert Clerk trial frame, synthetic-data disclosure,
+bundled software notices and 390px/1440px layouts. Only the fixed public document
+and hashed bundled assets are allowed; authentication, API, websocket and other
+unexpected requests fail the test. The configured platform is Windows 11 /
+Chrome. Narrow desktop viewports do not establish Android device coverage.
 
-The target serves the deployed disconnected mobile bundle. Editing local source
-does not update that site. Rebuild and deploy the intended preview assets before
-using this test to assess a changed interface. A pass covers the deployed assets
-at the time of the run, not unshipped local edits.
-
-The smoke performs no owner sign-in, data migration, watchlist writes or provider
-loads. Connected Appwrite sessions and shared-data journeys need their own
-fixtures and acceptance. Native installation, Android Back, background/resume
-and daily use must be checked on the owner's Pixel phones.
+The canonical production origin mounts Clerk; staging does not start an auth
+session or load saved data. Sign-in, shared watchlist save/reload and independent
+sign-out need separate acceptance on the production origin. The smoke performs
+no owner sign-in, watchlist writes, migration or provider loads. Native install,
+Android Back, background/resume and daily use remain Pixel checks.
 
 ## Observed results
 
