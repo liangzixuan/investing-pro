@@ -1,3 +1,4 @@
+import { MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS } from "@research-cockpit/contracts";
 import type {
   PersonalSecAnnualEvidenceRequestDto,
   PersonalSecAnnualEvidenceResponseDto,
@@ -12,13 +13,17 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { fetchPersonalSecAnnualEvidence } from "./personal-sec-annual-evidence-api";
+import { parseSecAnnualEvidenceResponse } from "./sec-annual-evidence-response";
 
 const fetchMock = vi.fn<typeof fetch>();
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal("fetch", fetchMock);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("annual SEC evidence browser client", () => {
   it("posts only the exact admitted request and preserves/freeze-checks signed exact evidence", async () => {
@@ -533,6 +538,145 @@ describe("annual SEC evidence browser client", () => {
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
     expect(cancel).toHaveBeenCalledOnce();
   });
+});
+
+describe("shared annual SEC response decoder", () => {
+  it("captures the unknown packet and request before hashing and freezes only its own result", async () => {
+    const original = await response();
+    const wire = structuredClone(original);
+    const captured = { ...request() };
+    const pending = parseSecAnnualEvidenceResponse(wire, captured, signal());
+    Object.assign(wire.security, { symbol: "OTHER", issuerName: "Changed" });
+    Object.assign(wire.evidence.observations[0]!, { value: "999" });
+    captured.symbol = "OTHER";
+    captured.listingId = "listing-other";
+    const result = await pending;
+    expect(result).toEqual(original);
+    expect(result).not.toBe(wire);
+    expect(Object.isFrozen(result?.evidence.observations[0]?.filing)).toBe(
+      true,
+    );
+    expect(Object.isFrozen(result?.evidence.resolution.bases)).toBe(true);
+    expect(Object.isFrozen(wire)).toBe(false);
+    expect(Object.isFrozen(wire.evidence.observations[0])).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns null for uncloneable packets and exact request identity mismatches", async () => {
+    const wire = await response();
+    for (const bad of [null, { ...wire, unexpected: () => undefined }]) {
+      expect(
+        await parseSecAnnualEvidenceResponse(bad, request(), signal()),
+      ).toBeNull();
+    }
+    for (const different of [
+      {
+        ...request(),
+        catalogSnapshotSha256: `sha256:${"d".repeat(64)}` as const,
+      },
+      { ...request(), listingId: "listing-other" },
+      { ...request(), symbol: "OTHER" },
+    ]) {
+      expect(
+        await parseSecAnnualEvidenceResponse(wire, different, signal()),
+      ).toBeNull();
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("propagates cancellation before work and after a pending hash without returning late evidence", async () => {
+    const wire = await response();
+    const early = new AbortController();
+    early.abort();
+    await expect(
+      parseSecAnnualEvidenceResponse(wire, request(), early.signal),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    const originalDigest = crypto.subtle.digest.bind(crypto.subtle);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const digest = vi
+      .spyOn(crypto.subtle, "digest")
+      .mockImplementationOnce(async (...args) => {
+        await gate;
+        return originalDigest(...args);
+      });
+    const held = new AbortController();
+    const pending = parseSecAnnualEvidenceResponse(
+      wire,
+      request(),
+      held.signal,
+    );
+    expect(digest).toHaveBeenCalledOnce();
+    held.abort();
+    release();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(digest).toHaveBeenCalledOnce();
+  });
+
+  it.each(["many_pairs", "shared_income"] as const)(
+    "contains maximal observation counts and field widths with %s within the response cap",
+    async (shape) => {
+      const concepts = [
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "Revenues",
+        "SalesRevenueNet",
+      ] as const;
+      const rows = Array.from({ length: 200 }, (_, index) => {
+        const concept = index < 100 ? concepts[index % 3]! : "NetIncomeLoss";
+        const startDate =
+          shape === "many_pairs" && index < 100
+            ? new Date(Date.UTC(2025, 0, 1 + index)).toISOString().slice(0, 10)
+            : "2025-01-01";
+        return row(concept, "9".repeat(64), {
+          startDate,
+          durationDays:
+            (Date.parse("2025-12-31") - Date.parse(startDate)) / 86_400_000 + 1,
+          form: "X".repeat(40),
+          filingFocusPeriod: '"'.repeat(32),
+          frame: `${String(index).padStart(3, "0")}${'"'.repeat(125)}`,
+          sourceLocator: `/facts/us-gaap/${concept}/units/USD/19999`,
+          filing: { ...row().filing, status: "metadata_conflict" },
+        });
+      });
+      const fixture = await response(rows);
+      const captured = {
+        ...request(),
+        listingId: "a".repeat(128),
+        symbol: "A".repeat(15),
+      };
+      const wire = {
+        ...fixture,
+        security: {
+          ...fixture.security,
+          issuerId: "i".repeat(128),
+          listingId: captured.listingId,
+          symbol: captured.symbol,
+          issuerName: "\u{1F600}".repeat(512),
+          securityName: "\u{1F600}".repeat(512),
+        },
+      };
+      expect(wire.evidence.observations).toHaveLength(200);
+      expect(wire.evidence.resolution.pairs).toHaveLength(
+        shape === "many_pairs" ? 100 : 3,
+      );
+      if (shape === "shared_income")
+        expect(
+          wire.evidence.resolution.pairs.flatMap(
+            (pair) => pair.incomeObservationIds,
+          ),
+        ).toHaveLength(300);
+      const bytes = new TextEncoder().encode(JSON.stringify(wire)).byteLength;
+      expect(bytes).toBeLessThan(
+        MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
+      );
+      expect(
+        await parseSecAnnualEvidenceResponse(wire, captured, signal()),
+      ).toEqual(wire);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 });
 
 type Wire = PersonalSecAnnualEvidenceResponseDto;

@@ -83,6 +83,11 @@ pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.co
 node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts demo <reviewed-config-path>
 ```
 
+The managed function uses `managed <server-config-path> <sec-config-path>`.
+Its separate [annual report configuration](./MANAGED_SEC_ANNUAL.md) requires
+either an explicit `null` or a reviewed SEC contact. The demo command above keeps
+its existing configuration and output.
+
 The function input contains `environment`, `auth` and `allowedOrigins`. Validation
 checks nested fields and copies the accepted configuration before composing the
 request handler. Storage endpoint, project and table names are fixed. Each

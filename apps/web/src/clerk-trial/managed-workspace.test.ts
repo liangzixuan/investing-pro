@@ -12,6 +12,7 @@ import {
   reviewChanges,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
+import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
@@ -88,6 +89,7 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    annualReport: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     search: vi.fn<ManagedApi["search"]>().mockResolvedValue({
       snapshot,
@@ -542,5 +544,99 @@ describe("managed workspace composition", () => {
       nextDigest,
     );
     expect(api.resolve).not.toHaveBeenCalled();
+  });
+});
+
+describe("annual panel within the managed workspace", () => {
+  it("opens only a captured current result or current watchlist membership, without an automatic request", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openDiscoveryAnnual(result);
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    await workspace.search();
+    const found = workspace.getSnapshot().results[0]!;
+    workspace.openDiscoveryAnnual(found);
+    expect(workspace.annual.getSnapshot().selection?.listing.symbol).toBe(
+      "DEMO",
+    );
+    expect(api.annualReport).not.toHaveBeenCalled();
+    workspace.annual.close();
+    workspace.openWatchlistAnnual(listingMembership(result));
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    workspace.add(found);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    expect(workspace.annual.getSnapshot().selection?.origin).toBe("watchlist");
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("keeps notes, order and dirty state through annual selection and Back; identity removal clears selection", async () => {
+    const initial = {
+      ...empty,
+      memberships: [listingMembership(result), listingMembership(second)],
+    };
+    const { workspace } = fixture(initial);
+    await ready(workspace);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const selected = workspace.annual.getSnapshot().selection;
+    workspace.note(result.listingId, "Still my unsaved note");
+    workspace.move(result.listingId, 1);
+    expect(workspace.annual.getSnapshot().selection).toBe(selected);
+    workspace.annual.close();
+    const saved = workspace.coordinator.getSnapshot();
+    expect(saved.dirty).toBe(true);
+    expect(saved.draft!.memberships[1]!.note).toBe("Still my unsaved note");
+    workspace.openWatchlistAnnual(saved.draft!.memberships[1]!);
+    workspace.remove(result.listingId);
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+  });
+
+  it("rejects stale watchlist opening and cancels a report when the catalog changes", async () => {
+    const { workspace, api } = fixture({
+      ...empty,
+      memberships: [listingMembership(result)],
+    });
+    await ready(workspace);
+    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+    vi.mocked(api.annualReport).mockReturnValue(held.promise);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const loading = workspace.annual.load();
+    vi.mocked(api.status).mockResolvedValue({
+      snapshot: { ...snapshot, snapshotSha256: nextDigest },
+    });
+    await workspace.refreshCatalog();
+    expect(vi.mocked(api.annualReport).mock.calls[0]![1].aborted).toBe(true);
+    held.resolve(await annualResponse());
+    await loading;
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    expect(workspace.canOpenWatchlistAnnual(member)).toBe(false);
+    workspace.openWatchlistAnnual(member);
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+  });
+
+  it("routes annual authentication loss through shared retirement and clears the entire workspace", async () => {
+    const { workspace, api } = fixture({
+      ...empty,
+      memberships: [{ ...listingMembership(result), note: "Private note" }],
+    });
+    await ready(workspace);
+    workspace.setQuery("Private company search");
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    vi.mocked(api.annualReport).mockRejectedValue(
+      new TrialApiError("unauthenticated"),
+    );
+    await workspace.annual.load();
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    expect(workspace.getSnapshot().query).toBe("");
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.coordinator.getSnapshot().phase).toBe("retired");
   });
 });

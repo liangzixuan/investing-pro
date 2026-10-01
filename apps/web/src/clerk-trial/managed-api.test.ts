@@ -2,11 +2,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   MANAGED_CATALOG_LIMITS,
   MANAGED_WATCHLIST_LIMITS,
+  MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   type ManagedCatalogSnapshotDto,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
-import { createManagedApi, ManagedCatalogChangedError } from "./managed-api";
+import {
+  createManagedApi,
+  ManagedCatalogChangedError,
+  ManagedAnnualCooldownError,
+  ManagedAnnualReportError,
+} from "./managed-api";
+import {
+  request as annualRequest,
+  response as annualResponse,
+} from "../features/research/sec-annual-evidence-fixture";
+import * as annualDecoder from "../lib/sec-annual-evidence-response";
 import type { TrialSession } from "./session";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -78,7 +89,10 @@ function deferred<T>() {
   });
   return { promise, resolve };
 }
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("managed browser transport", () => {
   it("uses fixed routes, fresh session tokens and private bearer transport", async () => {
@@ -424,5 +438,182 @@ describe("managed browser transport", () => {
     ).rejects.toMatchObject({ code: "invalid_request" });
     expect(fetcher).not.toHaveBeenCalled();
     expect(session.getToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("managed annual transport", () => {
+  it("captures the exact four-key request before awaiting the token and validates owned evidence", async () => {
+    const { api, fetcher, session, abort } = fixture();
+    const token = deferred<string | null>();
+    vi.mocked(session.getToken).mockReturnValue(token.promise);
+    const input = annualRequest();
+    const wire = await annualResponse();
+    fetcher.mockResolvedValue(Response.json(wire));
+    const loading = api.annualReport(input, abort.signal);
+    Object.assign(input, { symbol: "CHANGED" });
+    token.resolve("synthetic-token");
+    const result = await loading;
+    expect(result).toEqual(wire);
+    expect(Object.isFrozen(result.evidence.observations[0]?.filing)).toBe(true);
+    expect(fetcher).toHaveBeenCalledExactlyOnceWith(
+      `${origin}/v1/managed/sec-annual-evidence`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(annualRequest()),
+        credentials: "omit",
+        cache: "no-store",
+        redirect: "error",
+      }),
+    );
+  });
+
+  it.each(["cancel", "deadline"])(
+    "keeps async hash/semantic parsing inside the request lifetime: %s",
+    async (ending) => {
+      vi.useFakeTimers();
+      const { api, fetcher, abort } = fixture();
+      const entered = deferred<AbortSignal>();
+      const decoding =
+        deferred<
+          Awaited<
+            ReturnType<typeof annualDecoder.parseSecAnnualEvidenceResponse>
+          >
+        >();
+      vi.spyOn(
+        annualDecoder,
+        "parseSecAnnualEvidenceResponse",
+      ).mockImplementation((_value, _request, signal) => {
+        entered.resolve(signal);
+        return decoding.promise;
+      });
+      fetcher.mockResolvedValue(
+        Response.json({ synthetic: "deferred parser boundary" }),
+      );
+      const pending = api.annualReport(annualRequest(), abort.signal);
+      const checked = expect(pending).rejects.toMatchObject({
+        code: ending === "cancel" ? "aborted" : "unavailable",
+      });
+      const parserSignal = await entered.promise;
+      expect(parserSignal.aborted).toBe(false);
+      if (ending === "cancel") abort.abort();
+      else await vi.advanceTimersByTimeAsync(20_000);
+      await checked;
+      expect(parserSignal.aborted).toBe(true);
+      decoding.resolve(await annualResponse());
+      await Promise.resolve();
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("rejects a tampered normalized generation without returning any evidence", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = await annualResponse();
+    fetcher.mockResolvedValue(
+      Response.json({
+        ...wire,
+        evidence: {
+          ...wire.evidence,
+          generation: { ...wire.evidence.generation, sha256: digest },
+        },
+      }),
+    );
+    await expect(
+      api.annualReport(annualRequest(), abort.signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("measures the 2 MiB response cap with fatal UTF-8, ignoring a false Content-Length", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = await annualResponse();
+    const padded = JSON.stringify(wire).padEnd(
+      MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
+      " ",
+    );
+    fetcher.mockResolvedValueOnce(
+      new Response(padded, {
+        headers: { "content-type": "application/json", "content-length": "1" },
+      }),
+    );
+    expect(await api.annualReport(annualRequest(), abort.signal)).toEqual(wire);
+    for (const bytes of [
+      new TextEncoder().encode(padded + " "),
+      new Uint8Array([0xff]),
+    ]) {
+      fetcher.mockResolvedValueOnce(
+        new Response(bytes, {
+          headers: {
+            "content-type": "application/json",
+            "content-length": "1",
+          },
+        }),
+      );
+      await expect(
+        api.annualReport(annualRequest(), abort.signal),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("accepts only the exact annual cooldown body and canonical UTC date", async () => {
+    const { api, fetcher, abort } = fixture();
+    const nextAllowedAt = "2026-10-01T00:00:20.000Z";
+    fetcher.mockResolvedValueOnce(
+      Response.json({ error: "rate_limited", nextAllowedAt }, { status: 429 }),
+    );
+    await expect(
+      api.annualReport(annualRequest(), abort.signal),
+    ).rejects.toEqual(new ManagedAnnualCooldownError(nextAllowedAt));
+    for (const body of [
+      { error: "rate_limited" },
+      { error: "rate_limited", nextAllowedAt, ownerId: "not-public" },
+      { error: "rate_limited", nextAllowedAt: "2026-02-30T00:00:20.000Z" },
+      { error: "rate_limited", nextAllowedAt: "2026-10-01T00:00:20+00:00" },
+      { error: "rate_limited", nextAllowedAt: 20 },
+    ]) {
+      fetcher.mockResolvedValueOnce(Response.json(body, { status: 429 }));
+      await expect(
+        api.annualReport(annualRequest(), abort.signal),
+      ).rejects.toMatchObject({ code: "invalid_response" });
+    }
+  });
+
+  it("keeps annual configuration/timeout/catalog errors finite and never admits save uncertainty", async () => {
+    const { api, fetcher, abort } = fixture();
+    for (const [status, error, expected] of [
+      [503, "not_configured", new ManagedAnnualReportError("not_configured")],
+      [408, "request_timeout", new ManagedAnnualReportError("request_timeout")],
+      [409, "catalog_changed", new ManagedCatalogChangedError()],
+      [503, "commit_unknown", new TrialApiError("invalid_response")],
+      [409, "conflict", new TrialApiError("invalid_response")],
+    ] as const) {
+      fetcher.mockResolvedValueOnce(Response.json({ error }, { status }));
+      await expect(
+        api.annualReport(annualRequest(), abort.signal),
+      ).rejects.toEqual(expected);
+    }
+  });
+
+  it.each([401, 403])(
+    "preserves shared retirement errors for annual status %i",
+    async (status) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(new Response("discarded", { status }));
+      await expect(
+        api.annualReport(annualRequest(), abort.signal),
+      ).rejects.toEqual(
+        new TrialApiError(status === 401 ? "unauthenticated" : "access_denied"),
+      );
+    },
+  );
+
+  it("rejects non-current request shapes before token or fetch", async () => {
+    const { api, fetcher, session, abort } = fixture();
+    await expect(
+      api.annualReport(
+        { ...annualRequest(), symbol: "bad ticker" },
+        abort.signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(session.getToken).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

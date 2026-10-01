@@ -13,6 +13,7 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
+import { ManagedAnnualReport } from "./managed-annual-report";
 import { SaveCoordinator } from "./save-coordinator";
 import type { TrialSession } from "./session";
 
@@ -88,9 +89,9 @@ function capture(payload: MainWatchlistPayload): DraftValidation {
   return { payload: JSON.parse(encoded) as MainWatchlistPayload, issue: null };
 }
 
-export function listingMembership(
-  result: PersonalSecurityMasterSearchResultDto,
-): WatchlistMembership {
+function listingIdentity(
+  result: Omit<WatchlistMembership, "note">,
+): Omit<WatchlistMembership, "note"> {
   return {
     country: result.country,
     exchangeMic: result.exchangeMic,
@@ -103,13 +104,19 @@ export function listingMembership(
     shareClassId: result.shareClassId,
     shareClassName: result.shareClassName,
     symbol: result.symbol,
-    note: "",
   };
+}
+
+export function listingMembership(
+  result: PersonalSecurityMasterSearchResultDto,
+): WatchlistMembership {
+  return { ...listingIdentity(result), note: "" };
 }
 
 /** Owns catalog reads and their lifetime; the shared coordinator owns every save. */
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
+  readonly annual: ManagedAnnualReport;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -139,8 +146,24 @@ export class ManagedWorkspace {
       session,
       { ...(newKey ? { newKey } : {}), onRetire: () => this.clear() },
     );
+    this.annual = new ManagedAnnualReport(
+      (request, signal) => api.annualReport(request, signal),
+      (error) => this.coordinator.readError(error),
+    );
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
+      const selection = this.annual.getSnapshot().selection;
+      if (selection?.origin === "watchlist") {
+        const member = saved.draft?.memberships.find(
+          (item) => item.listingId === selection.listing.listingId,
+        );
+        if (
+          !member ||
+          saved.draft?.snapshotSha256 !== selection.catalogSnapshotSha256 ||
+          !membershipMatchesResult(member, selection.listing)
+        )
+          this.annual.close();
+      }
       if (
         this.draft !== saved.draft ||
         saved.uncertain ||
@@ -163,6 +186,7 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.annual.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
     this.searchOperation = null;
@@ -233,8 +257,10 @@ export class ManagedWorkspace {
         return;
       if (
         result.snapshot.snapshotSha256 !== this.state.snapshot?.snapshotSha256
-      )
+      ) {
         this.cancelReview();
+        this.annual.close();
+      }
       this.update({
         snapshot: result.snapshot,
         ...(matches
@@ -269,6 +295,35 @@ export class ManagedWorkspace {
       !saved.conflict &&
       saved.draft !== null
     );
+  }
+  openDiscoveryAnnual(result: PersonalSecurityMasterSearchResultDto) {
+    const snapshot = this.state.snapshot;
+    if (this.retired || !snapshot || !this.state.results.includes(result))
+      return;
+    this.annual.open({
+      catalogSnapshotSha256: snapshot.snapshotSha256,
+      listing: listingIdentity(result),
+      cik: result.cik,
+      origin: "discover",
+    });
+  }
+  canOpenWatchlistAnnual(member: WatchlistMembership) {
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      !this.retired &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      draft.memberships.includes(member)
+    );
+  }
+  openWatchlistAnnual(member: WatchlistMembership) {
+    if (!this.canOpenWatchlistAnnual(member) || !this.state.snapshot) return;
+    this.annual.open({
+      catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
+      listing: listingIdentity(member),
+      cik: null,
+      origin: "watchlist",
+    });
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;

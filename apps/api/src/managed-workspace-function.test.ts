@@ -7,10 +7,12 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authModule from "./clerk-trial-auth";
+import * as configModule from "./clerk-trial-config";
 import * as transportModule from "./appwrite-transport";
 import * as repositoryModule from "./appwrite-watchlist-repository";
 import * as catalogModule from "./managed-workspace-catalog";
-import {
+import * as annualAdmissionModule from "./managed-sec-annual-admission";
+import main, {
   createManagedWorkspaceFunction,
   type ManagedWorkspaceFunctionContext,
 } from "./managed-workspace-function";
@@ -150,7 +152,7 @@ describe("managed production Appwrite function", () => {
   it("uses the checked production auth and a separate fixed repository per operation", async () => {
     const f = memoryRepository(),
       input = configuration(),
-      run = createManagedWorkspaceFunction(input);
+      run = createManagedWorkspaceFunction(input, null);
     input.auth.allowedSubject = "user_changed";
     const first = await run(context({ path: WATCHLIST }));
     expect(first).toMatchObject({
@@ -187,7 +189,7 @@ describe("managed production Appwrite function", () => {
 
   it("reads the admitted catalog and resolves without execution authority or storage", async () => {
     const f = memoryRepository(),
-      run = createManagedWorkspaceFunction(configuration()),
+      run = createManagedWorkspaceFunction(configuration(), null),
       c = context();
     const headers = {
       origin: ORIGIN,
@@ -223,7 +225,7 @@ describe("managed production Appwrite function", () => {
   it("admits native sessions to the same principal without changing the captured web policy", async () => {
     const f = memoryRepository(),
       input = configuration(),
-      run = createManagedWorkspaceFunction(input);
+      run = createManagedWorkspaceFunction(input, null);
     input.auth.allowedSubject = "user_changed";
     input.auth.issuer = `${ISSUER}.invalid`;
     input.auth.jwtKey = "changed";
@@ -304,7 +306,7 @@ describe("managed production Appwrite function", () => {
     "rejects %s before opening storage",
     async (_reason, patch, status) => {
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration()),
+        run = createManagedWorkspaceFunction(configuration(), null),
         c = context({ path: WATCHLIST });
       expect(
         await run({
@@ -326,7 +328,7 @@ describe("managed production Appwrite function", () => {
     "does not trust execution headers or cookies at %s",
     async (origin) => {
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration()),
+        run = createManagedWorkspaceFunction(configuration(), null),
         c = context({ path: WATCHLIST });
       for (const headers of [
         {
@@ -355,7 +357,7 @@ describe("managed production Appwrite function", () => {
       const f = memoryRepository(),
         input = configuration();
       input.auth.allowedSubject = null;
-      const run = createManagedWorkspaceFunction(input),
+      const run = createManagedWorkspaceFunction(input, null),
         c = context({ path: WATCHLIST });
       expect(
         await run({
@@ -394,7 +396,7 @@ describe("managed production Appwrite function", () => {
     "rejects native %s before storage",
     async (_reason, claims, error) => {
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration()),
+        run = createManagedWorkspaceFunction(configuration(), null),
         c = context({ path: WATCHLIST });
       expect(
         await run({
@@ -433,7 +435,7 @@ describe("managed production Appwrite function", () => {
         authenticate,
       );
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration()),
+        run = createManagedWorkspaceFunction(configuration(), null),
         c = context();
       Object.defineProperty(c.req, "bodyBinary", {
         get: () => {
@@ -465,7 +467,7 @@ describe("managed production Appwrite function", () => {
 
   it("returns a finite missing execution authority failure before put", async () => {
     const f = memoryRepository(),
-      run = createManagedWorkspaceFunction(configuration()),
+      run = createManagedWorkspaceFunction(configuration(), null),
       c = writeContext();
     expect(
       await run({
@@ -486,9 +488,10 @@ describe("managed production Appwrite function", () => {
       throw new Error("private detail");
     });
     expect(
-      await createManagedWorkspaceFunction(configuration())(
-        context({ path: WATCHLIST }),
-      ),
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+      )(context({ path: WATCHLIST })),
     ).toMatchObject({ status: 503, body: { error: "unavailable" } });
     expect(
       (
@@ -502,33 +505,44 @@ describe("managed production Appwrite function", () => {
   it("requires production and rejects arbitrary storage configuration", () => {
     const input = configuration();
     expect(() =>
-      createManagedWorkspaceFunction({ ...input, databaseId: "other" }),
+      createManagedWorkspaceFunction({ ...input, databaseId: "other" }, null),
     ).toThrow();
     expect(() =>
-      createManagedWorkspaceFunction({
-        ...input,
-        auth: { ...input.auth, nativeOrigin: NATIVE_ORIGIN },
-      }),
+      createManagedWorkspaceFunction(
+        {
+          ...input,
+          auth: { ...input.auth, nativeOrigin: NATIVE_ORIGIN },
+        },
+        null,
+      ),
     ).toThrow();
     expect(() =>
-      createManagedWorkspaceFunction({
-        ...input,
-        auth: { ...input.auth, authorizedParties: [ORIGIN, NATIVE_ORIGIN] },
-        allowedOrigins: [ORIGIN, NATIVE_ORIGIN],
-      }),
+      createManagedWorkspaceFunction(
+        {
+          ...input,
+          auth: { ...input.auth, authorizedParties: [ORIGIN, NATIVE_ORIGIN] },
+          allowedOrigins: [ORIGIN, NATIVE_ORIGIN],
+        },
+        null,
+      ),
     ).toThrow();
     expect(() =>
-      createManagedWorkspaceFunction({
-        environment: "development",
-        auth: {
-          ...input.auth,
-          issuer: "https://allowed-lobster-3386.clerk.accounts.dev",
-          authorizedParties: [
+      createManagedWorkspaceFunction(
+        {
+          environment: "development",
+          auth: {
+            ...input.auth,
+            issuer: "https://allowed-lobster-3386.clerk.accounts.dev",
+            authorizedParties: [
+              "https://investment-clerk-6abac57a.appwrite.network",
+            ],
+          },
+          allowedOrigins: [
             "https://investment-clerk-6abac57a.appwrite.network",
           ],
         },
-        allowedOrigins: ["https://investment-clerk-6abac57a.appwrite.network"],
-      }),
+        null,
+      ),
     ).toThrow("Managed function requires production configuration");
   });
 });
@@ -538,7 +552,7 @@ describe("managed binary and supplied query bridge", () => {
     const authenticate = vi.fn<authModule.ClerkTrialAuth>();
     vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(authenticate);
     const f = memoryRepository(),
-      run = createManagedWorkspaceFunction(configuration());
+      run = createManagedWorkspaceFunction(configuration(), null);
     expect(
       await run(
         context({
@@ -570,7 +584,7 @@ describe("managed binary and supplied query bridge", () => {
     "requires a Buffer for bodyBinary %#",
     async (body) => {
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration());
+        run = createManagedWorkspaceFunction(configuration(), null);
       expect(await run(context({ bodyBinary: body as Buffer }))).toMatchObject({
         status: 400,
         body: { error: "invalid_request" },
@@ -582,7 +596,7 @@ describe("managed binary and supplied query bridge", () => {
   it.each(["GET", "OPTIONS"])(
     "rejects nonempty %s bytes instead of discarding them",
     async (method) => {
-      const run = createManagedWorkspaceFunction(configuration());
+      const run = createManagedWorkspaceFunction(configuration(), null);
       expect(
         await run(context({ method, bodyBinary: Buffer.from("x") })),
       ).toMatchObject({ status: 400 });
@@ -597,7 +611,7 @@ describe("managed binary and supplied query bridge", () => {
     "rejects malformed supplied bytes %# without write uncertainty",
     async (bodyBinary) => {
       const f = memoryRepository(),
-        run = createManagedWorkspaceFunction(configuration()),
+        run = createManagedWorkspaceFunction(configuration(), null),
         c = writeContext();
       expect(await run({ ...c, req: { ...c.req, bodyBinary } })).toMatchObject({
         status: 400,
@@ -616,7 +630,7 @@ describe("managed binary and supplied query bridge", () => {
       const auth = vi
         .spyOn(authModule, "createClerkTrialAuth")
         .mockReturnValue(vi.fn());
-      const run = createManagedWorkspaceFunction(configuration());
+      const run = createManagedWorkspaceFunction(configuration(), null);
       expect(
         await run(
           context({ method: "POST", path, bodyBinary: Buffer.alloc(size) }),
@@ -635,7 +649,7 @@ describe("managed binary and supplied query bridge", () => {
         }),
     );
     const f = memoryRepository(),
-      run = createManagedWorkspaceFunction(configuration()),
+      run = createManagedWorkspaceFunction(configuration(), null),
       c = writeContext();
     const result = run(c);
     c.req.bodyBinary.fill(0xff);
@@ -660,7 +674,7 @@ describe("managed binary and supplied query bridge", () => {
     "%71=AAPL",
     "q=AAPL&q=GOOG",
   ])("rejects unsupported supplied query %j", async (queryString) => {
-    const run = createManagedWorkspaceFunction(configuration());
+    const run = createManagedWorkspaceFunction(configuration(), null);
     expect(
       await run(context({ path: "/v1/managed/catalog/search", queryString })),
     ).toMatchObject({ status: 400 });
@@ -674,7 +688,7 @@ describe("managed binary and supplied query bridge", () => {
       ...service,
       search,
     });
-    const run = createManagedWorkspaceFunction(configuration());
+    const run = createManagedWorkspaceFunction(configuration(), null);
     expect(
       await run(
         context({
@@ -696,7 +710,10 @@ describe("managed binary and supplied query bridge", () => {
     "/v1/managed/catalog#fragment",
   ])("rejects supplied path normalization at %s", async (path) => {
     expect(
-      await createManagedWorkspaceFunction(configuration())(context({ path })),
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+      )(context({ path })),
     ).toMatchObject({ status: 404 });
   });
 
@@ -708,7 +725,7 @@ describe("managed binary and supplied query bridge", () => {
         throw new Error("invented failure");
       },
     });
-    const run = createManagedWorkspaceFunction(configuration());
+    const run = createManagedWorkspaceFunction(configuration(), null);
     expect(
       await run(
         writeContext(RESOLVE, {
@@ -739,5 +756,225 @@ describe("managed binary and supplied query bridge", () => {
         "x-content-type-options": "nosniff",
       },
     });
+  });
+});
+
+describe("managed annual composed function", () => {
+  const path = "/v1/managed/sec-annual-evidence";
+  const annualConfig = {
+    userAgent: "Synthetic managed fixture fixture@example.test",
+  };
+  it.each([2_000, 10_000])(
+    "counts %ims of default-entry configuration time before storage or SEC",
+    async (delay) => {
+      let elapsed = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+      const validate = configModule.validateClerkTrialFunctionConfiguration;
+      vi.spyOn(
+        configModule,
+        "validateClerkTrialFunctionConfiguration",
+      ).mockImplementation((input) => {
+        elapsed += delay;
+        return validate(input);
+      });
+      vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
+      vi.stubGlobal("__MANAGED_SEC_ANNUAL_CONFIG__", annualConfig);
+      const f = memoryRepository();
+      expect(await main(writeContext(path, annualCommand()))).toMatchObject({
+        status: 408,
+        body: { error: "request_timeout" },
+      });
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    },
+  );
+  function annualCommand(symbol = "AAPL") {
+    const service = catalogModule.createManagedCatalogService();
+    const selected = service
+      .search(symbol)!
+      .results.find((row) => row.symbol === symbol)!;
+    return {
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256: service.status().snapshot.snapshotSha256,
+      listingId: selected.listingId,
+      symbol,
+    };
+  }
+  it("rejects missing separate source configuration at construction; explicitnull fails after signed auth", async () => {
+    expect(() =>
+      createManagedWorkspaceFunction(configuration(), undefined),
+    ).toThrow();
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(configuration(), null);
+    expect(await run(writeContext(path, annualCommand()))).toMatchObject({
+      status: 503,
+      body: { error: "not_configured" },
+    });
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(f.repository).not.toHaveBeenCalled();
+  });
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "keeps the signed %s caller and fixed admission storage separate from watchlist writes",
+    async (origin) => {
+      const f = memoryRepository();
+      const reserve = vi
+        .fn()
+        .mockRejectedValue(
+          new annualAdmissionModule.ManagedSecAnnualAdmissionError(
+            "rate_limited",
+            "2026-10-01T12:00:20.000Z",
+          ),
+        );
+      const admission = vi
+        .spyOn(annualAdmissionModule, "createManagedSecAnnualAdmission")
+        .mockReturnValue({ reserve });
+      const run = createManagedWorkspaceFunction(configuration(), annualConfig),
+        c = writeContext(path, annualCommand());
+      const answer = await run({
+        ...c,
+        req: {
+          ...c.req,
+          headers: {
+            ...c.req.headers,
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        },
+      });
+      expect(answer).toMatchObject({
+        status: 429,
+        body: {
+          error: "rate_limited",
+          nextAllowedAt: "2026-10-01T12:00:20.000Z",
+        },
+      });
+      expect(admission).toHaveBeenCalledWith(
+        expect.objectContaining({
+          databaseId: "investment_managed_watchlist_v1",
+          tableId: "sec_annual_budget",
+          rowId: "observed-annual-v1",
+        }),
+      );
+      const limits = f.transport.mock.calls[0]![0].limits!;
+      expect(limits.maxRequests).toBe(6);
+      expect(limits.timeoutMs).toBeGreaterThan(0);
+      expect(limits.timeoutMs).toBeLessThanOrEqual(2_000);
+      expect(limits.mutationWindowMs).toBe(limits.timeoutMs);
+      expect(limits.requestTimeoutMs).toBe(limits.timeoutMs);
+      const transport = f.transport.mock.results[0]!.value as ReturnType<
+        typeof transportModule.createAppwriteTransport
+      >;
+      expect(transport.client.config.project).toBe("6abac57a0007b7c1a671");
+      expect(f.put).not.toHaveBeenCalled();
+      expect(f.get).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(reserve).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("bounds supplied annual bytes and query before auth or storage", async () => {
+    const authenticate = vi.fn<authModule.ClerkTrialAuth>();
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(authenticate);
+    const f = memoryRepository(),
+      run = createManagedWorkspaceFunction(configuration(), annualConfig);
+    expect(
+      await run(
+        context({ method: "POST", path, bodyBinary: Buffer.alloc(4097) }),
+      ),
+    ).toMatchObject({ status: 413 });
+    expect(
+      await run(context({ method: "POST", path, queryString: "x=1" })),
+    ).toMatchObject({ status: 400 });
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(authenticate).not.toHaveBeenCalled();
+  });
+  it("composes signed auth, acknowledged admission and two invented SEC packets without watchlist access", async () => {
+    const f = memoryRepository();
+    const reserve = vi.fn().mockResolvedValue({
+      version: 2,
+      nextAllowedAt: new Date(Date.now() + 20_000).toISOString(),
+    });
+    vi.spyOn(
+      annualAdmissionModule,
+      "createManagedSecAnnualAdmission",
+    ).mockReturnValue({ reserve });
+    const accession = "0000320193-25-000042";
+    const fact = {
+      start: "2024-10-01",
+      end: "2025-09-30",
+      val: 120,
+      accn: accession,
+      fy: 2025,
+      fp: "FY",
+      form: "10-K",
+      filed: "2025-11-01",
+    };
+    const packets = [
+      {
+        cik: "0000320193",
+        filings: {
+          recent: {
+            accessionNumber: [accession],
+            form: ["10-K"],
+            filingDate: ["2025-11-01"],
+            reportDate: ["2025-09-30"],
+            acceptanceDateTime: ["2025-11-01T12:00:00.000Z"],
+          },
+          files: [],
+        },
+      },
+      {
+        cik: 320193,
+        facts: {
+          "us-gaap": {
+            Revenues: { units: { USD: [fact] } },
+            NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+          },
+        },
+      },
+    ];
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(Response.json(packets[0]))
+      .mockResolvedValueOnce(Response.json(packets[1]));
+    vi.stubGlobal("fetch", fetch);
+    const run = createManagedWorkspaceFunction(configuration(), annualConfig);
+    const answer = await run(writeContext(path, annualCommand()));
+    expect(answer).toMatchObject({
+      status: 200,
+      body: {
+        security: { symbol: "AAPL", cik: "0000320193" },
+        evidence: { resolution: { currentTargetEligible: true } },
+      },
+    });
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      "https://data.sec.gov/submissions/CIK0000320193.json",
+      "https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json",
+    ]);
+    expect(reserve).toHaveBeenCalledTimes(1);
+    expect(f.repository).not.toHaveBeenCalled();
+    const transport = f.transport.mock.results[0]!.value as ReturnType<
+      typeof transportModule.createAppwriteTransport
+    >;
+    expect(transport.snapshot().closed).toBe(true);
+  });
+  it("expires slow auth from function entry without opening storage or source", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+        () => new Promise(() => undefined),
+      );
+      const f = memoryRepository(),
+        run = createManagedWorkspaceFunction(configuration(), annualConfig);
+      const pending = run(writeContext(path, annualCommand()));
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(await pending).toMatchObject({
+        status: 408,
+        body: { error: "request_timeout" },
+      });
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

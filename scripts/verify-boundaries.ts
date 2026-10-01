@@ -6818,6 +6818,32 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const found: string[] = [];
   const providerPath = "apps/api/src/personal-market-data-provider.ts";
   const secProviderPath = "apps/api/src/personal-sec-financial-provider.ts";
+  const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
+  const managedAnnual = await readFile(join(root, managedAnnualPath), "utf8");
+  const managedAnnualMutations = [
+    managedAnnual.replace(
+      "data.sec.gov/submissions",
+      "unreviewed.example/submissions",
+    ),
+    managedAnnual.replace(
+      "data.sec.gov/api/xbrl/companyfacts",
+      "data.sec.gov/api/xbrl/frames",
+    ),
+    `${managedAnnual}\nconst extra = "https://unreviewed.example/source";`,
+    `${managedAnnual}\nvoid globalThis.fetch(unreviewedUrl);`,
+    managedAnnual.replace("fetch(input, init)", "fetch(unreviewedUrl, init)"),
+  ];
+  if (
+    managedSecAnnualServiceCapabilityViolation(managedAnnual) !== null ||
+    managedAnnualMutations.some(
+      (changed) =>
+        changed === managedAnnual ||
+        managedSecAnnualServiceCapabilityViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed annual service capability classifier regressed",
+    );
   const compositionPath = "apps/api/src/workspace-composition-root.ts";
   const contractsPath = "packages/contracts/src/index.ts";
   const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
@@ -6845,6 +6871,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
+        path !== managedAnnualPath &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
@@ -6870,6 +6897,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-filings-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
+        path !== managedAnnualPath &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         content.includes("data.sec.gov/submissions")
@@ -6877,6 +6905,10 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         found.push(
           `${path}: only the reviewed SEC filings provider may embed the submissions transport endpoint`,
         );
+      }
+      if (path === managedAnnualPath) {
+        const issue = managedSecAnnualServiceCapabilityViolation(content);
+        if (issue !== null) found.push(`${path}: ${issue}`);
       }
     }
     if (
@@ -9008,6 +9040,60 @@ function personalSecAnnualEvidenceProviderViolation(
     : null;
 }
 
+function managedSecAnnualServiceCapabilityViolation(
+  content: string,
+): string | null {
+  const source = ts.createSourceFile(
+    "managed-annual.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const urls = new Set([
+    "`https://data.sec.gov/submissions/CIK${cik}.json`",
+    "`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`",
+  ]);
+  let invalid = false;
+  let transports = 0;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.head.text) &&
+      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression.getText(source);
+      if (callee === "fetch") {
+        transports++;
+        if (
+          node.arguments.length !== 2 ||
+          node.arguments[0]?.getText(source) !== "input" ||
+          node.arguments[1]?.getText(source) !== "init"
+        )
+          invalid = true;
+      } else if (
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || urls.size !== 0 || transports !== 1
+    ? "managed annual service must retain its two fixed SEC endpoints and sole guarded fetch sink"
+    : null;
+}
+
 function personalSecQuarterlyEvidenceProviderViolation(
   content: string,
 ): string | null {
@@ -10528,6 +10614,13 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ["lookupPersonalSecurityMasterListing", "<namespace:securityMaster>"],
     ],
     [
+      "apps/api/src/managed-sec-annual-service.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
       "apps/api/src/workspace-portfolio-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
@@ -10621,6 +10714,43 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
   ]);
+  const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
+  const managedAnnualSource = await cycle2kText(managedAnnualPath, found);
+  const managedAnnualImports = [
+    managedAnnualSource.replace(
+      "lookupPersonalSecurityMasterListing,",
+      "lookupPersonalSecurityMasterListing, searchPersonalSecurityMaster,",
+    ),
+    managedAnnualSource.replace(
+      "type ManagedSecurityMasterCatalog",
+      "ManagedSecurityMasterCatalog",
+    ),
+    `${managedAnnualSource}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
+  ];
+  if (
+    personalSecurityMasterApiImportViolation(
+      managedAnnualPath,
+      managedAnnualSource,
+      allowedApiImporters,
+    ) !== null ||
+    personalSecurityMasterApiImportViolation(
+      "apps/api/src/managed-sec-annual-service-neighbor.ts",
+      managedAnnualSource,
+      allowedApiImporters,
+    ) === null ||
+    managedAnnualImports.some(
+      (changed) =>
+        changed === managedAnnualSource ||
+        personalSecurityMasterApiImportViolation(
+          managedAnnualPath,
+          changed,
+          allowedApiImporters,
+        ) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed annual security-master import classifier regressed",
+    );
   for (const file of externalCompositionFilesToInspect) {
     const path = relative(root, file).replaceAll("\\", "/");
     const content = await readFile(file, "utf8");
@@ -10637,19 +10767,12 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     ) {
       continue;
     }
-    const expectedBindings = allowedApiImporters.get(path);
-    if (expectedBindings === undefined) {
-      found.push(
-        `${path}: only the exact reviewed security-master API production files and route test may import ${personalSecurityMasterModule}`,
-      );
-    } else if (
-      JSON.stringify(personalSecurityMasterImportBindings(content).sort()) !==
-      JSON.stringify([...expectedBindings].sort())
-    ) {
-      found.push(
-        `${path}: security-master imports must remain the exact reviewed bindings`,
-      );
-    }
+    const importIssue = personalSecurityMasterApiImportViolation(
+      path,
+      content,
+      allowedApiImporters,
+    );
+    if (importIssue !== null) found.push(importIssue);
   }
   for (const [path] of allowedApiImporters) {
     const content = await cycle2kText(path, found);
@@ -12040,6 +12163,22 @@ function personalSecurityMasterSourcePreparationExternalReference(
     if (resolved === sourcePreparationPath) return true;
   }
   return false;
+}
+
+function personalSecurityMasterApiImportViolation(
+  path: string,
+  content: string,
+  allowedApiImporters: ReadonlyMap<string, readonly string[]>,
+): string | null {
+  const expectedBindings = allowedApiImporters.get(path);
+  if (expectedBindings === undefined)
+    return `${path}: only the exact reviewed security-master API production files and route test may import ${personalSecurityMasterModule}`;
+  if (
+    JSON.stringify(personalSecurityMasterImportBindings(content).sort()) !==
+    JSON.stringify([...expectedBindings].sort())
+  )
+    return `${path}: security-master imports must remain the exact reviewed bindings`;
+  return null;
 }
 
 function personalSecurityMasterImportBindings(content: string): string[] {

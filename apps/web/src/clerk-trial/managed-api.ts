@@ -6,6 +6,9 @@ import {
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_WATCHLIST_PATH,
+  MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  parseManagedSecAnnualEvidenceRequest,
   parseManagedCatalogResolveRequest,
   parseManagedCatalogResolveResponse,
   parseManagedCatalogSearch,
@@ -20,11 +23,18 @@ import {
   type ManagedWatchlistCommand,
   type ManagedWatchlistDto,
   type ManagedWatchlistReceiptDto,
+  type PersonalSecAnnualEvidenceRequestDto,
+  type PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
+import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
 import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  annualReport: (
+    request: PersonalSecAnnualEvidenceRequestDto,
+    signal: AbortSignal,
+  ) => Promise<PersonalSecAnnualEvidenceResponseDto>;
   status: (signal: AbortSignal) => Promise<ManagedCatalogStatusDto>;
   search: (
     query: string,
@@ -45,6 +55,40 @@ export class ManagedCatalogChangedError extends Error {
   constructor() {
     super("catalog_changed");
   }
+}
+
+export class ManagedAnnualReportError extends Error {
+  constructor(readonly code: "not_configured" | "request_timeout") {
+    super(code);
+  }
+}
+
+export class ManagedAnnualCooldownError extends Error {
+  constructor(readonly nextAllowedAt: string) {
+    super("rate_limited");
+  }
+}
+
+type RequestKind = "watchlist" | "resolve" | "annual";
+
+function annualCooldown(value: unknown): never {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 2 &&
+    "error" in value &&
+    value.error === "rate_limited" &&
+    "nextAllowedAt" in value &&
+    typeof value.nextAllowedAt === "string" &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(
+      value.nextAllowedAt,
+    ) &&
+    Number.isFinite(Date.parse(value.nextAllowedAt)) &&
+    new Date(value.nextAllowedAt).toISOString() === value.nextAllowedAt
+  )
+    throw new ManagedAnnualCooldownError(value.nextAllowedAt);
+  throw new TrialApiError("invalid_response");
 }
 
 async function readJson(
@@ -95,8 +139,9 @@ async function readJson(
 function responseError(
   status: number,
   value: unknown,
-  resolve: boolean,
+  kind: RequestKind,
 ): never {
+  if (kind === "annual" && status === 429) annualCooldown(value);
   if (
     !value ||
     typeof value !== "object" ||
@@ -107,14 +152,23 @@ function responseError(
     throw new TrialApiError("invalid_response");
   }
   const error = value.error;
-  if (resolve && status === 409 && error === "catalog_changed")
+  if (kind !== "watchlist" && status === 409 && error === "catalog_changed")
     throw new ManagedCatalogChangedError();
+  if (kind === "annual") {
+    if (status === 503 && error === "not_configured")
+      throw new ManagedAnnualReportError("not_configured");
+    if (status === 408 && error === "request_timeout")
+      throw new ManagedAnnualReportError("request_timeout");
+  }
   const allowed: Record<number, readonly string[]> = {
     400: ["invalid_request"],
-    409: ["conflict", "idempotency_conflict"],
+    409: kind === "watchlist" ? ["conflict", "idempotency_conflict"] : [],
     413: ["payload_too_large"],
     415: ["unsupported_media_type"],
-    503: resolve ? ["unavailable"] : ["unavailable", "commit_unknown"],
+    503:
+      kind === "watchlist"
+        ? ["unavailable", "commit_unknown"]
+        : ["unavailable"],
   };
   if (typeof error !== "string" || !allowed[status]?.includes(error))
     throw new TrialApiError("invalid_response");
@@ -138,9 +192,12 @@ export function createManagedApi(
     path: string,
     signal: AbortSignal,
     maximum: number,
-    parse: (value: unknown) => T | null,
+    parse: (
+      value: unknown,
+      signal: AbortSignal,
+    ) => T | null | Promise<T | null>,
     body?: string,
-    resolving = false,
+    kind: RequestKind = "watchlist",
   ): Promise<T> {
     const lifetime = new AbortController();
     const abort = () => lifetime.abort();
@@ -188,8 +245,9 @@ export function createManagedApi(
         const value = await readJson(response, maximum, lifetime.signal);
         lifetime.signal.throwIfAborted();
         if (response.status !== 200)
-          responseError(response.status, value, resolving);
-        const result = parse(value);
+          responseError(response.status, value, kind);
+        const result = await parse(value, lifetime.signal);
+        lifetime.signal.throwIfAborted();
         if (result === null) throw new TrialApiError("invalid_response");
         return result;
       };
@@ -197,7 +255,9 @@ export function createManagedApi(
     } catch (error) {
       if (
         error instanceof TrialApiError ||
-        error instanceof ManagedCatalogChangedError
+        error instanceof ManagedCatalogChangedError ||
+        error instanceof ManagedAnnualCooldownError ||
+        error instanceof ManagedAnnualReportError
       )
         throw error;
       throw new TrialApiError(signal.aborted ? "aborted" : "unavailable");
@@ -210,6 +270,19 @@ export function createManagedApi(
     }
   }
   return {
+    annualReport: async (input, signal) => {
+      const captured = parseManagedSecAnnualEvidenceRequest(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+        signal,
+        MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
+        (value, lifetime) =>
+          parseSecAnnualEvidenceResponse(value, captured, lifetime),
+        requestBody(captured, MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes),
+        "annual",
+      );
+    },
     status: (signal) =>
       request(
         MANAGED_CATALOG_STATUS_PATH,
@@ -247,7 +320,7 @@ export function createManagedApi(
         MANAGED_CATALOG_RESOLVE_LIMITS.responseBytes,
         (value) => parseManagedCatalogResolveResponse(value, captured),
         body,
-        true,
+        "resolve",
       );
     },
     load: (signal) =>

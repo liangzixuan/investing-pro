@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
   ManagedCatalogSnapshotDto,
   WatchlistMembership,
@@ -11,6 +11,7 @@ import {
   type CatalogReview,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
+import { ManagedAnnualReport } from "./ManagedAnnualReport";
 
 interface SessionProps {
   session: TrialSession;
@@ -223,6 +224,8 @@ export function ManagedWorkspaceScreen({
 }: {
   workspace: ManagedWorkspace;
 }) {
+  const annualOrigin = useRef<HTMLButtonElement | null>(null);
+  const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const discovery = useSyncExternalStore(
     workspace.subscribe,
     workspace.getSnapshot,
@@ -259,12 +262,28 @@ export function ManagedWorkspaceScreen({
       </p>
       {retired ? null : (
         <>
+          <ManagedAnnualReport
+            model={workspace.annual}
+            onBack={() => {
+              workspace.annual.close();
+              if (annualOrigin.current?.isConnected)
+                annualOrigin.current.focus();
+              else discoverHeading.current?.focus();
+              annualOrigin.current = null;
+            }}
+          />
           <section
             className="trial-panel"
             aria-labelledby="managed-discover-heading"
           >
             <div className="trial-toolbar">
-              <h2 id="managed-discover-heading">Discover</h2>
+              <h2
+                id="managed-discover-heading"
+                ref={discoverHeading}
+                tabIndex={-1}
+              >
+                Discover
+              </h2>
               <button
                 className="trial-secondary"
                 disabled={discovery.busy}
@@ -300,17 +319,29 @@ export function ManagedWorkspaceScreen({
                           </small>
                         )}
                       </div>
-                      <button
-                        disabled={
-                          !editable ||
-                          !currentCatalog ||
-                          included ||
-                          (saved.draft?.memberships.length ?? 0) >= 10_000
-                        }
-                        onClick={() => workspace.add(result)}
-                      >
-                        {included ? "Added" : `Add ${result.symbol}`}
-                      </button>
+                      <div className="trial-actions">
+                        <button
+                          disabled={
+                            !editable ||
+                            !currentCatalog ||
+                            included ||
+                            (saved.draft?.memberships.length ?? 0) >= 10_000
+                          }
+                          onClick={() => workspace.add(result)}
+                        >
+                          {included ? "Added" : `Add ${result.symbol}`}
+                        </button>
+                        <button
+                          className="trial-secondary"
+                          aria-label={`Annual report for ${result.symbol}`}
+                          onClick={(event) => {
+                            annualOrigin.current = event.currentTarget;
+                            workspace.openDiscoveryAnnual(result);
+                          }}
+                        >
+                          Annual report
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -406,7 +437,7 @@ export function ManagedWorkspaceScreen({
               <div className="trial-review">
                 <p>
                   Your watchlist uses a different catalog. Review its exact
-                  listings before adding or saving.
+                  listings before adding, saving or opening an annual report.
                 </p>
               </div>
             )}
@@ -439,6 +470,17 @@ export function ManagedWorkspaceScreen({
                         }
                       />
                       <div className="trial-actions">
+                        <button
+                          className="trial-secondary"
+                          disabled={!workspace.canOpenWatchlistAnnual(member)}
+                          aria-label={`Annual report for saved ${member.symbol}`}
+                          onClick={(event) => {
+                            annualOrigin.current = event.currentTarget;
+                            workspace.openWatchlistAnnual(member);
+                          }}
+                        >
+                          Annual report
+                        </button>
                         <button
                           className="trial-secondary"
                           disabled={!editable || index === 0}

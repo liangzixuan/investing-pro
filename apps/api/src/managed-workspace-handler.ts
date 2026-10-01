@@ -8,6 +8,8 @@ import {
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_WATCHLIST_PATH,
+  MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   encodeMainWatchlistPayload,
   parseManagedCatalogResolveRequest,
   parseManagedCatalogResolveResponse,
@@ -16,11 +18,16 @@ import {
   parseManagedWatchlist,
   parseManagedWatchlistCommand,
   parseManagedWatchlistReceipt,
+  parseManagedSecAnnualEvidenceRequest,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
 import type { ManagedCatalogService } from "./managed-workspace-catalog";
+import {
+  ManagedSecAnnualServiceError,
+  type ManagedSecAnnualService,
+} from "./managed-sec-annual-service";
 import {
   WatchlistRepositoryError,
   type MainWatchlistReceipt,
@@ -35,6 +42,7 @@ export interface ManagedWorkspaceRepositoryOperation {
 export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
+  readonly annual?: ManagedSecAnnualService;
   readonly openRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedWorkspaceRepositoryOperation>;
@@ -55,6 +63,7 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_SEARCH_PATH,
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
+  MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
 ];
 
 class RequestFailure extends Error {
@@ -104,7 +113,10 @@ function decodeSearchQuery(search: string): string {
 
 function methods(path: string): readonly string[] {
   if (path === MANAGED_WATCHLIST_PATH) return ["GET", "POST"];
-  return path === MANAGED_CATALOG_RESOLVE_PATH ? ["POST"] : ["GET"];
+  return path === MANAGED_CATALOG_RESOLVE_PATH ||
+    path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+    ? ["POST"]
+    : ["GET"];
 }
 
 function admitRoute(request: Request) {
@@ -117,6 +129,7 @@ function admitRoute(request: Request) {
       [
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
+        MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
       ] as readonly string[]
     ).includes(url.pathname)
   )
@@ -283,6 +296,23 @@ function errorResponse(
   if (error instanceof RequestFailure) {
     status = error.status;
     code = error.code;
+  } else if (error instanceof ManagedSecAnnualServiceError) {
+    code = error.code;
+    status =
+      code === "invalid_request"
+        ? 400
+        : code === "catalog_changed"
+          ? 409
+          : code === "request_timeout"
+            ? 408
+            : code === "rate_limited"
+              ? 429
+              : 503;
+    if (code === "rate_limited" && error.nextAllowedAt !== undefined)
+      return new Response(
+        JSON.stringify({ error: code, nextAllowedAt: error.nextAllowedAt }),
+        { status, headers },
+      );
   } else if (
     repositoryOpened &&
     error instanceof WatchlistRepositoryError &&
@@ -332,6 +362,31 @@ export function createManagedWorkspaceHandler(
       if (auth.status !== "allowed")
         return fail(auth.status === "access_denied" ? 403 : 401, auth.status);
       requireActiveRequest(request);
+      if (route.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH) {
+        const command = parseManagedSecAnnualEvidenceRequest(
+          await readJson(
+            request,
+            MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes,
+          ),
+        );
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        if (options.annual === undefined)
+          throw new ManagedSecAnnualServiceError("not_configured");
+        const result = await options.annual.load(
+          command,
+          auth.principal,
+          request.signal,
+        );
+        options.annual.assertActive(request.signal);
+        response = jsonResponse(
+          result,
+          MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.responseBytes,
+          headers,
+        );
+        options.annual.assertActive(request.signal);
+        return response;
+      }
       if (
         route.path === MANAGED_CATALOG_STATUS_PATH ||
         route.path === MANAGED_CATALOG_SEARCH_PATH
