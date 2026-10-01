@@ -1,16 +1,45 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
-def investmentClerkTrial = providers.gradleProperty('investmentClerkTrial').orNull == 'true'
-def clerkPublishableKey = investmentClerkTrial
+def investmentClientProfile = providers.gradleProperty('investmentClientProfile').orElse('disconnected').get()
+def nativeProfiles = [
+    disconnected: [appId: 'local.investment.personal', appName: 'Investment', webDir: 'dist/mobile'],
+    'clerk-trial': [appId: 'local.investment.personal.clerktrial', appName: 'Investment Trial', webDir: 'dist/clerk-trial-android', target: 'android-trial', environment: 'development'],
+    managed: [appId: 'app.investingpro.android', appName: 'Investment', webDir: 'dist/managed-android', target: 'android-managed', environment: 'production'],
+]
+if (!nativeProfiles.containsKey(investmentClientProfile)
+    || providers.gradleProperty('investmentClerkTrial').isPresent()) {
+    throw new GradleException('Select a valid investmentClientProfile; investmentClerkTrial is no longer supported.')
+}
+def clientProfile = nativeProfiles[investmentClientProfile]
+def clerkAuthEnabled = investmentClientProfile != 'disconnected'
+def clerkPublishableKey = clerkAuthEnabled
     ? providers.environmentVariable('NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY').orNull
     : ''
-if (investmentClerkTrial && !(clerkPublishableKey ==~ /pk_test_[A-Za-z0-9_-]+/)) {
-    throw new GradleException('The Clerk trial requires its development publishable key.')
+def clerkFrontendApiOrigin = null
+if (clerkAuthEnabled) {
+    def prefix = investmentClientProfile == 'managed' ? 'pk_live_' : 'pk_test_'
+    try {
+        if (clerkPublishableKey == null || clerkPublishableKey.length() > 512
+            || !clerkPublishableKey.startsWith(prefix)) throw new IllegalArgumentException()
+        def encoded = clerkPublishableKey.substring(prefix.length())
+        if (!(encoded ==~ /[A-Za-z0-9_+\/-]+={0,2}/)) throw new IllegalArgumentException()
+        def decoded = new String(Base64.decoder.decode(encoded.replace('-', '+').replace('_', '/')), 'UTF-8')
+        if (!decoded.endsWith('$')) throw new IllegalArgumentException()
+        def host = decoded.substring(0, decoded.length() - 1)
+        if (investmentClientProfile == 'managed'
+            ? host != 'clerk.investingpro.app'
+            : !(host ==~ /[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.clerk\.accounts\.dev/)) {
+            throw new IllegalArgumentException()
+        }
+        clerkFrontendApiOrigin = 'https://' + host
+    } catch (IllegalArgumentException ignored) {
+        throw new GradleException('The Android profile requires its matching public Clerk key.')
+    }
 }
 
 def investmentVersionCode = providers.gradleProperty('investmentVersionCode').orElse('1').get()
-def investmentVersionName = providers.gradleProperty('investmentVersionName').orElse('1.0').get()
+def investmentVersionName = providers.gradleProperty('investmentVersionName').orElse(investmentClientProfile == 'managed' ? '1.0.0' : '1.0').get()
 if (!(investmentVersionCode ==~ /[1-9][0-9]{0,9}/)
     || investmentVersionCode.toLong() > 2100000000L) {
     throw new GradleException('investmentVersionCode must be an integer from 1 through 2100000000.')
@@ -36,20 +65,87 @@ def validateReleaseSigning = tasks.register('validateInvestmentReleaseSigning') 
     }
 }
 
+def validateClientAssets = tasks.register('validateInvestmentClientAssets') {
+    doLast {
+        def assetsRoot = file('src/main/assets')
+        def capacitorFile = new File(assetsRoot, 'capacitor.config.json')
+        if (!capacitorFile.isFile()) throw new GradleException('Sync the selected Capacitor profile before building.')
+        def capacitor = new groovy.json.JsonSlurper().parse(capacitorFile, 'UTF-8')
+        if (capacitor.appId != clientProfile.appId || capacitor.appName != clientProfile.appName
+            || capacitor.webDir != clientProfile.webDir || capacitor.loggingBehavior != 'none'
+            || capacitor.server != [hostname: 'localhost', androidScheme: 'https']
+            || capacitor.android != [allowMixedContent: false, webContentsDebuggingEnabled: false]) {
+            throw new GradleException('The synced Capacitor configuration does not match the Android profile.')
+        }
+        def publicRoot = new File(assetsRoot, 'public')
+        def manifestFile = new File(publicRoot, 'investment-client.json')
+        if (!clerkAuthEnabled) {
+            if (manifestFile.exists()) throw new GradleException('Authenticated assets cannot be packaged as the disconnected app.')
+            return
+        }
+        def builtManifest = rootProject.file('../' + clientProfile.webDir + '/investment-client.json')
+        if (!manifestFile.isFile() || !builtManifest.isFile()
+            || !Arrays.equals(manifestFile.bytes, builtManifest.bytes)) {
+            throw new GradleException('Native source assets must match the synced asset manifest.')
+        }
+        def manifest = new groovy.json.JsonSlurper().parse(manifestFile, 'UTF-8')
+        def expectedApi = investmentClientProfile == 'managed'
+            ? 'https://investment-managed-6abac57a.appwrite.network'
+            : 'https://investment-clerk-api-6abac57a.appwrite.network'
+        def expectedConfig = [environment: clientProfile.environment, publishableKey: clerkPublishableKey,
+            apiOrigin: expectedApi, frontendApiOrigin: clerkFrontendApiOrigin]
+        def expectedSource = providers.environmentVariable('INVESTMENT_BUILD_SHA').orNull
+        if (manifest.keySet() != ['schemaVersion', 'target', 'appId', 'config', 'sourceSha', 'assets'].toSet()
+            || manifest.schemaVersion != 1 || manifest.target != clientProfile.target
+            || manifest.appId != clientProfile.appId || manifest.config != expectedConfig
+            || !(expectedSource ==~ /[a-f0-9]{40}/) || manifest.sourceSha != expectedSource
+            || !(manifest.assets instanceof List) || manifest.assets.isEmpty()) {
+            throw new GradleException('Native assets do not match the selected source and public authentication profile.')
+        }
+        def expectedPaths = [] as Set
+        manifest.assets.each { asset ->
+            if (!(asset instanceof Map) || asset.keySet() != ['path', 'sha256'].toSet()
+                || !(asset.path instanceof String) || !(asset.path ==~ /[A-Za-z0-9][A-Za-z0-9._\/-]*/)
+                || asset.path.split('/', -1).any { it == '' || it == '.' || it == '..' }
+                || asset.path in ['investment-client.json', 'cordova.js', 'cordova_plugins.js']
+                || !(asset.sha256 ==~ /[a-f0-9]{64}/) || !expectedPaths.add(asset.path)) {
+                throw new GradleException('Invalid native asset inventory.')
+            }
+            def assetFile = new File(publicRoot, asset.path)
+            if (!assetFile.isFile() || java.nio.file.Files.isSymbolicLink(assetFile.toPath())
+                || java.security.MessageDigest.getInstance('SHA-256').digest(assetFile.bytes).encodeHex().toString() != asset.sha256) {
+                throw new GradleException('A synced native asset differs from its build manifest.')
+            }
+        }
+        if (!expectedPaths.contains('index.html')) throw new GradleException('Native index.html is missing.')
+        def actualPaths = [] as Set
+        publicRoot.eachFileRecurse(groovy.io.FileType.FILES) { assetFile ->
+            def path = publicRoot.toPath().relativize(assetFile.toPath()).toString().replace('\\', '/')
+            if (path in ['cordova.js', 'cordova_plugins.js']) {
+                if (assetFile.length() != 0) throw new GradleException('Unexpected Cordova code in the native client.')
+            } else if (path != 'investment-client.json') {
+                actualPaths.add(path)
+            }
+        }
+        if (actualPaths != expectedPaths) throw new GradleException('Unexpected or missing synced native assets.')
+    }
+}
+
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn validateClientAssets
+}
+
 android {
     namespace = "local.investment.personal"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "local.investment.personal"
-        if (investmentClerkTrial) {
-            applicationIdSuffix '.clerktrial'
-        }
+        applicationId clientProfile.appId
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode investmentVersionCode.toInteger()
         versionName investmentVersionName
-        manifestPlaceholders = [investmentAppLabel: investmentClerkTrial ? 'Investment Trial' : 'Investment']
-        buildConfigField 'boolean', 'CLERK_TRIAL_ENABLED', investmentClerkTrial.toString()
+        manifestPlaceholders = [investmentAppLabel: clientProfile.appName]
+        buildConfigField 'boolean', 'CLERK_AUTH_ENABLED', clerkAuthEnabled.toString()
         buildConfigField 'String', 'CLERK_PUBLISHABLE_KEY', '"' + clerkPublishableKey + '"'
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

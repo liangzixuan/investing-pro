@@ -17,6 +17,7 @@ import {
 import type { MainWatchlistRepository } from "./watchlist-repository";
 
 const ORIGIN = "https://app.investingpro.app";
+const NATIVE_ORIGIN = "https://localhost";
 const ISSUER = "https://clerk.investingpro.app";
 const SUBJECT = "user_inventedManagedOwner";
 const WATCHLIST = "/v1/managed/watchlist";
@@ -219,11 +220,84 @@ describe("managed production Appwrite function", () => {
     expect(f.transport).not.toHaveBeenCalled();
   });
 
+  it("admits native sessions to the same principal without changing the captured web policy", async () => {
+    const f = memoryRepository(),
+      input = configuration(),
+      run = createManagedWorkspaceFunction(input);
+    input.auth.allowedSubject = "user_changed";
+    input.auth.issuer = `${ISSUER}.invalid`;
+    input.auth.jwtKey = "changed";
+    input.auth.authorizedParties.push(NATIVE_ORIGIN);
+    input.allowedOrigins.push(NATIVE_ORIGIN);
+    for (const [origin, azp] of [
+      [ORIGIN, ORIGIN],
+      [NATIVE_ORIGIN, undefined],
+      [NATIVE_ORIGIN, NATIVE_ORIGIN],
+    ]) {
+      const c = context({ path: WATCHLIST });
+      expect(
+        await run({
+          ...c,
+          req: {
+            ...c.req,
+            headers: {
+              ...c.req.headers,
+              origin,
+              authorization: `Bearer ${token({ azp })}`,
+            },
+          },
+        }),
+      ).toMatchObject({
+        status: 200,
+        body: { version: 0 },
+        headers: { "access-control-allow-origin": origin, vary: "Origin" },
+      });
+    }
+    const principal = f.get.mock.calls[0]?.[0];
+    expect(principal?.userId).toMatch(/^clerk-[a-f0-9]{30}$/u);
+    expect(f.get.mock.calls.map(([value]) => value)).toEqual([
+      principal,
+      principal,
+      principal,
+    ]);
+    const nativeSave = writeContext();
+    expect(
+      await run({
+        ...nativeSave,
+        req: {
+          ...nativeSave.req,
+          headers: {
+            ...nativeSave.req.headers,
+            origin: NATIVE_ORIGIN,
+            authorization: `Bearer ${token({ azp: undefined })}`,
+          },
+        },
+      }),
+    ).toMatchObject({
+      status: 200,
+      body: { version: 1, payload: command().payload, replayed: true },
+    });
+    expect(f.put).toHaveBeenCalledExactlyOnceWith(principal, command());
+    expect(f.repository).toHaveBeenCalledTimes(4);
+    for (const [options] of f.repository.mock.calls)
+      expect(options.databaseId).toBe("investment_managed_watchlist_v1");
+    for (const result of f.transport.mock.results)
+      expect(
+        (
+          result.value as ReturnType<
+            typeof transportModule.createAppwriteTransport
+          >
+        ).snapshot().closed,
+      ).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["subject", { sub: "user_other" }, 403],
     ["issuer", { iss: `${ISSUER}.invalid` }, 401],
     ["party", { azp: `${ORIGIN}.invalid` }, 401],
     ["missing party", { azp: undefined }, 401],
+    ["native party", { azp: NATIVE_ORIGIN }, 401],
     ["expired", { exp: 1 }, 401],
     ["inactive", { sts: "pending" }, 401],
   ] as const)(
@@ -248,46 +322,146 @@ describe("managed production Appwrite function", () => {
     },
   );
 
-  it("does not trust execution headers as login and preserves cookie denial", async () => {
-    const f = memoryRepository(),
-      run = createManagedWorkspaceFunction(configuration()),
-      c = context({ path: WATCHLIST });
-    for (const headers of [
-      {
-        origin: ORIGIN,
-        "x-appwrite-key": "invented-key",
-        "x-appwrite-user-id": SUBJECT,
-      },
-      { ...c.req.headers, cookie: "invented=only" },
-    ]) {
-      expect(await run({ ...c, req: { ...c.req, headers } })).toMatchObject({
-        status: 401,
-      });
-    }
-    expect(f.transport).not.toHaveBeenCalled();
-  });
-
-  it("denies native origin and closed admission", async () => {
-    const f = memoryRepository(),
-      input = configuration();
-    input.auth.allowedSubject = null;
-    const run = createManagedWorkspaceFunction(input),
-      c = context({ path: WATCHLIST });
-    expect(await run(c)).toMatchObject({
-      status: 403,
-      body: { error: "access_denied" },
-    });
-    expect(
-      await run({
-        ...c,
-        req: {
-          ...c.req,
-          headers: { ...c.req.headers, origin: "https://localhost" },
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "does not trust execution headers or cookies at %s",
+    async (origin) => {
+      const f = memoryRepository(),
+        run = createManagedWorkspaceFunction(configuration()),
+        c = context({ path: WATCHLIST });
+      for (const headers of [
+        {
+          origin,
+          "x-appwrite-key": "invented-key",
+          "x-appwrite-user-id": SUBJECT,
         },
-      }),
-    ).toMatchObject({ status: 403, body: { error: "origin_denied" } });
-    expect(f.transport).not.toHaveBeenCalled();
-  });
+        {
+          ...c.req.headers,
+          origin,
+          authorization: `Bearer ${token({ azp: origin })}`,
+          cookie: "invented=only",
+        },
+      ]) {
+        expect(await run({ ...c, req: { ...c.req, headers } })).toMatchObject({
+          status: 401,
+        });
+      }
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "keeps account admission closed at %s",
+    async (origin) => {
+      const f = memoryRepository(),
+        input = configuration();
+      input.auth.allowedSubject = null;
+      const run = createManagedWorkspaceFunction(input),
+        c = context({ path: WATCHLIST });
+      expect(
+        await run({
+          ...c,
+          req: {
+            ...c.req,
+            headers: {
+              ...c.req.headers,
+              origin,
+              authorization: `Bearer ${token({ azp: origin })}`,
+            },
+          },
+        }),
+      ).toMatchObject({ status: 403, body: { error: "access_denied" } });
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["web party", { azp: ORIGIN }, "unauthenticated"],
+    ["foreign party", { azp: `${NATIVE_ORIGIN}.invalid` }, "unauthenticated"],
+    ["null party", { azp: null }, "unauthenticated"],
+    ["non-string party", { azp: [NATIVE_ORIGIN] }, "unauthenticated"],
+    ["foreign issuer", { iss: `${ISSUER}.invalid` }, "unauthenticated"],
+    ["expired", { exp: 1 }, "unauthenticated"],
+    [
+      "future",
+      { nbf: Math.floor(Date.now() / 1000) + 3600 },
+      "unauthenticated",
+    ],
+    ["missing session", { sid: undefined }, "unauthenticated"],
+    ["actor", { act: { sub: SUBJECT } }, "unauthenticated"],
+    ["pending session", { sts: "pending" }, "unauthenticated"],
+    ["other subject", { sub: "user_other" }, "access_denied"],
+  ] as const)(
+    "rejects native %s before storage",
+    async (_reason, claims, error) => {
+      const f = memoryRepository(),
+        run = createManagedWorkspaceFunction(configuration()),
+        c = context({ path: WATCHLIST });
+      expect(
+        await run({
+          ...c,
+          req: {
+            ...c.req,
+            headers: {
+              ...c.req.headers,
+              origin: NATIVE_ORIGIN,
+              authorization: `Bearer ${token({ azp: undefined, ...claims })}`,
+            },
+          },
+        }),
+      ).toMatchObject({
+        status: error === "access_denied" ? 403 : 401,
+        body: { error },
+      });
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    undefined,
+    "null",
+    `${ORIGIN}/`,
+    `${NATIVE_ORIGIN}/`,
+    `${NATIVE_ORIGIN}:443`,
+    `${NATIVE_ORIGIN}.invalid`,
+    "http://localhost",
+  ])(
+    "rejects origin %s without inspecting the body or execution authority",
+    async (origin) => {
+      const authenticate = vi.fn<authModule.ClerkTrialAuth>();
+      vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+        authenticate,
+      );
+      const f = memoryRepository(),
+        run = createManagedWorkspaceFunction(configuration()),
+        c = context();
+      Object.defineProperty(c.req, "bodyBinary", {
+        get: () => {
+          throw new Error("Body must not be read");
+        },
+      });
+      const executionKey = vi.fn(() => {
+        throw new Error("Authority must not be read");
+      });
+      const headers = { origin };
+      Object.defineProperty(headers, "x-appwrite-key", { get: executionKey });
+      Object.defineProperty(c.req, "headers", { value: headers });
+      const result = await run(c);
+      expect(result).toEqual({
+        status: 403,
+        body: { error: "origin_denied" },
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+          "x-content-type-options": "nosniff",
+          vary: "Origin",
+        },
+      });
+      expect(authenticate).not.toHaveBeenCalled();
+      expect(executionKey).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
 
   it("returns a finite missing execution authority failure before put", async () => {
     const f = memoryRepository(),
@@ -332,6 +506,19 @@ describe("managed production Appwrite function", () => {
     ).toThrow();
     expect(() =>
       createManagedWorkspaceFunction({
+        ...input,
+        auth: { ...input.auth, nativeOrigin: NATIVE_ORIGIN },
+      }),
+    ).toThrow();
+    expect(() =>
+      createManagedWorkspaceFunction({
+        ...input,
+        auth: { ...input.auth, authorizedParties: [ORIGIN, NATIVE_ORIGIN] },
+        allowedOrigins: [ORIGIN, NATIVE_ORIGIN],
+      }),
+    ).toThrow();
+    expect(() =>
+      createManagedWorkspaceFunction({
         environment: "development",
         auth: {
           ...input.auth,
@@ -347,6 +534,38 @@ describe("managed production Appwrite function", () => {
 });
 
 describe("managed binary and supplied query bridge", () => {
+  it("answers the native POST preflight without authenticating or opening storage", async () => {
+    const authenticate = vi.fn<authModule.ClerkTrialAuth>();
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(authenticate);
+    const f = memoryRepository(),
+      run = createManagedWorkspaceFunction(configuration());
+    expect(
+      await run(
+        context({
+          method: "OPTIONS",
+          path: WATCHLIST,
+          headers: {
+            origin: NATIVE_ORIGIN,
+            "access-control-request-method": "POST",
+            "access-control-request-headers": "authorization, content-type",
+          },
+        }),
+      ),
+    ).toMatchObject({
+      status: 204,
+      body: "",
+      headers: {
+        "access-control-allow-origin": NATIVE_ORIGIN,
+        "access-control-allow-methods": "GET, POST",
+        "access-control-allow-headers": "Authorization, Content-Type",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    });
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+
   it.each([undefined, null, "{}", new Uint8Array(), {}])(
     "requires a Buffer for bodyBinary %#",
     async (body) => {

@@ -1,13 +1,13 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { capacitorClientProfile } from "./client-profile";
 
-const clerkTrial = process.env.INVESTMENT_CLIENT_PROFILE === "clerk-trial";
+const profile = capacitorClientProfile(process.env.INVESTMENT_CLIENT_PROFILE);
 const config: CapacitorConfig = {
-  appId: clerkTrial
-    ? "local.investment.personal.clerktrial"
-    : "local.investment.personal",
-  appName: clerkTrial ? "Investment Trial" : "Investment",
-  webDir: clerkTrial ? "dist/clerk-trial" : "dist/mobile",
+  appId: profile.appId,
+  appName: profile.appName,
+  webDir: profile.webDir,
   loggingBehavior: "none",
+  server: { hostname: "localhost", androidScheme: "https" },
   android: {
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,

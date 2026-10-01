@@ -41,6 +41,15 @@ export interface ManagedWorkspaceHandlerOptions {
 }
 
 export const MANAGED_WORKSPACE_ORIGIN = "https://app.investingpro.app";
+export const MANAGED_WORKSPACE_NATIVE_ORIGIN = "https://localhost";
+
+export function getManagedWorkspaceOrigin(origin: string | null | undefined) {
+  return origin === MANAGED_WORKSPACE_ORIGIN ||
+    origin === MANAGED_WORKSPACE_NATIVE_ORIGIN
+    ? origin
+    : null;
+}
+
 const PATHS: readonly string[] = [
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
@@ -301,19 +310,17 @@ export function createManagedWorkspaceHandler(
 ): (request: Request) => Promise<Response> {
   const { auth: authenticate, catalog, openRepository } = options;
   return async (request) => {
-    const originAllowed =
-      request.headers.get("origin") === MANAGED_WORKSPACE_ORIGIN;
+    const origin = getManagedWorkspaceOrigin(request.headers.get("origin"));
     const headers = new Headers({
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "x-content-type-options": "nosniff",
       vary: "Origin",
     });
-    if (originAllowed)
-      headers.set("access-control-allow-origin", MANAGED_WORKSPACE_ORIGIN);
+    if (origin !== null) headers.set("access-control-allow-origin", origin);
     const fail = (status: number, code: string) =>
       errorResponse(new RequestFailure(status, code), false, false, headers);
-    if (!originAllowed) return fail(403, "origin_denied");
+    if (origin === null) return fail(403, "origin_denied");
     let operation: ManagedWorkspaceRepositoryOperation | undefined;
     let writeStarted = false;
     let response: Response;

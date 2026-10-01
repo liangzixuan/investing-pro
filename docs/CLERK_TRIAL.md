@@ -68,10 +68,11 @@ The official Clerk key parser checks the environment and Frontend API host.
 Its direct `@clerk/shared` dependency is included in the runtime notice mapping
 and the client's bundled license texts.
 Development uses its matching `*.clerk.accounts.dev` host and the reviewed API
-`https://investment-clerk-api-6abac57a.appwrite.network`. Production requires
-`https://clerk.investingpro.app` and `https://api.investingpro.app`.
-The production API domain and HTTPS boundary checks are accepted; authenticated
-account access is a separate deployment decision.
+`https://investment-clerk-api-6abac57a.appwrite.network`. The connected production client requires
+`https://clerk.investingpro.app` and
+`https://investment-managed-6abac57a.appwrite.network`. The original production
+demo API remains at `https://api.investingpro.app`; it is not a fallback target.
+Account admission and running deployments are recorded in workspace CURRENT.
 Environment-file discovery and public-directory copying remain disabled.
 The client accepts no server key, account allowlist or storage routing fields.
 
@@ -102,7 +103,9 @@ denies every account before storage opens; a configured ID admits only a valid
 active session from that exact production account. Confirm the account in the
 correct production instance before building its server configuration. Email,
 client-supplied identity and a development user ID cannot confer access. Keep
-the account ID out of the public client. No native-origin exception is allowed.
+the account ID out of the public client. This demo configuration admits no native
+origin. The separate managed function derives a fixed native verifier from the
+same checked production identity, without widening this configuration schema.
 The separate production database and service are provisioned and have accepted
 synthetic transaction evidence. They do not connect the full research workspace
 or migrate owner data.
@@ -114,14 +117,22 @@ SDK nor a watchlist session. Only `https://app.investingpro.app` mounts the
 production Clerk client. BrowserStack staging acceptance covers this preview;
 real sign-in, shared saves and session behavior require canonical-origin checks.
 
-Production client configuration is rejected on a native platform before either
-SDK adapter mounts. For the accepted development Android trial, set
-`INVESTMENT_CLIENT_PROFILE=clerk-trial` only for Capacitor sync and build with
-`-PinvestmentClerkTrial=true`. Its application ID is
-`local.investment.personal.clerktrial`; it can coexist with the disconnected app.
-The default profile retains `local.investment.personal`. No secret key belongs
-in either client bundle or an Android build. Synthetic configuration/build checks
-prove composition, not service-issued key ownership or production sign-in.
+The browser build rejects native execution. The explicit `clerk-trial` and
+`managed` client profiles bake separate Android targets and asset directories;
+the former uses development configuration, the latter production configuration.
+Set `INVESTMENT_CLIENT_PROFILE` consistently for Vite and Capacitor, then select
+the same `investmentClientProfile` Gradle property. Unknown or mixed profiles
+fail before packaging. The default disconnected package remains separate.
+
+Production Android uses package `app.investingpro.android` and the existing
+native SDK/session adapter with the managed screen. The managed function selects
+a separate verifier for exact `https://localhost`: absent native authorized-party
+claims are permitted, present claims must match the native origin. Web requests
+still require the exact canonical web authorized party. Signature, issuer,
+configured subject and session checks remain shared; both paths derive the same
+account principal. See [Android client](./ANDROID_CLIENT.md) for signing,
+registration, build identity and device acceptance. Source and synthetic checks
+do not establish a production Pixel session.
 
 ## Private storage proof profiles
 

@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.stubGlobal("document", { getElementById: () => container });
   vi.stubGlobal("window", { location: { origin: productionOrigin } });
   vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", development);
+  vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", "web");
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -64,6 +65,8 @@ describe("Clerk profile entry point", () => {
   );
 
   it("selects only the native adapter for the development Android profile", async () => {
+    vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", "android-trial");
+    vi.stubGlobal("window", { location: { origin: "https://localhost" } });
     mounts.native.mockReturnValue(true);
     mounts.platform.mockReturnValue("android");
     await import("./main");
@@ -83,7 +86,7 @@ describe("Clerk profile entry point", () => {
       mounts.native.mockReturnValue(true);
       mounts.platform.mockReturnValue(platform);
       await expect(import("./main")).rejects.toThrow(
-        "The production Clerk profile supports web only.",
+        "The web client cannot start as an installed app.",
       );
       expect(mounts.createRoot).not.toHaveBeenCalled();
       expect(mounts.render).not.toHaveBeenCalled();
@@ -93,10 +96,11 @@ describe("Clerk profile entry point", () => {
   );
 
   it("keeps unsupported development native platforms rejected", async () => {
+    vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", "android-trial");
     mounts.native.mockReturnValue(true);
     mounts.platform.mockReturnValue("ios");
     await expect(import("./main")).rejects.toThrow(
-      "The installed trial supports Android only.",
+      "The installed client requires its matching Android profile and origin.",
     );
     expect(mounts.createRoot).not.toHaveBeenCalled();
   });
@@ -160,7 +164,7 @@ describe("Clerk profile entry point", () => {
     vi.stubGlobal("window", { location: { origin: stagingOrigin } });
     mounts.native.mockReturnValue(true);
     await expect(import("./main")).rejects.toThrow(
-      "The production Clerk profile supports web only.",
+      "The web client cannot start as an installed app.",
     );
     expect(mounts.createRoot).not.toHaveBeenCalled();
   });
@@ -194,4 +198,53 @@ describe("Clerk profile entry point", () => {
     await expect(import("./main")).rejects.toThrow("Missing trial root.");
     expect(mounts.createRoot).not.toHaveBeenCalled();
   });
+
+  it("mounts production native only with its compiled target and local Android origin", async () => {
+    vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", "android-managed");
+    vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", production);
+    vi.stubGlobal("window", { location: { origin: "https://localhost" } });
+    mounts.native.mockReturnValue(true);
+    mounts.platform.mockReturnValue("android");
+    await import("./main");
+    const element = mounts.render.mock.calls[0]?.[0] as ReactElement<{
+      config: ClerkTrialConfig;
+    }>;
+    expect(element.type).toBe(mounts.nativeApp);
+    expect(element.props.config).toEqual(production);
+    expect(mounts.render).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [false, "web", "https://localhost", production],
+    [true, "ios", "https://localhost", production],
+    [true, "android", productionOrigin, production],
+    [true, "android", stagingOrigin, production],
+    [true, "android", "http://localhost", production],
+    [true, "android", "https://localhost:443", production],
+    [true, "android", "https://localhost", development],
+  ])(
+    "rejects mismatched managed native execution %# before mounting",
+    async (native, platform, origin, config) => {
+      vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", "android-managed");
+      vi.stubGlobal("__INVESTMENT_CLERK_TRIAL_CONFIG__", config);
+      vi.stubGlobal("window", { location: { origin } });
+      mounts.native.mockReturnValue(native);
+      mounts.platform.mockReturnValue(platform);
+      await expect(import("./main")).rejects.toThrow(
+        "matching Android profile and origin",
+      );
+      expect(mounts.createRoot).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([undefined, "", "managed", "android", null])(
+    "rejects uncompiled client target %#",
+    async (target) => {
+      vi.stubGlobal("__INVESTMENT_CLIENT_TARGET__", target);
+      await expect(import("./main")).rejects.toThrow(
+        "Invalid compiled client target.",
+      );
+      expect(mounts.createRoot).not.toHaveBeenCalled();
+    },
+  );
 });

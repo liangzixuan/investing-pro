@@ -6,9 +6,11 @@ import { NativeTrialSessionStore } from "./native-session";
 import type { InvestmentAuthPlugin } from "./native-session";
 import { TrialFrame } from "./TrialFrame";
 import { TrialSessionScreen } from "./TrialScreen";
+import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 
 export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
   const checked = validateTrialConfig(config);
+  const managed = checked.environment === "production";
   const [store, setStore] = useState<NativeTrialSessionStore | null>(null);
   useEffect(() => {
     const next = new NativeTrialSessionStore(
@@ -19,9 +21,13 @@ export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
     return () => next.dispose();
   }, []);
   return store ? (
-    <NativeSession store={store} apiOrigin={checked.apiOrigin} />
+    <NativeSession
+      store={store}
+      apiOrigin={checked.apiOrigin}
+      managed={managed}
+    />
   ) : (
-    <TrialFrame>
+    <TrialFrame managed={managed}>
       <p role="status">Checking the installed session…</p>
     </TrialFrame>
   );
@@ -30,9 +36,11 @@ export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
 function NativeSession({
   store,
   apiOrigin,
+  managed,
 }: {
   store: NativeTrialSessionStore;
   apiOrigin: string;
+  managed: boolean;
 }) {
   const state = useSyncExternalStore(
     store.subscribe,
@@ -40,8 +48,9 @@ function NativeSession({
     store.getSnapshot,
   );
   const session = store.session();
+  const SessionScreen = managed ? ManagedSessionScreen : TrialSessionScreen;
   return (
-    <TrialFrame>
+    <TrialFrame managed={managed}>
       {session ? (
         <>
           {state.message && (
@@ -49,7 +58,7 @@ function NativeSession({
               {state.message}
             </p>
           )}
-          <TrialSessionScreen
+          <SessionScreen
             key={state.auth.generation}
             apiOrigin={apiOrigin}
             session={session}
@@ -65,7 +74,9 @@ function NativeSession({
             {state.message ||
               (state.auth.status === "loading"
                 ? "Checking your session…"
-                : "Use the secure Clerk sign-in flow to join the trial.")}
+                : managed
+                  ? "Sign in to open your shared watchlist."
+                  : "Use the secure Clerk sign-in flow to join the trial.")}
           </p>
           <button
             type="button"

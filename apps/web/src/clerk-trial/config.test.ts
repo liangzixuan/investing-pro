@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   trialFrontendApiOrigin,
   validateTrialConfig,
@@ -21,6 +21,10 @@ const production: ClerkTrialConfig = {
   frontendApiOrigin: "https://clerk.investingpro.app",
 };
 const failure = "Invalid public Clerk trial configuration.";
+beforeEach(() => {
+  vi.stubEnv("INVESTMENT_CLIENT_PROFILE", undefined);
+  vi.stubEnv("INVESTMENT_BUILD_SHA", undefined);
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -172,6 +176,7 @@ describe("Vite public profile composition", () => {
       expect(vite.envDir).toBe(false);
       expect(vite.publicDir).toBe(false);
       expect(vite.build?.sourcemap).toBe(false);
+      expect(vite.define?.__INVESTMENT_CLIENT_TARGET__).toBe('"web"');
       expect(vite.build?.outDir?.replaceAll("\\", "/")).toMatch(
         config.environment === "production"
           ? /\/dist\/clerk-production$/u
@@ -192,6 +197,68 @@ describe("Vite public profile composition", () => {
       await expect(import("../../vite.clerk-trial.config")).rejects.toThrow(
         failure,
       );
+    },
+  );
+
+  it.each([
+    ["managed", production, "android-managed", "managed-android"],
+    ["clerk-trial", development, "android-trial", "clerk-trial-android"],
+  ] as const)(
+    "bakes %s into a separate native output",
+    async (selector, config, target, directory) => {
+      vi.stubEnv("INVESTMENT_CLIENT_PROFILE", selector);
+      vi.stubEnv("INVESTMENT_BUILD_SHA", "a".repeat(40));
+      vi.stubEnv("INVESTMENT_CLERK_ENVIRONMENT", config.environment);
+      vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", config.publishableKey);
+      vi.stubEnv("INVESTMENT_CLERK_TRIAL_API_ORIGIN", config.apiOrigin);
+      const { default: vite } = await import("../../vite.clerk-trial.config");
+      expect(vite.define?.__INVESTMENT_CLIENT_TARGET__).toBe(
+        JSON.stringify(target),
+      );
+      expect(
+        JSON.parse(String(vite.define?.__INVESTMENT_CLERK_TRIAL_CONFIG__)),
+      ).toEqual(config);
+      expect(
+        vite.build?.outDir
+          ?.replaceAll("\\", "/")
+          .endsWith(`/dist/${directory}`),
+      ).toBe(true);
+      const plugin = (
+        vite.plugins as Array<{
+          name: string;
+          transformIndexHtml?: () => Array<{ attrs: { content: string } }>;
+        }>
+      ).find(({ name }) => name === "isolated-clerk-trial");
+      expect(plugin?.transformIndexHtml?.()[0]?.attrs.content).toBe(
+        [
+          "default-src 'none'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          `connect-src 'self' ${config.apiOrigin}`,
+          "img-src 'self' data:",
+          "font-src 'self'",
+          "frame-src 'none'",
+          "base-uri 'none'",
+          "form-action 'self'",
+        ].join("; "),
+      );
+    },
+  );
+
+  it.each([
+    ["managed", development, "a".repeat(40)],
+    ["clerk-trial", production, "a".repeat(40)],
+    ["unknown", production, "a".repeat(40)],
+    ["managed", production, undefined],
+  ] as const)(
+    "rejects native selector/environment/source mismatch %# before build",
+    async (selector, config, source) => {
+      vi.stubEnv("INVESTMENT_CLIENT_PROFILE", selector);
+      vi.stubEnv("INVESTMENT_BUILD_SHA", source);
+      vi.stubEnv("INVESTMENT_CLERK_ENVIRONMENT", config.environment);
+      vi.stubEnv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", config.publishableKey);
+      vi.stubEnv("INVESTMENT_CLERK_TRIAL_API_ORIGIN", config.apiOrigin);
+      await expect(import("../../vite.clerk-trial.config")).rejects.toThrow();
     },
   );
 });
