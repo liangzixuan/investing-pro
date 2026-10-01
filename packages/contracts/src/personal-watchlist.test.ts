@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  encodeMainWatchlistPayload,
   isMainWatchlistPayload,
   membershipMatchesResult,
+  normalizeWatchlistNote,
   type MainWatchlistPayload,
   type WatchlistMembership,
 } from "./index";
@@ -34,6 +36,48 @@ function payload(): MainWatchlistPayload {
 }
 
 describe("shared main watchlist payload", () => {
+  it("encodes the existing schema order independently of object insertion order", () => {
+    const original = payload();
+    const shuffled: Record<string, unknown> = Object.fromEntries(
+      Object.entries(original).reverse(),
+    );
+    shuffled.memberships = original.memberships.map((entry) =>
+      Object.fromEntries(Object.entries(entry).reverse()),
+    );
+    expect(isMainWatchlistPayload(shuffled)).toBe(true);
+    const encoded = encodeMainWatchlistPayload(
+      shuffled as MainWatchlistPayload,
+    );
+    expect(encoded).toBe(encodeMainWatchlistPayload(original));
+    expect(encoded).toBe(
+      '{"memberships":[{"country":"US","exchangeMic":"XNAS","instrumentType":"common_stock","issuerId":"issuer-a","issuerName":"Example issuer","listingId":"listing-a","note":"Review cash flow","securityId":"security-a","securityName":"Example common stock","shareClassId":"class-a","shareClassName":"Common","symbol":"EXAMPLE"}],"name":"My Watchlist","schemaVersion":1,"snapshotSha256":"sha256:' +
+        "a".repeat(64) +
+        '"}',
+    );
+    const ordered = {
+      ...original,
+      memberships: [membership("one"), membership("two")],
+    };
+    expect(encodeMainWatchlistPayload(ordered)).not.toBe(
+      encodeMainWatchlistPayload({
+        ...ordered,
+        memberships: [...ordered.memberships].reverse(),
+      }),
+    );
+  });
+
+  it("exports the existing note normalization without weakening saved validation", () => {
+    expect(normalizeWatchlistNote("  Cafe\u0301  ")).toBe("Café");
+    expect(normalizeWatchlistNote("   ")).toBe("");
+    expect(normalizeWatchlistNote("😀".repeat(2000))).toBe("😀".repeat(2000));
+    for (const note of [
+      "bad\nline",
+      "bad\u200bformat",
+      "\ud800",
+      "x".repeat(2001),
+    ])
+      expect(normalizeWatchlistNote(note)).toBeNull();
+  });
   it("accepts empty and ordered distinct listings without conflating symbols", () => {
     expect(isMainWatchlistPayload({ ...payload(), memberships: [] })).toBe(
       true,

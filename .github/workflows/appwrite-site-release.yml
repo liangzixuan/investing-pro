@@ -81,7 +81,7 @@ jobs:
           INVESTMENT_BUILD_SHA: ${{ github.sha }}
           INVESTMENT_CLERK_ENVIRONMENT: production
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_live_Y2xlcmsuaW52ZXN0aW5ncHJvLmFwcCQ
-          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app
+          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network
         run: pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts
 
       - name: Package the exact artifact

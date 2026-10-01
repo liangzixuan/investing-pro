@@ -79,7 +79,7 @@ Build with the repository's pinned Node and pnpm versions:
 
 ```text
 pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts
-node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts <reviewed-config-path>
+node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts demo <reviewed-config-path>
 ```
 
 The function input contains `environment`, `auth` and `allowedOrigins`. Validation

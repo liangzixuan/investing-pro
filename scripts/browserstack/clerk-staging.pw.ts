@@ -85,7 +85,7 @@ test("exact-build Clerk staging boots without auth or data requests", async ({
       "This preview does not start a session or load saved data.",
     );
     await expect(page.getByRole("main")).toContainText(
-      "Synthetic data only. Your local research and vault are separate.",
+      "Discover companies, keep research notes, and pick up your watchlist on another device.",
     );
     await expect(page.locator("input, textarea, iframe")).toHaveCount(0);
     await expect(page.getByRole("button")).toHaveCount(1);

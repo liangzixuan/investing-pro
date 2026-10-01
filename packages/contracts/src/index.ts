@@ -1,7 +1,9 @@
 export type DataMode = "synthetic";
 export {
+  encodeMainWatchlistPayload,
   isMainWatchlistPayload,
   membershipMatchesResult,
+  normalizeWatchlistNote,
   type MainWatchlistPayload,
   type WatchlistMembership,
 } from "./personal-watchlist";

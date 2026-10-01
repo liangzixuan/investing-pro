@@ -17,7 +17,7 @@ const development: ClerkTrialConfig = {
 const production: ClerkTrialConfig = {
   environment: "production",
   publishableKey: key("live", "clerk.investingpro.app"),
-  apiOrigin: "https://api.investingpro.app",
+  apiOrigin: "https://investment-managed-6abac57a.appwrite.network",
   frontendApiOrigin: "https://clerk.investingpro.app",
 };
 const failure = "Invalid public Clerk trial configuration.";
@@ -28,6 +28,14 @@ afterEach(() => {
 });
 
 describe("public Clerk environment configuration", () => {
+  it("rejects the previous production trial API instead of falling back", () => {
+    expect(() =>
+      validateTrialConfig({
+        ...production,
+        apiOrigin: "https://api.investingpro.app",
+      }),
+    ).toThrowError(new Error(failure));
+  });
   it.each([development, production])(
     "returns a checked copy for $environment",
     (config) => {
@@ -118,13 +126,13 @@ describe("public Clerk environment configuration", () => {
   });
 
   it.each([
-    "http://api.investingpro.app",
-    "https://api.investingpro.app/",
-    "https://api.investingpro.app:443",
-    "https://API.investingpro.app",
-    "https://user:secret@api.investingpro.app",
-    "https://api.investingpro.app?query",
-    "https://api.investingpro.app#fragment",
+    "http://investment-managed-6abac57a.appwrite.network",
+    "https://investment-managed-6abac57a.appwrite.network/",
+    "https://investment-managed-6abac57a.appwrite.network:443",
+    "https://INVESTMENT-MANAGED-6ABAC57A.appwrite.network",
+    "https://user:secret@investment-managed-6abac57a.appwrite.network",
+    "https://investment-managed-6abac57a.appwrite.network?query",
+    "https://investment-managed-6abac57a.appwrite.network#fragment",
     "https://localhost",
   ])("requires the exact API origin: %s", (apiOrigin) => {
     expect(() =>

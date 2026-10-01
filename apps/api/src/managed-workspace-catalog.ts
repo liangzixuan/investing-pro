@@ -1,13 +1,18 @@
 import {
   MANAGED_CATALOG_LIMITS,
+  parseManagedCatalogResolveRequest,
+  parseManagedCatalogResolveResponse,
   parseManagedCatalogSearch,
   parseManagedCatalogStatus,
   type ManagedCatalogSearchDto,
   type ManagedCatalogStatusDto,
+  type ManagedCatalogResolveRequest,
+  type ManagedCatalogResolveResponse,
 } from "@research-cockpit/contracts";
 import {
   PersonalSecurityMasterError,
   admitManagedSecurityMasterSnapshot,
+  lookupPersonalSecurityMasterListing,
   searchPersonalSecurityMaster,
   type ManagedSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
@@ -19,6 +24,10 @@ export interface ManagedCatalogService {
   status(): ManagedCatalogStatusDto;
   /** A rejected query returns null; an unavailable catalog throws. */
   search(query: string): ManagedCatalogSearchDto | null;
+  /** Null means the requested digest is no longer current. */
+  resolve(
+    request: ManagedCatalogResolveRequest,
+  ): ManagedCatalogResolveResponse | null;
 }
 
 let admittedCatalog: ManagedSecurityMasterCatalog | undefined;
@@ -63,6 +72,43 @@ export function createManagedCatalogService(): ManagedCatalogService {
 
   return Object.freeze({
     status: () => status,
+    resolve(input: ManagedCatalogResolveRequest) {
+      const request = parseManagedCatalogResolveRequest(input);
+      if (request === null) throw new Error("Invalid catalog resolution");
+      if (request.snapshotSha256 !== catalog.snapshotSha256) return null;
+      const response = parseManagedCatalogResolveResponse(
+        {
+          snapshotSha256: catalog.snapshotSha256,
+          results: request.listingIds.map((listingId) => {
+            // Historical saved IDs outside the current core grammar are absent.
+            // A core lookup failure for a valid current ID must still propagate.
+            const found = /^[a-z0-9][a-z0-9._:-]{2,127}$/u.test(listingId)
+              ? lookupPersonalSecurityMasterListing(catalog, listingId)
+              : null;
+            const listing =
+              found === null
+                ? null
+                : {
+                    country: found.country,
+                    exchangeMic: found.exchangeMic,
+                    instrumentType: found.instrumentType,
+                    issuerId: found.issuerId,
+                    issuerName: found.issuerName,
+                    listingId: found.listingId,
+                    securityId: found.securityId,
+                    securityName: found.securityName,
+                    shareClassId: found.shareClassId,
+                    shareClassName: found.shareClassName,
+                    symbol: found.symbol,
+                  };
+            return { listingId, listing };
+          }),
+        },
+        request,
+      );
+      if (response === null) throw new Error("Managed catalog unavailable");
+      return response;
+    },
     search(query: string) {
       let result;
       try {

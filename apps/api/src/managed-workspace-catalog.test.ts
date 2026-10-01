@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { lookupPersonalSecurityMasterListing } from "@research-cockpit/personal-security-master";
-import { describe, expect, it } from "vitest";
+import * as securityMaster from "@research-cockpit/personal-security-master";
+import { describe, expect, it, vi } from "vitest";
 
 import manifest from "./managed-catalog/2026-09-30.manifest.json";
 import snapshot from "./managed-catalog/2026-09-30.snapshot.json";
@@ -11,6 +12,91 @@ import {
 } from "./managed-workspace-catalog";
 
 describe("fixed managed catalog", () => {
+  it("resolves exact listings in request order beyond the search result cap", () => {
+    const service = createManagedCatalogService();
+    const selected = service.search("GOOGL")!.results[0]!;
+    const listingIds = [
+      ...Array.from({ length: 49 }, (_, index) => `absent-${index}`),
+      selected.listingId,
+    ];
+    const resolved = service.resolve({
+      snapshotSha256: service.status().snapshot.snapshotSha256,
+      listingIds,
+    })!;
+    expect(resolved.results).toHaveLength(50);
+    expect(resolved.results.map((entry) => entry.listingId)).toEqual(
+      listingIds,
+    );
+    expect(
+      resolved.results.slice(0, 49).every((entry) => entry.listing === null),
+    ).toBe(true);
+    expect(resolved.results[49]?.listing?.symbol).toBe("GOOGL");
+    expect(Object.keys(resolved.results[49]!.listing!)).toHaveLength(11);
+    expect(resolved.results[49]?.listing).not.toHaveProperty("cik");
+    expect(Object.isFrozen(resolved.results[49]?.listing)).toBe(true);
+  });
+
+  it("rejects stale digests and invalid batches before lookup", () => {
+    const service = createManagedCatalogService();
+    const lookup = vi.spyOn(
+      securityMaster,
+      "lookupPersonalSecurityMasterListing",
+    );
+    try {
+      expect(
+        service.resolve({
+          snapshotSha256: `sha256:${"a".repeat(64)}`,
+          listingIds: ["unknown"],
+        }),
+      ).toBeNull();
+      expect(() =>
+        service.resolve({
+          snapshotSha256: service.status().snapshot.snapshotSha256,
+          listingIds: Array.from(
+            { length: 51 },
+            (_, index) => `listing-${index}`,
+          ),
+        }),
+      ).toThrow("Invalid catalog resolution");
+      expect(() =>
+        service.resolve({
+          snapshotSha256: service.status().snapshot.snapshotSha256,
+          listingIds: ["same", "same"],
+        }),
+      ).toThrow("Invalid catalog resolution");
+      expect(lookup).not.toHaveBeenCalled();
+    } finally {
+      lookup.mockRestore();
+    }
+  });
+
+  it("returns absent for saved-only IDs but preserves valid-ID lookup failures", () => {
+    const service = createManagedCatalogService();
+    const lookup = vi.spyOn(
+      securityMaster,
+      "lookupPersonalSecurityMasterListing",
+    );
+    try {
+      const request = {
+        snapshotSha256: service.status().snapshot.snapshotSha256,
+        listingIds: ["X", "aa", "SAVED"],
+      };
+      expect(service.resolve(request)?.results).toEqual(
+        request.listingIds.map((listingId) => ({ listingId, listing: null })),
+      );
+      expect(lookup).not.toHaveBeenCalled();
+      lookup.mockImplementationOnce(() => {
+        throw new Error("lookup failed");
+      });
+      expect(() =>
+        service.resolve({ ...request, listingIds: ["valid-current-id"] }),
+      ).toThrow("lookup failed");
+      expect(lookup).toHaveBeenCalledTimes(1);
+    } finally {
+      lookup.mockRestore();
+    }
+  });
+
   it("binds the formatted build input to the original canonical snapshot", () => {
     const digest = `sha256:${createHash("sha256")
       .update(`${JSON.stringify(snapshot)}\n`)

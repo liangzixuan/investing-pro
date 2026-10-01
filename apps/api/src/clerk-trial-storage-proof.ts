@@ -47,7 +47,8 @@ const NOTES = {
   overlap: "Invented proof overlap winner",
   unknown: "Invented proof acknowledged later",
 };
-export type ClerkTrialProofEnvironment = "development" | "production";
+export type ClerkTrialProofEnvironment =
+  "development" | "production" | "managed";
 export interface ClerkTrialProofProfile {
   readonly environment: ClerkTrialProofEnvironment;
   readonly database: string;
@@ -96,11 +97,17 @@ const PROFILES = {
     "proof-watchlist-prod-20260930-v1",
     "proof-production-20260930-v1-",
   ),
+  managed: proofProfile(
+    "managed",
+    "investment_managed_watchlist_v1",
+    "proof-watchlist-managed-20261001-v1",
+    "proof-managed-20261001-v1-",
+  ),
 };
 export function validateClerkTrialProofProfile(
   value: unknown,
 ): ClerkTrialProofProfile {
-  if (value !== "development" && value !== "production")
+  if (value !== "development" && value !== "production" && value !== "managed")
     throw new Error("Invalid proof profile");
   return PROFILES[value];
 }

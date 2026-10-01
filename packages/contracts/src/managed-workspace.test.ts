@@ -3,11 +3,23 @@ import {
   MANAGED_CATALOG_LIMITS,
   MANAGED_CATALOG_SEARCH_PATH,
   MANAGED_CATALOG_STATUS_PATH,
+  MANAGED_CATALOG_RESOLVE_PATH,
+  MANAGED_CATALOG_RESOLVE_LIMITS,
+  MANAGED_WATCHLIST_PATH,
+  MANAGED_WATCHLIST_LIMITS,
+  encodeMainWatchlistPayload,
+  parseManagedWatchlistCommand,
+  parseManagedWatchlist,
+  parseManagedWatchlistReceipt,
+  parseManagedCatalogResolveRequest,
+  parseManagedCatalogResolveResponse,
   parseManagedCatalogSearch,
   parseManagedCatalogStatus,
   type ManagedCatalogCoverageDto,
   type ManagedCatalogSnapshotDto,
   type PersonalSecurityMasterSearchResultDto,
+  type MainWatchlistPayload,
+  type WatchlistMembership,
 } from "./index";
 
 function coverage(): ManagedCatalogCoverageDto {
@@ -660,5 +672,583 @@ describe("managed catalog wire contract", () => {
     expect(
       new TextEncoder().encode(JSON.stringify(escaped)).byteLength,
     ).toBeLessThan(responseBound);
+  });
+});
+
+function savedMember(listingId = "saved-listing"): WatchlistMembership {
+  return {
+    country: "US",
+    exchangeMic: "XNYS",
+    instrumentType: "common_stock",
+    issuerId: "SavedIssuer",
+    issuerName: "Saved issuer",
+    listingId,
+    note: "Saved note",
+    securityId: "SavedSecurity",
+    securityName: "Saved common",
+    shareClassId: "SavedClass",
+    shareClassName: "Common",
+    symbol: "OLD",
+  };
+}
+
+function savedPayload(): MainWatchlistPayload {
+  return {
+    schemaVersion: 1,
+    name: "My Watchlist",
+    snapshotSha256: `sha256:${"b".repeat(64)}`,
+    memberships: [savedMember()],
+  };
+}
+
+function command() {
+  return {
+    expectedVersion: 4,
+    idempotencyKey: "invented-save-key-0001",
+    payload: savedPayload(),
+  };
+}
+
+function listing(listingId = "listing-one") {
+  const source = result(listingId);
+  return {
+    country: source.country,
+    exchangeMic: source.exchangeMic,
+    instrumentType: source.instrumentType,
+    issuerId: source.issuerId,
+    issuerName: source.issuerName,
+    listingId: source.listingId,
+    securityId: source.securityId,
+    securityName: source.securityName,
+    shareClassId: source.shareClassId,
+    shareClassName: source.shareClassName,
+    symbol: source.symbol,
+  };
+}
+
+function resolveRequest() {
+  return {
+    snapshotSha256: snapshot().snapshotSha256,
+    listingIds: ["listing-one", "OLD"],
+  };
+}
+
+function resolveResponse() {
+  return {
+    snapshotSha256: snapshot().snapshotSha256,
+    results: [
+      { listingId: "listing-one", listing: listing() },
+      { listingId: "OLD", listing: null },
+    ],
+  };
+}
+
+const utf8Bytes = (value: unknown) =>
+  new TextEncoder().encode(JSON.stringify(value)).byteLength;
+
+describe("managed full watchlist wire contract", () => {
+  it("captures frozen historical payloads without current catalog admission", () => {
+    const input = command();
+    const parsed = parseManagedWatchlistCommand(input)!;
+    expect(parsed).toEqual(input);
+    expect(
+      parseManagedWatchlist({ version: 4, payload: input.payload }),
+    ).toEqual({ version: 4, payload: input.payload });
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.payload)).toBe(true);
+    expect(Object.isFrozen(parsed.payload.memberships)).toBe(true);
+    expect(Object.isFrozen(parsed.payload.memberships[0])).toBe(true);
+    Object.assign(input.payload.memberships[0]!, { note: "Caller changed" });
+    input.expectedVersion = 30;
+    expect(parsed.expectedVersion).toBe(4);
+    expect(parsed.payload.memberships[0]?.note).toBe("Saved note");
+  });
+
+  it("admits empty version zero and safe maximum read/write versions", () => {
+    const empty = { ...savedPayload(), memberships: [] };
+    expect(
+      parseManagedWatchlist({ version: 0, payload: empty }),
+    ).not.toBeNull();
+    expect(
+      parseManagedWatchlist({ version: 0, payload: savedPayload() }),
+    ).toBeNull();
+    expect(
+      parseManagedWatchlist({
+        version: Number.MAX_SAFE_INTEGER,
+        payload: savedPayload(),
+      }),
+    ).not.toBeNull();
+    expect(
+      parseManagedWatchlistCommand({
+        ...command(),
+        expectedVersion: Number.MAX_SAFE_INTEGER - 1,
+      }),
+    ).not.toBeNull();
+    expect(MANAGED_WATCHLIST_PATH).toBe("/v1/managed/watchlist");
+  });
+
+  it.each([-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, "4", null])(
+    "rejects invalid read and command version %s",
+    (version) => {
+      expect(
+        parseManagedWatchlist({ version, payload: savedPayload() }),
+      ).toBeNull();
+      expect(
+        parseManagedWatchlistCommand({
+          ...command(),
+          expectedVersion: version,
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it.each([
+    "",
+    "short",
+    "x".repeat(129),
+    "-".repeat(16),
+    "a".repeat(15) + "/",
+    "😀".repeat(16),
+  ])("rejects invalid command key %s", (idempotencyKey) => {
+    expect(
+      parseManagedWatchlistCommand({ ...command(), idempotencyKey }),
+    ).toBeNull();
+  });
+
+  it("rejects an exhausted version and every missing or extra envelope field", () => {
+    expect(
+      parseManagedWatchlistCommand({
+        ...command(),
+        expectedVersion: Number.MAX_SAFE_INTEGER,
+      }),
+    ).toBeNull();
+    for (const key of Object.keys(command())) {
+      const invalid: Record<string, unknown> = { ...command() };
+      delete invalid[key];
+      expect(parseManagedWatchlistCommand(invalid)).toBeNull();
+    }
+    expect(
+      parseManagedWatchlistCommand({ ...command(), ownerId: "owner" }),
+    ).toBeNull();
+    expect(
+      parseManagedWatchlist({
+        version: 4,
+        payload: savedPayload(),
+        id: "main",
+      }),
+    ).toBeNull();
+    expect(parseManagedWatchlist({ version: 4 })).toBeNull();
+  });
+
+  it("rejects sparse, decorated, accessor and inherited saved data before capture", () => {
+    const sparse = new Array(1);
+    const decorated = Object.assign([savedMember()], { extra: true });
+    const getter = Object.defineProperty({}, "note", {
+      enumerable: true,
+      get() {
+        throw new Error("must not read accessor");
+      },
+    });
+    const memberGetter = { ...savedMember() };
+    Object.defineProperty(
+      memberGetter,
+      "note",
+      Object.getOwnPropertyDescriptor(getter, "note")!,
+    );
+    const hidden = Object.defineProperty({ ...savedMember() }, "hidden", {
+      value: true,
+    });
+    const symbol = { ...savedMember(), [Symbol("hidden")]: true };
+    const inherited = Object.assign(
+      Object.create({ inherited: true }) as Record<string, unknown>,
+      savedMember(),
+    );
+    for (const memberships of [
+      sparse,
+      decorated,
+      [memberGetter],
+      [hidden],
+      [symbol],
+      [inherited],
+    ])
+      expect(
+        parseManagedWatchlistCommand({
+          ...command(),
+          payload: { ...savedPayload(), memberships },
+        }),
+      ).toBeNull();
+    const commandGetter = Object.defineProperty({ ...command() }, "payload", {
+      enumerable: true,
+      get() {
+        throw new Error("must not read accessor");
+      },
+    });
+    expect(parseManagedWatchlistCommand(commandGetter)).toBeNull();
+    expect(
+      parseManagedWatchlistCommand(
+        Object.assign(Object.create({}) as Record<string, unknown>, command()),
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps saved membership validation, NFC notes and distinct IDs", () => {
+    for (const member of [
+      { ...savedMember(), note: " unnormalized " },
+      { ...savedMember(), note: "Cafe\u0301" },
+      { ...savedMember(), instrumentType: "etf" },
+      { ...savedMember(), issuerName: "😀".repeat(513) },
+      { ...savedMember(), extra: "field" },
+    ])
+      expect(
+        parseManagedWatchlistCommand({
+          ...command(),
+          payload: { ...savedPayload(), memberships: [member] },
+        }),
+      ).toBeNull();
+    expect(
+      parseManagedWatchlistCommand({
+        ...command(),
+        payload: {
+          ...savedPayload(),
+          memberships: [savedMember(), savedMember()],
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it.each([false, true])(
+    "confirms canonical command bytes for a replayed=%s receipt",
+    (replayed) => {
+      const captured = parseManagedWatchlistCommand(command())!;
+      const payload: Record<string, unknown> = Object.fromEntries(
+        Object.entries(captured.payload).reverse(),
+      );
+      payload.memberships = captured.payload.memberships.map((member) =>
+        Object.fromEntries(Object.entries(member).reverse()),
+      );
+      const receipt = parseManagedWatchlistReceipt(
+        { version: 5, payload, replayed },
+        captured,
+      )!;
+      expect(receipt).toEqual({
+        version: 5,
+        payload: captured.payload,
+        replayed,
+      });
+      expect(Object.isFrozen(receipt.payload.memberships[0])).toBe(true);
+      expect(
+        parseManagedWatchlistReceipt(
+          { version: 6, payload, replayed },
+          captured,
+        ),
+      ).toBeNull();
+      expect(
+        parseManagedWatchlistReceipt(
+          { version: 5, payload, replayed: "true" },
+          captured,
+        ),
+      ).toBeNull();
+      expect(
+        parseManagedWatchlistReceipt(
+          { version: 5, payload, replayed, latest: true },
+          captured,
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it("rejects receipt changes to payload identity, membership order or notes", () => {
+    const captured = {
+      ...command(),
+      payload: {
+        ...savedPayload(),
+        memberships: [savedMember("one"), savedMember("two")],
+      },
+    };
+    for (const payload of [
+      { ...captured.payload, snapshotSha256: snapshot().snapshotSha256 },
+      {
+        ...captured.payload,
+        memberships: [...captured.payload.memberships].reverse(),
+      },
+      {
+        ...captured.payload,
+        memberships: [
+          { ...savedMember("one"), note: "Changed" },
+          savedMember("two"),
+        ],
+      },
+      {
+        ...captured.payload,
+        memberships: [
+          { ...savedMember("one"), securityId: "different" },
+          savedMember("two"),
+        ],
+      },
+    ])
+      expect(
+        parseManagedWatchlistReceipt(
+          { version: 5, payload, replayed: true },
+          captured,
+        ),
+      ).toBeNull();
+    expect(
+      parseManagedWatchlistReceipt(
+        { version: 5, payload: captured.payload, replayed: false },
+        { ...captured, idempotencyKey: "bad" },
+      ),
+    ).toBeNull();
+  });
+
+  it("proves the maximum canonical payload and command/read/receipt envelope budget", () => {
+    const id = "a".repeat(128);
+    const memberships = Array.from({ length: 32 }, (_, index) => ({
+      ...savedMember(`${id.slice(2)}${index.toString().padStart(2, "0")}`),
+      issuerId: id,
+      securityId: id,
+      shareClassId: id,
+      symbol: "X".repeat(15),
+      issuerName: "😀".repeat(512),
+      securityName: "😀".repeat(512),
+      shareClassName: "😀".repeat(512),
+      note: "",
+    }));
+    const payload = { ...savedPayload(), memberships };
+    let remaining =
+      MANAGED_WATCHLIST_LIMITS.payloadBytes -
+      new TextEncoder().encode(encodeMainWatchlistPayload(payload)).byteLength;
+    expect(remaining).toBeGreaterThan(0);
+    for (const member of memberships) {
+      const astral = Math.min(2000, Math.floor(remaining / 4));
+      const ascii = Math.min(2000 - astral, remaining - astral * 4);
+      member.note = "😀".repeat(astral) + "x".repeat(ascii);
+      remaining -= astral * 4 + ascii;
+    }
+    expect(remaining).toBe(0);
+    expect(utf8Bytes(payload)).toBe(262_144);
+    const input = {
+      expectedVersion: Number.MAX_SAFE_INTEGER - 1,
+      idempotencyKey: id,
+      payload,
+    };
+    const captured = parseManagedWatchlistCommand(input)!;
+    expect(captured).not.toBeNull();
+    const read = parseManagedWatchlist({
+      version: Number.MAX_SAFE_INTEGER,
+      payload,
+    });
+    const receipt = parseManagedWatchlistReceipt(
+      { version: Number.MAX_SAFE_INTEGER, payload, replayed: false },
+      captured,
+    );
+    expect(read).not.toBeNull();
+    expect(receipt).not.toBeNull();
+    // Payload is embedded directly, not encoded as a second JSON string.
+    const maximumCommandBytes =
+      262_144 +
+      utf8Bytes({
+        expectedVersion: Number.MAX_SAFE_INTEGER - 1,
+        idempotencyKey: id,
+        payload: null,
+      }) -
+      4;
+    expect(utf8Bytes(captured)).toBe(maximumCommandBytes);
+    expect(Math.max(utf8Bytes(read), utf8Bytes(receipt))).toBeLessThan(
+      maximumCommandBytes,
+    );
+    expect(maximumCommandBytes).toBeLessThan(
+      MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+    );
+    const last = memberships.at(-1)!;
+    last.note += "x";
+    expect(utf8Bytes(payload)).toBe(262_145);
+    expect(parseManagedWatchlistCommand(input)).toBeNull();
+    expect(parseManagedWatchlist({ version: 1, payload })).toBeNull();
+    expect(
+      parseManagedWatchlistReceipt(
+        { version: captured.expectedVersion + 1, payload, replayed: false },
+        captured,
+      ),
+    ).toBeNull();
+    const escaped = {
+      ...command(),
+      payload: {
+        ...savedPayload(),
+        memberships: [{ ...savedMember(), note: '\\"'.repeat(1000) }],
+      },
+    };
+    expect(parseManagedWatchlistCommand(escaped)).not.toBeNull();
+    expect(
+      utf8Bytes(escaped.payload) -
+        utf8Bytes({
+          ...escaped.payload,
+          memberships: [{ ...savedMember(), note: "" }],
+        }),
+    ).toBe(4000);
+  });
+});
+
+describe("managed explicit catalog resolution contract", () => {
+  it("owns request and ordered response data including historical absent IDs", () => {
+    const input = resolveRequest();
+    const captured = parseManagedCatalogResolveRequest(input)!;
+    const response = resolveResponse();
+    const parsed = parseManagedCatalogResolveResponse(response, captured)!;
+    expect(parsed).toEqual(response);
+    input.listingIds.reverse();
+    response.results[0]!.listing!.issuerName = "Caller changed";
+    expect(captured.listingIds).toEqual(["listing-one", "OLD"]);
+    expect(parsed.results[0]?.listing?.issuerName).toBe("Example issuer");
+    expect(Object.isFrozen(captured.listingIds)).toBe(true);
+    expect(Object.isFrozen(parsed.results)).toBe(true);
+    expect(Object.isFrozen(parsed.results[0]?.listing)).toBe(true);
+    expect(MANAGED_CATALOG_RESOLVE_PATH).toBe("/v1/managed/catalog/resolve");
+  });
+
+  it.each(
+    [
+      [],
+      ["duplicate", "duplicate"],
+      [""],
+      ["bad/id"],
+      ["a".repeat(129)],
+      new Array<unknown>(1),
+      Object.assign(["one"], { extra: true }),
+      Array.from({ length: 51 }, (_, index) => `id-${index}`),
+    ].map((listingIds) => ({ listingIds })),
+  )("rejects invalid resolve IDs %#", ({ listingIds }) => {
+    expect(
+      parseManagedCatalogResolveRequest({ ...resolveRequest(), listingIds }),
+    ).toBeNull();
+  });
+
+  it("rejects malformed request shapes, accessors and digest without coercion", () => {
+    for (const value of [
+      null,
+      [],
+      { listingIds: ["one"] },
+      { ...resolveRequest(), snapshotSha256: "a".repeat(64) },
+      { ...resolveRequest(), page: 1 },
+      { ...resolveRequest(), [Symbol("hidden")]: true },
+    ])
+      expect(parseManagedCatalogResolveRequest(value)).toBeNull();
+    const getter = Object.defineProperty(
+      { ...resolveRequest() },
+      "listingIds",
+      {
+        enumerable: true,
+        get() {
+          throw new Error("getter");
+        },
+      },
+    );
+    expect(parseManagedCatalogResolveRequest(getter)).toBeNull();
+    expect(
+      parseManagedCatalogResolveRequest({
+        ...resolveRequest(),
+        listingIds: ["X", "x", "aa", "historical:ID"],
+      }),
+    ).not.toBeNull();
+  });
+
+  it("rejects digest, order, membership and wrapper identity mismatches", () => {
+    const response = resolveResponse();
+    for (const changed of [
+      { ...response, snapshotSha256: savedPayload().snapshotSha256 },
+      { ...response, results: [...response.results].reverse() },
+      { ...response, results: [response.results[0]] },
+      { ...response, results: [response.results[0], response.results[0]] },
+      {
+        ...response,
+        results: [
+          { ...response.results[0], listing: listing("different") },
+          response.results[1],
+        ],
+      },
+      {
+        ...response,
+        results: [{ ...response.results[0], extra: true }, response.results[1]],
+      },
+      { ...response, results: new Array(2) },
+      { ...response, sources: [] },
+    ])
+      expect(
+        parseManagedCatalogResolveResponse(changed, resolveRequest()),
+      ).toBeNull();
+    expect(
+      parseManagedCatalogResolveResponse(response, {
+        ...resolveRequest(),
+        listingIds: [],
+      }),
+    ).toBeNull();
+  });
+
+  it.each([
+    ["country", "CA"],
+    ["exchangeMic", "xnas"],
+    ["instrumentType", "etf"],
+    ["issuerId", "SavedIssuer"],
+    ["securityId", "x"],
+    ["shareClassId", "class/id"],
+    ["issuerName", "😀".repeat(129)],
+    ["securityName", " trailing "],
+    ["shareClassName", "\u200b"],
+    ["symbol", "lower"],
+    ["note", "not part of identity"],
+    ["cik", "0000000001"],
+  ])("rejects malformed resolved identity %s", (field, value) => {
+    const response = resolveResponse();
+    response.results[0]!.listing = { ...listing(), [field]: value };
+    expect(
+      parseManagedCatalogResolveResponse(response, resolveRequest()),
+    ).toBeNull();
+  });
+
+  it("proves the maximum fifty-ID request and fifty-listing response fit their caps", () => {
+    const id = "a".repeat(128);
+    const name = "😀".repeat(128);
+    const listingIds = Array.from(
+      { length: 50 },
+      (_, index) => `${id.slice(2)}${index.toString().padStart(2, "0")}`,
+    );
+    const request = { snapshotSha256: snapshot().snapshotSha256, listingIds };
+    const response = {
+      snapshotSha256: request.snapshotSha256,
+      results: listingIds.map((listingId) => ({
+        listingId,
+        listing: {
+          ...listing(listingId),
+          issuerId: id,
+          securityId: id,
+          shareClassId: id,
+          issuerName: name,
+          securityName: name,
+          shareClassName: name,
+          symbol: "X".repeat(15),
+        },
+      })),
+    };
+    expect(parseManagedCatalogResolveRequest(request)).toEqual(request);
+    expect(parseManagedCatalogResolveResponse(response, request)).toEqual(
+      response,
+    );
+    expect(utf8Bytes(request)).toBe(6657);
+    expect(utf8Bytes(response.results[0]?.listing)).toBe(2261);
+    expect(utf8Bytes(response)).toBe(120_954);
+    expect(utf8Bytes(request)).toBeLessThan(
+      MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes,
+    );
+    expect(utf8Bytes(response)).toBeLessThan(
+      MANAGED_CATALOG_RESOLVE_LIMITS.responseBytes,
+    );
+    const escaped = {
+      ...response,
+      results: response.results.map((entry) => ({
+        ...entry,
+        listing: { ...entry.listing, issuerName: '\\"'.repeat(64) },
+      })),
+    };
+    expect(parseManagedCatalogResolveResponse(escaped, request)).not.toBeNull();
+    expect(utf8Bytes(escaped)).toBeLessThan(utf8Bytes(response));
   });
 });
