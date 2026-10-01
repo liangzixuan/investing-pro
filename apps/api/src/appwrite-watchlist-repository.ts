@@ -6,8 +6,8 @@ import {
   type MainWatchlistPayload,
 } from "@research-cockpit/contracts";
 import {
-  PERSONAL_SECURITY_MASTER_LIMITS,
-  searchPersonalSecurityMaster,
+  lookupPersonalSecurityMasterListing,
+  type ManagedSecurityMasterCatalog,
   type PersonalSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
 import { AppwriteException, type TablesDB } from "node-appwrite";
@@ -90,7 +90,8 @@ export interface AppwriteWatchlistRepositoryOptions {
   readonly databaseId: string;
   readonly watchlistsTableId: string;
   readonly receiptsTableId: string;
-  readonly catalog: PersonalSecurityMasterCatalog;
+  readonly catalog:
+    PersonalSecurityMasterCatalog | ManagedSecurityMasterCatalog;
   readonly now?: () => Date;
 }
 
@@ -241,13 +242,9 @@ export function createAppwriteWatchlistRepository(
       let incrementRejected = false;
       let userId: string;
       let captured: ReturnType<typeof captureCommand>;
-      let catalogAdmitted: boolean;
       try {
         userId = owner(principal);
         captured = captureCommand(command);
-        catalogAdmitted =
-          captured.payload.snapshotSha256 === catalog.snapshotSha256 &&
-          admitted(catalog, captured.payload);
       } catch {
         throw new WatchlistRepositoryError("invalid_request");
       }
@@ -267,7 +264,10 @@ export function createAppwriteWatchlistRepository(
           payloadDigest,
         );
         if (previous !== null) return previous;
-        if (!catalogAdmitted)
+        if (
+          captured.payload.snapshotSha256 !== catalog.snapshotSha256 ||
+          !admitted(catalog, captured.payload)
+        )
           throw new WatchlistRepositoryError("invalid_request");
         const current = await readCurrent(userId);
         if ((current?.version ?? 0) !== expectedVersion) {
@@ -504,16 +504,20 @@ function captureCommand(command: PutMainWatchlistCommand) {
 }
 
 function admitted(
-  catalog: PersonalSecurityMasterCatalog,
+  catalog: AppwriteWatchlistRepositoryOptions["catalog"],
   payload: MainWatchlistPayload,
 ): boolean {
-  return payload.memberships.every((membership) => {
-    const result = searchPersonalSecurityMaster(catalog, {
-      limit: PERSONAL_SECURITY_MASTER_LIMITS.searchResultCap,
-      query: membership.symbol,
-    }).results.find((entry) => entry.listingId === membership.listingId);
-    return result !== undefined && membershipMatchesResult(membership, result);
-  });
+  try {
+    return payload.memberships.every((membership) => {
+      const result = lookupPersonalSecurityMasterListing(
+        catalog,
+        membership.listingId,
+      );
+      return result !== null && membershipMatchesResult(membership, result);
+    });
+  } catch {
+    return false;
+  }
 }
 
 /** Schema-specific canonical encoding; membership order is meaningful. */

@@ -1059,3 +1059,4 @@ export * from "./personal-sec-quarter-assessment";
 export * from "./personal-sec-source-json";
 export * from "./personal-economic-calendar";
 export * from "./personal-monetary-announcements";
+export * from "./managed-workspace";

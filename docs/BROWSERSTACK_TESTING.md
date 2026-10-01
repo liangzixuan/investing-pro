@@ -45,9 +45,11 @@ before interacting with the page. `--check-staging` validates inputs without a
 remote session. The runner supplies its internal child mode.
 
 The first pipeline completed for the disconnected client on September 29.
-The production Clerk client needs its own release evidence. Source preparation,
-local execution and an older cloud pass do not establish a new cloud result.
-Production promotion reuses the same archive after the configured review.
+The production Clerk client subsequently passed its exact-build release gate
+on September 30 at main `b2172d26`, followed by same-archive production promotion.
+See the [delivery status table](./CURRENT_WORK.md#delivery-status). This gate
+tested the inert staging frame; authenticated desktop/Pixel acceptance is
+separate evidence. A later source change still needs its own release result.
 
 ## Credentials and commands
 

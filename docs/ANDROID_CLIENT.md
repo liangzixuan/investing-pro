@@ -7,7 +7,10 @@ project for the shared service. Isolated storage evidence is accepted for the
 separate Clerk trial. Root verified a signed-in desktop reload, and the owner
 reported passing its Pixel checklist. The owner later confirmed testing trial
 1.1 after the update handoff, without itemized outcomes or device logs. Production
-configuration remains pending. Native iOS remains a later platform with build,
+web configuration and the synthetic browser journey are accepted; production
+native sign-in, callbacks, release-signing custody and a signed upgrade/recovery
+check remain pending. The [delivery status table](./CURRENT_WORK.md#delivery-status)
+keeps these surfaces separate. Native iOS remains a later platform with build,
 signing and device requirements.
 
 ## Current scope

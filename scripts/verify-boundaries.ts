@@ -132,6 +132,8 @@ const forbiddenText = [
   /@?openbb/i,
 ];
 const ownedProductionDomainPaths = new Set([
+  "apps/api/src/managed-workspace-handler.ts",
+  "apps/api/src/managed-workspace-handler.test.ts",
   "apps/api/src/clerk-trial-config.ts",
   "apps/api/src/clerk-trial-config.test.ts",
   "apps/api/src/clerk-trial-function.test.ts",
@@ -179,13 +181,20 @@ function ownedProductionHostnameSpan(
 }
 
 function competitorText(relativePath: string, content: string): string {
-  if (!ownedProductionDomainPaths.has(relativePath)) return content;
+  const fixedCatalog =
+    relativePath === "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
+  if (!fixedCatalog && !ownedProductionDomainPaths.has(relativePath))
+    return content;
   const source = ts.createSourceFile(
     relativePath,
     content,
     ts.ScriptTarget.Latest,
     true,
-    relativePath.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+    fixedCatalog
+      ? ts.ScriptKind.JSON
+      : relativePath.endsWith(".tsx")
+        ? ts.ScriptKind.TSX
+        : ts.ScriptKind.TS,
   );
   const spans: { start: number; length: number }[] = [];
   const visit = (node: ts.Node): void => {
@@ -193,7 +202,20 @@ function competitorText(relativePath: string, content: string): string {
       ts.isStringLiteralLike(node) &&
       node.getText(source).slice(1, -1) === node.text
     ) {
-      const span = ownedProductionHostnameSpan(node.text);
+      // The local identity generator identifies this repository as provenance.
+      // Permit only this complete value in sourceUri of the fixed JSON asset.
+      const repositoryReference =
+        fixedCatalog &&
+        node.text === "https://github.com/liangzixuan/investing-pro" &&
+        ts.isPropertyAssignment(node.parent) &&
+        node.parent.initializer === node &&
+        ts.isStringLiteral(node.parent.name) &&
+        node.parent.name.text === "sourceUri";
+      const span = fixedCatalog
+        ? repositoryReference
+          ? { start: 0, length: node.text.length }
+          : null
+        : ownedProductionHostnameSpan(node.text);
       if (span !== null)
         spans.push({
           start: node.getStart(source) + 1 + span.start,
@@ -213,6 +235,31 @@ function verifyOwnedProductionDomainTextClassifier(): void {
     forbiddenText.some((pattern) =>
       pattern.test(competitorText(path, content)),
     );
+  const catalogPath = "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
+  const repository = "https://github.com/liangzixuan/investing-pro";
+  const canonicalReference = JSON.stringify({ sourceUri: repository });
+  if (matchesForbiddenText(catalogPath, canonicalReference))
+    throw new Error("Owned catalog provenance classifier regressed");
+  for (const content of [
+    JSON.stringify({ label: repository }),
+    JSON.stringify({ sourceUri: `${repository}/other` }),
+    JSON.stringify({ sourceUri: `${repository}?query` }),
+    JSON.stringify({ sourceUri: `${repository}#fragment` }),
+    JSON.stringify({ sourceUri: repository, extra: "investingpro" }),
+    JSON.stringify({ sourceUri: "https://github.com/other/investing-pro" }),
+    JSON.stringify({ sourceUri: "https://app.investingpro.app" }),
+    JSON.stringify({ sourceUri: repository }).replace("github", "git\\u0068ub"),
+  ]) {
+    if (!matchesForbiddenText(catalogPath, content))
+      throw new Error("Unowned catalog provenance text was admitted");
+  }
+  if (
+    !matchesForbiddenText(
+      "apps/api/src/managed-catalog/other.snapshot.json",
+      canonicalReference,
+    )
+  )
+    throw new Error("Unselected catalog provenance path was admitted");
   const ownedForms = ["app", "api", "clerk"].flatMap((host) => [
     `${host}.investingpro.app`,
     `https://${host}.investingpro.app`,
@@ -10395,14 +10442,34 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     [
       "apps/api/src/appwrite-watchlist-repository.ts",
       [
-        "PERSONAL_SECURITY_MASTER_LIMITS",
-        "searchPersonalSecurityMaster",
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
         "type PersonalSecurityMasterCatalog",
       ],
     ],
     [
       "apps/api/src/appwrite-watchlist-repository.test.ts",
-      ["admitPersonalSecurityMasterSnapshot", "searchPersonalSecurityMaster"],
+      [
+        "MANAGED_SECURITY_MASTER_PROFILE",
+        "PERSONAL_SECURITY_MASTER_LIMITS",
+        "admitManagedSecurityMasterSnapshot",
+        "admitPersonalSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+        "searchPersonalSecurityMaster",
+      ],
+    ],
+    [
+      "apps/api/src/managed-workspace-catalog.ts",
+      [
+        "PersonalSecurityMasterError",
+        "admitManagedSecurityMasterSnapshot",
+        "searchPersonalSecurityMaster",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/managed-workspace-catalog.test.ts",
+      ["lookupPersonalSecurityMasterListing"],
     ],
     [
       "apps/api/src/workspace-portfolio-routes.ts",
