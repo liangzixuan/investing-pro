@@ -24,8 +24,9 @@ export function MobileWorkspaceRoutes() {
     if (Capacitor.getPlatform() !== "android") return;
     return bindAndroidBack(
       App,
-      () => {
-        void navigate(-1);
+      ({ canGoBack }) => {
+        if (canGoBack) return navigate(-1);
+        return App.exitApp();
       },
       () => setBackUnavailable(true),
     );

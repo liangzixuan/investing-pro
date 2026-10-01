@@ -1,4 +1,5 @@
 import { registerPlugin } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { ClerkTrialConfig } from "./config";
 import { validateTrialConfig } from "./config";
@@ -48,7 +49,6 @@ function NativeSession({
     store.getSnapshot,
   );
   const session = store.session();
-  const SessionScreen = managed ? ManagedSessionScreen : TrialSessionScreen;
   return (
     <TrialFrame managed={managed}>
       {session ? (
@@ -58,11 +58,20 @@ function NativeSession({
               {state.message}
             </p>
           )}
-          <SessionScreen
-            key={state.auth.generation}
-            apiOrigin={apiOrigin}
-            session={session}
-          />
+          {managed ? (
+            <ManagedSessionScreen
+              key={state.auth.generation}
+              apiOrigin={apiOrigin}
+              session={session}
+              androidBack={App}
+            />
+          ) : (
+            <TrialSessionScreen
+              key={state.auth.generation}
+              apiOrigin={apiOrigin}
+              session={session}
+            />
+          )}
         </>
       ) : (
         <section

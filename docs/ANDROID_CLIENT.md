@@ -112,16 +112,30 @@ They use the existing disconnected profile, which has no account, API access
 or research data. The APK uses the runner's disposable debug signer. Production
 signing custody, Clerk admission and WebView debugging settings are unchanged.
 
+The test APK also contains an isolated bundle of the shared managed workspace.
+Its invented session and in-memory API make no network requests. Native tests
+open the Annual report, press Android Back and check that the unsaved note and
+focus survive. A second case closes a pending report, verifies cancellation and
+deliberately completes the old request to check that its result stays discarded.
+These tests use the real Capacitor App bridge with empty WebView history. The
+fixture is absent from the application APK, and CI checks that separation.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build
 alone does not mean the tests executed.
 
-This is the first native regression layer. It does not test managed sign-in,
+This native regression layer does not test managed sign-in,
 shared watchlist saves, Annual report requests, production signing or upgrades
 over an installed release. Those paths retain their existing unit/browser
 coverage and selected physical Pixel checks. Routine changes covered by this
 suite no longer require a manual APK installation for these checks.
+
+In the managed Android workspace, Back closes an open Annual report through the
+same action as the on-screen Back control, cancelling its read and restoring
+focus without changing the draft. With no report open, existing WebView history
+handles Back; at the root it leaves the screen open. Browser navigation and the
+disconnected router keep their existing behavior.
 
 ## Acceptance
 

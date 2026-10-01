@@ -1,4 +1,11 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   ManagedCatalogSnapshotDto,
   WatchlistMembership,
@@ -12,11 +19,16 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
+import {
+  bindAndroidBack,
+  type AndroidBackAdapter,
+} from "../mobile/android-back";
 
 interface SessionProps {
   session: TrialSession;
   apiOrigin: string;
   api?: ManagedApi;
+  androidBack?: AndroidBackAdapter;
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -42,7 +54,10 @@ function SessionWorkspace(props: SessionProps) {
     return () => current.coordinator.retire();
   }, [initial]);
   return workspace ? (
-    <ManagedWorkspaceScreen workspace={workspace} />
+    <ManagedWorkspaceScreen
+      workspace={workspace}
+      {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
+    />
   ) : (
     <p role="status">Loading your workspace…</p>
   );
@@ -221,11 +236,44 @@ function CatalogReviewPanel({
 
 export function ManagedWorkspaceScreen({
   workspace,
+  androidBack,
 }: {
   workspace: ManagedWorkspace;
+  androidBack?: AndroidBackAdapter;
 }) {
   const annualOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
+  const [backUnavailable, setBackUnavailable] = useState(false);
+  const backToWorkspace = useCallback(() => {
+    workspace.annual.close();
+    if (annualOrigin.current?.isConnected) annualOrigin.current.focus();
+    else discoverHeading.current?.focus();
+    annualOrigin.current = null;
+  }, [workspace]);
+  useEffect(() => {
+    if (!androidBack) return;
+    const isRetired = () => {
+      const phase = workspace.coordinator.getSnapshot().phase;
+      return phase === "retired" || phase === "signing_out";
+    };
+    if (isRetired()) return;
+    const dispose = bindAndroidBack(
+      androidBack,
+      ({ canGoBack }) => {
+        if (isRetired()) return;
+        if (workspace.annual.getSnapshot().selection) backToWorkspace();
+        else if (canGoBack) window.history.back();
+      },
+      () => setBackUnavailable(true),
+    );
+    const unsubscribe = workspace.coordinator.subscribe(() => {
+      if (isRetired()) dispose();
+    });
+    return () => {
+      unsubscribe();
+      dispose();
+    };
+  }, [androidBack, workspace, backToWorkspace]);
   const discovery = useSyncExternalStore(
     workspace.subscribe,
     workspace.getSnapshot,
@@ -262,15 +310,14 @@ export function ManagedWorkspaceScreen({
       </p>
       {retired ? null : (
         <>
+          {backUnavailable && (
+            <p role="status">
+              Use the on-screen navigation while Android Back is unavailable.
+            </p>
+          )}
           <ManagedAnnualReport
             model={workspace.annual}
-            onBack={() => {
-              workspace.annual.close();
-              if (annualOrigin.current?.isConnected)
-                annualOrigin.current.focus();
-              else discoverHeading.current?.focus();
-              annualOrigin.current = null;
-            }}
+            onBack={backToWorkspace}
           />
           <section
             className="trial-panel"

@@ -13,7 +13,7 @@ function fixture() {
   );
   const remove = vi.fn(async () => {});
   const exitApp = vi.fn(async () => {});
-  const app: AndroidBackAdapter = {
+  const app: AndroidBackAdapter & { exitApp: () => Promise<void> } = {
     addListener: vi.fn(
       (
         _name: "backButton",
@@ -25,13 +25,14 @@ function fixture() {
     ),
     exitApp,
   };
-  const goBack = vi.fn();
+  const onBack =
+    vi.fn<(event: { canGoBack: boolean }) => void | Promise<void>>();
   const unavailable = vi.fn();
-  const dispose = bindAndroidBack(app, goBack, unavailable);
+  const dispose = bindAndroidBack(app, onBack, unavailable);
   return {
     app,
     exitApp,
-    goBack,
+    onBack,
     unavailable,
     dispose,
     remove,
@@ -42,19 +43,26 @@ function fixture() {
 }
 
 describe("Android Back lifetime", () => {
-  it("uses router history when the WebView has a previous entry", () => {
+  it("delegates each native event without choosing history or root behavior", () => {
     const f = fixture();
     f.back(true);
-    expect(f.goBack).toHaveBeenCalledOnce();
+    f.back(false);
+    expect(f.onBack.mock.calls).toEqual([
+      [{ canGoBack: true }],
+      [{ canGoBack: false }],
+    ]);
     expect(f.exitApp).not.toHaveBeenCalled();
     f.ready();
     f.dispose();
   });
-  it("exits at the root instead of inventing another route", () => {
+  it("reports a synchronous policy failure", () => {
     const f = fixture();
+    f.onBack.mockImplementation(() => {
+      throw new Error("Unavailable");
+    });
     f.back(false);
-    expect(f.exitApp).toHaveBeenCalledOnce();
-    expect(f.goBack).not.toHaveBeenCalled();
+    expect(f.unavailable).toHaveBeenCalledOnce();
+    expect(f.exitApp).not.toHaveBeenCalled();
     f.ready();
     f.dispose();
   });
@@ -67,7 +75,7 @@ describe("Android Back lifetime", () => {
     f.ready();
     await Promise.resolve();
     expect(f.remove).toHaveBeenCalledOnce();
-    expect(f.goBack).not.toHaveBeenCalled();
+    expect(f.onBack).not.toHaveBeenCalled();
     expect(f.exitApp).not.toHaveBeenCalled();
   });
   it("reports failed registration while mounted without an unhandled rejection", async () => {
@@ -84,14 +92,23 @@ describe("Android Back lifetime", () => {
     await Promise.resolve();
     expect(f.unavailable).not.toHaveBeenCalled();
   });
-  it("reports exit failure without changing the route", async () => {
+  it("reports asynchronous policy failure while mounted", async () => {
     const f = fixture();
-    f.exitApp.mockRejectedValueOnce(new Error("Unavailable"));
+    f.onBack.mockRejectedValueOnce(new Error("Unavailable"));
     f.back(false);
     await Promise.resolve();
     expect(f.unavailable).toHaveBeenCalledOnce();
-    expect(f.goBack).not.toHaveBeenCalled();
+    expect(f.exitApp).not.toHaveBeenCalled();
     f.ready();
     f.dispose();
+  });
+  it("ignores a policy rejection after disposal", async () => {
+    const f = fixture();
+    f.onBack.mockRejectedValueOnce(new Error("Unavailable"));
+    f.back(true);
+    f.dispose();
+    await Promise.resolve();
+    expect(f.unavailable).not.toHaveBeenCalled();
+    f.ready();
   });
 });
