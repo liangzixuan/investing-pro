@@ -61,7 +61,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           sudo udevadm settle --timeout=10
           ls -l /dev/kvm
-          test -r /dev/kvm && test -w /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
           "$ANDROID_HOME/emulator/emulator" -accel-check
 
       - name: Bundle and sync the disconnected Android app

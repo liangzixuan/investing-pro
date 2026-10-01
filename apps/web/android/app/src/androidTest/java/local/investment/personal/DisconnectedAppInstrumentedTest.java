@@ -1,6 +1,8 @@
 package local.investment.personal;
 
 import static androidx.test.espresso.Espresso.pressBack;
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.web.assertion.WebViewAssertions.webMatches;
 import static androidx.test.espresso.web.sugar.Web.onWebView;
 import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
@@ -16,9 +18,17 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.os.SystemClock;
+import android.util.Log;
+import android.view.InputDevice;
+import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
+import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
+import androidx.test.espresso.action.GeneralClickAction;
+import androidx.test.espresso.action.Press;
+import androidx.test.espresso.action.Tap;
 import androidx.test.espresso.web.webdriver.Locator;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -89,6 +99,7 @@ public class DisconnectedAppInstrumentedTest {
         pressBack();
         awaitLockedRoute(WATCHLIST);
         assertLockedPage();
+        assertNativeBackReady(WATCHLIST, MARKETS);
         pressBack();
         awaitLockedRoute(MARKETS);
         assertLockedPage();
@@ -151,11 +162,80 @@ public class DisconnectedAppInstrumentedTest {
     private void visitLockedWatchlistAndReturnHome() throws Exception {
         openWatchlistRoute();
         assertLockedPage();
-        onWebView()
-            .withElement(findElement(Locator.CSS_SELECTOR, "a.workspace-brand[href='#/markets']"))
-            .perform(webClick());
+        touchHomeLink();
         awaitLockedRoute(MARKETS);
         assertLockedPage();
+        awaitPage("real touch activated the document", "navigator.userActivation.hasBeenActive === true");
+        assertNativeBackReady(MARKETS, WATCHLIST);
+    }
+
+    private void touchHomeLink() throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const a = document.querySelector(\"a.workspace-brand[href='#/markets']\");" +
+            " if (!a) return null; const r = a.getBoundingClientRect();" +
+            " const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+            " return { x, y, width: innerWidth, height: innerHeight, ratio: devicePixelRatio," +
+            " visible: r.width > 0 && r.height > 0 && r.left >= 0 && r.top >= 0" +
+            " && r.right <= innerWidth && r.bottom <= innerHeight" +
+            " && a.contains(document.elementFromPoint(x, y))," +
+            " unzoomed: visualViewport.scale === 1 && visualViewport.offsetLeft === 0" +
+            " && visualViewport.offsetTop === 0 }; })()",
+            value -> {
+                observed.set(value);
+                returned.countDown();
+            }
+        ));
+        assertTrue("Home-link geometry was not returned", returned.await(2, TimeUnit.SECONDS));
+        JSONObject geometry = new JSONObject(observed.get());
+        assertTrue("The actual home link must be fully visible and unobscured", geometry.getBoolean("visible"));
+        assertTrue("This touch conversion requires the unchanged initial-scale viewport", geometry.getBoolean("unzoomed"));
+        double cssX = geometry.getDouble("x");
+        double cssY = geometry.getDouble("y");
+        double cssWidth = geometry.getDouble("width");
+        double cssHeight = geometry.getDouble("height");
+        double pixelRatio = geometry.getDouble("ratio");
+        assertTrue("Invalid observed viewport", cssWidth > 0 && cssHeight > 0 && pixelRatio > 0);
+
+        // Espresso-Web webClick dispatches JS events. A native touch also grants user activation,
+        // which Chromium uses when deciding whether same-document history entries are skippable.
+        onView(isAssignableFrom(WebView.class)).perform(new GeneralClickAction(
+            Tap.SINGLE,
+            view -> {
+                assertEquals("Viewport width changed before touch", cssWidth * pixelRatio, view.getWidth(), pixelRatio + 1);
+                assertEquals("Viewport height changed before touch", cssHeight * pixelRatio, view.getHeight(), pixelRatio + 1);
+                int[] location = new int[2];
+                view.getLocationOnScreen(location);
+                float localX = (float) (cssX * pixelRatio);
+                float localY = (float) (cssY * pixelRatio);
+                Rect visible = new Rect();
+                assertTrue("Home-link touch is outside the visible WebView", view.getLocalVisibleRect(visible)
+                    && visible.contains(Math.round(localX), Math.round(localY)));
+                return new float[] { location[0] + localX, location[1] + localY };
+            },
+            Press.FINGER,
+            InputDevice.SOURCE_TOUCHSCREEN,
+            0
+        ));
+    }
+
+    private void assertNativeBackReady(String currentRoute, String previousRoute) {
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            WebBackForwardList history = webView.copyBackForwardList();
+            int index = history.getCurrentIndex();
+            boolean canGoBack = webView.canGoBack();
+            boolean callbacks = activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
+            String state = "currentIndex=" + index + ", size=" + history.getSize()
+                + ", canGoBack=" + canGoBack + ", enabledCallbacks=" + callbacks;
+            Log.i("DisconnectedBack", state);
+            assertTrue("No native previous entry: " + state, index > 0);
+            assertEquals(ORIGIN + "/" + currentRoute, history.getItemAtIndex(index).getUrl());
+            assertEquals(ORIGIN + "/" + previousRoute, history.getItemAtIndex(index - 1).getUrl());
+            assertTrue("Native history is not traversable: " + state, canGoBack);
+            assertTrue("The native Back callback is not enabled: " + state, callbacks);
+        });
     }
 
     private void awaitLockedRoute(String hash) throws Exception {
