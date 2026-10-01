@@ -128,7 +128,7 @@ public class DisconnectedAppInstrumentedTest {
             .check(webMatches(getText(), is(LOCKED_HEADING)));
         onWebView()
             .withElement(findElement(Locator.CSS_SELECTOR, ".owner-session-state"))
-            .check(webMatches(getText(), is("Locked")));
+            .check(webMatches(getText(), is("LOCKED")));
         awaitPage(
             "disconnected source and access boundaries",
             "location.origin === " + JSONObject.quote(ORIGIN) +
