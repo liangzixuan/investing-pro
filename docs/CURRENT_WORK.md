@@ -90,7 +90,11 @@ shown explicitly. The source integration adds a compact authenticated search
 handler and adapts the existing full-payload repository to exact listing lookup
 and receipt-first reconciliation. Source admission is separate from runtime
 delivery: the managed API/UI connection and production Android acceptance remain
-pending. The accepted demo's deployment and saved record stay intact.
+pending. The connected source now includes exact listing selection, notes,
+ordering, removal, full-payload saves and explicit catalog review in batches of 50. A shared save coordinator owns uncertain commands and version conflicts.
+The separate managed function preserves the existing auth and repository rules;
+its database, runtime proof and exact-build delivery require their own acceptance.
+The accepted demo's deployment and saved record stay intact.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel

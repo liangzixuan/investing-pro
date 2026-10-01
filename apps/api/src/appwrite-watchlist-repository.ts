@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  encodeMainWatchlistPayload,
   isMainWatchlistPayload,
   membershipMatchesResult,
   type MainWatchlistPayload,
@@ -157,7 +158,7 @@ export function createAppwriteWatchlistRepository(
     }
     if (
       !isMainWatchlistPayload(payload) ||
-      encodePayload(payload) !== row.payloadJson ||
+      encodeMainWatchlistPayload(payload) !== row.payloadJson ||
       hash(row.payloadJson) !== row.digestSha256 ||
       (payload.snapshotSha256 === catalog.snapshotSha256 &&
         !admitted(catalog, payload))
@@ -478,7 +479,7 @@ function captureCommand(command: PutMainWatchlistCommand) {
     !isMainWatchlistPayload(command.payload)
   )
     throw new WatchlistRepositoryError("invalid_request");
-  const payloadJson = encodePayload(command.payload);
+  const payloadJson = encodeMainWatchlistPayload(command.payload);
   const payload: unknown = JSON.parse(payloadJson);
   if (
     Buffer.byteLength(payloadJson, "utf8") > MAX_PAYLOAD_BYTES ||
@@ -518,29 +519,6 @@ function admitted(
   } catch {
     return false;
   }
-}
-
-/** Schema-specific canonical encoding; membership order is meaningful. */
-function encodePayload(payload: MainWatchlistPayload): string {
-  return JSON.stringify({
-    memberships: payload.memberships.map((entry) => ({
-      country: entry.country,
-      exchangeMic: entry.exchangeMic,
-      instrumentType: entry.instrumentType,
-      issuerId: entry.issuerId,
-      issuerName: entry.issuerName,
-      listingId: entry.listingId,
-      note: entry.note,
-      securityId: entry.securityId,
-      securityName: entry.securityName,
-      shareClassId: entry.shareClassId,
-      shareClassName: entry.shareClassName,
-      symbol: entry.symbol,
-    })),
-    name: payload.name,
-    schemaVersion: payload.schemaVersion,
-    snapshotSha256: payload.snapshotSha256,
-  });
 }
 
 async function readOptional(

@@ -27,7 +27,7 @@ const development: ClerkTrialConfig = {
 const production: ClerkTrialConfig = {
   environment: "production",
   publishableKey: `pk_live_${Buffer.from("clerk.investingpro.app$").toString("base64")}`,
-  apiOrigin: "https://api.investingpro.app",
+  apiOrigin: "https://investment-managed-6abac57a.appwrite.network",
   frontendApiOrigin: "https://clerk.investingpro.app",
 };
 const container = {};
@@ -117,7 +117,8 @@ describe("Clerk profile entry point", () => {
     expect(html).toContain(
       "This preview does not start a session or load saved data.",
     );
-    expect(html).toContain("Synthetic data only.");
+    expect(html).toContain("Discover companies");
+    expect(html).not.toContain("Synthetic data only.");
     expect(html).toContain("Software licenses");
     expect(html).not.toContain("Your demo watchlist");
     expect(mounts.webApp).not.toHaveBeenCalled();

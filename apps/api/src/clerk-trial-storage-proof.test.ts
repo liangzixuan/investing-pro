@@ -220,6 +220,7 @@ describe("bounded Clerk trial storage proof", () => {
   it("fixes distinct frozen profile targets within the storage schema", () => {
     const development = validateClerkTrialProofProfile("development");
     const production = validateClerkTrialProofProfile("production");
+    const managed = validateClerkTrialProofProfile("managed");
     expect(development).toMatchObject({
       environment: "development",
       database: "investment_clerk_trial_v1",
@@ -233,7 +234,18 @@ describe("bounded Clerk trial storage proof", () => {
       keyPrefix: "proof-production-20260930-v1-",
     });
     expect(development.planSha256).not.toBe(production.planSha256);
-    for (const profile of [development, production]) {
+    expect(managed).toMatchObject({
+      environment: "managed",
+      database: "investment_managed_watchlist_v1",
+      principal: { userId: "proof-watchlist-managed-20261001-v1" },
+      keyPrefix: "proof-managed-20261001-v1-",
+    });
+    expect(
+      new Set(
+        [development, production, managed].map((profile) => profile.planSha256),
+      ).size,
+    ).toBe(3);
+    for (const profile of [development, production, managed]) {
       expect(profile.principal.userId.length).toBeLessThanOrEqual(36);
       expect(profile.planSha256).toMatch(/^[0-9a-f]{64}$/u);
       expect(validateClerkTrialProofProfile(profile.environment)).toBe(profile);
@@ -325,7 +337,38 @@ describe("bounded Clerk trial storage proof", () => {
     ]);
   });
 
-  it.each(["development", "production"] as const)(
+  it("keeps both accepted trial namespaces unchanged when the managed proof starts", async () => {
+    const f = fixture();
+    for (const environment of ["development", "production"] as const)
+      expect(
+        (
+          await runClerkTrialStorageProof(
+            environment,
+            "create",
+            BUILD,
+            f.factory,
+          )
+        ).outcome,
+      ).toBe("passed");
+    const before = structuredClone([...f.store.rows]);
+    expect(
+      (await runClerkTrialStorageProof("managed", "create", BUILD, f.factory))
+        .outcome,
+    ).toBe("passed");
+    expect(f.store.rows.size).toBe(6);
+    for (const [key, row] of before) expect(f.store.rows.get(key)).toEqual(row);
+    expect(
+      new Set([...f.store.rows.values()].map((row) => row.$databaseId)),
+    ).toEqual(
+      new Set([
+        "investment_clerk_trial_v1",
+        "investment_clerk_prod_trial_v1",
+        "investment_managed_watchlist_v1",
+      ]),
+    );
+  });
+
+  it.each(["development", "production", "managed"] as const)(
     "runs seven explicit %s phases through the unchanged repository using an atomic model",
     async (environment) => {
       const f = fixture(environment);

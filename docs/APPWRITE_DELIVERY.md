@@ -2,9 +2,10 @@
 
 The owner approved GitHub checks, Appwrite staging, BrowserStack against the
 exact build, then production promotion. The pipeline packages the production
-Clerk web client for the isolated demo watchlist. The accepted development APK
+Clerk web client. The connected managed version adds Discover and the full
+shared watchlist through a separate service. The accepted development APK
 and local research workspace remain separate. Production Android, owner-data
-migration and the full connected workspace are later outcomes.
+migration and broader research features are later outcomes.
 
 The production web demo completed this flow on September 30 at main `b2172d26`.
 The [delivery status table](./CURRENT_WORK.md#delivery-status) records its site
@@ -35,7 +36,7 @@ The pipeline then:
    within a bounded deadline for a ready build, checks for an intervening site
    change, activates the candidate and confirms the site's active deployment ID.
 3. Runs the BrowserStack staging preview check. The same bundle boots at the
-   fixed staging origin and renders its frame, synthetic-data disclosure and
+   fixed staging origin and renders its frame, connected-workspace description and
    software notices without mounting either authentication SDK or the watchlist
    controller. The test requires one matching commit marker, desktop and narrow
    layouts, and no authentication or data requests. It accepts website delivery
@@ -64,6 +65,13 @@ production environment, fixed API origin and source SHA. It packages only
 belongs in this client. The canonical `https://app.investingpro.app` origin
 mounts Clerk; the fixed staging origin is inert, and other production origins
 are rejected. Staging does not expand the API's CORS or authorized-party list.
+
+Before promoting the managed client, accept the separate managed API deployment,
+private table schema, seven isolated transaction scenarios and bounded runtime
+context checks. Bind the new API origin to actual Appwrite rule metadata before
+placing it in the client configuration and workflow. Keep the accepted demo's
+service, database and prior site deployment available. An inert staging preview
+does not prove authenticated saves or a production native app.
 
 ## One-time configuration
 

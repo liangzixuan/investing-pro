@@ -20,6 +20,19 @@ The initial adapter limits an encoded watchlist to 256 KiB. This is a cloud
 storage bound in addition to the shared membership and note limits. The cloud
 table schema must support the declared bound before the persistence proof.
 
+The managed route uses `GET` and `POST /v1/managed/watchlist`. A save contains
+`expectedVersion`, `idempotencyKey` and the canonical full payload. The wire
+envelope permits 266,240 bytes while the encoded payload remains limited to
+262,144 bytes. Shared parsers copy validated values; a receipt must match the
+captured payload and its next version. Stored historical identities remain
+readable even when the current catalog changes.
+
+The separate managed namespace is `investment_managed_watchlist_v1`, with
+private `watchlists` and `receipts` tables. The managed API and proof functions
+do not reuse the accepted demo's database. Source constants describe the selected
+target; the workspace handoff records whether its schema, deployments and
+isolated transaction proof have actually been accepted.
+
 Use separate current-watchlist and command-receipt tables. Enable row security;
 grant no client table or row writes. The server adapter is the only version
 writer. Receipt rows remain server-only. Broad table permissions would override
@@ -50,6 +63,21 @@ same key and resolve against its receipt before claiming success or submitting a
 new edit. There are no automatic mutation retries. The trial UI retains a stale
 edit's draft for review and keeps an uncertain save's original command key for
 explicit reconciliation.
+
+The full watchlist and demo adapters share one save coordinator. The full
+watchlist blocks further edits after a replay until the latest saved version
+is loaded and the user chooses the saved version or retained draft. Catalog
+review has a separate lifetime and cannot clear a pending command. Sign-out,
+session replacement and denied authentication abort active work, clear screen
+data and fence late completions.
+
+The managed Appwrite bridge requires the runtime's `bodyBinary` Buffer, checks
+its visible byte length before copying and preserves the supplied encoded query
+once. It rejects query characters that URL construction would normalize. The
+handler decodes write bytes once with fatal UTF-8 validation. Nonempty GET and
+OPTIONS bodies are rejected. Runtime context evidence must distinguish actual
+delivered bytes from synthetic malformed-byte fixtures; the platform's supplied
+query cannot recover distinctions it already discarded.
 
 The server composition in `apps/api/src/appwrite-transport.ts` retains the SDK's
 request serialization and integer decoding. It gives one server operation a

@@ -112,7 +112,7 @@ export function membershipMatchesResult(
   );
 }
 
-function normalizeWatchlistNote(value: string): string | null {
+export function normalizeWatchlistNote(value: string): string | null {
   const normalized = value.trim().normalize("NFC");
   return [...normalized].length <= 2_000 &&
     !CONTROL_FORMAT_OR_SURROGATE_CHARACTER.test(normalized)
@@ -147,4 +147,29 @@ function hasExactKeys<const Keys extends readonly string[]>(
     actual.length === expected.length &&
     expected.every((key, index) => actual[index] === key)
   );
+}
+
+/** Schema-specific canonical encoding; membership order is meaningful. */
+export function encodeMainWatchlistPayload(
+  payload: MainWatchlistPayload,
+): string {
+  return JSON.stringify({
+    memberships: payload.memberships.map((entry) => ({
+      country: entry.country,
+      exchangeMic: entry.exchangeMic,
+      instrumentType: entry.instrumentType,
+      issuerId: entry.issuerId,
+      issuerName: entry.issuerName,
+      listingId: entry.listingId,
+      note: entry.note,
+      securityId: entry.securityId,
+      securityName: entry.securityName,
+      shareClassId: entry.shareClassId,
+      shareClassName: entry.shareClassName,
+      symbol: entry.symbol,
+    })),
+    name: payload.name,
+    schemaVersion: payload.schemaVersion,
+    snapshotSha256: payload.snapshotSha256,
+  });
 }

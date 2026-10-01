@@ -60,7 +60,7 @@ export function validateTrialConfig(config: unknown): ClerkTrialConfig {
   const derivedOrigin = `https://${key.frontendApi}`;
   const expectedApiOrigin =
     environment === "production"
-      ? "https://api.investingpro.app"
+      ? "https://investment-managed-6abac57a.appwrite.network"
       : "https://investment-clerk-api-6abac57a.appwrite.network";
   if (
     key.instanceType !== environment ||

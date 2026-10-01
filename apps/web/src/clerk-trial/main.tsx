@@ -34,7 +34,7 @@ if (
 const App = native ? NativeTrialApp : ClerkTrialApp;
 createRoot(container).render(
   stagingPreview ? (
-    <TrialFrame>
+    <TrialFrame managed>
       <section aria-labelledby="staging-preview-heading">
         <h2 id="staging-preview-heading">Staging preview</h2>
         <p>Sign-in is available on the production site.</p>

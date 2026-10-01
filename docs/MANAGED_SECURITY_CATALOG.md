@@ -71,8 +71,9 @@ The managed read handler provides authenticated `GET /v1/managed/catalog` and
 receipt exposes attribution, source dates, coverage and exclusions. Detailed
 rights declarations and internal preparation evidence remain on the server.
 Search uses the existing ranked identity search and a 25-result cap. Responses
-are bounded, private and uncached. This handler has no mounted service entrypoint
-yet; its presence in source does not change the running application.
+are bounded, private and uncached. The managed function composes this handler
+with the same catalog and full-payload repository. Its source does not establish
+a running deployment; workspace `CURRENT.md` records activation evidence.
 
 ## Connecting Discover and My Watchlist
 
@@ -90,8 +91,7 @@ Keep partial coverage visible. The managed API must use the same admitted
 catalog for status, search and watchlist writes. It will need a separate storage
 namespace so the accepted demo's saved record remains intact. Reuse the existing
 Appwrite repository's full-payload, version and command-receipt rules, then
-connect the existing Discover and My Watchlist controls through a session-bound
-access interface.
+connect Discover and My Watchlist through a session-bound access interface.
 
 The full repository accepts the managed catalog and resolves a new membership
 by its exact listing ID, independently of search ranking or result limits. A
@@ -101,8 +101,27 @@ Valid historical saved records remain readable; new writes must match the
 current catalog's complete identity. The accepted demo uses its existing
 catalog and storage namespace.
 
+The connected screen supports explicit search, exact listing selection, notes,
+ordering, removal and save. It shows the catalog's limited coverage and source
+receipt. Search results distinguish share classes and exchanges; a ticker never
+substitutes for a listing ID. Notes and unsaved edits remain in the current
+screen until saved, and session retirement clears them synchronously.
+
+When a saved list uses an older catalog, the user can request an exact review
+through read-only `POST /v1/managed/catalog/resolve`. Each explicit request carries
+the current snapshot and at most 50 distinct listing IDs. Further batches require
+another user action. The screen shows changed identities and unavailable entries
+before applying the review; retained notes and membership order are preserved.
+Applying removals is explicit. There is no automatic ticker remapping or silent
+list truncation. A catalog change during review requires a fresh review.
+
+Catalog review cannot resolve an uncertain save or clear a version conflict.
+The shared save coordinator retains the original uncertain command for explicit
+reconciliation. A replay confirms that command's receipt, then requires loading
+the latest saved version and choosing a draft before editing again.
+
 This source layer changes no running deployment, saved data, authentication
 origin, native Android profile or local vault. Workspace `CURRENT.md` records
 actual verification and delivery; synthetic test coverage is not real catalog
-coverage. The hosted Discover/watchlist interface and separate managed service
-remain the next integration work.
+coverage. The separate managed service, runtime context proof and exact-build
+website delivery must be accepted before the connected flow is considered live.

@@ -9,6 +9,7 @@ const sdk = vi.hoisted(() => ({
   session: vi.fn(),
   signIn: vi.fn(),
   screen: vi.fn(),
+  managed: vi.fn(),
 }));
 vi.mock("@clerk/react", () => ({
   ClerkProvider: ({ children }: { children: ReactNode }) => children,
@@ -23,6 +24,15 @@ vi.mock("./TrialScreen", () => ({
   TrialSessionScreen: (props: { session: TrialSession; apiOrigin: string }) => {
     sdk.screen(props);
     return <div>Session watchlist</div>;
+  },
+}));
+vi.mock("./ManagedWorkspaceScreen", () => ({
+  ManagedSessionScreen: (props: {
+    session: TrialSession;
+    apiOrigin: string;
+  }) => {
+    sdk.managed(props);
+    return <div>Managed Discover and watchlist</div>;
   },
 }));
 const config = {
@@ -103,5 +113,65 @@ describe("official Clerk browser adapter", () => {
     const html = renderToStaticMarkup(<ClerkTrialApp config={config} />);
     expect(html).toContain("Checking your session");
     expect(sdk.screen).not.toHaveBeenCalled();
+    expect(sdk.managed).not.toHaveBeenCalled();
   });
+
+  it("selects managed Discover and watchlist only for a matching active production session", () => {
+    const production = {
+      environment: "production" as const,
+      publishableKey: `pk_live_${Buffer.from("clerk.investingpro.app$").toString("base64")}`,
+      apiOrigin: "https://investment-managed-6abac57a.appwrite.network",
+      frontendApiOrigin: "https://clerk.investingpro.app",
+    };
+    sdk.auth.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      userId: "user_owner",
+      sessionId: "session_owner",
+      signOut: vi.fn(),
+    });
+    sdk.session.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      session: {
+        id: "session_owner",
+        user: { id: "user_owner" },
+        status: "active",
+        getToken: vi.fn(),
+      },
+    });
+    const html = renderToStaticMarkup(<ClerkTrialApp config={production} />);
+    expect(html).toContain("Managed Discover and watchlist");
+    expect(html).toContain("Discover companies");
+    expect(html).not.toContain("Synthetic data only");
+    expect(sdk.managed).toHaveBeenCalledTimes(1);
+    expect(sdk.screen).not.toHaveBeenCalled();
+    const props = sdk.managed.mock.calls[0]?.[0] as { session: TrialSession };
+    expect(props.session).toMatchObject({
+      userId: "user_owner",
+      sessionId: "session_owner",
+    });
+  });
+
+  it.each(["pending", "ended", "revoked"])(
+    "keeps an inactive %s session out of both workspaces",
+    (status) => {
+      sdk.auth.mockReturnValue({
+        isLoaded: true,
+        isSignedIn: true,
+        userId: "user_owner",
+        sessionId: "session_owner",
+      });
+      sdk.session.mockReturnValue({
+        isLoaded: true,
+        isSignedIn: true,
+        session: { id: "session_owner", user: { id: "user_owner" }, status },
+      });
+      expect(renderToStaticMarkup(<ClerkTrialApp config={config} />)).toContain(
+        "Official sign-in",
+      );
+      expect(sdk.screen).not.toHaveBeenCalled();
+      expect(sdk.managed).not.toHaveBeenCalled();
+    },
+  );
 });

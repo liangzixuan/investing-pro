@@ -2,6 +2,53 @@ import type {
   PersonalSecurityMasterCoverageDto,
   PersonalSecurityMasterSearchResultDto,
 } from "./index";
+import {
+  encodeMainWatchlistPayload,
+  isMainWatchlistPayload,
+  type MainWatchlistPayload,
+  type WatchlistMembership,
+} from "./personal-watchlist";
+
+export const MANAGED_WATCHLIST_PATH = "/v1/managed/watchlist" as const;
+export const MANAGED_WATCHLIST_LIMITS = Object.freeze({
+  payloadBytes: 262_144,
+  envelopeBytes: 266_240,
+} as const);
+export const MANAGED_CATALOG_RESOLVE_PATH =
+  "/v1/managed/catalog/resolve" as const;
+export const MANAGED_CATALOG_RESOLVE_LIMITS = Object.freeze({
+  listingIds: 50,
+  requestBytes: 8_192,
+  responseBytes: 131_072,
+} as const);
+
+export interface ManagedWatchlistCommand {
+  readonly expectedVersion: number;
+  readonly idempotencyKey: string;
+  readonly payload: MainWatchlistPayload;
+}
+
+export interface ManagedWatchlistDto {
+  readonly version: number;
+  readonly payload: MainWatchlistPayload;
+}
+
+export interface ManagedWatchlistReceiptDto extends ManagedWatchlistDto {
+  readonly replayed: boolean;
+}
+
+export interface ManagedCatalogResolveRequest {
+  readonly snapshotSha256: string;
+  readonly listingIds: readonly string[];
+}
+
+export interface ManagedCatalogResolveResponse {
+  readonly snapshotSha256: string;
+  readonly results: readonly Readonly<{
+    listingId: string;
+    listing: Omit<WatchlistMembership, "note"> | null;
+  }>[];
+}
 
 export const MANAGED_CATALOG_STATUS_PATH = "/v1/managed/catalog" as const;
 export const MANAGED_CATALOG_SEARCH_PATH =
@@ -70,6 +117,21 @@ const ID = /^[a-z0-9][a-z0-9._:-]{2,127}$/u;
 const DIGEST = /^sha256:[0-9a-f]{64}$/u;
 const SYMBOL = /^[A-Z0-9][A-Z0-9.-]{0,14}$/u;
 const DISALLOWED = /[\p{Cc}\p{Cf}\p{Cs}]/u;
+const SAVED_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
+const COMMAND_KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
+const LISTING_KEYS = [
+  "country",
+  "exchangeMic",
+  "instrumentType",
+  "issuerId",
+  "issuerName",
+  "listingId",
+  "securityId",
+  "securityName",
+  "shareClassId",
+  "shareClassName",
+  "symbol",
+] as const;
 const COVERAGE_COUNTS = [
   "activeEligibleSecurities",
   "activeListings",
@@ -111,6 +173,238 @@ const MATCH_KINDS = [
   "name_token_prefix",
   "name_contains",
 ];
+
+/** Captures saved structure only; current catalog admission belongs to the repository. */
+export function parseManagedWatchlistCommand(
+  value: unknown,
+): ManagedWatchlistCommand | null {
+  try {
+    if (!hasKeys(value, ["expectedVersion", "idempotencyKey", "payload"]))
+      return null;
+    const { expectedVersion, idempotencyKey } = value;
+    if (
+      !isCount(expectedVersion) ||
+      expectedVersion >= Number.MAX_SAFE_INTEGER ||
+      typeof idempotencyKey !== "string" ||
+      !COMMAND_KEY.test(idempotencyKey)
+    )
+      return null;
+    const payload = copyWatchlistPayload(value.payload);
+    if (payload === null) return null;
+    return boundedCopy(
+      { expectedVersion, idempotencyKey, payload },
+      MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function parseManagedWatchlist(
+  value: unknown,
+): ManagedWatchlistDto | null {
+  try {
+    if (!hasKeys(value, ["version", "payload"])) return null;
+    const version = value.version;
+    if (!isCount(version)) return null;
+    const payload = copyWatchlistPayload(value.payload);
+    if (payload === null || (version === 0 && payload.memberships.length > 0))
+      return null;
+    return boundedCopy(
+      { version, payload },
+      MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+    );
+  } catch {
+    return null;
+  }
+}
+
+/** A replay confirms this captured command, not the latest stored version. */
+export function parseManagedWatchlistReceipt(
+  value: unknown,
+  capturedCommand: ManagedWatchlistCommand,
+): ManagedWatchlistReceiptDto | null {
+  try {
+    const command = parseManagedWatchlistCommand(capturedCommand);
+    if (
+      command === null ||
+      !hasKeys(value, ["version", "payload", "replayed"]) ||
+      typeof value.replayed !== "boolean"
+    )
+      return null;
+    const replayed = value.replayed;
+    const saved = parseManagedWatchlist({
+      version: value.version,
+      payload: value.payload,
+    });
+    if (
+      saved === null ||
+      saved.version !== command.expectedVersion + 1 ||
+      encodeMainWatchlistPayload(saved.payload) !==
+        encodeMainWatchlistPayload(command.payload)
+    )
+      return null;
+    return boundedCopy(
+      { ...saved, replayed },
+      MANAGED_WATCHLIST_LIMITS.envelopeBytes,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function parseManagedCatalogResolveRequest(
+  value: unknown,
+): ManagedCatalogResolveRequest | null {
+  try {
+    if (
+      !hasKeys(value, ["snapshotSha256", "listingIds"]) ||
+      typeof value.snapshotSha256 !== "string" ||
+      !DIGEST.test(value.snapshotSha256) ||
+      !isList(
+        value.listingIds,
+        MANAGED_CATALOG_RESOLVE_LIMITS.listingIds,
+        isSavedId,
+      ) ||
+      value.listingIds.length === 0 ||
+      new Set(value.listingIds).size !== value.listingIds.length
+    )
+      return null;
+    return boundedCopy(
+      {
+        snapshotSha256: value.snapshotSha256,
+        listingIds: Object.freeze([...value.listingIds]),
+      },
+      MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes,
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function parseManagedCatalogResolveResponse(
+  value: unknown,
+  capturedRequest: ManagedCatalogResolveRequest,
+): ManagedCatalogResolveResponse | null {
+  try {
+    const request = parseManagedCatalogResolveRequest(capturedRequest);
+    if (
+      request === null ||
+      !hasKeys(value, ["snapshotSha256", "results"]) ||
+      value.snapshotSha256 !== request.snapshotSha256 ||
+      !isList(
+        value.results,
+        MANAGED_CATALOG_RESOLVE_LIMITS.listingIds,
+        isResolvedResult,
+      ) ||
+      value.results.length !== request.listingIds.length ||
+      !value.results.every(
+        (result, index) => result.listingId === request.listingIds[index],
+      )
+    )
+      return null;
+    return boundedCopy(
+      {
+        snapshotSha256: request.snapshotSha256,
+        results: Object.freeze(
+          value.results.map((result) =>
+            Object.freeze({
+              listingId: result.listingId,
+              listing:
+                result.listing === null
+                  ? null
+                  : Object.freeze({ ...result.listing }),
+            }),
+          ),
+        ),
+      },
+      MANAGED_CATALOG_RESOLVE_LIMITS.responseBytes,
+    );
+  } catch {
+    return null;
+  }
+}
+
+function copyWatchlistPayload(value: unknown): MainWatchlistPayload | null {
+  if (
+    !hasKeys(value, [
+      "memberships",
+      "name",
+      "schemaVersion",
+      "snapshotSha256",
+    ]) ||
+    !isList(
+      value.memberships,
+      10_000,
+      (member): member is Record<string, unknown> =>
+        hasKeys(member, [...LISTING_KEYS, "note"]),
+    ) ||
+    !isMainWatchlistPayload(value)
+  )
+    return null;
+  const encoded = encodeMainWatchlistPayload(value);
+  if (
+    new TextEncoder().encode(encoded).byteLength >
+    MANAGED_WATCHLIST_LIMITS.payloadBytes
+  )
+    return null;
+  const copy: unknown = JSON.parse(encoded);
+  if (!isMainWatchlistPayload(copy)) return null;
+  return Object.freeze({
+    ...copy,
+    memberships: Object.freeze(
+      copy.memberships.map((entry) => Object.freeze(entry)),
+    ),
+  });
+}
+
+function boundedCopy<T extends object>(
+  value: T,
+  maximumBytes: number,
+): Readonly<T> | null {
+  return new TextEncoder().encode(JSON.stringify(value)).byteLength <=
+    maximumBytes
+    ? Object.freeze(value)
+    : null;
+}
+
+function isSavedId(value: unknown): value is string {
+  return typeof value === "string" && SAVED_ID.test(value);
+}
+
+function isResolvedResult(
+  value: unknown,
+): value is ManagedCatalogResolveResponse["results"][number] {
+  return (
+    hasKeys(value, ["listingId", "listing"]) &&
+    isSavedId(value.listingId) &&
+    (value.listing === null ||
+      (isResolvedListing(value.listing) &&
+        value.listing.listingId === value.listingId))
+  );
+}
+
+function isResolvedListing(
+  value: unknown,
+): value is Omit<WatchlistMembership, "note"> {
+  return (
+    hasKeys(value, LISTING_KEYS) &&
+    value.country === "US" &&
+    typeof value.exchangeMic === "string" &&
+    /^[A-Z0-9]{4}$/u.test(value.exchangeMic) &&
+    (value.instrumentType === "adr" ||
+      value.instrumentType === "common_stock") &&
+    isId(value.issuerId) &&
+    isId(value.listingId) &&
+    isId(value.securityId) &&
+    isId(value.shareClassId) &&
+    isText(value.issuerName, 128) &&
+    isText(value.securityName, 128) &&
+    isText(value.shareClassName, 128) &&
+    typeof value.symbol === "string" &&
+    SYMBOL.test(value.symbol)
+  );
+}
 
 /** Parse wire metadata without admitting a security-master snapshot. */
 export function parseManagedCatalogStatus(

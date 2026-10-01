@@ -134,9 +134,11 @@ const forbiddenText = [
 const ownedProductionDomainPaths = new Set([
   "apps/api/src/managed-workspace-handler.ts",
   "apps/api/src/managed-workspace-handler.test.ts",
+  "apps/api/src/managed-workspace-function.test.ts",
   "apps/api/src/clerk-trial-config.ts",
   "apps/api/src/clerk-trial-config.test.ts",
   "apps/api/src/clerk-trial-function.test.ts",
+  "apps/web/src/clerk-trial/ClerkTrialApp.test.tsx",
   "apps/web/src/clerk-trial/config.ts",
   "apps/web/src/clerk-trial/config.test.ts",
   "apps/web/src/clerk-trial/main.tsx",
@@ -350,7 +352,7 @@ const forbiddenDatabaseText = [
 function releaseWorkflowText(relativePath: string, content: string): string {
   if (relativePath !== ".github/workflows/appwrite-site-release.yml")
     return content;
-  const origin = "https://api.investingpro.app";
+  const origin = "https://investment-managed-6abac57a.appwrite.network";
   const key = "INVESTMENT_CLERK_TRIAL_API_ORIGIN";
   const name = "Build the production Clerk static site";
   const command =
@@ -415,11 +417,11 @@ function verifyReleaseWorkflowTextClassifier(): void {
     "      - name: Build the production Clerk static site",
     "        env:",
     "          INVESTMENT_CLERK_ENVIRONMENT: production",
-    "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
+    "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network",
     "        run: pnpm --filter @research-cockpit/web exec vite build --config vite.clerk-trial.config.ts",
   ].join("\n");
   const admitted = valid.replace(
-    "https://api.investingpro.app",
+    "https://investment-managed-6abac57a.appwrite.network",
     "owned-production-api-origin",
   );
   for (const newline of ["\n", "\r\n"]) {
@@ -430,30 +432,43 @@ function verifyReleaseWorkflowTextClassifier(): void {
       throw new Error("Release workflow API field classifier regressed");
   }
   const invalid = [
+    valid.replace(
+      "https://investment-managed-6abac57a.appwrite.network",
+      "https://api.investingpro.app",
+    ),
     valid.replace("  staging:", "  production:"),
     valid.replace("Build the production", "Build another"),
     valid.replace("        env:", "        with:"),
     valid.replace("ENVIRONMENT: production", "ENVIRONMENT: development"),
     valid.replace("API_ORIGIN:", "OTHER_ORIGIN:"),
-    valid.replace("api.investingpro.app", "api.investingpro.app.evil.invalid"),
-    valid.replace("api.investingpro.app", "api.investingpro.app/path"),
-    valid.replace("https://api", "http://api"),
+    valid.replace(
+      "investment-managed-6abac57a.appwrite.network",
+      "investment-managed-6abac57a.appwrite.network.evil.invalid",
+    ),
+    valid.replace(
+      "investment-managed-6abac57a.appwrite.network",
+      "investment-managed-6abac57a.appwrite.network/path",
+    ),
+    valid.replace("https://investment-managed", "http://investment-managed"),
     valid.replace("run: pnpm", "run: echo pnpm"),
     valid.replace("env:", "env: &settings"),
     valid.replace("        env:", "        env: *settings") +
-      "\n  other:\n    steps:\n      - name: other\n        env: &settings\n          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
-    valid.replace("https://api", "&origin https://api"),
+      "\n  other:\n    steps:\n      - name: other\n        env: &settings\n          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network",
+    valid.replace(
+      "https://investment-managed",
+      "&origin https://investment-managed",
+    ),
     valid.replace("env:", "env: ["),
     valid.replace(
-      "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app",
+      "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network",
       "          INVESTMENT_CLERK_TRIAL_API_ORIGIN: *origin",
     ) +
-      "\n  other:\n    steps:\n      - name: other\n        env:\n          ORIGIN: &origin https://api.investingpro.app",
-    `${valid}\n# https://api.investingpro.app`,
+      "\n  other:\n    steps:\n      - name: other\n        env:\n          ORIGIN: &origin https://investment-managed-6abac57a.appwrite.network",
+    `${valid}\n# https://investment-managed-6abac57a.appwrite.network`,
     `${valid}\n          INVESTMENT_CLERK_TRIAL_API_ORIGIN: other`,
     valid.replace("  staging:", "  staging: {}\n  staging:"),
     valid.replace("      - name:", "      - &build\n        name:"),
-    `settings: &settings\n  INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app\n${valid.replace("        env:", "        env:\n          <<: *settings").replace("          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://api.investingpro.app\n", "")}`,
+    `settings: &settings\n  INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network\n${valid.replace("        env:", "        env:\n          <<: *settings").replace("          INVESTMENT_CLERK_TRIAL_API_ORIGIN: https://investment-managed-6abac57a.appwrite.network\n", "")}`,
   ];
   for (const content of invalid) {
     if (releaseWorkflowText(path, content) !== content)
@@ -1676,6 +1691,7 @@ const filingParserNormalizationExecutionAcceptanceModules = new Map<
   ],
 ]);
 const filingParserNormalizationExecutionMetadataLiteralPaths = new Set([
+  "apps/api/src/managed-workspace-context-proof.ts",
   "scripts/verify-boundaries.ts",
   filingParserNormalizationExecutionFixtureGuardPath,
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
@@ -1712,6 +1728,7 @@ const filingParserNormalizationHandoffSourcePaths = new Set([
   filingParserNormalizationHandoffUnitTestPath,
 ]);
 const filingParserNormalizationHandoffMetadataLiteralPaths = new Set([
+  "apps/api/src/managed-workspace-context-proof.ts",
   "scripts/verify-boundaries.ts",
   "packages/filing-parser/src/filing-parser-evidence-verifier.test.ts",
   "packages/filing-parser/src/filing-parser-evidence-verifier.ts",
@@ -2930,6 +2947,7 @@ if (
 verifyDependencyPolicyClassifiers();
 verifyOwnedProductionDomainTextClassifier();
 verifyReleaseWorkflowTextClassifier();
+verifyManagedContextProofMetadataClassifier();
 const gitignoreViolation = npmrcGitignoreViolation(
   await readFile(join(root, ".gitignore"), "utf8"),
 );
@@ -10463,13 +10481,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       [
         "PersonalSecurityMasterError",
         "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
         "searchPersonalSecurityMaster",
         "type ManagedSecurityMasterCatalog",
       ],
     ],
     [
       "apps/api/src/managed-workspace-catalog.test.ts",
-      ["lookupPersonalSecurityMasterListing"],
+      ["lookupPersonalSecurityMasterListing", "<namespace:securityMaster>"],
     ],
     [
       "apps/api/src/workspace-portfolio-routes.ts",
@@ -25025,6 +25044,35 @@ function hasFilingParserNormalizationHandoffStaticTarget(
     filingParserNormalizationHandoffMetadataLiteralPaths,
     staticStringCanReachHandoff,
   );
+}
+
+function verifyManagedContextProofMetadataClassifier(): void {
+  const path = "apps/api/src/managed-workspace-context-proof.ts";
+  const fixture = 'const query = "q=%E0%A4"; void query;';
+  for (const [violation, target] of [
+    [
+      filingParserNormalizationHandoffExternalCompositionViolation,
+      "@research-cockpit/filing-parser-normalization-handoff",
+    ],
+    [
+      filingParserNormalizationExecutionExternalCompositionViolation,
+      "@research-cockpit/filing-parser-normalization-execution",
+    ],
+  ] as const) {
+    if (
+      violation(path, fixture) !== null ||
+      violation("apps/api/src/other-proof.ts", fixture) === null
+    )
+      throw new Error("Managed context proof metadata path scope regressed");
+    for (const source of [
+      `import { value } from "${target}"; void value;`,
+      'const query = "q=%E0%A4"; void import(query);',
+      `import { spawn as launch } from "node:child_process"; const target = "${target}"; launch("tsx", [target]);`,
+    ]) {
+      if (violation(path, source) === null)
+        throw new Error("Managed context proof execution isolation regressed");
+    }
+  }
 }
 
 function hasFilingParserNormalizationExecutionStaticTarget(

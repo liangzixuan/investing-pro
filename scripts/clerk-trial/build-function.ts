@@ -4,21 +4,37 @@ import { build } from "tsup";
 
 import { validateClerkTrialFunctionConfiguration } from "../../apps/api/src/clerk-trial-config";
 
-const configPath = process.argv[2];
-if (!configPath || process.argv.length !== 3)
-  throw new Error("Pass the reviewed public server configuration path.");
+const surface = process.argv[2];
+const configPath = process.argv[3];
+if (
+  (surface !== "demo" && surface !== "managed") ||
+  !configPath ||
+  process.argv.length !== 4
+)
+  throw new Error(
+    "Pass demo or managed and the reviewed server configuration path.",
+  );
 const { environment, auth, allowedOrigins } =
   validateClerkTrialFunctionConfiguration(
     JSON.parse(await readFile(configPath, "utf8")) as unknown,
   );
+if (surface === "managed" && environment !== "production")
+  throw new Error("The managed workspace requires the production profile.");
 const outDir = resolve(
-  environment === "production"
-    ? "dist/clerk-production-function"
-    : "dist/clerk-trial-function",
+  surface === "managed"
+    ? "dist/managed-workspace-function"
+    : environment === "production"
+      ? "dist/clerk-production-function"
+      : "dist/clerk-trial-function",
 );
 await mkdir(outDir, { recursive: true });
 await build({
-  entry: { main: "apps/api/src/clerk-trial-function.ts" },
+  entry: {
+    main:
+      surface === "managed"
+        ? "apps/api/src/managed-workspace-function.ts"
+        : "apps/api/src/clerk-trial-function.ts",
+  },
   outDir,
   format: ["esm"],
   platform: "node",
@@ -28,7 +44,9 @@ await build({
   clean: true,
   noExternal: [/.*/u],
   define: {
-    __CLERK_TRIAL_SERVER_CONFIG__: JSON.stringify({
+    [surface === "managed"
+      ? "__MANAGED_WORKSPACE_SERVER_CONFIG__"
+      : "__CLERK_TRIAL_SERVER_CONFIG__"]: JSON.stringify({
       environment,
       auth,
       allowedOrigins,
@@ -42,4 +60,4 @@ await writeFile(
   `${outDir}/package.json`,
   JSON.stringify({ private: true, type: "module" }) + "\n",
 );
-console.log("Trial function built; public configuration values omitted.");
+console.log(`${surface} function built; configuration values omitted.`);
