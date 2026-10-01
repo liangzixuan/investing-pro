@@ -12,6 +12,10 @@ import {
 } from "./watchlist-repository";
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
 import {
+  ManagedSecAnnualServiceError,
+  type ManagedSecAnnualService,
+} from "./managed-sec-annual-service";
+import {
   createManagedCatalogService,
   type ManagedCatalogService,
 } from "./managed-workspace-catalog";
@@ -1052,4 +1056,144 @@ describe("managed JSON admission and read-only resolve", () => {
       expect(f.openRepository).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("managed annual read-only POST boundary", () => {
+  const path = "/v1/managed/sec-annual-evidence";
+  const value = {
+    schemaVersion: "1.0.0",
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
+    listingId: "listing-demo",
+    symbol: "DEMO",
+  };
+  function setup() {
+    const f = fixture();
+    const load = vi
+      .fn<ManagedSecAnnualService["load"]>()
+      .mockRejectedValue(new ManagedSecAnnualServiceError("unavailable"));
+    const assertActive = vi.fn<ManagedSecAnnualService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      annual: { load, assertActive },
+    });
+    const post = (
+      body: unknown = value,
+      headers: Record<string, string> = {},
+    ) =>
+      new Request(`https://managed.invalid${path}`, {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(body),
+      });
+    return { ...f, load, assertActive, handler, post };
+  }
+  it("authenticates before body/service and never opens the watchlist repository", async () => {
+    const f = setup();
+    f.auth.mockResolvedValue({ status: "unauthenticated" });
+    expect((await f.handler(f.post({ invalid: true }))).status).toBe(401);
+    expect(f.load).not.toHaveBeenCalled();
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it("strictly owns the four request fields before annual dispatch", async () => {
+    const f = setup();
+    expect(
+      (await f.handler(f.post({ ...value, cik: "0000320193" }))).status,
+    ).toBe(400);
+    expect(f.load).not.toHaveBeenCalled();
+    const response = await f.handler(f.post());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(f.load).toHaveBeenCalledExactlyOnceWith(
+      value,
+      OWNER,
+      expect.any(AbortSignal),
+    );
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["not_configured", 503],
+    ["catalog_changed", 409],
+    ["request_timeout", 408],
+    ["invalid_request", 400],
+  ] as const)(
+    "keeps annual %s finite and outside watchlist uncertainty",
+    async (code, status) => {
+      const f = setup();
+      f.load.mockRejectedValue(new ManagedSecAnnualServiceError(code));
+      const response = await f.handler(f.post());
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: code });
+    },
+  );
+  it("returns only the checked cooldown and preserves no-store/origin headers", async () => {
+    const f = setup();
+    f.load.mockRejectedValue(
+      new ManagedSecAnnualServiceError(
+        "rate_limited",
+        "2026-10-01T12:00:20.000Z",
+      ),
+    );
+    const response = await f.handler(f.post());
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: "rate_limited",
+      nextAllowedAt: "2026-10-01T12:00:20.000Z",
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+  });
+  it("admits exact POST preflight without auth and rejects query/oversized body", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}`, {
+            method: "OPTIONS",
+            headers: {
+              origin: NATIVE_ORIGIN,
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "Authorization, Content-Type",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}?x=1`, {
+            method: "POST",
+            headers: { origin: ORIGIN },
+          }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (await f.handler(f.post({ ...value, symbol: "A".repeat(4096) }))).status,
+    ).toBe(413);
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it("checks the serialized response cap and late liveness before returning", async () => {
+    const f = setup();
+    f.load.mockResolvedValue({
+      oversized: "x".repeat(2097152),
+    } as unknown as Awaited<ReturnType<ManagedSecAnnualService["load"]>>);
+    expect((await f.handler(f.post())).status).toBe(503);
+    f.load.mockResolvedValue(
+      {} as Awaited<ReturnType<ManagedSecAnnualService["load"]>>,
+    );
+    f.assertActive
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedSecAnnualServiceError("request_timeout");
+      });
+    expect((await f.handler(f.post())).status).toBe(408);
+  });
 });

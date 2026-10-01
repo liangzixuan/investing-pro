@@ -4,7 +4,11 @@ The October personal launch uses the shared React interface in a Capacitor
 Android app. Clerk supplies native sign-in and Appwrite hosts the managed API
 and data. The connected website is accepted at main `de8fd252`; production
 Android packaging, signing recovery and Pixel acceptance are tracked separately
-in workspace [CURRENT.md](../../CURRENT.md).
+in workspace [CURRENT.md](../../CURRENT.md). Production Investment 1.0.0 now has
+an accepted signed APK and production Clerk registration. Its managed API
+supports both browser and native requests. The installation package and checklists
+are in workspace `delivery/android-1.0.0`; physical Pixel checks, an upgrade and
+independent signing recovery remain pending.
 
 The owner reported successful development trial 1.1 testing on a Pixel 10 Pro XL
 running Android 17. That report covers the development application. Production

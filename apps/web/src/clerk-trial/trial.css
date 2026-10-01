@@ -238,6 +238,80 @@ textarea:disabled {
   color: #425d61;
   overflow-wrap: anywhere;
 }
+.managed-results .trial-actions {
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.managed-annual-report {
+  overflow-wrap: anywhere;
+}
+.managed-annual-report h2:focus {
+  outline: 3px solid #137a64;
+  outline-offset: 4px;
+}
+.managed-annual-help,
+.managed-annual-report .sec-quarterly-message {
+  color: #425d61;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.managed-annual-report .sec-quarterly-comparison,
+.managed-annual-report .sec-filing-context {
+  min-width: 0;
+  margin: 18px 0;
+  padding: 16px;
+  border: 1px solid #95b1ab;
+  border-radius: 12px;
+  background: #fff;
+}
+.managed-annual-report .sec-quarterly-comparison-coordinates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  min-width: 0;
+}
+.managed-annual-report .sec-quarterly-comparison-coordinates > div {
+  min-width: 0;
+}
+.managed-annual-report dt {
+  color: #425d61;
+  font-size: 0.85rem;
+}
+.managed-annual-report dd {
+  margin: 4px 0 12px;
+}
+.managed-annual-report .sec-quarterly-value {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.managed-annual-report .sec-quarterly-caveat,
+.managed-annual-report .discovery-warning {
+  padding: 12px;
+  border-left: 3px solid #986910;
+  background: #fffaf0;
+  color: #654c20;
+}
+.managed-annual-report summary {
+  min-height: 44px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.managed-annual-report a,
+.managed-annual-report summary {
+  color: #086650;
+}
+.managed-annual-report ol {
+  padding-left: 22px;
+}
+@media (max-width: 640px) {
+  .managed-annual-report .sec-quarterly-comparison-coordinates {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .managed-annual-report .sec-quarterly-comparison,
+  .managed-annual-report .sec-filing-context {
+    padding: 12px;
+  }
+}
 .managed-catalog-receipt {
   margin-top: 24px;
   font-size: 0.9rem;

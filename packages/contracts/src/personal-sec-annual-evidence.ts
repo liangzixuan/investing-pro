@@ -7,6 +7,12 @@ import type {
 
 export const PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION = "1.0.0" as const;
 export const PERSONAL_SEC_ANNUAL_DEFINITION_VERSION = "1.0.0" as const;
+export const MANAGED_SEC_ANNUAL_EVIDENCE_PATH =
+  "/v1/managed/sec-annual-evidence" as const;
+export const MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS = Object.freeze({
+  requestBytes: 4_096,
+  responseBytes: 2_097_152,
+} as const);
 export const PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS = Object.freeze([
   "RevenueFromContractWithCustomerExcludingAssessedTax",
   "Revenues",
@@ -187,6 +193,49 @@ export interface PersonalSecAnnualEvidenceRequestDto {
   readonly listingId: string;
   readonly symbol: string;
 }
+
+/** Captures request structure; the server resolves current listing identity/CIK. */
+export function parseManagedSecAnnualEvidenceRequest(
+  value: unknown,
+): PersonalSecAnnualEvidenceRequestDto | null {
+  try {
+    const keys = [
+      "schemaVersion",
+      "catalogSnapshotSha256",
+      "listingId",
+      "symbol",
+    ];
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      Array.isArray(value) ||
+      Reflect.ownKeys(value).length !== keys.length ||
+      !keys.every((key) => Object.hasOwn(value, key))
+    )
+      return null;
+    const { schemaVersion, catalogSnapshotSha256, listingId, symbol } =
+      value as Record<string, unknown>;
+    if (
+      schemaVersion !== PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION ||
+      typeof catalogSnapshotSha256 !== "string" ||
+      !/^sha256:[a-f0-9]{64}$/u.test(catalogSnapshotSha256) ||
+      typeof listingId !== "string" ||
+      !/^[a-z0-9][a-z0-9._:-]{2,127}$/u.test(listingId) ||
+      typeof symbol !== "string" ||
+      !/^[A-Z0-9][A-Z0-9.-]{0,14}$/u.test(symbol)
+    )
+      return null;
+    return Object.freeze({
+      schemaVersion,
+      catalogSnapshotSha256: catalogSnapshotSha256 as `sha256:${string}`,
+      listingId,
+      symbol,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export interface PersonalSecAnnualEvidenceResponseDto {
   readonly schemaVersion: typeof PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION;
   readonly catalogSnapshotSha256: `sha256:${string}`;

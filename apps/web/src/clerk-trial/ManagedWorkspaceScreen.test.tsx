@@ -66,6 +66,7 @@ const snapshot: ManagedCatalogSnapshotDto = {
 };
 function fixture(initial = payload) {
   const api: ManagedApi = {
+    annualReport: vi.fn(),
     load: vi
       .fn<ManagedApi["load"]>()
       .mockResolvedValue({ version: 1, payload: initial }),
@@ -88,6 +89,35 @@ function fixture(initial = payload) {
   };
 }
 describe("managed workspace screen", () => {
+  it("keeps the watchlist mounted beside an explicit annual panel and gates old catalog entries", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-one", "Draft survives Back");
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    const output = html();
+    expect(output).toContain("Annual report · DEMO");
+    expect(output).toContain("Load annual report");
+    expect(output).toContain("Back to workspace");
+    expect(output).toContain("My Watchlist");
+    expect(output).toContain("Draft survives Back");
+    expect(output).toContain("Unsaved changes");
+    expect(api.annualReport).not.toHaveBeenCalled();
+    workspace.annual.close();
+    expect(html()).not.toContain("Load annual report");
+    expect(html()).toContain("Draft survives Back");
+    vi.mocked(api.status).mockResolvedValue({
+      snapshot: { ...snapshot, snapshotSha256: `sha256:${"b".repeat(64)}` },
+    });
+    await workspace.refreshCatalog();
+    expect(html()).toMatch(
+      /<button[^>]*disabled=""[^>]*aria-label="Annual report for saved DEMO"/u,
+    );
+    expect(html()).toContain(
+      "before adding, saving or opening an annual report",
+    );
+  });
   it("renders the reused accessible search and full exact-listing editing controls", async () => {
     const { workspace, html } = fixture();
     await workspace.coordinator.load();

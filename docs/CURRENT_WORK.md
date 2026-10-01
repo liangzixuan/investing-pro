@@ -17,8 +17,8 @@ linked handoffs; a later source merge is not a new deployment.
 | Local research app       | Preserved a89 release and encrypted vault                                                                                                       | Managed migration and recovery are separate work.                                                                      |
 | Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                     | Does not accept production native sign-in or signing custody.                                                          |
 | Production web demo      | Preserved demo API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out                      | Synthetic saved version 1 remains separate from the managed workspace.                                                 |
-| Connected website        | Main `de8fd252`; site `6abe04e84313ac9d72da`, managed API `6abdd164d55dd3944f82`; exact-build delivery and signed-in desktop search/read/layout | AAPL, GOOG and GOOGL only, no prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
-| Production native app    | No accepted production APK                                                                                                                      | Production auth/callbacks, private release signing, upgrade and recovery checks on the Pixel.                          |
+| Connected website        | Main `de8fd252`; site `6abe04e84313ac9d72da`, managed API `6abe436716c11e4f525e`; exact-build delivery and signed-in desktop search/read/layout | AAPL, GOOG and GOOGL only, no prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
+| Production native app    | Signed Investment 1.0.0 APK, production Clerk registration and managed API `6abe436716c11e4f525e`; delivery folder `delivery/android-1.0.0`     | Physical Pixel installation, authentication/lifecycle, same-signer upgrade and independent signing recovery.           |
 
 Keep Next.js for desktop and the shared React/Vite/Capacitor client for Android.
 Clerk supplies identity and the server enforces account/data access. Appwrite
@@ -84,20 +84,29 @@ data and sign-out on Android Chrome on the Pixel, after which the desktop still
 loaded the same saved version without another sign-in. This is a limited
 synthetic web journey, not native production or full-workspace acceptance.
 
-The active product outcome is production Android access to managed Discover and
-My Watchlist, using the shared screen, session adapter and repository. The
+Production Android has a signed artifact for managed Discover and My Watchlist,
+using the shared screen, session adapter and repository. Physical-device
+acceptance remains pending. The
 [managed catalog](./MANAGED_SECURITY_CATALOG.md) now has a reviewed fixed cohort
 of AAPL, GOOG and GOOGL, with three candidates excluded and limited coverage
 shown explicitly. The integration adds a compact authenticated search
 handler and adapts the existing full-payload repository to exact listing lookup
 and receipt-first reconciliation. The managed API and website are delivered;
-production Android remains pending. The connected source includes exact listing selection, notes,
+production Android API and signed artifact are accepted separately from phone testing. The connected source includes exact listing selection, notes,
 ordering, removal, full-payload saves and explicit catalog review in batches of 50. A shared save coordinator owns uncertain commands and version conflicts.
 The separate managed function preserves the existing auth and repository rules;
 its separate database, runtime proof and same-archive website delivery have accepted
 evidence. Live desktop QA reused the owner session without changing records.
 One initial catalog error recovered with one explicit Refresh; its cause remains
 unknown. The accepted demo API and saved record stay intact.
+
+The active source outcome is an explicit [Annual report](./MANAGED_SEC_ANNUAL.md)
+panel for these admitted listings. A private hosted feasibility check produced
+normalized Apple annual evidence through the existing SEC provider and resolver.
+The source adds a shared request-admission row and preserves the current
+watchlist draft while viewing evidence. Isolated transaction checks, integrated
+acceptance and delivery remain separate gates; the deployed client does not yet
+include this panel. Price delivery remains held on hosted-display permissions.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
