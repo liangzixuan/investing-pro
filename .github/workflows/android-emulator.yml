@@ -1,0 +1,118 @@
+name: Android emulator
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-emulator-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-emulator:
+    name: Android emulator (API 36)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      INVESTMENT_CLIENT_PROFILE: disconnected
+      INVESTMENT_BUILD_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Install Java 21
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Install Android SDK components
+        timeout-minutes: 10
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "platform-tools" "platforms;android-36" "build-tools;35.0.0" \
+            "emulator" "system-images;android-36;google_apis;x86_64"
+
+      - name: Enable emulator acceleration
+        run: |
+          test -c /dev/kvm
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm && test -w /dev/kvm
+
+      - name: Bundle and sync the disconnected Android app
+        timeout-minutes: 5
+        run: pnpm --filter @research-cockpit/web android:sync
+
+      - name: Test the packaged app on Android
+        timeout-minutes: 25
+        working-directory: apps/web/android
+        run: |
+          bash ./gradlew --no-daemon --console=plain \
+            -PinvestmentClientProfile=disconnected \
+            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
+            -Pandroid.testInstrumentationRunnerArguments.expectedSourceSha="$GITHUB_SHA" \
+            :app:pixel2Api36DebugAndroidTest
+
+      - name: Verify native tests actually ran
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          reports = sorted(Path("apps/web/android/app/build/outputs/androidTest-results/managedDevice").rglob("TEST-*.xml"))
+          if not reports:
+              raise SystemExit("No managed-device JUnit reports were produced.")
+          expected_class = "local.investment.personal.DisconnectedAppInstrumentedTest"
+          expected_tests = {
+              "packagedAppLaunchesWithDisconnectedGuards",
+              "localNavigationAndHardwareBackKeepWorkspaceLocked",
+              "recreatedActivityReloadsPackagedAppAndBackStillWorks",
+          }
+          executed = set()
+          for report in reports:
+              result = ET.parse(report).getroot()
+              for suite in result.iter("testsuite"):
+                  if any(int(suite.get(field, "0")) != 0 for field in ("failures", "errors", "skipped")):
+                      raise SystemExit("Native tests reported a failure, error or skip.")
+              for case in result.iter("testcase"):
+                  if any(case.find(field) is not None for field in ("failure", "error", "skipped")):
+                      raise SystemExit("A native test did not pass.")
+                  if case.get("classname") == expected_class:
+                      executed.add(case.get("name"))
+          if not expected_tests.issubset(executed):
+              raise SystemExit("The three required native tests did not all execute.")
+          print(f"Verified {len(executed)} native tests with no failures, errors or skips.")
+          PY
+
+      - name: Retain Android test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-emulator-${{ github.run_attempt }}
+          path: |
+            apps/web/android/app/build/reports/androidTests/**
+            apps/web/android/app/build/outputs/androidTest-results/**
+            apps/web/android/app/build/outputs/managed_device_android_test_additional_output/**
+          if-no-files-found: warn
+          retention-days: 14

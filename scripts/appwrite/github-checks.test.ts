@@ -117,7 +117,7 @@ function fakeGitHub(data: Map<string, unknown>) {
 }
 
 describe("main-push source proof", () => {
-  it("derives the actual six workflows and seven explicit jobs for a root manifest change", () => {
+  it("derives the actual seven workflows and eight explicit jobs for a root manifest change", () => {
     const proof = proofFor();
     expect(proof.workflows.every((workflow) => workflow.required)).toBe(true);
     expect(proof.workflows.flatMap((workflow) => workflow.jobs)).toEqual([
@@ -128,6 +128,7 @@ describe("main-push source proof", () => {
       "Ten-fact parser execution (Ubuntu 24.04)",
       "Cross-engine parser execution (Ubuntu 24.04)",
       "Synthetic filing payload custody (Ubuntu 24.04)",
+      "Android emulator (API 36)",
     ]);
     expect(
       proof.workflows.every((workflow) =>
@@ -145,7 +146,24 @@ describe("main-push source proof", () => {
       proof.workflows
         .filter((workflow) => workflow.required)
         .map((workflow) => workflow.path),
-    ).toEqual([CHECK_WORKFLOWS[0], CHECK_WORKFLOWS[2]]);
+    ).toEqual([CHECK_WORKFLOWS[0], CHECK_WORKFLOWS[2], CHECK_WORKFLOWS[6]]);
+  });
+
+  it.each([
+    "apps/web/android/app/src/main/AndroidManifest.xml",
+    "apps/web/src/clerk-trial/ManagedWorkspaceScreen.tsx",
+    "packages/contracts/src/managed-workspace.ts",
+    "pnpm-lock.yaml",
+    ".github/workflows/android-emulator.yml",
+    "docs/ANDROID_CLIENT.md",
+  ])("requires the unfiltered emulator workflow for %s", (path) => {
+    const workflow = proofFor([path]).workflows.find(
+      (entry) => entry.path === ".github/workflows/android-emulator.yml",
+    );
+    expect(workflow).toMatchObject({
+      required: true,
+      jobs: ["Android emulator (API 36)"],
+    });
   });
 
   it("requires the same acceptance jobs for a dependency-policy helper change as its boundary runner", () => {
@@ -162,6 +180,7 @@ describe("main-push source proof", () => {
       CHECK_WORKFLOWS[3],
       CHECK_WORKFLOWS[4],
       CHECK_WORKFLOWS[5],
+      CHECK_WORKFLOWS[6],
     ]);
   });
 
@@ -242,6 +261,33 @@ describe("main-push source proof", () => {
     ).toThrow();
   });
 
+  it("binds emulator workflow bytes and refuses an omitted or waived emulator gate", () => {
+    const proof = proofFor(["apps/web/android/app/build.gradle"]);
+    expect(() =>
+      validateSourceCheckProof(proof, context, proof.changedPaths, {
+        ...sources,
+        [CHECK_WORKFLOWS[6]]: `${sources[CHECK_WORKFLOWS[6]]}\n# changed\n`,
+      }),
+    ).toThrow();
+    for (const workflows of [
+      proof.workflows.slice(0, -1),
+      proof.workflows.map((workflow) =>
+        workflow.path === CHECK_WORKFLOWS[6]
+          ? { ...workflow, required: false }
+          : workflow,
+      ),
+    ]) {
+      expect(() =>
+        validateSourceCheckProof(
+          { ...proof, workflows },
+          context,
+          proof.changedPaths,
+          sources,
+        ),
+      ).toThrow();
+    }
+  });
+
   it.each([
     "name: unsupported\non:\n  push:\n    branches: [main]\n    paths-ignore: [docs/**]\njobs: {}",
     'name: unsupported\non:\n  push:\n    branches: [main]\n    paths: ["!docs/**"]\njobs: {}',
@@ -260,8 +306,8 @@ describe("GitHub exact-revision completed checks", () => {
     const request = fakeGitHub(responses(proof));
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", request),
-    ).resolves.toEqual({ verifiedWorkflows: 6, verifiedJobs: 7 });
-    expect(request).toHaveBeenCalledTimes(13);
+    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 8 });
+    expect(request).toHaveBeenCalledTimes(15);
   });
 
   it("does not demand path-filtered workflows that did not apply", async () => {
@@ -269,8 +315,8 @@ describe("GitHub exact-revision completed checks", () => {
     const request = fakeGitHub(responses(proof));
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", request),
-    ).resolves.toEqual({ verifiedWorkflows: 2, verifiedJobs: 3 });
-    expect(request).toHaveBeenCalledTimes(5);
+    ).resolves.toEqual({ verifiedWorkflows: 3, verifiedJobs: 4 });
+    expect(request).toHaveBeenCalledTimes(7);
   });
 
   it("binds documented jobs without optional run_attempt through the attempt-specific endpoint", async () => {
@@ -288,8 +334,79 @@ describe("GitHub exact-revision completed checks", () => {
     });
     await expect(
       verifyGitHubChecks(proof, "synthetic-token", fakeGitHub(data)),
-    ).resolves.toEqual({ verifiedWorkflows: 6, verifiedJobs: 7 });
+    ).resolves.toEqual({ verifiedWorkflows: 7, verifiedJobs: 8 });
   });
+
+  it.each([
+    { total_count: 0, workflow_runs: [] },
+    {
+      total_count: 1,
+      workflow_runs: [{ ...runFor(6), head_sha: before }],
+    },
+    {
+      total_count: 2,
+      workflow_runs: [
+        runFor(6),
+        { ...runFor(6), id: 22351, conclusion: "failure" },
+      ],
+    },
+    {
+      total_count: 1,
+      workflow_runs: [{ ...runFor(6), run_attempt: 2, conclusion: "failure" }],
+    },
+  ])("refuses missing, stale or failed emulator runs %#", async (response) => {
+    const proof = proofFor(["apps/web/android/app/build.gradle"]);
+    const data = responses(proof);
+    data.set("/workflows/android-emulator.yml/runs", response);
+    await expect(
+      verifyGitHubChecks(proof, "synthetic-token", fakeGitHub(data)),
+    ).rejects.toThrow("no deployment is authorized");
+  });
+
+  it.each([
+    { run_attempt: 1 },
+    { head_sha: before },
+    { conclusion: "failure" },
+    { status: "in_progress", conclusion: null },
+  ])(
+    "requires successful emulator jobs from the exact latest attempt %#",
+    async (change) => {
+      const proof = proofFor([
+        "apps/web/src/clerk-trial/ManagedWorkspaceScreen.tsx",
+      ]);
+      const data = responses(proof);
+      const run = { ...runFor(6), run_attempt: 2 };
+      data.set("/workflows/android-emulator.yml/runs", {
+        total_count: 1,
+        workflow_runs: [run],
+      });
+      data.set(`/runs/${run.id}/attempts/2/jobs`, {
+        total_count: 1,
+        jobs: [
+          {
+            name: "Android emulator (API 36)",
+            run_id: run.id,
+            run_attempt: 2,
+            head_sha: revision,
+            status: "completed",
+            conclusion: "success",
+            ...change,
+          },
+        ],
+      });
+      const request = fakeGitHub(data);
+      await expect(
+        verifyGitHubChecks(proof, "synthetic-token", request),
+      ).rejects.toThrow("no deployment is authorized");
+      expect(
+        request.mock.calls.some(
+          ([url]) =>
+            typeof url === "string" &&
+            url.includes(`/runs/${run.id}/attempts/1/jobs`),
+        ),
+      ).toBe(false);
+    },
+  );
 
   it.each([
     { head_sha: before },

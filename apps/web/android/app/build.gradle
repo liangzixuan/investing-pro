@@ -160,6 +160,19 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    testOptions {
+        animationsDisabled = true
+        managedDevices {
+            devices {
+                pixel2Api36(com.android.build.api.dsl.ManagedVirtualDevice) {
+                    device = 'Pixel 2'
+                    apiLevel = 36
+                    systemImageSource = 'google'
+                    require64Bit = true
+                }
+            }
+        }
+    }
     signingConfigs {
         release {
             if (releaseStorePath != null && !releaseStorePath.isEmpty()) {
@@ -200,6 +213,7 @@ dependencies {
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-web:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }
 
