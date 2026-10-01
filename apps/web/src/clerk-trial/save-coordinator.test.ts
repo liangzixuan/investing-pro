@@ -68,9 +68,9 @@ describe("shared save coordinator", () => {
     const input = draft("  Cafe\u0301  ");
     controller.replaceDraft(input);
     input.entries[0]!.note = "external mutation";
-    save.mockImplementationOnce(async (command) => {
+    save.mockImplementationOnce((command) => {
       command.payload.entries[0]!.note = "adapter mutation";
-      throw new TrialApiError("commit_unknown");
+      return Promise.reject(new TrialApiError("commit_unknown"));
     });
     await controller.save();
     controller.replaceDraft(draft("replacement"));
