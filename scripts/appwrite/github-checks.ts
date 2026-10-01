@@ -14,6 +14,7 @@ export const CHECK_WORKFLOWS = [
   ".github/workflows/filing-parser-normalization-execution-acceptance.yml",
   ".github/workflows/filing-parser-cross-engine-execution-acceptance.yml",
   ".github/workflows/filing-payload-custody-acceptance.yml",
+  ".github/workflows/android-emulator.yml",
 ] as const;
 
 type WorkflowPath = (typeof CHECK_WORKFLOWS)[number];
@@ -43,7 +44,7 @@ const MAIN_REF = "refs/heads/main";
 const MAX_FILE_BYTES = 500_000;
 const MAX_RESPONSE_BYTES = 1_048_576;
 const MAX_TOTAL_BYTES = 4 * MAX_RESPONSE_BYTES;
-const MAX_REQUESTS = 13;
+const MAX_REQUESTS = 1 + 2 * CHECK_WORKFLOWS.length;
 const FAILURE =
   "Source-check verification failed; no deployment is authorized.";
 

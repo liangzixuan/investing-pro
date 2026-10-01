@@ -97,6 +97,32 @@ backup needs independent owner custody and a restore/signature proof before it
 is accepted as recoverable. Workspace CURRENT records actual key creation,
 certificate, artifact hashes, backup evidence and remaining owner steps.
 
+## Automated emulator checks
+
+The `Android emulator` GitHub Actions workflow builds and installs the
+disconnected debug app on a fresh virtual Pixel. It runs for pull requests and
+main pushes, and can also be started from the Actions page. The runner supplies the emulator;
+the owner's phone and Windows Android SDK are not needed.
+
+The tests exercise packaged WebView startup, locked local routes, the home
+link, Android Back and activity recreation through Android's instrumentation
+runner and Espresso. They check the embedded commit marker and disconnected
+access controls, and retain an emulator screenshot for each test.
+They use the existing disconnected profile, which has no account, API access
+or research data. The APK uses the runner's disposable debug signer. Production
+signing custody, Clerk admission and WebView debugging settings are unchanged.
+
+Each run retains its Android test results and HTML report. The workflow rejects
+missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
+Appwrite release. Read the test report when a run fails; a successful build
+alone does not mean the tests executed.
+
+This is the first native regression layer. It does not test managed sign-in,
+shared watchlist saves, Annual report requests, production signing or upgrades
+over an installed release. Those paths retain their existing unit/browser
+coverage and selected physical Pixel checks. Routine changes covered by this
+suite no longer require a manual APK installation for these checks.
+
 ## Acceptance
 
 Verify the signed APK's package, explicit version, certificate, SDK levels,
