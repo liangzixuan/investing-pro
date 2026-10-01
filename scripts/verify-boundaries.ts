@@ -132,6 +132,9 @@ const forbiddenText = [
   /@?openbb/i,
 ];
 const ownedProductionDomainPaths = new Set([
+  "apps/web/src/clerk-trial/NativeTrialApp.test.tsx",
+  "apps/web/client-profile.ts",
+  "apps/web/client-profile.test.ts",
   "apps/api/src/managed-workspace-handler.ts",
   "apps/api/src/managed-workspace-handler.test.ts",
   "apps/api/src/managed-workspace-function.test.ts",
@@ -143,6 +146,10 @@ const ownedProductionDomainPaths = new Set([
   "apps/web/src/clerk-trial/config.test.ts",
   "apps/web/src/clerk-trial/main.tsx",
   "apps/web/src/clerk-trial/main.test.tsx",
+]);
+const ownedAndroidPackagePaths = new Set([
+  "apps/web/client-profile.ts",
+  "apps/web/client-profile.test.ts",
 ]);
 
 function ownedProductionHostnameSpan(
@@ -213,11 +220,16 @@ function competitorText(relativePath: string, content: string): string {
         node.parent.initializer === node &&
         ts.isStringLiteral(node.parent.name) &&
         node.parent.name.text === "sourceUri";
+      const androidPackage =
+        ownedAndroidPackagePaths.has(relativePath) &&
+        node.text === "app.investingpro.android";
       const span = fixedCatalog
         ? repositoryReference
           ? { start: 0, length: node.text.length }
           : null
-        : ownedProductionHostnameSpan(node.text);
+        : androidPackage
+          ? { start: 0, length: node.text.length }
+          : ownedProductionHostnameSpan(node.text);
       if (span !== null)
         spans.push({
           start: node.getStart(source) + 1 + span.start,
@@ -237,6 +249,31 @@ function verifyOwnedProductionDomainTextClassifier(): void {
     forbiddenText.some((pattern) =>
       pattern.test(competitorText(path, content)),
     );
+  for (const path of ownedAndroidPackagePaths) {
+    if (matchesForbiddenText(path, '"app.investingpro.android"'))
+      throw new Error("Owned Android package classifier regressed");
+    for (const value of [
+      '"app.investingpro.android.extra"',
+      '"other.app.investingpro.android"',
+      '"https://app.investingpro.android"',
+      '"app.investingpro.android?query"',
+      '"app.investingpro.android/investingpro"',
+      '"app.investingpro.android"; "investingpro"',
+      "// app.investingpro.android",
+      '"app.investingpro.android"; // investingpro',
+    ]) {
+      if (!matchesForbiddenText(path, value))
+        throw new Error("Unowned Android package text was admitted");
+    }
+  }
+  for (const path of [
+    "apps/web/client-profile.ts.old",
+    "apps/web/other-profile.ts",
+    "apps/web/src/clerk-trial/config.ts",
+  ]) {
+    if (!matchesForbiddenText(path, '"app.investingpro.android"'))
+      throw new Error("Unselected Android package path was admitted");
+  }
   const catalogPath = "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
   const repository = "https://github.com/liangzixuan/investing-pro";
   const canonicalReference = JSON.stringify({ sourceUri: repository });

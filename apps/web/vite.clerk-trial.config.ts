@@ -1,6 +1,9 @@
 import { fileURLToPath } from "node:url";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { defineConfig } from "vite";
 import { buildIdentity } from "./build-identity";
+import { clerkClientProfile, nativeAssetManifest } from "./client-profile";
 import {
   trialFrontendApiOrigin,
   validateTrialConfig,
@@ -16,6 +19,13 @@ const config = validateTrialConfig({
 });
 const { apiOrigin, frontendApiOrigin: clerkOrigin } = config;
 const sourceSha = buildIdentity(process.env.INVESTMENT_BUILD_SHA);
+const selector = process.env.INVESTMENT_CLIENT_PROFILE;
+const profile = clerkClientProfile(selector, config.environment);
+if (profile.target !== "web" && !sourceSha) {
+  throw new Error("Native assets require an explicit source identity.");
+}
+const outDir = fileURLToPath(new URL(`./${profile.webDir}`, import.meta.url));
+const native = profile.target !== "web";
 
 export default defineConfig({
   root,
@@ -24,8 +34,34 @@ export default defineConfig({
   envDir: false,
   define: {
     __INVESTMENT_CLERK_TRIAL_CONFIG__: JSON.stringify(config),
+    __INVESTMENT_CLIENT_TARGET__: JSON.stringify(profile.target),
   },
   plugins: [
+    {
+      name: "native-asset-identity",
+      async writeBundle(_options, bundle) {
+        if (profile.target === "web") return;
+        const assets = Object.fromEntries(
+          await Promise.all(
+            Object.keys(bundle).map(
+              async (path) =>
+                [path, await readFile(join(outDir, path))] as const,
+            ),
+          ),
+        );
+        const manifest = nativeAssetManifest(
+          selector,
+          config,
+          sourceSha,
+          assets,
+        );
+        await writeFile(
+          join(outDir, "investment-client.json"),
+          `${JSON.stringify(manifest, null, 2)}\n`,
+          { flag: "wx" },
+        );
+      },
+    },
     {
       name: "public-build-identity",
       transformIndexHtml: () =>
@@ -59,12 +95,20 @@ export default defineConfig({
             "http-equiv": "Content-Security-Policy",
             content: [
               "default-src 'none'",
-              `script-src 'self' ${clerkOrigin} https://challenges.cloudflare.com`,
+              native
+                ? "script-src 'self'"
+                : `script-src 'self' ${clerkOrigin} https://challenges.cloudflare.com`,
               "style-src 'self' 'unsafe-inline'",
-              `connect-src 'self' ${clerkOrigin} ${apiOrigin}`,
-              "img-src 'self' data: https://img.clerk.com",
+              native
+                ? `connect-src 'self' ${apiOrigin}`
+                : `connect-src 'self' ${clerkOrigin} ${apiOrigin}`,
+              native
+                ? "img-src 'self' data:"
+                : "img-src 'self' data: https://img.clerk.com",
               "font-src 'self'",
-              `frame-src ${clerkOrigin} https://challenges.cloudflare.com`,
+              native
+                ? "frame-src 'none'"
+                : `frame-src ${clerkOrigin} https://challenges.cloudflare.com`,
               "base-uri 'none'",
               "form-action 'self'",
             ].join("; "),
@@ -75,14 +119,7 @@ export default defineConfig({
     },
   ],
   build: {
-    outDir: fileURLToPath(
-      new URL(
-        config.environment === "production"
-          ? "./dist/clerk-production"
-          : "./dist/clerk-trial",
-        import.meta.url,
-      ),
-    ),
+    outDir,
     emptyOutDir: true,
     sourcemap: false,
     rolldownOptions: { input: `${root}/index.html` },

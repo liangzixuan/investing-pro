@@ -34,7 +34,7 @@ class InvestmentAuthPlugin : Plugin() {
 
     override fun load() {
         scope.launch {
-            if (!BuildConfig.CLERK_TRIAL_ENABLED) {
+            if (!BuildConfig.CLERK_AUTH_ENABLED) {
                 initializationFailed = true
                 publishState()
                 return@launch
@@ -171,7 +171,7 @@ class InvestmentAuthPlugin : Plugin() {
 
     private fun ready(call: PluginCall): Boolean {
         val current = publishState()
-        if (!BuildConfig.CLERK_TRIAL_ENABLED || current.status == "error") {
+        if (!BuildConfig.CLERK_AUTH_ENABLED || current.status == "error") {
             reject(call, "authentication_unavailable")
             return false
         }
@@ -183,7 +183,7 @@ class InvestmentAuthPlugin : Plugin() {
     }
 
     private fun publishState(): AuthState {
-        val active = if (BuildConfig.CLERK_TRIAL_ENABLED) Clerk.activeSession else null
+        val active = if (BuildConfig.CLERK_AUTH_ENABLED) Clerk.activeSession else null
         val userId = active?.user?.id
         val status = when {
             initializationFailed -> "error"

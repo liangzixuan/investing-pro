@@ -21,6 +21,7 @@ import {
 } from "./managed-workspace-handler";
 
 const ORIGIN = "https://app.investingpro.app";
+const NATIVE_ORIGIN = "https://localhost";
 const OWNER = { userId: "clerk-invented-owner" };
 const STATUS = "/v1/managed/catalog";
 const SEARCH = `${STATUS}/search`;
@@ -137,35 +138,49 @@ function request(
 afterEach(() => vi.restoreAllMocks());
 
 describe("managed catalog request boundary", () => {
-  it("returns the shared status and search identities after authenticating", async () => {
-    const f = fixture();
-    const statusRequest = request();
-    const response = await f.handler(statusRequest);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(f.statusDto);
-    expect(f.auth).toHaveBeenCalledWith(statusRequest);
-    expect(f.auth.mock.invocationCallOrder[0]).toBeLessThan(
-      f.status.mock.invocationCallOrder[0]!,
-    );
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(response.headers.get("content-type")).toBe(
-      "application/json; charset=utf-8",
-    );
-    expect(response.headers.get("access-control-allow-origin")).toBe(ORIGIN);
-    expect(response.headers.has("access-control-allow-credentials")).toBe(
-      false,
-    );
-    expect(response.headers.get("vary")).toBe("Origin");
-    const found = await f.handler(request(`${SEARCH}?q=%20demo%20`));
-    expect(found.status).toBe(200);
-    expect(await found.json()).toEqual(f.searchDto);
-    expect(f.search).toHaveBeenCalledWith(" demo ");
-    expect(f.status).toHaveBeenCalledTimes(1);
-    expect(f.search).toHaveBeenCalledTimes(1);
-  });
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "returns authenticated status and search identities at %s",
+    async (origin) => {
+      const f = fixture();
+      const statusRequest = request(STATUS, { origin });
+      const response = await f.handler(statusRequest);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(f.statusDto);
+      expect(f.auth).toHaveBeenCalledWith(statusRequest);
+      expect(f.auth.mock.invocationCallOrder[0]).toBeLessThan(
+        f.status.mock.invocationCallOrder[0]!,
+      );
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(response.headers.get("content-type")).toBe(
+        "application/json; charset=utf-8",
+      );
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+      expect(response.headers.has("access-control-allow-credentials")).toBe(
+        false,
+      );
+      expect(response.headers.get("vary")).toBe("Origin");
+      const found = await f.handler(
+        request(`${SEARCH}?q=%20demo%20`, { origin }),
+      );
+      expect(found.status).toBe(200);
+      expect(await found.json()).toEqual(f.searchDto);
+      expect(f.search).toHaveBeenCalledWith(" demo ");
+      expect(f.status).toHaveBeenCalledTimes(1);
+      expect(f.search).toHaveBeenCalledTimes(1);
+    },
+  );
 
-  it.each([null, "null", `${ORIGIN}/`, "https://other.example.invalid"])(
+  it.each([
+    null,
+    "null",
+    `${ORIGIN}/`,
+    "https://other.example.invalid",
+    `${NATIVE_ORIGIN}/`,
+    `${NATIVE_ORIGIN}:443`,
+    `${NATIVE_ORIGIN}.invalid`,
+    "http://localhost",
+  ])(
     "rejects origin %s before authentication or catalog access",
     async (origin) => {
       const f = fixture();
@@ -178,6 +193,7 @@ describe("managed catalog request boundary", () => {
       expect(f.auth).not.toHaveBeenCalled();
       expect(f.status).not.toHaveBeenCalled();
       expect(f.search).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
     },
   );
 
@@ -326,13 +342,19 @@ describe("managed catalog request boundary", () => {
     },
   );
 
-  it.each([STATUS, `${SEARCH}?q=DEMO`])(
-    "permits a narrow unauthenticated GET preflight for %s",
-    async (path) => {
+  it.each([
+    [ORIGIN, STATUS],
+    [ORIGIN, `${SEARCH}?q=DEMO`],
+    [NATIVE_ORIGIN, STATUS],
+    [NATIVE_ORIGIN, `${SEARCH}?q=DEMO`],
+  ])(
+    "permits a narrow unauthenticated GET preflight at %s for %s",
+    async (origin, path) => {
       const f = fixture();
       const response = await f.handler(
         request(path, {
           method: "OPTIONS",
+          origin,
           headers: {
             "access-control-request-method": "GET",
             "access-control-request-headers": " AUTHORIZATION ",
@@ -340,6 +362,7 @@ describe("managed catalog request boundary", () => {
         }),
       );
       expect(response.status).toBe(204);
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
       expect(await response.text()).toBe("");
       expect(response.headers.get("access-control-allow-methods")).toBe("GET");
       expect(response.headers.get("access-control-allow-headers")).toBe(
@@ -354,6 +377,7 @@ describe("managed catalog request boundary", () => {
       expect(f.auth).not.toHaveBeenCalled();
       expect(f.status).not.toHaveBeenCalled();
       expect(f.search).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
     },
   );
 
@@ -987,15 +1011,21 @@ describe("managed JSON admission and read-only resolve", () => {
     expect(f.openRepository).not.toHaveBeenCalled();
   });
 
-  it.each([WATCHLIST, RESOLVE])(
-    "permits only the selected POST preflight at %s",
-    async (path) => {
+  it.each([
+    [ORIGIN, WATCHLIST],
+    [ORIGIN, RESOLVE],
+    [NATIVE_ORIGIN, WATCHLIST],
+    [NATIVE_ORIGIN, RESOLVE],
+  ])(
+    "permits only the selected POST preflight at %s for %s",
+    async (origin, path) => {
       const f = storageFixture();
       expect(
         (
           await f.handler(
             request(path, {
               method: "OPTIONS",
+              origin,
               headers: {
                 "access-control-request-method": "POST",
                 "access-control-request-headers": "authorization, content-type",
@@ -1009,6 +1039,7 @@ describe("managed JSON admission and read-only resolve", () => {
           await f.handler(
             request(path, {
               method: "OPTIONS",
+              origin,
               headers: {
                 "access-control-request-method": "POST",
                 "access-control-request-headers": "authorization, cookie",

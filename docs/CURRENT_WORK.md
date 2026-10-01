@@ -1,6 +1,6 @@
 # Current work
 
-Updated September 30, 2026. Build a personal Investing.com-style platform, then
+Updated October 1, 2026. Build a personal Investing.com-style platform, then
 Pro-style research and personal improvements, using existing subscriptions/free
 sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
 order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
@@ -8,16 +8,17 @@ Workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
 
 ## Delivery status
 
-Verified September 30, 2026. Each row describes a separate product surface.
+Verified October 1, 2026. Each row describes a separate product surface.
 Exact receipts and historical outcomes remain in workspace `CURRENT.md` and its
 linked handoffs; a later source merge is not a new deployment.
 
-| Surface                  | Accepted evidence                                                                                                                                         | Remaining work                                                                                |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Local research app       | Preserved a89 release and encrypted vault                                                                                                                 | Managed migration and recovery are separate work.                                             |
-| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                               | Does not accept production native sign-in or signing custody.                                 |
-| Production web demo      | Main `b2172d26`; site `6abd4ff1627f9d9cc935`, API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out | Synthetic saved version 1 only; full Discover and watchlist are being connected.              |
-| Production native app    | No accepted production APK                                                                                                                                | Production auth/callbacks, private release signing, upgrade and recovery checks on the Pixel. |
+| Surface                  | Accepted evidence                                                                                                                               | Remaining work                                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Local research app       | Preserved a89 release and encrypted vault                                                                                                       | Managed migration and recovery are separate work.                                                                      |
+| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                     | Does not accept production native sign-in or signing custody.                                                          |
+| Production web demo      | Preserved demo API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out                      | Synthetic saved version 1 remains separate from the managed workspace.                                                 |
+| Connected website        | Main `de8fd252`; site `6abe04e84313ac9d72da`, managed API `6abdd164d55dd3944f82`; exact-build delivery and signed-in desktop search/read/layout | AAPL, GOOG and GOOGL only, no prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
+| Production native app    | No accepted production APK                                                                                                                      | Production auth/callbacks, private release signing, upgrade and recovery checks on the Pixel.                          |
 
 Keep Next.js for desktop and the shared React/Vite/Capacitor client for Android.
 Clerk supplies identity and the server enforces account/data access. Appwrite
@@ -54,8 +55,8 @@ CURRENT.
 The synthetic Clerk client and function require explicit development or
 production profiles. Configuration is checked before output cleanup and runtime
 composition, and the function uses copied values with fixed storage targets.
-Production is web only, allows the exact application origin, has no native
-exception. Its account configuration accepts null for closed admission or one
+The production demo is web only and allows the exact application origin, with no
+native exception. Its account configuration accepts null for closed admission or one
 explicitly confirmed production subject; signature, issuer, session and subject
 checks precede storage. The selected production subject and its API deployment
 are now accepted; other accounts remain denied.
@@ -83,18 +84,20 @@ data and sign-out on Android Chrome on the Pixel, after which the desktop still
 loaded the same saved version without another sign-in. This is a limited
 synthetic web journey, not native production or full-workspace acceptance.
 
-The active product outcome is managed Discover and My Watchlist. The
+The active product outcome is production Android access to managed Discover and
+My Watchlist, using the shared screen, session adapter and repository. The
 [managed catalog](./MANAGED_SECURITY_CATALOG.md) now has a reviewed fixed cohort
 of AAPL, GOOG and GOOGL, with three candidates excluded and limited coverage
-shown explicitly. The source integration adds a compact authenticated search
+shown explicitly. The integration adds a compact authenticated search
 handler and adapts the existing full-payload repository to exact listing lookup
-and receipt-first reconciliation. Source admission is separate from runtime
-delivery: the managed API/UI connection and production Android acceptance remain
-pending. The connected source now includes exact listing selection, notes,
+and receipt-first reconciliation. The managed API and website are delivered;
+production Android remains pending. The connected source includes exact listing selection, notes,
 ordering, removal, full-payload saves and explicit catalog review in batches of 50. A shared save coordinator owns uncertain commands and version conflicts.
 The separate managed function preserves the existing auth and repository rules;
-its database, runtime proof and exact-build delivery require their own acceptance.
-The accepted demo's deployment and saved record stay intact.
+its separate database, runtime proof and same-archive website delivery have accepted
+evidence. Live desktop QA reused the owner session without changing records.
+One initial catalog error recovered with one explicit Refresh; its cause remains
+unknown. The accepted demo API and saved record stay intact.
 
 The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
 remaining service work. The accepted development trial and owner-reported Pixel
@@ -108,7 +111,7 @@ September 29 update: the first static delivery flow completed at main merge
 same staging archive and production activation. The
 [actual receipt review](../../tmp/appwrite-evaluation/production-artifact-actual-independent-review.json)
 records that acceptance.
-The client remains disconnected. The owner subsequently approved the separate
+That first static client was disconnected. The owner subsequently approved the separate
 [Clerk trial](./CLERK_TRIAL.md), using Appwrite storage and physical Pixel checks.
 Its API and website are active, and isolated storage evidence is accepted.
 Root verified an authenticated desktop reload, and the owner reported passing

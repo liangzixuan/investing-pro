@@ -22,7 +22,8 @@ import {
 } from "./managed-workspace-catalog";
 import {
   createManagedWorkspaceHandler,
-  MANAGED_WORKSPACE_ORIGIN,
+  getManagedWorkspaceOrigin,
+  MANAGED_WORKSPACE_NATIVE_ORIGIN,
 } from "./managed-workspace-handler";
 
 export interface ManagedWorkspaceFunctionContext {
@@ -119,12 +120,17 @@ export function bridgeManagedWorkspaceRequest(
   }
 }
 
-/** Production web only; execution authority is scoped to each repository operation. */
+/** Managed web/native admission; execution authority stays scoped per operation. */
 export function createManagedWorkspaceFunction(input: unknown) {
   const checked = validateClerkTrialFunctionConfiguration(input);
   if (checked.environment !== "production")
     throw new Error("Managed function requires production configuration");
-  const auth = createClerkTrialAuth(checked.auth);
+  const webAuth = createClerkTrialAuth(checked.auth);
+  const nativeAuth = createClerkTrialAuth({
+    ...checked.auth,
+    authorizedParties: [MANAGED_WORKSPACE_NATIVE_ORIGIN],
+    nativeOrigin: MANAGED_WORKSPACE_NATIVE_ORIGIN,
+  });
   const catalog = createManagedCatalogService();
   return async ({ req, res }: ManagedWorkspaceFunctionContext) => {
     const headers: Record<string, string> = {
@@ -133,16 +139,20 @@ export function createManagedWorkspaceFunction(input: unknown) {
       "x-content-type-options": "nosniff",
       vary: "Origin",
     };
-    if (req.headers.origin !== MANAGED_WORKSPACE_ORIGIN)
+    const origin = getManagedWorkspaceOrigin(req.headers.origin);
+    if (origin === null)
       return res.json({ error: "origin_denied" }, 403, headers);
-    headers["access-control-allow-origin"] = MANAGED_WORKSPACE_ORIGIN;
+    headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
     try {
       const request = bridgeManagedWorkspaceRequest(req);
       // Copy the supplied authority before auth awaits; it is never user authority.
       const executionKey = req.headers["x-appwrite-key"];
       const handle = createManagedWorkspaceHandler({
-        auth,
+        auth:
+          request.headers.get("origin") === MANAGED_WORKSPACE_NATIVE_ORIGIN
+            ? nativeAuth
+            : webAuth,
         catalog,
         async openRepository(signal) {
           if (!executionKey) throw new Error("Execution authority unavailable");
