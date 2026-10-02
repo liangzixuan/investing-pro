@@ -6,6 +6,13 @@ watchlist draft survives opening and closing the report. Selection, catalog and
 session changes retire the old request and evidence; editing a note does not
 invalidate an unchanged listing. Workspace CURRENT records actual delivery.
 
+Android Back uses the same close action as Back to workspace: it cancels a
+pending read, keeps the watchlist draft and restores focus to the opening
+control. The native listener belongs to the active workspace and is removed
+when it retires. A late response cannot reopen the report. Isolated emulator
+tests exercise this interaction with invented data; they do not accept a live
+SEC request or a production sign-in.
+
 The server admits the exact listing ID, symbol and current catalog digest before
 resolving the issuer. The reviewed cohort maps AAPL to Apple and keeps GOOG and
 GOOGL as distinct listings for the same Alphabet issuer. The caller cannot send

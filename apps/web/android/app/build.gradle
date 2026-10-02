@@ -160,6 +160,10 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    sourceSets {
+        // Synthetic managed UI assets belong to the instrumentation APK only.
+        androidTest.assets.srcDir rootProject.file('../dist/android-test-assets')
+    }
     testOptions {
         animationsDisabled = true
         managedDevices {

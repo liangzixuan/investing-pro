@@ -5,22 +5,23 @@ export interface AndroidBackAdapter {
     eventName: "backButton",
     callback: (event: { canGoBack: boolean }) => void,
   ): Promise<PluginListenerHandle>;
-  exitApp(): Promise<void>;
 }
 
 export function bindAndroidBack(
   app: AndroidBackAdapter,
-  goBack: () => void,
+  onBack: (event: { canGoBack: boolean }) => void | Promise<void>,
   onUnavailable: () => void,
 ): () => void {
   let disposed = false;
-  const subscription = app.addListener("backButton", ({ canGoBack }) => {
+  const subscription = app.addListener("backButton", (event) => {
     if (disposed) return;
-    if (canGoBack) goBack();
-    else
-      void app.exitApp().catch(() => {
+    try {
+      void Promise.resolve(onBack(event)).catch(() => {
         if (!disposed) onUnavailable();
       });
+    } catch {
+      if (!disposed) onUnavailable();
+    }
   });
   void subscription.catch(() => {
     if (!disposed) onUnavailable();

@@ -13,12 +13,14 @@ import type {
   NativeTrialSessionStore,
 } from "./native-session";
 import type { TrialSession } from "./session";
+import type { AndroidBackAdapter } from "../mobile/android-back";
 
 // Controlled hook calls inspect composition and cleanup; the real session store runs below.
 const hooks = vi.hoisted(() => ({
   state: null as NativeTrialSessionStore | null,
   effects: [] as Array<() => (() => void) | void>,
   register: vi.fn(),
+  androidBack: { addListener: vi.fn(), exitApp: vi.fn() },
 }));
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -35,6 +37,7 @@ vi.mock("react", async (original) => ({
     getSnapshot(),
 }));
 vi.mock("@capacitor/core", () => ({ registerPlugin: hooks.register }));
+vi.mock("@capacitor/app", () => ({ App: hooks.androidBack }));
 vi.mock("./ManagedWorkspaceScreen", () => ({
   ManagedSessionScreen: () => <p>Managed workspace fixture</p>,
 }));
@@ -122,9 +125,13 @@ async function mount(config: ClerkTrialConfig, state = signedIn) {
   };
 }
 
-function findScreen(
-  node: ReactNode,
-): ReactElement<{ session: TrialSession; apiOrigin: string }> | undefined {
+function findScreen(node: ReactNode):
+  | ReactElement<{
+      session: TrialSession;
+      apiOrigin: string;
+      androidBack?: AndroidBackAdapter;
+    }>
+  | undefined {
   const children: ReactNode[] = [];
   Children.forEach(node, (child) => {
     children.push(child);
@@ -138,6 +145,7 @@ function findScreen(
       return child as ReactElement<{
         session: TrialSession;
         apiOrigin: string;
+        androidBack?: AndroidBackAdapter;
       }>;
     }
     const found = findScreen(child.props.children);
@@ -158,6 +166,9 @@ describe("native shared workspace composition", () => {
       expect(screen?.key).toBe("1");
       expect(screen?.props.apiOrigin).toBe(config.apiOrigin);
       expect(screen?.props.session.userId).toBe(signedIn.userId);
+      expect(screen?.props.androidBack).toBe(
+        config.environment === "production" ? hooks.androidBack : undefined,
+      );
       expect(hooks.register).toHaveBeenCalledExactlyOnceWith("InvestmentAuth");
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);

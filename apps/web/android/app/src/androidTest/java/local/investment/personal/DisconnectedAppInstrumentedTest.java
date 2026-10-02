@@ -250,6 +250,7 @@ public class DisconnectedAppInstrumentedTest {
     /** Bounded observation of React rendering, with no JS state changes or fixed startup sleep. */
     private void awaitPage(String description, String predicate) throws Exception {
         long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+        int missedCallbacks = 0;
         while (SystemClock.uptimeMillis() < deadline) {
             CountDownLatch returned = new CountDownLatch(1);
             AtomicReference<String> result = new AtomicReference<>();
@@ -260,11 +261,17 @@ public class DisconnectedAppInstrumentedTest {
                     returned.countDown();
                 }
             ));
-            assertTrue("WebView stopped responding while waiting for " + description, returned.await(2, TimeUnit.SECONDS));
+            long remaining = deadline - SystemClock.uptimeMillis();
+            if (remaining <= 0) break;
+            // A loading WebView can miss a callback; keep the same overall page deadline.
+            if (!returned.await(Math.min(2_000, remaining), TimeUnit.MILLISECONDS)) {
+                missedCallbacks++;
+                continue;
+            }
             if ("true".equals(result.get())) return;
             Thread.sleep(50);
         }
-        fail("Timed out waiting for " + description);
+        fail("Timed out waiting for " + description + "; missed callbacks=" + missedCallbacks);
     }
 
     @After

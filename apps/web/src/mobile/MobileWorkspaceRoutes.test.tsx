@@ -5,6 +5,28 @@ import type { PersonalWorkspaceClientProps } from "../features/workspace/Persona
 
 const observed = vi.hoisted(() => ({
   props: null as PersonalWorkspaceClientProps | null,
+  navigate: vi.fn(),
+  exitApp: vi.fn<() => Promise<void>>().mockResolvedValue(),
+  onBack: null as
+    ((event: { canGoBack: boolean }) => void | Promise<void>) | null,
+}));
+vi.mock("react", async (original) => ({
+  ...(await original()),
+  useEffect: (effect: () => void) => effect(),
+}));
+vi.mock("react-router", async (original) => ({
+  ...(await original()),
+  useNavigate: () => observed.navigate,
+}));
+vi.mock("@capacitor/core", () => ({
+  Capacitor: { getPlatform: () => "android" },
+}));
+vi.mock("@capacitor/app", () => ({ App: { exitApp: observed.exitApp } }));
+vi.mock("./android-back", () => ({
+  bindAndroidBack: (_app: unknown, onBack: typeof observed.onBack) => {
+    observed.onBack = onBack;
+    return () => {};
+  },
 }));
 vi.mock("../features/workspace/PersonalWorkspaceClient", () => ({
   PersonalWorkspaceClient: (props: PersonalWorkspaceClientProps) => {
@@ -16,8 +38,25 @@ import { MobileWorkspaceRoutes } from "./MobileWorkspaceRoutes";
 
 beforeEach(() => {
   observed.props = null;
+  observed.onBack = null;
+  observed.navigate.mockClear();
+  observed.exitApp.mockClear();
 });
 describe("mobile workspace route bridge", () => {
+  it("preserves disconnected history navigation and explicit root exit", async () => {
+    renderToStaticMarkup(
+      <MemoryRouter initialEntries={["/markets"]}>
+        <MobileWorkspaceRoutes />
+      </MemoryRouter>,
+    );
+    expect(observed.onBack).not.toBeNull();
+    await observed.onBack!({ canGoBack: true });
+    expect(observed.navigate).toHaveBeenCalledExactlyOnceWith(-1);
+    expect(observed.exitApp).not.toHaveBeenCalled();
+    await observed.onBack!({ canGoBack: false });
+    expect(observed.exitApp).toHaveBeenCalledOnce();
+    expect(observed.navigate).toHaveBeenCalledOnce();
+  });
   it.each([
     ["/markets", { kind: "markets" }],
     ["/discover?view=watchlist", { kind: "discover", task: "watchlist" }],

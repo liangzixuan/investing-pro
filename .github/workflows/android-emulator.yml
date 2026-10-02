@@ -69,6 +69,10 @@ jobs:
         timeout-minutes: 5
         run: pnpm --filter @research-cockpit/web android:sync
 
+      - name: Bundle the isolated managed UI test fixture
+        timeout-minutes: 5
+        run: pnpm --filter @research-cockpit/web exec vite build --config vite.android-test.config.ts
+
       - name: Test the packaged app on Android
         timeout-minutes: 25
         working-directory: apps/web/android
@@ -84,15 +88,21 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
+          from zipfile import ZipFile
 
           reports = sorted(Path("apps/web/android/app/build/outputs/androidTest-results/managedDevice").rglob("TEST-*.xml"))
           if not reports:
               raise SystemExit("No managed-device JUnit reports were produced.")
-          expected_class = "local.investment.personal.DisconnectedAppInstrumentedTest"
           expected_tests = {
-              "packagedAppLaunchesWithDisconnectedGuards",
-              "localNavigationAndHardwareBackKeepWorkspaceLocked",
-              "recreatedActivityReloadsPackagedAppAndBackStillWorks",
+              "local.investment.personal.DisconnectedAppInstrumentedTest": {
+                  "packagedAppLaunchesWithDisconnectedGuards",
+                  "localNavigationAndHardwareBackKeepWorkspaceLocked",
+                  "recreatedActivityReloadsPackagedAppAndBackStillWorks",
+              },
+              "local.investment.personal.ManagedWorkspaceInstrumentedTest": {
+                  "annualBackPreservesDraftAndRootBackDoesNothing",
+                  "annualBackAbortsPendingReadAndDiscardsLateResult",
+              },
           }
           executed = set()
           for report in reports:
@@ -103,10 +113,18 @@ jobs:
               for case in result.iter("testcase"):
                   if any(case.find(field) is not None for field in ("failure", "error", "skipped")):
                       raise SystemExit("A native test did not pass.")
-                  if case.get("classname") == expected_class:
-                      executed.add(case.get("name"))
-          if not expected_tests.issubset(executed):
-              raise SystemExit("The three required native tests did not all execute.")
+                  executed.add((case.get("classname"), case.get("name")))
+          required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
+          if not required.issubset(executed):
+              raise SystemExit("The five required native tests did not all execute.")
+          apk_root = Path("apps/web/android/app/build/outputs/apk")
+          fixture_prefix = "assets/managed-workspace/"
+          with ZipFile(apk_root / "debug/app-debug.apk") as app:
+              if any(name.startswith(fixture_prefix) for name in app.namelist()):
+                  raise SystemExit("Synthetic managed fixture entered the app APK.")
+          with ZipFile(apk_root / "androidTest/debug/app-debug-androidTest.apk") as tests:
+              if fixture_prefix + "index.html" not in tests.namelist():
+                  raise SystemExit("Synthetic managed fixture is missing from the test APK.")
           print(f"Verified {len(executed)} native tests with no failures, errors or skips.")
           PY
 

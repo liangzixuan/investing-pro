@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import type * as React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
   type MainWatchlistPayload,
@@ -10,6 +11,71 @@ import { ManagedWorkspace } from "./managed-workspace";
 import { ManagedWorkspaceScreen } from "./ManagedWorkspaceScreen";
 import { TrialApiError } from "./api";
 import { TrialFrame } from "./TrialFrame";
+import type { AndroidBackAdapter } from "../mobile/android-back";
+import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+
+// Run the screen's actual listener effect explicitly; model and binder stay real.
+const mounted = vi.hoisted(() => ({
+  effects: [] as Array<() => (() => void) | void>,
+  refs: [] as Array<{ current: unknown }>,
+  cleanups: [] as Array<() => void>,
+}));
+vi.mock("react", async (original) => {
+  const actual = await original<typeof React>();
+  return {
+    ...actual,
+    useEffect: (effect: () => (() => void) | void) =>
+      mounted.effects.push(effect),
+    useRef: (value: unknown) => {
+      const ref = actual.useRef(value);
+      mounted.refs.push(ref);
+      return ref;
+    },
+  };
+});
+beforeEach(() => {
+  mounted.effects.length = 0;
+  mounted.refs.length = 0;
+  mounted.cleanups.length = 0;
+});
+afterEach(() => {
+  for (const cleanup of mounted.cleanups) cleanup();
+  vi.unstubAllGlobals();
+});
+
+function nativeBackFixture() {
+  let listener!: (event: { canGoBack: boolean }) => void;
+  let registered!: (handle: { remove: () => Promise<void> }) => void;
+  const remove = vi.fn<() => Promise<void>>().mockResolvedValue();
+  const addListener = vi
+    .fn<AndroidBackAdapter["addListener"]>()
+    .mockImplementation((_name, callback) => {
+      listener = callback;
+      return new Promise<{ remove: () => Promise<void> }>((resolve) => {
+        registered = resolve;
+      });
+    });
+  const adapter: AndroidBackAdapter & { exitApp: () => Promise<void> } = {
+    addListener,
+    exitApp: vi.fn<() => Promise<void>>().mockResolvedValue(),
+  };
+  const historyBack = vi.fn();
+  vi.stubGlobal("window", { history: { back: historyBack } });
+  return {
+    adapter,
+    addListener,
+    remove,
+    historyBack,
+    press: (canGoBack: boolean) => listener({ canGoBack }),
+    ready: () => registered({ remove }),
+  };
+}
+function mountEffects() {
+  for (const effect of mounted.effects) {
+    const cleanup = effect();
+    if (cleanup) mounted.cleanups.push(cleanup);
+  }
+}
 
 const payload: MainWatchlistPayload = {
   name: "My Watchlist",
@@ -84,11 +150,119 @@ function fixture(initial = payload) {
   return {
     workspace,
     api,
-    html: () =>
-      renderToStaticMarkup(<ManagedWorkspaceScreen workspace={workspace} />),
+    html: (androidBack?: AndroidBackAdapter) =>
+      renderToStaticMarkup(
+        <ManagedWorkspaceScreen
+          workspace={workspace}
+          {...(androidBack ? { androidBack } : {})}
+        />,
+      ),
   };
 }
 describe("managed workspace screen", () => {
+  it("does not install native navigation for the browser screen", () => {
+    const native = nativeBackFixture();
+    fixture().html();
+    mountEffects();
+    expect(native.addListener).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    "consumes Annual Back before native history (%s), restores focus and preserves the draft",
+    async (canGoBack) => {
+      const native = nativeBackFixture();
+      const initial = {
+        ...payload,
+        memberships: [
+          payload.memberships[0]!,
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            symbol: "OTHER",
+          },
+        ],
+      };
+      const { workspace, html } = fixture(initial);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.note("listing-one", "Unsaved native note");
+      workspace.move("listing-two", -1);
+      html(native.adapter);
+      mountEffects();
+      native.ready();
+      const focus = vi.fn();
+      mounted.refs[0]!.current = { isConnected: true, focus };
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+      );
+      const before = structuredClone(workspace.coordinator.getSnapshot().draft);
+      native.press(canGoBack);
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(before);
+      expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+      expect(focus).toHaveBeenCalledOnce();
+      expect(native.historyBack).not.toHaveBeenCalled();
+      expect(native.adapter.exitApp).not.toHaveBeenCalled();
+      native.press(false);
+      expect(native.historyBack).not.toHaveBeenCalled();
+      native.press(true);
+      expect(native.historyBack).toHaveBeenCalledOnce();
+      expect(native.adapter.exitApp).not.toHaveBeenCalled();
+    },
+  );
+  it("native Back aborts a pending read and fences its late result while restoring fallback focus", async () => {
+    const native = nativeBackFixture();
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    html(native.adapter);
+    mountEffects();
+    native.ready();
+    const focus = vi.fn();
+    mounted.refs[0]!.current = { isConnected: false, focus: vi.fn() };
+    mounted.refs[1]!.current = { focus };
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    let complete!: (
+      value: Awaited<ReturnType<ManagedApi["annualReport"]>>,
+    ) => void;
+    vi.mocked(api.annualReport).mockReturnValue(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    const pending = workspace.annual.load();
+    const signal = vi.mocked(api.annualReport).mock.calls[0]![1];
+    native.press(false);
+    expect(signal.aborted).toBe(true);
+    expect(focus).toHaveBeenCalledOnce();
+    complete(await annualResponse());
+    await pending;
+    expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    expect(native.historyBack).not.toHaveBeenCalled();
+  });
+  it.each(["retire", "unmount"] as const)(
+    "fences %s immediately and removes late registration once",
+    async (reason) => {
+      const native = nativeBackFixture();
+      const { workspace, html } = fixture();
+      await workspace.coordinator.load();
+      html(native.adapter);
+      mountEffects();
+      if (reason === "retire") workspace.coordinator.retire();
+      else mounted.cleanups[0]!();
+      native.press(true);
+      native.press(false);
+      native.ready();
+      await Promise.resolve();
+      expect(native.historyBack).not.toHaveBeenCalled();
+      expect(native.adapter.exitApp).not.toHaveBeenCalled();
+      expect(native.remove).toHaveBeenCalledOnce();
+      mounted.cleanups[0]!();
+      expect(native.remove).toHaveBeenCalledOnce();
+    },
+  );
   it("keeps the watchlist mounted beside an explicit annual panel and gates old catalog entries", async () => {
     const { workspace, api, html } = fixture();
     await workspace.coordinator.load();
