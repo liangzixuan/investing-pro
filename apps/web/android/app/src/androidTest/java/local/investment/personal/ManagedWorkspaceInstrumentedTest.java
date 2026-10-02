@@ -5,6 +5,8 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
 import static androidx.test.espresso.action.ViewActions.typeTextIntoFocusedView;
 import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
+import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
+import static androidx.test.espresso.matcher.ViewMatchers.supportsInputMethods;
 import static androidx.test.espresso.web.sugar.Web.onWebView;
 import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
 import static androidx.test.espresso.web.webdriver.DriverAtoms.webClick;
@@ -12,12 +14,21 @@ import static org.junit.Assert.*;
 
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.InputDevice;
+import android.view.View;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.test.core.app.ActivityScenario;
+import androidx.test.espresso.PerformException;
+import androidx.test.espresso.UiController;
+import androidx.test.espresso.ViewAction;
+import androidx.test.espresso.action.GeneralClickAction;
+import androidx.test.espresso.action.Press;
+import androidx.test.espresso.action.Tap;
 import androidx.test.espresso.web.webdriver.Locator;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -30,6 +41,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.hamcrest.Matcher;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -187,15 +199,85 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void typeIntoInput(String id, String text) throws Exception {
-        onWebView().withElement(findElement(Locator.ID, id)).perform(webClick());
+        touchInput(id);
         awaitPage("input focused: " + id,
             "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
+        awaitNativeEditor(id);
         // Native keyboard events exercise React's controlled onChange path.
         // This action requires an already focused editor and does not tap the WebView center.
         onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
         awaitPage("native input value: " + id,
             "document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));
         closeSoftKeyboard();
+    }
+
+    private void touchInput(String id) throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
+            " if (!input) return null; input.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+            " const r = input.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+            " return {x,y,width:innerWidth,height:innerHeight,ratio:devicePixelRatio," +
+            " visible:r.width>0&&r.height>0&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight" +
+            " &&input.contains(document.elementFromPoint(x,y))," +
+            " unzoomed:visualViewport.scale===1&&visualViewport.offsetLeft===0&&visualViewport.offsetTop===0};})()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        JSONObject geometry = new JSONObject(observed.get());
+        assertTrue("Input must be visible and unobscured: " + id, geometry.getBoolean("visible"));
+        assertTrue("Input touch requires the initial-scale viewport", geometry.getBoolean("unzoomed"));
+        double cssX = geometry.getDouble("x"), cssY = geometry.getDouble("y");
+        double cssWidth = geometry.getDouble("width"), cssHeight = geometry.getDouble("height");
+        double pixelRatio = geometry.getDouble("ratio");
+        assertTrue("Invalid observed viewport", cssWidth > 0 && cssHeight > 0 && pixelRatio > 0);
+        // A real touch activates Android's editor connection; a JS click can focus only the DOM.
+        onView(isAssignableFrom(WebView.class)).perform(new GeneralClickAction(
+            Tap.SINGLE,
+            view -> {
+                if (!(Math.abs(cssWidth * pixelRatio - view.getWidth()) <= pixelRatio + 1
+                    && Math.abs(cssHeight * pixelRatio - view.getHeight()) <= pixelRatio + 1))
+                    throw new PerformException.Builder().withActionDescription("touch input: " + id)
+                        .withViewDescription("Managed fixture WebView")
+                        .withCause(new IllegalStateException("Viewport changed before touch")).build();
+                int[] location = new int[2];
+                view.getLocationOnScreen(location);
+                float localX = (float) (cssX * pixelRatio), localY = (float) (cssY * pixelRatio);
+                Rect visible = new Rect();
+                if (!(view.getLocalVisibleRect(visible) && visible.contains(Math.round(localX), Math.round(localY))))
+                    throw new PerformException.Builder().withActionDescription("touch input: " + id)
+                        .withViewDescription("Managed fixture WebView")
+                        .withCause(new IllegalStateException("Input touch is outside the visible WebView")).build();
+                return new float[] { location[0] + localX, location[1] + localY };
+            }, Press.FINGER, InputDevice.SOURCE_TOUCHSCREEN, 0));
+    }
+
+    private void awaitNativeEditor(String id) {
+        onView(isAssignableFrom(WebView.class)).perform(new ViewAction() {
+            @Override public Matcher<View> getConstraints() { return isDisplayed(); }
+            @Override public String getDescription() { return "wait for native input connection: " + id; }
+            @Override public void perform(UiController uiController, View view) {
+                long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+                String diagnostic;
+                do {
+                    boolean inputConnection = supportsInputMethods().matches(view);
+                    boolean ready = view.hasFocus() && view.hasWindowFocus() && inputConnection;
+                    diagnostic = "id=" + id + ", focus=" + view.hasFocus() + ", windowFocus=" +
+                        view.hasWindowFocus() + ", inputConnection=" + inputConnection;
+                    if (ready) {
+                        Log.i("ManagedInput", diagnostic);
+                        return;
+                    }
+                    long remaining = deadline - SystemClock.uptimeMillis();
+                    if (remaining <= 0) break;
+                    uiController.loopMainThreadForAtLeast(Math.min(50, remaining));
+                } while (SystemClock.uptimeMillis() < deadline);
+                throw new PerformException.Builder().withActionDescription(getDescription())
+                    .withViewDescription("Managed fixture WebView: " + diagnostic)
+                    .withCause(new IllegalStateException("Native editor was not ready"))
+                    .build();
+            }
+        });
     }
 
     /** Fixed test-APK subtree only, bounded to 64 files and 4 MiB; no main-asset replacement. */
