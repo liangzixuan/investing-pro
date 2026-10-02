@@ -22,6 +22,7 @@ import android.view.View;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.lifecycle.Lifecycle;
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.PerformException;
 import androidx.test.espresso.UiController;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -141,6 +143,106 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".aborted === 1");
         assertRootHistory();
         assertFixtureBoundary();
+    }
+
+    @Test
+    public void backgroundResumePreservesDraftAndAnnualCancellation() throws Exception {
+        prepareDraftAndOpenAnnual();
+        click(".managed-annual-report .trial-actions button:first-child");
+        assertPendingAnnualDraft();
+        assertFixtureReadCounts(0, 0);
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+            assertTrue("The bridge must initially be active", activity.getBridge().getApp().isActive());
+            Log.i("ManagedLifecycle", "phase=before-stop, documentTimeOrigin=" + documentTimeOrigin +
+                ", activity=" + System.identityHashCode(activity) +
+                ", webView=" + System.identityHashCode(activity.getBridge().getWebView()));
+        });
+        assertEquals(Lifecycle.State.RESUMED, scenario.getState());
+
+        // Drive onPause/onStop without recreation. Do not evaluate JavaScript while stopped.
+        scenario.moveToState(Lifecycle.State.CREATED);
+        assertEquals(Lifecycle.State.CREATED, scenario.getState());
+        scenario.onActivity(activity -> {
+            assertNotNull("Stopping: original Activity was collected", originalActivity.get().get());
+            assertNotNull("Stopping: original WebView was collected", originalWebView.get().get());
+            assertSame("Stopping must preserve the Activity", originalActivity.get().get(), activity);
+            assertSame("Stopping must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+            assertFalse("onStop must mark the bridge inactive", activity.getBridge().getApp().isActive());
+            Log.i("ManagedLifecycle", "phase=stopped, state=CREATED, active=false, activity=" +
+                System.identityHashCode(activity) + ", webView=" + System.identityHashCode(activity.getBridge().getWebView()));
+        });
+        scenario.moveToState(Lifecycle.State.RESUMED);
+        assertEquals(Lifecycle.State.RESUMED, scenario.getState());
+        scenario.onActivity(activity -> {
+            assertNotNull("Resume: original Activity was collected", originalActivity.get().get());
+            assertNotNull("Resume: original WebView was collected", originalWebView.get().get());
+            assertSame("Resume must preserve the Activity", originalActivity.get().get(), activity);
+            assertSame("Resume must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+            assertTrue("onResume must mark the bridge active", activity.getBridge().getApp().isActive());
+            Log.i("ManagedLifecycle", "phase=resumed, state=RESUMED, active=true, activity=" +
+                System.identityHashCode(activity) + ", webView=" + System.identityHashCode(activity.getBridge().getWebView()));
+        });
+        assertEquals("Resume must preserve the document time origin", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertPendingAnnualDraft();
+        assertFixtureReadCounts(0, 0);
+        assertFixtureBoundary();
+        assertRootHistory();
+        Log.i("ManagedLifecycle", "phase=resumed-pending, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+
+        pressBack();
+        assertClosedDraft(true);
+        assertFixtureReadCounts(1, 0);
+        click("#settle-cancelled-read");
+        assertFixtureReadCounts(1, 1);
+        assertClosedDraft(false);
+        assertRootHistory();
+        pressBack();
+        assertClosedDraft(false);
+        assertFixtureReadCounts(1, 1);
+        assertRootHistory();
+        assertFixtureBoundary();
+        assertEquals("Back must preserve the resumed document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedLifecycle", "phase=cancelled-late-discarded-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    private void assertPendingAnnualDraft() throws Exception {
+        awaitPage("same pending Annual and unsaved draft",
+            "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'" +
+            " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void assertFixtureReadCounts(int aborted, int lateResolved) throws Exception {
+        awaitPage("exact fixture calls, aborted=" + aborted + ", lateResolved=" + lateResolved,
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
+            " && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".annual === 1" +
+            " && " + DIAGNOSTICS + ".aborted === " + aborted +
+            " && " + DIAGNOSTICS + ".lateResolved === " + lateResolved +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    /** Read-only document-generation evidence; never called while the Activity is stopped. */
+    private double readDocumentTimeOrigin() throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "performance.timeOrigin", value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Document time origin was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull("Document time origin is absent", observed.get());
+        double timeOrigin = Double.parseDouble(observed.get());
+        assertTrue("Document time origin must be finite and positive", Double.isFinite(timeOrigin) && timeOrigin > 0);
+        return timeOrigin;
     }
 
     private void prepareDraftAndOpenAnnual() throws Exception {

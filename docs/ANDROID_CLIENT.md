@@ -117,6 +117,10 @@ Its invented session and in-memory API make no network requests. Native tests
 open the Annual report, press Android Back and check that the unsaved note and
 focus survive. A second case closes a pending report, verifies cancellation and
 deliberately completes the old request to check that its result stays discarded.
+A third case stops and resumes the same Activity while a report is pending. It
+checks that the Activity, WebView and document remain the same, preserves the
+draft, order and search, and rejects duplicate reads. It then checks cancellation
+and late-response handling through Android Back after resuming.
 These tests use the real Capacitor App bridge with empty WebView history. The
 fixture is absent from the application APK, and CI checks that separation.
 
@@ -125,8 +129,9 @@ missing or skipped required tests. A failing emulator job prevents the source ch
 Appwrite release. Read the test report when a run fails; a successful build
 alone does not mean the tests executed.
 
-This native regression layer does not test managed sign-in,
-shared watchlist saves, Annual report requests, production signing or upgrades
+The managed lifecycle case covers same-process stop/resume, not recovery after
+process death or persistent drafts. This native regression layer does not test managed sign-in,
+shared watchlist saves, live Annual report requests, production signing or upgrades
 over an installed release. Those paths retain their existing unit/browser
 coverage and selected physical Pixel checks. Routine changes covered by this
 suite no longer require a manual APK installation for these checks.
