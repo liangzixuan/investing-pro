@@ -57,7 +57,9 @@ export function ManagedAnnualReport({
           onClick={() => void model.load()}
         >
           {state.running
-            ? "Loading annual report…"
+            ? state.response
+              ? "Refreshing annual report…"
+              : "Loading annual report…"
             : state.response
               ? "Refresh annual report"
               : "Load annual report"}
@@ -78,10 +80,17 @@ export function ManagedAnnualReport({
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}
       </p>
+      {state.showingPrevious && state.response && (
+        <p className="managed-annual-help">
+          Showing the previous report, completed{" "}
+          {state.response.evidence.generation.completedAt}. This refresh has not
+          confirmed newer evidence. Source and observation times are unchanged.
+        </p>
+      )}
       <p className="managed-annual-help">
-        Loading leaves your watchlist unchanged. Cancel clears this screen's
-        pending result; a request already admitted by the service may finish
-        there.
+        Loading leaves your watchlist unchanged. Cancel stops this screen's
+        pending load and keeps any previous report shown here. A request already
+        admitted by the service may finish there.
       </p>
       {state.response && (
         <SecAnnualEvidenceResult

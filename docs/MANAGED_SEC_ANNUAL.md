@@ -6,6 +6,18 @@ watchlist draft survives opening and closing the report. Selection, catalog and
 session changes retire the old request and evidence; editing a note does not
 invalidate an unchanged listing. Workspace CURRENT records actual delivery.
 
+An explicit refresh keeps the last validated report for that selection readable.
+The panel labels it as the previous report while the refresh is pending, after a
+timeout or unavailable response, during shared cooldown, or when that refresh
+is cancelled. Its original source and observation dates remain unchanged. A
+new valid response replaces it, including a response whose evidence is
+unavailable. Initial-load failures still have no report to show.
+
+Malformed or mismatched responses, a service that is not configured and unknown
+failures clear the previous report. Account denial, catalog or selection changes,
+Back and session retirement also clear it. Retention is limited to the open
+panel in memory; it adds no persistence, automatic retry or source request.
+
 Android Back uses the same close action as Back to workspace: it cancels a
 pending read, keeps the watchlist draft and restores focus to the opening
 control. The native listener belongs to the active workspace and is removed
@@ -38,7 +50,8 @@ application bounds, not a guarantee about platform scheduling or cold starts.
 Each admitted attempt can request only the issuer's SEC Submissions and Company
 Facts resources through the existing bounded adapter. Existing eight-MiB input
 caps and filing/fact/observation limits remain. Source bodies are not persisted.
-Cancel immediately retires the client's result. The Appwrite bridge has no proven
+Cancel immediately retires the pending read. During a refresh, the previous
+validated report stays visible with a cancellation message. The Appwrite bridge has no proven
 client-disconnect signal, so cancellation does not claim to stop remote work;
 the server deadline remains responsible for that work.
 

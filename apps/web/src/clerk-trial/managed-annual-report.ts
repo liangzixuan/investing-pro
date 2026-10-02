@@ -19,6 +19,7 @@ export interface AnnualReportSelection {
 export interface ManagedAnnualReportState {
   readonly selection: AnnualReportSelection | null;
   readonly response: PersonalSecAnnualEvidenceResponseDto | null;
+  readonly showingPrevious: boolean;
   readonly running: boolean;
   readonly catalogChanged: boolean;
   readonly message: string;
@@ -27,6 +28,7 @@ export interface ManagedAnnualReportState {
 const empty = (): ManagedAnnualReportState => ({
   selection: null,
   response: null,
+  showingPrevious: false,
   running: false,
   catalogChanged: false,
   message: "",
@@ -52,7 +54,11 @@ function matchesSelection(
   );
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown, showingPrevious: boolean): string {
+  if (showingPrevious)
+    return error instanceof ManagedAnnualReportError
+      ? "The annual report refresh timed out. Try refreshing again when you are ready."
+      : "The annual report refresh failed. Try refreshing again when you are ready.";
   if (error instanceof ManagedCatalogChangedError)
     return "The catalog changed. Refresh the catalog and choose the company again.";
   if (error instanceof ManagedAnnualReportError)
@@ -113,9 +119,11 @@ export class ManagedAnnualReport {
     this.operation = null;
     this.update({
       running: false,
-      response: null,
+      showingPrevious: this.state.response !== null,
       error: false,
-      message: "Annual report load cancelled. Load again when ready.",
+      message: this.state.response
+        ? "Annual report refresh cancelled. Refresh again when ready."
+        : "Annual report load cancelled. Load again when ready.",
     });
   }
   async load() {
@@ -129,7 +137,8 @@ export class ManagedAnnualReport {
       return;
     if (this.nextAllowedAt && Date.now() < Date.parse(this.nextAllowedAt)) {
       this.update({
-        message: `Annual report requests are shared across your devices. Load again after ${this.nextAllowedAt}.`,
+        showingPrevious: this.state.response !== null,
+        message: this.cooldownMessage(this.nextAllowedAt),
         error: false,
       });
       return;
@@ -143,9 +152,11 @@ export class ManagedAnnualReport {
       !operation.signal.aborted;
     this.update({
       running: true,
-      response: null,
+      showingPrevious: this.state.response !== null,
       error: false,
-      message: `Loading the observed annual report for ${selection.listing.symbol}…`,
+      message: this.state.response
+        ? `Refreshing the annual report for ${selection.listing.symbol}…`
+        : `Loading the observed annual report for ${selection.listing.symbol}…`,
     });
     try {
       const response = await this.loadReport(
@@ -162,6 +173,7 @@ export class ManagedAnnualReport {
         throw new TrialApiError("invalid_response");
       this.update({
         response,
+        showingPrevious: false,
         message: `Annual report loaded for ${selection.listing.symbol}. Refresh explicitly to check again.`,
       });
     } catch (error) {
@@ -177,12 +189,20 @@ export class ManagedAnnualReport {
       } else if (error instanceof ManagedAnnualCooldownError) {
         this.nextAllowedAt = error.nextAllowedAt;
         this.update({
-          message: `Annual report requests are shared across your devices. Load again after ${error.nextAllowedAt}.`,
+          showingPrevious: this.state.response !== null,
+          message: this.cooldownMessage(error.nextAllowedAt),
         });
       } else {
+        const showingPrevious =
+          this.state.response !== null &&
+          ((error instanceof ManagedAnnualReportError &&
+            error.code === "request_timeout") ||
+            (error instanceof TrialApiError && error.code === "unavailable"));
         this.update({
+          response: showingPrevious ? this.state.response : null,
+          showingPrevious,
           error: true,
-          message: errorMessage(error),
+          message: errorMessage(error, showingPrevious),
           catalogChanged: error instanceof ManagedCatalogChangedError,
         });
       }
@@ -192,5 +212,10 @@ export class ManagedAnnualReport {
         this.update({ running: false });
       }
     }
+  }
+  private cooldownMessage(nextAllowedAt: string) {
+    return this.state.response
+      ? `Refresh deferred. Annual report requests are shared across your devices. Refresh again after ${nextAllowedAt}.`
+      : `Annual report requests are shared across your devices. Load again after ${nextAllowedAt}.`;
   }
 }

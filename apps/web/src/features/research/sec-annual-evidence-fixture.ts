@@ -59,7 +59,10 @@ async function hash(value: string): Promise<`sha256:${string}`> {
 }
 export async function response(
   rows = [row(), row("NetIncomeLoss", "100")],
+  cutoffAt = "2026-09-20T00:00:00.000Z",
 ): Promise<Wire> {
+  const capturedAt = (seconds: number) =>
+    new Date(Date.parse(cutoffAt) + seconds * 1000).toISOString();
   const observations = await Promise.all(
     rows.map(async (item) => {
       const fields = Object.fromEntries(
@@ -92,22 +95,22 @@ export async function response(
     cik: "0000000001",
     generation: {
       definitionVersion: "1.0.0",
-      cutoffAt: "2026-09-20T00:00:00.000Z",
-      completedAt: "2026-09-20T00:00:02.000Z",
+      cutoffAt,
+      completedAt: capturedAt(2),
       sha256: `sha256:${"0".repeat(64)}`,
       sources: {
         companyFacts: {
           status: "available",
           sourceUrl:
             "https://data.sec.gov/api/xbrl/companyfacts/CIK0000000001.json",
-          fetchedAt: "2026-09-20T00:00:01.000Z",
+          fetchedAt: capturedAt(1),
           bytes: 1000,
           sha256: `sha256:${"b".repeat(64)}`,
         },
         submissions: {
           status: "available",
           sourceUrl: "https://data.sec.gov/submissions/CIK0000000001.json",
-          fetchedAt: "2026-09-20T00:00:02.000Z",
+          fetchedAt: capturedAt(2),
           bytes: 500,
           sha256: `sha256:${"c".repeat(64)}`,
         },

@@ -210,6 +210,84 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedLifecycle", "phase=cancelled-late-discarded-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void annualRefreshFailureKeepsReportUntilExplicitRecovery() throws Exception {
+        click("#enable-refresh-scenario");
+        prepareDraftAndOpenAnnual();
+        click(".managed-annual-report .trial-actions button:first-child");
+        assertRefreshReport(1, false, false, false);
+        Log.i("ManagedRefresh", "phase=initial; " + pageDiagnostic());
+
+        click(".managed-annual-report .trial-actions button:first-child");
+        assertRefreshReport(2, true, true, false);
+        awaitPage("refresh action disabled while pending",
+            "document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === true");
+        Log.i("ManagedRefresh", "phase=pending; " + pageDiagnostic());
+        click("#fail-held-refresh");
+        assertRefreshReport(2, true, false, false);
+        awaitPage("refresh failure leaves an explicit retry", DIAGNOSTICS + ".refreshFailed === 1" +
+            " && document.querySelector('.managed-annual-report [role=alert]')?.textContent.includes('refresh failed')" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false");
+        Log.i("ManagedRefresh", "phase=failed-retained; " + pageDiagnostic());
+        retainRefreshFailureScreenshot();
+
+        click(".managed-annual-report .trial-actions button:first-child");
+        assertRefreshReport(3, false, false, true);
+        awaitPage("successful refresh clears the old failure",
+            "document.querySelector('.managed-annual-report [role=alert]') === null");
+        Log.i("ManagedRefresh", "phase=recovered; " + pageDiagnostic());
+        pressBack();
+        assertClosedDraft(true);
+        awaitPage("Back adds no API operation", DIAGNOSTICS + ".annual === 3 && " +
+            DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".refreshFailed === 1");
+        assertRootHistory();
+        assertFixtureBoundary();
+    }
+
+    private void assertRefreshReport(int annualCalls, boolean previous, boolean running, boolean recovered) throws Exception {
+        String generation = recovered ? "recovered" : "initial";
+        awaitPage("Annual refresh evidence: calls=" + annualCalls + ", previous=" + previous + ", running=" + running,
+            "(() => { const report = document.querySelector('.sec-quarterly-comparison');" +
+            " const panel = document.querySelector('.managed-annual-report');" +
+            " const generations = JSON.parse(document.querySelector('#fixture-report-generations').textContent);" +
+            " const wanted = generations." + generation + ";" +
+            " const other = generations." + (recovered ? "initial" : "recovered") + ";" +
+            " return report !== null && report.textContent.includes(wanted.sha256)" +
+            " && report.textContent.includes(wanted.completedAt) && report.textContent.includes(wanted.cutoffAt)" +
+            " && report.textContent.includes(wanted.sources.companyFacts.fetchedAt)" +
+            " && report.textContent.includes(wanted.sources.submissions.fetchedAt)" +
+            " && !report.textContent.includes(other.sha256)" +
+            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === " +
+                JSONObject.quote(recovered ? "2000,300,15" : "1000,100,10") +
+            " && panel.textContent.includes('Showing the previous report') === " + previous +
+            " && panel.getAttribute('aria-busy') === '" + running + "'" +
+            " && " + DIAGNOSTICS + ".annual === " + annualCalls +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
+    }
+
+    private void retainRefreshFailureScreenshot() throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-annual-report [role=alert]').scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Failed-refresh status did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        awaitPage("previous-report notice visible with original completion time",
+            "(() => { const notice = Array.from(document.querySelectorAll('.managed-annual-help')).find(e => e.textContent.startsWith('Showing the previous report'));" +
+            " if (!notice) return false; const r = notice.getBoundingClientRect(), v = visualViewport;" +
+            " return r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height" +
+            " && notice.textContent.includes('2026-09-20T00:00:02.000Z'); })()");
+        retainScreenshot("annualRefreshPreviousReport");
+    }
+
     private void assertPendingAnnualDraft() throws Exception {
         awaitPage("same pending Annual and unsaved draft",
             "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'" +
@@ -468,7 +546,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " counters: document.querySelector('#fixture-diagnostics')?.textContent?.slice(0,1024)," +
             " catalogMessage: document.querySelector('.workspace-global-search')?.nextElementSibling?.textContent?.slice(0,256)," +
             " results: Array.from(document.querySelectorAll('.managed-results strong')).slice(0,5).map(e=>e.textContent?.slice(0,16))," +
-            " annual: document.querySelector('#managed-annual-heading')?.textContent?.slice(0,128)})",
+            " annual: document.querySelector('#managed-annual-heading')?.textContent?.slice(0,128)," +
+            " annualMessage: document.querySelector('.managed-annual-report > [role]')?.textContent?.slice(0,256)," +
+            " annualCoordinates: document.querySelector('.sec-quarterly-comparison-coordinates')?.textContent?.slice(0,1024)," +
+            " annualGeneration: Array.from(document.querySelectorAll('.sec-quarterly-comparison dt')).find(e=>e.textContent==='Source generation')?.nextElementSibling?.textContent?.slice(0,80)})",
             value -> { result.set(value); returned.countDown(); }));
         if (!returned.await(2, TimeUnit.SECONDS)) return "diagnostic unavailable";
         String observed = result.get();
@@ -479,18 +560,7 @@ public class ManagedWorkspaceInstrumentedTest {
     public void retainScreenshotAndCloseActivity() throws IOException {
         try {
             if (scenario == null) return;
-            String configured = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");
-            File output = configured == null
-                ? new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "instrumentation-screenshots")
-                : new File(configured);
-            assertTrue(output.isDirectory() || output.mkdirs());
-            Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-            assertNotNull(screenshot);
-            try (FileOutputStream stream = new FileOutputStream(new File(output, testName.getMethodName() + ".png"))) {
-                assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, stream));
-            } finally {
-                screenshot.recycle();
-            }
+            retainScreenshot(testName.getMethodName());
         } finally {
             try {
                 if (scenario != null) scenario.close();
@@ -504,6 +574,21 @@ public class ManagedWorkspaceInstrumentedTest {
                     assertTrue("Cannot remove owned fixture path", !created.exists() || created.delete());
                 }
             }
+        }
+    }
+
+    private void retainScreenshot(String name) throws IOException {
+        String configured = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");
+        File output = configured == null
+            ? new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "instrumentation-screenshots")
+            : new File(configured);
+        assertTrue(output.isDirectory() || output.mkdirs());
+        Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+        assertNotNull(screenshot);
+        try (FileOutputStream stream = new FileOutputStream(new File(output, name + ".png"))) {
+            assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, stream));
+        } finally {
+            screenshot.recycle();
         }
     }
 }
