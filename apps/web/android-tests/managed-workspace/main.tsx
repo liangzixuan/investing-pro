@@ -35,6 +35,19 @@ function Fixture() {
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre id="fixture-diagnostics">{JSON.stringify(state)}</pre>
+        {state.eod > 0 && (
+          <button
+            id="settle-cancelled-eod"
+            disabled={
+              state.eod !== 2 ||
+              state.eodAborted !== 1 ||
+              state.eodLateResolved !== 0
+            }
+            onClick={fixture.settleCancelledEod}
+          >
+            Settle cancelled invented EOD response
+          </button>
+        )}
         {state.catalogRecovery && (
           <button
             id="release-catalog-recovery"

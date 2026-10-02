@@ -1062,3 +1062,4 @@ export * from "./personal-sec-source-json";
 export * from "./personal-economic-calendar";
 export * from "./personal-monetary-announcements";
 export * from "./managed-workspace";
+export * from "./managed-eod-history";

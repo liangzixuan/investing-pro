@@ -13,6 +13,7 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { eodResponse } from "./eod-history-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
@@ -89,6 +90,7 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    eodHistory: vi.fn(),
     annualReport: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     search: vi.fn<ManagedApi["search"]>().mockResolvedValue({
@@ -758,6 +760,113 @@ describe("managed workspace composition", () => {
 });
 
 describe("annual panel within the managed workspace", () => {
+  it("opens EOD only for current identities and keeps Annual mutually exclusive without automatic reads", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openDiscoveryEod(result);
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+    await workspace.search();
+    const found = workspace.getSnapshot().results[0]!;
+    workspace.openDiscoveryAnnual(found);
+    workspace.openDiscoveryEod(found);
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    expect(workspace.eod.getSnapshot().selection?.listing.symbol).toBe("DEMO");
+    workspace.openWatchlistEod(listingMembership(found));
+    expect(workspace.eod.getSnapshot().selection?.origin).toBe("discover");
+    workspace.add(found);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+    workspace.openWatchlistEod(member);
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    expect(workspace.eod.getSnapshot().selection?.origin).toBe("watchlist");
+    workspace.openDiscoveryAnnual(found);
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+  it("keeps EOD selection across note/order edits but clears it when the exact watchlist identity changes", async () => {
+    const { workspace, api } = fixture({
+      ...empty,
+      memberships: [listingMembership(result), listingMembership(second)],
+    });
+    await ready(workspace);
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const selection = workspace.eod.getSnapshot().selection;
+    workspace.note(result.listingId, "EOD unsaved note");
+    workspace.move(result.listingId, 1);
+    expect(workspace.eod.getSnapshot().selection).toBe(selection);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    workspace.coordinator.replaceDraft({
+      ...draft,
+      memberships: draft.memberships.map((member) =>
+        member.listingId === result.listingId
+          ? { ...member, securityId: "replacement-security" }
+          : member,
+      ),
+    });
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toBe("EOD unsaved note");
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it.each(["catalog", "remove", "annual", "retire"])(
+    "aborts pending EOD on %s and rejects its late response",
+    async (cause) => {
+      const { workspace, api } = fixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      await ready(workspace);
+      const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      workspace.openWatchlistEod(member);
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(api.eodHistory).mockReturnValue(held.promise);
+      const pending = workspace.eod.load();
+      if (cause === "catalog") {
+        vi.mocked(api.status).mockResolvedValue({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+        expect(workspace.canOpenWatchlistEod(member)).toBe(false);
+      } else if (cause === "remove") workspace.remove(member.listingId);
+      else if (cause === "annual") workspace.openWatchlistAnnual(member);
+      else workspace.coordinator.retire();
+      expect(vi.mocked(api.eodHistory).mock.calls[0]![1].aborted).toBe(true);
+      held.resolve(eodResponse());
+      await pending;
+      expect(workspace.eod.getSnapshot()).toMatchObject({
+        selection: null,
+        response: null,
+      });
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+  it("routes current EOD authentication loss through shared retirement", async () => {
+    const { workspace, api } = fixture({
+      ...empty,
+      memberships: [listingMembership(result)],
+    });
+    await ready(workspace);
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    vi.mocked(api.eodHistory).mockRejectedValue(
+      new TrialApiError("access_denied"),
+    );
+    await workspace.eod.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+  });
   it("opens only a captured current result or current watchlist membership, without an automatic request", async () => {
     const { workspace, api } = fixture();
     await workspace.coordinator.load();

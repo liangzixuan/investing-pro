@@ -10,6 +10,10 @@ import {
   WatchlistRepositoryError,
   type MainWatchlistRepository,
 } from "./watchlist-repository";
+import {
+  ManagedEodServiceError,
+  type ManagedEodService,
+} from "./managed-eod-service";
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
 import {
   ManagedSecAnnualServiceError,
@@ -1193,6 +1197,150 @@ describe("managed annual read-only POST boundary", () => {
       .mockImplementationOnce(() => undefined)
       .mockImplementationOnce(() => {
         throw new ManagedSecAnnualServiceError("request_timeout");
+      });
+    expect((await f.handler(f.post())).status).toBe(408);
+  });
+});
+
+describe("managed EOD read-only boundary", () => {
+  const path = "/v1/managed/eod-history";
+  const value = {
+    catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
+    listingId: "listing-demo",
+    range: "1m",
+  };
+  function setup() {
+    const f = fixture();
+    const load = vi
+      .fn<ManagedEodService["load"]>()
+      .mockRejectedValue(new ManagedEodServiceError("unavailable"));
+    const assertActive = vi.fn<ManagedEodService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      eod: { load, assertActive },
+    });
+    const post = (body: unknown = value) =>
+      new Request(`https://managed.invalid${path}`, {
+        method: "POST",
+        headers: { origin: ORIGIN, "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    return { ...f, load, assertActive, handler, post };
+  }
+  it.each(["unauthenticated", "access_denied"] as const)(
+    "preserves own %s before body or EOD service",
+    async (status) => {
+      const f = setup();
+      f.auth.mockResolvedValue({ status });
+      const response = await f.handler(f.post({ invalid: true }));
+      expect(response.status).toBe(status === "access_denied" ? 403 : 401);
+      expect(f.load).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it("captures only the strict request and never opens watchlist storage", async () => {
+    const f = setup();
+    expect((await f.handler(f.post({ ...value, symbol: "AAPL" }))).status).toBe(
+      400,
+    );
+    expect(f.load).not.toHaveBeenCalled();
+    const response = await f.handler(f.post());
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+    expect(f.load).toHaveBeenCalledExactlyOnceWith(
+      value,
+      OWNER,
+      expect.any(AbortSignal),
+    );
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["invalid_request", 400],
+    ["catalog_changed", 409],
+    ["unsupported_listing", 422],
+    ["request_timeout", 408],
+    ["not_configured", 503],
+    ["unavailable", 503],
+    ["source_rate_limited", 429],
+  ] as const)(
+    "returns finite %s without session retirement or write uncertainty",
+    async (code, status) => {
+      const f = setup();
+      f.load.mockRejectedValue(new ManagedEodServiceError(code));
+      const response = await f.handler(f.post());
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: code });
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it("admits a finite local cooldown but refuses malformed retry metadata", async () => {
+    const f = setup();
+    f.load.mockRejectedValue(
+      new ManagedEodServiceError("rate_limited", "2026-10-03T12:00:00.000Z"),
+    );
+    const response = await f.handler(f.post());
+    expect(response.status).toBe(429);
+    expect(await response.json()).toEqual({
+      error: "rate_limited",
+      nextAllowedAt: "2026-10-03T12:00:00.000Z",
+    });
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+    f.load.mockRejectedValue(
+      new ManagedEodServiceError("rate_limited", "invalid"),
+    );
+    const invalid = await f.handler(f.post());
+    expect(invalid.status).toBe(503);
+    expect(await invalid.json()).toEqual({ error: "unavailable" });
+  });
+  it("admits exact native POST preflight and rejects query or oversized body", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}`, {
+            method: "OPTIONS",
+            headers: {
+              origin: NATIVE_ORIGIN,
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "Authorization, Content-Type",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(
+      (
+        await f.handler(
+          new Request(`https://managed.invalid${path}?x=1`, {
+            method: "POST",
+            headers: { origin: ORIGIN },
+          }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (await f.handler(f.post({ ...value, listingId: "a".repeat(4096) })))
+        .status,
+    ).toBe(413);
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it("checks 64KiB serialization and late liveness before publishing", async () => {
+    const f = setup();
+    f.load.mockResolvedValue({
+      oversized: "a".repeat(65536),
+    } as unknown as Awaited<ReturnType<ManagedEodService["load"]>>);
+    expect((await f.handler(f.post())).status).toBe(503);
+    f.load.mockResolvedValue(
+      {} as Awaited<ReturnType<ManagedEodService["load"]>>,
+    );
+    f.assertActive
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedEodServiceError("request_timeout");
       });
     expect((await f.handler(f.post())).status).toBe(408);
   });

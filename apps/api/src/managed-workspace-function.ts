@@ -8,6 +8,8 @@ import {
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_EOD_HISTORY_PATH,
+  MANAGED_EOD_HISTORY_LIMITS,
 } from "@research-cockpit/contracts";
 import { TablesDB } from "node-appwrite";
 
@@ -28,6 +30,20 @@ import {
   awaitManagedSecAnnual,
   ManagedSecAnnualServiceError,
 } from "./managed-sec-annual-service";
+import {
+  validateManagedEodConfiguration,
+  MANAGED_EOD_BUDGET,
+  MANAGED_EOD_TOKEN_ENVIRONMENT_KEY,
+} from "./managed-eod-config";
+import {
+  createManagedEodAdmission,
+  MANAGED_EOD_ADMISSION_LIMITS,
+} from "./managed-eod-admission";
+import {
+  createManagedEodService,
+  awaitManagedEod,
+  ManagedEodServiceError,
+} from "./managed-eod-service";
 import {
   createManagedCatalogService,
   getManagedWorkspaceCatalog,
@@ -63,12 +79,14 @@ export interface ManagedWorkspaceFunctionContext {
 
 declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
 declare const __MANAGED_SEC_ANNUAL_CONFIG__: unknown;
+declare const __MANAGED_EOD_CONFIG__: unknown;
 const PATHS: readonly string[] = [
   MANAGED_CATALOG_STATUS_PATH,
   MANAGED_CATALOG_SEARCH_PATH,
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_EOD_HISTORY_PATH,
 ];
 const FORWARDED_HEADERS = [
   "authorization",
@@ -114,7 +132,9 @@ export function bridgeManagedWorkspaceRequest(
       ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
       : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
         ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-        : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+        : req.path === MANAGED_EOD_HISTORY_PATH
+          ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+          : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -140,10 +160,12 @@ export function bridgeManagedWorkspaceRequest(
 export function createManagedWorkspaceFunction(
   input: unknown,
   annualInput: unknown,
+  eodInput: unknown,
 ) {
   const checked = validateClerkTrialFunctionConfiguration(input);
   const annualConfiguration =
     validateManagedSecAnnualConfiguration(annualInput);
+  const eodConfiguration = validateManagedEodConfiguration(eodInput);
   if (checked.environment !== "production")
     throw new Error("Managed function requires production configuration");
   const webAuth = createClerkTrialAuth(checked.auth);
@@ -170,22 +192,23 @@ export function createManagedWorkspaceFunction(
       return res.json({ error: "origin_denied" }, 403, headers);
     headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
-    const annualController =
-      req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+    const eod = req.path === MANAGED_EOD_HISTORY_PATH;
+    const sourceController =
+      req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH || eod
         ? new AbortController()
         : undefined;
-    const annualTimer =
-      annualController === undefined
+    const sourceTimer =
+      sourceController === undefined
         ? undefined
         : setTimeout(
-            () => annualController.abort(),
+            () => sourceController.abort(),
             Math.max(1, 10_000 - (performance.now() - startedAt)),
           );
-    annualTimer?.unref();
+    sourceTimer?.unref();
     try {
       const bridged = bridgeManagedWorkspaceRequest(req);
-      const request = annualController
-        ? new Request(bridged, { signal: annualController.signal })
+      const request = sourceController
+        ? new Request(bridged, { signal: sourceController.signal })
         : bridged;
       // Copy the supplied authority before auth awaits; it is never user authority.
       const executionKey = req.headers["x-appwrite-key"];
@@ -195,7 +218,7 @@ export function createManagedWorkspaceFunction(
             ? nativeAuth
             : webAuth,
         catalog,
-        ...(annualController === undefined
+        ...(sourceController === undefined || eod
           ? {}
           : {
               annual: createManagedSecAnnualService({
@@ -238,6 +261,48 @@ export function createManagedWorkspaceFunction(
                 },
               }),
             }),
+        ...(!eod
+          ? {}
+          : {
+              eod: createManagedEodService({
+                configuration: eodConfiguration,
+                token: process.env[MANAGED_EOD_TOKEN_ENVIRONMENT_KEY],
+                catalog: getManagedWorkspaceCatalog(),
+                enteredAt,
+                startedAt,
+                openAdmission(signal, remainingMs) {
+                  if (!executionKey)
+                    throw new Error("Execution authority unavailable");
+                  const transport = createAppwriteTransport({
+                    endpoint: "https://nyc.cloud.appwrite.io/v1",
+                    signal,
+                    limits: {
+                      timeoutMs: remainingMs,
+                      mutationWindowMs: remainingMs,
+                      requestTimeoutMs: remainingMs,
+                      maxRequests: MANAGED_EOD_ADMISSION_LIMITS.maxRequests,
+                    },
+                  });
+                  try {
+                    transport.client
+                      .setProject("6abac57a0007b7c1a671")
+                      .setKey(executionKey);
+                    return {
+                      admission: createManagedEodAdmission({
+                        store: appwriteWatchlistStore(
+                          new TablesDB(transport.client),
+                        ),
+                        ...MANAGED_EOD_BUDGET,
+                      }),
+                      close: () => transport.close(),
+                    };
+                  } catch {
+                    void transport.close().catch(() => undefined);
+                    throw new Error("Managed EOD storage unavailable");
+                  }
+                },
+              }),
+            }),
         async openRepository(signal) {
           if (!executionKey) throw new Error("Execution authority unavailable");
           const transport = createAppwriteTransport({
@@ -266,16 +331,20 @@ export function createManagedWorkspaceFunction(
       });
       dispatchedWrite =
         req.method === "POST" && req.path === MANAGED_WATCHLIST_PATH;
-      const response = await (annualController
-        ? awaitManagedSecAnnual(handle(request), annualController.signal)
+      const response = await (sourceController
+        ? eod
+          ? awaitManagedEod(handle(request), sourceController.signal)
+          : awaitManagedSecAnnual(handle(request), sourceController.signal)
         : handle(request));
       const body = await response.text();
       if (
-        annualController &&
-        (annualController.signal.aborted ||
+        sourceController &&
+        (sourceController.signal.aborted ||
           performance.now() - startedAt >= 10_000)
       )
-        throw new ManagedSecAnnualServiceError("request_timeout");
+        throw eod
+          ? new ManagedEodServiceError("request_timeout")
+          : new ManagedSecAnnualServiceError("request_timeout");
       return res.text(
         body,
         response.status,
@@ -287,7 +356,8 @@ export function createManagedWorkspaceFunction(
           error:
             error instanceof BridgeFailure
               ? error.code
-              : error instanceof ManagedSecAnnualServiceError
+              : error instanceof ManagedSecAnnualServiceError ||
+                  error instanceof ManagedEodServiceError
                 ? error.code
                 : dispatchedWrite
                   ? "commit_unknown"
@@ -295,15 +365,16 @@ export function createManagedWorkspaceFunction(
         },
         error instanceof BridgeFailure
           ? error.status
-          : error instanceof ManagedSecAnnualServiceError &&
+          : (error instanceof ManagedSecAnnualServiceError ||
+                error instanceof ManagedEodServiceError) &&
               error.code === "request_timeout"
             ? 408
             : 503,
         headers,
       );
     } finally {
-      clearTimeout(annualTimer);
-      annualController?.abort();
+      clearTimeout(sourceTimer);
+      sourceController?.abort();
     }
   };
 }
@@ -314,5 +385,6 @@ export default async function main(context: ManagedWorkspaceFunctionContext) {
   return createManagedWorkspaceFunction(
     __MANAGED_WORKSPACE_SERVER_CONFIG__,
     __MANAGED_SEC_ANNUAL_CONFIG__,
+    __MANAGED_EOD_CONFIG__,
   )(context, Object.freeze({ startedAt, enteredAt }));
 }

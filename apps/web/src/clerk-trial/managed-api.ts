@@ -1,4 +1,12 @@
 import {
+  MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_EOD_HISTORY_PATH,
+  parseManagedEodHistoryRequest,
+  parseManagedEodHistoryResponse,
+  parseManagedEodError,
+  type ManagedEodHistoryRequestDto,
+  type ManagedEodHistoryResponseDto,
+  type ManagedEodErrorCode,
   MANAGED_CATALOG_LIMITS,
   MANAGED_CATALOG_RESOLVE_LIMITS,
   MANAGED_CATALOG_RESOLVE_PATH,
@@ -31,6 +39,10 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  eodHistory: (
+    request: ManagedEodHistoryRequestDto,
+    signal: AbortSignal,
+  ) => Promise<ManagedEodHistoryResponseDto>;
   annualReport: (
     request: PersonalSecAnnualEvidenceRequestDto,
     signal: AbortSignal,
@@ -69,7 +81,19 @@ export class ManagedAnnualCooldownError extends Error {
   }
 }
 
-type RequestKind = "watchlist" | "resolve" | "annual";
+export class ManagedEodHistoryError extends Error {
+  constructor(readonly code: ManagedEodErrorCode) {
+    super(code);
+  }
+}
+
+export class ManagedEodCooldownError extends Error {
+  constructor(readonly nextAllowedAt: string) {
+    super("rate_limited");
+  }
+}
+
+type RequestKind = "watchlist" | "resolve" | "annual" | "eod";
 
 function annualCooldown(value: unknown): never {
   if (
@@ -141,6 +165,27 @@ function responseError(
   value: unknown,
   kind: RequestKind,
 ): never {
+  if (kind === "eod") {
+    const error = parseManagedEodError(value);
+    if (!error) throw new TrialApiError("invalid_response");
+    if (status === 429 && error.error === "rate_limited")
+      throw new ManagedEodCooldownError(error.nextAllowedAt);
+    if (status === 409 && error.error === "catalog_changed")
+      throw new ManagedCatalogChangedError();
+    const allowed: Record<number, readonly string[]> = {
+      400: ["invalid_request"],
+      408: ["request_timeout"],
+      422: ["unsupported_listing"],
+      429: ["source_rate_limited"],
+      503: ["not_configured", "unavailable"],
+    };
+    if (
+      error.error !== "rate_limited" &&
+      allowed[status]?.includes(error.error)
+    )
+      throw new ManagedEodHistoryError(error.error);
+    throw new TrialApiError("invalid_response");
+  }
   if (kind === "annual" && status === 429) annualCooldown(value);
   if (
     !value ||
@@ -257,7 +302,9 @@ export function createManagedApi(
         error instanceof TrialApiError ||
         error instanceof ManagedCatalogChangedError ||
         error instanceof ManagedAnnualCooldownError ||
-        error instanceof ManagedAnnualReportError
+        error instanceof ManagedAnnualReportError ||
+        error instanceof ManagedEodHistoryError ||
+        error instanceof ManagedEodCooldownError
       )
         throw error;
       throw new TrialApiError(signal.aborted ? "aborted" : "unavailable");
@@ -270,6 +317,18 @@ export function createManagedApi(
     }
   }
   return {
+    eodHistory: async (input, signal) => {
+      const captured = parseManagedEodHistoryRequest(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_EOD_HISTORY_PATH,
+        signal,
+        MANAGED_EOD_HISTORY_LIMITS.responseBytes,
+        (value) => parseManagedEodHistoryResponse(value, captured),
+        requestBody(captured, MANAGED_EOD_HISTORY_LIMITS.requestBytes),
+        "eod",
+      );
+    },
     annualReport: async (input, signal) => {
       const captured = parseManagedSecAnnualEvidenceRequest(input);
       if (!captured) throw new TrialApiError("invalid_request");

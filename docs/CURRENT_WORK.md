@@ -12,20 +12,27 @@ Verified through October 2, 2026. Each row describes a separate product surface.
 Exact receipts and historical outcomes remain in workspace `CURRENT.md` and its
 linked handoffs; a later source merge is not a new deployment.
 
-| Surface                  | Accepted evidence                                                                                                                                                                                                            | Remaining work                                                                                                         |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Local research app       | Preserved a89 release and encrypted vault                                                                                                                                                                                    | Managed migration and recovery are separate work.                                                                      |
-| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                                                                                                  | Does not accept production native sign-in or signing custody.                                                          |
-| Production web demo      | Preserved demo API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out                                                                                                   | Synthetic saved version 1 remains separate from the managed workspace.                                                 |
-| Connected website        | Main `8fbed9d8` (PR24); site `6abf7f6fa465424d049d`, retained rollback `6abeaee4c13d387690d2`; accepted staging, exact-build check and same-archive promotion. API `6abe7cdba54599a11e59` has separate historical acceptance | AAPL, GOOG and GOOGL only, no prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
-| Production native app    | Signed Investment 1.1.0 in `delivery/android-1.1.0`; same signer and external exFAT backup recovery accepted. Owner reported the in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17              | No per-step device logs were supplied. Later web changes require a separately delivered APK and native acceptance.     |
+| Surface                  | Accepted evidence                                                                                                                                                                                                            | Remaining work                                                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Local research app       | Preserved a89 release and encrypted vault                                                                                                                                                                                    | Managed migration and recovery are separate work.                                                                                |
+| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                                                                                                  | Does not accept production native sign-in or signing custody.                                                                    |
+| Production web demo      | Preserved demo API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out                                                                                                   | Synthetic saved version 1 remains separate from the managed workspace.                                                           |
+| Connected website        | Main `159a78cc` (PR25); site `6ac00784e5c0f7dfd196`, retained rollback `6abf7f6fa465424d049d`; accepted staging, exact-build check and same-archive promotion. API `6abe7cdba54599a11e59` has separate historical acceptance | AAPL, GOOG and GOOGL only, no delivered prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
+| Production native app    | Signed Investment 1.1.0 in `delivery/android-1.1.0`; same signer and external exFAT backup recovery accepted. Owner reported the in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17              | No per-step device logs were supplied. Later web changes require a separately delivered APK and native acceptance.               |
 
 The October 2 website release retains the previous validated Annual report during
-refresh, transient failure, cooldown and Cancel. Seven isolated Android cases
-and original artifact images are accepted for this source; the installed APK
-was not updated. The next source change makes catalog loading and Search
-progress distinct and names each failed read's existing recovery action.
-Workspace CURRENT records its verification and publication as they occur.
+refresh, transient failure, cooldown and Cancel, distinguishes catalog loading
+from Search and names each failed read's recovery action. Eight isolated Android
+cases and original artifact images are accepted for PR25; the installed APK was
+not updated.
+
+The owner confirmed private Tiingo Starter display on desktop and phone. The
+selected [managed EOD history](./MANAGED_EOD_HISTORY.md) source change adds one
+explicit month of raw closes for an admitted listing, with a shared request
+budget and server-only key. Synthetic implementation and native regression work
+are in progress. Private provisioning, exact provider mapping, hosted admission,
+API/site delivery and an updated APK still require their own acceptance.
+Workspace CURRENT records actual verification and publication.
 
 Keep Next.js for desktop and the shared React/Vite/Capacitor client for Android.
 Clerk supplies identity and the server enforces account/data access. Appwrite

@@ -1,9 +1,11 @@
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
+  ManagedEodHistoryResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
+import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
 import type { ManagedApi } from "../../src/clerk-trial/managed-api";
 import { listingMembership } from "../../src/clerk-trial/managed-workspace";
 import type { TrialSession } from "../../src/clerk-trial/session";
@@ -30,13 +32,13 @@ const zero: PersonalSecurityMasterSearchResultDto = {
   shareClassName: "Class A",
   symbol: "ZERO",
 };
-const identity = listingMembership(zero);
+const { note, ...identity } = listingMembership(zero);
 const payload: MainWatchlistPayload = {
   name: "My Watchlist",
   schemaVersion: 1,
   snapshotSha256: digest,
   memberships: [
-    { ...identity, note: "" },
+    { ...identity, note },
     {
       ...identity,
       issuerId: "issuer-one",
@@ -92,6 +94,36 @@ export async function createFixture(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
+  const eodPacket = (late: boolean) => {
+    const request = {
+      catalogSnapshotSha256: digest,
+      listingId: "listing-zero",
+      range: "1m" as const,
+    };
+    const packet = parseManagedEodHistoryResponse(
+      {
+        schemaVersion: "1.0.0",
+        catalogSnapshotSha256: digest,
+        security: identity,
+        range: "1m",
+        provider: "Tiingo",
+        currency: "USD",
+        priceBasis: "raw_close",
+        window: { startDate: "2026-08-20", endDate: "2026-09-20" },
+        requestStartedAt: "2026-09-20T00:00:00.000Z",
+        completedAt: "2026-09-20T00:00:01.000Z",
+        rows: [
+          { date: "2026-09-18", close: late ? "998.25" : "100.25" },
+          { date: "2026-09-19", close: late ? "999.75" : "101.5" },
+        ],
+      },
+      request,
+    );
+    if (!packet) throw new Error("Invalid invented EOD packet");
+    return packet;
+  };
+  const eodInitial = eodPacket(false);
+  const eodLate = eodPacket(true);
   let state = {
     load: 0,
     status: 0,
@@ -107,6 +139,9 @@ export async function createFixture(
     refreshFailed: 0,
     catalogRecovery: scenario === "catalog-startup-recovery",
     catalogReleased: 0,
+    eod: 0,
+    eodAborted: 0,
+    eodLateResolved: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -119,6 +154,7 @@ export async function createFixture(
     null;
   let rejectRefresh: ((error: unknown) => void) | null = null;
   let releaseCatalog: (() => void) | null = null;
+  let pendingEod: ((value: ManagedEodHistoryResponseDto) => void) | null = null;
   const unexpected = (
     key: "save" | "resolve" | "token" | "signOut",
   ): Promise<never> => {
@@ -162,6 +198,26 @@ export async function createFixture(
     },
     save: () => unexpected("save"),
     resolve: () => unexpected("resolve"),
+    eodHistory: (request, signal) => {
+      if (
+        signal.aborted ||
+        pendingEod ||
+        request.catalogSnapshotSha256 !== digest ||
+        request.listingId !== "listing-zero" ||
+        request.range !== "1m"
+      )
+        throw new Error("Unexpected fixture EOD request");
+      count("eod");
+      if (state.eod === 1) return Promise.resolve(structuredClone(eodInitial));
+      if (state.eod !== 2) throw new Error("Unexpected extra fixture EOD read");
+      signal.addEventListener("abort", () => count("eodAborted"), {
+        once: true,
+      });
+      // Deliberately ignores abort so the real EOD model must fence the late reply.
+      return new Promise((resolve) => {
+        pendingEod = resolve;
+      });
+    },
     annualReport: (request, signal) => {
       if (
         signal.aborted ||
@@ -224,6 +280,19 @@ export async function createFixture(
       releaseCatalog = null;
       count("catalogReleased");
       release();
+    },
+    settleCancelledEod: () => {
+      if (
+        !pendingEod ||
+        state.eod !== 2 ||
+        state.eodAborted !== 1 ||
+        state.eodLateResolved !== 0
+      )
+        throw new Error("Only the cancelled fixture EOD read may settle");
+      const resolve = pendingEod;
+      pendingEod = null;
+      resolve(structuredClone(eodLate));
+      void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
       if (!pending || state.aborted !== 1 || state.lateResolved !== 0)

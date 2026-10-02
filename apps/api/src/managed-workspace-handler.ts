@@ -10,6 +10,10 @@ import {
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_EOD_HISTORY_PATH,
+  MANAGED_EOD_HISTORY_LIMITS,
+  parseManagedEodHistoryRequest,
+  parseManagedEodError,
   encodeMainWatchlistPayload,
   parseManagedCatalogResolveRequest,
   parseManagedCatalogResolveResponse,
@@ -29,6 +33,10 @@ import {
   type ManagedSecAnnualService,
 } from "./managed-sec-annual-service";
 import {
+  ManagedEodServiceError,
+  type ManagedEodService,
+} from "./managed-eod-service";
+import {
   WatchlistRepositoryError,
   type MainWatchlistReceipt,
   type MainWatchlistRecord,
@@ -43,6 +51,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
   readonly annual?: ManagedSecAnnualService;
+  readonly eod?: ManagedEodService;
   readonly openRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedWorkspaceRepositoryOperation>;
@@ -64,6 +73,7 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_EOD_HISTORY_PATH,
 ];
 
 class RequestFailure extends Error {
@@ -114,7 +124,8 @@ function decodeSearchQuery(search: string): string {
 function methods(path: string): readonly string[] {
   if (path === MANAGED_WATCHLIST_PATH) return ["GET", "POST"];
   return path === MANAGED_CATALOG_RESOLVE_PATH ||
-    path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
+    path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH ||
+    path === MANAGED_EOD_HISTORY_PATH
     ? ["POST"]
     : ["GET"];
 }
@@ -130,6 +141,7 @@ function admitRoute(request: Request) {
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
         MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+        MANAGED_EOD_HISTORY_PATH,
       ] as readonly string[]
     ).includes(url.pathname)
   )
@@ -296,7 +308,22 @@ function errorResponse(
   if (error instanceof RequestFailure) {
     status = error.status;
     code = error.code;
-  } else if (error instanceof ManagedSecAnnualServiceError) {
+  } else if (
+    error instanceof ManagedSecAnnualServiceError ||
+    error instanceof ManagedEodServiceError
+  ) {
+    if (
+      error instanceof ManagedEodServiceError &&
+      parseManagedEodError(
+        error.code === "rate_limited"
+          ? { error: error.code, nextAllowedAt: error.nextAllowedAt }
+          : { error: error.code },
+      ) === null
+    )
+      return new Response(JSON.stringify({ error: "unavailable" }), {
+        status: 503,
+        headers,
+      });
     code = error.code;
     status =
       code === "invalid_request"
@@ -305,9 +332,11 @@ function errorResponse(
           ? 409
           : code === "request_timeout"
             ? 408
-            : code === "rate_limited"
-              ? 429
-              : 503;
+            : code === "unsupported_listing"
+              ? 422
+              : code === "rate_limited" || code === "source_rate_limited"
+                ? 429
+                : 503;
     if (code === "rate_limited" && error.nextAllowedAt !== undefined)
       return new Response(
         JSON.stringify({ error: code, nextAllowedAt: error.nextAllowedAt }),
@@ -362,6 +391,28 @@ export function createManagedWorkspaceHandler(
       if (auth.status !== "allowed")
         return fail(auth.status === "access_denied" ? 403 : 401, auth.status);
       requireActiveRequest(request);
+      if (route.path === MANAGED_EOD_HISTORY_PATH) {
+        const command = parseManagedEodHistoryRequest(
+          await readJson(request, MANAGED_EOD_HISTORY_LIMITS.requestBytes),
+        );
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        if (options.eod === undefined)
+          throw new ManagedEodServiceError("not_configured");
+        const result = await options.eod.load(
+          command,
+          auth.principal,
+          request.signal,
+        );
+        options.eod.assertActive(request.signal);
+        response = jsonResponse(
+          result,
+          MANAGED_EOD_HISTORY_LIMITS.responseBytes,
+          headers,
+        );
+        options.eod.assertActive(request.signal);
+        return response;
+      }
       if (route.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH) {
         const command = parseManagedSecAnnualEvidenceRequest(
           await readJson(

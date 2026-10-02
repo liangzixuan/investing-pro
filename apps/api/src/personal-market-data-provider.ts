@@ -65,6 +65,7 @@ export interface PersonalMarketDataProvider {
 export interface TiingoPersonalMarketDataProviderDependencies {
   readonly fetch?: typeof globalThis.fetch;
   readonly now?: () => Date;
+  readonly maximumResponseBytes?: number;
 }
 
 const ERROR_MESSAGE = "Personal market data is unavailable.";
@@ -213,10 +214,23 @@ export function createTiingoPersonalMarketDataProvider(
 ): PersonalMarketDataProvider {
   const fetchImplementation = dependencies.fetch ?? globalThis.fetch;
   const now = dependencies.now ?? (() => new Date());
+  const maximumResponseBytes =
+    dependencies.maximumResponseBytes ?? MAX_RESPONSE_BYTES;
   if (typeof fetchImplementation !== "function" || typeof now !== "function") {
     throw new TypeError(ERROR_MESSAGE);
   }
-  return new TiingoPersonalMarketDataProvider(token, fetchImplementation, now);
+  if (
+    !Number.isSafeInteger(maximumResponseBytes) ||
+    maximumResponseBytes < 1 ||
+    maximumResponseBytes > MAX_RESPONSE_BYTES
+  )
+    throw new TypeError(ERROR_MESSAGE);
+  return new TiingoPersonalMarketDataProvider(
+    token,
+    fetchImplementation,
+    now,
+    maximumResponseBytes,
+  );
 }
 
 class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
@@ -224,6 +238,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
   readonly #fetch: typeof globalThis.fetch;
   readonly #invalidCredential: boolean;
   readonly #now: () => Date;
+  readonly #maximumResponseBytes: number;
   readonly #tokenBytes: Uint8Array | undefined;
   #closed = false;
 
@@ -231,9 +246,11 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
     token: string | undefined,
     fetchImplementation: typeof globalThis.fetch,
     now: () => Date,
+    maximumResponseBytes: number,
   ) {
     this.#fetch = fetchImplementation;
     this.#now = now;
+    this.#maximumResponseBytes = maximumResponseBytes;
     const tokenState = prepareToken(token);
     this.#tokenBytes = tokenState.bytes;
     this.#invalidCredential = tokenState.invalid;
@@ -754,7 +771,7 @@ class TiingoPersonalMarketDataProvider implements PersonalMarketDataProvider {
     }
     if (!response.ok) fail(httpErrorCode(response.status));
     try {
-      return await readBoundedJson(response);
+      return await readBoundedJson(response, this.#maximumResponseBytes);
     } catch (error) {
       if (
         this.#closed ||
@@ -1068,8 +1085,11 @@ function formatUtcDate(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-async function readBoundedJson(response: Response): Promise<unknown> {
-  const text = await readBoundedResponseText(response);
+async function readBoundedJson(
+  response: Response,
+  maximum = MAX_RESPONSE_BYTES,
+): Promise<unknown> {
+  const text = await readBoundedResponseText(response, maximum);
   try {
     return JSON.parse(text);
   } catch {
@@ -1077,17 +1097,17 @@ async function readBoundedJson(response: Response): Promise<unknown> {
   }
 }
 
-async function readBoundedResponseText(response: Response): Promise<string> {
+async function readBoundedResponseText(
+  response: Response,
+  maximum = MAX_RESPONSE_BYTES,
+): Promise<string> {
   const declaredLength = response.headers.get("content-length");
   if (declaredLength !== null) {
     if (!/^(?:0|[1-9][0-9]*)$/u.test(declaredLength)) {
       fail("invalid_response");
     }
     const parsedLength = Number(declaredLength);
-    if (
-      !Number.isSafeInteger(parsedLength) ||
-      parsedLength > MAX_RESPONSE_BYTES
-    ) {
+    if (!Number.isSafeInteger(parsedLength) || parsedLength > maximum) {
       fail("invalid_response");
     }
   }
@@ -1101,7 +1121,7 @@ async function readBoundedResponseText(response: Response): Promise<string> {
       if (result.done) break;
       if (!(result.value instanceof Uint8Array)) fail("invalid_response");
       totalBytes += result.value.byteLength;
-      if (totalBytes > MAX_RESPONSE_BYTES) {
+      if (totalBytes > maximum) {
         try {
           await reader.cancel();
         } catch {
