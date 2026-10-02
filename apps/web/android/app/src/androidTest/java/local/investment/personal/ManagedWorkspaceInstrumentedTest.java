@@ -15,10 +15,15 @@ import static org.junit.Assert.*;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.PixelCopy;
 import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.Window;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -40,6 +45,7 @@ import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -280,12 +286,25 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-annual-report [role=alert]').scrollIntoView({block:'start',behavior:'instant'})",
             ignored -> scrolled.countDown()));
         assertTrue("Failed-refresh status did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        awaitPage("previous-report notice visible with original completion time",
-            "(() => { const notice = Array.from(document.querySelectorAll('.managed-annual-help')).find(e => e.textContent.startsWith('Showing the previous report'));" +
-            " if (!notice) return false; const r = notice.getBoundingClientRect(), v = visualViewport;" +
-            " return r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height" +
-            " && notice.textContent.includes('2026-09-20T00:00:02.000Z'); })()");
+        String visibleFailure =
+            "(() => { const panel = document.querySelector('.managed-annual-report');" +
+            " const failure = panel?.querySelector('[role=alert]');" +
+            " const notice = Array.from(document.querySelectorAll('.managed-annual-help')).find(e => e.textContent.startsWith('Showing the previous report'));" +
+            " const report = panel?.querySelector('.sec-quarterly-comparison');" +
+            " const original = JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial;" +
+            " const v = visualViewport; const visible = e => { if (!e || !v) return false;" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; };" +
+            " return visible(failure) && visible(notice) && panel.getAttribute('aria-busy') === 'false'" +
+            " && failure.textContent === 'The annual report refresh failed. Try refreshing again when you are ready.'" +
+            " && notice.textContent.includes(original.completedAt) && report?.textContent.includes(original.sha256)" +
+            " && panel.querySelector('.trial-actions button:first-child')?.disabled === false" +
+            " && " + DIAGNOSTICS + ".annual === 2 && " + DIAGNOSTICS + ".refreshFailed === 1; })()";
+        awaitPage("failed refresh and previous-report notice visible", visibleFailure);
         retainScreenshot("annualRefreshPreviousReport");
+        awaitPage("failed refresh stayed unchanged through capture", visibleFailure);
+        Log.i("ManagedRefresh", "phase=failed-screenshot-captured; " + pageDiagnostic());
     }
 
     private void assertPendingAnnualDraft() throws Exception {
@@ -557,7 +576,7 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @After
-    public void retainScreenshotAndCloseActivity() throws IOException {
+    public void retainScreenshotAndCloseActivity() throws Exception {
         try {
             if (scenario == null) return;
             retainScreenshot(testName.getMethodName());
@@ -577,18 +596,91 @@ public class ManagedWorkspaceInstrumentedTest {
         }
     }
 
-    private void retainScreenshot(String name) throws IOException {
+    private void retainScreenshot(String name) throws Exception {
         String configured = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir");
         File output = configured == null
             ? new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalCacheDir(), "instrumentation-screenshots")
             : new File(configured);
         assertTrue(output.isDirectory() || output.mkdirs());
-        Bitmap screenshot = InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
-        assertNotNull(screenshot);
+        Bitmap screenshot = captureCommittedWindow(name);
         try (FileOutputStream stream = new FileOutputStream(new File(output, name + ".png"))) {
             assertTrue(screenshot.compress(Bitmap.CompressFormat.PNG, 100, stream));
         } finally {
             screenshot.recycle();
+        }
+    }
+
+    /** DOM readiness, a submitted hardware frame, then one copy of that window's latest buffer. */
+    private Bitmap captureCommittedWindow(String name) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
+        Handler main = new Handler(Looper.getMainLooper());
+        CompletableFuture<Bitmap> captured = new CompletableFuture<>();
+        AtomicReference<String> phase = new AtomicReference<>("visual-state");
+        AtomicReference<ViewTreeObserver> observer = new AtomicReference<>();
+        AtomicReference<Runnable> frameCallback = new AtomicReference<>();
+        try {
+            scenario.onActivity(activity -> {
+                WebView webView = activity.getBridge().getWebView();
+                Window window = activity.getWindow();
+                assertTrue("Screenshot needs an attached visible hardware WebView",
+                    webView.isAttachedToWindow() && webView.isShown() && webView.isHardwareAccelerated());
+                webView.postVisualStateCallback(0, new WebView.VisualStateCallback() {
+                    @Override public void onComplete(long requestId) {
+                        if (captured.isDone() || SystemClock.uptimeMillis() >= deadline) return;
+                        phase.set("frame-commit");
+                        Runnable committed = () -> main.post(() -> {
+                            if (captured.isDone() || SystemClock.uptimeMillis() >= deadline) return;
+                            phase.set("pixel-copy");
+                            View decor = window.peekDecorView();
+                            int width = decor == null ? 0 : decor.getWidth();
+                            int height = decor == null ? 0 : decor.getHeight();
+                            if (width <= 0 || height <= 0 || (long) width * height > 16_777_216) {
+                                captured.completeExceptionally(new IOException("Invalid screenshot window dimensions"));
+                                return;
+                            }
+                            Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                            try {
+                                PixelCopy.request(window, bitmap, result -> {
+                                    if (result != PixelCopy.SUCCESS) {
+                                        bitmap.recycle();
+                                        captured.completeExceptionally(new IOException("PixelCopy result=" + result));
+                                    } else {
+                                        // A timed-out caller never owns a still-running copy's bitmap.
+                                        if (captured.complete(bitmap))
+                                            Log.i("ManagedScreenshot", "name=" + name + ", visualReady=true, frameCommitted=true, pixelCopy=SUCCESS, width=" + width + ", height=" + height);
+                                        else bitmap.recycle();
+                                    }
+                                }, main);
+                            } catch (RuntimeException error) {
+                                bitmap.recycle();
+                                captured.completeExceptionally(error);
+                            }
+                        });
+                        ViewTreeObserver current = webView.getViewTreeObserver();
+                        observer.set(current);
+                        frameCallback.set(committed);
+                        current.registerFrameCommitCallback(committed);
+                        // The next draw after visual completion includes the already-asserted DOM.
+                        webView.invalidate();
+                    }
+                });
+            });
+            long remaining = deadline - SystemClock.uptimeMillis();
+            if (remaining <= 0) throw new IOException("Screenshot deadline expired before waiting");
+            return captured.get(remaining, TimeUnit.MILLISECONDS);
+        } catch (Exception error) {
+            if (!captured.cancel(false) && !captured.isCompletedExceptionally()) {
+                Bitmap completed = captured.getNow(null);
+                if (completed != null) completed.recycle();
+            }
+            throw new IOException("Screenshot did not complete: " + name + ", phase=" + phase.get(), error);
+        } finally {
+            main.post(() -> {
+                ViewTreeObserver current = observer.get();
+                Runnable callback = frameCallback.get();
+                if (current != null && current.isAlive() && callback != null)
+                    current.unregisterFrameCommitCallback(callback);
+            });
         }
     }
 }
