@@ -43,6 +43,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -64,6 +66,10 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
+    private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
+    private static final String CATALOG_REFRESH = DISCOVER + " .trial-toolbar button";
+    private static final String CATALOG_FAILURE =
+        "The catalog could not be loaded. Select Refresh catalog to try again.";
     private static final String CSP =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; " +
@@ -94,6 +100,8 @@ public class ManagedWorkspaceInstrumentedTest {
         copyFixture(InstrumentationRegistry.getInstrumentation().getContext().getAssets(),
             FIXTURE, fixtureDirectory, 0);
         assertTrue("Fixture index is absent", new File(fixtureDirectory, "index.html").isFile());
+        if (testName.getMethodName().equals("catalogStartupFailureRecoversWithoutReloadOrDraftLoss"))
+            selectCatalogRecovery();
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -249,6 +257,122 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".refreshFailed === 1");
         assertRootHistory();
         assertFixtureBoundary();
+    }
+
+    @Test
+    public void catalogStartupFailureRecoversWithoutReloadOrDraftLoss() throws Exception {
+        awaitPage("initial catalog failure offers Refresh catalog",
+            "document.querySelector(" + JSONObject.quote(DISCOVER + " > p[role=status]") + ")?.textContent === " + JSONObject.quote(CATALOG_FAILURE) +
+            " && " + DIAGNOSTICS + ".catalogRecovery === true && " + DIAGNOSTICS + ".status === 1");
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("draft reordered before catalog recovery",
+            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        assertCatalogRecoveryState(1, 0, "", false, false, CATALOG_FAILURE);
+        retainCatalogRecoveryScreenshot("catalogStartupFailure", CATALOG_REFRESH,
+            CATALOG_REFRESH + ", " + DISCOVER + " > p[role=status]");
+        assertCatalogRecoveryState(1, 0, "", false, false, CATALOG_FAILURE);
+        Log.i("ManagedCatalogRecovery", "phase=failed; " + pageDiagnostic());
+
+        // Editing the query deliberately retires a catalog read and clears its error.
+        // Enter it while idle; the pending-read checks below focus it without editing.
+        typeIntoInput("workspace-company-query", "ZERO");
+        assertCatalogRecoveryState(1, 0, "ZERO", false, false, "");
+        click(CATALOG_REFRESH);
+        assertCatalogRecoveryState(2, 0, "ZERO", true, false, "");
+        touchInput("workspace-company-query");
+        awaitPage("query remains focusable during catalog recovery",
+            "document.activeElement === document.querySelector('#workspace-company-query')");
+        awaitNativeEditor("workspace-company-query");
+        closeSoftKeyboard();
+        assertCatalogRecoveryState(2, 0, "ZERO", true, false, "");
+        Log.i("ManagedCatalogRecovery", "phase=pending-query-focusable; " + pageDiagnostic());
+
+        click("#release-catalog-recovery");
+        assertCatalogRecoveryState(2, 0, "ZERO", false, true, "");
+        click(".workspace-global-search button[type=submit]");
+        assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
+        retainCatalogRecoveryScreenshot("catalogRecovered", ".workspace-global-search",
+            ".managed-results strong, .managed-catalog-receipt > summary");
+        assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
+        scenario.onActivity(activity -> {
+            assertNotNull("Original Activity was collected", originalActivity.get().get());
+            assertNotNull("Original WebView was collected", originalWebView.get().get());
+            assertSame("Catalog recovery must preserve the Activity", originalActivity.get().get(), activity);
+            assertSame("Catalog recovery must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("Catalog recovery must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        assertFixtureBoundary();
+        Log.i("ManagedCatalogRecovery", "phase=recovered, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
+    private void selectCatalogRecovery() throws IOException {
+        File index = new File(fixtureDirectory, "index.html");
+        byte[] original = Files.readAllBytes(index.toPath());
+        assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);
+        String html = new String(original, StandardCharsets.UTF_8);
+        assertEquals("Fixture must have one head end", html.indexOf("</head>"), html.lastIndexOf("</head>"));
+        assertTrue("Fixture head is absent", html.contains("</head>"));
+        assertFalse("Fixture scenario was already selected", html.contains("investment-android-test-scenario"));
+        byte[] selected = html.replace("</head>",
+            "<meta name=\"investment-android-test-scenario\" content=\"catalog-startup-recovery\"></head>")
+            .getBytes(StandardCharsets.UTF_8);
+        assertTrue("Selected fixture index exceeded its bound", selected.length <= 65536);
+        copiedBytes += selected.length - original.length;
+        Files.write(index.toPath(), selected);
+    }
+
+    private void assertCatalogRecoveryState(int statusCalls, int searchCalls, String query, boolean pending, boolean recovered, String message) throws Exception {
+        awaitPage("catalog recovery status=" + statusCalls + ", search=" + searchCalls + ", pending=" + pending,
+            "(() => { const d = " + DIAGNOSTICS + "; const discover = document.querySelector(" + JSONObject.quote(DISCOVER) + ");" +
+            " const refresh = discover.querySelector('.trial-toolbar button');" +
+            " const search = discover.querySelector('button[type=submit]');" +
+            " const receipt = discover.querySelector('.managed-catalog-receipt');" +
+            " return d.catalogRecovery && d.load === 1 && d.status === " + statusCalls + " && d.search === " + searchCalls +
+            " && d.catalogReleased === " + (recovered ? 1 : 0) +
+            " && d.save === 0 && d.resolve === 0 && d.annual === 0 && d.token === 0 && d.signOut === 0" +
+            " && d.aborted === 0 && d.lateResolved === 0" +
+            " && refresh.disabled === " + pending + " && refresh.textContent === " + JSONObject.quote(pending ? "Loading catalog…" : "Refresh catalog") +
+            " && search.disabled === " + pending + " && search.textContent === 'Search'" +
+            " && document.querySelector('#workspace-company-query')?.disabled === false" +
+            " && document.querySelector('#workspace-company-query')?.value === " + JSONObject.quote(query) +
+            " && discover.querySelector(':scope > p[role=status]')?.textContent === " + JSONObject.quote(message) +
+            " && (receipt !== null) === " + recovered +
+            (recovered ? " && receipt.querySelector('summary').textContent === '2 available listings · Catalog as of 2026-09-20T00:00:00.000Z'" +
+                " && receipt.textContent.includes('android-invented-catalog · fixture-v1')" +
+                " && receipt.textContent.includes('Synthetic engineering data')" +
+                " && receipt.textContent.includes('sha256:' + 'a'.repeat(64))" : "") +
+            " && Array.from(discover.querySelectorAll('.managed-results strong')).map(e => e.textContent).join(',') === " + JSONObject.quote(searchCalls == 1 ? "ZERO" : "") +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')" +
+            " && document.querySelector('.managed-annual-report') === null; })()");
+    }
+
+    private void retainCatalogRecoveryScreenshot(String name, String scrollSelector, String visibleSelectors) throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector(" + JSONObject.quote(scrollSelector) + ").scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Catalog screenshot did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const targets = Array.from(document.querySelectorAll(" + JSONObject.quote(visibleSelectors) + "));" +
+            " const v = visualViewport; return v && targets.length === 2 && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("catalog screenshot targets visible: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("catalog screenshot targets remained visible: " + name, visible);
     }
 
     private void assertRefreshReport(int annualCalls, boolean previous, boolean running, boolean recovered) throws Exception {

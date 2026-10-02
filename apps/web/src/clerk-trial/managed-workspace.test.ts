@@ -302,6 +302,215 @@ describe("managed workspace composition", () => {
     expect(api.save).not.toHaveBeenCalled();
   });
 
+  it("recovers a failed startup catalog read explicitly without reloading or saving the draft", async () => {
+    const { workspace, api, session } = fixture({
+      ...empty,
+      memberships: [listingMembership(result), listingMembership(second)],
+    });
+    vi.mocked(api.status).mockRejectedValueOnce(
+      new TrialApiError("unavailable"),
+    );
+    await Promise.all([
+      workspace.coordinator.load(),
+      workspace.refreshCatalog(),
+    ]);
+    expect(workspace.getSnapshot()).toMatchObject({
+      read: null,
+      snapshot: null,
+      message:
+        "The catalog could not be loaded. Select Refresh catalog to try again.",
+    });
+    workspace.note(result.listingId, "Keep my unsaved thesis");
+    workspace.move(second.listingId, -1);
+    workspace.setQuery("Invented");
+    const draft = workspace.coordinator.getSnapshot().draft;
+    const held = deferred<Awaited<ReturnType<ManagedApi["status"]>>>();
+    vi.mocked(api.status).mockReturnValueOnce(held.promise);
+    const refresh = workspace.refreshCatalog();
+    expect(workspace.getSnapshot()).toMatchObject({
+      read: "status",
+      query: "Invented",
+      message: "",
+    });
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft,
+      dirty: true,
+      uncertain: false,
+    });
+    held.resolve({ snapshot });
+    await refresh;
+    expect(workspace.getSnapshot()).toMatchObject({
+      read: null,
+      query: "Invented",
+      snapshot,
+      message: "",
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    await workspace.search();
+    expect(workspace.getSnapshot().results).toEqual([result, second]);
+    expect(api.status).toHaveBeenCalledTimes(2);
+    expect(api.load).toHaveBeenCalledTimes(1);
+    expect(api.search).toHaveBeenCalledExactlyOnceWith(
+      "Invented",
+      expect.any(AbortSignal),
+    );
+    for (const unused of [
+      api.save,
+      api.resolve,
+      api.annualReport,
+      session.getToken,
+      session.signOut,
+    ])
+      expect(unused).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [
+      "status",
+      "The catalog could not be loaded. Select Refresh catalog to try again.",
+    ],
+    [
+      "search",
+      "The search could not be completed. Select Search to try again.",
+    ],
+    [
+      "resolve",
+      "The catalog review could not be completed. Select Review catalog changes to try again.",
+    ],
+  ] as const)(
+    "keeps %s failure recovery specific without changing the draft or claiming an outage",
+    async (action, message) => {
+      const { workspace, api } = fixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      await ready(workspace);
+      workspace.note(result.listingId, "unsaved");
+      const draft = workspace.coordinator.getSnapshot().draft;
+      for (const error of [
+        new TrialApiError("unavailable"),
+        new Error("unrecognized response"),
+      ]) {
+        vi.mocked(api[action]).mockRejectedValueOnce(error);
+        if (action === "status") await workspace.refreshCatalog();
+        else if (action === "search") await workspace.search();
+        else await workspace.reviewCatalog();
+        expect(workspace.getSnapshot()).toMatchObject({
+          read: null,
+          reviewing: false,
+          message,
+          snapshot,
+        });
+        expect(workspace.coordinator.getSnapshot()).toMatchObject({
+          dirty: true,
+          uncertain: false,
+          phase: "idle",
+        });
+        expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      }
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["status", "search", "resolve"] as const)(
+    "attributes an invalid %s request to the actual operation",
+    async (action) => {
+      const { workspace, api } = fixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      await ready(workspace);
+      vi.mocked(api[action]).mockRejectedValueOnce(
+        new TrialApiError("invalid_request"),
+      );
+      if (action === "status") await workspace.refreshCatalog();
+      else if (action === "search") await workspace.search();
+      else await workspace.reviewCatalog();
+      if (action === "search")
+        expect(workspace.getSnapshot().message).toBe(
+          "Enter a company name or ticker of at most 128 characters.",
+        );
+      else
+        expect(workspace.getSnapshot().message).not.toContain("128 characters");
+    },
+  );
+
+  it.each(["status", "search"] as const)(
+    "lets a query edit cancel a pending %s read without replacing the draft",
+    async (action) => {
+      const { workspace, api } = fixture();
+      await ready(workspace);
+      const held = deferred<never>();
+      vi.mocked(api[action]).mockReturnValueOnce(held.promise);
+      const draft = workspace.coordinator.getSnapshot().draft;
+      const pending =
+        action === "status" ? workspace.refreshCatalog() : workspace.search();
+      expect(workspace.getSnapshot().read).toBe(action);
+      const call = vi.mocked(api[action]).mock.calls.at(-1)!;
+      const signal = call.at(-1) as AbortSignal;
+      workspace.setQuery("replacement");
+      expect(signal.aborted).toBe(true);
+      const afterEdit = workspace.getSnapshot();
+      expect(afterEdit).toMatchObject({
+        read: null,
+        query: "replacement",
+        message: "",
+      });
+      held.reject(new TrialApiError("unavailable"));
+      await pending;
+      expect(workspace.getSnapshot()).toBe(afterEdit);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    },
+  );
+
+  it.each(["success", "failure"] as const)(
+    "ignores a replaced catalog read's late %s while a Search is pending",
+    async (completion) => {
+      const { workspace, api } = fixture();
+      const old = deferred<Awaited<ReturnType<ManagedApi["status"]>>>();
+      const current = deferred<Awaited<ReturnType<ManagedApi["search"]>>>();
+      vi.mocked(api.status).mockReturnValueOnce(old.promise);
+      vi.mocked(api.search).mockReturnValueOnce(current.promise);
+      const stale = workspace.refreshCatalog();
+      const pending = workspace.search();
+      const beforeLateCompletion = workspace.getSnapshot();
+      expect(beforeLateCompletion.read).toBe("search");
+      expect(vi.mocked(api.status).mock.calls[0]![0].aborted).toBe(true);
+      if (completion === "success") old.resolve({ snapshot });
+      else old.reject(new TrialApiError("unavailable"));
+      await stale;
+      expect(workspace.getSnapshot()).toBe(beforeLateCompletion);
+      current.reject(new TrialApiError("unavailable"));
+      await pending;
+      expect(workspace.getSnapshot()).toMatchObject({
+        read: null,
+        message:
+          "The search could not be completed. Select Search to try again.",
+      });
+    },
+  );
+
+  it.each(["success", "failure"] as const)(
+    "ignores a retired catalog read's late %s",
+    async (completion) => {
+      const { workspace, api } = fixture();
+      const held = deferred<Awaited<ReturnType<ManagedApi["status"]>>>();
+      vi.mocked(api.status).mockReturnValueOnce(held.promise);
+      const pending = workspace.refreshCatalog();
+      workspace.coordinator.retire();
+      const retired = workspace.getSnapshot();
+      if (completion === "success") held.resolve({ snapshot });
+      else held.reject(new TrialApiError("unavailable"));
+      await pending;
+      expect(workspace.getSnapshot()).toBe(retired);
+      expect(retired).toMatchObject({
+        read: null,
+        snapshot: null,
+        message: "",
+      });
+    },
+  );
+
   it("fences stale search responses when the query changes or a newer search finishes", async () => {
     const { workspace, api } = fixture();
     const old = deferred<Awaited<ReturnType<ManagedApi["search"]>>>();
@@ -323,7 +532,7 @@ describe("managed workspace composition", () => {
     expect(workspace.getSnapshot()).toMatchObject({
       query: "new",
       results: [result, second],
-      busy: false,
+      read: null,
     });
   });
 
@@ -374,7 +583,7 @@ describe("managed workspace composition", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBeNull();
   });
 
-  it.each(["search", "resolve"] as const)(
+  it.each(["status", "search", "resolve"] as const)(
     "routes %s authentication failure to the same retirement path",
     async (operation) => {
       const { workspace, api } = fixture({
@@ -385,7 +594,8 @@ describe("managed workspace composition", () => {
       vi.mocked(api[operation]).mockRejectedValueOnce(
         new TrialApiError("access_denied"),
       );
-      if (operation === "search") await workspace.search();
+      if (operation === "status") await workspace.refreshCatalog();
+      else if (operation === "search") await workspace.search();
       else await workspace.reviewCatalog();
       expect(workspace.coordinator.getSnapshot().phase).toBe("retired");
       expect(workspace.getSnapshot().snapshot).toBeNull();

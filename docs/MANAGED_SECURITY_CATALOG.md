@@ -107,6 +107,20 @@ receipt. Search results distinguish share classes and exchanges; a ticker never
 substitutes for a listing ID. Notes and unsaved edits remain in the current
 screen until saved, and session retirement clears them synchronously.
 
+Catalog status and Search have separate progress labels. An initial status read
+shows "Loading catalog…"; a later refresh shows "Refreshing catalog…". Search
+shows "Searching…" only for an actual search. Both submit controls are disabled
+while a read is pending, but the query remains editable; editing it cancels and
+invalidates that read.
+
+A failed catalog read points to Refresh catalog, while a failed search points
+to Search with the retained query. Catalog review has its own recovery message.
+These messages identify the failed action without claiming a network outage.
+Recovery is explicit and does not reload, save or replace the watchlist draft.
+The existing dated catalog receipt remains visible after a failed refresh; only
+a successful response supplies a new receipt. A changed catalog still requires
+the existing identity review, and authentication failure retires the workspace.
+
 When a saved list uses an older catalog, the user can request an exact review
 through read-only `POST /v1/managed/catalog/resolve`. Each explicit request carries
 the current snapshot and at most 50 distinct listing IDs. Further batches require

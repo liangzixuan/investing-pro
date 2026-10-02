@@ -129,6 +129,13 @@ explicit refresh and checks that the previous report stays readable with its
 original provenance. An explicit retry replaces that report. The watchlist
 draft and exact request counts are checked through the same native screen.
 
+The catalog recovery case starts with an invented catalog-load failure, then
+holds an explicit refresh open. It checks the loading label and disabled Search
+button while the query remains editable. Releasing that response restores the
+original dated catalog receipt and allows a ZERO search without reloading the
+Activity or document, losing the draft or sending extra requests. Synchronized
+screenshots retain the failed and recovered states.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build
