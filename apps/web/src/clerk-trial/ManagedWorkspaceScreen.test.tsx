@@ -11,6 +11,7 @@ import { ManagedWorkspace } from "./managed-workspace";
 import { ManagedWorkspaceScreen } from "./ManagedWorkspaceScreen";
 import { TrialApiError } from "./api";
 import { TrialFrame } from "./TrialFrame";
+import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 
@@ -130,6 +131,15 @@ const snapshot: ManagedCatalogSnapshotDto = {
     unsupportedSourceRecords: 0,
   },
 };
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((complete, fail) => {
+    resolve = complete;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
 function fixture(initial = payload) {
   const api: ManagedApi = {
     annualReport: vi.fn(),
@@ -160,6 +170,169 @@ function fixture(initial = payload) {
   };
 }
 describe("managed workspace screen", () => {
+  it("keeps the shared Search pending label and editable query by default", () => {
+    const output = renderToStaticMarkup(
+      <WorkspaceSearch
+        query="DEMO"
+        busy
+        disabled={false}
+        onChange={vi.fn()}
+        onSearch={vi.fn()}
+      />,
+    );
+    expect(output).toContain(
+      '<button type="submit" disabled="">Searching…</button>',
+    );
+    const input = output.match(/<input\b[^>]*>/u)?.[0];
+    expect(input).toBeDefined();
+    expect(input).toContain('value="DEMO"');
+    expect(input).not.toContain('disabled=""');
+  });
+  it.each([false, true])(
+    "labels a pending catalog status read without calling it Search (existing receipt: %s)",
+    async (hasSnapshot) => {
+      const { workspace, api, html } = fixture();
+      await workspace.coordinator.load();
+      if (hasSnapshot) await workspace.refreshCatalog();
+      workspace.setQuery("DEMO");
+      workspace.note("listing-one", "Draft during catalog read");
+      const status = deferred<Awaited<ReturnType<ManagedApi["status"]>>>();
+      vi.mocked(api.status).mockReturnValueOnce(status.promise);
+      const pending = workspace.refreshCatalog();
+      const output = html();
+      const label = hasSnapshot ? "Refreshing catalog…" : "Loading catalog…";
+      expect(output).toContain(`disabled="">${label}</button>`);
+      expect(output).toContain(
+        '<button type="submit" disabled="">Search</button>',
+      );
+      expect(output).not.toContain("Searching…");
+      const input = output.match(
+        /<input\b[^>]*id="workspace-company-query"[^>]*>/u,
+      )?.[0];
+      expect(input).toBeDefined();
+      expect(input).toContain('value="DEMO"');
+      expect(input).not.toContain('disabled=""');
+      expect(output).toContain("Draft during catalog read");
+      expect(output).toContain("Unsaved changes");
+      if (hasSnapshot) expect(output).toContain(snapshot.asOf);
+      else expect(output).not.toContain("Catalog as of");
+      status.resolve({ snapshot });
+      await pending;
+      expect(html()).toContain('<button type="submit">Search</button>');
+      expect(html()).not.toContain(label);
+    },
+  );
+  it("shows explicit startup catalog recovery with the same visible query and draft", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    vi.mocked(api.status).mockRejectedValueOnce(
+      new TrialApiError("unavailable"),
+    );
+    await workspace.refreshCatalog();
+    const failure =
+      "The catalog could not be loaded. Select Refresh catalog to try again.";
+    const failed = html();
+    expect(failed).toContain(failure);
+    expect(failed).toContain("Private research note");
+    expect(failed).not.toContain("Catalog as of");
+    expect(failed).toMatch(
+      /<button(?![^>]*disabled=)[^>]*>Refresh catalog<\/button>/u,
+    );
+    workspace.setQuery("DEMO");
+    workspace.note("listing-one", "Draft survives catalog recovery");
+    const status = deferred<Awaited<ReturnType<ManagedApi["status"]>>>();
+    vi.mocked(api.status).mockReturnValueOnce(status.promise);
+    const pending = workspace.refreshCatalog();
+    const recovering = html();
+    expect(recovering).toContain("Loading catalog…");
+    expect(recovering).toContain('value="DEMO"');
+    expect(recovering).toContain("Draft survives catalog recovery");
+    expect(recovering).toContain("Unsaved changes");
+    expect(recovering).not.toContain("Catalog as of");
+    status.resolve({ snapshot });
+    await pending;
+    const recovered = html();
+    expect(recovered).not.toContain(failure);
+    expect(recovered).toContain('value="DEMO"');
+    expect(recovered).toContain("Draft survives catalog recovery");
+    expect(recovered).toContain("Unsaved changes");
+    expect(recovered).toContain(
+      `2 available listings · Catalog as of ${snapshot.asOf}`,
+    );
+    expect(api.load).toHaveBeenCalledTimes(1);
+    expect(api.status).toHaveBeenCalledTimes(2);
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it("keeps Search pending and recovery feedback distinct from the dated catalog", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setQuery("DEMO");
+    workspace.note("listing-one", "Draft survives search failure");
+    const search = deferred<Awaited<ReturnType<ManagedApi["search"]>>>();
+    vi.mocked(api.search).mockReturnValueOnce(search.promise);
+    const pending = workspace.search();
+    const searching = html();
+    expect(searching).toContain(
+      '<button type="submit" disabled="">Searching…</button>',
+    );
+    expect(searching).toContain('disabled="">Refresh catalog</button>');
+    expect(searching).not.toContain("Refreshing catalog…");
+    const input = searching.match(
+      /<input\b[^>]*id="workspace-company-query"[^>]*>/u,
+    )?.[0];
+    expect(input).toBeDefined();
+    expect(input).not.toContain('disabled=""');
+    search.reject(new TrialApiError("unavailable"));
+    await pending;
+    const failure =
+      "The search could not be completed. Select Search to try again.";
+    const failed = html();
+    expect(failed).toContain(failure);
+    expect(failed).not.toContain("The catalog could not be loaded.");
+    expect(failed).toContain('<button type="submit">Search</button>');
+    expect(failed).toContain('value="DEMO"');
+    expect(failed).toContain("Draft survives search failure");
+    expect(failed).toContain(snapshot.asOf);
+    vi.mocked(api.search).mockResolvedValueOnce({
+      snapshot,
+      results: [],
+      totalMatches: 0,
+      limitApplied: 25,
+      normalizedQuery: "DEMO",
+    });
+    await workspace.search();
+    const recovered = html();
+    expect(recovered).not.toContain(failure);
+    expect(recovered).toContain("No matching listings in this catalog.");
+    expect(recovered).toContain("Draft survives search failure");
+    expect(recovered).toContain('value="DEMO"');
+    expect(recovered).toContain(snapshot.asOf);
+    expect(api.search).toHaveBeenCalledTimes(2);
+    expect(api.status).toHaveBeenCalledTimes(1);
+    expect(api.load).toHaveBeenCalledTimes(1);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it("directs a failed catalog review to its own existing action", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    vi.mocked(api.resolve).mockRejectedValueOnce(
+      new TrialApiError("unavailable"),
+    );
+    await workspace.reviewCatalog();
+    const output = html();
+    expect(output).toContain(
+      "The catalog review could not be completed. Select Review catalog changes to try again.",
+    );
+    expect(output).toMatch(
+      /<button(?![^>]*disabled=)[^>]*>Review catalog changes<\/button>/u,
+    );
+    expect(output).toContain(snapshot.asOf);
+    expect(output).toContain("Private research note");
+    expect(api.save).not.toHaveBeenCalled();
+  });
   it("does not install native navigation for the browser screen", () => {
     const native = nativeBackFixture();
     fixture().html();

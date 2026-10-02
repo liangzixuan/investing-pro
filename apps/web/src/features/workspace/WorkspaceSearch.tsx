@@ -2,6 +2,7 @@
 export interface WorkspaceSearchProps {
   readonly query: string;
   readonly busy: boolean;
+  readonly busyLabel?: string;
   readonly disabled: boolean;
   readonly onChange: (query: string, origin: HTMLInputElement) => void;
   readonly onSearch: (origin: HTMLFormElement) => void;
@@ -9,6 +10,7 @@ export interface WorkspaceSearchProps {
 export function WorkspaceSearch({
   query,
   busy,
+  busyLabel = "Searching…",
   disabled,
   onChange,
   onSearch,
@@ -39,7 +41,7 @@ export function WorkspaceSearch({
         onChange={(event) => onChange(event.target.value, event.currentTarget)}
       />
       <button type="submit" disabled={disabled || busy}>
-        {busy ? "Searching…" : "Search"}
+        {busy ? busyLabel : "Search"}
       </button>
     </form>
   );

@@ -84,7 +84,9 @@ const snapshot: ManagedCatalogSnapshotDto = {
 };
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
-export async function createFixture() {
+export async function createFixture(
+  scenario: "default" | "catalog-startup-recovery" = "default",
+) {
   const annual = await response();
   const recovered = await response(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
@@ -103,15 +105,20 @@ export async function createFixture() {
     signOut: 0,
     refreshScenario: false,
     refreshFailed: 0,
+    catalogRecovery: scenario === "catalog-startup-recovery",
+    catalogReleased: 0,
   };
   const listeners = new Set<() => void>();
-  const count = (key: Exclude<keyof typeof state, "refreshScenario">) => {
+  const count = (
+    key: Exclude<keyof typeof state, "refreshScenario" | "catalogRecovery">,
+  ) => {
     state = { ...state, [key]: state[key] + 1 };
     for (const listener of listeners) listener();
   };
   let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
     null;
   let rejectRefresh: ((error: unknown) => void) | null = null;
+  let releaseCatalog: (() => void) | null = null;
   const unexpected = (
     key: "save" | "resolve" | "token" | "signOut",
   ): Promise<never> => {
@@ -125,6 +132,20 @@ export async function createFixture() {
     },
     status: () => {
       count("status");
+      if (state.catalogRecovery) {
+        if (state.status === 1)
+          return Promise.reject(new TrialApiError("unavailable"));
+        if (state.status === 2)
+          return new Promise<{ snapshot: ManagedCatalogSnapshotDto }>(
+            (resolve) => {
+              releaseCatalog = () =>
+                resolve({ snapshot: structuredClone(snapshot) });
+            },
+          );
+        return Promise.reject(
+          new Error("Unexpected extra fixture status read"),
+        );
+      }
       return Promise.resolve({ snapshot: structuredClone(snapshot) });
     },
     search: (query) => {
@@ -190,6 +211,19 @@ export async function createFixture() {
       return () => {
         listeners.delete(listener);
       };
+    },
+    releaseCatalogRecovery: () => {
+      if (
+        !state.catalogRecovery ||
+        state.status !== 2 ||
+        state.catalogReleased !== 0 ||
+        !releaseCatalog
+      )
+        throw new Error("Only the second fixture status read may recover");
+      const release = releaseCatalog;
+      releaseCatalog = null;
+      count("catalogReleased");
+      release();
     },
     settleCancelledRead: () => {
       if (!pending || state.aborted !== 1 || state.lateResolved !== 0)

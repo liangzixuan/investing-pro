@@ -333,15 +333,20 @@ export function ManagedWorkspaceScreen({
               </h2>
               <button
                 className="trial-secondary"
-                disabled={discovery.busy}
+                disabled={discovery.read !== null}
                 onClick={() => void workspace.refreshCatalog()}
               >
-                Refresh catalog
+                {discovery.read === "status"
+                  ? discovery.snapshot
+                    ? "Refreshing catalog…"
+                    : "Loading catalog…"
+                  : "Refresh catalog"}
               </button>
             </div>
             <WorkspaceSearch
               query={discovery.query}
-              busy={discovery.busy}
+              busy={discovery.read !== null}
+              busyLabel={discovery.read === "status" ? "Search" : "Searching…"}
               disabled={retired}
               onChange={(query) => workspace.setQuery(query)}
               onSearch={() => void workspace.search()}

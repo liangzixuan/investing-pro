@@ -11,7 +11,13 @@ if (
   location.origin !== "https://localhost"
 )
   throw new Error("This invented fixture runs only in Android instrumentation");
-const fixture = await createFixture();
+// Instrumentation selects this fixed scenario in its copied test document before mounting.
+const scenario = document
+  .querySelector('meta[name="investment-android-test-scenario"]')
+  ?.getAttribute("content");
+if (scenario !== undefined && scenario !== "catalog-startup-recovery")
+  throw new Error("Unknown invented Android test scenario");
+const fixture = await createFixture(scenario ?? "default");
 function Fixture() {
   const state = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);
   return (
@@ -29,6 +35,15 @@ function Fixture() {
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre id="fixture-diagnostics">{JSON.stringify(state)}</pre>
+        {state.catalogRecovery && (
+          <button
+            id="release-catalog-recovery"
+            disabled={state.status !== 2 || state.catalogReleased !== 0}
+            onClick={fixture.releaseCatalogRecovery}
+          >
+            Release held fixture catalog
+          </button>
+        )}
         <pre
           id="fixture-report-generations"
           style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}

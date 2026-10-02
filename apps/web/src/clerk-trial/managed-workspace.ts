@@ -25,7 +25,7 @@ export interface CatalogReview {
 }
 export interface ManagedDiscoveryState {
   readonly query: string;
-  readonly busy: boolean;
+  readonly read: "status" | "search" | null;
   readonly reviewing: boolean;
   readonly snapshot: ManagedCatalogSnapshotDto | null;
   readonly results: readonly PersonalSecurityMasterSearchResultDto[];
@@ -35,7 +35,7 @@ export interface ManagedDiscoveryState {
 }
 const emptyDiscovery = (): ManagedDiscoveryState => ({
   query: "",
-  busy: false,
+  read: null,
   reviewing: false,
   snapshot: null,
   results: [],
@@ -202,7 +202,7 @@ export class ManagedWorkspace {
     if (this.state.review || this.state.reviewing)
       this.update({ review: null, reviewing: false });
   }
-  private catalogError(error: unknown) {
+  private catalogError(error: unknown, action: "status" | "search" | "review") {
     if (
       error instanceof TrialApiError &&
       ["unauthenticated", "access_denied", "origin_denied"].includes(error.code)
@@ -210,14 +210,23 @@ export class ManagedWorkspace {
       this.coordinator.readError(error);
       return;
     }
-    this.update({
-      message:
-        error instanceof ManagedCatalogChangedError
-          ? "The catalog changed during review. Refresh the catalog and start the review again."
-          : error instanceof TrialApiError && error.code === "invalid_request"
-            ? "Enter a company name or ticker of at most 128 characters."
-            : "The catalog could not be loaded. Try again when you are ready.",
-    });
+    let message = {
+      status:
+        "The catalog could not be loaded. Select Refresh catalog to try again.",
+      search: "The search could not be completed. Select Search to try again.",
+      review:
+        "The catalog review could not be completed. Select Review catalog changes to try again.",
+    }[action];
+    if (error instanceof ManagedCatalogChangedError)
+      message =
+        "The catalog changed during review. Refresh the catalog and start the review again.";
+    else if (
+      action === "search" &&
+      error instanceof TrialApiError &&
+      error.code === "invalid_request"
+    )
+      message = "Enter a company name or ticker of at most 128 characters.";
+    this.update({ message });
   }
   setQuery(query: string) {
     if (this.retired) return;
@@ -225,29 +234,30 @@ export class ManagedWorkspace {
     this.searchOperation = null;
     this.update({
       query,
-      busy: false,
+      read: null,
       results: [],
       totalMatches: 0,
       message: "",
     });
   }
   async refreshCatalog() {
-    await this.readCatalog(false);
+    await this.readCatalog("status");
   }
   async search() {
-    await this.readCatalog(true);
+    await this.readCatalog("search");
   }
-  private async readCatalog(search: boolean) {
+  private async readCatalog(read: "status" | "search") {
     if (this.retired) return;
     this.searchOperation?.abort();
     const operation = new AbortController();
     this.searchOperation = operation;
     const query = this.state.query;
-    this.update({ busy: true, message: "", results: [], totalMatches: 0 });
+    this.update({ read, message: "", results: [], totalMatches: 0 });
     try {
-      const matches = search
-        ? await this.api.search(query, operation.signal)
-        : null;
+      const matches =
+        read === "search"
+          ? await this.api.search(query, operation.signal)
+          : null;
       const result = matches ?? (await this.api.status(operation.signal));
       if (
         this.retired ||
@@ -279,11 +289,11 @@ export class ManagedWorkspace {
         this.searchOperation === operation &&
         !operation.signal.aborted
       )
-        this.catalogError(error);
+        this.catalogError(error, read);
     } finally {
       if (this.searchOperation === operation) {
         this.searchOperation = null;
-        this.update({ busy: false });
+        this.update({ read: null });
       }
     }
   }
@@ -442,7 +452,7 @@ export class ManagedWorkspace {
         !operation.signal.aborted
       ) {
         this.update({ review: null });
-        this.catalogError(error);
+        this.catalogError(error, "review");
       }
     } finally {
       if (this.resolveOperation === operation) {
