@@ -19,6 +19,7 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
+import { ManagedEodHistory } from "./ManagedEodHistory";
 import {
   bindAndroidBack,
   type AndroidBackAdapter,
@@ -241,14 +242,15 @@ export function ManagedWorkspaceScreen({
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
 }) {
-  const annualOrigin = useRef<HTMLButtonElement | null>(null);
+  const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const backToWorkspace = useCallback(() => {
     workspace.annual.close();
-    if (annualOrigin.current?.isConnected) annualOrigin.current.focus();
+    workspace.eod.close();
+    if (panelOrigin.current?.isConnected) panelOrigin.current.focus();
     else discoverHeading.current?.focus();
-    annualOrigin.current = null;
+    panelOrigin.current = null;
   }, [workspace]);
   useEffect(() => {
     if (!androidBack) return;
@@ -261,7 +263,11 @@ export function ManagedWorkspaceScreen({
       androidBack,
       ({ canGoBack }) => {
         if (isRetired()) return;
-        if (workspace.annual.getSnapshot().selection) backToWorkspace();
+        if (
+          workspace.annual.getSnapshot().selection ||
+          workspace.eod.getSnapshot().selection
+        )
+          backToWorkspace();
         else if (canGoBack) window.history.back();
       },
       () => setBackUnavailable(true),
@@ -319,6 +325,7 @@ export function ManagedWorkspaceScreen({
             model={workspace.annual}
             onBack={backToWorkspace}
           />
+          <ManagedEodHistory model={workspace.eod} onBack={backToWorkspace} />
           <section
             className="trial-panel"
             aria-labelledby="managed-discover-heading"
@@ -387,11 +394,21 @@ export function ManagedWorkspaceScreen({
                           className="trial-secondary"
                           aria-label={`Annual report for ${result.symbol}`}
                           onClick={(event) => {
-                            annualOrigin.current = event.currentTarget;
+                            panelOrigin.current = event.currentTarget;
                             workspace.openDiscoveryAnnual(result);
                           }}
                         >
                           Annual report
+                        </button>
+                        <button
+                          className="trial-secondary"
+                          aria-label={`EOD close history for ${result.symbol}`}
+                          onClick={(event) => {
+                            panelOrigin.current = event.currentTarget;
+                            workspace.openDiscoveryEod(result);
+                          }}
+                        >
+                          EOD close history
                         </button>
                       </div>
                     </li>
@@ -489,7 +506,8 @@ export function ManagedWorkspaceScreen({
               <div className="trial-review">
                 <p>
                   Your watchlist uses a different catalog. Review its exact
-                  listings before adding, saving or opening an annual report.
+                  listings before adding, saving or opening an annual report or
+                  close history.
                 </p>
               </div>
             )}
@@ -527,11 +545,22 @@ export function ManagedWorkspaceScreen({
                           disabled={!workspace.canOpenWatchlistAnnual(member)}
                           aria-label={`Annual report for saved ${member.symbol}`}
                           onClick={(event) => {
-                            annualOrigin.current = event.currentTarget;
+                            panelOrigin.current = event.currentTarget;
                             workspace.openWatchlistAnnual(member);
                           }}
                         >
                           Annual report
+                        </button>
+                        <button
+                          className="trial-secondary"
+                          disabled={!workspace.canOpenWatchlistEod(member)}
+                          aria-label={`EOD close history for saved ${member.symbol}`}
+                          onClick={(event) => {
+                            panelOrigin.current = event.currentTarget;
+                            workspace.openWatchlistEod(member);
+                          }}
+                        >
+                          EOD close history
                         </button>
                         <button
                           className="trial-secondary"

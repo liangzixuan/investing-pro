@@ -314,6 +314,122 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedCatalogRecovery", "phase=recovered, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void eodLoadCancelAndBackPreserveDraftAndDiscardLateResult() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        typeIntoInput("workspace-company-query", "ZERO");
+        click(".workspace-global-search button[type=submit]");
+        awaitPage("invented EOD listing discovered", DIAGNOSTICS + ".search === 1" +
+            " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("EOD draft reordered", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        click("button[aria-label='EOD close history for saved ZERO']");
+        awaitPage("EOD opens without fetching",
+            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'");
+        assertEodState(0, 0, 0, false, false);
+
+        clickEodAction("Load one-month close history");
+        assertEodState(1, 0, 0, false, true);
+        awaitPage("EOD exposes exact invented closes and provenance",
+            "document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-08-20')" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-09-20')");
+        retainEodLoadedScreenshot();
+        assertEodState(1, 0, 0, false, true);
+        Log.i("ManagedEod", "phase=loaded; " + pageDiagnostic());
+
+        clickEodAction("Refresh close history");
+        assertEodState(2, 0, 0, true, false);
+        clickEodAction("Cancel close history");
+        assertEodState(2, 1, 0, false, false);
+        Log.i("ManagedEod", "phase=cancelled; " + pageDiagnostic());
+        click("#settle-cancelled-eod");
+        assertEodState(2, 1, 1, false, false);
+        awaitPage("late invented EOD values remain absent",
+            "!document.querySelector('.managed-eod-history')?.textContent.includes('998.25')" +
+            " && !document.querySelector('.managed-eod-history')?.textContent.includes('999.75')");
+        pressBack();
+        awaitPage("native Back closes EOD and restores its originating control",
+            "document.querySelector('.managed-eod-history') === null" +
+            " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
+        assertEodDraftAndCounts(2, 1, 1);
+        assertRootHistory();
+        pressBack();
+        awaitPage("root Back leaves both detail panels closed",
+            "document.querySelector('.managed-eod-history') === null && document.querySelector('.managed-annual-report') === null");
+        assertEodDraftAndCounts(2, 1, 1);
+        scenario.onActivity(activity -> {
+            assertNotNull("Original EOD Activity was collected", originalActivity.get().get());
+            assertNotNull("Original EOD WebView was collected", originalWebView.get().get());
+            assertSame("EOD journey must preserve the Activity", originalActivity.get().get(), activity);
+            assertSame("EOD journey must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("EOD journey must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        assertFixtureBoundary();
+        Log.i("ManagedEod", "phase=late-discarded-back-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    private void clickEodAction(String label) {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[contains(concat(' ',normalize-space(@class),' '),' managed-eod-history ')]//button[normalize-space(.)='" + label + "']"))
+            .perform(webClick());
+    }
+
+    private void assertEodState(int reads, int aborted, int late, boolean pending, boolean rows) throws Exception {
+        assertEodDraftAndCounts(reads, aborted, late);
+        awaitPage("EOD state reads=" + reads + ", pending=" + pending + ", rows=" + rows,
+            "document.querySelector('.managed-eod-history') !== null" +
+            " && document.querySelector('.managed-annual-report') === null" +
+            " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === '" + pending + "'" +
+            " && (document.querySelector('.managed-eod-history .managed-metadata') !== null) === " + rows +
+            " && (document.querySelector('.managed-eod-history .managed-eod-chart') !== null) === " + rows +
+            " && document.querySelectorAll('.managed-eod-history tbody tr').length === " + (rows ? 2 : 0));
+    }
+
+    private void assertEodDraftAndCounts(int reads, int aborted, int late) throws Exception {
+        awaitPage("EOD preserves draft and exact operation counts",
+            "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')" +
+            " && " + DIAGNOSTICS + ".eod === " + reads + " && " + DIAGNOSTICS + ".eodAborted === " + aborted +
+            " && " + DIAGNOSTICS + ".eodLateResolved === " + late +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void retainEodLoadedScreenshot() throws Exception {
+        awaitPage("invented EOD canvas rendered",
+            "document.querySelector('.managed-eod-history canvas')?.width > 0" +
+            " && document.querySelector('.managed-eod-history canvas')?.height > 0");
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-eod-history canvas')?.scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("EOD chart did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const c = document.querySelector('.managed-eod-history canvas'); const v = visualViewport;" +
+            " if (!c || !v || c.width <= 0 || c.height <= 0) return false; const r = c.getBoundingClientRect();" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()";
+        awaitPage("invented EOD canvas visible", visible);
+        retainScreenshot("eodLoaded");
+        awaitPage("invented EOD canvas stayed visible", visible);
+    }
+
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
     private void selectCatalogRecovery() throws IOException {
         File index = new File(fixtureDirectory, "index.html");

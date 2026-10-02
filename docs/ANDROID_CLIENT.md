@@ -136,6 +136,13 @@ original dated catalog receipt and allows a ZERO search without reloading the
 Activity or document, losing the draft or sending extra requests. Synchronized
 screenshots retain the failed and recovered states.
 
+The EOD case loads invented raw closes into the shared Price history panel, then
+holds a refresh open. Cancel must clear the rows and discard the deliberately
+late reply. Native Back restores the opening control and preserves the draft,
+order, Activity, WebView and document. Its chart/table screenshots contain only
+invented prices. Workspace CURRENT records whether the actual compiled case and
+its original images have passed for a given source revision.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build
@@ -143,12 +150,12 @@ alone does not mean the tests executed.
 
 The managed lifecycle case covers same-process stop/resume, not recovery after
 process death or persistent drafts. This native regression layer does not test managed sign-in,
-shared watchlist saves, live Annual report requests, production signing or upgrades
+shared watchlist saves, live Annual or price requests, production signing or upgrades
 over an installed release. Those paths retain their existing unit/browser
 coverage and selected physical Pixel checks. Routine changes covered by this
 suite no longer require a manual APK installation for these checks.
 
-In the managed Android workspace, Back closes an open Annual report through the
+In the managed Android workspace, Back closes an open Annual report or Price history through the
 same action as the on-screen Back control, cancelling its read and restoring
 focus without changing the draft. With no report open, existing WebView history
 handles Back; at the root it leaves the screen open. Browser navigation and the

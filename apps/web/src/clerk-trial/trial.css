@@ -407,3 +407,27 @@ textarea:disabled {
     scroll-behavior: auto !important;
   }
 }
+.managed-eod-chart-canvas {
+  width: 100%;
+  height: 280px;
+  min-width: 0;
+}
+.managed-eod-table-scroll {
+  overflow-x: auto;
+}
+.managed-eod-chart table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.managed-eod-chart caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 12px 0;
+}
+.managed-eod-chart th,
+.managed-eod-chart td {
+  padding: 8px;
+  text-align: left;
+  border-bottom: 1px solid #d8e2df;
+}

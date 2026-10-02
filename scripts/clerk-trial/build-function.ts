@@ -4,19 +4,21 @@ import { build } from "tsup";
 
 import { validateClerkTrialFunctionConfiguration } from "../../apps/api/src/clerk-trial-config";
 import { validateManagedSecAnnualConfiguration } from "../../apps/api/src/managed-sec-annual-config";
+import { validateManagedEodConfiguration } from "../../apps/api/src/managed-eod-config";
 
 const surface = process.argv[2];
 const configPath = process.argv[3];
 const annualConfigPath = process.argv[4];
+const eodConfigPath = process.argv[5];
 if (
   (surface !== "demo" && surface !== "managed") ||
   !configPath ||
   (surface === "demo"
     ? process.argv.length !== 4
-    : process.argv.length !== 5 || !annualConfigPath)
+    : process.argv.length !== 6 || !annualConfigPath || !eodConfigPath)
 )
   throw new Error(
-    "Pass demo and its server configuration, or managed and separate server and SEC configuration paths.",
+    "Pass demo and its server configuration, or managed and separate server, SEC and EOD configuration paths.",
   );
 const { environment, auth, allowedOrigins } =
   validateClerkTrialFunctionConfiguration(
@@ -28,6 +30,12 @@ const annualConfiguration =
   surface === "managed"
     ? validateManagedSecAnnualConfiguration(
         JSON.parse(await readFile(annualConfigPath!, "utf8")) as unknown,
+      )
+    : null;
+const eodConfiguration =
+  surface === "managed"
+    ? validateManagedEodConfiguration(
+        JSON.parse(await readFile(eodConfigPath!, "utf8")) as unknown,
       )
     : null;
 const outDir = resolve(
@@ -55,7 +63,10 @@ await build({
   noExternal: [/.*/u],
   define: {
     ...(surface === "managed"
-      ? { __MANAGED_SEC_ANNUAL_CONFIG__: JSON.stringify(annualConfiguration) }
+      ? {
+          __MANAGED_SEC_ANNUAL_CONFIG__: JSON.stringify(annualConfiguration),
+          __MANAGED_EOD_CONFIG__: JSON.stringify(eodConfiguration),
+        }
       : {}),
     [surface === "managed"
       ? "__MANAGED_WORKSPACE_SERVER_CONFIG__"

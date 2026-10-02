@@ -14,6 +14,7 @@ import {
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { ManagedAnnualReport } from "./managed-annual-report";
+import { ManagedEodHistory } from "./managed-eod-history";
 import { SaveCoordinator } from "./save-coordinator";
 import type { TrialSession } from "./session";
 
@@ -117,6 +118,7 @@ export function listingMembership(
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly annual: ManagedAnnualReport;
+  readonly eod: ManagedEodHistory;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -150,6 +152,10 @@ export class ManagedWorkspace {
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
     );
+    this.eod = new ManagedEodHistory(
+      (request, signal) => api.eodHistory(request, signal),
+      (error) => this.coordinator.readError(error),
+    );
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
       const selection = this.annual.getSnapshot().selection;
@@ -163,6 +169,18 @@ export class ManagedWorkspace {
           !membershipMatchesResult(member, selection.listing)
         )
           this.annual.close();
+      }
+      const eodSelection = this.eod.getSnapshot().selection;
+      if (eodSelection?.origin === "watchlist") {
+        const member = saved.draft?.memberships.find(
+          (item) => item.listingId === eodSelection.listing.listingId,
+        );
+        if (
+          !member ||
+          saved.draft?.snapshotSha256 !== eodSelection.catalogSnapshotSha256 ||
+          !membershipMatchesResult(member, eodSelection.listing)
+        )
+          this.eod.close();
       }
       if (
         this.draft !== saved.draft ||
@@ -187,6 +205,7 @@ export class ManagedWorkspace {
   private clear() {
     this.retired = true;
     this.annual.retire();
+    this.eod.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
     this.searchOperation = null;
@@ -270,6 +289,7 @@ export class ManagedWorkspace {
       ) {
         this.cancelReview();
         this.annual.close();
+        this.eod.close();
       }
       this.update({
         snapshot: result.snapshot,
@@ -310,6 +330,7 @@ export class ManagedWorkspace {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
       return;
+    this.eod.close();
     this.annual.open({
       catalogSnapshotSha256: snapshot.snapshotSha256,
       listing: listingIdentity(result),
@@ -328,10 +349,34 @@ export class ManagedWorkspace {
   }
   openWatchlistAnnual(member: WatchlistMembership) {
     if (!this.canOpenWatchlistAnnual(member) || !this.state.snapshot) return;
+    this.eod.close();
     this.annual.open({
       catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
       listing: listingIdentity(member),
       cik: null,
+      origin: "watchlist",
+    });
+  }
+  openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
+    const snapshot = this.state.snapshot;
+    if (this.retired || !snapshot || !this.state.results.includes(result))
+      return;
+    this.annual.close();
+    this.eod.open({
+      catalogSnapshotSha256: snapshot.snapshotSha256,
+      listing: listingIdentity(result),
+      origin: "discover",
+    });
+  }
+  canOpenWatchlistEod(member: WatchlistMembership) {
+    return this.canOpenWatchlistAnnual(member);
+  }
+  openWatchlistEod(member: WatchlistMembership) {
+    if (!this.canOpenWatchlistEod(member) || !this.state.snapshot) return;
+    this.annual.close();
+    this.eod.open({
+      catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
+      listing: listingIdentity(member),
       origin: "watchlist",
     });
   }

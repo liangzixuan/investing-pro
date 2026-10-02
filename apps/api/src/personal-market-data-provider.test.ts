@@ -26,6 +26,67 @@ interface FetchCall {
   readonly url: string;
 }
 
+describe("Tiingo smaller response budget", () => {
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 1_048_577])(
+    "rejects invalid cap %s",
+    (maximumResponseBytes) => {
+      expect(() =>
+        createTiingoPersonalMarketDataProvider(TOKEN, { maximumResponseBytes }),
+      ).toThrow();
+    },
+  );
+  it("admits exactly the smaller byte cap and rejects the next byte while preserving defaults", async () => {
+    const text = JSON.stringify([dailyBar("2026-09-07")]);
+    const bytes = Buffer.byteLength(text);
+    const build = (maximumResponseBytes?: number, extra = "") =>
+      createTiingoPersonalMarketDataProvider(TOKEN, {
+        now: () => NOW,
+        fetch: vi.fn(() => Promise.resolve(new Response(text + extra))),
+        ...(maximumResponseBytes === undefined ? {} : { maximumResponseBytes }),
+      });
+    const exact = build(bytes),
+      over = build(bytes, " "),
+      unchanged = build(undefined, " ");
+    try {
+      expect(
+        (await exact.loadOverview(IDENTITY, "1m", false)).history.status,
+      ).toBe("available");
+      expect((await over.loadOverview(IDENTITY, "1m", false)).history).toEqual({
+        status: "unavailable",
+        reason: "invalid_response",
+      });
+      expect(
+        (await unchanged.loadOverview(IDENTITY, "1m", false)).history.status,
+      ).toBe("available");
+    } finally {
+      exact.close();
+      over.close();
+      unchanged.close();
+    }
+  });
+  it("rejects an oversized declared body before reading chunks", async () => {
+    const cancel = vi.fn();
+    const provider = createTiingoPersonalMarketDataProvider(TOKEN, {
+      maximumResponseBytes: 32_768,
+      now: () => NOW,
+      fetch: vi.fn(() =>
+        Promise.resolve(
+          new Response(new ReadableStream({ cancel }), {
+            headers: { "content-length": "32769" },
+          }),
+        ),
+      ),
+    });
+    try {
+      expect(
+        (await provider.loadOverview(IDENTITY, "1m", false)).history,
+      ).toEqual({ status: "unavailable", reason: "invalid_response" });
+    } finally {
+      provider.close();
+    }
+  });
+});
+
 describe("Tiingo personal market-data provider", () => {
   it("reports only public provider status and fails closed without a token", async () => {
     const fetchImplementation = vi.fn<typeof fetch>();

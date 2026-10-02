@@ -86,14 +86,17 @@ scenarios or authorize production schema as complete.
 
 ## Server configuration and release
 
-Managed function builds require separate reviewed identity and SEC configuration
-files. The latter is either `null`, which explicitly closes source admission, or
+Managed function builds require separate reviewed identity, SEC and EOD configuration
+files. The SEC configuration is either `null`, which explicitly closes source admission, or
 an object containing one valid `userAgent` contact string. Validation occurs
 before output cleanup. The contact stays in the server bundle.
 
 ```powershell
-node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts managed <server-config-path> <sec-config-path>
+node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts managed <server-config-path> <sec-config-path> <eod-config-path>
 ```
+
+The separate [EOD configuration](./MANAGED_EOD_HISTORY.md) can be `null`; this leaves
+the Annual report service available under its own configuration and budget.
 
 The accepted website, production API, signed APK, synthetic trial and local vault
 remain separate release surfaces. A source merge alone does not change them.

@@ -192,14 +192,21 @@ function ownedProductionHostnameSpan(
 function competitorText(relativePath: string, content: string): string {
   const fixedCatalog =
     relativePath === "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
-  if (!fixedCatalog && !ownedProductionDomainPaths.has(relativePath))
+  const fixedAndroidConfig =
+    relativePath ===
+    "apps/web/android/app/src/main/assets/capacitor.config.json";
+  if (
+    !fixedCatalog &&
+    !fixedAndroidConfig &&
+    !ownedProductionDomainPaths.has(relativePath)
+  )
     return content;
   const source = ts.createSourceFile(
     relativePath,
     content,
     ts.ScriptTarget.Latest,
     true,
-    fixedCatalog
+    fixedCatalog || fixedAndroidConfig
       ? ts.ScriptKind.JSON
       : relativePath.endsWith(".tsx")
         ? ts.ScriptKind.TSX
@@ -221,15 +228,25 @@ function competitorText(relativePath: string, content: string): string {
         ts.isStringLiteral(node.parent.name) &&
         node.parent.name.text === "sourceUri";
       const androidPackage =
-        ownedAndroidPackagePaths.has(relativePath) &&
-        node.text === "app.investingpro.android";
+        node.text === "app.investingpro.android" &&
+        (ownedAndroidPackagePaths.has(relativePath) ||
+          (fixedAndroidConfig &&
+            ts.isPropertyAssignment(node.parent) &&
+            node.parent.initializer === node &&
+            ts.isStringLiteral(node.parent.name) &&
+            node.parent.name.text === "appId" &&
+            ts.isObjectLiteralExpression(node.parent.parent) &&
+            ts.isExpressionStatement(node.parent.parent.parent) &&
+            node.parent.parent.parent.parent === source));
       const span = fixedCatalog
         ? repositoryReference
           ? { start: 0, length: node.text.length }
           : null
         : androidPackage
           ? { start: 0, length: node.text.length }
-          : ownedProductionHostnameSpan(node.text);
+          : fixedAndroidConfig
+            ? null
+            : ownedProductionHostnameSpan(node.text);
       if (span !== null)
         spans.push({
           start: node.getStart(source) + 1 + span.start,
@@ -274,6 +291,24 @@ function verifyOwnedProductionDomainTextClassifier(): void {
     if (!matchesForbiddenText(path, '"app.investingpro.android"'))
       throw new Error("Unselected Android package path was admitted");
   }
+  const copiedAndroidPath =
+    "apps/web/android/app/src/main/assets/capacitor.config.json";
+  const copiedAndroidIdentity = '{"appId":"app.investingpro.android"}';
+  if (matchesForbiddenText(copiedAndroidPath, copiedAndroidIdentity))
+    throw new Error("Owned copied Android package classifier regressed");
+  for (const value of [
+    '{"appName":"app.investingpro.android"}',
+    '{"nested":{"appId":"app.investingpro.android"}}',
+    '{"appId":"app.investingpro.android.extra"}',
+    '{"appId":"https://app.investingpro.android"}',
+    '{"appId":"app.investingpro.android","extra":"investingpro"}',
+    '{"appId":"app.investingpro.android","server":"https://app.investingpro.app"}',
+    '{"appId":"app.investingpro.android"} // investingpro',
+  ])
+    if (!matchesForbiddenText(copiedAndroidPath, value))
+      throw new Error("Unowned copied Android package text was admitted");
+  if (!matchesForbiddenText(`${copiedAndroidPath}.old`, copiedAndroidIdentity))
+    throw new Error("Unselected copied Android package path was admitted");
   const catalogPath = "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
   const repository = "https://github.com/liangzixuan/investing-pro";
   const canonicalReference = JSON.stringify({ sourceUri: repository });
@@ -6820,6 +6855,66 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const secProviderPath = "apps/api/src/personal-sec-financial-provider.ts";
   const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
   const managedAnnual = await readFile(join(root, managedAnnualPath), "utf8");
+  const managedEodPath = "apps/api/src/managed-eod-service.ts";
+  const managedEod = await readFile(join(root, managedEodPath), "utf8");
+  const managedEodMutations = [
+    managedEod.replace(
+      /security,\s*"1m",\s*false,\s*providerSignal/u,
+      'security, "1m", true, providerSignal',
+    ),
+    managedEod.replace(
+      /security,\s*"1m",\s*false,\s*providerSignal/u,
+      'security, "1y", false, providerSignal',
+    ),
+    managedEod.replace(
+      /operation\.admission\.reserve\(\s*principal,\s*options\.enteredAt,\s*admissionSignal,?\s*\)/u,
+      "Promise.resolve()",
+    ),
+    managedEod.replace(
+      /maximumResponseBytes:\s*MANAGED_EOD_HISTORY_LIMITS\.sourceBytes/u,
+      "maximumResponseBytes: 1048576",
+    ),
+    `${managedEod.replace(/maximumResponseBytes:\s*MANAGED_EOD_HISTORY_LIMITS\.sourceBytes/u, "unusedLimit: MANAGED_EOD_HISTORY_LIMITS.sourceBytes")}\nconst unused = { maximumResponseBytes: MANAGED_EOD_HISTORY_LIMITS.sourceBytes };`,
+    `${managedEod}\nvoid globalThis.fetch(unreviewedUrl);`,
+    `${managedEod}\nconst extra = "https://unreviewed.example/source";`,
+    `${managedEod}\nvoid source.loadOverview(security, "1m", false, providerSignal);`,
+    `${managedEod}\nvoid source.loadAnnualFinancials(security, providerSignal);`,
+  ];
+  if (
+    managedEodServiceCapabilityViolation(managedEod) !== null ||
+    managedEodMutations.some(
+      (changed) =>
+        changed === managedEod ||
+        managedEodServiceCapabilityViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed EOD service capability classifier regressed",
+    );
+  if (
+    ["service", "config", "admission"].some(
+      (kind) =>
+        !personalMarketDataWebViolation(
+          `import { privateValue } from "../../../api/src/managed-eod-${kind}";`,
+        ),
+    ) ||
+    !personalMarketDataWebViolation(
+      `const token = "${["MANAGED_EOD", "TIINGO_TOKEN"].join("_")}";`,
+    ) ||
+    personalMarketDataWebViolation(
+      'import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";',
+    ) ||
+    !managedEodTokenLocationAllowed("apps/api/src/managed-eod-config.ts") ||
+    managedEodTokenLocationAllowed("apps/web/src/clerk-trial/eod.test.ts") ||
+    managedEodTokenLocationAllowed("packages/contracts/src/eod.ts") ||
+    managedEodTokenLocationAllowed(
+      "apps/api/src/managed-eod-config-neighbor.ts",
+    ) ||
+    managedEodTokenLocationAllowed("scripts/clerk-trial/build-function.ts")
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed EOD token/browser classifier regressed",
+    );
   const managedAnnualMutations = [
     managedAnnual.replace(
       "data.sec.gov/submissions",
@@ -6910,6 +7005,10 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         const issue = managedSecAnnualServiceCapabilityViolation(content);
         if (issue !== null) found.push(`${path}: ${issue}`);
       }
+      if (path === managedEodPath) {
+        const issue = managedEodServiceCapabilityViolation(content);
+        if (issue !== null) found.push(`${path}: ${issue}`);
+      }
     }
     if (
       path.startsWith("apps/web/") &&
@@ -6936,6 +7035,14 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     if (!textExtensions.has(extension)) continue;
     const path = relative(root, file).replaceAll("\\", "/");
     const content = await readFile(file, "utf8");
+    if (
+      content.includes(["MANAGED_EOD", "TIINGO_TOKEN"].join("_")) &&
+      !managedEodTokenLocationAllowed(path)
+    ) {
+      found.push(
+        `${path}: the managed Tiingo token name is server-only and must not enter client or public configuration`,
+      );
+    }
     if (!content.includes(tokenEnvironmentLiteral)) continue;
     const allowed =
       path === providerPath ||
@@ -9040,6 +9147,128 @@ function personalSecAnnualEvidenceProviderViolation(
     : null;
 }
 
+function managedEodServiceCapabilityViolation(content: string): string | null {
+  const source = ts.createSourceFile(
+    "managed-eod.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const compact = (node: ts.Node) => node.getText(source).replace(/\s+/gu, "");
+  let invalid = collectModuleSpecifiers(content).some(
+    personalMarketDataIsNetworkModule,
+  );
+  let factories = 0;
+  let histories = 0;
+  let reservations = 0;
+  let admissionPosition = -1;
+  let factoryPosition = -1;
+  let caps = 0;
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isStringLiteralLike(node) &&
+        /(?:https?|wss?):\/\//iu.test(node.text)) ||
+      (ts.isTemplateExpression(node) &&
+        /(?:https?|wss?):\/\//iu.test(node.head.text))
+    )
+      invalid = true;
+    if (
+      ts.isPropertyAssignment(node) &&
+      node.name.getText(source) === "maximumResponseBytes"
+    ) {
+      caps++;
+      if (
+        compact(node.initializer) !== "MANAGED_EOD_HISTORY_LIMITS.sourceBytes"
+      )
+        invalid = true;
+    }
+    if (ts.isCallExpression(node)) {
+      const callee = compact(node.expression);
+      if (callee === "createTiingoPersonalMarketDataProvider") {
+        factories++;
+        factoryPosition = node.pos;
+        const providerOptions = node.arguments[1];
+        const lastOption =
+          providerOptions && ts.isObjectLiteralExpression(providerOptions)
+            ? providerOptions.properties.at(-1)
+            : undefined;
+        if (
+          node.arguments.length !== 2 ||
+          compact(node.arguments[0]!) !== "options.token" ||
+          lastOption === undefined ||
+          !ts.isPropertyAssignment(lastOption) ||
+          lastOption.name.getText(source) !== "maximumResponseBytes" ||
+          compact(lastOption.initializer) !==
+            "MANAGED_EOD_HISTORY_LIMITS.sourceBytes"
+        )
+          invalid = true;
+      }
+      if (
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["loadOverview"]),
+        ) !== null
+      ) {
+        histories++;
+        if (
+          callee !== "source.loadOverview" ||
+          node.arguments.map(compact).join(",") !==
+            'security,"1m",false,providerSignal'
+        )
+          invalid = true;
+      }
+      if (
+        (callee.startsWith("source.") || callee.startsWith("source?.")) &&
+        !["source.loadOverview", "source.close", "source?.close"].includes(
+          callee,
+        )
+      )
+        invalid = true;
+      if (callee === "operation.admission.reserve") {
+        reservations++;
+        admissionPosition = node.pos;
+        if (
+          node.arguments.map(compact).join(",") !==
+            "principal,options.enteredAt,admissionSignal" ||
+          !ts.isCallExpression(node.parent) ||
+          compact(node.parent.expression) !== "awaitManagedEod" ||
+          !ts.isAwaitExpression(node.parent.parent)
+        )
+          invalid = true;
+      }
+      if (
+        callee === "fetch" ||
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid ||
+    factories !== 1 ||
+    histories !== 1 ||
+    reservations !== 1 ||
+    caps !== 1 ||
+    admissionPosition < 0 ||
+    admissionPosition >= factoryPosition
+    ? "managed EOD must reserve before one bounded history-only provider call and contain no network sink or source URL"
+    : null;
+}
+
+function managedEodTokenLocationAllowed(path: string): boolean {
+  return (
+    path === "apps/api/src/managed-eod-config.ts" ||
+    path === "apps/api/src/managed-workspace-function.ts" ||
+    path.startsWith("docs/") ||
+    (personalMarketDataIsTestSource(path) && !path.startsWith("apps/web/"))
+  );
+}
+
 function managedSecAnnualServiceCapabilityViolation(
   content: string,
 ): string | null {
@@ -10138,6 +10367,7 @@ function personalMarketDataWebViolation(content: string): boolean {
   return (
     content.includes(providerHost) ||
     content.includes(tokenEnvironmentLiteral) ||
+    content.includes(["MANAGED_EOD", "TIINGO_TOKEN"].join("_")) ||
     content.includes("https://apps.bea.gov/API/signup/release_dates.json") ||
     content.includes(
       "https://www.federalreserve.gov/feeds/press_monetary.xml",
@@ -10146,6 +10376,7 @@ function personalMarketDataWebViolation(content: string): boolean {
     collectModuleSpecifiers(content).some(
       (specifier) =>
         specifier.includes("personal-market-data-provider") ||
+        /managed-eod-(?:service|config|admission)(?:\.|$)/u.test(specifier) ||
         specifier.includes("bea-release-provider") ||
         specifier.includes("fed-monetary-announcements-provider") ||
         specifier === "@rgrove/parse-xml" ||
@@ -10621,6 +10852,17 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/managed-eod-service.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
+      "apps/api/src/managed-eod-service.test.ts",
+      ["<namespace:securityMaster>"],
+    ],
+    [
       "apps/api/src/workspace-portfolio-routes.ts",
       [
         "PERSONAL_SECURITY_MASTER_LIMITS",
@@ -10750,6 +10992,43 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   )
     found.push(
       "scripts/verify-boundaries.ts: managed annual security-master import classifier regressed",
+    );
+  const managedEodPath = "apps/api/src/managed-eod-service.ts";
+  const managedEodSource = await cycle2kText(managedEodPath, found);
+  const managedEodImports = [
+    managedEodSource.replace(
+      "lookupPersonalSecurityMasterListing,",
+      "lookupPersonalSecurityMasterListing, searchPersonalSecurityMaster,",
+    ),
+    managedEodSource.replace(
+      "type ManagedSecurityMasterCatalog",
+      "ManagedSecurityMasterCatalog",
+    ),
+    `${managedEodSource}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
+  ];
+  if (
+    personalSecurityMasterApiImportViolation(
+      managedEodPath,
+      managedEodSource,
+      allowedApiImporters,
+    ) !== null ||
+    personalSecurityMasterApiImportViolation(
+      "apps/api/src/managed-eod-service-neighbor.ts",
+      managedEodSource,
+      allowedApiImporters,
+    ) === null ||
+    managedEodImports.some(
+      (changed) =>
+        changed === managedEodSource ||
+        personalSecurityMasterApiImportViolation(
+          managedEodPath,
+          changed,
+          allowedApiImporters,
+        ) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed EOD security-master import classifier regressed",
     );
   for (const file of externalCompositionFilesToInspect) {
     const path = relative(root, file).replaceAll("\\", "/");

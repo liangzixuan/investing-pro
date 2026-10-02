@@ -3,6 +3,7 @@ import {
   MANAGED_CATALOG_LIMITS,
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_EOD_HISTORY_LIMITS,
   type ManagedCatalogSnapshotDto,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
@@ -12,6 +13,8 @@ import {
   ManagedCatalogChangedError,
   ManagedAnnualCooldownError,
   ManagedAnnualReportError,
+  ManagedEodHistoryError,
+  ManagedEodCooldownError,
 } from "./managed-api";
 import {
   request as annualRequest,
@@ -19,6 +22,7 @@ import {
 } from "../features/research/sec-annual-evidence-fixture";
 import * as annualDecoder from "../lib/sec-annual-evidence-response";
 import type { TrialSession } from "./session";
+import { eodRequest, eodResponse } from "./eod-history-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const payload = {
@@ -95,6 +99,161 @@ afterEach(() => {
 });
 
 describe("managed browser transport", () => {
+  it("captures the EOD request before token acquisition and owns the parsed exact close packet", async () => {
+    const { api, fetcher, session, abort } = fixture();
+    const token = deferred<string>();
+    vi.mocked(session.getToken).mockReturnValue(token.promise);
+    const wire = eodResponse();
+    fetcher.mockResolvedValue(Response.json(wire));
+    const input = { ...eodRequest() };
+    const pending = api.eodHistory(input, abort.signal);
+    input.listingId = "changed-after-call";
+    token.resolve("synthetic-token");
+    const response = await pending;
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher).toHaveBeenCalledWith(
+      `${origin}/v1/managed/eod-history`,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(eodRequest()),
+        credentials: "omit",
+        cache: "no-store",
+        redirect: "error",
+        headers: {
+          Authorization: "Bearer synthetic-token",
+          "Content-Type": "application/json",
+        },
+      }),
+    );
+    expect(response).toEqual(wire);
+    expect(response).not.toBe(wire);
+    expect(Object.isFrozen(response.rows[0])).toBe(true);
+  });
+  it.each([
+    [400, "invalid_request"],
+    [408, "request_timeout"],
+    [422, "unsupported_listing"],
+    [429, "source_rate_limited"],
+    [503, "not_configured"],
+    [503, "unavailable"],
+  ] as const)(
+    "admits only the EOD %i/%s pair without session retirement semantics",
+    async (status, code) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(Response.json({ error: code }, { status }));
+      await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+        new ManagedEodHistoryError(code),
+      );
+      expect(fetcher).toHaveBeenCalledOnce();
+    },
+  );
+  it("keeps catalog changes and a checked local cooldown distinct from source rate limiting", async () => {
+    const { api, fetcher, abort } = fixture();
+    fetcher
+      .mockResolvedValueOnce(
+        Response.json({ error: "catalog_changed" }, { status: 409 }),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: "rate_limited", nextAllowedAt: "2026-10-02T00:00:20.000Z" },
+          { status: 429 },
+        ),
+      );
+    await expect(
+      api.eodHistory(eodRequest(), abort.signal),
+    ).rejects.toBeInstanceOf(ManagedCatalogChangedError);
+    await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+      new ManagedEodCooldownError("2026-10-02T00:00:20.000Z"),
+    );
+  });
+  it.each([
+    [429, { error: "rate_limited" }],
+    [429, { error: "rate_limited", nextAllowedAt: "soon" }],
+    [
+      429,
+      {
+        error: "source_rate_limited",
+        nextAllowedAt: "2026-10-02T00:00:20.000Z",
+      },
+    ],
+    [503, { error: "source_rate_limited" }],
+    [503, { error: "commit_unknown" }],
+    [500, { error: "unavailable" }],
+  ])(
+    "rejects mismatched or embellished EOD errors %#",
+    async (status, body) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(Response.json(body, { status }));
+      await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+        new TrialApiError("invalid_response"),
+      );
+    },
+  );
+  it.each([401, 403])(
+    "keeps own EOD auth %i as a session error",
+    async (status) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(new Response("not read", { status }));
+      await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+        new TrialApiError(status === 401 ? "unauthenticated" : "access_denied"),
+      );
+    },
+  );
+  it("rejects oversized EOD bodies and packets from another listing", async () => {
+    const { api, fetcher, abort } = fixture();
+    fetcher
+      .mockResolvedValueOnce(
+        new Response(" ".repeat(MANAGED_EOD_HISTORY_LIMITS.responseBytes + 1), {
+          headers: { "content-type": "application/json" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          ...eodResponse(),
+          security: { ...eodResponse().security, listingId: "other" },
+        }),
+      );
+    await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+      new TrialApiError("invalid_response"),
+    );
+    await expect(api.eodHistory(eodRequest(), abort.signal)).rejects.toEqual(
+      new TrialApiError("invalid_response"),
+    );
+  });
+  it("rejects malformed EOD requests before auth or transport", async () => {
+    const { api, session, fetcher, abort } = fixture();
+    await expect(
+      api.eodHistory({ ...eodRequest(), listingId: "bad/id" }, abort.signal),
+    ).rejects.toEqual(new TrialApiError("invalid_request"));
+    expect(session.getToken).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it("cancels an EOD body read and refuses a fetch that outlives the client deadline", async () => {
+    const { api, fetcher, abort } = fixture();
+    const cancel = vi.fn();
+    fetcher.mockResolvedValueOnce(
+      new Response(new ReadableStream({ cancel }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const pending = api.eodHistory(eodRequest(), abort.signal);
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledOnce());
+    abort.abort();
+    await expect(pending).rejects.toEqual(new TrialApiError("aborted"));
+    expect(cancel).toHaveBeenCalledOnce();
+    vi.useFakeTimers();
+    const held = deferred<Response>();
+    fetcher.mockReturnValueOnce(held.promise);
+    const timed = api.eodHistory(eodRequest(), new AbortController().signal);
+    const assertion = expect(timed).rejects.toEqual(
+      new TrialApiError("unavailable"),
+    );
+    await vi.advanceTimersByTimeAsync(20_000);
+    await assertion;
+    held.resolve(Response.json(eodResponse()));
+    await Promise.resolve();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it("uses fixed routes, fresh session tokens and private bearer transport", async () => {
     const { api, fetcher, session, abort } = fixture();
     fetcher

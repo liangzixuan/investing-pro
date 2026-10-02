@@ -14,6 +14,7 @@ import { TrialFrame } from "./TrialFrame";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import { eodResponse } from "./eod-history-fixture";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
@@ -142,6 +143,7 @@ function deferred<T>() {
 }
 function fixture(initial = payload) {
   const api: ManagedApi = {
+    eodHistory: vi.fn(),
     annualReport: vi.fn(),
     load: vi
       .fn<ManagedApi["load"]>()
@@ -170,6 +172,72 @@ function fixture(initial = payload) {
   };
 }
 describe("managed workspace screen", () => {
+  it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-one", "Draft survives close history");
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistEod(member);
+    const output = html();
+    expect(output).toContain("EOD close history · DEMO");
+    expect(output).toContain("Load one-month close history");
+    expect(output).toContain("Draft survives close history");
+    expect(output).toContain("My Watchlist");
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.openWatchlistAnnual(member);
+    expect(html()).not.toContain("Load one-month close history");
+    expect(html()).toContain("Load annual report");
+    vi.mocked(api.status).mockResolvedValue({
+      snapshot: { ...snapshot, snapshotSha256: `sha256:${"b".repeat(64)}` },
+    });
+    await workspace.refreshCatalog();
+    expect(html()).toMatch(
+      /<button[^>]*disabled=""[^>]*aria-label="EOD close history for saved DEMO"/u,
+    );
+  });
+  it.each([false, true])(
+    "native Back consumes a pending EOD panel, restores focus and keeps the draft (history %s)",
+    async (canGoBack) => {
+      const native = nativeBackFixture();
+      const { workspace, api, html } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.note("listing-one", "Keep my EOD draft");
+      html(native.adapter);
+      mountEffects();
+      native.ready();
+      const focus = vi.fn();
+      mounted.refs[0]!.current = { isConnected: true, focus };
+      workspace.openWatchlistEod(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(api.eodHistory).mockReturnValue(held.promise);
+      const pending = workspace.eod.load();
+      const before = workspace.coordinator.getSnapshot().draft;
+      native.press(canGoBack);
+      expect(vi.mocked(api.eodHistory).mock.calls[0]![1].aborted).toBe(true);
+      expect(workspace.eod.getSnapshot()).toMatchObject({
+        selection: null,
+        response: null,
+      });
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+      expect(focus).toHaveBeenCalledOnce();
+      expect(native.historyBack).not.toHaveBeenCalled();
+      held.resolve(eodResponse());
+      await pending;
+      expect(workspace.eod.getSnapshot().response).toBeNull();
+      native.press(false);
+      expect(native.historyBack).not.toHaveBeenCalled();
+      expect(native.adapter.exitApp).not.toHaveBeenCalled();
+      native.press(true);
+      expect(native.historyBack).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
   it("keeps the shared Search pending label and editable query by default", () => {
     const output = renderToStaticMarkup(
       <WorkspaceSearch
