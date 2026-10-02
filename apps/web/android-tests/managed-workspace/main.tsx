@@ -29,6 +29,30 @@ function Fixture() {
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre id="fixture-diagnostics">{JSON.stringify(state)}</pre>
+        <pre
+          id="fixture-report-generations"
+          style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+        >
+          {JSON.stringify(fixture.generations)}
+        </pre>
+        <button
+          id="enable-refresh-scenario"
+          disabled={state.refreshScenario || state.annual !== 0}
+          onClick={fixture.enableRefreshScenario}
+        >
+          Use invented annual refresh sequence
+        </button>
+        <button
+          id="fail-held-refresh"
+          disabled={
+            !state.refreshScenario ||
+            state.annual !== 2 ||
+            state.refreshFailed !== 0
+          }
+          onClick={fixture.failRefresh}
+        >
+          Fail held fixture refresh
+        </button>
         <button
           id="settle-cancelled-read"
           disabled={state.aborted !== 1 || state.lateResolved !== 0}

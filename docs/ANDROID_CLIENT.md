@@ -124,6 +124,11 @@ and late-response handling through Android Back after resuming.
 These tests use the real Capacitor App bridge with empty WebView history. The
 fixture is absent from the application APK, and CI checks that separation.
 
+The managed refresh case first loads invented annual evidence, then fails an
+explicit refresh and checks that the previous report stays readable with its
+original provenance. An explicit retry replaces that report. The watchlist
+draft and exact request counts are checked through the same native screen.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build

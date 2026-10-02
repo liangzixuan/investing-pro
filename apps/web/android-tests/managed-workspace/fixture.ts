@@ -7,7 +7,11 @@ import type {
 import type { ManagedApi } from "../../src/clerk-trial/managed-api";
 import { listingMembership } from "../../src/clerk-trial/managed-workspace";
 import type { TrialSession } from "../../src/clerk-trial/session";
-import { response } from "../../src/features/research/sec-annual-evidence-fixture";
+import {
+  response,
+  row,
+} from "../../src/features/research/sec-annual-evidence-fixture";
+import { TrialApiError } from "../../src/clerk-trial/api";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const zero: PersonalSecurityMasterSearchResultDto = {
@@ -82,6 +86,10 @@ const snapshot: ManagedCatalogSnapshotDto = {
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
 export async function createFixture() {
   const annual = await response();
+  const recovered = await response(
+    [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
+    "2026-09-21T00:00:00.000Z",
+  );
   let state = {
     load: 0,
     status: 0,
@@ -93,14 +101,17 @@ export async function createFixture() {
     lateResolved: 0,
     token: 0,
     signOut: 0,
+    refreshScenario: false,
+    refreshFailed: 0,
   };
   const listeners = new Set<() => void>();
-  const count = (key: keyof typeof state) => {
+  const count = (key: Exclude<keyof typeof state, "refreshScenario">) => {
     state = { ...state, [key]: state[key] + 1 };
     for (const listener of listeners) listener();
   };
   let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
     null;
+  let rejectRefresh: ((error: unknown) => void) | null = null;
   const unexpected = (
     key: "save" | "resolve" | "token" | "signOut",
   ): Promise<never> => {
@@ -142,6 +153,18 @@ export async function createFixture() {
         throw new Error("Unexpected fixture annual request");
       count("annual");
       signal.addEventListener("abort", () => count("aborted"), { once: true });
+      if (state.refreshScenario) {
+        if (state.annual === 1) return Promise.resolve(structuredClone(annual));
+        if (state.annual === 2)
+          return new Promise<PersonalSecAnnualEvidenceResponseDto>(
+            (_resolve, reject) => {
+              rejectRefresh = reject;
+            },
+          );
+        if (state.annual === 3)
+          return Promise.resolve(structuredClone(recovered));
+        throw new Error("Unexpected extra fixture annual refresh");
+      }
       // Deliberately ignores cancellation: the real model must reject this late completion.
       return new Promise((resolve) => {
         pending = resolve;
@@ -157,6 +180,10 @@ export async function createFixture() {
   return {
     api,
     session,
+    generations: {
+      initial: annual.evidence.generation,
+      recovered: recovered.evidence.generation,
+    },
     getSnapshot: () => state,
     subscribe: (listener: () => void) => {
       listeners.add(listener);
@@ -172,6 +199,30 @@ export async function createFixture() {
       resolve(structuredClone(annual));
       // The model's await continuation runs before this observable settled diagnostic.
       void Promise.resolve().then(() => count("lateResolved"));
+    },
+    enableRefreshScenario: () => {
+      if (
+        state.refreshScenario ||
+        state.annual !== 0 ||
+        pending ||
+        rejectRefresh
+      )
+        throw new Error("Only a fresh fixture can select the refresh sequence");
+      state = { ...state, refreshScenario: true };
+      for (const listener of listeners) listener();
+    },
+    failRefresh: () => {
+      if (
+        !state.refreshScenario ||
+        state.annual !== 2 ||
+        !rejectRefresh ||
+        state.refreshFailed !== 0
+      )
+        throw new Error("Only the second fixture annual read may fail");
+      const reject = rejectRefresh;
+      rejectRefresh = null;
+      count("refreshFailed");
+      reject(new TrialApiError("unavailable"));
     },
   };
 }
