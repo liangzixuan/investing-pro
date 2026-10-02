@@ -217,36 +217,58 @@ public class ManagedWorkspaceInstrumentedTest {
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
             "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
             " if (!input) return null; input.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
-            " const r = input.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;" +
-            " return {x,y,width:innerWidth,height:innerHeight,ratio:devicePixelRatio," +
-            " visible:r.width>0&&r.height>0&&r.left>=0&&r.top>=0&&r.right<=innerWidth&&r.bottom<=innerHeight" +
-            " &&input.contains(document.elementFromPoint(x,y))," +
-            " unzoomed:visualViewport.scale===1&&visualViewport.offsetLeft===0&&visualViewport.offsetTop===0};})()",
+            " const r = input.getBoundingClientRect(), v = visualViewport;" +
+            " const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+            " return {x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom," +
+            " width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+            " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+            " &&r.width>0&&r.height>0&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+            " visible:r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height," +
+            " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        JSONObject geometry = new JSONObject(observed.get());
-        assertTrue("Input must be visible and unobscured: " + id, geometry.getBoolean("visible"));
-        assertTrue("Input touch requires the initial-scale viewport", geometry.getBoolean("unzoomed"));
+        String rawGeometry = observed.get();
+        assertNotNull("Input geometry was null: " + id, rawGeometry);
+        Log.i("ManagedInputGeometry", "id=" + id + ", geometry=" + rawGeometry.substring(0, Math.min(rawGeometry.length(), 2048)));
+        JSONObject geometry = new JSONObject(rawGeometry);
+        assertTrue("Invalid observed input geometry: " + id, geometry.getBoolean("finite"));
+        assertTrue("Input must be fully inside the visual viewport: " + id, geometry.getBoolean("visible"));
+        assertTrue("Input center must be unobscured: " + id, geometry.getBoolean("hit"));
         double cssX = geometry.getDouble("x"), cssY = geometry.getDouble("y");
         double cssWidth = geometry.getDouble("width"), cssHeight = geometry.getDouble("height");
-        double pixelRatio = geometry.getDouble("ratio");
-        assertTrue("Invalid observed viewport", cssWidth > 0 && cssHeight > 0 && pixelRatio > 0);
+        double offsetLeft = geometry.getDouble("offsetLeft"), offsetTop = geometry.getDouble("offsetTop");
+        double pixelsPerCssPixel = geometry.getDouble("scale") * geometry.getDouble("ratio");
+        assertTrue("Invalid visual-to-native scale", Double.isFinite(pixelsPerCssPixel) && pixelsPerCssPixel > 0);
         // A real touch activates Android's editor connection; a JS click can focus only the DOM.
+        // DOM rectangles and hit testing use layout CSS coordinates; native touch uses the visual viewport.
         onView(isAssignableFrom(WebView.class)).perform(new GeneralClickAction(
             Tap.SINGLE,
             view -> {
-                if (!(Math.abs(cssWidth * pixelRatio - view.getWidth()) <= pixelRatio + 1
-                    && Math.abs(cssHeight * pixelRatio - view.getHeight()) <= pixelRatio + 1))
-                    throw new PerformException.Builder().withActionDescription("touch input: " + id)
-                        .withViewDescription("Managed fixture WebView")
-                        .withCause(new IllegalStateException("Viewport changed before touch")).build();
                 int[] location = new int[2];
                 view.getLocationOnScreen(location);
-                float localX = (float) (cssX * pixelRatio), localY = (float) (cssY * pixelRatio);
+                float localX = (float) ((cssX - offsetLeft) * pixelsPerCssPixel);
+                float localY = (float) ((cssY - offsetTop) * pixelsPerCssPixel);
                 Rect visible = new Rect();
-                if (!(view.getLocalVisibleRect(visible) && visible.contains(Math.round(localX), Math.round(localY))))
+                boolean hasVisibleRect = view.getLocalVisibleRect(visible);
+                int scrollX = view.getScrollX(), scrollY = view.getScrollY();
+                // getLocalVisibleRect includes the View's own scroll; touch coordinates do not.
+                visible.offset(-scrollX, -scrollY);
+                String nativeGeometry = "id=" + id + ", width=" + view.getWidth() + ", height=" + view.getHeight() +
+                    ", screenX=" + location[0] + ", screenY=" + location[1] + ", visible=" + visible.toShortString() +
+                    ", scrollX=" + scrollX + ", scrollY=" + scrollY +
+                    ", localX=" + localX + ", localY=" + localY;
+                Log.i("ManagedInputGeometry", nativeGeometry);
+                // Allow coordinate rounding; an IME may shrink the visual height without resizing the WebView.
+                double tolerance = pixelsPerCssPixel + 1;
+                if (!(Math.abs(cssWidth * pixelsPerCssPixel - view.getWidth()) <= tolerance
+                    && cssHeight * pixelsPerCssPixel > 0 && cssHeight * pixelsPerCssPixel <= view.getHeight() + tolerance))
                     throw new PerformException.Builder().withActionDescription("touch input: " + id)
-                        .withViewDescription("Managed fixture WebView")
+                        .withViewDescription("Managed fixture WebView: " + nativeGeometry)
+                        .withCause(new IllegalStateException("Visual viewport does not match native bounds")).build();
+                if (!(Float.isFinite(localX) && Float.isFinite(localY) && hasVisibleRect
+                    && visible.contains(Math.round(localX), Math.round(localY))))
+                    throw new PerformException.Builder().withActionDescription("touch input: " + id)
+                        .withViewDescription("Managed fixture WebView: " + nativeGeometry)
                         .withCause(new IllegalStateException("Input touch is outside the visible WebView")).build();
                 return new float[] { location[0] + localX, location[1] + localY };
             }, Press.FINGER, InputDevice.SOURCE_TOUCHSCREEN, 0));
