@@ -32,13 +32,13 @@ const zero: PersonalSecurityMasterSearchResultDto = {
   shareClassName: "Class A",
   symbol: "ZERO",
 };
-const identity = listingMembership(zero);
+const { note, ...identity } = listingMembership(zero);
 const payload: MainWatchlistPayload = {
   name: "My Watchlist",
   schemaVersion: 1,
   snapshotSha256: digest,
   memberships: [
-    { ...identity, note: "" },
+    { ...identity, note },
     {
       ...identity,
       issuerId: "issuer-one",
