@@ -1,11 +1,13 @@
 package local.investment.personal;
 
 import static androidx.test.espresso.Espresso.closeSoftKeyboard;
+import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
+import static androidx.test.espresso.action.ViewActions.typeTextIntoFocusedView;
+import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.web.sugar.Web.onWebView;
 import static androidx.test.espresso.web.webdriver.DriverAtoms.findElement;
 import static androidx.test.espresso.web.webdriver.DriverAtoms.webClick;
-import static androidx.test.espresso.web.webdriver.DriverAtoms.webKeys;
 import static org.junit.Assert.*;
 
 import android.content.res.AssetManager;
@@ -130,15 +132,13 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void prepareDraftAndOpenAnnual() throws Exception {
-        onWebView().withElement(findElement(Locator.ID, "workspace-company-query")).perform(webKeys("ZERO"));
-        closeSoftKeyboard();
+        typeIntoInput("workspace-company-query", "ZERO");
         click(".workspace-global-search button");
         awaitPage("Discover returns the invented exact listing", DIAGNOSTICS + ".search === 1" +
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
         click("button[aria-label='Move ZERO down']");
         awaitPage("watchlist reordered", "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'");
-        onWebView().withElement(findElement(Locator.ID, "managed-note-1")).perform(webKeys(NOTE));
-        closeSoftKeyboard();
+        typeIntoInput("managed-note-1", NOTE);
         awaitPage("draft note edited", "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE));
         click(ANNUAL);
         awaitPage("Annual panel opened", "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'");
@@ -186,6 +186,18 @@ public class ManagedWorkspaceInstrumentedTest {
         onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
     }
 
+    private void typeIntoInput(String id, String text) throws Exception {
+        onWebView().withElement(findElement(Locator.ID, id)).perform(webClick());
+        awaitPage("input focused: " + id,
+            "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
+        // Native keyboard events exercise React's controlled onChange path.
+        // This action requires an already focused editor and does not tap the WebView center.
+        onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
+        awaitPage("native input value: " + id,
+            "document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));
+        closeSoftKeyboard();
+    }
+
     /** Fixed test-APK subtree only, bounded to 64 files and 4 MiB; no main-asset replacement. */
     private void copyFixture(AssetManager assets, String source, File target, int depth) throws IOException {
         if (depth > 3) throw new IOException("Fixture nesting limit exceeded");
@@ -228,7 +240,26 @@ public class ManagedWorkspaceInstrumentedTest {
             if ("true".equals(result.get())) return;
             Thread.sleep(50);
         }
-        fail("Timed out waiting for " + description);
+        String diagnostic = pageDiagnostic();
+        Log.e("ManagedFixture", "Timed out waiting for " + description + ": " + diagnostic);
+        fail("Timed out waiting for " + description + ": " + diagnostic);
+    }
+
+    /** Finite observations of this invented fixture only; no model writes or production hooks. */
+    private String pageDiagnostic() throws InterruptedException {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> result = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "JSON.stringify({query: document.querySelector('#workspace-company-query')?.value?.slice(0,128)," +
+            " focused: document.activeElement?.id?.slice(0,128)," +
+            " counters: document.querySelector('#fixture-diagnostics')?.textContent?.slice(0,1024)," +
+            " catalogMessage: document.querySelector('.workspace-global-search')?.nextElementSibling?.textContent?.slice(0,256)," +
+            " results: Array.from(document.querySelectorAll('.managed-results strong')).slice(0,5).map(e=>e.textContent?.slice(0,16))," +
+            " annual: document.querySelector('#managed-annual-heading')?.textContent?.slice(0,128)})",
+            value -> { result.set(value); returned.countDown(); }));
+        if (!returned.await(2, TimeUnit.SECONDS)) return "diagnostic unavailable";
+        String observed = result.get();
+        return observed == null ? "diagnostic null" : observed.substring(0, Math.min(observed.length(), 4096));
     }
 
     @After
