@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import type * as React from "react";
+import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
@@ -15,12 +15,16 @@ import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse } from "./eod-history-fixture";
+import { ManagedAnnualReport } from "./ManagedAnnualReport";
+import { ManagedEodHistory } from "./ManagedEodHistory";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
   effects: [] as Array<() => (() => void) | void>,
   refs: [] as Array<{ current: unknown }>,
   cleanups: [] as Array<() => void>,
+  direct: false,
+  refIndex: 0,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
@@ -29,20 +33,43 @@ vi.mock("react", async (original) => {
     useEffect: (effect: () => (() => void) | void) =>
       mounted.effects.push(effect),
     useRef: (value: unknown) => {
+      if (mounted.direct) {
+        const index = mounted.refIndex++;
+        return (mounted.refs[index] ??= { current: value });
+      }
       const ref = actual.useRef(value);
       mounted.refs.push(ref);
       return ref;
     },
+    useState: (value: unknown) =>
+      mounted.direct ? [value, vi.fn()] : actual.useState(value),
+    useCallback: (callback: () => void, dependencies: React.DependencyList) =>
+      mounted.direct ? callback : actual.useCallback(callback, dependencies),
+    useSyncExternalStore: (
+      subscribe: (listener: () => void) => () => void,
+      getSnapshot: () => unknown,
+      getServerSnapshot: () => unknown,
+    ) =>
+      mounted.direct
+        ? getSnapshot()
+        : actual.useSyncExternalStore(
+            subscribe,
+            getSnapshot,
+            getServerSnapshot,
+          ),
   };
 });
 beforeEach(() => {
   mounted.effects.length = 0;
   mounted.refs.length = 0;
   mounted.cleanups.length = 0;
+  mounted.direct = false;
+  mounted.refIndex = 0;
 });
 afterEach(() => {
   for (const cleanup of mounted.cleanups) cleanup();
   vi.unstubAllGlobals();
+  mounted.direct = false;
 });
 
 function nativeBackFixture() {
@@ -171,7 +198,123 @@ function fixture(initial = payload) {
       ),
   };
 }
+function elements(
+  node: React.ReactNode,
+): React.ReactElement<{ children?: React.ReactNode }>[] {
+  if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+  return [
+    node,
+    ...React.Children.toArray(node.props.children).flatMap(elements),
+  ];
+}
 describe("managed workspace screen", () => {
+  it.each([
+    ["annual", "screen"],
+    ["eod", "screen"],
+    ["annual", "native"],
+    ["eod", "native"],
+  ] as const)(
+    "switches from %s without a request and restores the original opener with %s Back",
+    async (start, back) => {
+      const native = back === "native" ? nativeBackFixture() : null;
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [
+          payload.memberships[0]!,
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            symbol: "OTHER",
+          },
+        ],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setQuery("DEMO");
+      workspace.note("listing-one", "Keep the navigation draft");
+      workspace.move("listing-two", -1);
+      const draft = workspace.coordinator.getSnapshot().draft;
+      mounted.direct = true;
+      const render = () => {
+        mounted.refIndex = 0;
+        return ManagedWorkspaceScreen({
+          workspace,
+          ...(native ? { androidBack: native.adapter } : {}),
+        });
+      };
+      const first = render();
+      if (native) {
+        mountEffects();
+        native.ready();
+      }
+      const label = `${start === "annual" ? "Annual report" : "EOD close history"} for saved DEMO`;
+      const opener = elements(first).find(
+        (node) =>
+          node.type === "button" &&
+          (node.props as { "aria-label"?: string })["aria-label"] === label,
+      ) as React.ReactElement<{
+        onClick: (event: { currentTarget: unknown }) => void;
+      }>;
+      expect(opener).toBeDefined();
+      const origin = { isConnected: true, focus: vi.fn() };
+      opener.props.onClick({ currentTarget: origin });
+      const annual = () =>
+        elements(render()).find(
+          (node) => node.type === ManagedAnnualReport,
+        ) as React.ReactElement<
+          React.ComponentProps<typeof ManagedAnnualReport>
+        >;
+      const eod = () =>
+        elements(render()).find(
+          (node) => node.type === ManagedEodHistory,
+        ) as React.ReactElement<React.ComponentProps<typeof ManagedEodHistory>>;
+      if (start === "annual") annual().props.onEodHistory();
+      else eod().props.onAnnualReport();
+      expect(
+        (start === "annual" ? workspace.eod : workspace.annual).getSnapshot()
+          .selection?.listing.listingId,
+      ).toBe("listing-one");
+      expect(
+        (start === "annual" ? workspace.annual : workspace.eod).getSnapshot()
+          .selection,
+      ).toBeNull();
+      expect(mounted.refs[0]!.current).toBe(origin);
+      if (start === "annual") eod().props.onAnnualReport();
+      else annual().props.onEodHistory();
+      expect(
+        (start === "annual" ? workspace.annual : workspace.eod).getSnapshot()
+          .selection?.listing.listingId,
+      ).toBe("listing-one");
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(workspace.getSnapshot().query).toBe("DEMO");
+      expect(
+        elements(render())
+          .filter((node) => node.type === "textarea")
+          .map((node) => (node.props as { value: string }).value),
+      ).toEqual(["Private research note", "Keep the navigation draft"]);
+      expect(origin.focus).not.toHaveBeenCalled();
+      const current = start === "annual" ? annual() : eod();
+      if (native) native.press(false);
+      else current.props.onBack();
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(workspace.eod.getSnapshot().selection).toBeNull();
+      expect(origin.focus).toHaveBeenCalledOnce();
+      expect(mounted.refs[0]!.current).toBeNull();
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.load).toHaveBeenCalledOnce();
+      expect(api.status).toHaveBeenCalledOnce();
+      if (native) {
+        native.press(false);
+        expect(native.historyBack).not.toHaveBeenCalled();
+        expect(native.adapter.exitApp).not.toHaveBeenCalled();
+        expect(origin.focus).toHaveBeenCalledOnce();
+      }
+    },
+  );
   it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
     const { workspace, api, html } = fixture();
     await workspace.coordinator.load();

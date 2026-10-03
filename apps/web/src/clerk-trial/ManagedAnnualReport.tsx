@@ -5,9 +5,11 @@ import type { ManagedAnnualReport as AnnualReportModel } from "./managed-annual-
 export function ManagedAnnualReport({
   model,
   onBack,
+  onEodHistory,
 }: {
   model: AnnualReportModel;
   onBack: () => void;
+  onEodHistory: () => void;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -76,6 +78,14 @@ export function ManagedAnnualReport({
             Cancel annual report
           </button>
         )}
+        <button
+          className="trial-secondary"
+          aria-label={`EOD close history for ${listing.symbol}`}
+          disabled={state.catalogChanged}
+          onClick={onEodHistory}
+        >
+          EOD close history
+        </button>
       </div>
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}

@@ -52,8 +52,10 @@ field, entitlement, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-This documentation update describes the accepted product without changing its
-behavior or deployment. Repomix remains unmerged in
+The portable documentation update in PR 28 is accepted on main
+`f18d80153e94dcb6236e31fd8324ee3e23a3bde0`. Its original source proof, applicable
+main jobs and nine-case synthetic native report were accepted. It changed no
+application behavior and required no deployment. Repomix remains unmerged in
 [PR 27](https://github.com/liangzixuan/investing-pro/pull/27): its required
 Dependency Review failed on `braces@3.0.3`,
 [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
@@ -61,6 +63,13 @@ As of October 3, the upstream investigation found no suitable mature released fi
 The security check stays unchanged. The Repomix package and workflow remain in
 the unmerged PR. [AI context](AI_CONTEXT.md) gives a manual reading guide and
 distinguishes its reviewed artifact from the source in this documentation tree.
+
+The selected product slice adds [same-listing research navigation](MANAGED_RESEARCH_NAVIGATION.md):
+move directly between Annual report and EOD close history, then use Back to return
+to the original workspace control and draft. Each source load remains explicit.
+Identity, cancellation and cooldown rules stay with the existing read models.
+Implementation, synthetic acceptance and website/Android delivery must each be
+recorded before this is described as an available production feature.
 
 The next device acceptance is a separately selected, brief 1.2 in-place upgrade
 and normal navigation/background-resume observation. Preserve the installed
