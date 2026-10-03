@@ -1,19 +1,16 @@
 # Android client
 
-The October personal launch uses the shared React interface in a Capacitor
-Android app. Clerk supplies native sign-in and Appwrite hosts the managed API
-and data. The connected website is accepted at main `de8fd252`; production
-Android packaging, signing recovery and Pixel acceptance are tracked separately
-in workspace [CURRENT.md](../../CURRENT.md). Production Investment 1.0.0 now has
-an accepted signed APK and production Clerk registration. Its managed API
-supports both browser and native requests. The installation package and checklists
-are in workspace `delivery/android-1.0.0`; physical Pixel checks, an upgrade and
-independent signing recovery remain pending.
+The managed Android app packages the shared React workspace with Capacitor.
+Clerk supplies native sign-in; Appwrite hosts the managed API and data. Signed
+Investment 1.2.0 (version code 3, `app.investingpro.android`) was built and delivered
+from the accepted PR 26 source. Its package, signer, bundled assets and backup
+rules passed artifact review. Physical installation and use of 1.2 remain open.
+[Current work](./CURRENT_WORK.md) records the exact source and APK digest.
 
-The owner reported successful development trial 1.1 testing on a Pixel 10 Pro XL
-running Android 17. That report covers the development application. Production
-uses a distinct package and signer; it cannot upgrade or migrate the debug trial.
-The accepted local research app and encrypted vault remain separate.
+The production 1.1 upgrade/checklist was owner-reported as passed on a Pixel 10 Pro
+XL running Android 17, without per-step device logs. Earlier development-trial
+results are separate: its package and debug signer cannot upgrade the production
+app. The local research app and encrypted vault also remain separate.
 
 ## Client profiles
 
@@ -44,9 +41,10 @@ or name that exact origin. Both require the same production issuer and configure
 account, signature, active session and time checks. Origin is not installation
 attestation. The original production demo service stays web only.
 
-The catalog currently contains AAPL, GOOG and GOOGL, with no prices. Shared
-watchlist notes, ordering, removal, explicit saves and conflict/uncertain-save
-reconciliation reuse the website's implementation and private repository.
+The catalog contains AAPL, GOOG and GOOGL with distinct listing identities.
+Annual reports and AAPL-only EOD close history load explicitly. Shared watchlist
+notes, ordering, removal, explicit saves and conflict/uncertain-save
+reconciliation reuse the website's implementation and private storage adapter.
 There is no offline editing queue or local-vault migration.
 
 ## Build and identity
@@ -63,8 +61,9 @@ against its selected profile and copied Capacitor configuration before packaging
 Do not sync over retained outputs before preserving their original bytes.
 
 ```powershell
-# From apps/web/android, with toolchain and public configuration supplied:
-./gradlew.bat --no-daemon --console=plain -PinvestmentClientProfile=managed -PinvestmentVersionCode=1 -PinvestmentVersionName=1.0.0 assembleRelease
+# Accepted 1.2 build shape, from apps/web/android with reviewed inputs supplied.
+# A later delivered update must use a higher version code.
+./gradlew.bat --no-daemon --console=plain -PinvestmentClientProfile=managed -PinvestmentVersionCode=3 -PinvestmentVersionName=1.2.0 assembleRelease
 ```
 
 For the disconnected foundation, use `build:mobile` and the disconnected
@@ -94,8 +93,9 @@ uninstalling or clearing data; an older APK is not an automatic downgrade path.
 The signing tools use a dedicated native-owner Windows keystore and protected
 local password custody. Local custody alone does not prove recovery. A portable
 backup needs independent owner custody and a restore/signature proof before it
-is accepted as recoverable. Workspace CURRENT records actual key creation,
-certificate, artifact hashes, backup evidence and remaining owner steps.
+is accepted as recoverable. Private operational receipts retain key creation,
+certificate and recovery evidence. Public release status belongs in [Current work](./CURRENT_WORK.md);
+keys, passwords and machine-specific custody locations do not belong in Git.
 
 ## Automated emulator checks
 
@@ -136,12 +136,13 @@ original dated catalog receipt and allows a ZERO search without reloading the
 Activity or document, losing the draft or sending extra requests. Synchronized
 screenshots retain the failed and recovered states.
 
-The EOD case loads invented raw closes into the shared Price history panel, then
+The EOD case loads invented raw closes into the shared EOD close history panel, then
 holds a refresh open. Cancel must clear the rows and discard the deliberately
 late reply. Native Back restores the opening control and preserves the draft,
 order, Activity, WebView and document. Its chart/table screenshots contain only
-invented prices. Workspace CURRENT records whether the actual compiled case and
-its original images have passed for a given source revision.
+invented prices. The accepted PR 26 main run passed all nine required cases
+and retained thirteen screenshots, including the chart and exact-value table.
+These are fixture results, not live-provider or physical-device results.
 
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
@@ -155,7 +156,7 @@ over an installed release. Those paths retain their existing unit/browser
 coverage and selected physical Pixel checks. Routine changes covered by this
 suite no longer require a manual APK installation for these checks.
 
-In the managed Android workspace, Back closes an open Annual report or Price history through the
+In the managed Android workspace, Back closes an open Annual report or EOD close history through the
 same action as the on-screen Back control, cancelling its read and restoring
 focus without changing the draft. With no report open, existing WebView history
 handles Back; at the root it leaves the screen open. Browser navigation and the
@@ -174,8 +175,7 @@ established session from killing a pending browser sign-in. Shared-data testing
 must preserve existing owner records and follow the selected device journey.
 
 BrowserStack remains browser-only. Synthetic tests and browser checks do not
-substitute for physical Pixel results. The
-[trial owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) and
-[1.1 update report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
-remain development evidence. Native iOS and public store distribution are later
+substitute for physical Pixel results. The dated production 1.1 owner report and
+pending 1.2 device acceptance are summarized in [Current work](./CURRENT_WORK.md).
+Native iOS and public store distribution are later
 outcomes with separate toolchain, signing and device requirements.

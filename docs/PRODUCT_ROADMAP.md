@@ -1,10 +1,10 @@
 # Personal market platform roadmap
 
-Updated September 24, 2026 from the owner's explicit goal reset. This is the
-authority for current product goals and delivery order. The older Sprint 0 brief,
-build history and personal breadth roadmap preserve history; their narrower
-notebook, U.S.-stocks-only and competitor-layout exclusions no longer define the
-target. Existing correctness, privacy and release requirements still apply.
+Updated October 3, 2026. This document defines the durable product goals and
+capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
+release and the selected next task. The September market-platform goal remains;
+the October delivery sequence first established a usable managed website and
+Android client. Older sprint plans preserve their original scope and evidence.
 
 ## Goal and constraints
 
@@ -44,14 +44,33 @@ financial panels, valuation and peer tools, screening controls, watchlist/notes,
 portfolio ledger/returns, filing inbox, local storage and source controls. Improve
 their composition and data access instead of starting a replacement codebase.
 
-The accepted selected-quarter assessment remains running. The later compact
-evidence transport work is preserved and unreleased; its four retained real-file
+The local research profile includes the accepted selected-quarter assessment.
+The later compact evidence transport work is preserved and unreleased; its four retained real-file
 checks yielded no complete primary graph. Further structural parsing work is an
 optional deeper-evidence track, not a prerequisite for a market homepage, news,
 calendar or correctly labelled provider financials. Never label an unverified
 provider value as independently filing-verified or silently relax a calculation.
 
-## Delivery sequence
+## Current managed baseline and next selection
+
+The managed website and signed Android 1.2 package share Discover, a private
+watchlist with notes and ordering, read-only Annual reports and explicit AAPL
+one-month EOD close history. Catalog recovery, report cancellation, Android Back
+and same-Activity stop/resume have focused synthetic coverage. One live AAPL
+browser request passed on October 3; broader provider coverage and the physical
+Android 1.2 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
+for the exact source, delivery status and limits.
+
+The current task makes this repository understandable and reproducible for new
+contributors and AI agents. After that, choose one visible improvement from the
+working managed app. Preserve usable data, unsaved drafts and recoverable error
+states as capabilities grow. The broader local research tools remain available
+in their separate profile; their existence does not establish managed delivery.
+
+Repomix automation remains pending; [AI context](./AI_CONTEXT.md) records the
+current dependency blocker and the manual source-reading path.
+
+## Longer-term capability sequence
 
 | Milestone                                        | User-visible outcome                                                                                                                                                           | Completion evidence                                                                                                                                                                                                                                   |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -67,17 +86,15 @@ M3 source discovery can run alongside M1/M2. A supported multi-asset feed can en
 earlier; M5 does not permanently defer broader markets. Do not hold an available
 calendar or market module hostage to unrelated SEC interpretation work.
 
-### First implementation outcome
+### Selecting the next product outcome
 
-Deliver M1 together with the minimum company-page connection needed to use it.
-Build a small version that works end to end and supports later layers through
-clear module boundaries. Keep the working release available while adding each
-capability. Choose durable architecture for the full goal; a small initial data
-cohort is a supported product scope, not a throwaway implementation to replace.
-Start with the existing permitted equity sources and a small declared market board.
-Confirm benchmark/index or ETF access and identity handling before adding those
-cards. ETF proxies must be named as ETFs, not presented as index values. If a
-benchmark feed is unavailable, disclose that scope rather than fabricate a card.
+Select a bounded end-to-end outcome before implementation. The milestones above
+remain the expansion plan; they do not authorize all features or replace the
+current task recorded in Current work. A Markets-home slice should connect to a
+usable company page and start with existing permitted sources and a declared
+market board. Confirm benchmark/index or ETF access and identity handling before
+adding those cards. Label ETF proxies as ETFs. An unavailable benchmark feed
+must not produce a fabricated card.
 
 Movers calculated from a small board must say which board they cover. Whole-market
 gainers, sector performance and breadth need the corresponding complete cohort;
@@ -108,8 +125,8 @@ Failure of an optional verification panel must not erase unrelated usable data.
 Tiingo documents multiple feed families in its
 [API overview](https://www.tiingo.com/documentation/general) and
 [changelog](https://www.tiingo.com/documentation/general/changelog). This is a
-research lead, not proof that our account can use every product. No provider
-account, key or private configuration was inspected during the reset.
+research lead, not proof that our account can use every product. The original
+goal reset did not inspect provider credentials; later delivery acceptance is recorded separately in Current work.
 
 InvestingPro identifies S&P Global Market Intelligence and analyst consensus as
 inputs to its [fair-value service](https://www.investing-support.com/hc/en-us/articles/5921093968657-InvestingPro-s-Fair-Value).
@@ -118,7 +135,7 @@ Classify a feed-limited feature explicitly and deliver the independent useful wo
 
 ## Design direction
 
-Use the owner's screenshot as the market-portal information-architecture target:
+Use the market-portal reference as the information-architecture target:
 compact navigation/global search, dense readable data tables, a central chart/news
 area and a useful secondary rail. Market content should be visible immediately.
 There is no need to reproduce the advertising, broker promotions or sales hero.
@@ -152,10 +169,11 @@ competitors lack every similar feature.
 ## Engineering audit and feature specifications
 
 The [engineering audit](./ENGINEERING_AUDIT.md) maps the owner's principles to
-actual code and workflow findings. The next outcome is tracked in the adapted
-Spec Kit [Markets-home specification](../specs/001-markets-home/spec.md), with its
-plan and tasks. Use that bounded feature workflow; do not recreate setup,
-authentication or an entire project specification.
+actual code and workflow findings. The adapted Spec Kit
+[Markets-home specification](../specs/001-markets-home/spec.md) preserves that
+feature's plan and tasks for later selection. Check Current work before resuming it;
+it is not the active task merely because its specification exists. Reuse the
+established setup and authentication boundaries.
 
 FinanceDatabase is a selected future directory source for broader instrument
 discovery. Use pinned, classified records and explicit provider mappings. Its
@@ -189,6 +207,6 @@ home can use existing supported listings without waiting for a whole-directory i
 
 No reliable overall completion percentage or full-parity date exists yet. Forty
 calendar days of history do not establish engineering hours or a delivery velocity.
-After M0/M1, estimate the next milestones from measured delivery time and confirmed
+Estimate each selected milestone from measured delivery time and confirmed
 feeds. Full global premium-data parity may remain unavailable at zero added spend;
 that does not prevent a useful personal market platform.

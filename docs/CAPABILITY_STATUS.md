@@ -1,16 +1,19 @@
 # Capability status
 
-Updated 2026-09-24 UTC. Accepted application baseline:
-`2b2510bc677173d1c9700e9f13c5012a7a0c8a88` (selected-quarter SEC assessment,
-including the earlier Research Desk and financial-result price screen).
-This is the current capability scoreboard. [Current work](./CURRENT_WORK.md)
-owns the next outcome; the [product roadmap](./PRODUCT_ROADMAP.md) owns current
-goals and delivery order following the owner's September 24 reset. Historical
-exit matrices and release claims remain unchanged.
-The workspace checkpoint and release handoff own actual runtime and acceptance
-receipts. Preparing a later change does not advance this accepted baseline.
-Release-capacity tooling was separately accepted at
-`31b3b2a0cb0d63f3fc6015b0bad7f5e60a5a989e` without changing the running application.
+Updated October 3, 2026. [Current work](./CURRENT_WORK.md) owns current release
+status; the [product roadmap](./PRODUCT_ROADMAP.md) owns product goals. The detailed
+tables below retain the September 24 local-research assessment at
+`2b2510bc677173d1c9700e9f13c5012a7a0c8a88`. Those capabilities are not all available
+in the managed website or Android app.
+
+The accepted managed PR 26 release provides three-listing discovery, private
+shared watchlists, Annual reports and AAPL-only one-month EOD close history.
+Signed Android 1.2 is delivered; its physical-device acceptance remains open.
+One October 3 live AAPL browser request passed. Broader prices, managed financial
+models, portfolio tools, local-vault migration and iOS are not established by
+that delivery. Exact revisions and dated acceptance limits are in Current work.
+
+## Local research baseline
 
 The delivered [watchlist price and valuation screen](./PERSONAL_PRICE_VALUATION_SCREEN.md)
 uses explicitly loaded dated raw closes and provider P/E and P/B for up to twenty
@@ -119,24 +122,17 @@ research usually remain in active-session memory; exporting or retaining them
 needs permitted-source scope. Encrypted backup/restore package primitives do not
 prove an owner-facing recovery drill.
 
-The Codex development/health heartbeat is separate from the product and was
-paused at the end of the authorized work window. It is not a persistent app
-scheduler, OS notification service or alert-delivery soak. The older synthetic
-threshold evaluator likewise provides no background delivery.
+Development automation is separate from the application. A task scheduler or
+synthetic threshold evaluator does not establish persistent product alerts,
+OS notification delivery or the outstanding reliability soak.
 
-## Current delivery order
+## Selecting further work
 
-The owner chose a personal Investing.com-style platform using existing
-subscriptions and free sources. The [product roadmap](./PRODUCT_ROADMAP.md)
-defines visible acceptance for each milestone:
-
-1. Confirm the first page's actual source capabilities and desktop/narrow design,
-   then deliver a populated Markets home and direct company navigation.
-2. Connect complete company pages and discovery using the existing research tools.
-3. Add useful news and calendars; source work can run alongside the first pages.
-4. Expand Pro-style screening, models, comparisons, reports and portfolio review.
-5. Add broader markets and personal improvements as suitable feeds permit;
-   available asset classes need not wait for all preceding research features.
+Use Current work for the selected task and the product roadmap for expansion.
+The October managed website/Android sequence established a narrower daily-use
+client before the broader Markets, news, calendar and research milestones.
+Select a useful end-to-end improvement on that working baseline; do not infer
+that a local capability table makes its managed counterpart complete.
 
 Keep the latest compact SEC work parked. Its independent evidence track must meet
 existing correctness criteria if resumed, but does not block unrelated portal
