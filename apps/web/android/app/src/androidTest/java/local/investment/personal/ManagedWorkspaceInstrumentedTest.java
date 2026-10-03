@@ -380,6 +380,115 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedEod", "phase=late-discarded-back-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void switchingResearchPanelsPreservesDraftAndDiscardsLateAnnual() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        prepareDraftAndOpenAnnual();
+        awaitPage("Annual opens without a research request",
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null");
+        click(".managed-annual-report .trial-actions button:first-child");
+        assertPendingAnnualDraft();
+        assertFixtureReadCounts(0, 0);
+
+        click(".managed-annual-report button[aria-label='EOD close history for ZERO']");
+        String unloadedEod =
+            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            " && document.querySelector('.managed-annual-report') === null" +
+            " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
+            " && document.querySelector('.managed-eod-history .managed-eod-chart') === null" +
+            " && document.querySelector('.managed-eod-history table') === null" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history button')).some(b => b.textContent === 'Load one-month close history' && !b.disabled)";
+        awaitPage("switch aborts Annual and opens unloaded EOD", unloadedEod +
+            " && document.activeElement?.id === 'managed-eod-heading'");
+        assertResearchSwitchDraftAndCounts(0, 0);
+        click("#settle-cancelled-read");
+        assertResearchSwitchDraftAndCounts(0, 1);
+        awaitPage("late Annual completion cannot reopen a panel or load EOD", unloadedEod);
+        Log.i("ManagedResearchSwitch", "phase=late-annual-discarded; " + pageDiagnostic());
+
+        clickEodAction("Load one-month close history");
+        String loadedEod =
+            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            " && document.querySelector('.managed-annual-report') === null" +
+            " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
+            " && document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')";
+        awaitPage("explicit EOD load returns the same listing's exact closes and provenance", loadedEod);
+        assertResearchSwitchDraftAndCounts(1, 1);
+        retainSwitchedEodScreenshot();
+        awaitPage("loaded EOD evidence stays unchanged through capture", loadedEod);
+        Log.i("ManagedResearchSwitch", "phase=eod-loaded; " + pageDiagnostic());
+
+        click(".managed-eod-history button[aria-label='Annual report for ZERO']");
+        awaitPage("switch back opens Annual unloaded and clears EOD",
+            "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'" +
+            " && document.activeElement?.id === 'managed-annual-heading'" +
+            " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'false'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.querySelector('.managed-annual-report [role=alert]') === null" +
+            " && document.querySelector('.managed-eod-history') === null" +
+            " && document.querySelector('.managed-eod-chart') === null" +
+            " && Array.from(document.querySelectorAll('.managed-annual-report button')).some(b => b.textContent === 'Load annual report' && !b.disabled)");
+        assertResearchSwitchDraftAndCounts(1, 1);
+        assertRootHistory();
+        pressBack();
+        assertClosedDraft(true);
+        awaitPage("native Back leaves both research panels closed",
+            "document.querySelector('.managed-annual-report') === null && document.querySelector('.managed-eod-history') === null");
+        assertResearchSwitchDraftAndCounts(1, 1);
+        scenario.onActivity(activity -> {
+            assertNotNull("Original research Activity was collected", originalActivity.get().get());
+            assertNotNull("Original research WebView was collected", originalWebView.get().get());
+            assertSame("Panel switching must preserve the Activity", originalActivity.get().get(), activity);
+            assertSame("Panel switching must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("Panel switching must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        assertFixtureBoundary();
+        Log.i("ManagedResearchSwitch", "phase=back-original-opener, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    private void assertResearchSwitchDraftAndCounts(int eodReads, int lateAnnual) throws Exception {
+        assertFixtureReadCounts(1, lateAnnual);
+        awaitPage("panel switching retains draft and exact EOD calls",
+            DIAGNOSTICS + ".eod === " + eodReads + " && " + DIAGNOSTICS + ".eodAborted === 0" +
+            " && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void retainSwitchedEodScreenshot() throws Exception {
+        awaitPage("switched EOD canvas rendered",
+            "document.querySelector('.managed-eod-history canvas')?.width > 0" +
+            " && document.querySelector('.managed-eod-history canvas')?.height > 0");
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-eod-history canvas')?.scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Switched EOD chart did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const c = document.querySelector('.managed-eod-history canvas'); const v = visualViewport;" +
+            " if (!c || !v || c.width <= 0 || c.height <= 0) return false; const r = c.getBoundingClientRect();" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()";
+        awaitPage("switched EOD canvas visible", visible);
+        retainScreenshot("researchSwitchEodLoaded");
+        awaitPage("switched EOD canvas stayed visible", visible);
+    }
+
     private void clickEodAction(String label) {
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[contains(concat(' ',normalize-space(@class),' '),' managed-eod-history ')]//button[normalize-space(.)='" + label + "']"))

@@ -15,6 +15,7 @@ import {
 export interface EodHistorySelection {
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly listing: Omit<WatchlistMembership, "note">;
+  readonly cik: string | null;
   readonly origin: "discover" | "watchlist";
 }
 export interface ManagedEodHistoryState {

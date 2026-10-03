@@ -10,9 +10,11 @@ import type { ManagedEodHistory as Model } from "./managed-eod-history";
 export function ManagedEodHistory({
   model,
   onBack,
+  onAnnualReport,
 }: {
   model: Model;
   onBack: () => void;
+  onAnnualReport: () => void;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -83,6 +85,14 @@ export function ManagedEodHistory({
             Cancel close history
           </button>
         )}
+        <button
+          className="trial-secondary"
+          aria-label={`Annual report for ${state.selection.listing.symbol}`}
+          disabled={state.catalogChanged}
+          onClick={onAnnualReport}
+        >
+          Annual report
+        </button>
       </div>
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}

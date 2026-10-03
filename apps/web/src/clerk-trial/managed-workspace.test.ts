@@ -5,7 +5,12 @@ import type {
   PersonalSecurityMasterSearchResultDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
-import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
+import {
+  ManagedAnnualCooldownError,
+  ManagedCatalogChangedError,
+  ManagedEodCooldownError,
+  type ManagedApi,
+} from "./managed-api";
 import {
   listingMembership,
   ManagedWorkspace,
@@ -13,7 +18,7 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
-import { eodResponse } from "./eod-history-fixture";
+import { eodResponse, eodSelection } from "./eod-history-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
@@ -958,4 +963,315 @@ describe("annual panel within the managed workspace", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBeNull();
     expect(workspace.coordinator.getSnapshot().phase).toBe("retired");
   });
+});
+
+describe("same-listing research navigation", () => {
+  const zero: PersonalSecurityMasterSearchResultDto = {
+    ...eodSelection.listing,
+    cik: "0000000001",
+    matchKind: "current_symbol_exact",
+    matchedValue: "ZERO",
+  };
+  async function navigationFixture(
+    origin: "discover" | "watchlist",
+    panel: "annual" | "eod" = "annual",
+  ) {
+    const setup = fixture({
+      ...empty,
+      memberships: [listingMembership(zero), listingMembership(second)],
+    });
+    const { workspace, api } = setup;
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [zero, second],
+      totalMatches: 2,
+      limitApplied: 25,
+      normalizedQuery: "ZERO",
+    });
+    vi.mocked(api.annualReport).mockResolvedValue(await annualResponse());
+    vi.mocked(api.eodHistory).mockResolvedValue(eodResponse());
+    await ready(workspace);
+    workspace.note(zero.listingId, "Keep this unsaved thesis");
+    workspace.move(zero.listingId, 1);
+    if (origin === "discover") {
+      if (panel === "annual") workspace.openDiscoveryAnnual(zero);
+      else workspace.openDiscoveryEod(zero);
+    } else {
+      const member = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      if (panel === "annual") workspace.openWatchlistAnnual(member);
+      else workspace.openWatchlistEod(member);
+    }
+    return setup;
+  }
+
+  it.each([
+    { origin: "discover", panel: "annual" },
+    { origin: "discover", panel: "eod" },
+    { origin: "watchlist", panel: "annual" },
+    { origin: "watchlist", panel: "eod" },
+  ] as const)(
+    "switches from $origin $panel with the exact identity and no reads or writes",
+    async ({ origin, panel }) => {
+      const { workspace, api } = await navigationFixture(origin, panel);
+      const selected = workspace[panel].getSnapshot().selection;
+      const saved = workspace.coordinator.getSnapshot();
+      expect(selected).toMatchObject({
+        listing: eodSelection.listing,
+        catalogSnapshotSha256: digest,
+        cik: origin === "discover" ? zero.cik : null,
+        origin,
+      });
+      if (panel === "annual") workspace.switchToEod();
+      else workspace.switchToAnnual();
+      const target = workspace[panel === "annual" ? "eod" : "annual"];
+      expect(target.getSnapshot()).toMatchObject({
+        selection: selected,
+        response: null,
+        running: false,
+      });
+      expect(Object.isFrozen(target.getSnapshot().selection?.listing)).toBe(
+        true,
+      );
+      expect(workspace[panel].getSnapshot().selection).toBeNull();
+      expect(workspace.coordinator.getSnapshot()).toBe(saved);
+      expect(saved.dirty).toBe(true);
+      expect(saved.draft!.memberships[1]!.note).toBe(
+        "Keep this unsaved thesis",
+      );
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.search).toHaveBeenCalledOnce();
+      expect(api.status).toHaveBeenCalledOnce();
+      expect(api.load).toHaveBeenCalledOnce();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["discover", "watchlist"] as const)(
+    "clears loaded results on each switch while preserving the %s draft",
+    async (origin) => {
+      const { workspace, api } = await navigationFixture(origin);
+      const draft = workspace.coordinator.getSnapshot().draft;
+      await workspace.annual.load();
+      expect(workspace.annual.getSnapshot().response).not.toBeNull();
+      workspace.switchToEod();
+      expect(workspace.annual.getSnapshot().response).toBeNull();
+      expect(workspace.eod.getSnapshot().response).toBeNull();
+      await workspace.eod.load();
+      expect(workspace.eod.getSnapshot().response?.rows).toEqual(
+        eodResponse().rows,
+      );
+      workspace.switchToAnnual();
+      expect(workspace.eod.getSnapshot()).toMatchObject({
+        selection: null,
+        response: null,
+      });
+      expect(workspace.annual.getSnapshot()).toMatchObject({
+        response: null,
+        showingPrevious: false,
+        selection: { cik: origin === "discover" ? zero.cik : null, origin },
+      });
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["annual", "eod"] as const)(
+    "keeps the admitted discovery identity after query edits from %s",
+    async (panel) => {
+      const { workspace, api } = await navigationFixture("discover", panel);
+      const selected = workspace[panel].getSnapshot().selection;
+      workspace.setQuery("A different company");
+      expect(workspace.getSnapshot().results).toEqual([]);
+      if (panel === "annual") workspace.switchToEod();
+      else workspace.switchToAnnual();
+      expect(
+        workspace[panel === "annual" ? "eod" : "annual"].getSnapshot()
+          .selection,
+      ).toEqual(selected);
+      expect(workspace.getSnapshot().query).toBe("A different company");
+      expect(api.search).toHaveBeenCalledOnce();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+    },
+  );
+
+  it("retains the discovery CIK check after an EOD-to-Annual switch", async () => {
+    const { workspace, api } = await navigationFixture("discover", "eod");
+    workspace.switchToAnnual();
+    const response = await annualResponse();
+    vi.mocked(api.annualReport).mockResolvedValue({
+      ...response,
+      security: { ...response.security, cik: "0000000002" },
+    });
+    await workspace.annual.load();
+    expect(workspace.annual.getSnapshot()).toMatchObject({
+      response: null,
+      error: true,
+    });
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it.each(["success", "authentication failure"])(
+    "aborts Annual before EOD opens and fences late Annual %s",
+    async (outcome) => {
+      const { workspace, api } = await navigationFixture("discover");
+      const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+      vi.mocked(api.annualReport).mockReturnValue(held.promise);
+      const pending = workspace.annual.load();
+      const onOpen = vi.fn(() => {
+        if (workspace.eod.getSnapshot().selection) {
+          expect(vi.mocked(api.annualReport).mock.calls[0]![1].aborted).toBe(
+            true,
+          );
+          expect(workspace.annual.getSnapshot().selection).toBeNull();
+        }
+      });
+      const unsubscribe = workspace.eod.subscribe(onOpen);
+      workspace.switchToEod();
+      expect(onOpen).toHaveBeenCalled();
+      unsubscribe();
+      await workspace.eod.load();
+      const current = workspace.eod.getSnapshot();
+      if (outcome === "success") held.resolve(await annualResponse());
+      else held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.eod.getSnapshot()).toBe(current);
+      expect(workspace.annual.getSnapshot().response).toBeNull();
+      expect(workspace.coordinator.getSnapshot().phase).toBe("idle");
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["success", "authentication failure"])(
+    "aborts EOD before Annual opens and fences late EOD %s",
+    async (outcome) => {
+      const { workspace, api } = await navigationFixture("watchlist", "eod");
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(api.eodHistory).mockReturnValue(held.promise);
+      const pending = workspace.eod.load();
+      const onOpen = vi.fn(() => {
+        if (workspace.annual.getSnapshot().selection) {
+          expect(vi.mocked(api.eodHistory).mock.calls[0]![1].aborted).toBe(
+            true,
+          );
+          expect(workspace.eod.getSnapshot().selection).toBeNull();
+        }
+      });
+      const unsubscribe = workspace.annual.subscribe(onOpen);
+      workspace.switchToAnnual();
+      expect(onOpen).toHaveBeenCalled();
+      unsubscribe();
+      await workspace.annual.load();
+      const current = workspace.annual.getSnapshot();
+      if (outcome === "success") held.resolve(eodResponse());
+      else held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.annual.getSnapshot()).toBe(current);
+      expect(workspace.eod.getSnapshot().response).toBeNull();
+      expect(workspace.coordinator.getSnapshot().phase).toBe("idle");
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["annual", "eod"] as const)(
+    "does not escape a %s catalog-change refusal through switching",
+    async (panel) => {
+      const { workspace, api } = await navigationFixture("discover", panel);
+      if (panel === "annual")
+        vi.mocked(api.annualReport).mockRejectedValue(
+          new ManagedCatalogChangedError(),
+        );
+      else
+        vi.mocked(api.eodHistory).mockRejectedValue(
+          new ManagedCatalogChangedError(),
+        );
+      await workspace[panel].load();
+      const refused = workspace[panel].getSnapshot();
+      expect(refused.catalogChanged).toBe(true);
+      if (panel === "annual") workspace.switchToEod();
+      else workspace.switchToAnnual();
+      expect(workspace[panel].getSnapshot()).toBe(refused);
+      expect(
+        workspace[panel === "annual" ? "eod" : "annual"].getSnapshot()
+          .selection,
+      ).toBeNull();
+    },
+  );
+
+  it.each(["catalog", "membership", "retirement"])(
+    "cannot reopen either panel after %s invalidates the selection",
+    async (cause) => {
+      const { workspace, api } = await navigationFixture("watchlist", "eod");
+      if (cause === "catalog") {
+        vi.mocked(api.status).mockResolvedValue({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      } else if (cause === "membership") {
+        const draft = workspace.coordinator.getSnapshot().draft!;
+        workspace.coordinator.replaceDraft({
+          ...draft,
+          memberships: draft.memberships.map((member) =>
+            member.listingId === zero.listingId
+              ? { ...member, shareClassId: "other-share-class" }
+              : member,
+          ),
+        });
+      } else workspace.coordinator.retire();
+      workspace.switchToAnnual();
+      workspace.switchToEod();
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(workspace.eod.getSnapshot().selection).toBeNull();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["annual", "eod"] as const)(
+    "keeps %s cooldown across a round trip without automatic retry",
+    async (panel) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-10-03T00:00:00.000Z"));
+      try {
+        const { workspace, api } = await navigationFixture("discover", panel);
+        const nextAllowedAt = "2026-10-03T00:00:20.000Z";
+        if (panel === "annual")
+          vi.mocked(api.annualReport).mockRejectedValueOnce(
+            new ManagedAnnualCooldownError(nextAllowedAt),
+          );
+        else
+          vi.mocked(api.eodHistory).mockRejectedValueOnce(
+            new ManagedEodCooldownError(nextAllowedAt),
+          );
+        await workspace[panel].load();
+        if (panel === "annual") {
+          workspace.switchToEod();
+          workspace.switchToAnnual();
+        } else {
+          workspace.switchToAnnual();
+          workspace.switchToEod();
+        }
+        await workspace[panel].load();
+        const read = panel === "annual" ? api.annualReport : api.eodHistory;
+        expect(read).toHaveBeenCalledOnce();
+        expect(workspace[panel].getSnapshot().message).toContain(nextAllowedAt);
+        await vi.advanceTimersByTimeAsync(20_000);
+        expect(read).toHaveBeenCalledOnce();
+        await workspace[panel].load();
+        expect(read).toHaveBeenCalledTimes(2);
+        expect(api.save).not.toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
 });

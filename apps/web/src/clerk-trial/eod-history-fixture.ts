@@ -9,6 +9,7 @@ import type { EodHistorySelection } from "./managed-eod-history";
 export const eodSelection: EodHistorySelection = {
   catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
   origin: "discover",
+  cik: "0000000001",
   listing: {
     country: "US",
     exchangeMic: "XNAS",

@@ -18,6 +18,13 @@ failures clear the previous report. Account denial, catalog or selection changes
 Back and session retirement also clear it. Retention is limited to the open
 panel in memory; it adds no persistence, automatic retry or source request.
 
+The EOD close history control opens the other research view for the same captured
+listing. Switching closes and clears this report, including any previous report
+retained during refresh. It preserves the original workspace opener and draft,
+keeps the Annual cooldown and requires an explicit load in the new view. See the
+[navigation contract](MANAGED_RESEARCH_NAVIGATION.md) and
+[current delivery status](CURRENT_WORK.md).
+
 Android Back uses the same close action as Back to workspace: it cancels a
 pending read, keeps the watchlist draft and restores focus to the opening
 control. The native listener belongs to the active workspace and is removed

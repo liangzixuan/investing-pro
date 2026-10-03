@@ -13,6 +13,12 @@ The mounted workspace retains its unsaved notes and order. Android Back closes
 the panel through the same action and restores focus to its opening control.
 There is no automatic load, retry, prefetch or refresh on resume.
 
+The Annual report control opens the other research view for this exact listing.
+Switching cancels any pending EOD read and clears its prices; Annual loading
+remains explicit. The original workspace opener and draft are preserved, as is
+the EOD cooldown. See the [navigation contract](MANAGED_RESEARCH_NAVIGATION.md)
+and [current delivery status](CURRENT_WORK.md).
+
 ## Source and identity
 
 Authenticated `POST /v1/managed/eod-history` accepts at most 4 KiB and returns at

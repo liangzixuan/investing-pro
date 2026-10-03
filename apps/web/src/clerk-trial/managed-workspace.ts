@@ -13,7 +13,10 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
-import { ManagedAnnualReport } from "./managed-annual-report";
+import {
+  ManagedAnnualReport,
+  type AnnualReportSelection,
+} from "./managed-annual-report";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { SaveCoordinator } from "./save-coordinator";
 import type { TrialSession } from "./session";
@@ -365,6 +368,7 @@ export class ManagedWorkspace {
     this.eod.open({
       catalogSnapshotSha256: snapshot.snapshotSha256,
       listing: listingIdentity(result),
+      cik: result.cik,
       origin: "discover",
     });
   }
@@ -377,8 +381,40 @@ export class ManagedWorkspace {
     this.eod.open({
       catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
       listing: listingIdentity(member),
+      cik: null,
       origin: "watchlist",
     });
+  }
+  private canSwitchResearch(selection: AnnualReportSelection | null) {
+    if (
+      this.retired ||
+      !selection ||
+      selection.catalogSnapshotSha256 !== this.state.snapshot?.snapshotSha256
+    )
+      return false;
+    if (selection.origin === "discover") return true;
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      selection.cik === null &&
+      draft?.snapshotSha256 === selection.catalogSnapshotSha256 &&
+      draft.memberships.some((member) =>
+        membershipMatchesResult(member, selection.listing),
+      )
+    );
+  }
+  switchToAnnual() {
+    const { selection, catalogChanged } = this.eod.getSnapshot();
+    if (!selection || catalogChanged || !this.canSwitchResearch(selection))
+      return;
+    this.eod.close();
+    this.annual.open(selection);
+  }
+  switchToEod() {
+    const { selection, catalogChanged } = this.annual.getSnapshot();
+    if (!selection || catalogChanged || !this.canSwitchResearch(selection))
+      return;
+    this.annual.close();
+    this.eod.open(selection);
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;

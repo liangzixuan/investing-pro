@@ -3,7 +3,11 @@ import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ManagedEodHistory as Panel } from "./ManagedEodHistory";
 import { ManagedEodHistory } from "./managed-eod-history";
-import { ManagedEodHistoryError, type ManagedApi } from "./managed-api";
+import {
+  ManagedCatalogChangedError,
+  ManagedEodHistoryError,
+  type ManagedApi,
+} from "./managed-api";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 
 const focusHooks = vi.hoisted(() => ({
@@ -11,6 +15,7 @@ const focusHooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
   index: 0,
   layout: undefined as undefined | (() => void),
+  effect: undefined as undefined | (() => void),
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
@@ -22,7 +27,8 @@ vi.mock("react", async (original) => {
       return (focusHooks.refs[index] ??= { current: value });
     },
     useEffect: (effect: () => void, dependencies: React.DependencyList) => {
-      if (!focusHooks.enabled) actual.useEffect(effect, dependencies);
+      if (focusHooks.enabled) focusHooks.effect = effect;
+      else actual.useEffect(effect, dependencies);
     },
     useLayoutEffect: (
       effect: () => void,
@@ -50,6 +56,7 @@ afterEach(() => {
   focusHooks.refs = [];
   focusHooks.index = 0;
   focusHooks.layout = undefined;
+  focusHooks.effect = undefined;
   vi.unstubAllGlobals();
 });
 interface ButtonProps {
@@ -66,6 +73,64 @@ function buttons(node: React.ReactNode): React.ReactElement<ButtonProps>[] {
 }
 
 describe("managed close history panel", () => {
+  it("focuses the selected heading and exposes Annual switching without loading, including during a read", async () => {
+    focusHooks.enabled = true;
+    let settle!: (value: ReturnType<typeof eodResponse>) => void;
+    const read = vi.fn<ManagedApi["eodHistory"]>().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const model = new ManagedEodHistory(read, vi.fn());
+    const onAnnualReport = vi.fn();
+    const onBack = vi.fn();
+    const render = () => {
+      focusHooks.index = 0;
+      return buttons(Panel({ model, onBack, onAnnualReport }));
+    };
+    model.open(eodSelection);
+    const controls = render();
+    const focus = vi.fn();
+    focusHooks.refs[0]!.current = { focus };
+    focusHooks.effect?.();
+    expect(focus).toHaveBeenCalledOnce();
+    const switchButton = controls.find(
+      (button) => button.props.children === "Annual report",
+    )!;
+    expect(switchButton.props.disabled).toBe(false);
+    switchButton.props.onClick!({ currentTarget: {} });
+    expect(onAnnualReport).toHaveBeenCalledOnce();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(read).not.toHaveBeenCalled();
+    const pending = model.load();
+    const pendingSwitch = render().find(
+      (button) => button.props.children === "Annual report",
+    )!;
+    expect(pendingSwitch.props.disabled).toBe(false);
+    pendingSwitch.props.onClick!({ currentTarget: {} });
+    expect(onAnnualReport).toHaveBeenCalledTimes(2);
+    expect(read).toHaveBeenCalledOnce();
+    model.close();
+    settle(eodResponse());
+    await pending;
+  });
+  it("disables the Annual switch after the selected catalog changes", async () => {
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockRejectedValue(new ManagedCatalogChangedError());
+    const model = new ManagedEodHistory(read, vi.fn());
+    model.open(eodSelection);
+    await model.load();
+    const html = renderToStaticMarkup(
+      <Panel model={model} onBack={vi.fn()} onAnnualReport={vi.fn()} />,
+    );
+    expect(html).toMatch(
+      /<button[^>]*aria-label="Annual report for ZERO"[^>]*disabled=""[^>]*>Annual report<\/button>/u,
+    );
+    expect(html).toContain("Refresh the catalog");
+    expect(read).toHaveBeenCalledOnce();
+  });
   it.each([true, false])(
     "restores focused Cancel only after Load is enabled at commit (Cancel focused: %s)",
     async (focused) => {
@@ -82,7 +147,7 @@ describe("managed close history panel", () => {
       const pending = model.load();
       const render = () => {
         focusHooks.index = 0;
-        return Panel({ model, onBack: vi.fn() });
+        return Panel({ model, onBack: vi.fn(), onAnnualReport: vi.fn() });
       };
       const initial = buttons(render());
       expect(
@@ -124,7 +189,11 @@ describe("managed close history panel", () => {
     const model = new ManagedEodHistory(read, vi.fn());
     const html = () =>
       renderToStaticMarkup(
-        <Panel model={model} onBack={() => model.close()} />,
+        <Panel
+          model={model}
+          onBack={() => model.close()}
+          onAnnualReport={vi.fn()}
+        />,
       );
     expect(html()).toBe("");
     model.open(eodSelection);
@@ -161,7 +230,9 @@ describe("managed close history panel", () => {
       .mockRejectedValueOnce(new ManagedEodHistoryError("source_rate_limited"));
     const model = new ManagedEodHistory(read, vi.fn());
     const html = () =>
-      renderToStaticMarkup(<Panel model={model} onBack={vi.fn()} />);
+      renderToStaticMarkup(
+        <Panel model={model} onBack={vi.fn()} onAnnualReport={vi.fn()} />,
+      );
     model.open(eodSelection);
     await model.load();
     const pending = model.load();

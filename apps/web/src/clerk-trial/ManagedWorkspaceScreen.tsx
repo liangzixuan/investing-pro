@@ -324,8 +324,13 @@ export function ManagedWorkspaceScreen({
           <ManagedAnnualReport
             model={workspace.annual}
             onBack={backToWorkspace}
+            onEodHistory={() => workspace.switchToEod()}
           />
-          <ManagedEodHistory model={workspace.eod} onBack={backToWorkspace} />
+          <ManagedEodHistory
+            model={workspace.eod}
+            onBack={backToWorkspace}
+            onAnnualReport={() => workspace.switchToAnnual()}
+          />
           <section
             className="trial-panel"
             aria-labelledby="managed-discover-heading"

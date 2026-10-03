@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   request,
@@ -24,6 +25,55 @@ import {
   type ManagedApi,
 } from "./managed-api";
 import { TrialApiError } from "./api";
+
+const panelHooks = vi.hoisted(() => ({
+  enabled: false,
+  refs: [] as Array<{ current: unknown }>,
+  index: 0,
+  effects: [] as Array<() => void>,
+}));
+vi.mock("react", async (original) => {
+  const actual = await original<typeof React>();
+  return {
+    ...actual,
+    useRef: (value: unknown) => {
+      if (!panelHooks.enabled) return actual.useRef(value);
+      const index = panelHooks.index++;
+      return (panelHooks.refs[index] ??= { current: value });
+    },
+    useLayoutEffect: (
+      effect: () => void,
+      dependencies: React.DependencyList,
+    ) => {
+      if (panelHooks.enabled) panelHooks.effects.push(effect);
+      else actual.useLayoutEffect(effect, dependencies);
+    },
+    useSyncExternalStore: (
+      subscribe: (listener: () => void) => () => void,
+      getSnapshot: () => unknown,
+      getServerSnapshot: () => unknown,
+    ) =>
+      panelHooks.enabled
+        ? getSnapshot()
+        : actual.useSyncExternalStore(
+            subscribe,
+            getSnapshot,
+            getServerSnapshot,
+          ),
+  };
+});
+interface ControlProps {
+  children?: React.ReactNode;
+  disabled?: boolean;
+  onClick?: () => void;
+}
+function buttons(node: React.ReactNode): React.ReactElement<ControlProps>[] {
+  if (!React.isValidElement<ControlProps>(node)) return [];
+  return [
+    ...(node.type === "button" ? [node] : []),
+    ...React.Children.toArray(node.props.children).flatMap(buttons),
+  ];
+}
 
 const selection: AnnualReportSelection = {
   catalogSnapshotSha256: request().catalogSnapshotSha256,
@@ -62,11 +112,21 @@ function fixture() {
     readError,
     html: () =>
       renderToStaticMarkup(
-        <Panel model={model} onBack={() => model.close()} />,
+        <Panel
+          model={model}
+          onBack={() => model.close()}
+          onEodHistory={vi.fn()}
+        />,
       ),
   };
 }
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  panelHooks.enabled = false;
+  panelHooks.refs = [];
+  panelHooks.index = 0;
+  panelHooks.effects = [];
+});
 
 const laterResponse = () =>
   response(
@@ -75,6 +135,44 @@ const laterResponse = () =>
   );
 
 describe("managed annual refresh", () => {
+  it("focuses the selected heading and exposes EOD switching without loading, including during a read", async () => {
+    panelHooks.enabled = true;
+    const { model, load } = fixture();
+    const onEodHistory = vi.fn();
+    const onBack = vi.fn();
+    const render = () => {
+      panelHooks.index = 0;
+      panelHooks.effects = [];
+      return buttons(Panel({ model, onBack, onEodHistory }));
+    };
+    model.open(selection);
+    const controls = render();
+    const focus = vi.fn();
+    panelHooks.refs[0]!.current = { focus };
+    for (const effect of panelHooks.effects) effect();
+    expect(focus).toHaveBeenCalledOnce();
+    const switchButton = controls.find(
+      (button) => button.props.children === "EOD close history",
+    )!;
+    expect(switchButton.props.disabled).toBe(false);
+    switchButton.props.onClick!();
+    expect(onEodHistory).toHaveBeenCalledOnce();
+    expect(onBack).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
+    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+    load.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    const pendingSwitch = render().find(
+      (button) => button.props.children === "EOD close history",
+    )!;
+    expect(pendingSwitch.props.disabled).toBe(false);
+    pendingSwitch.props.onClick!();
+    expect(onEodHistory).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenCalledOnce();
+    model.close();
+    held.reject(new TrialApiError("aborted"));
+    await pending;
+  });
   it.each([
     new TrialApiError("unavailable"),
     new ManagedAnnualReportError("request_timeout"),
@@ -474,6 +572,9 @@ describe("managed annual read", () => {
     expect(html()).toContain("Refresh the catalog");
     expect(html()).toMatch(
       /<button[^>]*disabled=""[^>]*>Load annual report<\/button>/u,
+    );
+    expect(html()).toMatch(
+      /<button[^>]*aria-label="EOD close history for ZERO"[^>]*disabled=""[^>]*>EOD close history<\/button>/u,
     );
   });
 
