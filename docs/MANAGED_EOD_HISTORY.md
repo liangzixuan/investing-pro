@@ -1,12 +1,12 @@
 # Managed EOD history
 
-The managed workspace opens Price history from an admitted Discover result or
+The managed workspace opens EOD close history from an admitted Discover result or
 watchlist listing. Load is explicit. The first slice requests one calendar month
 of daily raw USD closes and shows the last observed trading-date close, chart,
 exact decimal table, requested dates, completion time and Tiingo attribution.
 It does not calculate adjusted returns or claim that the last close is a live quote.
 
-Only one Annual report or Price history panel is open at a time. Price rows stay
+Only one Annual report or EOD close history panel is open at a time. Price rows stay
 in that panel's memory. Refresh, Cancel, Back, selection changes, catalog changes
 and session retirement clear them. Late responses cannot restore cleared rows.
 The mounted workspace retains its unsaved notes and order. Android Back closes
@@ -72,9 +72,14 @@ EOD while the existing workspace and Annual report remain available.
 node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts managed <server-config-path> <sec-config-path> <eod-config-path>
 ```
 
-The owner confirmed private Tiingo Individual Starter display on desktop and
-phone. AAPL is the first intended live acceptance target. Production mappings
-remain closed until private provisioning, exact provider mapping, shared hosted
-admission and bounded live acceptance are recorded in workspace CURRENT.
+The selected private desktop/phone use and exact AAPL USD mapping were accepted
+for the managed deployment. Production enables only AAPL; GOOG and GOOGL remain
+closed for EOD. Shared hosted admission and the API/site deliveries passed their
+separate checks. On October 3, one explicit browser load returned 21 unique,
+increasing dates from September 3 through October 2 for the September 3 to
+October 3 requested window. Back restored the opening control without a
+watchlist write. This establishes that one request, not broader symbol coverage
+or ongoing availability. [Current work](./CURRENT_WORK.md) records the release.
+
 Synthetic tests use invented rows and no provider connection. They establish no
 live coverage, production deployment, signed APK update or physical-device pass.

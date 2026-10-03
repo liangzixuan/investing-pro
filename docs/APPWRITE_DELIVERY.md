@@ -1,16 +1,16 @@
 # Appwrite delivery
 
-The owner approved GitHub checks, Appwrite staging, BrowserStack against the
-exact build, then production promotion. The pipeline packages the production
-Clerk web client. The connected managed version adds Discover and the full
-shared watchlist through a separate service. The accepted development APK
-and local research workspace remain separate. Production Android, owner-data
-migration and broader research features are later outcomes.
+The website delivery flow runs GitHub source checks, stages one production
+client archive, checks that build with BrowserStack, then promotes the same
+archive after normal production approval. The current managed client includes
+Discover, the shared watchlist, Annual reports and AAPL EOD close history.
+Its API deployment, Android package and local research workspace have separate
+acceptance boundaries.
 
-The production web demo completed this flow on September 30 at main `b2172d26`.
-The [delivery status table](./CURRENT_WORK.md#delivery-status) records its site
-and API deployment IDs and the separate authenticated desktop/Pixel evidence.
-Subsequent source-only catalog work has not replaced those deployments.
+PR 26 completed the website flow from main `ae2cfbb48c672a5c960bce3910b526663f52734b`.
+[Current work](./CURRENT_WORK.md#accepted-release) records its API/site identities,
+signed Android 1.2 delivery and dated live-browser acceptance. BrowserStack uses
+an inert client and does not establish authenticated research or phone behavior.
 
 ## Release sequence
 
@@ -132,13 +132,12 @@ also part of their existing workspace test discovery. A static production build
 and archive check establish local packaging only. Source review, tests and a
 prepared workflow do not establish a successful cloud deployment.
 
-The first disconnected staging/test/production flow completed on September 29
-at `a3366e6`, with independent acceptance of the original production receipt.
-Both GitHub environments are restricted to `main`; the configured production
-review remains in place. The subsequent production synthetic API, private
-storage scenarios and API domain checks are accepted separately. The Clerk
-client delivery change still needs its own exact-revision checks, BrowserStack
-result and production receipt. Workspace CURRENT records actual outcomes.
+The first disconnected flow completed on September 29 at `a3366e6`. Later
+managed deliveries, including PR 26, retained the configured main-only
+environments and normal production approval. Each release needs its own source,
+archive, BrowserStack result and production receipt; earlier success cannot
+stand in for a new deployment. Accepted outcomes and their limits are summarized
+in [Current work](./CURRENT_WORK.md).
 See the
 [current filing acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) for the
 CI provenance repair prompted by PR 11. Backend

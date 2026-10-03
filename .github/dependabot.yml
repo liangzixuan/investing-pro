@@ -7,6 +7,13 @@ updates:
     open-pull-requests-limit: 5
     versioning-strategy: increase-if-necessary
 
+  - package-ecosystem: npm
+    directory: /tools/repomix
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    versioning-strategy: increase
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

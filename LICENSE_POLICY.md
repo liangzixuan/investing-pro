@@ -11,6 +11,36 @@ Denied without written counsel/procurement approval:
 
 Code licenses never grant provider-data, trademark, content, model, or dataset rights. Every exception requires a recorded owner, exact version/hash, approved use, renewal review date, and replacement plan.
 
+## Isolated repository-context tool
+
+The project owner explicitly selected Repomix for local and CI source-context
+generation on October 3, 2026. Engineering admits the separately locked
+`tools/repomix` graph for that use only. It is outside the application workspace,
+and its dependencies are neither bundled into the website/API/APK nor included
+in generated context artifacts. This does not add licenses to the proprietary
+runtime allowlist or establish counsel, redistribution or provider-data approval.
+
+The graph includes `jschardet@3.1.4`, declared `LGPL-2.1+`, in addition to
+permissively licensed tooling. Its unmodified package retains the GNU Lesser
+General Public License 2.1 text. Repomix uses it for a non-UTF-8 decoding fallback;
+our wrapper admits only valid UTF-8 before invoking Repomix. The dependency stays
+in the inventory even though that fallback is outside the supported pack path.
+
+| Record                    | Value                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Owner and approved use    | Project engineering, under the explicit Repomix request; local/CI public-source context generation only                        |
+| Exact dependency          | `jschardet@3.1.4`; integrity `sha512-/kmVISmrwVwtyYU40iQUOp3SUPk2dhNCMsZBQX0R1/jZ8maaXJ/oZIzUOiyOqcgtLnETFKYChbJ5iDC/eWmFHg==` |
+| Packaged license SHA-256  | `9b872a8a070b8ad329c4bd380fb1bf0000f564c75023ec8e1e6803f15364b9e9`                                                             |
+| Review by                 | November 3, 2026, or any tool lockfile/use change, whichever comes first                                                       |
+| Replacement or retirement | Re-review an upstream replacement when available; stop this tool's use before any unreviewed scope or distribution change      |
+
+The isolated graph and its advisory findings are reviewed separately from the
+production-only license checker. Keep package license files intact, lifecycle
+scripts disabled, exact pins and integrity hashes, and the dependency age rule.
+Unlicense and Blue Oak 1.0 tooling dependencies remain within this same isolated
+engineering-use boundary. See [AI context](docs/AI_CONTEXT.md) for generation,
+coverage and dependency-review limits.
+
 ## Recorded Sprint 0 exception
 
 | Package      |      Version | License   | Approved use                                                            | Owner                  | Review by  | Replacement plan                                                                                      |

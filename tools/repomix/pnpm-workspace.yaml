@@ -1,0 +1,8 @@
+packages: []
+autoInstallPeers: false
+saveExact: true
+sharedWorkspaceLockfile: false
+strictPeerDependencies: true
+minimumReleaseAge: 1440
+blockExoticSubdeps: true
+allowBuilds: {}

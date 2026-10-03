@@ -1,12 +1,12 @@
 # Appwrite watchlist storage
 
-Appwrite is the selected hosting candidate for personal phone and desktop use.
-The storage adapter uses the official `node-appwrite` 29.0.0 server SDK and the
-existing watchlist identity and payload rules. The separate [Clerk trial](./CLERK_TRIAL.md)
-connects it to an authenticated route, a synthetic watchlist screen and an Android
-bundle. Its isolated cloud storage proof is accepted. Root verified a signed-in
-desktop reload, and the owner reported passing the Pixel checklist for shared
-data and sessions. The ordinary client stays disconnected.
+Appwrite stores the managed website and Android app's shared private watchlist.
+The adapter uses the official `node-appwrite` 29.0.0 server SDK and the existing
+identity and payload rules. Clerk provides managed authentication; the separate
+[development trial](./CLERK_TRIAL.md) preserves the earlier synthetic integration.
+The production managed client is connected. The disconnected debug profile and
+local encrypted research vault remain separate. See [Current work](./CURRENT_WORK.md)
+for the accepted release and device limits.
 
 ## Data and authority
 
@@ -109,51 +109,26 @@ composition has exercised this transport against the isolated Appwrite tables.
 
 ## Cloud evidence and remaining acceptance
 
-The [independent cloud review](../../tmp/clerk-trial/storage-cloud-actual-independent-review.json)
-accepts creation, stale edits, pre-stage and overlapping updates, rollback,
-uncertain-result reconciliation and reopening with invented data. Six executions
-passed directly. The original overlap execution remains failed because its final
-inspection reached the ordinary request budget; a separate exact receipt-absence
-query completed that observation. Request limits and rollback reservation were
-preserved.
+The original isolated storage proof used invented data for creation, stale
+edits, pre-stage and overlapping updates, rollback, uncertain-result reconciliation
+and reopening. Its failed overlap inspection exhausted the ordinary request
+budget; a separate receipt-absence query completed that observation without
+relaxing the limits. Injected acknowledgement loss occurred after a real commit;
+it was not wire-level packet loss. Reopening in a later invocation did not prove
+a cold process restart.
 
-The uncertain-result case injected failure after a real committed acknowledgement;
-it did not simulate packet loss on the wire. Reopen read the saved payload in a
-later function invocation and does not establish a cold process restart. These
-results do not establish owner migration or application session behavior.
+The managed API, website and signed Android package have since been delivered.
+The production 1.1 upgrade/checklist was owner-reported as passed; physical 1.2
+acceptance remains open. Neither report authorizes migration or test writes to
+existing owner records. Extended expiry/retirement races, uncertain-save recovery
+under real interruptions and long-running daily use remain bounded acceptance
+questions, alongside the existing focused tests.
 
-The API and website are active. The
-[public smoke receipt](../../tmp/clerk-trial/public-trial-smoke-attempt1/passed.json)
-records four matching deployed assets and four unauthenticated API boundary checks.
-The [owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) separately
-records successful Pixel checklist results for sign-in, shared synthetic data,
-stale drafts, independent sign-out, callback/Back and lifecycle behavior. No device
-logs were collected. The owner subsequently confirmed testing trial 1.1 after
-the update handoff; the [update report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
-records that overall confirmation without itemized device outcomes. The remaining acceptance is:
-
-1. Verify live denied/expired-session behavior, response-retirement races and
-   uncertain-save recovery beyond the completed checklist and focused tests.
-2. Verify production release signing and its install/update path. The owner
-   confirmation for the debug trial does not establish production signing.
-3. Before connecting the ordinary workspace, integrate its catalog and provider
-   status through the reviewed HTTPS profile. The trial's two invented entries
-   do not activate that workspace or authorize owner-data migration.
-
-The owner approved a separate [Clerk trial](./CLERK_TRIAL.md) for authentication,
-with Appwrite retaining server-owned storage. This replaces the proposed
-Appwrite-cookie design within that trial. Official Clerk SDKs manage credentials;
-short-lived session tokens reach React request memory. No custom token cache or
-Appwrite Account session is added. Android lifecycle and independent sign-out
-have owner-reported physical-device passes. Production session configuration
-still requires review. The ordinary
-disconnected APK retains its empty API origin and restrictive CSP; the trial has
-an explicit separate build profile. The data-free BrowserStack website copy
-cannot prove connected workflows.
-
-Actual checks, artifact hashes and cloud observations belong in workspace
-`CURRENT.md`, `tmp/appwrite-evaluation` and `tmp/clerk-trial`. Expected outcomes are
-not passes.
+Official Clerk SDKs manage credentials. Short-lived session tokens enter React
+request memory only when needed; the app adds no custom refresh-token cache or
+Appwrite Account session. BrowserStack checks an inert website copy and cannot
+prove these connected workflows. Public status is in [Current work](./CURRENT_WORK.md).
+Private operational evidence and account identifiers stay outside the repository.
 
 ## References
 

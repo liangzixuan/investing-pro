@@ -149,6 +149,40 @@ describe("main-push source proof", () => {
     ).toEqual([CHECK_WORKFLOWS[0], CHECK_WORKFLOWS[2], CHECK_WORKFLOWS[6]]);
   });
 
+  it("keeps a context-artifact change separate from deployment proof membership", () => {
+    const changed = [
+      "tools/repomix/package.json",
+      "tools/repomix/pack.mjs",
+      ".github/workflows/repomix.yml",
+    ];
+    const proof = proofFor(changed);
+    expect(proof.workflows.map((workflow) => workflow.path)).toEqual(
+      CHECK_WORKFLOWS,
+    );
+    expect(
+      proof.workflows
+        .filter((workflow) => workflow.required)
+        .map((workflow) => workflow.path),
+    ).toEqual([CHECK_WORKFLOWS[0], CHECK_WORKFLOWS[6]]);
+    expect(validateSourceCheckProof(proof, context, changed, sources)).toEqual(
+      proof,
+    );
+    expect(() =>
+      validateSourceCheckProof(
+        {
+          ...proof,
+          workflows: [
+            ...proof.workflows,
+            { ...proof.workflows[0], path: ".github/workflows/repomix.yml" },
+          ],
+        },
+        context,
+        changed,
+        sources,
+      ),
+    ).toThrow();
+  });
+
   it.each([
     "apps/web/android/app/src/main/AndroidManifest.xml",
     "apps/web/src/clerk-trial/ManagedWorkspaceScreen.tsx",

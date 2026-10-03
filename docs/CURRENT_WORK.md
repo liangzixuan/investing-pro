@@ -1,483 +1,99 @@
 # Current work
 
-Updated October 2, 2026. Build a personal Investing.com-style platform, then
-Pro-style research and personal improvements, using existing subscriptions/free
-sources. The workspace [launch plan](../../LAUNCH_ROADMAP.md) owns October delivery
-order; the [product roadmap](./PRODUCT_ROADMAP.md) retains longer-term scope.
-Workspace [CURRENT.md](../../CURRENT.md) owns live source/runtime checkpoints.
+Updated October 3, 2026. This is the portable status summary for the public
+repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
+order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
+operational receipts are retained separately and are not required to understand
+or develop the repository.
 
-## Delivery status
+## Accepted release
 
-Verified through October 2, 2026. Each row describes a separate product surface.
-Exact receipts and historical outcomes remain in workspace `CURRENT.md` and its
-linked handoffs; a later source merge is not a new deployment.
+PR 26 is merged as `ae2cfbb48c672a5c960bce3910b526663f52734b`, from candidate
+`36b632fb5a1ac26189e2caa2e232591498522dea`, with tree
+`a875a56a830f173fbfaa54cca67c4f18263fafa7`. Exact-main checks, original source-proof
+artifact and nine-case native evidence were accepted. These are source and
+synthetic-runtime evidence; delivery was accepted separately below.
 
-| Surface                  | Accepted evidence                                                                                                                                                                                                            | Remaining work                                                                                                                   |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Local research app       | Preserved a89 release and encrypted vault                                                                                                                                                                                    | Managed migration and recovery are separate work.                                                                                |
-| Development native trial | Trial 1.1 APK; owner-reported Pixel testing                                                                                                                                                                                  | Does not accept production native sign-in or signing custody.                                                                    |
-| Production web demo      | Preserved demo API `6abd440c837ddac21f65`; September 30 desktop save/read/reload and owner-reported Pixel browser/sign-out                                                                                                   | Synthetic saved version 1 remains separate from the managed workspace.                                                           |
-| Connected website        | Main `159a78cc` (PR25); site `6ac00784e5c0f7dfd196`, retained rollback `6abf7f6fa465424d049d`; accepted staging, exact-build check and same-archive promotion. API `6abe7cdba54599a11e59` has separate historical acceptance | AAPL, GOOG and GOOGL only, no delivered prices. Synthetic save/reconciliation coverage is separate from owner-record acceptance. |
-| Production native app    | Signed Investment 1.1.0 in `delivery/android-1.1.0`; same signer and external exFAT backup recovery accepted. Owner reported the in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17              | No per-step device logs were supplied. Later web changes require a separately delivered APK and native acceptance.               |
+| Surface                   | Accepted outcome                                                                                                                                                                               | Limits                                                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Managed API               | Deployment `6ac0621a276fa6041126`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed                | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac06b4e795ae249dc41`; exact staging archive promoted after the configured normal approval                                                         | Staging BrowserStack is an inert preview and does not exercise authenticated research                                                      |
+| Signed Android artifact   | Investment 1.2.0, code 3, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                                           | The 1.2 in-place installation and physical-phone behavior remain unverified                                                                |
+| Automated Android         | Nine passing API-36 emulator cases, with original reports and images; managed fixture exercises catalog recovery, Annual refresh, EOD chart/table, Back, cancellation and same-Activity resume | Invented data, debug test fixture; no production sign-in, process-death persistence or physical-device claim                               |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                                              | No per-step logs; this report does not accept 1.2                                                                                          |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                                             | No automatic migration or claim that these panels are available in the managed product                                                     |
 
-The October 2 website release retains the previous validated Annual report during
-refresh, transient failure, cooldown and Cancel, distinguishes catalog loading
-from Search and names each failed read's recovery action. Eight isolated Android
-cases and original artifact images are accepted for PR25; the installed APK was
-not updated.
+The accepted 1.2 APK is 6,626,936 bytes, SHA-256
+`5b9b27bf3384834f3725227b77b7aa8142e4d948dbbe567a1c0a98a3a1b5d958`.
+Its prior 1.1 artifact and service rollback identities remain preserved. Signed
+packages and operational evidence are not part of the public source tree.
 
-The owner confirmed private Tiingo Starter display on desktop and phone. The
-selected [managed EOD history](./MANAGED_EOD_HISTORY.md) source change adds one
-explicit month of raw closes for an admitted listing, with a shared request
-budget and server-only key. Synthetic implementation and native regression work
-are in progress. Private provisioning, exact provider mapping, hosted admission,
-API/site delivery and an updated APK still require their own acceptance.
-Workspace CURRENT records actual verification and publication.
+## What works in the managed product
 
-Keep Next.js for desktop and the shared React/Vite/Capacitor client for Android.
-Clerk supplies identity and the server enforces account/data access. Appwrite
-remains the selected managed service. The next credential-management evaluation
-is a separate scoped Doppler development trial: inspect consumer names and
-supported entitlement, prove harmless injection and failure/recovery behavior,
-then select real consumers. It must not reuse another project's secrets or infer
-native Windows readiness from that project's WSL setup.
+The fixed catalog contains AAPL, GOOG and GOOGL, preserving separate listing and
+share-class identities. Discover and My Watchlist support shared notes, order,
+removal, explicit saves, conflicts and uncertain-save reconciliation. Catalog
+startup and search failures name their explicit recovery action.
 
-Use [CodeScene](./CODESCENE.md) during substantive feature reviews to inspect
-maintenance findings for the affected files. Bind reports to their analyzed
-revision, verify findings against current source, and favor small changes that
-support the planned feature. Existing tests and release requirements still apply;
-hosted code-health scores do not assess unpublished work or prove correctness.
+An explicit [Annual report](MANAGED_SEC_ANNUAL.md) panel uses bounded SEC evidence.
+A refresh keeps the prior validated report visible through supported transient
+failure, cooldown and Cancel, with its original dates. The separate
+[EOD close history](MANAGED_EOD_HISTORY.md) panel loads one calendar month of raw
+USD closes only for AAPL. EOD refresh, Cancel, Back and retirement clear prices;
+there is no automatic request or persistent price cache. Both panels preserve
+the mounted watchlist draft and use the same close/focus action for Android Back.
 
-The first maintenance change separates primary-company quarterly-financial and
-valuation-history requests into `useCompanyFinancialDetailsData`. The workspace
-keeps company and session admission, navigation, metric choices, drafts and focus.
-The [research guide](./PERSONAL_COMPANY_RESEARCH.md) records the ownership boundary;
-workspace CURRENT records actual verification and publication status. The
-extraction does not connect the full workspace to the cloud or change its load
-controls.
+At 03:55 UTC on October 3, one explicit authenticated AAPL `1m` UI load succeeded.
+It showed Tiingo/raw USD history with 21 unique increasing dates from September 3
+through October 2, within the requested September 3 to October 3 window. Back
+restored focus; saved state was unchanged. No Refresh or watchlist write was
+performed. This one case establishes a bounded live journey, not broader symbol,
+field, entitlement, repeat reliability or physical-phone coverage.
 
-The Clerk handler keeps authentication, request cancellation and repository
-cleanup in one visible lifecycle. Private helpers handle protocol admission,
-result validation and finite error responses. Dependency-policy helpers separate
-ordered traversal from declaration checks and canonical lockfile scanning;
-compound-invalid fixtures preserve diagnostic precedence. These are maintenance
-changes to existing behavior, with actual verification recorded in workspace
-CURRENT.
+## Current task and next acceptance
 
-## Production configuration
+The active source task is a portable documentation and Repomix handoff. It changes
+neither product behavior nor deployment. Start with [AI context](AI_CONTEXT.md)
+for the overview and optional source exports, with their coverage limits.
 
-The synthetic Clerk client and function require explicit development or
-production profiles. Configuration is checked before output cleanup and runtime
-composition, and the function uses copied values with fixed storage targets.
-The production demo is web only and allows the exact application origin, with no
-native exception. Its account configuration accepts null for closed admission or one
-explicitly confirmed production subject; signature, issuer, session and subject
-checks precede storage. The selected production subject and its API deployment
-are now accepted; other accounts remain denied.
+The next device acceptance is a separately selected, brief 1.2 in-place upgrade
+and normal navigation/background-resume observation. Preserve the installed
+account and data; do not uninstall or clear data. Do not repeat passing native
+checks or the live AAPL request merely to produce another pass. A broader product
+slice must be selected from the [roadmap](PRODUCT_ROADMAP.md) with a concrete
+user-visible outcome and available data.
 
-The official public-key parser's direct runtime dependency is included in the
-license notice mapping. Profile validation keeps subject admission and origin
-agreement separate, and owned-domain fixtures retain their complete case set.
+## Open limits
 
-The next service layer uses the existing private transaction proof with explicit
-development and production profiles. Each profile fixes its synthetic database,
-invented identity and output directory, and the build marker binds the selected
-plan to its source. The seven scenarios keep their existing limits. Production
-schema, seven transaction scenarios and API/domain activation now have accepted
-evidence. The accepted development trial and local vault remain separate from
-the production synthetic web journey.
-
-The production web demo watchlist is accepted using its existing official Clerk
-SDK, controller and private Appwrite service. The
-delivery workflow builds the production client with an exact source marker and
-promotes the same archive. Staging boots an inert frame and notices without
-authentication or data requests; only the canonical production origin mounts
-Clerk. The staging check does not establish authenticated watchlist acceptance.
-The canonical desktop save/read/reload is accepted. The owner reported matching
-data and sign-out on Android Chrome on the Pixel, after which the desktop still
-loaded the same saved version without another sign-in. This is a limited
-synthetic web journey, not native production or full-workspace acceptance.
-
-Production Android has a signed artifact for managed Discover and My Watchlist,
-using the shared screen, session adapter and repository. The owner reported the
-1.1 in-place upgrade and supplied Pixel checklist passed; that report has no
-per-step device logs and does not accept later source changes. The
-[managed catalog](./MANAGED_SECURITY_CATALOG.md) now has a reviewed fixed cohort
-of AAPL, GOOG and GOOGL, with three candidates excluded and limited coverage
-shown explicitly. The integration adds a compact authenticated search
-handler and adapts the existing full-payload repository to exact listing lookup
-and receipt-first reconciliation. The managed API and website are delivered;
-production Android API and signed artifact are accepted separately from phone testing. The connected source includes exact listing selection, notes,
-ordering, removal, full-payload saves and explicit catalog review in batches of 50. A shared save coordinator owns uncertain commands and version conflicts.
-The separate managed function preserves the existing auth and repository rules;
-its separate database, runtime proof and same-archive website delivery have accepted
-evidence. Live desktop QA reused the owner session without changing records.
-One initial catalog error recovered with one explicit Refresh; its cause remains
-unknown. The accepted demo API and saved record stay intact.
-
-The active source outcome is an explicit [Annual report](./MANAGED_SEC_ANNUAL.md)
-panel for these admitted listings. A private hosted feasibility check produced
-normalized Apple annual evidence through the existing SEC provider and resolver.
-The source adds a shared request-admission row and preserves the current
-watchlist draft while viewing evidence. Isolated transaction checks, integrated
-acceptance and delivery remain separate gates; the deployed client does not yet
-include this panel. Price delivery remains held on hosted-display permissions.
-
-The [trial guide](./CLERK_TRIAL.md) describes selectors, output directories and
-remaining service work. The accepted development trial and owner-reported Pixel
-results remain separate from production sign-in and connected-workspace
-acceptance. Workspace CURRENT records actual source, checks and publication.
-
-## Approved delivery integration
-
-September 29 update: the first static delivery flow completed at main merge
-`a3366e6`. Independent acceptance of the original production receipt joined the
-same staging archive and production activation. The
-[actual receipt review](../../tmp/appwrite-evaluation/production-artifact-actual-independent-review.json)
-records that acceptance.
-That first static client was disconnected. The owner subsequently approved the separate
-[Clerk trial](./CLERK_TRIAL.md), using Appwrite storage and physical Pixel checks.
-Its API and website are active, and isolated storage evidence is accepted.
-Root verified an authenticated desktop reload, and the owner reported passing
-the Pixel checklist, including shared data and independent sign-out. The
-[owner report](../../tmp/clerk-trial/pixel-owner-acceptance.json) is separate from
-agent-observed desktop and cloud evidence. The owner later confirmed testing
-trial 1.1 after the update handoff; this is an overall owner report with no
-itemized device trace. The separate production service and selected-subject
-admission are now accepted for the limited synthetic web journey described above.
-
-The owner approved GitHub checks -> Appwrite staging -> BrowserStack on the exact
-build -> production promotion. The [delivery guide](./APPWRITE_DELIVERY.md)
-describes the static-site pipeline, source-check proof, artifact and credential
-setup used for that first delivery. The
-[current acceptance contract](./CURRENT_FILING_ACCEPTANCE.md) separates new
-execution evidence from retained historical records. The obsolete automatic
-disconnected-preview workflow is retired; the release workflow owns the current
-BrowserStack gate.
-
-## BrowserStack browser CI
-
-The owner selected BrowserStack Automate/Playwright for browser tests only.
-Installed app tests will use the owner's Pixel phones, starting with the confirmed
-Pixel 10 Pro XL / Android 17. The earlier App Automate upload handoff is cancelled;
-do not run native cloud tests. See [BrowserStack testing](./BROWSERSTACK_TESTING.md)
-for commands and evidence limits. The original deployed-preview workflow is
-retired as part of the production client delivery change. Its earlier
-GitHub run `36499410858`, attempt 2 at
-`50add08`, succeeded in 1 minute 11 seconds. Job `109191600638` succeeded in
-1 minute 6 seconds; its 31-second test step reported that the BrowserStack website
-runner completed successfully.
-
-BrowserStack listed `disconnected-web-smoke #CI 36499410858`, but its detail route
-and then the project list redirected to `request_access`. The new session,
-platform/result and terminal BrowserStack build state for that run remain independently
-unverified. The earlier 13-second Windows 11 / Chrome 154 session is separate
-evidence. Setup is one-time; each command or eligible push starts a new
-test. The manually deployed preview remains distinct from the test-code revision.
-The initial signed-in desktop/Pixel trial has passed with the evidence limits
-recorded in the [trial guide](./CLERK_TRIAL.md).
-
-The owner selected the next step on September 29: versioned Android updates and
-release-signing preparation. The module now accepts explicit version properties
-and uses a separate release signing configuration with required private environment
-inputs. The trial 1.1 APK (version code 2) built successfully with the original
-trial certificate and identical web assets. Four invalid-version checks and the
-missing-release-credentials check passed. The owner confirmed testing trial 1.1
-after the update handoff; the [report](../../tmp/clerk-trial/android-release-preparation/pixel-upgrade-owner-report.json)
-retains the exact statement and its limits. No production signing key was
-generated. The owner subsequently reported
-registering `investingpro.app`, superseding the earlier `investmentdesk.app`
-selection. A separate production instance is now created in the Investment
-Clerk application, with the existing development instance preserved. Clerk's
-five required DNS records are retained in the [domain handoff](../../tmp/clerk-trial/production-domain/plan.md).
-All six approved CNAME records are saved and match public DNS. Appwrite's
-`app.investingpro.app` binding is verified, and an HTTPS request confirmed the
-accepted static build with a valid certificate. The original domain rule and
-deployment were preserved. Clerk reports DNS, SSL and email verification complete.
-Separate HTTPS checks validated both Clerk host certificates. The account root
-and documented sign-in page returned HTTP 403 to unauthenticated HTTP requests,
-including one sign-in-page check after Clerk's verification completed.
-The cause remains unverified. A later normal Brave navigation rendered the
-production sign-in form without entering credentials or submitting it. Successful
-authenticated application access was accepted later for the limited synthetic
-web journey in the status table. The owner confirmed the production subject;
-the deployed service admits that subject while retaining signature, issuer,
-session and origin checks. Full workspace and production native acceptance
-remain separate.
-
-## Accepted trial and shared watchlist storage
-
-The owner approved working toward a personal computer/Android launch before
-November, with Android first and a signed native container sharing the React UI.
-The owner selected the existing Appwrite Education project as the hosting
-candidate, superseding the PC/Tailscale plan. A private, data-free Node function
-has executed successfully; this does not establish application persistence,
-authentication or phone access.
-The [Android guide](./ANDROID_CLIENT.md) and
-[specification](../specs/012-android-client/spec.md) define this first outcome.
-The client foundation is committed at `f4674a8f` and has produced a debug APK.
-It remains disconnected. Shared watchlist validation and the server-only
-Appwrite repository are implemented at `e71c9021`, with atomic version updates
-and durable command receipts. A separate server transport now bounds SDK
-requests, cancels expired I/O and prevents response warnings or error bodies
-from reaching logs. It preserves the official SDK's serialization and integer
-decoding through a private Undici dispatcher. The separate Clerk trial now connects
-this repository to an authenticated route, a synthetic React watchlist and an
-Android SDK session adapter. See [Appwrite storage](./APPWRITE_WATCHLIST.md).
-
-The [isolated cloud review](../../tmp/clerk-trial/storage-cloud-actual-independent-review.json)
-accepts seven scenarios: six passed directly, and the overlap scenario was completed
-by a separate exact receipt-absence query after its final inspection reached the
-request budget. The original failed report remains retained. The uncertain-result
-case injects failure after a committed acknowledgement; reopen uses a later function
-invocation. These do not establish actual packet loss or a cold process restart.
-The [public smoke receipt](../../tmp/clerk-trial/public-trial-smoke-attempt1/passed.json)
-records four matching deployed assets and four unauthenticated API boundary checks.
-The [APK review](../../tmp/clerk-trial/native-apk-actual-independent-review.json)
-accepts local packaging only. Separately, the owner reported passing the installed
-Pixel checklist for sign-in, shared synthetic data, stale drafts, independent
-sign-out and lifecycle behavior, then confirmed testing the version 1.1 update.
-The update report supplies no per-step device evidence. No owner data is migrated.
-
-Development uses `android-launch` on `codex/android-launch`, based on accepted
-a89 `65cb08c94dd8767d1a59b01dd1b7a355d5c5667e`. Its accepted build is
-`59fqkV8AwtuNStJkwXwuW`; exact runtime/rollback evidence stays in workspace CURRENT.
-A90 Previous/Next is parked intact in `markets-home` at `dc63dfa1`, with its
-feature/candidate refs and interrupted native evidence preserved. It is not an
-accepted release. This launch work does not resume the expired heartbeat window.
-
-Workspace CURRENT records active file ownership and independent review. Native
-App Live attempts established no device coverage. Preserve the
-accepted desktop runtime, disconnected APK and unrelated parked source. No owner
-data migration or provider requests are included.
-
-## A89 implementation context (released)
-
-This is the historical pre-acceptance checkpoint. Workspace CURRENT and the
-accepted a89 review supersede its pending-release statements.
-
-Plot every company in the complete loaded two-to-six-member board on the same
-observed dates, starting each line at 100. Reuse the Research comparison chart,
-existing exact result and installed ECharts; keep the numeric summary and exact
-table. Inspection survives unrelated rendering and resets when the snapshot is
-replaced. No acquisition, API, schema, dependency or calculation change is added.
-The [specification](../specs/010-markets-indexed-comparison/spec.md),
-[plan](../specs/010-markets-indexed-comparison/plan.md) and
-[tasks](../specs/010-markets-indexed-comparison/tasks.md) define acceptance.
-Implementation is complete and unreleased. Actual verification includes 98
-distinct chart/Markets/Research cases, 15 page-mode cases, affected web types,
-scoped lint/format, the full boundary check and configured production preflight
-`HkxL2ge1us4FFKVBgAHmS`. The registration delta is 15. Eight synthetic Brave
-groups cover complete cohorts, retained and replaced snapshots, unavailable
-states, exact-data fallback, response retirement, Research/Back and desktop/390px
-layouts. All fixture acquisition terminated in RAM, with no owner writes.
-Some first Research clicks had no effect before a fresh click succeeded. The
-unchanged navigation guards were traced; no cause or a89 regression was proven.
-The fixture's History shim does not establish production Next navigation. The
-full native/hosted gates, guarded activation and limited live QA remain pending.
-
-Spec owns the shared chart/tests, minimal Research interface and heading CSS.
-Finance owns Markets composition/tests/scoped styles. Performance owns the
-outside-Git composed fixture and independent review; root owns guides,
-integration and release. Preserve complete-cohort admission and all existing
-identity, draft, session, budget and response-lifetime rules.
-
-A88 is accepted, normally pushed and running at
-`bf5113cdd0e0a3708051620bfc5a590f5c2ad83a`, build `_4tKol895B21oz_tsVsGN`.
-Its [final review](../../tmp/filing-inbox-research/final-acceptance-independent-review.json)
-records 391 focused cases, 9,720 native passes, nine existing skips, 25 package
-typechecks plus root, 24 builds, 462 healthy samples, five hosted jobs, six
-synthetic and five limited live Brave groups. The live monitor was paused/off
-with no retained events; populated Research/Back remains synthetic/focused
-coverage. The [handoff](../../tmp/filing-inbox-research/release-handoff.md) records
-the exact runtime and rollback. All used a88 and older helpers are terminal.
-
-## A88 implementation context (released)
-
-This section preserves the pre-acceptance checkpoint. Its pending statements are
-historical; the accepted a88 status and evidence above supersede them.
-
-Open an exact current listing from a retained Daily SEC filing monitor entry in
-the existing company SEC section. In-app and browser Back retain the inbox page,
-settings draft, order and read status. Multiple listings remain separate choices;
-obsolete bindings cannot authorize Research. The
-[specification](../specs/009-filing-inbox-research/spec.md),
-[plan](../specs/009-filing-inbox-research/plan.md) and
-[tasks](../specs/009-filing-inbox-research/tasks.md) define the acceptance contract.
-Implementation is in progress and unreleased.
-
-The two focused suites establish 391 distinct passing cases and a registration
-increase of 30. Affected web types, scoped lint/format and the complete boundary
-check passed. The configured personal-workspace/local production web preflight
-passed with build `WnzkJPpWuLV16Irxeha7n`; the
-[preflight receipt](../../tmp/filing-inbox-research/production-web-preflight.json)
-reconciles its six input pins before and after compilation. Independent source
-review and six composed synthetic Brave groups passed. The browser checks cover
-exact listing choices, page and draft retention, in-app/browser Back, same-company
-SEC selection, obsolete bindings, delayed response retirement and phone layout.
-Navigation added no requests or saved-record writes in the RAM fixture. Its
-History shim does not establish production Next hydration or live API behavior;
-loaded company-data retention remains focused-test coverage. All release gates
-and limited live QA remain pending. Raw failed
-lint and label-assertion attempts are retained in the implementation handoffs;
-filtered cases are not counted as additional passes or product skips.
-
-Finance owns the monitor and its tests; Performance owns workspace composition
-and its tests; root owns integration, guides and release. Spec prepares the
-outside-Git composed fixture and independent review. Keep visibility separate
-from the monitor's enabled lifetime and distinguish new-click authority from
-durable handoff/return authority. Reuse existing routes and state. No API, schema,
-dependency, acquisition or saved-record write is added by navigation.
-
-A87 release `4a033698634ab217af21de9f0332c95b07941abc` is accepted, pushed and
-running with build `0L2DjUvoK99Djl82vErL0`. Its
-[final independent review](../../tmp/fed-announcements-v2/final-acceptance-independent-review.json)
-records 634 focused cases, 9,690 native passes and nine existing skips, 25
-typechecks, 24 builds, 398 healthy samples, seven successful required hosted
-jobs, seven synthetic and six limited live Brave groups. Live displayed ten of
-fifteen Fed announcements and checked Discover/Back and desktop/390px layouts.
-This establishes monetary-policy announcements, not general company-news
-coverage. Preserve that release and the rollback while a88 is unfinished.
-
-The [a87 handoff](../../tmp/fed-announcements-v2/release-handoff.md) and workspace
-CURRENT own actual release evidence and preserved failures. All consumed a87
-and older operational helpers remain terminal or stale. The sections below
-retain earlier implementation context; their pending statements are historical.
-
-## A87 implementation context (released)
-
-Add an independent, explicitly loaded Markets panel with up to ten attributed
-monetary-policy announcements. The [specification](../specs/008-fed-announcements/spec.md),
-[plan](../specs/008-fed-announcements/plan.md) and
-[tasks](../specs/008-fed-announcements/tasks.md) define the source, transport,
-lifecycle and acceptance requirements. Implementation is
-unreleased. Source, contract/provider/client and UI tests, dependency license
-inventory and boundary checks have passed. The configured personal-workspace/local
-web build and 16 page-mode cases also passed; see the
-[preflight](../../tmp/fed-announcements/production-web-preflight.json) and
-[independent review](../../tmp/fed-announcements/production-web-preflight-independent-review.json).
-Its build is `0jN1_VQa2fxRAPTekA-_e`, separate from the accepted running app.
-Independent product source/integration review and seven source-bound synthetic
-Brave groups passed; see the
-[integration review](../../tmp/fed-announcements/workspace-integration-independent-review.json)
-and [synthetic review](../../tmp/fed-announcements/synthetic-qa-independent-review.json).
-The synthetic checks covered explicit loading, busy and failed refresh retention,
-empty replacement, hide/Back and session retirement, independent panels, and
-desktop/390px layout and keyboard focus. They used invented RAM data; screenshots
-were inspected inline only. A disabled-control Return was refused by the browser
-tool, so duplicate-callback behavior remains unit-test coverage. The History shim
-does not establish production Next hydration or live feed access.
-Final feature/closure review, native and hosted gates, activation and limited live
-QA remain pending.
-The [implementation checkpoint](../../tmp/fed-announcements/implementation-checkpoint.md)
-records 631 distinct focused cases, including existing regressions. Its 28 source
-pins and accepted HEAD were reconciled before these documentation changes; use the
-[renewal reconciliation](../../tmp/fed-announcements/renewal-checkpoint-reconciliation.json)
-and subsequent evidence for current file hashes. Preserve the original checkpoint.
-Renewed work adds three focused workspace integration cases for actual route
-wiring, startup inactivity and shutdown disposal; see the
-[integration handoff](../../tmp/fed-announcements/workspace-integration-handoff.json).
-Workspace CURRENT.md records the renewed window through September 28, 06:29:44 UTC,
-with no new slice after 05:44:44 UTC that day. Scope and behavior are unchanged.
-
-A86 comparison release `dbfaf478722eab4cfde0fbe2b0c896d2fab37398` is the accepted
-running baseline, build `nWXiku1-SsHPISrPv44B1`. Its final independent review records
-9,495 native passes, nine existing skips, 25 typechecks, 24 builds, five hosted
-jobs, eight synthetic Brave groups and six limited live groups. Historical a86
-and earlier sections below retain the implementation context; CURRENT.md and the
-[final review](../../tmp/markets-cohort-comparison/final-acceptance-independent-review.json)
-own actual release status. Preserve the app and rollback while a87 is unfinished.
-
-Root owns dependency/client/composition/boundaries/docs; Spec owns contracts and
-OpenAPI; Finance owns provider/routes; Performance owns hook/panel/composition.
-The source prerequisite's single GET is consumed. Work offline from its retained
-fixture; no linked article requests or owner-record writes are part of QA.
-
-## A86 comparison implementation context
-
-Add a compact shared-date comparison beneath the loaded board. Show each
-company's adjusted-price change and maximum drawdown over observations present
-for every member, with the actual dates/count and a coverage disclosure. The
-[specification](../specs/007-markets-cohort-comparison/spec.md),
-[plan](../specs/007-markets-cohort-comparison/plan.md) and
-[tasks](../specs/007-markets-cohort-comparison/tasks.md) define acceptance.
-A86 completed implementation and release acceptance; its actual final evidence is
-linked above. This section retains its product and ownership context.
-
-Reuse the pure comparison engine with a maximum of six series. Preserve exact
-decimal calculations and validation before date intersection. Admit the whole
-expected cohort; never silently omit a failed or mismatched member. One company,
-incomplete histories and insufficient shared observations have explicit states.
-This is a shared window within loaded 1M histories, not a promised full month or
-independently reconstructed total return. Missing observations can hide declines.
-
-Derive from the same matching snapshot used by the board. Existing draft,
-session/catalog/member guards, Back, total-failure retention and partial-result
-replacement continue to govern it. No new selection, cache, acquisition owner,
-API, schema, dependency or chart. Both board modes still load explicitly; the
-fifteen-minute/four-start rolling-hour budget and independent BEA agenda remain.
-
-Spec owns the engine and tests; Performance owns the pure snapshot adapter and
-tests; Finance owns the table, tests and scoped styles; root owns composition,
-integration, specifications and release. See CURRENT and
-`tmp/markets-cohort-comparison/`. Mutation and adverse cases use synthetic records.
-Limited live QA permits one default-board load, at most three existing EOD GETs,
-without retries or owner writes. This feature itself adds no requests.
-
-## Accepted history and preserved work
-
-Markets watchlist release `3aaa62206dcbc929a15c0c3b16ace5759c977d84`, feature
-`2056bd4e3480b1ebc544009c78ed7c4b026dcc61`, was accepted, normally pushed and
-activated with build `fhvAHY2sO_Gv5b7mr8DF4`. A86 later replaced it; a85 is the
-preserved rollback release. Its
-[final independent review](../../tmp/markets-watchlist/final-acceptance-independent-review.json)
-records 9,437 native passes, nine existing skips, 25 typechecks, 24 builds,
-414 healthy samples, five successful required hosted jobs, nine synthetic
-Brave groups and six limited live groups. Live QA used one existing watchlist
-company and one explicit load, then verified chart focus, Research/Back and
-desktop/390px layouts. No owner record was changed. Multi-company and adverse
-states retain synthetic coverage; the source-derived one-EOD ceiling is not a
-measured upstream count.
-
-The preceding live BEA load showed six scheduled events, Eastern times and a dated 30-day
-window, with four simultaneous series kept separate. Phone-width focus and
-Discover/Back retention passed. Research/Back, adverse refreshes, DST and session
-retirement remain synthetic coverage. This is BEA schedule coverage without
-forecasts, released values, earnings, news or a complete economic calendar.
-
-The first a84 candidate failed the strict OpenAPI route-list assertion. Its
-revision, checkout and evidence remain preserved; the replacement added the
-missing literal without relaxing the assertion. All a85 and older observers are
-terminal. Used captures, stop helpers and reservations must not run again.
-
-Use `markets-home/` for development. Preserve the parked `research-cockpit/`
-changes, accepted a86 runtime and actual a85/a84/a83/a81 rollback manifests and checkouts
-recorded in CURRENT. Historical process IDs are never future action authority.
-The prior valuation diagnostic returned HTTP 400 before body parsing. No request
-defect or entitlement denial was established; its operation budget is consumed.
-Do not replay its helpers or repeat unchanged probing.
-
-M2 and M3 remain incomplete. The retained AAPL annual example has FY2023–2025 and
-six selected metrics, rather than ten complete years. The personal board and BEA
-agenda do not establish whole-market breadth or InvestingPro parity.
+- Managed EOD admission is AAPL only. GOOG/GOOGL remain catalog/Annual listings;
+  no complete market or adjusted-return coverage follows from the one live case.
+- Shared quota enforcement covers this application. It cannot measure other
+  clients' account consumption; provider rate limits still apply.
+- Unsaved drafts live in the mounted session. Same-Activity resume is covered;
+  durable offline editing and process-death draft restoration are not implemented.
+- Managed storage is not the local vault's application-layer encryption. Owner
+  data migration and a managed data-recovery design require separate acceptance.
+- Full local financials, comparisons, valuation, screening, portfolio and updates
+  are not yet integrated into the managed browser/Android surface.
+- Native iOS, public app-store distribution, a full accessibility audit, broad
+  performance coverage and sustained daily-use reliability remain separate work.
+- Existing CodeScene findings are advisory, source-reviewed maintenance evidence;
+  a score is not a correctness or product-coverage result.
 
 ## Working loop
 
-1. Read applicable AGENTS.md, CURRENT.md and the feature specification. Assign
-   concrete ownership and bounded acceptance before edits.
-2. Reuse current modules and dependencies. Preserve session, draft and acquisition
-   ownership when changing presentation.
-3. Verify meaningful behavior, types/lint/format and existing boundary/page-mode
-   checks. [Recorded lessons](../../tmp/company-overview/verification-order-lessons-v3.md)
-   require the production web build before generated closure for composition changes.
-4. Review explicit files and keep separate feature/generated closure commits with
-   the unchanged isolated native gate. Preserve failures and the healthy runtime.
-5. Push normally and require actual applicable hosted-job success at the exact
-   revision. Do not replay terminal observers or unchanged passing checks.
-6. Complete guarded activation, smoke and necessary Brave QA. Record actual
-   source/build/runtime evidence, limitations and next work outside Git and in CURRENT.
+Read [AGENTS.md](../AGENTS.md), this status and the feature guide. Reuse existing
+contracts, providers and state owners; choose a bounded change. Verify affected
+behavior and required types/lint/format/boundaries, then the applicable hosted
+checks for the actual candidate. Preserve failures and existing deployments.
 
-[Release classification](./RELEASE_CLASSIFICATION.md), the
-[engineering audit](./ENGINEERING_AUDIT.md) and
-[Spec Kit adaptation](../specs/README.md) govern this workflow. Keep local access,
-owner records and browser tabs intact. No credentials/private payloads in outputs.
+A source merge does not deploy the API, promote the website or update Android.
+Website delivery promotes the same accepted archive. API and Android have their
+own configuration, artifact and acceptance gates. See
+[website delivery](APPWRITE_DELIVERY.md), [Android](ANDROID_CLIENT.md) and
+[delivery source checks](APPWRITE_DELIVERY.md#release-sequence).
+
+Earlier local coverage is retained in [capability status](CAPABILITY_STATUS.md),
+[historical README](history/README-2026-10-03.md), [build history](BUILD_ROADMAP.md)
+and [ADRs](adr/). Their dated profiles and pending claims are historical, not
+instructions to repeat an operation or override this status.
