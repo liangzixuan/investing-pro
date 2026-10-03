@@ -87,11 +87,18 @@ This developer tool includes `jschardet` under LGPL-2.1-or-later and other upstr
 licenses. Its dependencies stay in the isolated tool directory; they are not
 bundled into the website, API, Android app or generated source pack.
 
+Repomix is a `devDependency` because this workspace only generates development
+documentation. Normal tool installation includes that graph. The unchanged
+Dependency Review workflow checks runtime scope; a passing result there does not
+establish that the development graph is free of vulnerabilities.
+
 The initial dependency audit also reported the unpatched `braces@3.0.3`
 [nested-pattern denial of service advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm).
 The wrapper rejects brace and wildcard characters in input paths, uses fixed
 configuration and does not accept user glob patterns. This limits the affected
 input surface; it is not an upstream fix or a clean vulnerability-audit claim.
+The build-time finding remains open until a reviewed dependency update removes
+it. Do not add an advisory exception or weaken the runtime gate to hide it.
 
 The wrapper copies admitted files into an owned temporary snapshot and invokes
 Repomix with explicit paths and fixed JSON configuration. It does not discover

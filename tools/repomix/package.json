@@ -11,7 +11,7 @@
     "test": "node --test pack.test.mjs",
     "pack": "node pack.mjs"
   },
-  "dependencies": {
+  "devDependencies": {
     "repomix": "1.18.1"
   }
 }
