@@ -1,0 +1,17 @@
+{
+  "name": "investment-repomix-tool",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "test": "node --test pack.test.mjs",
+    "pack": "node pack.mjs"
+  },
+  "devDependencies": {
+    "repomix": "1.18.1"
+  }
+}

@@ -32,4 +32,9 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "error",
     },
   },
+  {
+    // The isolated context tool runs native ESM JavaScript outside the app's TS projects.
+    files: ["tools/repomix/**/*.mjs"],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
 );

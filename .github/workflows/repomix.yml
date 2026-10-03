@@ -1,0 +1,64 @@
+name: Repository context
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Context detail
+        type: choice
+        options: [overview, curated, full]
+        default: overview
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repomix:
+    name: Repository context
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.19.0
+          package_json_file: tools/repomix/package.json
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Install locked context tool without lifecycle scripts
+        run: pnpm --dir tools/repomix install --frozen-lockfile --ignore-scripts --strict-peer-dependencies
+
+      - name: Test context boundaries
+        run: node --test tools/repomix/pack.test.mjs
+
+      - name: Generate source context
+        env:
+          PACK_MODE: ${{ inputs.mode || 'overview' }}
+        run: node tools/repomix/pack.mjs --mode="$PACK_MODE"
+
+      - name: Upload verified context
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repomix-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            repomix-output/repomix-output.md
+            repomix-output/provenance.json
+            repomix-output/coverage.json
+          if-no-files-found: error
+          retention-days: 7

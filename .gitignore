@@ -10,6 +10,11 @@ browserstack-sdk.log*
 .browserstack/
 .env
 .env.local
+.env.*
+*.p12
+*.pfx
+*.jks
+*.keystore
 .npmrc
 *.log
 *.tsbuildinfo
@@ -18,3 +23,8 @@ apps/api/tsup.config.bundled_*.mjs
 Thumbs.db
 .owner-local/
 owner-account.json
+
+# Generated repository context
+/repomix-output/
+/repomix-output-*/
+/repomix-output.md
