@@ -3,13 +3,14 @@
 For the active release, next deliverable, and working loop, start with
 [Current work](./CURRENT_WORK.md). This document preserves the detailed build
 history; [the product roadmap](./PRODUCT_ROADMAP.md) owns the current goals and
-delivery order following the owner's September 24, 2026 reset. The narrower
+capability sequence. Current work records the later managed delivery. The narrower
 historical scope below does not limit that target. Existing acceptance evidence
 and correctness/privacy requirements retain their meaning.
 
-Active filing-corpus profile: `personal_single_user_local`. The current project
+Historical filing-corpus profile: `personal_single_user_local`. That profile
 has one owner, runs locally, has no tenants or customers, is noncommercial,
-does not redistribute filing payloads, and is not a production service.
+does not redistribute filing payloads, and is not a production service. This
+description does not cover the later managed website and Android deployment.
 Enterprise approvals, multi-user controls, B15/V15, and production readiness
 are Out of scope for this profile. They return as gates if the profile widens.
 

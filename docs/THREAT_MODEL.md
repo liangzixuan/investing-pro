@@ -1,6 +1,15 @@
 # Sprint 0 through personal Cycle 3k-a1 threat model
 
-## Current trust boundaries
+This document retains the detailed local and synthetic threat analysis through
+personal Cycle 3k-a1. Its profile-specific statements do not describe every later
+managed deployment. Start with [Architecture](./ARCHITECTURE.md) for the runtime
+map and [Current work](./CURRENT_WORK.md) for accepted status. Managed boundaries
+are documented in [watchlist storage](./APPWRITE_WATCHLIST.md),
+[Annual reports](./MANAGED_SEC_ANNUAL.md), [EOD history](./MANAGED_EOD_HISTORY.md),
+[website delivery](./APPWRITE_DELIVERY.md) and [Android](./ANDROID_CLIENT.md).
+Local encryption guarantees must not be inferred for managed TablesDB data.
+
+## Historical local and synthetic trust boundaries
 
 The browser accepts dossier JSON only from the local Fastify API and keeps its
 demo thesis and alert profile in page memory only. Synthetic startup remains
