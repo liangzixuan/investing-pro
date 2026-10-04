@@ -65,6 +65,7 @@ import org.junit.runner.RunWith;
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
+    private static final String COMPANY_NOTE = "Company draft captured in research";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
     private static final String CATALOG_REFRESH = ".managed-search-bar > button";
@@ -686,6 +687,139 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedMarkets", "phase=left-cleared-draft-retained, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void companyNoteDraftReviewSaveAndReloadPreservesIdentity() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        awaitPage("invented Markets identities ready without price reads",
+            DIAGNOSTICS + ".marketsResolve === 1 && document.querySelectorAll('.managed-market-row').length === 3");
+        click("button[aria-label='Select ALFA on company board']");
+        String priceOpener = "button[aria-label='Board price history for ALFA']";
+        click(priceOpener);
+        awaitPage("unsaved ALFA opens with explicit draft action and no automatic research",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.querySelector('.managed-company-identity strong')?.textContent === 'Alfa Company'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Alfa Common Stock · Common Stock · XNAS'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('#managed-research-note') === null" +
+            " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.textContent === 'Add to watchlist draft'" +
+            " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.disabled === false");
+        assertCompanyNoteCounts(0, 1);
+        click("[aria-labelledby=managed-research-note-heading] button:first-child");
+        awaitPage("adding appends a blank draft membership without saving",
+            "document.querySelector('#managed-research-note')?.value === ''" +
+            " && document.querySelector('#managed-note-2')?.value === ''" +
+            " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.textContent === 'In watchlist draft'" +
+            " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.disabled === true" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'");
+        assertCompanyNoteCounts(0, 1);
+        typeIntoInput("managed-research-note", COMPANY_NOTE);
+        assertCompanyNoteDraft(1, true);
+        click(".managed-company-sections button[aria-label='Annual section for ALFA']");
+        awaitPage("Annual switch retains the shared note and stays unloaded",
+            "document.activeElement?.id === 'managed-annual-heading'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        click(".managed-company-sections button[aria-label='Price section for ALFA']");
+        awaitPage("Price switch retains the note without loading history",
+            "document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        retainCompanyNoteScreenshot();
+        assertFixtureBoundary();
+        pressBack();
+        awaitPage("native Back restores the original board opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(priceOpener) + ")");
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        click("button[aria-label='Board Annual report for ALFA']");
+        awaitPage("a new visit reads the shared draft without an Annual call",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.activeElement?.id === 'managed-annual-heading'");
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("review closes research and focuses the visible My Watchlist control",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("existing full-list Save completes the one invented versioned write",
+            DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')");
+        assertCompanyNoteDraft(2, false);
+        assertCompanyNoteCounts(1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("explicit saved reload completes", DIAGNOSTICS + ".load === 2" +
+            " && document.querySelector('#managed-note-2')?.disabled === false");
+        assertCompanyNoteDraft(2, false);
+        assertCompanyNoteCounts(1, 2);
+        scenario.onActivity(activity -> {
+            assertNotNull("Original note Activity was collected", originalActivity.get().get());
+            assertNotNull("Original note WebView was collected", originalWebView.get().get());
+            assertSame("Draft review and save preserve Activity", originalActivity.get().get(), activity);
+            assertSame("Draft review and save preserve WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("Draft review and save preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        Log.i("ManagedCompanyNote", "phase=saved-reloaded, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    private void assertCompanyNoteDraft(int version, boolean dirty) throws Exception {
+        awaitPage("company note preserves exact membership order and unrelated notes",
+            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
+            " && document.querySelector('#managed-note-0')?.value === ''" +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
+    }
+
+    private void assertCompanyNoteCounts(int saves, int loads) throws Exception {
+        awaitPage("company draft actions have no research, auth or unexpected write calls",
+            DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads +
+            " && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void retainCompanyNoteScreenshot() throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('#managed-research-note-heading')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Company note did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
+            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
+            " const v = visualViewport; const note = document.querySelector('#managed-research-note');" +
+            " return v && targets.length === 6 && note?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && note.scrollHeight <= note.clientHeight && note.scrollWidth <= note.clientWidth" +
+            " && targets.every(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("company note label, text, draft actions and save guidance fully visible", visible);
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        retainScreenshot("companyResearchNoteDraft");
+        awaitPage("company note and draft actions stayed visible through capture", visible);
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+    }
+
     private void clickMarketsAction(String label) {
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[contains(concat(' ',normalize-space(@class),' '),' managed-markets ')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
@@ -768,17 +902,35 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> headerScrolled.countDown()));
         assertTrue("Company visit header did not scroll into view", headerScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String headerVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'#managed-company-heading, .managed-company-visit > .trial-toolbar > button, .managed-company-identity strong, .managed-company-identity span, .managed-company-sections button, #managed-eod-heading'));" +
-            " const v = visualViewport; return v && targets.length === 7 && targets.every(e => {" +
+            "'#managed-company-heading, .managed-company-visit > .trial-toolbar > button, .managed-company-identity strong, .managed-company-identity span'));" +
+            " const v = visualViewport; return v && targets.length === 4 && targets.every(e => {" +
             " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("company identity, Back and section controls visible", headerVisible);
+        awaitPage("company identity and Back fully visible", headerVisible);
         awaitPage("retained Price evidence before company header capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchCompanyHeader");
-        awaitPage("company identity and controls stayed visible through capture", headerVisible);
+        awaitPage("company identity and Back stayed visible through capture", headerVisible);
         awaitPage("retained Price evidence after company header capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+
+        CountDownLatch sectionsScrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-company-sections')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> sectionsScrolled.countDown()));
+        assertTrue("Company section controls did not scroll into view", sectionsScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String sectionsVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
+            "'.managed-company-sections button, #managed-eod-heading')); const v = visualViewport;" +
+            " return v && targets.length === 3 && targets.every(e => { const r = e.getBoundingClientRect();" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("both section controls and active Price heading fully visible", sectionsVisible);
+        awaitPage("retained Price evidence before section controls capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        retainScreenshot("researchCompanySections");
+        awaitPage("section controls and Price heading stayed visible through capture", sectionsVisible);
+        awaitPage("retained Price evidence after section controls capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
 
         CountDownLatch metadataScrolled = new CountDownLatch(1);

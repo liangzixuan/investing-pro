@@ -51,6 +51,31 @@ the original opener. If that control disappears, Back focuses the current view's
 navigation control or the visible Discover heading. There is no persistent cache,
 automatic load, prefetch, save or source request on resume.
 
+## Capture a watchlist note
+
+The company visit shows **My Watchlist note** for its exact listing. When that
+listing is already in the current watchlist draft, the editor and the watchlist
+row share the same text. Typing in either place updates the draft. Price/Annual
+switching preserves it together with the visit's loaded research.
+
+For an absent listing, **Add to watchlist draft** appends its complete captured
+identity and an empty note. Other notes and their order stay unchanged. A listing
+ID already present under a different identity blocks Add and directs the user to
+review the list. A changed search query does not alter the captured selection.
+Old controls cannot edit a different or reopened visit, even for the same listing.
+
+**Review in My Watchlist** closes research and focuses the watchlist navigation
+control. The existing **Save watchlist** action saves the whole draft, including
+other changes. Its catalog review, conflicts and uncertain-save reconciliation
+remain in that screen. No separate note-save operation is introduced. Notes keep
+the existing 2,000-character validation and save-time normalization.
+
+An unavailable watchlist, stale catalog, pending save or reconciliation, conflict,
+retired session or full list blocks the applicable action. An exact matching note
+can remain visible while editing is paused. Account/session retirement clears the
+workspace under its existing rules. Adding, typing and navigation send no save or
+provider request. Unsaved drafts remain in the mounted session only.
+
 ## Acceptance
 
 The selected checks cover loaded returns in both directions without extra reads,
@@ -59,6 +84,10 @@ late completions, invalidation of both sections, shared cooldowns and unchanged
 drafts. Screen checks cover the stable header, selected section, rendering and
 Back/focus action. The invented Android journey checks returning to retained
 close history, request counts and native Back to the original opener.
+
+The note journey covers draft sharing, exact identity, stale controls, guarded
+editing, Add without an implicit save, review focus and explicit save/reload
+through the existing watchlist. Mutation checks use invented records.
 
 Synthetic checks use invented records. Current work records the results actually
 obtained; live browser, exact-build website, emulator, signed-artifact and

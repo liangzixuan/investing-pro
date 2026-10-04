@@ -384,6 +384,25 @@ export function ManagedWorkspaceScreen({
               annual={workspace.annual}
               eod={workspace.eod}
               onBack={backToWorkspace}
+              watchlist={workspace.getResearchWatchlist(
+                discovery.research.selection,
+              )}
+              onAdd={() =>
+                workspace.addResearchToWatchlist(discovery.research!.selection)
+              }
+              onNote={(note) =>
+                workspace.noteResearch(discovery.research!.selection, note)
+              }
+              onReview={() => {
+                if (
+                  workspace.getSnapshot().research?.selection !==
+                  discovery.research!.selection
+                )
+                  return;
+                workspace.setView("watchlist");
+                panelOrigin.current = null;
+                watchlistNavigation.current?.focus();
+              }}
               onSection={(section) => {
                 if (section === "annual") workspace.switchToAnnual();
                 else workspace.switchToEod();

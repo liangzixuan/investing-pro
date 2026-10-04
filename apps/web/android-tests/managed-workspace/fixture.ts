@@ -6,8 +6,10 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import {
+  encodeMainWatchlistPayload,
   parseManagedCatalogResolveResponse,
   parseManagedEodHistoryResponse,
+  parseManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 import {
   ManagedEodHistoryError,
@@ -281,10 +283,11 @@ export async function createFixture(
     count(key);
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
+  let savedWatchlist = { version: 1, payload: structuredClone(payload) };
   const api: ManagedApi = {
     load: () => {
       count("load");
-      return Promise.resolve({ version: 1, payload: structuredClone(payload) });
+      return Promise.resolve(structuredClone(savedWatchlist));
     },
     status: () => {
       count("status");
@@ -316,7 +319,34 @@ export async function createFixture(
         normalizedQuery: "ZERO",
       });
     },
-    save: () => unexpected("save"),
+    save: (command, signal) => {
+      const captured = parseManagedWatchlistCommand(command);
+      const expected = {
+        ...payload,
+        memberships: [
+          ...payload.memberships,
+          { ...marketsCohort[0], note: "Company draft captured in research" },
+        ],
+      };
+      // One invented full-list save only. Other cases still require zero writes.
+      if (
+        signal.aborted ||
+        savedWatchlist.version !== 1 ||
+        captured?.expectedVersion !== 1 ||
+        encodeMainWatchlistPayload(captured.payload) !==
+          encodeMainWatchlistPayload(expected)
+      )
+        return unexpected("save");
+      count("save");
+      savedWatchlist = {
+        version: 2,
+        payload: structuredClone(captured.payload),
+      };
+      return Promise.resolve({
+        ...structuredClone(savedWatchlist),
+        replayed: false,
+      });
+    },
     resolve: (request, signal) => {
       if (
         signal.aborted ||

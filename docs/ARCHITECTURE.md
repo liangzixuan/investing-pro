@@ -65,6 +65,12 @@ pending work and retains validated results; returning reuses the initialized
 model. Closing or invalidating the visit clears both models. No persistent cache
 is added.
 
+The company visit's watchlist-note controls derive from its captured selection
+and the coordinator's current draft. Complete identity and catalog matching
+guard edits and explicit additions. The editor shares the watchlist row's draft;
+reviewing My Watchlist closes research and uses the existing full-list save and
+reconciliation flow. There is no second note store or save coordinator.
+
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
 [security-master package](../packages/personal-security-master/) owns catalog
@@ -113,7 +119,7 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. The fixture contains eleven cases; accepted results are recorded in Current work.
+admission. The native suite requires twelve cases; accepted results are recorded in Current work.
 These are distinct from signed-release, physical-phone and
 live-provider acceptance.
 

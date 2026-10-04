@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.3 package share Discover, a private
+The managed website and signed Android 1.4 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
-Broader provider coverage and the physical
-Android 1.3 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
+Broader provider coverage remains separate work. Physical installation and use of
+Android 1.2, 1.3 and 1.4 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.3. Previous histories keep their original dates. Physical
+and in signed Android 1.4. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.3. It uses the three accepted
+and in signed Android 1.4. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, percentage movers or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -77,15 +77,30 @@ error states as capabilities grow. The broader local research tools remain
 available in their separate profile; their existence does not establish managed
 delivery.
 
-Signed Android 1.3 carries the accepted Markets and research workflow into the
-existing package with the same production signer. Its artifact is accepted;
-physical-device acceptance remains open. The selected M2 step is a company visit
-with a stable listing header and Price/Annual sections that retain validated
-results while switching. It reuses existing sources and request models. Delivery
-and the remaining M2 capabilities are recorded separately in Current work.
+The [company research visit](MANAGED_RESEARCH_NAVIGATION.md) is delivered through
+PR 34 on the website and in signed Android 1.4. A stable listing header connects
+Price and Annual sections; returning to a loaded section preserves its exact
+validated result and provenance without another request. Switching cancels
+pending local work. Leaving or invalidating the visit clears both sections.
+Ordinary navigation preserves the mounted watchlist draft; session retirement
+clears the workspace. The existing sources and request models supply this behavior.
 
-Repomix automation remains pending; [AI context](./AI_CONTEXT.md) records the
-current dependency blocker and the manual source-reading path.
+Signed Android 1.4 uses the existing package and production signer. Build,
+artifact and delivery reviews passed; physical-device acceptance remains open.
+The selected company-visit step is complete, while bookmarkable routes, key
+statistics, valuation, peers and full M2 remain open.
+
+The next selected step brings the shared watchlist research-note draft into the
+company visit. Existing members show their current note; other listings require
+an explicit Add to watchlist draft action. Review in My Watchlist closes research
+and uses the existing full-list save and reconciliation flow. Implementation and
+focused local checks are complete; hosted checks and delivery are pending.
+This step adds no automatic save or source request and
+reuses the existing schema, API and dependencies.
+
+Repomix automation remains held in PR 27 because of its dependency blocker;
+[AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
+source-reading path. Existing security checks remain unchanged.
 
 ## Longer-term capability sequence
 

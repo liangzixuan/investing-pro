@@ -17,6 +17,7 @@ import { response as annualResponse } from "../features/research/sec-annual-evid
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedResearchNote } from "./ManagedResearchNote";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
@@ -209,6 +210,136 @@ function elements(
   ];
 }
 describe("managed workspace screen", () => {
+  it("shares the company note with the watchlist row and reviews all changes without saving", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    mounted.direct = true;
+    const company = () => {
+      mounted.refIndex = 0;
+      return elements(ManagedWorkspaceScreen({ workspace })).find(
+        (node) => node.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const note = () =>
+      elements(ManagedCompanyResearch(company().props)).find(
+        (node) => node.type === ManagedResearchNote,
+      ) as React.ReactElement<React.ComponentProps<typeof ManagedResearchNote>>;
+    const input = () =>
+      elements(ManagedResearchNote(note().props)).find(
+        (node) => node.type === "textarea",
+      ) as React.ReactElement<React.ComponentProps<"textarea">>;
+    expect(input().props.value).toBe("Private research note");
+    expect(input().props.id).toBe("managed-research-note");
+    expect(input().props.disabled).toBe(false);
+    input().props.onChange!({
+      target: { value: "  Shared research draft  " },
+    } as React.ChangeEvent<HTMLTextAreaElement>);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("  Shared research draft  ");
+    company().props.onSection("annual");
+    expect(input().props.value).toBe("  Shared research draft  ");
+    workspace.note("listing-one", "Edited from the watchlist row");
+    expect(input().props.value).toBe("Edited from the watchlist row");
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    const review = elements(ManagedResearchNote(note().props)).find(
+      (node) =>
+        node.type === "button" &&
+        node.props.children === "Review in My Watchlist",
+    ) as React.ReactElement<React.ComponentProps<"button">>;
+    review.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    expect(focus).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    mounted.direct = false;
+    expect(html()).toContain("Edited from the watchlist row");
+  });
+
+  it("adds from a captured discovery visit and fences old note and review controls", async () => {
+    const { workspace, api, html } = fixture({ ...payload, memberships: [] });
+    const listing = {
+      ...payload.memberships[0]!,
+      cik: "0000000001",
+      matchKind: "current_symbol_exact" as const,
+      matchedValue: "DEMO",
+    };
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [listing],
+      totalMatches: 1,
+      limitApplied: 25,
+      normalizedQuery: "DEMO",
+    });
+    await workspace.coordinator.load();
+    await workspace.search();
+    workspace.openDiscoveryAnnual(listing);
+    mounted.direct = true;
+    const company = () => {
+      mounted.refIndex = 0;
+      return elements(ManagedWorkspaceScreen({ workspace })).find(
+        (node) => node.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const first = company();
+    expect(first.props.watchlist.canAdd).toBe(true);
+    expect(first.props.watchlist.member).toBeNull();
+    workspace.setQuery("Search changed after opening the visit");
+    first.props.onAdd();
+    expect(company().props.watchlist.member?.note).toBe("");
+    company().props.onNote("Draft before reviewing");
+    mounted.direct = false;
+    const output = html();
+    expect(output).toContain('for="managed-research-note"');
+    expect(output).toContain("In watchlist draft");
+    expect(output).toContain(
+      "Review and save all watchlist changes in My Watchlist.",
+    );
+    expect(output).toContain("Draft before reviewing");
+    const before = workspace.coordinator.getSnapshot().draft;
+    workspace.openWatchlistAnnual(before!.memberships[0]!);
+    const replacement = workspace.getSnapshot().research;
+    first.props.onNote("Stale control must not write");
+    first.props.onAdd();
+    first.props.onReview();
+    expect(workspace.getSnapshot().research).toBe(replacement);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("shows a read-only research note and recovery guidance during an uncertain save", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    workspace.note("listing-one", "Keep the uncertain draft");
+    vi.mocked(api.save).mockRejectedValue(new TrialApiError("commit_unknown"));
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot().uncertain).toBe(true);
+    const output = html();
+    expect(output).toMatch(
+      /<textarea\b[^>]*id="managed-research-note"[^>]*disabled=""/u,
+    );
+    expect(output).toContain("Keep the uncertain draft");
+    expect(output).toContain("Review in My Watchlist");
+    expect(output).not.toContain("Save research note");
+  });
   it("moves focus to persistent watchlist navigation when leaving the board action", () => {
     const { workspace } = fixture();
     workspace.setView("markets");

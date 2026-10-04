@@ -34,6 +34,12 @@ export interface ManagedResearchVisit {
   readonly selection: AnnualReportSelection;
   readonly section: "annual" | "eod";
 }
+export interface ResearchWatchlistState {
+  readonly member: WatchlistMembership | null;
+  readonly canAdd: boolean;
+  readonly canEdit: boolean;
+  readonly reason: string | null;
+}
 export interface ManagedDiscoveryState {
   readonly view: "markets" | "discover" | "watchlist";
   readonly query: string;
@@ -516,6 +522,74 @@ export class ManagedWorkspace {
     if (!this[section].getSnapshot().selection)
       this[section].open(research.selection);
     this.update({ research: Object.freeze({ ...research, section }) });
+  }
+  getResearchWatchlist(
+    selection: AnnualReportSelection,
+  ): ResearchWatchlistState {
+    const blocked = (
+      reason: string,
+      member: WatchlistMembership | null = null,
+    ): ResearchWatchlistState => ({
+      member,
+      canAdd: false,
+      canEdit: false,
+      reason,
+    });
+    if (this.retired || selection !== this.state.research?.selection)
+      return blocked(
+        "Open this company again before editing its watchlist note.",
+      );
+    if (
+      !this.canSwitchResearch(selection) ||
+      this.annual.getSnapshot().catalogChanged ||
+      this.eod.getSnapshot().catalogChanged
+    )
+      return blocked(
+        "Refresh the catalog and reopen this company before editing.",
+      );
+    const saved = this.coordinator.getSnapshot();
+    const draft = saved.draft;
+    if (!draft)
+      return blocked("Load My Watchlist before adding or editing a note.");
+    if (draft.snapshotSha256 !== selection.catalogSnapshotSha256)
+      return blocked("Review catalog changes in My Watchlist before editing.");
+    const member =
+      draft.memberships.find(
+        (entry) => entry.listingId === selection.listing.listingId,
+      ) ?? null;
+    if (member && !membershipMatchesResult(member, selection.listing))
+      return blocked("Review this listing's changed identity in My Watchlist.");
+    if (!this.canEdit()) {
+      const reason =
+        saved.uncertain || saved.replayPending || saved.phase === "reconciling"
+          ? "Review the pending save in My Watchlist before editing."
+          : saved.conflict
+            ? "Resolve the conflict in My Watchlist before editing."
+            : "Wait for the current My Watchlist operation to finish before editing.";
+      return blocked(reason, member);
+    }
+    if (!member && draft.memberships.length >= 10_000)
+      return blocked(
+        "Remove an entry from My Watchlist before adding this company.",
+      );
+    return {
+      member,
+      canAdd: member === null,
+      canEdit: member !== null,
+      reason: null,
+    };
+  }
+  addResearchToWatchlist(selection: AnnualReportSelection) {
+    if (!this.getResearchWatchlist(selection).canAdd) return;
+    const draft = this.coordinator.getSnapshot().draft!;
+    this.edit([
+      ...draft.memberships,
+      { ...listingIdentity(selection.listing), note: "" },
+    ]);
+  }
+  noteResearch(selection: AnnualReportSelection, note: string) {
+    if (!this.getResearchWatchlist(selection).canEdit) return;
+    this.note(selection.listing.listingId, note);
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;

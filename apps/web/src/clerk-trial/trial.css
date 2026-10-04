@@ -265,6 +265,13 @@ textarea:disabled {
   gap: 12px;
   margin: 24px 0;
 }
+.managed-research-note-editor {
+  margin-top: 12px;
+}
+.managed-research-note-editor label {
+  display: block;
+  margin-bottom: 8px;
+}
 .managed-company-sections [aria-pressed="true"] {
   color: #fff;
   background: #174b48;
