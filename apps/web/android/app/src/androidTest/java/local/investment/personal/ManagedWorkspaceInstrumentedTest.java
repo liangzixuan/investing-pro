@@ -337,37 +337,94 @@ public class ManagedWorkspaceInstrumentedTest {
 
         clickEodAction("Load one-month close history");
         assertEodState(1, 0, 0, false, true);
-        awaitPage("EOD exposes exact invented closes and provenance",
+        String initialHistory =
             "document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|100.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-08-20')" +
-            " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-09-20')");
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('2026-09-20')";
+        awaitPage("EOD exposes exact invented closes and provenance", initialHistory);
         retainEodLoadedScreenshot();
         assertEodState(1, 0, 0, false, true);
         Log.i("ManagedEod", "phase=loaded; " + pageDiagnostic());
 
+        String previousNotice = "Showing previous close history, completed 2026-09-20T00:00:01.000Z. " +
+            "This refresh has not confirmed newer prices. Trading dates, requested window and request times are unchanged.";
+        String retainedHistory = initialHistory +
+            " && document.querySelector('.managed-eod-previous')?.textContent === " + JSONObject.quote(previousNotice);
         clickEodAction("Refresh close history");
-        assertEodState(2, 0, 0, true, false);
+        assertEodState(2, 0, 0, true, true);
+        awaitPage("pending refresh retains exact original history and provenance", retainedHistory +
+            " && document.querySelector('.managed-eod-history [role=status]')?.textContent === 'Refreshing close history for ZERO…'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.disabled === true");
         clickEodAction("Cancel close history");
-        assertEodState(2, 1, 0, false, false);
+        assertEodState(2, 1, 0, false, true);
+        awaitPage("cancelled refresh retains original history and permits explicit Refresh", retainedHistory +
+            " && document.querySelector('.managed-eod-history [role=status]')?.textContent === 'Close history refresh cancelled. Refresh again when ready.'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.textContent === 'Refresh close history'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.disabled === false");
         Log.i("ManagedEod", "phase=cancelled; " + pageDiagnostic());
         click("#settle-cancelled-eod");
-        assertEodState(2, 1, 1, false, false);
+        assertEodState(2, 1, 1, false, true);
+        awaitPage("late completion cannot replace retained history", retainedHistory);
         awaitPage("late invented EOD values remain absent",
             "!document.querySelector('.managed-eod-history')?.textContent.includes('998.25')" +
             " && !document.querySelector('.managed-eod-history')?.textContent.includes('999.75')");
+        clickEodAction("Refresh close history");
+        assertEodState(3, 1, 1, false, true);
+        String failedRefresh = retainedHistory +
+            " && document.querySelector('.managed-eod-history [role=alert]')?.textContent === 'The close history refresh failed. Select Refresh to try again.'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.textContent === 'Refresh close history'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.disabled === false" +
+            " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
+            " && " + DIAGNOSTICS + ".eod === 3";
+        awaitPage("typed refresh failure retains original values and dates", failedRefresh);
+        CountDownLatch failureScrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-eod-history [role=alert]').scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> failureScrolled.countDown()));
+        assertTrue("EOD refresh failure did not scroll into view", failureScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visibleFailure = failedRefresh +
+            " && (() => { const panel = document.querySelector('.managed-eod-history'); const v = visualViewport;" +
+            " const visible = e => { if (!e || !v) return false; const r = e.getBoundingClientRect();" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; };" +
+            " return visible(panel?.querySelector('[role=alert]')) && visible(panel?.querySelector('.managed-eod-previous'))" +
+            " && visible(panel?.querySelector('.managed-metadata')); })()";
+        awaitPage("failed refresh, previous-history notice and original dates are visible", visibleFailure);
+        retainScreenshot("eodRefreshPreviousHistory");
+        awaitPage("failed refresh stayed unchanged through capture", visibleFailure);
+        assertEodDraftAndCounts(3, 1, 1);
+        Log.i("ManagedEod", "phase=failed-refresh-captured; " + pageDiagnostic());
+
+        clickEodAction("Refresh close history");
+        assertEodState(4, 1, 1, false, true);
+        awaitPage("explicit recovery replaces every history value and request date",
+            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
+            " && document.querySelector('.managed-eod-previous') === null" +
+            " && document.querySelector('.managed-eod-history [role=alert]') === null" +
+            " && document.querySelector('.managed-eod-history [role=status]')?.textContent === 'One-month raw closing prices loaded.'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.textContent === 'Refresh close history'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.disabled === false" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')" +
+            " && !document.querySelector('.managed-eod-history')?.textContent.includes('100.25')" +
+            " && !document.querySelector('.managed-eod-history')?.textContent.includes('101.5')" +
+            " && !document.querySelector('.managed-eod-history')?.textContent.includes('998.25')" +
+            " && !document.querySelector('.managed-eod-history')?.textContent.includes('999.75')");
+        Log.i("ManagedEod", "phase=refresh-recovered; " + pageDiagnostic());
         pressBack();
         awaitPage("native Back closes EOD and restores its originating control",
             "document.querySelector('.managed-eod-history') === null" +
             " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
-        assertEodDraftAndCounts(2, 1, 1);
+        assertEodDraftAndCounts(4, 1, 1);
         assertRootHistory();
         pressBack();
         awaitPage("root Back leaves both detail panels closed",
             "document.querySelector('.managed-eod-history') === null && document.querySelector('.managed-annual-report') === null");
-        assertEodDraftAndCounts(2, 1, 1);
+        assertEodDraftAndCounts(4, 1, 1);
         scenario.onActivity(activity -> {
             assertNotNull("Original EOD Activity was collected", originalActivity.get().get());
             assertNotNull("Original EOD WebView was collected", originalWebView.get().get());

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 3, 2026. This document defines the durable product goals and
+Updated October 4, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -61,11 +61,16 @@ browser request passed on October 3; broader provider coverage and the physical
 Android 1.2 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
-The current task makes this repository understandable and reproducible for new
-contributors and AI agents. After that, choose one visible improvement from the
-working managed app. Preserve usable data, unsaved drafts and recoverable error
-states as capabilities grow. The broader local research tools remain available
-in their separate profile; their existence does not establish managed delivery.
+Portable contributor documentation is published, and direct Annual/price-history
+navigation is delivered on the website. The selected follow-up keeps the last validated
+close history visible during refresh and recoverable failures, with its original
+dates clearly marked. Android packaging remains a separate delivery.
+
+After this bounded reliability slice, return to the short Markets-home source
+and screen contract below. Preserve usable data, unsaved drafts and recoverable
+error states as capabilities grow. The broader local research tools remain
+available in their separate profile; their existence does not establish managed
+delivery.
 
 Repomix automation remains pending; [AI context](./AI_CONTEXT.md) records the
 current dependency blocker and the manual source-reading path.

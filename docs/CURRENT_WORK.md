@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 3, 2026. This is the portable status summary for the public
+Updated October 4, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
 order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
 operational receipts are retained separately and are not required to understand
@@ -8,20 +8,21 @@ or develop the repository.
 
 ## Accepted release
 
-PR 26 is merged as `ae2cfbb48c672a5c960bce3910b526663f52734b`, from candidate
-`36b632fb5a1ac26189e2caa2e232591498522dea`, with tree
-`a875a56a830f173fbfaa54cca67c4f18263fafa7`. Exact-main checks, original source-proof
-artifact and nine-case native evidence were accepted. These are source and
-synthetic-runtime evidence; delivery was accepted separately below.
+PR 29 is merged as `36c47d3b82fbaf6e2b1e07be14ae3de6315c95c0`, from candidate
+`3e0c44b914520b315aebd3b9b6064348dd49a420`, with tree
+`10906002b25d59b385c7069a184b8fee144dcfea`. Exact-main checks, the original
+source-proof artifact and ten-case native evidence were accepted. Its direct
+Annual/price-history navigation was delivered on the website on October 4.
+The API and signed Android package remain the separately accepted PR 26 releases.
 
-| Surface                   | Accepted outcome                                                                                                                                                                               | Limits                                                                                                                                     |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Managed API               | Deployment `6ac0621a276fa6041126`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed                | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac06b4e795ae249dc41`; exact staging archive promoted after the configured normal approval                                                         | Staging BrowserStack is an inert preview and does not exercise authenticated research                                                      |
-| Signed Android artifact   | Investment 1.2.0, code 3, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                                           | The 1.2 in-place installation and physical-phone behavior remain unverified                                                                |
-| Automated Android         | Nine passing API-36 emulator cases, with original reports and images; managed fixture exercises catalog recovery, Annual refresh, EOD chart/table, Back, cancellation and same-Activity resume | Invented data, debug test fixture; no production sign-in, process-death persistence or physical-device claim                               |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                                              | No per-step logs; this report does not accept 1.2                                                                                          |
-| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                                             | No automatic migration or claim that these panels are available in the managed product                                                     |
+| Surface                   | Accepted outcome                                                                                                                                                                                     | Limits                                                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Managed API               | Deployment `6ac0621a276fa6041126`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed                      | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac1a3fddf855fefb97e`; PR 29 staging archive promoted after the configured normal approval                                                               | Staging BrowserStack is an inert preview and does not exercise authenticated research                                                      |
+| Signed Android artifact   | Investment 1.2.0, code 3, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                                                 | The 1.2 in-place installation and physical-phone behavior remain unverified                                                                |
+| Automated Android         | Ten passing API-36 emulator cases, with original reports and images; includes direct research switching alongside catalog recovery, Annual refresh, EOD, Back, cancellation and same-Activity resume | Invented data, debug test fixture; no production sign-in, process-death persistence or physical-device claim                               |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                                                    | No per-step logs; this report does not accept 1.2                                                                                          |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                                                   | No automatic migration or claim that these panels are available in the managed product                                                     |
 
 The accepted 1.2 APK is 6,626,936 bytes, SHA-256
 `5b9b27bf3384834f3725227b77b7aa8142e4d948dbbe567a1c0a98a3a1b5d958`.
@@ -39,9 +40,13 @@ An explicit [Annual report](MANAGED_SEC_ANNUAL.md) panel uses bounded SEC eviden
 A refresh keeps the prior validated report visible through supported transient
 failure, cooldown and Cancel, with its original dates. The separate
 [EOD close history](MANAGED_EOD_HISTORY.md) panel loads one calendar month of raw
-USD closes only for AAPL. EOD refresh, Cancel, Back and retirement clear prices;
-there is no automatic request or persistent price cache. Both panels preserve
-the mounted watchlist draft and use the same close/focus action for Android Back.
+USD closes only for AAPL. The accepted release clears EOD prices on refresh and
+Cancel; the current slice below changes those two behaviors. Back and retirement
+continue to clear prices. There is no automatic request or persistent price cache.
+Both panels preserve the mounted watchlist draft and use the same close/focus action
+for Android Back. The website now switches directly between these panels for the
+same listing and returns to the original workspace opener. Signed Android 1.2
+predates that navigation update.
 
 At 03:55 UTC on October 3, one explicit authenticated AAPL `1m` UI load succeeded.
 It showed Tiingo/raw USD history with 21 unique increasing dates from September 3
@@ -64,12 +69,14 @@ The security check stays unchanged. The Repomix package and workflow remain in
 the unmerged PR. [AI context](AI_CONTEXT.md) gives a manual reading guide and
 distinguishes its reviewed artifact from the source in this documentation tree.
 
-The selected product slice adds [same-listing research navigation](MANAGED_RESEARCH_NAVIGATION.md):
-move directly between Annual report and EOD close history, then use Back to return
-to the original workspace control and draft. Each source load remains explicit.
-Identity, cancellation and cooldown rules stay with the existing read models.
-Implementation, synthetic acceptance and website/Android delivery must each be
-recorded before this is described as an available production feature.
+The selected product slice retains the last validated EOD history while an
+explicit refresh runs, is cancelled, encounters a checked cooldown, or fails with
+a supported transient error. A previous-history notice preserves the original
+completion time and distinguishes it from new results. A valid success replaces
+the whole response. Identity, catalog, authentication, malformed-response, Back
+and switching boundaries still clear prices. See the
+[EOD contract](MANAGED_EOD_HISTORY.md); this change needs its own source, synthetic
+and website acceptance before it is described as delivered.
 
 The next device acceptance is a separately selected, brief 1.2 in-place upgrade
 and normal navigation/background-resume observation. Preserve the installed

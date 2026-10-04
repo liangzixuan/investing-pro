@@ -6,7 +6,10 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
-import type { ManagedApi } from "../../src/clerk-trial/managed-api";
+import {
+  ManagedEodHistoryError,
+  type ManagedApi,
+} from "../../src/clerk-trial/managed-api";
 import { listingMembership } from "../../src/clerk-trial/managed-workspace";
 import type { TrialSession } from "../../src/clerk-trial/session";
 import {
@@ -94,7 +97,7 @@ export async function createFixture(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
-  const eodPacket = (late: boolean) => {
+  const eodPacket = (kind: "initial" | "late" | "recovered") => {
     const request = {
       catalogSnapshotSha256: digest,
       listingId: "listing-zero",
@@ -109,21 +112,43 @@ export async function createFixture(
         provider: "Tiingo",
         currency: "USD",
         priceBasis: "raw_close",
-        window: { startDate: "2026-08-20", endDate: "2026-09-20" },
-        requestStartedAt: "2026-09-20T00:00:00.000Z",
-        completedAt: "2026-09-20T00:00:01.000Z",
-        rows: [
-          { date: "2026-09-18", close: late ? "998.25" : "100.25" },
-          { date: "2026-09-19", close: late ? "999.75" : "101.5" },
-        ],
+        window:
+          kind === "recovered"
+            ? { startDate: "2026-08-21", endDate: "2026-09-21" }
+            : { startDate: "2026-08-20", endDate: "2026-09-20" },
+        requestStartedAt:
+          kind === "recovered"
+            ? "2026-09-21T00:00:00.000Z"
+            : "2026-09-20T00:00:00.000Z",
+        completedAt:
+          kind === "recovered"
+            ? "2026-09-21T00:00:02.000Z"
+            : "2026-09-20T00:00:01.000Z",
+        rows:
+          kind === "recovered"
+            ? [
+                { date: "2026-09-19", close: "102.75" },
+                { date: "2026-09-20", close: "103.5" },
+              ]
+            : [
+                {
+                  date: "2026-09-18",
+                  close: kind === "late" ? "998.25" : "100.25",
+                },
+                {
+                  date: "2026-09-19",
+                  close: kind === "late" ? "999.75" : "101.5",
+                },
+              ],
       },
       request,
     );
     if (!packet) throw new Error("Invalid invented EOD packet");
     return packet;
   };
-  const eodInitial = eodPacket(false);
-  const eodLate = eodPacket(true);
+  const eodInitial = eodPacket("initial");
+  const eodLate = eodPacket("late");
+  const eodRecovered = eodPacket("recovered");
   let state = {
     load: 0,
     status: 0,
@@ -209,6 +234,10 @@ export async function createFixture(
         throw new Error("Unexpected fixture EOD request");
       count("eod");
       if (state.eod === 1) return Promise.resolve(structuredClone(eodInitial));
+      if (state.eod === 3)
+        return Promise.reject(new ManagedEodHistoryError("unavailable"));
+      if (state.eod === 4)
+        return Promise.resolve(structuredClone(eodRecovered));
       if (state.eod !== 2) throw new Error("Unexpected extra fixture EOD read");
       signal.addEventListener("abort", () => count("eodAborted"), {
         once: true,
