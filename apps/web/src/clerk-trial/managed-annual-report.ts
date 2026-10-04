@@ -14,7 +14,7 @@ export interface AnnualReportSelection {
   readonly catalogSnapshotSha256: `sha256:${string}`;
   readonly listing: Omit<WatchlistMembership, "note">;
   readonly cik: string | null;
-  readonly origin: "discover" | "watchlist";
+  readonly origin: "discover" | "watchlist" | "markets";
 }
 export interface ManagedAnnualReportState {
   readonly selection: AnnualReportSelection | null;

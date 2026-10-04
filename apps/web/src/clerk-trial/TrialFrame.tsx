@@ -9,14 +9,18 @@ export function TrialFrame({
   managed?: boolean;
 }) {
   return (
-    <main className="clerk-trial">
+    <main className={`clerk-trial${managed ? " managed-frame" : ""}`}>
       <header className="trial-header">
         <p className="trial-eyebrow">Investment</p>
-        <h1>A shared watchlist, across your devices</h1>
+        <h1>
+          {managed
+            ? "Your markets and research"
+            : "A shared watchlist, across your devices"}
+        </h1>
         {managed ? (
           <p>
-            Discover companies, keep research notes, and pick up your watchlist
-            on another device.
+            Discover companies, inspect dated prices, and keep your research
+            across devices.
           </p>
         ) : (
           <>

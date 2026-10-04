@@ -30,11 +30,25 @@ function Fixture() {
         session={fixture.session}
         api={fixture.api}
         apiOrigin="https://managed-fixture.invalid"
+        marketsCohort={fixture.marketsCohort}
         androidBack={App}
       />
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre id="fixture-diagnostics">{JSON.stringify(state)}</pre>
+        {state.marketsEod > 0 && (
+          <button
+            id="settle-cancelled-markets"
+            disabled={
+              state.marketsEod !== 5 ||
+              state.marketsAborted !== 1 ||
+              state.marketsLateResolved !== 0
+            }
+            onClick={fixture.settleCancelledMarkets}
+          >
+            Settle cancelled invented Markets response
+          </button>
+        )}
         {state.eod > 0 && (
           <button
             id="settle-cancelled-eod"

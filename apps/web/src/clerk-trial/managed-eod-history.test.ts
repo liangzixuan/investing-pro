@@ -8,6 +8,7 @@ import {
   type ManagedApi,
 } from "./managed-api";
 import { ManagedEodHistory } from "./managed-eod-history";
+import { ManagedEodAccess } from "./managed-eod-access";
 import { eodRequest, eodResponse, eodSelection } from "./eod-history-fixture";
 
 function deferred<T>() {
@@ -28,6 +29,52 @@ function fixture() {
 }
 afterEach(() => vi.useRealTimers());
 describe("session-only managed EOD history", () => {
+  it("honors a shared board cooldown through panel close and retirement", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-04T00:00:00.000Z"));
+    const nextAllowedAt = "2026-10-04T00:01:00.000Z";
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockRejectedValueOnce(new ManagedEodCooldownError(nextAllowedAt));
+    const access = new ManagedEodAccess(read);
+    await expect(
+      access.request(eodSelection, new AbortController().signal),
+    ).rejects.toMatchObject({ nextAllowedAt });
+    const model = new ManagedEodHistory(read, vi.fn(), access);
+    model.open({ ...eodSelection, origin: "markets" });
+    await model.load();
+    expect(model.getSnapshot().message).toContain(nextAllowedAt);
+    expect(model.getSnapshot()).toMatchObject({ running: false, error: false });
+    model.close();
+    model.retire();
+    await expect(
+      access.request(eodSelection, new AbortController().signal),
+    ).rejects.toMatchObject({ nextAllowedAt });
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares a panel cooldown with board requests and fences cancelled cooldowns", async () => {
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const access = new ManagedEodAccess(read);
+    const model = new ManagedEodHistory(read, vi.fn(), access);
+    model.open(eodSelection);
+    const held = deferred<ReturnType<typeof eodResponse>>();
+    read.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    model.cancel();
+    held.reject(new ManagedEodCooldownError("2099-10-04T00:01:00.000Z"));
+    await pending;
+    expect(access.getNextAllowedAt()).toBeNull();
+    const nextAllowedAt = "2099-10-04T00:02:00.000Z";
+    read.mockRejectedValueOnce(new ManagedEodCooldownError(nextAllowedAt));
+    await model.load();
+    expect(model.getSnapshot().message).toContain(nextAllowedAt);
+    await expect(
+      access.request(eodSelection, new AbortController().signal),
+    ).rejects.toMatchObject({ nextAllowedAt });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it("waits for explicit Load and retains the exact response during refresh and Cancel", async () => {
     const { model, read } = fixture();
     expect(read).not.toHaveBeenCalled();

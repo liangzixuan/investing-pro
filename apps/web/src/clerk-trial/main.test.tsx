@@ -115,7 +115,7 @@ describe("Clerk profile entry point", () => {
     expect(mounts.render).toHaveBeenCalledTimes(1);
     const element = mounts.render.mock.calls[0]?.[0] as ReactElement;
     const html = renderToStaticMarkup(element);
-    expect(html).toContain("A shared watchlist, across your devices");
+    expect(html).toContain("Your markets and research");
     expect(html).toContain("Staging preview");
     expect(html).toContain("Sign-in is available on the production site.");
     expect(html).toContain(

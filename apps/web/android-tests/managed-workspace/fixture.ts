@@ -5,7 +5,10 @@ import type {
   PersonalSecurityMasterSearchResultDto,
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
-import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
+import {
+  parseManagedCatalogResolveResponse,
+  parseManagedEodHistoryResponse,
+} from "@research-cockpit/contracts";
 import {
   ManagedEodHistoryError,
   type ManagedApi,
@@ -36,6 +39,41 @@ const zero: PersonalSecurityMasterSearchResultDto = {
   symbol: "ZERO",
 };
 const { note, ...identity } = listingMembership(zero);
+const marketsCohort = [
+  {
+    ...identity,
+    issuerId: "issuer-alfa",
+    issuerName: "Alfa Company",
+    listingId: "listing-alfa",
+    securityId: "security-alfa",
+    securityName: "Alfa Common Stock",
+    shareClassId: "class-alfa",
+    shareClassName: "Common Stock",
+    symbol: "ALFA",
+  },
+  {
+    ...identity,
+    issuerId: "issuer-beta",
+    issuerName: "Beta Company",
+    listingId: "listing-beta-a",
+    securityId: "security-beta-a",
+    securityName: "Beta Class A",
+    shareClassId: "class-beta-a",
+    shareClassName: "Class A",
+    symbol: "BETA",
+  },
+  {
+    ...identity,
+    issuerId: "issuer-beta",
+    issuerName: "Beta Company",
+    listingId: "listing-beta-c",
+    securityId: "security-beta-c",
+    securityName: "Beta Class C",
+    shareClassId: "class-beta-c",
+    shareClassName: "Class C",
+    symbol: "BETB",
+  },
+] as const;
 const payload: MainWatchlistPayload = {
   name: "My Watchlist",
   schemaVersion: 1,
@@ -69,21 +107,21 @@ const snapshot: ManagedCatalogSnapshotDto = {
   sources: [],
   excludedCandidates: [],
   coverage: {
-    activeEligibleSecurities: 2,
-    activeListings: 2,
-    admittedSourceRecords: 2,
+    activeEligibleSecurities: 5,
+    activeListings: 5,
+    admittedSourceRecords: 5,
     basis: "synthetic_engineering_only_not_real_universe",
     eligibleSecurityBand: "under_1000",
     formerTickerEntries: 0,
     ineligibleSourceRecords: 0,
     inactiveSecurities: 0,
-    issuers: 2,
+    issuers: 4,
     providerMappings: 0,
     quarantinedSourceRecords: 0,
-    sourceRecords: 2,
+    sourceRecords: 5,
     staleSourceRecords: 0,
-    shareClasses: 2,
-    totalSecurities: 2,
+    shareClasses: 5,
+    totalSecurities: 5,
     unsupportedSourceRecords: 0,
   },
 };
@@ -149,6 +187,57 @@ export async function createFixture(
   const eodInitial = eodPacket("initial");
   const eodLate = eodPacket("late");
   const eodRecovered = eodPacket("recovered");
+  const marketsPacket = (
+    index: number,
+    kind: "initial" | "refreshed" | "late",
+  ) => {
+    const listing = marketsCohort[index];
+    if (!listing) throw new Error("Unknown invented Markets listing");
+    const request = {
+      catalogSnapshotSha256: digest,
+      listingId: listing.listingId,
+      range: "1m" as const,
+    };
+    const refreshed = kind === "refreshed";
+    const start =
+      kind === "late"
+        ? "998.25"
+        : `${(index + 1) * 10 + (refreshed ? 1 : 0)}.25`;
+    const close =
+      kind === "late"
+        ? "999.75"
+        : `${(index + 1) * 10 + (refreshed ? 1 : 0)}.5`;
+    const parsed = parseManagedEodHistoryResponse(
+      {
+        ...eodInitial,
+        security: listing,
+        window: refreshed ? eodRecovered.window : eodInitial.window,
+        requestStartedAt: refreshed
+          ? eodRecovered.requestStartedAt
+          : eodInitial.requestStartedAt,
+        completedAt: refreshed
+          ? eodRecovered.completedAt
+          : eodInitial.completedAt,
+        rows: refreshed
+          ? [
+              { date: "2026-09-19", close: start },
+              { date: "2026-09-20", close },
+            ]
+          : [
+              { date: "2026-09-18", close: start },
+              { date: "2026-09-19", close },
+            ],
+      },
+      request,
+    );
+    if (!parsed) throw new Error("Invalid invented Markets packet");
+    return parsed;
+  };
+  const marketsInitial = marketsCohort.map((_listing, index) =>
+    marketsPacket(index, "initial"),
+  );
+  const marketsRefreshed = marketsPacket(0, "refreshed");
+  const marketsLate = marketsPacket(1, "late");
   let state = {
     load: 0,
     status: 0,
@@ -167,6 +256,10 @@ export async function createFixture(
     eod: 0,
     eodAborted: 0,
     eodLateResolved: 0,
+    marketsResolve: 0,
+    marketsEod: 0,
+    marketsAborted: 0,
+    marketsLateResolved: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -180,6 +273,8 @@ export async function createFixture(
   let rejectRefresh: ((error: unknown) => void) | null = null;
   let releaseCatalog: (() => void) | null = null;
   let pendingEod: ((value: ManagedEodHistoryResponseDto) => void) | null = null;
+  let pendingMarkets: ((value: ManagedEodHistoryResponseDto) => void) | null =
+    null;
   const unexpected = (
     key: "save" | "resolve" | "token" | "signOut",
   ): Promise<never> => {
@@ -222,8 +317,59 @@ export async function createFixture(
       });
     },
     save: () => unexpected("save"),
-    resolve: () => unexpected("resolve"),
+    resolve: (request, signal) => {
+      if (
+        signal.aborted ||
+        request.snapshotSha256 !== digest ||
+        request.listingIds.join("|") !==
+          marketsCohort.map((listing) => listing.listingId).join("|")
+      )
+        return unexpected("resolve");
+      const resolved = parseManagedCatalogResolveResponse(
+        {
+          snapshotSha256: digest,
+          results: marketsCohort.map((listing) => ({
+            listingId: listing.listingId,
+            listing,
+          })),
+        },
+        request,
+      );
+      if (!resolved)
+        throw new Error("Invalid invented Markets resolve response");
+      count("marketsResolve");
+      return Promise.resolve(resolved);
+    },
     eodHistory: (request, signal) => {
+      const marketIndex = marketsCohort.findIndex(
+        (listing) => listing.listingId === request.listingId,
+      );
+      if (marketIndex !== -1) {
+        const expectedIndex =
+          state.marketsEod < 3 ? state.marketsEod : state.marketsEod - 3;
+        if (
+          signal.aborted ||
+          pendingMarkets ||
+          state.marketsResolve < 1 ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.range !== "1m" ||
+          state.marketsEod >= 5 ||
+          marketIndex !== expectedIndex
+        )
+          throw new Error("Unexpected invented Markets EOD request or order");
+        count("marketsEod");
+        if (state.marketsEod <= 3)
+          return Promise.resolve(structuredClone(marketsInitial[marketIndex]!));
+        if (state.marketsEod === 4)
+          return Promise.resolve(structuredClone(marketsRefreshed));
+        signal.addEventListener("abort", () => count("marketsAborted"), {
+          once: true,
+        });
+        // The late reply ignores abort; the board must fence it and never start the third row.
+        return new Promise((resolve) => {
+          pendingMarkets = resolve;
+        });
+      }
       if (
         signal.aborted ||
         pendingEod ||
@@ -286,6 +432,7 @@ export async function createFixture(
   return {
     api,
     session,
+    marketsCohort,
     generations: {
       initial: annual.evidence.generation,
       recovered: recovered.evidence.generation,
@@ -296,6 +443,19 @@ export async function createFixture(
       return () => {
         listeners.delete(listener);
       };
+    },
+    settleCancelledMarkets: () => {
+      if (
+        !pendingMarkets ||
+        state.marketsEod !== 5 ||
+        state.marketsAborted !== 1 ||
+        state.marketsLateResolved !== 0
+      )
+        throw new Error("Only the cancelled Markets row may settle");
+      const resolve = pendingMarkets;
+      pendingMarkets = null;
+      resolve(structuredClone(marketsLate));
+      void Promise.resolve().then(() => count("marketsLateResolved"));
     },
     releaseCatalogRecovery: () => {
       if (

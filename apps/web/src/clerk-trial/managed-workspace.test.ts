@@ -137,6 +137,7 @@ function fixture(initial = empty) {
     session,
     () => `synthetic-command-${++keys}`,
   );
+  workspace.setView("discover");
   return { workspace, api, session, saved: () => structuredClone(stored) };
 }
 async function ready(workspace: ManagedWorkspace) {
@@ -1195,7 +1196,9 @@ describe("same-listing research navigation", () => {
         );
       await workspace[panel].load();
       const refused = workspace[panel].getSnapshot();
-      expect(refused.catalogChanged).toBe(true);
+      expect(refused.selection).toBeNull();
+      expect(workspace.getSnapshot().snapshot).toBeNull();
+      expect(workspace.getSnapshot().message).toContain("The catalog changed.");
       if (panel === "annual") workspace.switchToEod();
       else workspace.switchToAnnual();
       expect(workspace[panel].getSnapshot()).toBe(refused);

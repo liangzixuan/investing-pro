@@ -67,7 +67,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String NOTE = "Draft survives native Back";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
-    private static final String CATALOG_REFRESH = DISCOVER + " .trial-toolbar button";
+    private static final String CATALOG_REFRESH = ".managed-search-bar > button";
+    private static final String CATALOG_STATUS = ".managed-search-bar + p[role=status]";
     private static final String CATALOG_FAILURE =
         "The catalog could not be loaded. Select Refresh catalog to try again.";
     private static final String CSP =
@@ -261,8 +262,9 @@ public class ManagedWorkspaceInstrumentedTest {
 
     @Test
     public void catalogStartupFailureRecoversWithoutReloadOrDraftLoss() throws Exception {
+        selectWorkspaceView("Discover");
         awaitPage("initial catalog failure offers Refresh catalog",
-            "document.querySelector(" + JSONObject.quote(DISCOVER + " > p[role=status]") + ")?.textContent === " + JSONObject.quote(CATALOG_FAILURE) +
+            "document.querySelector(" + JSONObject.quote(CATALOG_STATUS) + ")?.textContent === " + JSONObject.quote(CATALOG_FAILURE) +
             " && " + DIAGNOSTICS + ".catalogRecovery === true && " + DIAGNOSTICS + ".status === 1");
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
@@ -271,13 +273,15 @@ public class ManagedWorkspaceInstrumentedTest {
             originalActivity.set(new WeakReference<>(activity));
             originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
         });
+        selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("draft reordered before catalog recovery",
             "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Discover");
         assertCatalogRecoveryState(1, 0, "", false, false, CATALOG_FAILURE);
         retainCatalogRecoveryScreenshot("catalogStartupFailure", CATALOG_REFRESH,
-            CATALOG_REFRESH + ", " + DISCOVER + " > p[role=status]");
+            CATALOG_REFRESH + ", " + CATALOG_STATUS);
         assertCatalogRecoveryState(1, 0, "", false, false, CATALOG_FAILURE);
         Log.i("ManagedCatalogRecovery", "phase=failed; " + pageDiagnostic());
 
@@ -299,7 +303,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertCatalogRecoveryState(2, 0, "ZERO", false, true, "");
         click(".workspace-global-search button[type=submit]");
         assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
-        retainCatalogRecoveryScreenshot("catalogRecovered", ".workspace-global-search",
+        retainCatalogRecoveryScreenshot("catalogRecovered", ".managed-results",
             ".managed-results strong, .managed-catalog-receipt > summary");
         assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
         scenario.onActivity(activity -> {
@@ -327,6 +331,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".workspace-global-search button[type=submit]");
         awaitPage("invented EOD listing discovered", DIAGNOSTICS + ".search === 1" +
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
+        selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("EOD draft reordered", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
@@ -515,6 +520,177 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedResearchSwitch", "phase=back-original-opener, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void marketsLoadCancelAndNavigationPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        awaitPage("Markets is the default with resolved identities and no price reads",
+            "document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'Markets'" +
+            " && " + DIAGNOSTICS + ".marketsResolve === 1 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && document.querySelectorAll('.managed-market-row').length === 3" +
+            " && document.querySelector('.managed-market-detail table') === null" +
+            " && document.querySelector('.managed-market-detail canvas') === null" +
+            " && document.querySelector('#managed-note-0')?.closest('section')?.hidden === true");
+        typeIntoInput("workspace-company-query", "ZERO");
+        click(".workspace-global-search button[type=submit]");
+        awaitPage("Search opens visible Discover without a price read",
+            "document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'Discover'" +
+            " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'" +
+            " && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".marketsEod === 0");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("Markets journey reorders the mounted draft",
+            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Markets");
+        awaitPage("second Markets visit resolves again without loading prices",
+            DIAGNOSTICS + ".marketsResolve === 2 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && Array.from(document.querySelectorAll('.managed-market-close strong')).every(e => e.textContent === 'Not loaded')");
+        clickMarketsAction("Load board prices");
+        assertMarketsRows(false);
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        awaitPage("three loaded rows keep distinct share classes",
+            "Array.from(document.querySelectorAll('.managed-market-identity small')).map(e => e.textContent).join('|') === 'Common Stock · XNAS|Class A · XNAS|Class C · XNAS'" +
+            " && document.querySelector('.managed-markets .trial-actions button:first-child')?.textContent === 'Refresh board prices'");
+        click("button[aria-label='Select BETB on company board']");
+        assertMarketsDetail("BETB", "2026-09-18|30.25;2026-09-19|30.5", false);
+        click("button[aria-label='Select ALFA on company board']");
+        assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        retainMarketsLoadedScreenshot();
+        Log.i("ManagedMarkets", "phase=three-loaded-explicit, reads=3; " + pageDiagnostic());
+
+        clickMarketsAction("Refresh board prices");
+        assertMarketsRows(true);
+        awaitPage("the completed first refresh replaces its whole dated response",
+            "Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|11.25;2026-09-20|11.5'" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'");
+        awaitPage("refresh is sequential and holds only the second row",
+            DIAGNOSTICS + ".marketsEod === 5 && " + DIAGNOSTICS + ".marketsAborted === 0" +
+            " && document.querySelector('.managed-markets .trial-actions button:first-child')?.disabled === true" +
+            " && document.querySelectorAll('.managed-market-rows .managed-eod-previous').length === 2" +
+            " && Array.from(document.querySelectorAll('.managed-market-rows .managed-eod-previous')).every(e => e.textContent === 'Previous history · completed 2026-09-20T00:00:01.000Z. This refresh has not confirmed newer prices.')" +
+            " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === 'BETA,BETB'");
+        clickMarketsAction("Cancel board prices");
+        assertMarketsDraftAndCounts(2, 5, 1, 0);
+        awaitPage("Cancel restores focus after the load action is enabled",
+            "document.activeElement === document.querySelector('.managed-markets .trial-actions button:first-child')" +
+            " && document.activeElement.disabled === false" +
+            " && document.querySelector('.managed-market-rows .managed-eod-previous') !== null");
+        click("#settle-cancelled-markets");
+        assertMarketsDraftAndCounts(2, 5, 1, 1);
+        assertMarketsRows(true);
+        click("button[aria-label='Select BETA on company board']");
+        assertMarketsDetail("BETA", "2026-09-18|20.25;2026-09-19|20.5", true);
+        awaitPage("late board values cannot replace the retained response",
+            "!document.querySelector('.managed-markets')?.textContent.includes('998.25')" +
+            " && !document.querySelector('.managed-markets')?.textContent.includes('999.75')");
+        Log.i("ManagedMarkets", "phase=cancelled-late-discarded, reads=5; " + pageDiagnostic());
+
+        click("button[aria-label='Board price history for BETA']");
+        awaitPage("board opens separate EOD panel unloaded without another request",
+            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · BETA'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('.managed-eod-history table') === null" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
+            " && document.querySelector('.managed-market-detail table') !== null");
+        assertMarketsDraftAndCounts(2, 5, 1, 1);
+        pressBack();
+        awaitPage("native Back restores the original board opener and its previous history",
+            "document.querySelector('.managed-eod-history') === null" +
+            " && document.activeElement === document.querySelector(\"button[aria-label='Board price history for BETA']\")");
+        assertMarketsDetail("BETA", "2026-09-18|20.25;2026-09-19|20.5", true);
+        assertRootHistory();
+        pressBack();
+        assertMarketsRows(true);
+        assertMarketsDraftAndCounts(2, 5, 1, 1);
+        selectWorkspaceView("Discover");
+        awaitPage("leaving Markets retires all its price views",
+            "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null");
+        selectWorkspaceView("Markets");
+        awaitPage("returning Markets resolves fresh identities but remains unloaded",
+            DIAGNOSTICS + ".marketsResolve === 3" +
+            " && document.querySelectorAll('.managed-market-row').length === 3" +
+            " && Array.from(document.querySelectorAll('.managed-market-close strong')).every(e => e.textContent === 'Not loaded')" +
+            " && document.querySelector('.managed-market-detail table') === null" +
+            " && document.querySelector('.managed-market-detail canvas') === null" +
+            " && document.querySelector('.managed-markets .managed-eod-previous') === null");
+        assertMarketsDraftAndCounts(3, 5, 1, 1);
+        selectWorkspaceView("My Watchlist");
+        awaitPage("the final watchlist draft is visible and unchanged",
+            "document.querySelector('#managed-note-1')?.closest('section')?.hidden === false");
+        assertMarketsDraftAndCounts(3, 5, 1, 1);
+        scenario.onActivity(activity -> {
+            assertNotNull("Original Markets Activity was collected", originalActivity.get().get());
+            assertNotNull("Original Markets WebView was collected", originalWebView.get().get());
+            assertSame("Markets navigation must preserve Activity", originalActivity.get().get(), activity);
+            assertSame("Markets navigation must preserve WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("Markets navigation must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        assertFixtureBoundary();
+        Log.i("ManagedMarkets", "phase=left-cleared-draft-retained, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    private void clickMarketsAction(String label) {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[contains(concat(' ',normalize-space(@class),' '),' managed-markets ')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertMarketsRows(boolean refreshedFirst) throws Exception {
+        String expected = refreshedFirst
+            ? "ALFA|$11.5|USD · 2026-09-20;BETA|$20.5|USD · 2026-09-19;BETB|$30.5|USD · 2026-09-19"
+            : "ALFA|$10.5|USD · 2026-09-19;BETA|$20.5|USD · 2026-09-19;BETB|$30.5|USD · 2026-09-19";
+        awaitPage("all exact board closes and independent trading dates",
+            "Array.from(document.querySelectorAll('.managed-market-row')).map(e => e.querySelector('.managed-market-identity strong').textContent + '|' + e.querySelector('.managed-market-close strong').textContent + '|' + e.querySelector('.managed-market-close small').textContent).join(';') === " + JSONObject.quote(expected));
+    }
+
+    private void assertMarketsDetail(String symbol, String rows, boolean previous) throws Exception {
+        awaitPage("selected board history and source dates: " + symbol,
+            "document.querySelector('#managed-market-detail-heading')?.textContent === " + JSONObject.quote(symbol + " · one month") +
+            " && document.querySelector('.managed-market-detail caption')?.textContent === 'One-month raw closing prices in USD'" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === " + JSONObject.quote(rows) +
+            " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
+            " && (document.querySelector('.managed-market-detail .managed-eod-previous') !== null) === " + previous +
+            " && document.querySelector('.managed-market-detail')?.textContent.includes('Data provided by Tiingo.')");
+    }
+
+    private void assertMarketsDraftAndCounts(int resolves, int reads, int aborted, int late) throws Exception {
+        awaitPage("Markets exact calls and mounted draft",
+            DIAGNOSTICS + ".marketsResolve === " + resolves + " && " + DIAGNOSTICS + ".marketsEod === " + reads +
+            " && " + DIAGNOSTICS + ".marketsAborted === " + aborted + " && " + DIAGNOSTICS + ".marketsLateResolved === " + late +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void retainMarketsLoadedScreenshot() throws Exception {
+        awaitPage("Markets real canvas rendered",
+            "document.querySelector('.managed-market-detail canvas')?.width > 0 && document.querySelector('.managed-market-detail canvas')?.height > 0");
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-market-detail canvas')?.scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Markets canvas did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const c = document.querySelector('.managed-market-detail canvas'); const v = visualViewport;" +
+            " if (!c || !v || c.width <= 0 || c.height <= 0) return false; const r = c.getBoundingClientRect();" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()";
+        awaitPage("Markets canvas visible", visible);
+        retainScreenshot("marketsBoardLoaded");
+        awaitPage("Markets canvas remained visible through capture", visible);
+    }
+
     private void assertResearchSwitchDraftAndCounts(int eodReads, int lateAnnual) throws Exception {
         assertFixtureReadCounts(1, lateAnnual);
         awaitPage("panel switching retains draft and exact EOD calls",
@@ -616,8 +792,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertCatalogRecoveryState(int statusCalls, int searchCalls, String query, boolean pending, boolean recovered, String message) throws Exception {
         awaitPage("catalog recovery status=" + statusCalls + ", search=" + searchCalls + ", pending=" + pending,
             "(() => { const d = " + DIAGNOSTICS + "; const discover = document.querySelector(" + JSONObject.quote(DISCOVER) + ");" +
-            " const refresh = discover.querySelector('.trial-toolbar button');" +
-            " const search = discover.querySelector('button[type=submit]');" +
+            " const refresh = document.querySelector(" + JSONObject.quote(CATALOG_REFRESH) + ");" +
+            " const search = document.querySelector('.workspace-global-search button[type=submit]');" +
             " const receipt = discover.querySelector('.managed-catalog-receipt');" +
             " return d.catalogRecovery && d.load === 1 && d.status === " + statusCalls + " && d.search === " + searchCalls +
             " && d.catalogReleased === " + (recovered ? 1 : 0) +
@@ -627,9 +803,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && search.disabled === " + pending + " && search.textContent === 'Search'" +
             " && document.querySelector('#workspace-company-query')?.disabled === false" +
             " && document.querySelector('#workspace-company-query')?.value === " + JSONObject.quote(query) +
-            " && discover.querySelector(':scope > p[role=status]')?.textContent === " + JSONObject.quote(message) +
+            " && document.querySelector(" + JSONObject.quote(CATALOG_STATUS) + ")?.textContent === " + JSONObject.quote(message) +
             " && (receipt !== null) === " + recovered +
-            (recovered ? " && receipt.querySelector('summary').textContent === '2 available listings · Catalog as of 2026-09-20T00:00:00.000Z'" +
+            (recovered ? " && receipt.querySelector('summary').textContent === '5 available listings · Catalog as of 2026-09-20T00:00:00.000Z'" +
                 " && receipt.textContent.includes('android-invented-catalog · fixture-v1')" +
                 " && receipt.textContent.includes('Synthetic engineering data')" +
                 " && receipt.textContent.includes('sha256:' + 'a'.repeat(64))" : "") +
@@ -753,6 +929,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".workspace-global-search button");
         awaitPage("Discover returns the invented exact listing", DIAGNOSTICS + ".search === 1" +
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
+        selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("watchlist reordered", "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'");
         typeIntoInput("managed-note-1", NOTE);
@@ -801,6 +978,17 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void click(String selector) {
         onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
+    }
+
+    private void selectWorkspaceView(String label) throws Exception {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//nav[@aria-label='Workspace']/button[normalize-space(.)='" + label + "']")).perform(webClick());
+        String expectedHeading = label.equals("My Watchlist") ? "managed-watchlist-heading" :
+            label.equals("Discover") ? "managed-discover-heading" : "managed-markets-heading";
+        awaitPage("visible workspace view: " + label,
+            "Array.from(document.querySelectorAll('.managed-navigation button')).some(b => b.textContent === " + JSONObject.quote(label) +
+            " && b.getAttribute('aria-current') === 'page')" +
+            " && document.getElementById(" + JSONObject.quote(expectedHeading) + ")?.closest('section')?.hidden === false");
     }
 
     private void typeIntoInput(String id, String text) throws Exception {

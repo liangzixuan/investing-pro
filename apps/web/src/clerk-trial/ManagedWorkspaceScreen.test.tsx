@@ -17,6 +17,7 @@ import { response as annualResponse } from "../features/research/sec-annual-evid
 import { eodResponse } from "./eod-history-fixture";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
 import { ManagedEodHistory } from "./ManagedEodHistory";
+import { ManagedMarkets } from "./ManagedMarkets";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
@@ -186,6 +187,7 @@ function fixture(initial = payload) {
     getToken: vi.fn(),
     signOut: vi.fn(),
   });
+  workspace.setView("discover");
   return {
     workspace,
     api,
@@ -208,6 +210,21 @@ function elements(
   ];
 }
 describe("managed workspace screen", () => {
+  it("moves focus to persistent watchlist navigation when leaving the board action", () => {
+    const { workspace } = fixture();
+    workspace.setView("markets");
+    mounted.direct = true;
+    const node = ManagedWorkspaceScreen({ workspace });
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    const board = elements(node).find(
+      (element) => element.type === ManagedMarkets,
+    )!;
+    (board.props as React.ComponentProps<typeof ManagedMarkets>).onWatchlist();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    expect(focus).toHaveBeenCalledOnce();
+    expect(workspace.markets.getSnapshot().active).toBe(false);
+  });
   it.each([
     ["annual", "screen"],
     ["eod", "screen"],

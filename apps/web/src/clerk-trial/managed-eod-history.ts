@@ -1,22 +1,21 @@
-import {
-  membershipMatchesResult,
-  parseManagedEodError,
-  type ManagedEodHistoryResponseDto,
-  type WatchlistMembership,
-} from "@research-cockpit/contracts";
-import { TrialApiError } from "./api";
+import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
+import type { TrialApiError } from "./api";
 import {
   ManagedCatalogChangedError,
   ManagedEodCooldownError,
   ManagedEodHistoryError,
   type ManagedApi,
 } from "./managed-api";
+import {
+  ManagedEodAccess,
+  isManagedEodAuthenticationError,
+  isManagedEodTransientError,
+  type ManagedEodAccessSelection,
+} from "./managed-eod-access";
 
-export interface EodHistorySelection {
-  readonly catalogSnapshotSha256: `sha256:${string}`;
-  readonly listing: Omit<WatchlistMembership, "note">;
+export interface EodHistorySelection extends ManagedEodAccessSelection {
   readonly cik: string | null;
-  readonly origin: "discover" | "watchlist";
+  readonly origin: "discover" | "watchlist" | "markets";
 }
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
@@ -43,11 +42,11 @@ export class ManagedEodHistory {
   private readonly listeners = new Set<() => void>();
   private operation: AbortController | null = null;
   private retired = false;
-  private nextAllowedAt: string | null = null;
 
   constructor(
-    private readonly read: ManagedApi["eodHistory"],
+    read: ManagedApi["eodHistory"],
     private readonly readError: (error: TrialApiError) => void,
+    private readonly access = new ManagedEodAccess(read),
   ) {}
   getSnapshot = (): ManagedEodHistoryState => this.state;
   subscribe = (listener: () => void) => {
@@ -77,7 +76,6 @@ export class ManagedEodHistory {
   }
   retire() {
     this.retired = true;
-    this.nextAllowedAt = null;
     this.close();
   }
   cancel() {
@@ -102,11 +100,12 @@ export class ManagedEodHistory {
       this.state.catalogChanged
     )
       return;
-    if (this.nextAllowedAt && Date.now() < Date.parse(this.nextAllowedAt)) {
+    const nextAllowedAt = this.access.getNextAllowedAt();
+    if (nextAllowedAt) {
       this.update({
         showingPrevious: this.state.response !== null,
         error: false,
-        message: this.cooldownMessage(this.nextAllowedAt),
+        message: this.cooldownMessage(nextAllowedAt),
       });
       return;
     }
@@ -126,23 +125,8 @@ export class ManagedEodHistory {
         : `Loading close history for ${selection.listing.symbol}…`,
     });
     try {
-      const response = await this.read(
-        {
-          catalogSnapshotSha256: selection.catalogSnapshotSha256,
-          listingId: selection.listing.listingId,
-          range: "1m",
-        },
-        operation.signal,
-      );
+      const response = await this.access.request(selection, operation.signal);
       if (!current()) return;
-      if (
-        response.catalogSnapshotSha256 !== selection.catalogSnapshotSha256 ||
-        !membershipMatchesResult(
-          { ...selection.listing, note: "" },
-          response.security,
-        )
-      )
-        throw new TrialApiError("invalid_response");
       this.update({
         response,
         showingPrevious: false,
@@ -150,23 +134,13 @@ export class ManagedEodHistory {
       });
     } catch (error) {
       if (!current()) return;
-      if (
-        error instanceof TrialApiError &&
-        ["unauthenticated", "access_denied", "origin_denied"].includes(
-          error.code,
-        )
-      ) {
+      if (isManagedEodAuthenticationError(error)) {
         this.readError(error);
         this.retire();
         return;
       }
       const showingPrevious =
-        this.state.response !== null &&
-        ((error instanceof ManagedEodHistoryError &&
-          ["request_timeout", "unavailable", "source_rate_limited"].includes(
-            error.code,
-          )) ||
-          (error instanceof TrialApiError && error.code === "unavailable"));
+        this.state.response !== null && isManagedEodTransientError(error);
       let message = showingPrevious
         ? "The close history refresh failed. Select Refresh to try again."
         : "Close history could not be loaded. Select Load to try again.";
@@ -176,19 +150,12 @@ export class ManagedEodHistory {
         message =
           "The catalog changed. Refresh the catalog and select this listing again.";
       } else if (error instanceof ManagedEodCooldownError) {
-        const checked = parseManagedEodError({
-          error: "rate_limited",
-          nextAllowedAt: error.nextAllowedAt,
+        this.update({
+          showingPrevious: this.state.response !== null,
+          message: this.cooldownMessage(error.nextAllowedAt),
+          error: false,
         });
-        if (checked?.error === "rate_limited") {
-          this.nextAllowedAt = checked.nextAllowedAt;
-          this.update({
-            showingPrevious: this.state.response !== null,
-            message: this.cooldownMessage(checked.nextAllowedAt),
-            error: false,
-          });
-          return;
-        }
+        return;
       } else if (error instanceof ManagedEodHistoryError) {
         if (error.code === "source_rate_limited")
           message = showingPrevious
