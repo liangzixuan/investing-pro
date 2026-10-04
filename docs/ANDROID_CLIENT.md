@@ -2,9 +2,9 @@
 
 The managed Android app packages the shared React workspace with Capacitor.
 Clerk supplies native sign-in; Appwrite hosts the managed API and data. Signed
-Investment 1.2.0 (version code 3, `app.investingpro.android`) was built and delivered
-from the accepted PR 26 source. Its package, signer, bundled assets and backup
-rules passed artifact review. Physical installation and use of 1.2 remain open.
+Investment 1.3.0 (version code 4, `app.investingpro.android`) was built and delivered
+from the accepted PR 32 source tree. Its package, signer, bundled assets and backup
+rules passed artifact review. Physical installation and use of 1.3 remain open.
 [Current work](./CURRENT_WORK.md) records the exact source and APK digest.
 
 The production 1.1 upgrade/checklist was owner-reported as passed on a Pixel 10 Pro
@@ -27,9 +27,10 @@ the browser client, whose output directories remain `dist/clerk-trial` and
 `dist/clerk-production`. A native bundle requires Android at exact
 `https://localhost`; browser and native targets cannot substitute for each other.
 
-The production native app renders the existing managed Discover and My Watchlist
-screens through the same native session adapter used by the trial. Each session
-generation owns its workspace; sign-out retires it and cancels pending work.
+The current managed native source renders Markets, Discover and My Watchlist
+through the same native session adapter used by the trial. Signed Android 1.3
+includes Markets, direct research switching and retained refresh histories. Each
+session generation owns its workspace; sign-out retires it and cancels pending work.
 The Clerk Android SDK owns hosted sign-in, callbacks and encrypted credential
 storage. Short-lived operation tokens cross the bridge only when needed; the
 app adds no JavaScript refresh-token store or callback parser.
@@ -42,7 +43,9 @@ account, signature, active session and time checks. Origin is not installation
 attestation. The original production demo service stays web only.
 
 The catalog contains AAPL, GOOG and GOOGL with distinct listing identities.
-Annual reports and AAPL-only EOD close history load explicitly. Shared watchlist
+Annual reports and EOD close history load explicitly. Current service admission
+covers AAPL, GOOG and GOOGL; that scope does not imply other market coverage.
+Shared watchlist
 notes, ordering, removal, explicit saves and conflict/uncertain-save
 reconciliation reuse the website's implementation and private storage adapter.
 There is no offline editing queue or local-vault migration.
@@ -61,9 +64,9 @@ against its selected profile and copied Capacitor configuration before packaging
 Do not sync over retained outputs before preserving their original bytes.
 
 ```powershell
-# Accepted 1.2 build shape, from apps/web/android with reviewed inputs supplied.
+# Accepted 1.3 build shape, from apps/web/android with reviewed inputs supplied.
 # A later delivered update must use a higher version code.
-./gradlew.bat --no-daemon --console=plain -PinvestmentClientProfile=managed -PinvestmentVersionCode=3 -PinvestmentVersionName=1.2.0 assembleRelease
+./gradlew.bat --no-daemon --console=plain -PinvestmentClientProfile=managed -PinvestmentVersionCode=4 -PinvestmentVersionName=1.3.0 assembleRelease
 ```
 
 For the disconnected foundation, use `build:mobile` and the disconnected
@@ -137,11 +140,14 @@ Activity or document, losing the draft or sending extra requests. Synchronized
 screenshots retain the failed and recovered states.
 
 The EOD case loads invented raw closes into the shared EOD close history panel, then
-holds a refresh open. Cancel must clear the rows and discard the deliberately
-late reply. Native Back restores the opening control and preserves the draft,
+holds a refresh open. Cancel preserves the previous validated rows with their
+original dates and discards the deliberately late reply. Native Back restores the opening control
+and preserves the draft,
 order, Activity, WebView and document. Its chart/table screenshots contain only
-invented prices. The accepted PR 26 main run passed all nine required cases
-and retained thirteen screenshots, including the chart and exact-value table.
+invented prices. The accepted PR 32 main run passed all eleven required cases
+and retained eighteen screenshots. Additional cases cover direct research switching
+and the Markets board: ordered loading, Cancel and late-response rejection, row
+selection and return to the mounted watchlist draft.
 These are fixture results, not live-provider or physical-device results.
 
 Each run retains its Android test results and HTML report. The workflow rejects
@@ -175,7 +181,8 @@ established session from killing a pending browser sign-in. Shared-data testing
 must preserve existing owner records and follow the selected device journey.
 
 BrowserStack remains browser-only. Synthetic tests and browser checks do not
-substitute for physical Pixel results. The dated production 1.1 owner report and
-pending 1.2 device acceptance are summarized in [Current work](./CURRENT_WORK.md).
+substitute for physical Pixel results. The production 1.1 owner report remains
+historical; physical use of 1.2 and 1.3 is unverified. These limits are summarized
+in [Current work](./CURRENT_WORK.md).
 Native iOS and public store distribution are later
 outcomes with separate toolchain, signing and device requirements.

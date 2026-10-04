@@ -27,8 +27,9 @@ compare and value it, save a thesis, then return to relevant changes.
 
 The supplied Investing.com screenshot combines market tables, movers, charts,
 news, calendars, screens and watchlist ideas on one landing page. Its public
-[homepage](https://www.investing.com/) also surfaces those daily tasks. Our current
-default page starts with company search, which serves a much narrower purpose.
+[homepage](https://www.investing.com/) also surfaces those daily tasks. The first managed Markets page
+now connects a three-listing board, dated chart
+and research/watchlist navigation. It remains a small part of that broader goal.
 
 [InvestingPro's plan page](https://www.investing.com/pro/pricing/plans) advertises
 advanced screening, financial history, multiple valuation models, health metrics,
@@ -53,26 +54,33 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.2 package share Discover, a private
+The managed website and signed Android 1.3 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage and the physical
-Android 1.2 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
+Android 1.3 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
-navigation and retained close history during refresh are delivered on the website.
-Previous histories keep their original dates. Android packaging remains a separate delivery.
+navigation and retained close history during refresh are delivered on the website
+and in signed Android 1.3. Previous histories keep their original dates. Physical
+Android acceptance remains separate from packaging.
 
-The selected first [Markets home](MANAGED_MARKETS_HOME.md) uses the three accepted
+The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
+and in signed Android 1.3. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, percentage movers or benchmarks. Preserve usable data, unsaved drafts and recoverable
 error states as capabilities grow. The broader local research tools remain
 available in their separate profile; their existence does not establish managed
 delivery.
+
+Signed Android 1.3 carries the accepted Markets and research workflow into the
+existing package with the same production signer. Its artifact is accepted;
+physical-device acceptance remains open. Next, select a bounded company-page
+workflow from M2 using existing capabilities and verified sources.
 
 Repomix automation remains pending; [AI context](./AI_CONTEXT.md) records the
 current dependency blocker and the manual source-reading path.
