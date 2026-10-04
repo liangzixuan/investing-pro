@@ -967,6 +967,415 @@ describe("annual panel within the managed workspace", () => {
   });
 });
 
+describe("company research watchlist draft", () => {
+  async function researchFixture(initial = empty) {
+    const setup = fixture(initial);
+    await ready(setup.workspace);
+    setup.workspace.openDiscoveryAnnual(result);
+    const selection = setup.workspace.getSnapshot().research!.selection;
+    return { ...setup, selection };
+  }
+
+  it("adds only the captured company draft, shares its note and explicitly saves and reloads the full list", async () => {
+    const initial = {
+      ...empty,
+      memberships: [{ ...listingMembership(second), note: "Other research" }],
+    };
+    const { workspace, api, session, saved, selection } =
+      await researchFixture(initial);
+    const visit = workspace.getSnapshot().research;
+    workspace.setQuery("A new query without searching");
+    expect(workspace.getResearchWatchlist(selection)).toEqual({
+      member: null,
+      canAdd: true,
+      canEdit: false,
+      reason: null,
+    });
+    workspace.noteResearch(selection, "Must not add implicitly");
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(initial);
+    workspace.addResearchToWatchlist(selection);
+    workspace.addResearchToWatchlist(selection);
+    expect(workspace.getSnapshot().research).toBe(visit);
+    expect(workspace.getResearchWatchlist(selection).member).toEqual(
+      listingMembership(result),
+    );
+    workspace.noteResearch(selection, "  Cafe\u0301 thesis  ");
+    workspace.switchToEod();
+    expect(workspace.getSnapshot().research!.selection).toBe(selection);
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+      "  Cafe\u0301 thesis  ",
+    );
+    workspace.note(result.listingId, "  Shared workspace note  ");
+    workspace.switchToAnnual();
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+      "  Shared workspace note  ",
+    );
+    expect(workspace.coordinator.getSnapshot().draft?.memberships[0]).toEqual(
+      initial.memberships[0],
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.search).toHaveBeenCalledOnce();
+    workspace.setView("watchlist");
+    expect(workspace.getSnapshot().research).toBeNull();
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships).toEqual([
+      initial.memberships[0],
+      { ...listingMembership(result), note: "Shared workspace note" },
+    ]);
+    const reopened = new ManagedWorkspace(api, session);
+    await reopened.coordinator.load();
+    await reopened.refreshCatalog();
+    reopened.openWatchlistAnnual(
+      reopened.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    expect(
+      reopened.getResearchWatchlist(reopened.getSnapshot().research!.selection)
+        .member?.note,
+    ).toBe("Shared workspace note");
+  });
+
+  it("keeps equal tickers on different listings and share classes as separate notes", async () => {
+    const { workspace, api } = fixture();
+    const alternate = { ...second, symbol: result.symbol };
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [result, alternate],
+      totalMatches: 2,
+      limitApplied: 25,
+      normalizedQuery: "DEMO",
+    });
+    await ready(workspace);
+    workspace.openDiscoveryAnnual(result);
+    const first = workspace.getSnapshot().research!.selection;
+    workspace.addResearchToWatchlist(first);
+    workspace.noteResearch(first, "Class A thesis");
+    workspace.openDiscoveryAnnual(alternate);
+    const next = workspace.getSnapshot().research!.selection;
+    workspace.addResearchToWatchlist(next);
+    workspace.noteResearch(next, "Class B thesis");
+    workspace.noteResearch(first, "Old visit must not write");
+    expect(workspace.coordinator.getSnapshot().draft?.memberships).toEqual([
+      { ...listingMembership(result), note: "Class A thesis" },
+      { ...listingMembership(alternate), note: "Class B thesis" },
+    ]);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["copy", "reopen", "other", "close", "retire", "catalog"])(
+    "rejects captured actions after %s without touching the current draft",
+    async (boundary) => {
+      const { workspace, api, selection } = await researchFixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      let captured = selection;
+      if (boundary === "copy") captured = { ...selection };
+      else if (boundary === "reopen") {
+        workspace.closeResearch();
+        workspace.openDiscoveryAnnual(result);
+        expect(workspace.getSnapshot().research!.selection).not.toBe(selection);
+      } else if (boundary === "other") workspace.openDiscoveryAnnual(second);
+      else if (boundary === "close") workspace.closeResearch();
+      else if (boundary === "retire") workspace.coordinator.retire();
+      else {
+        vi.mocked(api.status).mockResolvedValue({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(workspace.getResearchWatchlist(captured)).toMatchObject({
+        canAdd: false,
+        canEdit: false,
+        reason: "Open this company again before editing its watchlist note.",
+      });
+      workspace.noteResearch(captured, "Rejected old callback");
+      workspace.addResearchToWatchlist(captured);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "shareClassId",
+    "securityId",
+    "issuerId",
+    "exchangeMic",
+    "symbol",
+  ] as const)(
+    "blocks a same-listing-ID %s mismatch instead of adding or editing another identity",
+    async (field) => {
+      const { workspace, selection } = await researchFixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      workspace.coordinator.replaceDraft({
+        ...draft,
+        memberships: [
+          { ...draft.memberships[0]!, [field]: "changed-identity" },
+        ],
+      });
+      const changed = workspace.coordinator.getSnapshot().draft;
+      expect(workspace.getResearchWatchlist(selection)).toEqual({
+        member: null,
+        canAdd: false,
+        canEdit: false,
+        reason: "Review this listing's changed identity in My Watchlist.",
+      });
+      workspace.noteResearch(selection, "Do not overwrite");
+      workspace.addResearchToWatchlist(selection);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(changed);
+    },
+  );
+
+  it("requires a loaded watchlist and matching catalog before any draft action", async () => {
+    const { workspace, api } = fixture();
+    await workspace.refreshCatalog();
+    workspace.setQuery("Invented");
+    await workspace.search();
+    workspace.openDiscoveryAnnual(result);
+    const selection = workspace.getSnapshot().research!.selection;
+    expect(workspace.getResearchWatchlist(selection).reason).toBe(
+      "Load My Watchlist before adding or editing a note.",
+    );
+    workspace.addResearchToWatchlist(selection);
+    workspace.noteResearch(selection, "Blocked");
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    vi.mocked(api.load).mockResolvedValue({
+      version: 1,
+      payload: { ...empty, snapshotSha256: nextDigest },
+    });
+    await workspace.coordinator.load();
+    const stale = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.getResearchWatchlist(selection).reason).toBe(
+      "Review catalog changes in My Watchlist before editing.",
+    );
+    workspace.addResearchToWatchlist(selection);
+    workspace.noteResearch(selection, "Blocked");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(stale);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["loading", "saving"])(
+    "keeps a matching note readable but blocks changes while %s",
+    async (phase) => {
+      const { workspace, api, selection } = await researchFixture({
+        ...empty,
+        memberships: [{ ...listingMembership(result), note: "Keep this" }],
+      });
+      const held = deferred<never>();
+      if (phase === "saving") {
+        workspace.noteResearch(selection, "Draft to save");
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+      } else vi.mocked(api.load).mockReturnValueOnce(held.promise);
+      const pending =
+        phase === "saving"
+          ? workspace.coordinator.save()
+          : workspace.coordinator.load();
+      const draft = workspace.coordinator.getSnapshot().draft;
+      expect(workspace.getResearchWatchlist(selection)).toMatchObject({
+        member: draft!.memberships[0],
+        canAdd: false,
+        canEdit: false,
+        reason:
+          "Wait for the current My Watchlist operation to finish before editing.",
+      });
+      workspace.noteResearch(selection, "Blocked");
+      workspace.addResearchToWatchlist(selection);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      held.reject(new TrialApiError("unavailable"));
+      await pending;
+    },
+  );
+
+  it.each(["conflict", "commit_unknown"] as const)(
+    "blocks both absent-company Add and shared-note edits after %s",
+    async (failure) => {
+      const { workspace, api, selection } = await researchFixture();
+      workspace.add(second);
+      vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(failure));
+      await workspace.coordinator.save();
+      const draft = workspace.coordinator.getSnapshot().draft;
+      expect(workspace.getResearchWatchlist(selection)).toMatchObject({
+        canAdd: false,
+        canEdit: false,
+      });
+      workspace.addResearchToWatchlist(selection);
+      workspace.openDiscoveryAnnual(second);
+      const secondSelection = workspace.getSnapshot().research!.selection;
+      expect(workspace.getResearchWatchlist(secondSelection)).toMatchObject({
+        member: draft!.memberships[0],
+        canAdd: false,
+        canEdit: false,
+      });
+      workspace.noteResearch(secondSelection, "Blocked");
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.save).toHaveBeenCalledOnce();
+      if (failure === "commit_unknown") {
+        const held = deferred<never>();
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        const pending = workspace.coordinator.reconcile();
+        expect(workspace.getResearchWatchlist(secondSelection).reason).toBe(
+          "Review the pending save in My Watchlist before editing.",
+        );
+        workspace.noteResearch(secondSelection, "Still blocked");
+        expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+        held.reject(new TrialApiError("unavailable"));
+        await pending;
+      }
+    },
+  );
+
+  it("blocks Add at the membership limit without blocking an existing note", async () => {
+    const memberships = Array.from({ length: 10_000 }, (_, index) => ({
+      ...listingMembership(result),
+      listingId: `saved-${index}`,
+    }));
+    const { workspace, selection } = await researchFixture({
+      ...empty,
+      memberships,
+    });
+    expect(workspace.getResearchWatchlist(selection).reason).toBe(
+      "Remove an entry from My Watchlist before adding this company.",
+    );
+    workspace.addResearchToWatchlist(selection);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    const existing = workspace.getSnapshot().research!.selection;
+    expect(workspace.getResearchWatchlist(existing).canEdit).toBe(true);
+    workspace.noteResearch(existing, "Existing entry remains editable");
+    expect(workspace.coordinator.getSnapshot().draft?.memberships).toHaveLength(
+      10_000,
+    );
+    expect(workspace.getResearchWatchlist(existing).member?.note).toBe(
+      "Existing entry remains editable",
+    );
+  });
+
+  it("adds an admitted Markets selection without a search or another catalog resolve", async () => {
+    const { api, session } = fixture();
+    const cohort = [0, 1, 2].map((index) => ({
+      ...eodSelection.listing,
+      listingId: `market-listing-${index}`,
+      symbol: `MARK${index}`,
+      securityId: `market-security-${index}`,
+      shareClassId: `market-class-${index}`,
+    }));
+    vi.mocked(api.resolve).mockResolvedValue({
+      snapshotSha256: digest,
+      results: cohort.map((listing) => ({
+        listingId: listing.listingId,
+        listing,
+      })),
+    });
+    const workspace = new ManagedWorkspace(api, session, undefined, {
+      marketsCohort: cohort,
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    expect(workspace.markets.getSnapshot().rows).toHaveLength(3);
+    workspace.openMarketResearch("eod", cohort[1]!.listingId);
+    const selection = workspace.getSnapshot().research!.selection;
+    const board = workspace.markets.getSnapshot();
+    workspace.addResearchToWatchlist(selection);
+    workspace.noteResearch(selection, "Captured from the board");
+    expect(workspace.getResearchWatchlist(selection).member).toEqual({
+      ...cohort[1],
+      note: "Captured from the board",
+    });
+    expect(workspace.getSnapshot().research!.selection).toBe(selection);
+    expect(selection).toMatchObject({ origin: "markets", cik: null });
+    expect(workspace.markets.getSnapshot()).toBe(board);
+    expect(api.resolve).toHaveBeenCalledOnce();
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("keeps edits blocked after an uncertain save is replayed until the existing explicit recovery", async () => {
+    const { workspace, api, selection } = await researchFixture({
+      ...empty,
+      memberships: [listingMembership(result)],
+    });
+    workspace.noteResearch(selection, "Captured note");
+    vi.mocked(api.save)
+      .mockRejectedValueOnce(new TrialApiError("commit_unknown"))
+      .mockImplementationOnce((command) =>
+        Promise.resolve({
+          version: command.expectedVersion + 1,
+          payload: command.payload,
+          replayed: true,
+        }),
+      );
+    await workspace.coordinator.save();
+    await workspace.coordinator.reconcile();
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      replayPending: true,
+      conflict: true,
+      uncertain: false,
+    });
+    expect(workspace.getResearchWatchlist(selection)).toMatchObject({
+      member: draft!.memberships[0],
+      canAdd: false,
+      canEdit: false,
+      reason: "Review the pending save in My Watchlist before editing.",
+    });
+    workspace.noteResearch(selection, "Not yet allowed");
+    workspace.addResearchToWatchlist(selection);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["remove", "replace"])(
+    "fences a watchlist-origin note callback after membership %s",
+    async (change) => {
+      const { workspace } = await researchFixture({
+        ...empty,
+        memberships: [listingMembership(result)],
+      });
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+      const selection = workspace.getSnapshot().research!.selection;
+      if (change === "remove") workspace.remove(result.listingId);
+      else
+        workspace.coordinator.replaceDraft({
+          ...empty,
+          memberships: [
+            { ...listingMembership(result), shareClassId: "replacement" },
+          ],
+        });
+      const draft = workspace.coordinator.getSnapshot().draft;
+      expect(workspace.getSnapshot().research).toBeNull();
+      workspace.noteResearch(selection, "Obsolete membership");
+      workspace.addResearchToWatchlist(selection);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    },
+  );
+
+  it.each(["bad\u0000note", "x".repeat(2001)])(
+    "keeps existing note validation on explicit Save %#",
+    async (note) => {
+      const { workspace, api, selection } = await researchFixture();
+      workspace.addResearchToWatchlist(selection);
+      workspace.noteResearch(selection, note);
+      expect(workspace.getResearchWatchlist(selection).member?.note).toBe(note);
+      await workspace.coordinator.save();
+      expect(api.save).not.toHaveBeenCalled();
+      expect(workspace.canSavePayload()).toBe(false);
+    },
+  );
+});
+
 describe("company research visits", () => {
   const zero: PersonalSecurityMasterSearchResultDto = {
     ...eodSelection.listing,
@@ -1005,6 +1414,37 @@ describe("company research visits", () => {
     }
     return setup;
   }
+
+  it.each(["discover", "watchlist"] as const)(
+    "editing the shared note preserves loaded Price and Annual results from %s",
+    async (origin) => {
+      const { workspace, api } = await navigationFixture(origin);
+      const selection = workspace.getSnapshot().research!.selection;
+      await workspace.annual.load();
+      workspace.switchToEod();
+      await workspace.eod.load();
+      const annual = workspace.annual.getSnapshot();
+      const eod = workspace.eod.getSnapshot();
+      const other = workspace.coordinator.getSnapshot().draft!.memberships[0];
+      workspace.noteResearch(selection, "New evidence to follow up");
+      workspace.switchToAnnual();
+      workspace.switchToEod();
+      expect(workspace.annual.getSnapshot()).toBe(annual);
+      expect(workspace.eod.getSnapshot()).toBe(eod);
+      expect(workspace.getSnapshot().research!.selection).toBe(selection);
+      expect(selection.origin).toBe(origin);
+      expect(selection.cik).toBe(origin === "discover" ? zero.cik : null);
+      expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+        "New evidence to follow up",
+      );
+      expect(workspace.coordinator.getSnapshot().draft!.memberships[0]).toEqual(
+        other,
+      );
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     { origin: "discover", panel: "annual" },

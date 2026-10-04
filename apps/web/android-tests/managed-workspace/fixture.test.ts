@@ -1,8 +1,118 @@
 import { describe, expect, it } from "vitest";
-import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
+import {
+  parseManagedEodHistoryResponse,
+  parseManagedWatchlistReceipt,
+} from "@research-cockpit/contracts";
 import { createFixture } from "./fixture";
 
 describe("Android managed fixture startup", () => {
+  it("saves the exact invented company draft once and reloads independent copies", async () => {
+    const fixture = await createFixture();
+    const signal = new AbortController().signal;
+    const original = await fixture.api.load(signal);
+    const command = {
+      expectedVersion: original.version,
+      idempotencyKey: "12345678-1234-4123-8123-123456789012",
+      payload: {
+        ...original.payload,
+        memberships: [
+          ...original.payload.memberships,
+          {
+            ...fixture.marketsCohort[0],
+            note: "Company draft captured in research",
+          },
+        ],
+      },
+    };
+    const expectedPayload = structuredClone(command.payload);
+    const receipt = await fixture.api.save(command, signal);
+    expect(parseManagedWatchlistReceipt(receipt, command)).toEqual(receipt);
+    expect(receipt).toEqual({
+      version: 2,
+      payload: expectedPayload,
+      replayed: false,
+    });
+    expect(receipt.payload).not.toBe(command.payload);
+    for (const [index, member] of receipt.payload.memberships.entries())
+      expect(member).not.toBe(command.payload.memberships[index]);
+    const loaded = await fixture.api.load(signal);
+    expect(loaded).toEqual({ version: 2, payload: expectedPayload });
+    expect(loaded.payload).not.toBe(receipt.payload);
+    const reloaded = await fixture.api.load(signal);
+    expect(reloaded).toEqual({
+      version: 2,
+      payload: expectedPayload,
+    });
+    for (const [index, member] of reloaded.payload.memberships.entries())
+      expect(member).not.toBe(loaded.payload.memberships[index]);
+    await expect(
+      fixture.api.save({ ...command, payload: expectedPayload }, signal),
+    ).rejects.toThrow("Unexpected fixture operation: save");
+    expect(await fixture.api.load(signal)).toEqual({
+      version: 2,
+      payload: expectedPayload,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      save: 2,
+      status: 0,
+      search: 0,
+      annual: 0,
+      eod: 0,
+      marketsEod: 0,
+      resolve: 0,
+      token: 0,
+      signOut: 0,
+    });
+  });
+
+  it.each(["version", "identity", "order", "note", "aborted"] as const)(
+    "rejects an invented company save with wrong %s without changing saved data",
+    async (invalid) => {
+      const fixture = await createFixture();
+      const controller = new AbortController();
+      const original = await fixture.api.load(controller.signal);
+      const command = {
+        expectedVersion: 1,
+        idempotencyKey: "12345678-1234-4123-8123-123456789012",
+        payload: {
+          ...original.payload,
+          memberships: [
+            ...original.payload.memberships,
+            {
+              ...fixture.marketsCohort[0],
+              note: "Company draft captured in research",
+            },
+          ],
+        },
+      };
+      if (invalid === "version") command.expectedVersion = 0;
+      if (invalid === "identity")
+        command.payload.memberships = command.payload.memberships.map(
+          (member, index) =>
+            index === 2
+              ? { ...member, shareClassId: "different-class" }
+              : member,
+        );
+      if (invalid === "order")
+        command.payload.memberships = [
+          ...command.payload.memberships,
+        ].reverse();
+      if (invalid === "note")
+        command.payload.memberships = command.payload.memberships.map(
+          (member, index) =>
+            index === 2 ? { ...member, note: "x".repeat(2001) } : member,
+        );
+      if (invalid === "aborted") controller.abort();
+      await expect(
+        fixture.api.save(command, controller.signal),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(await fixture.api.load(new AbortController().signal)).toEqual(
+        original,
+      );
+      expect(fixture.getSnapshot().save).toBe(1);
+    },
+  );
+
   it("serves one fresh Annual response after the cancelled visit read settles", async () => {
     const fixture = await createFixture();
     const request = {

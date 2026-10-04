@@ -14,11 +14,11 @@ capabilities and acceptance are different:
 | Local research workspace              | Broader financials, valuation, comparisons, screening, portfolio and filing tools                                                  | Explicit local startup with an admitted catalog and encrypted vault; not migrated to the managed service            |
 | Synthetic demo / disconnected Android | Reproducible development and test journeys                                                                                         | Invented data; no production account, provider key or owner vault required                                          |
 
-PR 26 delivered the managed API, website and signed Android 1.2.0 package. One
-explicit authenticated AAPL one-month read succeeded on October 3, 2026; separate
-GOOG and GOOGL mappings and live reads were accepted on October 4. These are
-bounded live observations, not whole-provider coverage. The 1.2 APK's physical-device
-upgrade remains unverified. See [current status and limits](docs/CURRENT_WORK.md)
+The managed website and signed Android 1.4.0 package include a three-listing
+Markets board and company research visits that retain loaded Price and Annual
+sections. Explicit authenticated AAPL, GOOG and GOOGL reads have passed bounded
+live checks. Coverage remains limited to those exact listings. Physical-device
+acceptance for Android 1.2, 1.3 and 1.4 remains open. See [current status and limits](docs/CURRENT_WORK.md)
 for the dated source, release surfaces and next work.
 
 ## Start reading

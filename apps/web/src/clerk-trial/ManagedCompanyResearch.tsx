@@ -1,8 +1,12 @@
-import type { ManagedResearchVisit } from "./managed-workspace";
+import type {
+  ManagedResearchVisit,
+  ResearchWatchlistState,
+} from "./managed-workspace";
 import type { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
 import type { ManagedEodHistory as EodModel } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
 import { ManagedEodHistory } from "./ManagedEodHistory";
+import { ManagedResearchNote } from "./ManagedResearchNote";
 
 export function ManagedCompanyResearch({
   research,
@@ -10,12 +14,20 @@ export function ManagedCompanyResearch({
   eod,
   onSection,
   onBack,
+  watchlist,
+  onAdd,
+  onNote,
+  onReview,
 }: {
   research: ManagedResearchVisit;
   annual: AnnualModel;
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
   onBack: () => void;
+  watchlist: ResearchWatchlistState;
+  onAdd: () => void;
+  onNote: (note: string) => void;
+  onReview: () => void;
 }) {
   const listing = research.selection.listing;
   return (
@@ -38,6 +50,13 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
+      <ManagedResearchNote
+        state={watchlist}
+        symbol={listing.symbol}
+        onAdd={onAdd}
+        onNote={onNote}
+        onReview={onReview}
+      />
       <nav
         className="managed-company-sections"
         aria-label="Company research sections"
