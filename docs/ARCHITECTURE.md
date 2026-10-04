@@ -50,6 +50,11 @@ before display. The workspace stays mounted while a panel is open, preserving
 unsaved note/order state. Closing restores focus through the same screen action
 used by [Android Back](../apps/web/src/mobile/android-back.ts).
 
+Each read model can retain its last validated response during explicit refresh
+and its defined recoverable failures. The panel marks that response as previous
+and preserves its original provenance. Closing or switching panels still clears
+the response; retained research is not a persistent cache.
+
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
 [security-master package](../packages/personal-security-master/) owns catalog
@@ -98,7 +103,7 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. Its nine cases are distinct from signed-release, physical-phone and
+admission. Its ten cases are distinct from signed-release, physical-phone and
 live-provider acceptance.
 
 [Source-check verification](../scripts/appwrite/github-checks.ts) derives the

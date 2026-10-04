@@ -57,9 +57,11 @@ export function ManagedEodHistory({
       </p>
       <p>
         One month of end-of-day raw closing prices in USD from Tiingo. Prices
-        are not adjusted for splits or dividends and are not live quotes.
-        Loading or refreshing sends one request. Prices stay only in this open
-        panel.
+        are not adjusted for splits or dividends and are not live quotes. Load
+        or refresh explicitly to request prices. Prices stay only in this open
+        panel. Cancel stops this screen's pending request and keeps any previous
+        history shown here. An already admitted service request may finish and
+        consume its existing budget.
       </p>
       <div className="trial-actions">
         <button
@@ -68,7 +70,9 @@ export function ManagedEodHistory({
           onClick={() => void model.load()}
         >
           {state.running
-            ? "Loading close history…"
+            ? response
+              ? "Refreshing close history…"
+              : "Loading close history…"
             : response
               ? "Refresh close history"
               : "Load one-month close history"}
@@ -97,6 +101,13 @@ export function ManagedEodHistory({
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}
       </p>
+      {state.showingPrevious && response && (
+        <p className="managed-eod-previous">
+          Showing previous close history, completed {response.completedAt}. This
+          refresh has not confirmed newer prices. Trading dates, requested
+          window and request times are unchanged.
+        </p>
+      )}
       {response && last && (
         <>
           <dl className="managed-metadata">

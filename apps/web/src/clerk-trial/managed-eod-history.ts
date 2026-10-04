@@ -21,6 +21,7 @@ export interface EodHistorySelection {
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
   readonly response: ManagedEodHistoryResponseDto | null;
+  readonly showingPrevious: boolean;
   readonly running: boolean;
   readonly catalogChanged: boolean;
   readonly message: string;
@@ -29,13 +30,14 @@ export interface ManagedEodHistoryState {
 const empty = (): ManagedEodHistoryState => ({
   selection: null,
   response: null,
+  showingPrevious: false,
   running: false,
   catalogChanged: false,
   message: "",
   error: false,
 });
 
-/** Session-only reads; closing or refreshing discards every previously loaded price. */
+/** Session-only reads; a recoverable refresh keeps the last validated history. */
 export class ManagedEodHistory {
   private state = empty();
   private readonly listeners = new Set<() => void>();
@@ -83,10 +85,12 @@ export class ManagedEodHistory {
     this.operation.abort();
     this.operation = null;
     this.update({
-      response: null,
       running: false,
+      showingPrevious: this.state.response !== null,
       error: false,
-      message: "Close history request cancelled. Load again when ready.",
+      message: this.state.response
+        ? "Close history refresh cancelled. Refresh again when ready."
+        : "Close history request cancelled. Load again when ready.",
     });
   }
   async load() {
@@ -98,10 +102,11 @@ export class ManagedEodHistory {
       this.state.catalogChanged
     )
       return;
-    this.update({ response: null, error: false, message: "" });
     if (this.nextAllowedAt && Date.now() < Date.parse(this.nextAllowedAt)) {
       this.update({
-        message: `Close history is available to request after ${this.nextAllowedAt}. Select Load again then.`,
+        showingPrevious: this.state.response !== null,
+        error: false,
+        message: this.cooldownMessage(this.nextAllowedAt),
       });
       return;
     }
@@ -114,7 +119,11 @@ export class ManagedEodHistory {
       this.state.selection === selection;
     this.update({
       running: true,
-      message: `Loading close history for ${selection.listing.symbol}…`,
+      showingPrevious: this.state.response !== null,
+      error: false,
+      message: this.state.response
+        ? `Refreshing close history for ${selection.listing.symbol}…`
+        : `Loading close history for ${selection.listing.symbol}…`,
     });
     try {
       const response = await this.read(
@@ -136,6 +145,7 @@ export class ManagedEodHistory {
         throw new TrialApiError("invalid_response");
       this.update({
         response,
+        showingPrevious: false,
         message: "One-month raw closing prices loaded.",
       });
     } catch (error) {
@@ -150,8 +160,16 @@ export class ManagedEodHistory {
         this.retire();
         return;
       }
-      let message =
-        "Close history could not be loaded. Select Load to try again.";
+      const showingPrevious =
+        this.state.response !== null &&
+        ((error instanceof ManagedEodHistoryError &&
+          ["request_timeout", "unavailable", "source_rate_limited"].includes(
+            error.code,
+          )) ||
+          (error instanceof TrialApiError && error.code === "unavailable"));
+      let message = showingPrevious
+        ? "The close history refresh failed. Select Refresh to try again."
+        : "Close history could not be loaded. Select Load to try again.";
       let catalogChanged = false;
       if (error instanceof ManagedCatalogChangedError) {
         catalogChanged = true;
@@ -164,26 +182,44 @@ export class ManagedEodHistory {
         });
         if (checked?.error === "rate_limited") {
           this.nextAllowedAt = checked.nextAllowedAt;
-          message = `Close history is available to request after ${checked.nextAllowedAt}. Select Load again then.`;
+          this.update({
+            showingPrevious: this.state.response !== null,
+            message: this.cooldownMessage(checked.nextAllowedAt),
+            error: false,
+          });
+          return;
         }
       } else if (error instanceof ManagedEodHistoryError) {
         if (error.code === "source_rate_limited")
-          message =
-            "Tiingo is limiting requests. Try loading again later; no reset time was provided.";
+          message = showingPrevious
+            ? "Tiingo is limiting requests. Try refreshing again later; no reset time was provided."
+            : "Tiingo is limiting requests. Try loading again later; no reset time was provided.";
         else if (error.code === "not_configured")
           message = "Close history is not configured for this workspace.";
         else if (error.code === "unsupported_listing")
           message = "Close history is not available for this exact listing.";
         else if (error.code === "request_timeout")
-          message =
-            "The close history request timed out. Select Load to try again.";
+          message = showingPrevious
+            ? "The close history refresh timed out. Select Refresh to try again."
+            : "The close history request timed out. Select Load to try again.";
       }
-      this.update({ response: null, message, error: true, catalogChanged });
+      this.update({
+        response: showingPrevious ? this.state.response : null,
+        showingPrevious,
+        message,
+        error: true,
+        catalogChanged,
+      });
     } finally {
       if (this.operation === operation) {
         this.operation = null;
         this.update({ running: false });
       }
     }
+  }
+  private cooldownMessage(nextAllowedAt: string) {
+    return this.state.response
+      ? `Refresh deferred. Close history is available to request after ${nextAllowedAt}. Select Refresh again then.`
+      : `Close history is available to request after ${nextAllowedAt}. Select Load again then.`;
   }
 }
