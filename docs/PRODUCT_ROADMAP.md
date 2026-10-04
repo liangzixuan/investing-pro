@@ -79,8 +79,10 @@ delivery.
 
 Signed Android 1.3 carries the accepted Markets and research workflow into the
 existing package with the same production signer. Its artifact is accepted;
-physical-device acceptance remains open. Next, select a bounded company-page
-workflow from M2 using existing capabilities and verified sources.
+physical-device acceptance remains open. The selected M2 step is a company visit
+with a stable listing header and Price/Annual sections that retain validated
+results while switching. It reuses existing sources and request models. Delivery
+and the remaining M2 capabilities are recorded separately in Current work.
 
 Repomix automation remains pending; [AI context](./AI_CONTEXT.md) records the
 current dependency blocker and the manual source-reading path.

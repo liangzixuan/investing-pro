@@ -15,13 +15,14 @@ unavailable. Initial-load failures still have no report to show.
 
 Malformed or mismatched responses, a service that is not configured and unknown
 failures clear the previous report. Account denial, catalog or selection changes,
-Back and session retirement also clear it. Retention is limited to the open
-panel in memory; it adds no persistence, automatic retry or source request.
+Back and session retirement also clear it. Retention is limited to the current
+company visit in memory; it adds no persistence, automatic retry or source request.
 
-The EOD close history control opens the other research view for the same captured
-listing. Switching closes and clears this report, including any previous report
-retained during refresh. It preserves the original workspace opener and draft,
-keeps the Annual cooldown and requires an explicit load in the new view. See the
+The Price section uses the same captured listing. Switching cancels a pending
+Annual read and retains its validated report, including the previous report from
+a cancelled refresh. Returning to Annual sends no request. The company visit
+preserves the original workspace opener and draft, keeps the Annual cooldown and
+requires an explicit first load in each section. See the
 [navigation contract](MANAGED_RESEARCH_NAVIGATION.md) and
 [current delivery status](CURRENT_WORK.md).
 

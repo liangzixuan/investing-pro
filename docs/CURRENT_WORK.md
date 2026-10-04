@@ -111,9 +111,21 @@ production package with the same signer. Preserve the installed account and data
 do not uninstall or clear storage. Physical-device acceptance remains separate
 from source, emulator, website and signed-artifact checks.
 
-Next, select one bounded company-page workflow from the roadmap using existing
-contracts and dependencies. No broader provider coverage is implied by this
-release. Physical-phone checks remain open until actual device evidence exists.
+PR 33 records that delivery and adds bounded retries when cleaning invented
+Windows test directories. Its actual main checks and original source proof passed;
+the fresh eleven-case native report passed without claiming another phone or
+visual acceptance. Application behavior and deployments were unchanged.
+
+The selected next outcome is a [company research visit](MANAGED_RESEARCH_NAVIGATION.md)
+with a stable listing header and Price/Annual sections. Switching cancels pending
+work while retaining already validated results for that visit; returning sends no
+request. Back and identity, catalog or session invalidation clear both sections.
+The implementation passed focused model, screen and invented-fixture tests,
+combined types, scoped lint/formatting and the existing boundary check. Hosted
+checks and delivery remain pending. The accepted website and signed Android 1.3
+still use the earlier panel-switching behavior until separately delivered. This
+slice adds no feed coverage, persistent cache or complete M2 page.
+Physical-phone checks remain open until actual device evidence exists.
 
 ## Open limits
 

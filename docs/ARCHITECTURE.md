@@ -59,8 +59,11 @@ catalog/session retirement aborts every affected research read.
 
 Each read model can retain its last validated response during explicit refresh
 and its defined recoverable failures. The panel marks that response as previous
-and preserves its original provenance. Closing or switching panels still clears
-the response; retained research is not a persistent cache.
+and preserves its original provenance. ManagedWorkspace owns one company visit
+with a captured selection and active Price or Annual section. Switching cancels
+pending work and retains validated results; returning reuses the initialized
+model. Closing or invalidating the visit clears both models. No persistent cache
+is added.
 
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
@@ -89,7 +92,7 @@ after a timely acknowledged shared reservation. Provider work has server deadlin
 because a browser cancellation is not proven to cancel the remote Appwrite request.
 
 The budgets store admission metadata, not price or filing bodies. EOD rows remain
-in the active panel or Markets visit's memory. The local encrypted vault is a separate persistence
+in the company visit or Markets board's memory. The local encrypted vault is a separate persistence
 model; managed Appwrite storage does not claim equivalent application-layer
 encryption or automatic migration.
 

@@ -165,7 +165,7 @@ public class ManagedWorkspaceInstrumentedTest {
         prepareDraftAndOpenAnnual();
         click(".managed-annual-report .trial-actions button:first-child");
         assertPendingAnnualDraft();
-        assertFixtureReadCounts(0, 0);
+        assertFixtureReadCounts(1, 0, 0);
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
         AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
@@ -204,21 +204,21 @@ public class ManagedWorkspaceInstrumentedTest {
         });
         assertEquals("Resume must preserve the document time origin", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertPendingAnnualDraft();
-        assertFixtureReadCounts(0, 0);
+        assertFixtureReadCounts(1, 0, 0);
         assertFixtureBoundary();
         assertRootHistory();
         Log.i("ManagedLifecycle", "phase=resumed-pending, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
 
         pressBack();
         assertClosedDraft(true);
-        assertFixtureReadCounts(1, 0);
+        assertFixtureReadCounts(1, 1, 0);
         click("#settle-cancelled-read");
-        assertFixtureReadCounts(1, 1);
+        assertFixtureReadCounts(1, 1, 1);
         assertClosedDraft(false);
         assertRootHistory();
         pressBack();
         assertClosedDraft(false);
-        assertFixtureReadCounts(1, 1);
+        assertFixtureReadCounts(1, 1, 1);
         assertRootHistory();
         assertFixtureBoundary();
         assertEquals("Back must preserve the resumed document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
@@ -337,7 +337,7 @@ public class ManagedWorkspaceInstrumentedTest {
         typeIntoInput("managed-note-1", NOTE);
         click("button[aria-label='EOD close history for saved ZERO']");
         awaitPage("EOD opens without fetching",
-            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'");
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'");
         assertEodState(0, 0, 0, false, false);
 
         clickEodAction("Load one-month close history");
@@ -406,7 +406,7 @@ public class ManagedWorkspaceInstrumentedTest {
         clickEodAction("Refresh close history");
         assertEodState(4, 1, 1, false, true);
         awaitPage("explicit recovery replaces every history value and request date",
-            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
             " && document.querySelector('.managed-eod-previous') === null" +
@@ -457,11 +457,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null");
         click(".managed-annual-report .trial-actions button:first-child");
         assertPendingAnnualDraft();
-        assertFixtureReadCounts(0, 0);
+        assertFixtureReadCounts(1, 0, 0);
 
-        click(".managed-annual-report button[aria-label='EOD close history for ZERO']");
+        click(".managed-company-sections button[aria-label='Price section for ZERO']");
         String unloadedEod =
-            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.getAttribute('aria-pressed') === 'true'" +
             " && document.querySelector('.managed-annual-report') === null" +
             " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
             " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
@@ -470,15 +471,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-eod-history button')).some(b => b.textContent === 'Load one-month close history' && !b.disabled)";
         awaitPage("switch aborts Annual and opens unloaded EOD", unloadedEod +
             " && document.activeElement?.id === 'managed-eod-heading'");
-        assertResearchSwitchDraftAndCounts(0, 0);
+        assertResearchSwitchDraftAndCounts(1, 0, 0);
         click("#settle-cancelled-read");
-        assertResearchSwitchDraftAndCounts(0, 1);
+        assertResearchSwitchDraftAndCounts(1, 0, 1);
         awaitPage("late Annual completion cannot reopen a panel or load EOD", unloadedEod);
         Log.i("ManagedResearchSwitch", "phase=late-annual-discarded; " + pageDiagnostic());
 
         clickEodAction("Load one-month close history");
         String loadedEod =
-            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · ZERO'" +
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Price section for ZERO']\")?.getAttribute('aria-pressed') === 'true'" +
             " && document.querySelector('.managed-annual-report') === null" +
             " && document.querySelector('.managed-eod-history')?.getAttribute('aria-busy') === 'false'" +
             " && document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
@@ -486,28 +488,75 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Tiingo')";
         awaitPage("explicit EOD load returns the same listing's exact closes and provenance", loadedEod);
-        assertResearchSwitchDraftAndCounts(1, 1);
-        retainSwitchedEodScreenshot();
-        awaitPage("loaded EOD evidence stays unchanged through capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(1, 1, 1);
         Log.i("ManagedResearchSwitch", "phase=eod-loaded; " + pageDiagnostic());
 
-        click(".managed-eod-history button[aria-label='Annual report for ZERO']");
-        awaitPage("switch back opens Annual unloaded and clears EOD",
-            "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'" +
-            " && document.activeElement?.id === 'managed-annual-heading'" +
+        click(".managed-company-sections button[aria-label='Annual section for ZERO']");
+        String unloadedAnnual =
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Annual section for ZERO']\")?.getAttribute('aria-pressed') === 'true'" +
             " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'false'" +
             " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
             " && document.querySelector('.managed-annual-report [role=alert]') === null" +
             " && document.querySelector('.managed-eod-history') === null" +
             " && document.querySelector('.managed-eod-chart') === null" +
-            " && Array.from(document.querySelectorAll('.managed-annual-report button')).some(b => b.textContent === 'Load annual report' && !b.disabled)");
-        assertResearchSwitchDraftAndCounts(1, 1);
+            " && Array.from(document.querySelectorAll('.managed-annual-report button')).some(b => b.textContent === 'Load annual report' && !b.disabled)";
+        awaitPage("cancelled Annual remains unloaded when revisited", unloadedAnnual +
+            " && document.activeElement?.id === 'managed-annual-heading'");
+        assertResearchSwitchDraftAndCounts(1, 1, 1);
+
+        click(".managed-annual-report .trial-actions button:first-child");
+        String loadedAnnual =
+            "(() => { const report = document.querySelector('.managed-annual-report .sec-quarterly-comparison');" +
+            " const generations = JSON.parse(document.querySelector('#fixture-report-generations').textContent);" +
+            " const wanted = generations.recovered;" +
+            " return document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
+            " && document.querySelector(\".managed-company-sections button[aria-label='Annual section for ZERO']\")?.getAttribute('aria-pressed') === 'true'" +
+            " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'false'" +
+            " && report !== null && report.textContent.includes(wanted.sha256)" +
+            " && report.textContent.includes(wanted.completedAt) && report.textContent.includes(wanted.cutoffAt)" +
+            " && report.textContent.includes(wanted.sources.companyFacts.fetchedAt)" +
+            " && report.textContent.includes(wanted.sources.submissions.fetchedAt)" +
+            " && !report.textContent.includes(generations.initial.sha256)" +
+            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === '2000,300,15'" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
+            " && document.querySelector('.managed-eod-history') === null; })()";
+        awaitPage("explicit fresh Annual replaces only the discarded request", loadedAnnual);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+
+        click(".managed-company-sections button[aria-label='Price section for ZERO']");
+        awaitPage("return to Price retains exact rows and provenance without another request", loadedEod +
+            " && document.activeElement?.id === 'managed-eod-heading'");
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        retainSwitchedEodScreenshot();
+        awaitPage("retained Price evidence stays unchanged through capture", loadedEod);
+        click(".managed-company-sections button[aria-label='Annual section for ZERO']");
+        awaitPage("second Annual visit retains the same validated report", loadedAnnual +
+            " && document.activeElement?.id === 'managed-annual-heading'");
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        click(".managed-company-sections button[aria-label='Price section for ZERO']");
+        awaitPage("second Price return retains the same dated evidence", loadedEod +
+            " && document.activeElement?.id === 'managed-eod-heading'");
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        Log.i("ManagedResearchSwitch", "phase=loaded-sections-retained; " + pageDiagnostic());
         assertRootHistory();
         pressBack();
         assertClosedDraft(true);
         awaitPage("native Back leaves both research panels closed",
-            "document.querySelector('.managed-annual-report') === null && document.querySelector('.managed-eod-history') === null");
-        assertResearchSwitchDraftAndCounts(1, 1);
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-annual-report') === null && document.querySelector('.managed-eod-history') === null");
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+
+        click(ANNUAL);
+        awaitPage("reopening the same company starts a new unloaded Annual visit", unloadedAnnual);
+        click(".managed-company-sections button[aria-label='Price section for ZERO']");
+        awaitPage("leaving the previous visit also cleared its Price response", unloadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        click(".managed-company-visit .trial-toolbar > button");
+        assertClosedDraft(true);
+        awaitPage("on-screen Back closes the fresh company visit", "document.querySelector('.managed-company-visit') === null");
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
         scenario.onActivity(activity -> {
             assertNotNull("Original research Activity was collected", originalActivity.get().get());
             assertNotNull("Original research WebView was collected", originalWebView.get().get());
@@ -594,7 +643,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
         click("button[aria-label='Board price history for BETA']");
         awaitPage("board opens separate EOD panel unloaded without another request",
-            "document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history · BETA'" +
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · BETA' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
             " && document.activeElement?.id === 'managed-eod-heading'" +
             " && document.querySelector('.managed-eod-history table') === null" +
             " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
@@ -691,11 +740,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("Markets canvas remained visible through capture", visible);
     }
 
-    private void assertResearchSwitchDraftAndCounts(int eodReads, int lateAnnual) throws Exception {
-        assertFixtureReadCounts(1, lateAnnual);
+    private void assertResearchSwitchDraftAndCounts(int annualReads, int eodReads, int lateAnnual) throws Exception {
+        assertFixtureReadCounts(annualReads, 1, lateAnnual);
         awaitPage("panel switching retains draft and exact EOD calls",
             DIAGNOSTICS + ".eod === " + eodReads + " && " + DIAGNOSTICS + ".eodAborted === 0" +
             " && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && (document.querySelector('.managed-company-visit') === null || (" +
+            "document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
+            " && document.querySelectorAll('.managed-company-sections button').length === 2" +
+            " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
             " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
             " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
@@ -710,16 +764,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-eod-history canvas')?.height > 0");
         CountDownLatch scrolled = new CountDownLatch(1);
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "document.querySelector('.managed-eod-history canvas')?.scrollIntoView({block:'center',behavior:'instant'})",
+            "document.querySelector('#managed-company-heading')?.scrollIntoView({block:'start',behavior:'instant'})",
             ignored -> scrolled.countDown()));
-        assertTrue("Switched EOD chart did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        String visible = "(() => { const c = document.querySelector('.managed-eod-history canvas'); const v = visualViewport;" +
-            " if (!c || !v || c.width <= 0 || c.height <= 0) return false; const r = c.getBoundingClientRect();" +
-            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
-            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; })()";
-        awaitPage("switched EOD canvas visible", visible);
+        assertTrue("Company visit header did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
+            "'#managed-company-heading, .managed-company-sections button, .managed-eod-history .managed-metadata dd:nth-of-type(2)'));" +
+            " const v = visualViewport; return v && targets.length === 4 && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("company header, sections and retained trading date visible", visible);
         retainScreenshot("researchSwitchEodLoaded");
-        awaitPage("switched EOD canvas stayed visible", visible);
+        awaitPage("company visit and retained date stayed visible through capture", visible);
     }
 
     private void clickEodAction(String label) {
@@ -891,7 +947,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertPendingAnnualDraft() throws Exception {
         awaitPage("same pending Annual and unsaved draft",
-            "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'" +
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
             " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'" +
             " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
             " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
@@ -901,10 +957,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
-    private void assertFixtureReadCounts(int aborted, int lateResolved) throws Exception {
+    private void assertFixtureReadCounts(int annualReads, int aborted, int lateResolved) throws Exception {
         awaitPage("exact fixture calls, aborted=" + aborted + ", lateResolved=" + lateResolved,
             DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
-            " && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".annual === 1" +
+            " && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".annual === " + annualReads +
             " && " + DIAGNOSTICS + ".aborted === " + aborted +
             " && " + DIAGNOSTICS + ".lateResolved === " + lateResolved +
             " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0" +
@@ -935,7 +991,7 @@ public class ManagedWorkspaceInstrumentedTest {
         typeIntoInput("managed-note-1", NOTE);
         awaitPage("draft note edited", "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE));
         click(ANNUAL);
-        awaitPage("Annual panel opened", "document.querySelector('#managed-annual-heading')?.textContent === 'Annual report · ZERO'");
+        awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'");
         assertRootHistory();
     }
 
