@@ -62,7 +62,7 @@ test("exact-build Clerk staging boots without auth or data requests", async ({
   });
 
   const heading = page.getByRole("heading", {
-    name: "A shared watchlist, across your devices",
+    name: "Your markets and research",
     level: 1,
     exact: true,
   });
@@ -85,7 +85,7 @@ test("exact-build Clerk staging boots without auth or data requests", async ({
       "This preview does not start a session or load saved data.",
     );
     await expect(page.getByRole("main")).toContainText(
-      "Discover companies, keep research notes, and pick up your watchlist on another device.",
+      "Discover companies, inspect dated prices, and keep your research across devices.",
     );
     await expect(page.locator("input, textarea, iframe")).toHaveCount(0);
     await expect(page.getByRole("button")).toHaveCount(1);
