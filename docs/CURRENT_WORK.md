@@ -78,9 +78,12 @@ The selected product slice is the [three-listing Markets home](MANAGED_MARKETS_H
 It uses the accepted AAPL/GOOG/GOOGL mappings, explicit sequential price loading,
 dated per-row histories, a selected chart and direct research/watchlist navigation.
 Its visit-scoped prices and shared EOD cooldown preserve the mounted watchlist
-draft. It has no percentage movers or unsupported market feeds. Implementation
-and verification are in progress; source publication, website delivery and native
-acceptance remain separate from the accepted baseline above.
+draft. It has no percentage movers or unsupported market feeds. Implementation is
+published in [PR 31](https://github.com/liangzixuan/investing-pro/pull/31), with
+review and hosted verification in progress. The first run found a stale staging
+heading assertion and a catalog screenshot framing failure; those original failures
+remain part of the verification record. Website delivery and native acceptance
+remain separate from the accepted baseline above.
 
 The next device acceptance is a separately selected, brief 1.2 in-place upgrade
 and normal navigation/background-resume observation. Preserve the installed

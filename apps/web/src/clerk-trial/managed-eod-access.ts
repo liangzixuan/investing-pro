@@ -2,6 +2,7 @@ import {
   membershipMatchesResult,
   parseManagedEodError,
   parseManagedEodHistoryResponse,
+  type ManagedEodHistoryRequestDto,
   type ManagedEodHistoryResponseDto,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -36,6 +37,19 @@ export function isManagedEodTransientError(error: unknown): boolean {
   );
 }
 
+function admitResponse(
+  response: ManagedEodHistoryResponseDto,
+  request: ManagedEodHistoryRequestDto,
+  listing: ManagedEodAccessSelection["listing"],
+): ManagedEodHistoryResponseDto {
+  if (
+    !parseManagedEodHistoryResponse(response, request) ||
+    !membershipMatchesResult({ ...listing, note: "" }, response.security)
+  )
+    throw new TrialApiError("invalid_response");
+  return response;
+}
+
 /** One mounted workspace shares checked EOD cooldowns across its read surfaces. */
 export class ManagedEodAccess {
   private nextAllowedAt: string | null = null;
@@ -67,34 +81,29 @@ export class ManagedEodAccess {
     try {
       const response = await this.read(request, signal);
       signal.throwIfAborted();
-      if (
-        !parseManagedEodHistoryResponse(response, request) ||
-        response.catalogSnapshotSha256 !== captured.catalogSnapshotSha256 ||
-        !membershipMatchesResult(
-          { ...captured.listing, note: "" },
-          response.security,
-        )
-      )
-        throw new TrialApiError("invalid_response");
-      return response;
+      return admitResponse(response, request, captured.listing);
     } catch (error) {
       signal.throwIfAborted();
-      if (error instanceof ManagedEodCooldownError) {
-        const checked = parseManagedEodError({
-          error: "rate_limited",
-          nextAllowedAt: error.nextAllowedAt,
-        });
-        if (checked?.error !== "rate_limited")
-          throw new TrialApiError("invalid_response");
-        // Another current read may already have received a longer cooldown.
-        if (
-          !this.nextAllowedAt ||
-          Date.parse(checked.nextAllowedAt) > Date.parse(this.nextAllowedAt)
-        )
-          this.nextAllowedAt = checked.nextAllowedAt;
-        throw new ManagedEodCooldownError(this.nextAllowedAt);
-      }
+      if (error instanceof ManagedEodCooldownError)
+        throw this.recordCooldown(error);
       throw error;
     }
+  }
+  private recordCooldown(
+    error: ManagedEodCooldownError,
+  ): ManagedEodCooldownError {
+    const checked = parseManagedEodError({
+      error: "rate_limited",
+      nextAllowedAt: error.nextAllowedAt,
+    });
+    if (checked?.error !== "rate_limited")
+      throw new TrialApiError("invalid_response");
+    // Another current read may already have received a longer cooldown.
+    if (
+      !this.nextAllowedAt ||
+      Date.parse(checked.nextAllowedAt) > Date.parse(this.nextAllowedAt)
+    )
+      this.nextAllowedAt = checked.nextAllowedAt;
+    return new ManagedEodCooldownError(this.nextAllowedAt);
   }
 }

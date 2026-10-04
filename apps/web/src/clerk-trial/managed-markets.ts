@@ -1,6 +1,7 @@
 import {
   membershipMatchesResult,
   parseManagedCatalogResolveResponse,
+  type ManagedCatalogResolveRequest,
   type ManagedEodHistoryResponseDto,
   type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
@@ -100,6 +101,77 @@ const catalogFailure = (error: unknown) =>
   error instanceof ManagedCatalogChangedError ||
   (error instanceof ManagedEodHistoryError && error.code === "catalog_changed");
 
+/** Admit the complete declared cohort before creating any price row. */
+function admitCohort(
+  response: unknown,
+  request: ManagedCatalogResolveRequest,
+  cohort: readonly ManagedMarketsCohortEntry[],
+): readonly ManagedEodIdentity[] {
+  const checked = parseManagedCatalogResolveResponse(response, request);
+  if (!checked) throw new TrialApiError("invalid_response");
+  return checked.results.map((result, index) => {
+    const listing = result.listing;
+    if (
+      !listing ||
+      !membershipMatchesResult({ ...cohort[index]!, note: "" }, listing)
+    )
+      throw new TrialApiError("invalid_response");
+    return listing;
+  });
+}
+
+interface RowFailure {
+  readonly keepPrevious: boolean;
+  readonly message: string;
+  readonly error: boolean;
+  readonly stop: boolean;
+}
+
+/** Row retention and batch admission are explicit decisions for each typed refusal. */
+function rowFailure(error: unknown, action: string): RowFailure {
+  const failure = {
+    keepPrevious: isManagedEodTransientError(error),
+    message: "Price history could not be loaded. Try again when ready.",
+    error: true,
+    stop: false,
+  };
+  if (error instanceof ManagedEodCooldownError)
+    return {
+      keepPrevious: true,
+      message: `Price requests are available after ${error.nextAllowedAt}. Select ${action} again then.`,
+      error: false,
+      stop: true,
+    };
+  if (!(error instanceof ManagedEodHistoryError)) return failure;
+  switch (error.code) {
+    case "source_rate_limited":
+      return {
+        ...failure,
+        message:
+          "Tiingo is limiting requests. Try again later; no reset time was provided.",
+        stop: true,
+      };
+    case "not_configured":
+      return {
+        ...failure,
+        message: "Price history is not configured for this workspace.",
+        stop: true,
+      };
+    case "unsupported_listing":
+      return {
+        ...failure,
+        message: "Price history is not available for this exact listing.",
+      };
+    case "request_timeout":
+      return {
+        ...failure,
+        message: "Price history timed out. Try again when ready.",
+      };
+    default:
+      return failure;
+  }
+}
+
 /** Prices belong to one Markets visit; panels have their own independent snapshots. */
 export class ManagedMarkets {
   private state = empty();
@@ -144,6 +216,24 @@ export class ManagedMarkets {
         row.listing.listingId === listingId ? { ...row, ...next } : row,
       ),
     });
+  }
+  private visitDigest() {
+    return !this.retired && this.state.active
+      ? this.state.catalogSnapshotSha256
+      : null;
+  }
+  private retireFailedRead(error: unknown): boolean {
+    if (isManagedEodAuthenticationError(error)) {
+      this.retire();
+      this.onReadError(error);
+      return true;
+    }
+    if (catalogFailure(error)) {
+      this.catalogChanged();
+      this.onCatalogChanged();
+      return true;
+    }
+    return false;
   }
   private priceAction() {
     return this.state.rows.some((row) => row.response)
@@ -204,23 +294,14 @@ export class ManagedMarkets {
     });
   }
   async resolve() {
-    const digest = this.state.catalogSnapshotSha256;
-    if (
-      this.retired ||
-      !this.state.active ||
-      !digest ||
-      this.resolution ||
-      this.state.rows.length > 0
-    )
-      return;
+    const digest = this.visitDigest();
+    if (!digest || this.resolution || this.state.rows.length > 0) return;
     const operation = new AbortController();
     this.resolution = operation;
     const current = () =>
-      !this.retired &&
       this.resolution === operation &&
       !operation.signal.aborted &&
-      this.state.active &&
-      this.state.catalogSnapshotSha256 === digest;
+      this.visitDigest() === digest;
     this.update({
       resolving: true,
       error: false,
@@ -233,22 +314,10 @@ export class ManagedMarkets {
     try {
       const response = await this.api.resolve(request, operation.signal);
       if (!current()) return;
-      const checked = parseManagedCatalogResolveResponse(response, request);
-      if (
-        !checked ||
-        checked.results.some(
-          (result, index) =>
-            !result.listing ||
-            !membershipMatchesResult(
-              { ...this.cohort[index]!, note: "" },
-              result.listing,
-            ),
-        )
-      )
-        throw new TrialApiError("invalid_response");
+      const listings = admitCohort(response, request, this.cohort);
       this.update({
-        rows: checked.results.map(({ listing }) => ({
-          listing: listing!,
+        rows: listings.map((listing) => ({
+          listing,
           response: null,
           showingPrevious: false,
           running: false,
@@ -260,19 +329,12 @@ export class ManagedMarkets {
       });
     } catch (error) {
       if (!current()) return;
-      if (isManagedEodAuthenticationError(error)) {
-        this.retire();
-        this.onReadError(error);
-      } else if (catalogFailure(error)) {
-        this.catalogChanged();
-        this.onCatalogChanged();
-      } else {
-        this.update({
-          error: true,
-          message:
-            "Markets listings could not be resolved. Select Retry board listings to try again.",
-        });
-      }
+      if (this.retireFailedRead(error)) return;
+      this.update({
+        error: true,
+        message:
+          "Markets listings could not be resolved. Select Retry board listings to try again.",
+      });
     } finally {
       if (this.resolution === operation) {
         this.resolution = null;
@@ -287,11 +349,11 @@ export class ManagedMarkets {
   selection(
     listingId = this.state.selectedListingId,
   ): EodHistorySelection | null {
-    const digest = this.state.catalogSnapshotSha256;
+    const digest = this.visitDigest();
     const row = this.state.rows.find(
       (entry) => entry.listing.listingId === listingId,
     );
-    return !this.retired && this.state.active && digest && row
+    return digest && row
       ? {
           catalogSnapshotSha256: digest,
           listing: row.listing,
@@ -325,10 +387,8 @@ export class ManagedMarkets {
     });
   }
   async load() {
-    const digest = this.state.catalogSnapshotSha256;
+    const digest = this.visitDigest();
     if (
-      this.retired ||
-      !this.state.active ||
       !digest ||
       this.operation ||
       this.state.resolving ||
@@ -339,11 +399,9 @@ export class ManagedMarkets {
     const operation = new AbortController();
     this.operation = operation;
     const current = () =>
-      !this.retired &&
       this.operation === operation &&
       !operation.signal.aborted &&
-      this.state.active &&
-      this.state.catalogSnapshotSha256 === digest;
+      this.visitDigest() === digest;
     const rows = this.state.rows;
     this.queued = new Set(rows.map((row) => row.listing.listingId));
     this.update({
@@ -360,80 +418,8 @@ export class ManagedMarkets {
     try {
       for (const row of rows) {
         if (!current()) return;
-        const { listing } = row;
-        this.queued.delete(listing.listingId);
-        this.updateRow(listing.listingId, {
-          running: true,
-          showingPrevious: row.response !== null,
-          error: false,
-          message: row.response
-            ? "Refreshing price history…"
-            : "Loading price history…",
-        });
-        try {
-          const response = await this.access.request(
-            { catalogSnapshotSha256: digest, listing },
-            operation.signal,
-          );
-          if (!current()) return;
-          this.updateRow(listing.listingId, {
-            response,
-            showingPrevious: false,
-            running: false,
-            error: false,
-            message: "One-month raw closing prices loaded.",
-          });
-        } catch (error) {
-          if (!current()) return;
-          if (isManagedEodAuthenticationError(error)) {
-            this.retire();
-            this.onReadError(error);
-            return;
-          }
-          if (catalogFailure(error)) {
-            this.catalogChanged();
-            this.onCatalogChanged();
-            return;
-          }
-          const cooldown = error instanceof ManagedEodCooldownError;
-          const providerLimit =
-            error instanceof ManagedEodHistoryError &&
-            error.code === "source_rate_limited";
-          const notConfigured =
-            error instanceof ManagedEodHistoryError &&
-            error.code === "not_configured";
-          const keep = cooldown || isManagedEodTransientError(error);
-          let message =
-            "Price history could not be loaded. Try again when ready.";
-          if (cooldown)
-            message = `Price requests are available after ${error.nextAllowedAt}. Select ${this.priceAction()} again then.`;
-          else if (providerLimit)
-            message =
-              "Tiingo is limiting requests. Try again later; no reset time was provided.";
-          else if (error instanceof ManagedEodHistoryError) {
-            if (error.code === "not_configured")
-              message = "Price history is not configured for this workspace.";
-            else if (error.code === "unsupported_listing")
-              message =
-                "Price history is not available for this exact listing.";
-            else if (error.code === "request_timeout")
-              message = "Price history timed out. Try again when ready.";
-          }
-          this.updateRow(listing.listingId, {
-            response: keep ? row.response : null,
-            showingPrevious: keep && row.response !== null,
-            running: false,
-            error: !cooldown,
-            message,
-          });
-          if (cooldown || providerLimit || notConfigured) {
-            this.update({
-              message: `Remaining price requests stopped. ${message}`,
-              error: !cooldown,
-            });
-            return;
-          }
-        }
+        if (!(await this.loadRow(row, digest, operation.signal, current)))
+          return;
       }
       if (current()) {
         const failed = this.state.rows.some((row) => row.error);
@@ -450,5 +436,57 @@ export class ManagedMarkets {
         this.update({ running: false, rows: this.finishQueue() });
       }
     }
+  }
+  private async loadRow(
+    row: ManagedMarketsRow,
+    digest: `sha256:${string}`,
+    signal: AbortSignal,
+    current: () => boolean,
+  ): Promise<boolean> {
+    const { listing } = row;
+    this.queued.delete(listing.listingId);
+    this.updateRow(listing.listingId, {
+      running: true,
+      showingPrevious: row.response !== null,
+      error: false,
+      message: row.response
+        ? "Refreshing price history…"
+        : "Loading price history…",
+    });
+    try {
+      const response = await this.access.request(
+        { catalogSnapshotSha256: digest, listing },
+        signal,
+      );
+      if (!current()) return false;
+      this.updateRow(listing.listingId, {
+        response,
+        showingPrevious: false,
+        running: false,
+        error: false,
+        message: "One-month raw closing prices loaded.",
+      });
+      return true;
+    } catch (error) {
+      if (!current()) return false;
+      if (this.retireFailedRead(error)) return false;
+      return this.settleRowFailure(row, error);
+    }
+  }
+  private settleRowFailure(row: ManagedMarketsRow, error: unknown): boolean {
+    const failure = rowFailure(error, this.priceAction());
+    this.updateRow(row.listing.listingId, {
+      response: failure.keepPrevious ? row.response : null,
+      showingPrevious: failure.keepPrevious && row.response !== null,
+      running: false,
+      error: failure.error,
+      message: failure.message,
+    });
+    if (failure.stop)
+      this.update({
+        message: `Remaining price requests stopped. ${failure.message}`,
+        error: failure.error,
+      });
+    return !failure.stop;
   }
 }

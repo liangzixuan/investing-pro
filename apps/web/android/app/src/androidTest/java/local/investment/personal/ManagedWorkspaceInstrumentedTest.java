@@ -303,7 +303,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertCatalogRecoveryState(2, 0, "ZERO", false, true, "");
         click(".workspace-global-search button[type=submit]");
         assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
-        retainCatalogRecoveryScreenshot("catalogRecovered", ".workspace-global-search",
+        retainCatalogRecoveryScreenshot("catalogRecovered", ".managed-results",
             ".managed-results strong, .managed-catalog-receipt > summary");
         assertCatalogRecoveryState(2, 1, "ZERO", false, true, "1 matching listings in this catalog.");
         scenario.onActivity(activity -> {
