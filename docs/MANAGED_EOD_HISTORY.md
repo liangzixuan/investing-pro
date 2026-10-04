@@ -92,14 +92,22 @@ EOD while the existing workspace and Annual report remain available.
 node --import ./node_modules/tsx/dist/loader.mjs scripts/clerk-trial/build-function.ts managed <server-config-path> <sec-config-path> <eod-config-path>
 ```
 
-The selected private desktop/phone use and exact AAPL USD mapping were accepted
-for the managed deployment. Production enables only AAPL; GOOG and GOOGL remain
-closed for EOD. Shared hosted admission and the API/site deliveries passed their
+The selected private desktop/phone use and exact AAPL, GOOG and GOOGL USD mappings
+were accepted for the managed deployment. Production enables these three exact
+listings. Shared hosted admission and the API/site deliveries passed their
 separate checks. On October 3, one explicit browser load returned 21 unique,
 increasing dates from September 3 through October 2 for the September 3 to
 October 3 requested window. Back restored the opening control without a
-watchlist write. This establishes that one request, not broader symbol coverage
-or ongoing availability. [Current work](./CURRENT_WORK.md) records the release.
+watchlist write. On October 4, separate explicit GOOG and GOOGL loads each returned
+20 unique increasing dates from September 4 through October 2 for their September
+4 to October 4 window. Back preserved the workspace. These observations establish
+those requests, not ongoing availability or broader feed coverage. USD remains
+the reviewed fixed-mapping currency, rather than an independently supplied
+currency field in the history body. [Current work](./CURRENT_WORK.md) records the release.
+
+The selected [Markets home](MANAGED_MARKETS_HOME.md) shares the same EOD admission
+and checked cooldown. Its visit-scoped board snapshots are separate from the
+single price panel; opening that panel still starts unloaded.
 
 Synthetic tests use invented rows and no provider connection. They establish no
 live coverage, production deployment, signed APK update or physical-device pass.

@@ -8,6 +8,7 @@ import {
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
   type ManagedCatalogResolveResponse,
+  type ManagedEodIdentity,
   type PersonalSecurityMasterSearchResultDto,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -18,6 +19,8 @@ import {
   type AnnualReportSelection,
 } from "./managed-annual-report";
 import { ManagedEodHistory } from "./managed-eod-history";
+import { ManagedEodAccess } from "./managed-eod-access";
+import { ManagedMarkets } from "./managed-markets";
 import { SaveCoordinator } from "./save-coordinator";
 import type { TrialSession } from "./session";
 
@@ -28,6 +31,7 @@ export interface CatalogReview {
   readonly results: readonly ResolvedListing[];
 }
 export interface ManagedDiscoveryState {
+  readonly view: "markets" | "discover" | "watchlist";
   readonly query: string;
   readonly read: "status" | "search" | null;
   readonly reviewing: boolean;
@@ -38,6 +42,7 @@ export interface ManagedDiscoveryState {
   readonly review: CatalogReview | null;
 }
 const emptyDiscovery = (): ManagedDiscoveryState => ({
+  view: "markets",
   query: "",
   read: null,
   reviewing: false,
@@ -122,6 +127,7 @@ export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly annual: ManagedAnnualReport;
   readonly eod: ManagedEodHistory;
+  readonly markets: ManagedMarkets;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -138,6 +144,7 @@ export class ManagedWorkspace {
     private readonly api: ManagedApi,
     session: TrialSession,
     newKey?: () => string,
+    options: { marketsCohort?: readonly ManagedEodIdentity[] } = {},
   ) {
     this.coordinator = new SaveCoordinator<MainWatchlistPayload>(
       {
@@ -155,10 +162,27 @@ export class ManagedWorkspace {
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
     );
+    const eodAccess = new ManagedEodAccess((request, signal) =>
+      api.eodHistory(request, signal),
+    );
     this.eod = new ManagedEodHistory(
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
+      eodAccess,
     );
+    this.markets = new ManagedMarkets(
+      api,
+      eodAccess,
+      (error) => this.coordinator.readError(error),
+      () => this.invalidateCatalog(),
+      options.marketsCohort,
+    );
+    this.annual.subscribe(() => {
+      if (this.annual.getSnapshot().catalogChanged) this.invalidateCatalog();
+    });
+    this.eod.subscribe(() => {
+      if (this.eod.getSnapshot().catalogChanged) this.invalidateCatalog();
+    });
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
       const selection = this.annual.getSnapshot().selection;
@@ -209,6 +233,7 @@ export class ManagedWorkspace {
     this.retired = true;
     this.annual.retire();
     this.eod.retire();
+    this.markets.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
     this.searchOperation = null;
@@ -239,10 +264,11 @@ export class ManagedWorkspace {
       review:
         "The catalog review could not be completed. Select Review catalog changes to try again.",
     }[action];
-    if (error instanceof ManagedCatalogChangedError)
+    if (error instanceof ManagedCatalogChangedError) {
+      this.invalidateCatalog();
       message =
         "The catalog changed during review. Refresh the catalog and start the review again.";
-    else if (
+    } else if (
       action === "search" &&
       error instanceof TrialApiError &&
       error.code === "invalid_request"
@@ -261,6 +287,33 @@ export class ManagedWorkspace {
       totalMatches: 0,
       message: "",
     });
+  }
+  setView(view: ManagedDiscoveryState["view"]) {
+    if (this.retired) return;
+    this.annual.close();
+    this.eod.close();
+    if (view === this.state.view) return;
+    if (view === "markets")
+      this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
+    else this.markets.leave();
+    this.update({ view });
+  }
+  private invalidateCatalog() {
+    if (this.retired || !this.state.snapshot) return;
+    this.searchOperation?.abort();
+    this.searchOperation = null;
+    this.cancelReview();
+    this.markets.leave();
+    this.update({
+      snapshot: null,
+      results: [],
+      totalMatches: 0,
+      read: null,
+      message:
+        "The catalog changed. Refresh the catalog before requesting research again.",
+    });
+    this.annual.close();
+    this.eod.close();
   }
   async refreshCatalog() {
     await this.readCatalog("status");
@@ -306,6 +359,8 @@ export class ManagedWorkspace {
             }
           : {}),
       });
+      if (this.state.view === "markets")
+        this.markets.enter(result.snapshot.snapshotSha256);
     } catch (error) {
       if (
         !this.retired &&
@@ -385,6 +440,21 @@ export class ManagedWorkspace {
       origin: "watchlist",
     });
   }
+  openMarketResearch(kind: "annual" | "eod", listingId?: string) {
+    const selection = this.markets.selection(listingId);
+    if (
+      this.retired ||
+      this.state.view !== "markets" ||
+      !selection ||
+      selection.catalogSnapshotSha256 !== this.state.snapshot?.snapshotSha256
+    )
+      return;
+    this.markets.cancel();
+    this.annual.close();
+    this.eod.close();
+    if (kind === "annual") this.annual.open(selection);
+    else this.eod.open(selection);
+  }
   private canSwitchResearch(selection: AnnualReportSelection | null) {
     if (
       this.retired ||
@@ -393,6 +463,17 @@ export class ManagedWorkspace {
     )
       return false;
     if (selection.origin === "discover") return true;
+    if (selection.origin === "markets") {
+      const current = this.markets.selection(selection.listing.listingId);
+      return (
+        current !== null &&
+        current.catalogSnapshotSha256 === selection.catalogSnapshotSha256 &&
+        membershipMatchesResult(
+          { ...selection.listing, note: "" },
+          current.listing,
+        )
+      );
+    }
     const draft = this.coordinator.getSnapshot().draft;
     return (
       selection.cik === null &&

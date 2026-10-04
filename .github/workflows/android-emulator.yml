@@ -105,6 +105,7 @@ jobs:
                   "backgroundResumePreservesDraftAndAnnualCancellation",
                   "annualRefreshFailureKeepsReportUntilExplicitRecovery",
                   "catalogStartupFailureRecoversWithoutReloadOrDraftLoss",
+                  "marketsLoadCancelAndNavigationPreserveDraft",
                   "eodLoadCancelAndBackPreserveDraftAndDiscardLateResult",
                   "switchingResearchPanelsPreservesDraftAndDiscardsLateAnnual",
               },
@@ -121,7 +122,7 @@ jobs:
                   executed.add((case.get("classname"), case.get("name")))
           required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
           if not required.issubset(executed):
-              raise SystemExit("The ten required native tests did not all execute.")
+              raise SystemExit("The eleven required native tests did not all execute.")
           apk_root = Path("apps/web/android/app/build/outputs/apk")
           fixture_prefix = "assets/managed-workspace/"
           with ZipFile(apk_root / "debug/app-debug.apk") as app:

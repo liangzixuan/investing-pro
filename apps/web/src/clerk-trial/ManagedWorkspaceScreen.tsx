@@ -8,6 +8,7 @@ import {
 } from "react";
 import type {
   ManagedCatalogSnapshotDto,
+  ManagedEodIdentity,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
@@ -20,6 +21,7 @@ import {
 import type { TrialSession } from "./session";
 import { ManagedAnnualReport } from "./ManagedAnnualReport";
 import { ManagedEodHistory } from "./ManagedEodHistory";
+import { ManagedMarkets } from "./ManagedMarkets";
 import {
   bindAndroidBack,
   type AndroidBackAdapter,
@@ -30,6 +32,7 @@ interface SessionProps {
   apiOrigin: string;
   api?: ManagedApi;
   androidBack?: AndroidBackAdapter;
+  marketsCohort?: readonly ManagedEodIdentity[];
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -48,6 +51,8 @@ function SessionWorkspace(props: SessionProps) {
     const current = new ManagedWorkspace(
       initial.api ?? createManagedApi(initial.apiOrigin, initial.session),
       initial.session,
+      undefined,
+      initial.marketsCohort ? { marketsCohort: initial.marketsCohort } : {},
     );
     setWorkspace(current);
     void current.coordinator.load();
@@ -244,11 +249,17 @@ export function ManagedWorkspaceScreen({
 }) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
+  const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
+  const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const backToWorkspace = useCallback(() => {
     workspace.annual.close();
     workspace.eod.close();
     if (panelOrigin.current?.isConnected) panelOrigin.current.focus();
+    else if (workspace.getSnapshot().view === "markets")
+      marketsNavigation.current?.focus();
+    else if (workspace.getSnapshot().view === "watchlist")
+      watchlistNavigation.current?.focus();
     else discoverHeading.current?.focus();
     panelOrigin.current = null;
   }, [workspace]);
@@ -321,6 +332,58 @@ export function ManagedWorkspaceScreen({
               Use the on-screen navigation while Android Back is unavailable.
             </p>
           )}
+          <nav className="managed-navigation" aria-label="Workspace">
+            {(["markets", "discover", "watchlist"] as const).map((view) => (
+              <button
+                key={view}
+                ref={
+                  view === "watchlist"
+                    ? watchlistNavigation
+                    : view === "markets"
+                      ? marketsNavigation
+                      : undefined
+                }
+                className="trial-secondary"
+                aria-current={discovery.view === view ? "page" : undefined}
+                onClick={() => workspace.setView(view)}
+              >
+                {
+                  {
+                    markets: "Markets",
+                    discover: "Discover",
+                    watchlist: "My Watchlist",
+                  }[view]
+                }
+              </button>
+            ))}
+          </nav>
+          <div className="managed-search-bar">
+            <WorkspaceSearch
+              query={discovery.query}
+              busy={discovery.read !== null}
+              busyLabel={discovery.read === "status" ? "Search" : "Searching…"}
+              disabled={retired}
+              onChange={(query) => workspace.setQuery(query)}
+              onSearch={() => {
+                workspace.setView("discover");
+                void workspace.search();
+              }}
+            />
+            <button
+              className="trial-secondary"
+              disabled={discovery.read !== null}
+              onClick={() => void workspace.refreshCatalog()}
+            >
+              {discovery.read === "status"
+                ? discovery.snapshot
+                  ? "Refreshing catalog…"
+                  : "Loading catalog…"
+                : "Refresh catalog"}
+            </button>
+          </div>
+          <p role="status" aria-live="polite">
+            {discovery.message}
+          </p>
           <ManagedAnnualReport
             model={workspace.annual}
             onBack={backToWorkspace}
@@ -331,9 +394,23 @@ export function ManagedWorkspaceScreen({
             onBack={backToWorkspace}
             onAnnualReport={() => workspace.switchToAnnual()}
           />
+          {discovery.view === "markets" && (
+            <ManagedMarkets
+              model={workspace.markets}
+              onResearch={(kind, opener) => {
+                panelOrigin.current = opener;
+                workspace.openMarketResearch(kind);
+              }}
+              onWatchlist={() => {
+                workspace.setView("watchlist");
+                watchlistNavigation.current?.focus();
+              }}
+            />
+          )}
           <section
             className="trial-panel"
             aria-labelledby="managed-discover-heading"
+            hidden={discovery.view !== "discover"}
           >
             <div className="trial-toolbar">
               <h2
@@ -343,29 +420,7 @@ export function ManagedWorkspaceScreen({
               >
                 Discover
               </h2>
-              <button
-                className="trial-secondary"
-                disabled={discovery.read !== null}
-                onClick={() => void workspace.refreshCatalog()}
-              >
-                {discovery.read === "status"
-                  ? discovery.snapshot
-                    ? "Refreshing catalog…"
-                    : "Loading catalog…"
-                  : "Refresh catalog"}
-              </button>
             </div>
-            <WorkspaceSearch
-              query={discovery.query}
-              busy={discovery.read !== null}
-              busyLabel={discovery.read === "status" ? "Search" : "Searching…"}
-              disabled={retired}
-              onChange={(query) => workspace.setQuery(query)}
-              onSearch={() => void workspace.search()}
-            />
-            <p role="status" aria-live="polite">
-              {discovery.message}
-            </p>
             {discovery.results.length > 0 && (
               <ul className="managed-results">
                 {discovery.results.map((result) => {
@@ -434,6 +489,7 @@ export function ManagedWorkspaceScreen({
           <section
             className="trial-panel"
             aria-labelledby="managed-watchlist-heading"
+            hidden={discovery.view !== "watchlist"}
           >
             <div className="trial-toolbar">
               <h2 id="managed-watchlist-heading">My Watchlist</h2>
@@ -520,7 +576,7 @@ export function ManagedWorkspaceScreen({
               <>
                 {saved.draft.memberships.length === 0 && (
                   <p>
-                    Your watchlist is empty. Find a company above and add its
+                    Your watchlist is empty. Search for a company and add its
                     exact listing.
                   </p>
                 )}

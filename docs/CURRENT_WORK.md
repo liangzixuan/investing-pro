@@ -8,17 +8,18 @@ or develop the repository.
 
 ## Accepted release
 
-PR 29 is merged as `36c47d3b82fbaf6e2b1e07be14ae3de6315c95c0`, from candidate
-`3e0c44b914520b315aebd3b9b6064348dd49a420`, with tree
-`10906002b25d59b385c7069a184b8fee144dcfea`. Exact-main checks, the original
+PR 30 is merged as `ecc6a725087d9680e0626a095a62ace0942399e5`, from candidate
+`d7b7b898830c8e9f446611a4e2ca48f0645efd12`, with tree
+`55f5b7608bf845fa33306ffcf513d9115d4013b5`. Exact-main checks, the original
 source-proof artifact and ten-case native evidence were accepted. Its direct
-Annual/price-history navigation was delivered on the website on October 4.
-The API and signed Android package remain the separately accepted PR 26 releases.
+Annual/price-history navigation and retained EOD refresh history are delivered on
+the website. The API's reviewed configuration expanded to GOOG and GOOGL on
+October 4. The signed Android package remains the separately accepted PR 26 release.
 
 | Surface                   | Accepted outcome                                                                                                                                                                                     | Limits                                                                                                                                     |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Managed API               | Deployment `6ac0621a276fa6041126`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed                      | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac1a3fddf855fefb97e`; PR 29 staging archive promoted after the configured normal approval                                                               | Staging BrowserStack is an inert preview and does not exercise authenticated research                                                      |
+| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed                      | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac1eea5994b1cfedc10`; PR 30 staging archive promoted after the configured normal approval                                                               | Staging BrowserStack is an inert preview and does not exercise authenticated research                                                      |
 | Signed Android artifact   | Investment 1.2.0, code 3, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                                                 | The 1.2 in-place installation and physical-phone behavior remain unverified                                                                |
 | Automated Android         | Ten passing API-36 emulator cases, with original reports and images; includes direct research switching alongside catalog recovery, Annual refresh, EOD, Back, cancellation and same-Activity resume | Invented data, debug test fixture; no production sign-in, process-death persistence or physical-device claim                               |
 | Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                                                    | No per-step logs; this report does not accept 1.2                                                                                          |
@@ -40,9 +41,10 @@ An explicit [Annual report](MANAGED_SEC_ANNUAL.md) panel uses bounded SEC eviden
 A refresh keeps the prior validated report visible through supported transient
 failure, cooldown and Cancel, with its original dates. The separate
 [EOD close history](MANAGED_EOD_HISTORY.md) panel loads one calendar month of raw
-USD closes only for AAPL. The accepted release clears EOD prices on refresh and
-Cancel; the current slice below changes those two behaviors. Back and retirement
-continue to clear prices. There is no automatic request or persistent price cache.
+USD closes for AAPL, GOOG and GOOGL. Explicit refresh, Cancel, checked cooldowns
+and supported transient failures retain the previous validated history with its
+original dates. Back, retirement and fatal validation failures clear prices.
+There is no automatic request or persistent price cache.
 Both panels preserve the mounted watchlist draft and use the same close/focus action
 for Android Back. The website now switches directly between these panels for the
 same listing and returns to the original workspace opener. Signed Android 1.2
@@ -52,8 +54,11 @@ At 03:55 UTC on October 3, one explicit authenticated AAPL `1m` UI load succeede
 It showed Tiingo/raw USD history with 21 unique increasing dates from September 3
 through October 2, within the requested September 3 to October 3 window. Back
 restored focus; saved state was unchanged. No Refresh or watchlist write was
-performed. This one case establishes a bounded live journey, not broader symbol,
-field, entitlement, repeat reliability or physical-phone coverage.
+performed. On October 4, one explicit GOOG load and one GOOGL load each returned
+20 unique increasing dates from September 4 through October 2, within their
+September 4 to October 4 window. Each Back preserved the saved workspace.
+These cases establish their bounded live journeys, not other fields, ongoing
+availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
@@ -69,14 +74,13 @@ The security check stays unchanged. The Repomix package and workflow remain in
 the unmerged PR. [AI context](AI_CONTEXT.md) gives a manual reading guide and
 distinguishes its reviewed artifact from the source in this documentation tree.
 
-The selected product slice retains the last validated EOD history while an
-explicit refresh runs, is cancelled, encounters a checked cooldown, or fails with
-a supported transient error. A previous-history notice preserves the original
-completion time and distinguishes it from new results. A valid success replaces
-the whole response. Identity, catalog, authentication, malformed-response, Back
-and switching boundaries still clear prices. See the
-[EOD contract](MANAGED_EOD_HISTORY.md); this change needs its own source, synthetic
-and website acceptance before it is described as delivered.
+The selected product slice is the [three-listing Markets home](MANAGED_MARKETS_HOME.md).
+It uses the accepted AAPL/GOOG/GOOGL mappings, explicit sequential price loading,
+dated per-row histories, a selected chart and direct research/watchlist navigation.
+Its visit-scoped prices and shared EOD cooldown preserve the mounted watchlist
+draft. It has no percentage movers or unsupported market feeds. Implementation
+and verification are in progress; source publication, website delivery and native
+acceptance remain separate from the accepted baseline above.
 
 The next device acceptance is a separately selected, brief 1.2 in-place upgrade
 and normal navigation/background-resume observation. Preserve the installed
@@ -87,8 +91,8 @@ user-visible outcome and available data.
 
 ## Open limits
 
-- Managed EOD admission is AAPL only. GOOG/GOOGL remain catalog/Annual listings;
-  no complete market or adjusted-return coverage follows from the one live case.
+- Managed EOD admission covers three exact listings for two issuers. No complete
+  market, adjusted-return or index coverage follows from those bounded reads.
 - Shared quota enforcement covers this application. It cannot measure other
   clients' account consumption; provider rate limits still apply.
 - Unsaved drafts live in the mounted session. Same-Activity resume is covered;

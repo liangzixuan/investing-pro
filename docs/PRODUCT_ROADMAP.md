@@ -54,20 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 ## Current managed baseline and next selection
 
 The managed website and signed Android 1.2 package share Discover, a private
-watchlist with notes and ordering, read-only Annual reports and explicit AAPL
-one-month EOD close history. Catalog recovery, report cancellation, Android Back
+watchlist with notes and ordering, read-only Annual reports and explicit
+one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
-browser request passed on October 3; broader provider coverage and the physical
+browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
+Broader provider coverage and the physical
 Android 1.2 upgrade remain separate acceptance. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
-navigation is delivered on the website. The selected follow-up keeps the last validated
-close history visible during refresh and recoverable failures, with its original
-dates clearly marked. Android packaging remains a separate delivery.
+navigation and retained close history during refresh are delivered on the website.
+Previous histories keep their original dates. Android packaging remains a separate delivery.
 
-After this bounded reliability slice, return to the short Markets-home source
-and screen contract below. Preserve usable data, unsaved drafts and recoverable
+The selected first [Markets home](MANAGED_MARKETS_HOME.md) uses the three accepted
+listings in a compact board and selected chart, with explicit sequential loads and
+direct research/watchlist access. Its raw-close contract supplies no adjusted
+returns, percentage movers or benchmarks. Preserve usable data, unsaved drafts and recoverable
 error states as capabilities grow. The broader local research tools remain
 available in their separate profile; their existence does not establish managed
 delivery.

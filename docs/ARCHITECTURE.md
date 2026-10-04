@@ -50,6 +50,13 @@ before display. The workspace stays mounted while a panel is open, preserving
 unsaved note/order state. Closing restores focus through the same screen action
 used by [Android Back](../apps/web/src/mobile/android-back.ts).
 
+The selected [Markets home](MANAGED_MARKETS_HOME.md) adds a visit-scoped board
+model owned by the same workspace. It resolves a declared exact cohort and loads
+prices sequentially only on request. Board and EOD panel share one checked
+cooldown owner; their price snapshots remain separate. Navigation leaves the
+watchlist coordinator mounted. Leaving Markets clears its board data, and
+catalog/session retirement aborts every affected research read.
+
 Each read model can retain its last validated response during explicit refresh
 and its defined recoverable failures. The panel marks that response as previous
 and preserves its original provenance. Closing or switching panels still clears
@@ -82,7 +89,7 @@ after a timely acknowledged shared reservation. Provider work has server deadlin
 because a browser cancellation is not proven to cancel the remote Appwrite request.
 
 The budgets store admission metadata, not price or filing bodies. EOD rows remain
-in the active panel's memory. The local encrypted vault is a separate persistence
+in the active panel or Markets visit's memory. The local encrypted vault is a separate persistence
 model; managed Appwrite storage does not claim equivalent application-layer
 encryption or automatic migration.
 
@@ -103,7 +110,8 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. Its ten cases are distinct from signed-release, physical-phone and
+admission. The fixture contains eleven cases; accepted results are recorded in Current work.
+These are distinct from signed-release, physical-phone and
 live-provider acceptance.
 
 [Source-check verification](../scripts/appwrite/github-checks.ts) derives the

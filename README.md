@@ -8,15 +8,16 @@ keeping ideas, and reviewing holdings using permitted data and existing resource
 The public repository contains several deliberate runtime profiles. Their
 capabilities and acceptance are different:
 
-| Profile                               | What it provides                                                                                                        | Data and access                                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Managed browser and Android           | Discover, a shared watchlist with notes/order and conflict handling, explicit Annual report, and AAPL EOD close history | Clerk identity, private Appwrite storage and server-side SEC/Tiingo adapters; configured account access is required |
-| Local research workspace              | Broader financials, valuation, comparisons, screening, portfolio and filing tools                                       | Explicit local startup with an admitted catalog and encrypted vault; not migrated to the managed service            |
-| Synthetic demo / disconnected Android | Reproducible development and test journeys                                                                              | Invented data; no production account, provider key or owner vault required                                          |
+| Profile                               | What it provides                                                                                                                   | Data and access                                                                                                     |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Managed browser and Android           | Discover, a shared watchlist with notes/order and conflict handling, explicit Annual report, and AAPL/GOOG/GOOGL EOD close history | Clerk identity, private Appwrite storage and server-side SEC/Tiingo adapters; configured account access is required |
+| Local research workspace              | Broader financials, valuation, comparisons, screening, portfolio and filing tools                                                  | Explicit local startup with an admitted catalog and encrypted vault; not migrated to the managed service            |
+| Synthetic demo / disconnected Android | Reproducible development and test journeys                                                                                         | Invented data; no production account, provider key or owner vault required                                          |
 
 PR 26 delivered the managed API, website and signed Android 1.2.0 package. One
-explicit authenticated AAPL one-month read succeeded on October 3, 2026. This is
-limited live evidence, not whole-provider coverage. The 1.2 APK's physical-device
+explicit authenticated AAPL one-month read succeeded on October 3, 2026; separate
+GOOG and GOOGL mappings and live reads were accepted on October 4. These are
+bounded live observations, not whole-provider coverage. The 1.2 APK's physical-device
 upgrade remains unverified. See [current status and limits](docs/CURRENT_WORK.md)
 for the dated source, release surfaces and next work.
 
@@ -58,6 +59,7 @@ Managed setup is explicit: [watchlist storage](docs/APPWRITE_WATCHLIST.md),
 [managed catalog](docs/MANAGED_SECURITY_CATALOG.md),
 [Annual report](docs/MANAGED_SEC_ANNUAL.md),
 [EOD close history](docs/MANAGED_EOD_HISTORY.md),
+[selected Markets home](docs/MANAGED_MARKETS_HOME.md),
 [website delivery](docs/APPWRITE_DELIVERY.md) and
 [Android build profiles](docs/ANDROID_CLIENT.md). A public configuration or
 successful build does not grant account access or permission to deploy.
