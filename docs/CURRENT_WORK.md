@@ -79,11 +79,20 @@ It uses the accepted AAPL/GOOG/GOOGL mappings, explicit sequential price loading
 dated per-row histories, a selected chart and direct research/watchlist navigation.
 Its visit-scoped prices and shared EOD cooldown preserve the mounted watchlist
 draft. It has no percentage movers or unsupported market feeds. Implementation is
-published in [PR 31](https://github.com/liangzixuan/investing-pro/pull/31), with
-review and hosted verification in progress. The first run found a stale staging
-heading assertion and a catalog screenshot framing failure; those original failures
-remain part of the verification record. Website delivery and native acceptance
-remain separate from the accepted baseline above.
+merged in [PR 31](https://github.com/liangzixuan/investing-pro/pull/31) as
+`47f29cd91cf239224b0cc0f1e1a743c2d03d2a3e`. Applicable main checks, the original
+source proof and eleven-case synthetic native evidence were accepted. The first
+PR run's stale staging heading assertion and catalog screenshot framing failure
+remain in the verification record.
+
+Website release [37200994777](https://github.com/liangzixuan/investing-pro/actions/runs/37200994777)
+deployed to staging, then failed its BrowserStack step; production was skipped.
+The smoke test still expected the previous managed heading and description. The
+follow-up corrects those two expectations while preserving exact-build identity,
+request isolation, error checks and desktop/narrow layout assertions. The source
+mismatch is confirmed; the remote failure's specific assertion has not been
+observed. Fresh hosted verification and website delivery remain pending. This
+does not change the accepted website or signed Android baseline above.
 
 The next device acceptance is a separately selected, brief 1.2 in-place upgrade
 and normal navigation/background-resume observation. Preserve the installed
