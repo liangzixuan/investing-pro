@@ -14,9 +14,8 @@ import { TrialFrame } from "./TrialFrame";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
-import { eodResponse } from "./eod-history-fixture";
-import { ManagedAnnualReport } from "./ManagedAnnualReport";
-import { ManagedEodHistory } from "./ManagedEodHistory";
+import { eodResponse, eodSelection } from "./eod-history-fixture";
+import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -275,33 +274,27 @@ describe("managed workspace screen", () => {
       expect(opener).toBeDefined();
       const origin = { isConnected: true, focus: vi.fn() };
       opener.props.onClick({ currentTarget: origin });
-      const annual = () =>
+      const company = () =>
         elements(render()).find(
-          (node) => node.type === ManagedAnnualReport,
+          (node) => node.type === ManagedCompanyResearch,
         ) as React.ReactElement<
-          React.ComponentProps<typeof ManagedAnnualReport>
+          React.ComponentProps<typeof ManagedCompanyResearch>
         >;
-      const eod = () =>
-        elements(render()).find(
-          (node) => node.type === ManagedEodHistory,
-        ) as React.ReactElement<React.ComponentProps<typeof ManagedEodHistory>>;
-      if (start === "annual") annual().props.onEodHistory();
-      else eod().props.onAnnualReport();
-      expect(
-        (start === "annual" ? workspace.eod : workspace.annual).getSnapshot()
-          .selection?.listing.listingId,
-      ).toBe("listing-one");
-      expect(
-        (start === "annual" ? workspace.annual : workspace.eod).getSnapshot()
-          .selection,
-      ).toBeNull();
+      const selection = company().props.research.selection;
+      const opposite = start === "annual" ? "eod" : "annual";
+      company().props.onSection(opposite);
+      expect(company().props.research.section).toBe(opposite);
+      expect(company().props.research.selection).toBe(selection);
+      expect(workspace.annual.getSnapshot().selection?.listing.listingId).toBe(
+        "listing-one",
+      );
+      expect(workspace.eod.getSnapshot().selection?.listing.listingId).toBe(
+        "listing-one",
+      );
       expect(mounted.refs[0]!.current).toBe(origin);
-      if (start === "annual") eod().props.onAnnualReport();
-      else annual().props.onEodHistory();
-      expect(
-        (start === "annual" ? workspace.annual : workspace.eod).getSnapshot()
-          .selection?.listing.listingId,
-      ).toBe("listing-one");
+      company().props.onSection(start);
+      expect(company().props.research.section).toBe(start);
+      expect(company().props.research.selection).toBe(selection);
       expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
       expect(workspace.getSnapshot().query).toBe("DEMO");
       expect(
@@ -310,7 +303,7 @@ describe("managed workspace screen", () => {
           .map((node) => (node.props as { value: string }).value),
       ).toEqual(["Private research note", "Keep the navigation draft"]);
       expect(origin.focus).not.toHaveBeenCalled();
-      const current = start === "annual" ? annual() : eod();
+      const current = company();
       if (native) native.press(false);
       else current.props.onBack();
       expect(workspace.annual.getSnapshot().selection).toBeNull();
@@ -332,6 +325,106 @@ describe("managed workspace screen", () => {
       }
     },
   );
+  it("renders one company section and reuses both loaded packets through repeated button returns", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Keep this company note" },
+      ],
+    });
+    const prices = eodResponse();
+    const report = await annualResponse();
+    vi.mocked(api.eodHistory).mockResolvedValue(prices);
+    vi.mocked(api.annualReport).mockResolvedValue(report);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    mounted.direct = true;
+    const render = () => {
+      mounted.refIndex = 0;
+      return ManagedWorkspaceScreen({ workspace });
+    };
+    const origin = { isConnected: true, focus: vi.fn() };
+    const opener = elements(render()).find(
+      (node) =>
+        node.type === "button" &&
+        (node.props as { "aria-label"?: string })["aria-label"] ===
+          "EOD close history for saved ZERO",
+    ) as React.ReactElement<{
+      onClick: (event: { currentTarget: unknown }) => void;
+    }>;
+    opener.props.onClick({ currentTarget: origin });
+    const company = () =>
+      elements(render()).find(
+        (node) => node.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    const section = (name: "Price" | "Annual") => {
+      const control = elements(ManagedCompanyResearch(company().props)).find(
+        (node) =>
+          node.type === "button" &&
+          (node.props as { "aria-label"?: string })["aria-label"] ===
+            `${name} section for ZERO`,
+      ) as React.ReactElement<{ onClick: () => void; "aria-pressed": boolean }>;
+      return control.props;
+    };
+    const html = () => {
+      const node = company();
+      mounted.direct = false;
+      try {
+        return renderToStaticMarkup(node);
+      } finally {
+        mounted.direct = true;
+      }
+    };
+    const identity = company().props.research.selection;
+    expect(html()).toContain("Company research · ZERO");
+    for (const label of ["Zero Company", "Zero Class A", "Class A", "XNAS"])
+      expect(html()).toContain(label);
+    expect(section("Price")["aria-pressed"]).toBe(true);
+    expect(section("Annual")["aria-pressed"]).toBe(false);
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    await workspace.eod.load();
+    const priceState = workspace.eod.getSnapshot();
+    const priceHtml = html();
+    expect(priceHtml).toContain(prices.completedAt);
+    expect(priceHtml).toContain(prices.window.startDate);
+    expect(priceHtml).not.toContain('class="managed-annual-report"');
+    section("Price").onClick();
+    expect(workspace.eod.getSnapshot()).toBe(priceState);
+    section("Annual").onClick();
+    expect(section("Annual")["aria-pressed"]).toBe(true);
+    expect(section("Price")["aria-pressed"]).toBe(false);
+    expect(html()).not.toContain('class="managed-eod-history"');
+    expect(api.annualReport).not.toHaveBeenCalled();
+    await workspace.annual.load();
+    const annualState = workspace.annual.getSnapshot();
+    const annualHtml = html();
+    expect(annualHtml).toContain(report.evidence.generation.completedAt);
+    expect(annualHtml.match(/Back to workspace/gu)).toHaveLength(1);
+    expect(annualHtml.match(/id="managed-company-heading"/gu)).toHaveLength(1);
+    section("Annual").onClick();
+    expect(workspace.annual.getSnapshot()).toBe(annualState);
+    for (let visit = 0; visit < 2; visit++) {
+      section("Price").onClick();
+      expect(html()).toBe(priceHtml);
+      expect(workspace.eod.getSnapshot()).toBe(priceState);
+      section("Annual").onClick();
+      expect(html()).toBe(annualHtml);
+      expect(workspace.annual.getSnapshot()).toBe(annualState);
+      expect(company().props.research.selection).toBe(identity);
+    }
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(mounted.refs[0]!.current).toBe(origin);
+    company().props.onBack();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+    expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(origin.focus).toHaveBeenCalledOnce();
+  });
   it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
     const { workspace, api, html } = fixture();
     await workspace.coordinator.load();
@@ -340,7 +433,7 @@ describe("managed workspace screen", () => {
     const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
     workspace.openWatchlistEod(member);
     const output = html();
-    expect(output).toContain("EOD close history · DEMO");
+    expect(output).toContain("Company research · DEMO");
     expect(output).toContain("Load one-month close history");
     expect(output).toContain("Draft survives close history");
     expect(output).toContain("My Watchlist");
@@ -672,14 +765,14 @@ describe("managed workspace screen", () => {
     const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
     workspace.openWatchlistAnnual(member);
     const output = html();
-    expect(output).toContain("Annual report · DEMO");
+    expect(output).toContain("Company research · DEMO");
     expect(output).toContain("Load annual report");
     expect(output).toContain("Back to workspace");
     expect(output).toContain("My Watchlist");
     expect(output).toContain("Draft survives Back");
     expect(output).toContain("Unsaved changes");
     expect(api.annualReport).not.toHaveBeenCalled();
-    workspace.annual.close();
+    workspace.closeResearch();
     expect(html()).not.toContain("Load annual report");
     expect(html()).toContain("Draft survives Back");
     vi.mocked(api.status).mockResolvedValue({

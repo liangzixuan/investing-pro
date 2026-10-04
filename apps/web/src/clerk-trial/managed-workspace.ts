@@ -30,6 +30,10 @@ export interface CatalogReview {
   readonly snapshotSha256: string;
   readonly results: readonly ResolvedListing[];
 }
+export interface ManagedResearchVisit {
+  readonly selection: AnnualReportSelection;
+  readonly section: "annual" | "eod";
+}
 export interface ManagedDiscoveryState {
   readonly view: "markets" | "discover" | "watchlist";
   readonly query: string;
@@ -40,6 +44,7 @@ export interface ManagedDiscoveryState {
   readonly totalMatches: number;
   readonly message: string;
   readonly review: CatalogReview | null;
+  readonly research: ManagedResearchVisit | null;
 }
 const emptyDiscovery = (): ManagedDiscoveryState => ({
   view: "markets",
@@ -51,6 +56,7 @@ const emptyDiscovery = (): ManagedDiscoveryState => ({
   totalMatches: 0,
   message: "",
   review: null,
+  research: null,
 });
 
 interface DraftValidation {
@@ -122,7 +128,7 @@ export function listingMembership(
   return { ...listingIdentity(result), note: "" };
 }
 
-/** Owns catalog reads and their lifetime; the shared coordinator owns every save. */
+/** Owns catalog reads and company visits; the shared coordinator owns every save. */
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly annual: ManagedAnnualReport;
@@ -185,30 +191,12 @@ export class ManagedWorkspace {
     });
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
-      const selection = this.annual.getSnapshot().selection;
-      if (selection?.origin === "watchlist") {
-        const member = saved.draft?.memberships.find(
-          (item) => item.listingId === selection.listing.listingId,
-        );
-        if (
-          !member ||
-          saved.draft?.snapshotSha256 !== selection.catalogSnapshotSha256 ||
-          !membershipMatchesResult(member, selection.listing)
-        )
-          this.annual.close();
-      }
-      const eodSelection = this.eod.getSnapshot().selection;
-      if (eodSelection?.origin === "watchlist") {
-        const member = saved.draft?.memberships.find(
-          (item) => item.listingId === eodSelection.listing.listingId,
-        );
-        if (
-          !member ||
-          saved.draft?.snapshotSha256 !== eodSelection.catalogSnapshotSha256 ||
-          !membershipMatchesResult(member, eodSelection.listing)
-        )
-          this.eod.close();
-      }
+      const selection = this.state.research?.selection;
+      if (
+        selection?.origin === "watchlist" &&
+        !this.canSwitchResearch(selection)
+      )
+        this.closeResearch();
       if (
         this.draft !== saved.draft ||
         saved.uncertain ||
@@ -231,6 +219,7 @@ export class ManagedWorkspace {
   }
   private clear() {
     this.retired = true;
+    this.closeResearch();
     this.annual.retire();
     this.eod.retire();
     this.markets.retire();
@@ -290,8 +279,7 @@ export class ManagedWorkspace {
   }
   setView(view: ManagedDiscoveryState["view"]) {
     if (this.retired) return;
-    this.annual.close();
-    this.eod.close();
+    this.closeResearch();
     if (view === this.state.view) return;
     if (view === "markets")
       this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
@@ -304,6 +292,7 @@ export class ManagedWorkspace {
     this.searchOperation = null;
     this.cancelReview();
     this.markets.leave();
+    this.closeResearch();
     this.update({
       snapshot: null,
       results: [],
@@ -312,8 +301,6 @@ export class ManagedWorkspace {
       message:
         "The catalog changed. Refresh the catalog before requesting research again.",
     });
-    this.annual.close();
-    this.eod.close();
   }
   async refreshCatalog() {
     await this.readCatalog("status");
@@ -344,8 +331,7 @@ export class ManagedWorkspace {
         result.snapshot.snapshotSha256 !== this.state.snapshot?.snapshotSha256
       ) {
         this.cancelReview();
-        this.annual.close();
-        this.eod.close();
+        this.closeResearch();
       }
       this.update({
         snapshot: result.snapshot,
@@ -388,13 +374,15 @@ export class ManagedWorkspace {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
       return;
-    this.eod.close();
-    this.annual.open({
-      catalogSnapshotSha256: snapshot.snapshotSha256,
-      listing: listingIdentity(result),
-      cik: result.cik,
-      origin: "discover",
-    });
+    this.openResearch(
+      {
+        catalogSnapshotSha256: snapshot.snapshotSha256,
+        listing: listingIdentity(result),
+        cik: result.cik,
+        origin: "discover",
+      },
+      "annual",
+    );
   }
   canOpenWatchlistAnnual(member: WatchlistMembership) {
     const draft = this.coordinator.getSnapshot().draft;
@@ -407,38 +395,44 @@ export class ManagedWorkspace {
   }
   openWatchlistAnnual(member: WatchlistMembership) {
     if (!this.canOpenWatchlistAnnual(member) || !this.state.snapshot) return;
-    this.eod.close();
-    this.annual.open({
-      catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
-      listing: listingIdentity(member),
-      cik: null,
-      origin: "watchlist",
-    });
+    this.openResearch(
+      {
+        catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
+        listing: listingIdentity(member),
+        cik: null,
+        origin: "watchlist",
+      },
+      "annual",
+    );
   }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
       return;
-    this.annual.close();
-    this.eod.open({
-      catalogSnapshotSha256: snapshot.snapshotSha256,
-      listing: listingIdentity(result),
-      cik: result.cik,
-      origin: "discover",
-    });
+    this.openResearch(
+      {
+        catalogSnapshotSha256: snapshot.snapshotSha256,
+        listing: listingIdentity(result),
+        cik: result.cik,
+        origin: "discover",
+      },
+      "eod",
+    );
   }
   canOpenWatchlistEod(member: WatchlistMembership) {
     return this.canOpenWatchlistAnnual(member);
   }
   openWatchlistEod(member: WatchlistMembership) {
     if (!this.canOpenWatchlistEod(member) || !this.state.snapshot) return;
-    this.annual.close();
-    this.eod.open({
-      catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
-      listing: listingIdentity(member),
-      cik: null,
-      origin: "watchlist",
-    });
+    this.openResearch(
+      {
+        catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
+        listing: listingIdentity(member),
+        cik: null,
+        origin: "watchlist",
+      },
+      "eod",
+    );
   }
   openMarketResearch(kind: "annual" | "eod", listingId?: string) {
     const selection = this.markets.selection(listingId);
@@ -450,10 +444,27 @@ export class ManagedWorkspace {
     )
       return;
     this.markets.cancel();
+    this.openResearch(selection, kind);
+  }
+  private openResearch(
+    selection: AnnualReportSelection,
+    section: ManagedResearchVisit["section"],
+  ) {
+    this.closeResearch();
+    this[section].open(selection);
+    const captured = this[section].getSnapshot().selection;
+    if (captured)
+      this.update({
+        research: Object.freeze({ selection: captured, section }),
+      });
+  }
+  closeResearch() {
+    const hadResearch = this.state.research !== null;
+    // Model close notifications must never expose the visit with a cleared section.
+    if (hadResearch) this.state = { ...this.state, research: null };
     this.annual.close();
     this.eod.close();
-    if (kind === "annual") this.annual.open(selection);
-    else this.eod.open(selection);
+    if (hadResearch) this.update({});
   }
   private canSwitchResearch(selection: AnnualReportSelection | null) {
     if (
@@ -484,18 +495,27 @@ export class ManagedWorkspace {
     );
   }
   switchToAnnual() {
-    const { selection, catalogChanged } = this.eod.getSnapshot();
-    if (!selection || catalogChanged || !this.canSwitchResearch(selection))
-      return;
-    this.eod.close();
-    this.annual.open(selection);
+    this.switchResearch("annual");
   }
   switchToEod() {
-    const { selection, catalogChanged } = this.annual.getSnapshot();
-    if (!selection || catalogChanged || !this.canSwitchResearch(selection))
+    this.switchResearch("eod");
+  }
+  private switchResearch(section: ManagedResearchVisit["section"]) {
+    const research = this.state.research;
+    if (!research) return;
+    if (
+      !this.canSwitchResearch(research.selection) ||
+      this.annual.getSnapshot().catalogChanged ||
+      this.eod.getSnapshot().catalogChanged
+    ) {
+      this.closeResearch();
       return;
-    this.annual.close();
-    this.eod.open(selection);
+    }
+    if (research.section === section) return;
+    this[research.section].cancel();
+    if (!this[section].getSnapshot().selection)
+      this[section].open(research.selection);
+    this.update({ research: Object.freeze({ ...research, section }) });
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;

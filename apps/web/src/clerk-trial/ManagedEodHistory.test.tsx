@@ -74,60 +74,44 @@ function buttons(node: React.ReactNode): React.ReactElement<ButtonProps>[] {
 }
 
 describe("managed close history panel", () => {
-  it("focuses the selected heading and exposes Annual switching without loading, including during a read", async () => {
+  it("focuses the heading on initial mount and loaded return without an implicit read", async () => {
     focusHooks.enabled = true;
-    let settle!: (value: ReturnType<typeof eodResponse>) => void;
-    const read = vi.fn<ManagedApi["eodHistory"]>().mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          settle = resolve;
-        }),
-    );
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockResolvedValue(eodResponse());
     const model = new ManagedEodHistory(read, vi.fn());
-    const onAnnualReport = vi.fn();
-    const onBack = vi.fn();
     const render = () => {
       focusHooks.index = 0;
-      return buttons(Panel({ model, onBack, onAnnualReport }));
+      return buttons(Panel({ model }));
     };
     model.open(eodSelection);
-    const controls = render();
-    const focus = vi.fn();
-    focusHooks.refs[0]!.current = { focus };
+    expect(render()[0]!.props.children).toBe("Load one-month close history");
+    const initialFocus = vi.fn();
+    focusHooks.refs[0]!.current = { focus: initialFocus };
     focusHooks.effect?.();
-    expect(focus).toHaveBeenCalledOnce();
-    const switchButton = controls.find(
-      (button) => button.props.children === "Annual report",
-    )!;
-    expect(switchButton.props.disabled).toBe(false);
-    switchButton.props.onClick!({ currentTarget: {} });
-    expect(onAnnualReport).toHaveBeenCalledOnce();
-    expect(onBack).not.toHaveBeenCalled();
+    expect(initialFocus).toHaveBeenCalledOnce();
     expect(read).not.toHaveBeenCalled();
-    const pending = model.load();
-    const pendingSwitch = render().find(
-      (button) => button.props.children === "Annual report",
-    )!;
-    expect(pendingSwitch.props.disabled).toBe(false);
-    pendingSwitch.props.onClick!({ currentTarget: {} });
-    expect(onAnnualReport).toHaveBeenCalledTimes(2);
+    await model.load();
+    const retained = model.getSnapshot().response;
+    focusHooks.refs = [];
+    expect(render()[0]!.props.children).toBe("Refresh close history");
+    const returnFocus = vi.fn();
+    focusHooks.refs[0]!.current = { focus: returnFocus };
+    focusHooks.effect?.();
+    expect(returnFocus).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().response).toBe(retained);
     expect(read).toHaveBeenCalledOnce();
-    model.close();
-    settle(eodResponse());
-    await pending;
   });
-  it("disables the Annual switch after the selected catalog changes", async () => {
+  it("disables loading after the selected catalog changes", async () => {
     const read = vi
       .fn<ManagedApi["eodHistory"]>()
       .mockRejectedValue(new ManagedCatalogChangedError());
     const model = new ManagedEodHistory(read, vi.fn());
     model.open(eodSelection);
     await model.load();
-    const html = renderToStaticMarkup(
-      <Panel model={model} onBack={vi.fn()} onAnnualReport={vi.fn()} />,
-    );
+    const html = renderToStaticMarkup(<Panel model={model} />);
     expect(html).toMatch(
-      /<button[^>]*aria-label="Annual report for ZERO"[^>]*disabled=""[^>]*>Annual report<\/button>/u,
+      /<button[^>]*disabled=""[^>]*>Load one-month close history<\/button>/u,
     );
     expect(html).toContain("Refresh the catalog");
     expect(read).toHaveBeenCalledOnce();
@@ -155,7 +139,7 @@ describe("managed close history panel", () => {
       const pending = model.load();
       const render = () => {
         focusHooks.index = 0;
-        return Panel({ model, onBack: vi.fn(), onAnnualReport: vi.fn() });
+        return Panel({ model });
       };
       const initial = buttons(render());
       expect(
@@ -201,14 +185,7 @@ describe("managed close history panel", () => {
       .fn<ManagedApi["eodHistory"]>()
       .mockResolvedValue(eodResponse());
     const model = new ManagedEodHistory(read, vi.fn());
-    const html = () =>
-      renderToStaticMarkup(
-        <Panel
-          model={model}
-          onBack={() => model.close()}
-          onAnnualReport={vi.fn()}
-        />,
-      );
+    const html = () => renderToStaticMarkup(<Panel model={model} />);
     expect(html()).toBe("");
     model.open(eodSelection);
     expect(html()).toContain("Load one-month close history");
@@ -217,7 +194,8 @@ describe("managed close history panel", () => {
     await model.load();
     const output = html();
     for (const text of [
-      "EOD close history · ZERO",
+      "EOD close history",
+      "company visit",
       "Tiingo",
       "not adjusted",
       "not live quotes",
@@ -256,10 +234,7 @@ describe("managed close history panel", () => {
         .mockResolvedValueOnce(previous)
         .mockRejectedValueOnce(error);
       const model = new ManagedEodHistory(read, vi.fn());
-      const html = () =>
-        renderToStaticMarkup(
-          <Panel model={model} onBack={vi.fn()} onAnnualReport={vi.fn()} />,
-        );
+      const html = () => renderToStaticMarkup(<Panel model={model} />);
       const expectPrevious = () => {
         const output = html();
         expect(output).toContain('class="managed-eod-previous"');
@@ -343,9 +318,7 @@ describe("managed close history panel", () => {
     const model = new ManagedEodHistory(read, vi.fn());
     model.open(eodSelection);
     await model.load();
-    const output = renderToStaticMarkup(
-      <Panel model={model} onBack={vi.fn()} onAnnualReport={vi.fn()} />,
-    );
+    const output = renderToStaticMarkup(<Panel model={model} />);
     expect(output).toContain(
       "Close history could not be loaded. Select Load to try again.",
     );

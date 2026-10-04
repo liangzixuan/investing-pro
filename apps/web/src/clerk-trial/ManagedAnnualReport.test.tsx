@@ -110,14 +110,7 @@ function fixture() {
     model,
     load,
     readError,
-    html: () =>
-      renderToStaticMarkup(
-        <Panel
-          model={model}
-          onBack={() => model.close()}
-          onEodHistory={vi.fn()}
-        />,
-      ),
+    html: () => renderToStaticMarkup(<Panel model={model} />),
   };
 }
 afterEach(() => {
@@ -135,43 +128,34 @@ const laterResponse = () =>
   );
 
 describe("managed annual refresh", () => {
-  it("focuses the selected heading and exposes EOD switching without loading, including during a read", async () => {
+  it("focuses the heading on initial mount and loaded return without an implicit read", async () => {
     panelHooks.enabled = true;
     const { model, load } = fixture();
-    const onEodHistory = vi.fn();
-    const onBack = vi.fn();
+    const report = await response();
+    load.mockResolvedValueOnce(report);
     const render = () => {
       panelHooks.index = 0;
       panelHooks.effects = [];
-      return buttons(Panel({ model, onBack, onEodHistory }));
+      return buttons(Panel({ model }));
     };
     model.open(selection);
-    const controls = render();
-    const focus = vi.fn();
-    panelHooks.refs[0]!.current = { focus };
+    expect(render()[0]!.props.children).toBe("Load annual report");
+    const initialFocus = vi.fn();
+    panelHooks.refs[0]!.current = { focus: initialFocus };
     for (const effect of panelHooks.effects) effect();
-    expect(focus).toHaveBeenCalledOnce();
-    const switchButton = controls.find(
-      (button) => button.props.children === "EOD close history",
-    )!;
-    expect(switchButton.props.disabled).toBe(false);
-    switchButton.props.onClick!();
-    expect(onEodHistory).toHaveBeenCalledOnce();
-    expect(onBack).not.toHaveBeenCalled();
+    expect(initialFocus).toHaveBeenCalledOnce();
     expect(load).not.toHaveBeenCalled();
-    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
-    load.mockReturnValueOnce(held.promise);
-    const pending = model.load();
-    const pendingSwitch = render().find(
-      (button) => button.props.children === "EOD close history",
-    )!;
-    expect(pendingSwitch.props.disabled).toBe(false);
-    pendingSwitch.props.onClick!();
-    expect(onEodHistory).toHaveBeenCalledTimes(2);
+    await model.load();
+    const retained = model.getSnapshot().response;
+    // A section return mounts fresh refs around the existing model response.
+    panelHooks.refs = [];
+    expect(render()[0]!.props.children).toBe("Refresh annual report");
+    const returnFocus = vi.fn();
+    panelHooks.refs[0]!.current = { focus: returnFocus };
+    for (const effect of panelHooks.effects) effect();
+    expect(returnFocus).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().response).toBe(retained);
     expect(load).toHaveBeenCalledOnce();
-    model.close();
-    held.reject(new TrialApiError("aborted"));
-    await pending;
   });
   it.each([
     new TrialApiError("unavailable"),
@@ -469,7 +453,7 @@ describe("managed annual read", () => {
     model.open(input);
     expect(load).not.toHaveBeenCalled();
     expect(html()).toContain("Load annual report");
-    expect(html()).toContain("Back to workspace");
+    expect(html()).toContain("Annual report");
     Object.assign(input.listing, { symbol: "MUTATED" });
     load.mockResolvedValue(await response());
     await model.load();
@@ -573,8 +557,8 @@ describe("managed annual read", () => {
     expect(html()).toMatch(
       /<button[^>]*disabled=""[^>]*>Load annual report<\/button>/u,
     );
-    expect(html()).toMatch(
-      /<button[^>]*aria-label="EOD close history for ZERO"[^>]*disabled=""[^>]*>EOD close history<\/button>/u,
+    expect(html()).toContain(
+      "Refresh the catalog and choose the company again.",
     );
   });
 

@@ -404,6 +404,13 @@ export async function createFixture(
       )
         throw new Error("Unexpected fixture annual request");
       count("annual");
+      if (!state.refreshScenario && state.annual === 2) {
+        if (state.aborted !== 1 || state.lateResolved !== 1)
+          throw new Error("The cancelled Annual request must settle first");
+        return Promise.resolve(structuredClone(recovered));
+      }
+      if (!state.refreshScenario && state.annual !== 1)
+        throw new Error("Unexpected extra fixture annual read");
       signal.addEventListener("abort", () => count("aborted"), { once: true });
       if (state.refreshScenario) {
         if (state.annual === 1) return Promise.resolve(structuredClone(annual));

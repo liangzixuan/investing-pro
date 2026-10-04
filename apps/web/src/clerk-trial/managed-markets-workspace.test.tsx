@@ -83,7 +83,7 @@ describe("Markets and mounted workspace", () => {
       selection: { origin: "markets", cik: null, listing: marketsCohort[1] },
     });
     workspace.switchToEod();
-    workspace.eod.close();
+    workspace.closeResearch();
     expect(workspace.markets.getSnapshot().rows).toEqual(rows);
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(read).toHaveBeenCalledTimes(3);
@@ -129,7 +129,7 @@ describe("Markets and mounted workspace", () => {
       } else {
         workspace.openMarketResearch("eod", marketsCohort[0].listingId);
         await workspace.eod.load();
-        workspace.eod.close();
+        workspace.closeResearch();
       }
       workspace.setView("discover");
       workspace.setView("markets");

@@ -6,16 +6,15 @@ of daily raw USD closes and shows the last observed trading-date close, chart,
 exact decimal table, requested dates, completion time and Tiingo attribution.
 It does not calculate adjusted returns or claim that the last close is a live quote.
 
-Only one Annual report or EOD close history panel is open at a time. Price rows stay
-in that panel's memory. An explicit refresh keeps the last validated history
+The company visit renders either Annual or Price. Validated price rows stay in
+that visit's memory when switching sections. An explicit refresh keeps the last validated history
 visible while it runs, after Cancel, during a checked cooldown, and after a typed
 timeout, temporary unavailability or provider rate limit. The previous-history
 notice shows the original completion time; the rows, requested window and source
 timestamps remain unchanged. A valid successful response replaces the whole
 history and removes that notice. Initial-load failures have no previous history.
 
-Back, panel switching, selection changes, catalog changes and session retirement
-clear prices. Authentication loss, unsupported or unconfigured listings, malformed
+Back, selection changes, catalog changes and session retirement clear prices. Authentication loss, unsupported or unconfigured listings, malformed
 responses or cooldowns, identity mismatches and unknown errors also clear them.
 Late responses cannot restore cleared rows or overwrite history after Cancel.
 The mounted workspace retains its unsaved notes and order. Android Back closes
@@ -27,10 +26,10 @@ admitted by the service may still finish and consume its existing budget. A chec
 cooldown prevents another request until its stated time; passing that time does
 not start one. Provider rate limits never receive an invented reset time.
 
-The Annual report control opens the other research view for this exact listing.
-Switching cancels any pending EOD read and clears its prices; Annual loading
-remains explicit. The original workspace opener and draft are preserved, as is
-the EOD cooldown. See the [navigation contract](MANAGED_RESEARCH_NAVIGATION.md)
+The Annual section uses the same captured listing. Switching cancels any pending
+EOD read and retains its validated prices; returning to Price sends no request.
+Annual loading remains explicit. The original workspace opener and draft are
+preserved, as is the EOD cooldown. See the [navigation contract](MANAGED_RESEARCH_NAVIGATION.md)
 and [current delivery status](CURRENT_WORK.md).
 
 ## Source and identity

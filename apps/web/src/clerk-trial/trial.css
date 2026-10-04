@@ -245,9 +245,30 @@ textarea:disabled {
 .managed-annual-report {
   overflow-wrap: anywhere;
 }
-.managed-annual-report h2:focus {
+.managed-company-visit h3:focus {
   outline: 3px solid #137a64;
   outline-offset: 4px;
+}
+.managed-company-visit {
+  overflow-wrap: anywhere;
+}
+.managed-company-visit > .trial-toolbar {
+  margin-top: 0;
+}
+.managed-company-identity span {
+  display: block;
+  color: #425d61;
+}
+.managed-company-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+.managed-company-sections [aria-pressed="true"] {
+  color: #fff;
+  background: #174b48;
+  border-color: #174b48;
 }
 .managed-annual-help,
 .managed-annual-report .sec-quarterly-message {

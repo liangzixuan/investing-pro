@@ -2,15 +2,7 @@ import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { SecAnnualEvidenceResult } from "../features/research/SecAnnualEvidenceResult";
 import type { ManagedAnnualReport as AnnualReportModel } from "./managed-annual-report";
 
-export function ManagedAnnualReport({
-  model,
-  onBack,
-  onEodHistory,
-}: {
-  model: AnnualReportModel;
-  onBack: () => void;
-  onEodHistory: () => void;
-}) {
+export function ManagedAnnualReport({ model }: { model: AnnualReportModel }) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -29,24 +21,15 @@ export function ManagedAnnualReport({
     }
   }, [state.running]);
   if (!state.selection) return null;
-  const listing = state.selection.listing;
   return (
     <section
-      className="trial-panel managed-annual-report"
+      className="managed-annual-report"
       aria-labelledby="managed-annual-heading"
       aria-busy={state.running}
     >
-      <div className="trial-toolbar">
-        <h2 id="managed-annual-heading" ref={heading} tabIndex={-1}>
-          Annual report · {listing.symbol}
-        </h2>
-        <button className="trial-secondary" onClick={onBack}>
-          Back to workspace
-        </button>
-      </div>
-      <p>
-        {listing.issuerName} · {listing.securityName} · {listing.exchangeMic}
-      </p>
+      <h3 id="managed-annual-heading" ref={heading} tabIndex={-1}>
+        Annual report
+      </h3>
       <p>
         Observed SEC annual revenue, net income and net margin in USD. Revenue
         concepts stay separate. This view covers the observed report in current
@@ -78,14 +61,6 @@ export function ManagedAnnualReport({
             Cancel annual report
           </button>
         )}
-        <button
-          className="trial-secondary"
-          aria-label={`EOD close history for ${listing.symbol}`}
-          disabled={state.catalogChanged}
-          onClick={onEodHistory}
-        >
-          EOD close history
-        </button>
       </div>
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}

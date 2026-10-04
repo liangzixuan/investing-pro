@@ -19,8 +19,7 @@ import {
   type CatalogReview,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
-import { ManagedAnnualReport } from "./ManagedAnnualReport";
-import { ManagedEodHistory } from "./ManagedEodHistory";
+import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import {
   bindAndroidBack,
@@ -253,8 +252,7 @@ export function ManagedWorkspaceScreen({
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const backToWorkspace = useCallback(() => {
-    workspace.annual.close();
-    workspace.eod.close();
+    workspace.closeResearch();
     if (panelOrigin.current?.isConnected) panelOrigin.current.focus();
     else if (workspace.getSnapshot().view === "markets")
       marketsNavigation.current?.focus();
@@ -274,11 +272,7 @@ export function ManagedWorkspaceScreen({
       androidBack,
       ({ canGoBack }) => {
         if (isRetired()) return;
-        if (
-          workspace.annual.getSnapshot().selection ||
-          workspace.eod.getSnapshot().selection
-        )
-          backToWorkspace();
+        if (workspace.getSnapshot().research) backToWorkspace();
         else if (canGoBack) window.history.back();
       },
       () => setBackUnavailable(true),
@@ -384,16 +378,18 @@ export function ManagedWorkspaceScreen({
           <p role="status" aria-live="polite">
             {discovery.message}
           </p>
-          <ManagedAnnualReport
-            model={workspace.annual}
-            onBack={backToWorkspace}
-            onEodHistory={() => workspace.switchToEod()}
-          />
-          <ManagedEodHistory
-            model={workspace.eod}
-            onBack={backToWorkspace}
-            onAnnualReport={() => workspace.switchToAnnual()}
-          />
+          {discovery.research && (
+            <ManagedCompanyResearch
+              research={discovery.research}
+              annual={workspace.annual}
+              eod={workspace.eod}
+              onBack={backToWorkspace}
+              onSection={(section) => {
+                if (section === "annual") workspace.switchToAnnual();
+                else workspace.switchToEod();
+              }}
+            />
+          )}
           {discovery.view === "markets" && (
             <ManagedMarkets
               model={workspace.markets}

@@ -7,15 +7,7 @@ import {
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 import type { ManagedEodHistory as Model } from "./managed-eod-history";
 
-export function ManagedEodHistory({
-  model,
-  onBack,
-  onAnnualReport,
-}: {
-  model: Model;
-  onBack: () => void;
-  onAnnualReport: () => void;
-}) {
+export function ManagedEodHistory({ model }: { model: Model }) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -38,30 +30,20 @@ export function ManagedEodHistory({
   const last = response?.rows.at(-1);
   return (
     <section
-      className="trial-panel managed-eod-history"
+      className="managed-eod-history"
       aria-labelledby="managed-eod-heading"
       aria-busy={state.running}
     >
-      <div className="trial-toolbar">
-        <h2 id="managed-eod-heading" ref={heading} tabIndex={-1}>
-          EOD close history · {state.selection.listing.symbol}
-        </h2>
-        <button className="trial-secondary" onClick={onBack}>
-          Back to workspace
-        </button>
-      </div>
-      <p>
-        {state.selection.listing.issuerName} ·{" "}
-        {state.selection.listing.shareClassName} ·{" "}
-        {state.selection.listing.exchangeMic}
-      </p>
+      <h3 id="managed-eod-heading" ref={heading} tabIndex={-1}>
+        EOD close history
+      </h3>
       <p>
         One month of end-of-day raw closing prices in USD from Tiingo. Prices
         are not adjusted for splits or dividends and are not live quotes. Load
-        or refresh explicitly to request prices. Prices stay only in this open
-        panel. Cancel stops this screen's pending request and keeps any previous
-        history shown here. An already admitted service request may finish and
-        consume its existing budget.
+        or refresh explicitly to request prices. Prices stay only during this
+        company visit. Cancel stops this screen's pending request and keeps any
+        previous history shown here. An already admitted service request may
+        finish and consume its existing budget.
       </p>
       <div className="trial-actions">
         <button
@@ -89,14 +71,6 @@ export function ManagedEodHistory({
             Cancel close history
           </button>
         )}
-        <button
-          className="trial-secondary"
-          aria-label={`Annual report for ${state.selection.listing.symbol}`}
-          disabled={state.catalogChanged}
-          onClick={onAnnualReport}
-        >
-          Annual report
-        </button>
       </div>
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}

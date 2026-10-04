@@ -3,6 +3,41 @@ import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
 import { createFixture } from "./fixture";
 
 describe("Android managed fixture startup", () => {
+  it("serves one fresh Annual response after the cancelled visit read settles", async () => {
+    const fixture = await createFixture();
+    const request = {
+      schemaVersion: "1.0.0" as const,
+      catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    const heldController = new AbortController();
+    const held = fixture.api.annualReport(request, heldController.signal);
+    heldController.abort();
+    fixture.settleCancelledRead();
+    expect((await held).evidence.generation).toEqual(
+      fixture.generations.initial,
+    );
+    const fresh = await fixture.api.annualReport(
+      request,
+      new AbortController().signal,
+    );
+    expect(fresh.evidence.generation).toEqual(fixture.generations.recovered);
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 2,
+      aborted: 1,
+      lateResolved: 1,
+      eod: 0,
+      save: 0,
+      resolve: 0,
+      token: 0,
+      signOut: 0,
+    });
+    expect(() =>
+      fixture.api.annualReport(request, new AbortController().signal),
+    ).toThrow("Unexpected extra fixture annual read");
+  });
+
   it.each(["default", "catalog-startup-recovery"] as const)(
     "starts %s with valid EOD packets and unchanged watchlist notes",
     async (scenario) => {
