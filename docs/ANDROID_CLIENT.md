@@ -152,10 +152,11 @@ These are fixture results, not live-provider or physical-device results.
 
 The selected company-visit regression extends direct switching: it loads both
 sections, returns to the same rows and annual provenance without another read,
-then checks native Back and an unloaded new visit. The captured company header
-and Price/Annual controls identify the retained result. This extension still
-requires a successful emulator run for its own source revision; the earlier
-PR 32 result does not accept it.
+then checks native Back and an unloaded new visit. Separate screenshots show the
+company header and Price/Annual controls, then the retained close and dated
+provenance. Each frame checks that its subjects are fully visible before and
+after capture. This extension still requires a successful emulator run for its
+own source revision; the earlier PR 32 result does not accept it.
 
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an

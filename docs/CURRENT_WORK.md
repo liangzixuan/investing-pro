@@ -122,9 +122,13 @@ work while retaining already validated results for that visit; returning sends n
 request. Back and identity, catalog or session invalidation clear both sections.
 The implementation passed focused model, screen and invented-fixture tests,
 combined types, scoped lint/formatting and the existing boundary check. Hosted
-checks and delivery remain pending. The accepted website and signed Android 1.3
-still use the earlier panel-switching behavior until separately delivered. This
-slice adds no feed coverage, persistent cache or complete M2 page.
+checks and delivery remain pending. The first native run failed a screenshot
+framing assertion: the company header and retained trading date did not fit in
+one viewport. The original failure is retained; separate header and provenance
+captures need a successful run for the corrected source. The accepted website
+and signed Android 1.3 still use the earlier panel-switching behavior until
+separately delivered. This slice adds no feed coverage, persistent cache or
+complete M2 page.
 Physical-phone checks remain open until actual device evidence exists.
 
 ## Open limits

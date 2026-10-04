@@ -529,7 +529,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("return to Price retains exact rows and provenance without another request", loadedEod +
             " && document.activeElement?.id === 'managed-eod-heading'");
         assertResearchSwitchDraftAndCounts(2, 1, 1);
-        retainSwitchedEodScreenshot();
+        retainSwitchedEodScreenshot(loadedEod);
         awaitPage("retained Price evidence stays unchanged through capture", loadedEod);
         click(".managed-company-sections button[aria-label='Annual section for ZERO']");
         awaitPage("second Annual visit retains the same validated report", loadedAnnual +
@@ -758,24 +758,47 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
-    private void retainSwitchedEodScreenshot() throws Exception {
+    private void retainSwitchedEodScreenshot(String loadedEod) throws Exception {
         awaitPage("switched EOD canvas rendered",
             "document.querySelector('.managed-eod-history canvas')?.width > 0" +
             " && document.querySelector('.managed-eod-history canvas')?.height > 0");
-        CountDownLatch scrolled = new CountDownLatch(1);
+        CountDownLatch headerScrolled = new CountDownLatch(1);
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
             "document.querySelector('#managed-company-heading')?.scrollIntoView({block:'start',behavior:'instant'})",
-            ignored -> scrolled.countDown()));
-        assertTrue("Company visit header did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'#managed-company-heading, .managed-company-sections button, .managed-eod-history .managed-metadata dd:nth-of-type(2)'));" +
-            " const v = visualViewport; return v && targets.length === 4 && targets.every(e => {" +
+            ignored -> headerScrolled.countDown()));
+        assertTrue("Company visit header did not scroll into view", headerScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String headerVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
+            "'#managed-company-heading, .managed-company-visit > .trial-toolbar > button, .managed-company-identity strong, .managed-company-identity span, .managed-company-sections button, #managed-eod-heading'));" +
+            " const v = visualViewport; return v && targets.length === 7 && targets.every(e => {" +
             " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("company header, sections and retained trading date visible", visible);
+        awaitPage("company identity, Back and section controls visible", headerVisible);
+        awaitPage("retained Price evidence before company header capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        retainScreenshot("researchCompanyHeader");
+        awaitPage("company identity and controls stayed visible through capture", headerVisible);
+        awaitPage("retained Price evidence after company header capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+
+        CountDownLatch metadataScrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-eod-history .managed-metadata')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> metadataScrolled.countDown()));
+        assertTrue("Retained history metadata did not scroll into view", metadataScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String metadataVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
+            "'.managed-eod-history .managed-metadata > dt, .managed-eod-history .managed-metadata > dd'));" +
+            " const v = visualViewport; return v && targets.length === 10 && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("all five retained history label and value pairs visible", metadataVisible);
+        awaitPage("retained Price evidence before history capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchSwitchEodLoaded");
-        awaitPage("company visit and retained date stayed visible through capture", visible);
+        awaitPage("retained history metadata stayed visible through capture", metadataVisible);
+        awaitPage("retained Price evidence after history capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
     }
 
     private void clickEodAction(String label) {
