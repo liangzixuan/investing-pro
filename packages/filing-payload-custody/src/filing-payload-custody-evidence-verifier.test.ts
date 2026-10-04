@@ -12052,9 +12052,14 @@ function gitOutput(
 afterEach(async () => {
   vi.unstubAllEnvs();
   await Promise.all(
-    temporaryDirectories
-      .splice(0)
-      .map((directory) => rm(directory, { force: true, recursive: true })),
+    temporaryDirectories.splice(0).map((directory) =>
+      rm(directory, {
+        force: true,
+        recursive: true,
+        maxRetries: 5,
+        retryDelay: 100,
+      }),
+    ),
   );
 });
 
