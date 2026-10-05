@@ -34,8 +34,8 @@ and [current delivery status](CURRENT_WORK.md).
 
 ## Inspect a dated close
 
-The selected chart improvement uses the existing ECharts axis pointer to inspect
-an observed trading date with a mouse or touch. Its readout shows the exact raw
+The shared chart uses the existing ECharts axis pointer to inspect an observed
+trading date with a mouse or touch. Its readout shows the exact raw
 USD decimal from that loaded row; floating-point values are used only to draw the
 line. No value between observed dates is presented as a closing price.
 
@@ -43,8 +43,12 @@ The shared chart serves Markets and company Price. Its complete table remains
 the keyboard and screen-reader path to every exact value. The readout belongs to
 the rendered history: retained previous rows keep their original dates, and
 replacing or retiring that chart clears its readout. Inspection makes no request
-and changes no saved state. Implementation and release acceptance are recorded
-in [Current work](CURRENT_WORK.md).
+and changes no saved state.
+
+PR 40 delivers this behavior on the website and Android 1.8, with scoped
+isolated browser and native touch checks; unpressed hover, live-provider and
+physical-device acceptance remain unperformed, as recorded in
+[Current work](CURRENT_WORK.md).
 
 This follows the existing library's [axis tooltip pattern](https://apache.github.io/echarts-handbook/en/concepts/axis/).
 Formatter content must remain text under the [ECharts security guidance](https://echarts.apache.org/handbook/en/best-practices/security/).

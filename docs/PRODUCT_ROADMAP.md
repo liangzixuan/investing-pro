@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.7 package share Discover, a private
+The managed website and signed Android 1.8 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.7 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.8 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.7. Previous histories keep their original dates. Physical
+and in signed Android 1.8. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.7. It uses the three accepted
+and in signed Android 1.8. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -117,12 +117,14 @@ report, website promotion and signed-artifact delivery passed. External Android
 app links, process-death restoration and physical-device acceptance remain outside
 this delivered scope.
 
-The selected link outcome is complete. The next bounded outcome is exact dated
-close inspection on the shared Markets and company Price chart. Hover or tap an
-observed date to read its exact raw USD close from the loaded response. Reuse
-ECharts and keep the full semantic table available without pointer interaction.
-This task adds no feed, request or persistent data. Release acceptance is pending.
-Full M1 and M2 and broader data coverage remain open.
+PR 40 and signed Android 1.8 deliver exact dated close inspection on the shared
+Markets and company Price chart. Point to or tap an observed date to read its
+original raw USD decimal from the loaded response; the full semantic table
+remains available without a pointer. Required source and hosted checks, scoped
+isolated browser/native evidence, website promotion and signed-artifact delivery
+passed. This step adds no entitlement, source, request, dependency or persistent
+data. See [Current work](./CURRENT_WORK.md) for the evidence limits. No next
+product slice is selected; full M1 and M2 and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
