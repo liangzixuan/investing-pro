@@ -2,15 +2,17 @@
 
 The website delivery flow runs GitHub source checks, stages one production
 client archive, checks that build with BrowserStack, then promotes the same
-archive after normal production approval. The current managed client includes
-Discover, the shared watchlist, Annual reports and AAPL EOD close history.
+archive after normal production approval. [Current work](./CURRENT_WORK.md)
+records the managed client's accepted capabilities and provider coverage.
 Its API deployment, Android package and local research workspace have separate
 acceptance boundaries.
 
 PR 26 completed the website flow from main `ae2cfbb48c672a5c960bce3910b526663f52734b`.
-[Current work](./CURRENT_WORK.md#accepted-release) records its API/site identities,
-signed Android 1.2 delivery and dated live-browser acceptance. BrowserStack uses
-an inert client and does not establish authenticated research or phone behavior.
+That historical release included signed Android 1.2 and dated live-browser
+acceptance. [Current work](./CURRENT_WORK.md#accepted-release) records the latest
+accepted API, website and Android identities and their separate limits.
+BrowserStack uses an inert client and does not establish authenticated research
+or phone behavior.
 
 ## Release sequence
 
