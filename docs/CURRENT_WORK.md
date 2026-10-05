@@ -8,36 +8,45 @@ or develop the repository.
 
 ## Accepted release
 
-PR 38 is merged as `cff563ff691c8395497385273eb7d2ae751cb5ff`, from candidate
-`51a26a5a985332a5e18d4578a8876f96fef6af9d`, with tree
-`376cd5015af3c3a71a04c8cf497564e42be114c4`. Required actual-main checks, the original
-source proof and thirteen-case native evidence were accepted. The website and
-signed Android 1.7 now support bookmarkable Price and Annual visits for exact
-catalog listings. Staging passed the exact-build BrowserStack gate, followed by
-normal production approval and promotion of the same archive. The signed APK
-passed build, artifact and delivery review with the existing signer.
+PR 40 is merged as `d868600eaaef7592714d6e709ea130a6ad1ce2ae`, from candidate
+`89585a62c6a5971998a84577ed1f7a56900809c1`, with tree
+`2c0d9df9b284eb1cdfc5aa9157f737852117466e`. All five required actual-main workflows
+and six jobs passed, and the original source proof and thirteen-case native
+report were accepted. The website and signed Android 1.8 now offer exact dated
+raw-close inspection in the shared Markets and company Price chart. Staging
+passed its configured BrowserStack gate, followed by normal production approval
+and promotion of the same archive. The APK passed build, artifact and delivery
+review with the existing signer.
 
 | Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known   |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac36e7b36f30b04188f`; PR 38 staging archive promoted after the configured normal approval                                          | Staging BrowserStack is an inert preview; the separate live comparison and navigation check has bounded scope                                |
-| Signed Android artifact   | Investment 1.7.0, code 8, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                            | Physical installation and use of 1.2 through 1.7 remain unperformed                                                                          |
-| Automated Android         | Thirteen passing API-36 emulator cases, 24 original PNGs, 21 managed captures and ten source markers; four original frames received scoped visual review                        | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.7                                                                                |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac3ac4a18b44a51bf2c`; PR 40 staging archive promoted after the configured normal approval                                          | Staging BrowserStack covers the inert shell; this release has no live chart/provider or continuing-availability acceptance                   |
+| Signed Android artifact   | Investment 1.8.0, code 9, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                            | Physical installation and use of 1.2 through 1.8 remain unperformed                                                                          |
+| Automated Android         | PR 40: thirteen passing API-36 emulator cases, 25 original PNGs, 22 managed captures and ten source markers; one original tooltip frame received scoped visual review           | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.8                                                                                |
 | Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                       |
 
-The accepted 1.7 APK is 6,651,924 bytes, SHA-256
-`5c44ddca26c362628e9a85235b101948f081994d16f2a66a702a68ef23c19df0`.
+The accepted 1.8 APK is 6,652,376 bytes, SHA-256
+`1816884a2fcfbe335bf0a77107c6e39bb564fc2cb792c89a3503bea585ceaac6`.
 It was built from the accepted main above, whose tree matches the published
-candidate. Prior signed artifacts and service rollback identities
-remain preserved. API source continuity was reviewed separately across 109
-unchanged inputs; this client delivery did not redeploy the API. Signed packages
-and operational evidence are not part of the public source tree.
+candidate. Production `6ac3ac4a18b44a51bf2c` replaced `6ac36e7b36f30b04188f`;
+prior signed artifacts and rollback identities remain preserved. API source
+continuity was reviewed across 109 unchanged inputs. This does not establish
+fresh API activation or continuing availability. Signed packages and operational
+evidence are not part of the public source tree.
+
+Isolated Brave checks covered desktop pointer selection, narrow exact-decimal
+wrapping, readout cleanup and keyboard focus reaching the table. The native
+report covers real touches on first, last and replacement rows with unchanged
+request/save counters; one tooltip frame received visual review. Unpressed
+hover, horizontal keyboard scrolling, a live provider journey and physical-phone
+use remain unverified.
 
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.7. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.8. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -198,14 +207,18 @@ source proof, native evidence, website promotion and signed-artifact delivery
 passed. See [company navigation](MANAGED_RESEARCH_NAVIGATION.md) for the route
 and lifecycle contract.
 
-The selected link outcome is complete. The current task is exact dated close
-inspection in the shared Markets and company Price chart: hover or tap an
-observed date to read its original raw USD decimal. It reuses the loaded response
-and ECharts, with the full exact-value table available for keyboard and
-screen-reader use. Release acceptance is pending; the
-accepted website and Android artifact remain the 1.7 baseline above. Full M1/M2
-and broader source coverage remain open. Repomix PR 27 stays held under resolved
-Option A.
+Exact dated close inspection is delivered through
+[PR 40](https://github.com/liangzixuan/investing-pro/pull/40), website release
+[37318829193](https://github.com/liangzixuan/investing-pro/actions/runs/37318829193)
+and signed Android 1.8.0/code 9. Point to or tap an observed date in the shared
+Markets or company Price chart to read its original raw USD decimal. It reuses
+the loaded response and ECharts, with the full exact-value table available for
+keyboard and screen-reader use. No entitlement, source, request, dependency or
+persistent data was added.
+
+The selected chart outcome is complete. No next product slice is selected.
+Full M1/M2 and broader source coverage remain open. Repomix PR 27 stays held
+under resolved Option A.
 
 ## Open limits
 
