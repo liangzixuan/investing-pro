@@ -8,29 +8,28 @@ or develop the repository.
 
 ## Accepted release
 
-PR 36 is merged as `87c07a0eed6cd44537266ddb027a7dd86fcef74a`, from candidate
-`a0fc42796528c99afe346819e7dfc72eaaf70939`, with tree
-`3a62fcf48e146d6215e4438874ee9524293d5d36`. Required actual-main checks, the original
-source proof and twelve-case native evidence were accepted. The website and
-signed Android 1.6 now show the change between the final two dated raw closes
-within each listing's loaded Markets history. Staging passed the exact-build
-BrowserStack gate, followed by normal production approval and promotion of the
-same archive. The signed APK passed build, artifact and delivery review with the
-existing signer.
+PR 38 is merged as `cff563ff691c8395497385273eb7d2ae751cb5ff`, from candidate
+`51a26a5a985332a5e18d4578a8876f96fef6af9d`, with tree
+`376cd5015af3c3a71a04c8cf497564e42be114c4`. Required actual-main checks, the original
+source proof and thirteen-case native evidence were accepted. The website and
+signed Android 1.7 now support bookmarkable Price and Annual visits for exact
+catalog listings. Staging passed the exact-build BrowserStack gate, followed by
+normal production approval and promotion of the same archive. The signed APK
+passed build, artifact and delivery review with the existing signer.
 
 | Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known   |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac32b3940e8a6f98771`; PR 36 staging archive promoted after the configured normal approval                                          | Staging BrowserStack is an inert preview; the separate live comparison and navigation check has bounded scope                                |
-| Signed Android artifact   | Investment 1.6.0, code 7, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                            | Physical installation and use of 1.2 through 1.6 remain unperformed                                                                          |
-| Automated Android         | Twelve passing API-36 emulator cases, 23 original PNGs, 20 managed captures and nine source markers; three original frames received scoped visual review                        | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.6                                                                                |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac36e7b36f30b04188f`; PR 38 staging archive promoted after the configured normal approval                                          | Staging BrowserStack is an inert preview; the separate live comparison and navigation check has bounded scope                                |
+| Signed Android artifact   | Investment 1.7.0, code 8, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                            | Physical installation and use of 1.2 through 1.7 remain unperformed                                                                          |
+| Automated Android         | Thirteen passing API-36 emulator cases, 24 original PNGs, 21 managed captures and ten source markers; four original frames received scoped visual review                        | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.7                                                                                |
 | Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                       |
 
-The accepted 1.6 APK is 6,637,664 bytes, SHA-256
-`23ebe3e77e5067c6573226f782b0e065fc8d9fba8bf72ac1dd0514ba0cfc047e`.
-It records candidate `a0fc42796528c99afe346819e7dfc72eaaf70939`, whose tree matches
-the accepted main above. Prior signed artifacts and service rollback identities
+The accepted 1.7 APK is 6,651,924 bytes, SHA-256
+`5c44ddca26c362628e9a85235b101948f081994d16f2a66a702a68ef23c19df0`.
+It was built from the accepted main above, whose tree matches the published
+candidate. Prior signed artifacts and service rollback identities
 remain preserved. API source continuity was reviewed separately across 109
 unchanged inputs; this client delivery did not redeploy the API. Signed packages
 and operational evidence are not part of the public source tree.
@@ -38,7 +37,7 @@ and operational evidence are not part of the public source tree.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.6. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.7. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -64,10 +63,17 @@ There is no automatic request or persistent price cache.
 Both sections share a [company research visit](MANAGED_RESEARCH_NAVIGATION.md)
 with a stable listing header. Switching cancels pending local work and retains
 validated results and provenance; returning sends no request. Back returns to
-the original opener and preserves the mounted watchlist draft. Leaving the visit,
+the original opener, or Markets for a direct link, and preserves the mounted
+watchlist draft. Leaving the visit,
 selecting another listing, or catalog, session or watchlist-identity invalidation
 clears both sections. Reopening starts unloaded. Android Back uses the same
 close/focus action. Markets board snapshots remain separate from company Price.
+
+A bookmarkable root URL identifies the exact listing and its Price or Annual
+section. Opening it resolves current catalog metadata and starts research
+unloaded. Section changes replace the company history entry; browser
+Back/Forward and Android Back use the same visit lifecycle. Review in My
+Watchlist closes the research URL without saving the draft.
 
 At 03:55 UTC on October 3, one explicit authenticated AAPL `1m` UI load succeeded.
 It showed Tiingo/raw USD history with 21 unique increasing dates from September 3
@@ -90,6 +96,10 @@ raw-close comparison matched the final two observations. Back preserved the
 comparisons; leaving Markets cleared them. An initial saved-watchlist read failed
 and recovered through one explicit Load saved watchlist action. No owner-record
 write, Refresh or separate company-price load occurred.
+After PR 38 website delivery, a separate bounded browser check observed Price
+and Annual URLs, reloaded the Annual link with an existing session, and returned
+to Markets. The direct visit remained unloaded. No provider-load or watchlist-save
+action was used; this UI observation did not measure network request counts.
 These cases establish their bounded live journeys, not other fields, ongoing
 availability, repeat reliability or physical-phone coverage.
 
@@ -178,16 +188,19 @@ The earlier native row-capture failure and its fixture framing correction also
 remain recorded. Reviewed CodeScene findings remain advisory; no security or
 merge protection was weakened.
 
-The current candidate adds bookmarkable company visits. A root-level URL
-identifies one exact catalog listing and its Price or Annual section, so a browser
-bookmark can return there after sign-in. The existing catalog resolver, research
-models and mounted watchlist coordinator own identity, explicit loads and drafts.
-Browser and Android Back close the same visit, while a direct link returns
-to Markets. Local regression, type and boundary checks passed. Required hosted
-checks, native execution, website promotion and signed delivery remain pending;
-the delivered release above remains unchanged. See [company navigation](MANAGED_RESEARCH_NAVIGATION.md).
-Full M1/M2 and broader source coverage remain open. Repomix PR 27 stays held under
-resolved Option A.
+Bookmarkable company visits are delivered through
+[PR 38](https://github.com/liangzixuan/investing-pro/pull/38), website release
+[37288958138](https://github.com/liangzixuan/investing-pro/actions/runs/37288958138)
+and signed Android 1.7.0/code 8. The existing catalog resolver, research models
+and mounted watchlist coordinator retain identity, explicit loads and drafts.
+Local regression, type and boundary checks, required actual-main checks, original
+source proof, native evidence, website promotion and signed-artifact delivery
+passed. See [company navigation](MANAGED_RESEARCH_NAVIGATION.md) for the route
+and lifecycle contract.
+
+The selected link outcome is complete. The next bounded product outcome has not
+been selected; use the roadmap for that decision. Full M1/M2 and broader source
+coverage remain open. Repomix PR 27 stays held under resolved Option A.
 
 ## Open limits
 
@@ -197,6 +210,8 @@ resolved Option A.
   clients' account consumption; provider rate limits still apply.
 - Unsaved drafts live in the mounted session. Same-Activity resume is covered;
   durable offline editing and process-death draft restoration are not implemented.
+  Bookmarkable URLs do not register external Android app links or establish
+  process-death restoration.
 - Managed storage is not the local vault's application-layer encryption. Owner
   data migration and a managed data-recovery design require separate acceptance.
 - Full local financials, comparisons, valuation, screening, portfolio and updates
