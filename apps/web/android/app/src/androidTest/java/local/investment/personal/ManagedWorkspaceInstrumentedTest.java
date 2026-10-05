@@ -421,6 +421,22 @@ public class ManagedWorkspaceInstrumentedTest {
         retainEodLoadedScreenshot();
         assertEodState(1, 0, 0, false, true);
         Log.i("ManagedEod", "phase=loaded; " + pageDiagnostic());
+        touchEodObservation(false);
+        awaitPage("first observed raw close selected by native touch",
+            inspectedEodClose("2026-09-18", "100.25"));
+        assertEodDraftAndCounts(1, 0, 0);
+        touchEodObservation(true);
+        String inspectedClose = inspectedEodClose("2026-09-19", "101.5");
+        awaitPage("last observed raw close selected by native touch", inspectedClose);
+        assertEodDraftAndCounts(1, 0, 0);
+        retainScreenshot("eodInspectedClose");
+        awaitPage("exact dated raw close remained readable through capture", inspectedClose);
+        awaitPage("inspection preserves the complete accessible table", initialHistory +
+            " && document.querySelector('.managed-eod-table-scroll')?.getAttribute('role') === 'region'" +
+            " && document.querySelector('.managed-eod-table-scroll')?.getAttribute('aria-label') === 'ZERO exact raw closing prices'" +
+            " && document.querySelector('.managed-eod-table-scroll')?.tabIndex === 0");
+        assertEodState(1, 0, 0, false, true);
+        Log.i("ManagedEod", "phase=inspected-first-and-last; " + pageDiagnostic());
 
         String previousNotice = "Showing previous close history, completed 2026-09-20T00:00:01.000Z. " +
             "This refresh has not confirmed newer prices. Trading dates, requested window and request times are unchanged.";
@@ -487,10 +503,17 @@ public class ManagedWorkspaceInstrumentedTest {
             " && !document.querySelector('.managed-eod-history')?.textContent.includes('101.5')" +
             " && !document.querySelector('.managed-eod-history')?.textContent.includes('998.25')" +
             " && !document.querySelector('.managed-eod-history')?.textContent.includes('999.75')");
+        awaitPage("replacement disposes the old inspection readout",
+            "document.querySelector('.managed-eod-tooltip') === null");
+        touchEodObservation(false);
+        awaitPage("replacement inspection uses its own first dated close",
+            inspectedEodClose("2026-09-19", "102.75"));
+        assertEodDraftAndCounts(4, 1, 1);
         Log.i("ManagedEod", "phase=refresh-recovered; " + pageDiagnostic());
         pressBack();
         awaitPage("native Back closes EOD and restores its originating control",
             "document.querySelector('.managed-eod-history') === null" +
+            " && document.querySelector('.managed-eod-tooltip') === null" +
             " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
         assertEodDraftAndCounts(4, 1, 1);
         assertReturnedRootHistory("listing-zero", "price");
@@ -1099,6 +1122,44 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
     }
 
+    private String inspectedEodClose(String date, String close) {
+        return "(() => { const c = document.querySelector('.managed-eod-history canvas');" +
+            " const t = document.querySelector('.managed-eod-history .managed-eod-tooltip'); const v = visualViewport;" +
+            " if (!c || !t || !v || v.width > 600) return false;" +
+            " const visible = e => { if (!e) return false; const r = e.getBoundingClientRect();" +
+            " for (let p=e;p;p=p.parentElement) { const s=getComputedStyle(p);" +
+            " if (s.visibility !== 'visible' || s.display === 'none' || Number(s.opacity) === 0) return false; }" +
+            " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; };" +
+            " const frame=t.parentElement, bounds=c.getBoundingClientRect(), tip=frame.getBoundingClientRect();" +
+            " return document.querySelectorAll('.managed-eod-tooltip').length === 1" +
+            " && t.getAttribute('role') === 'tooltip'" +
+            " && t.querySelector('.managed-eod-tooltip-date')?.textContent === " + JSONObject.quote(date) +
+            " && t.querySelector('.managed-eod-tooltip-close')?.textContent === " + JSONObject.quote("Raw close (USD): " + close) +
+            " && visible(c) && visible(frame) && visible(t) && visible(t.querySelector('.managed-eod-tooltip-date'))" +
+            " && visible(t.querySelector('.managed-eod-tooltip-close'))" +
+            " && tip.left >= bounds.left && tip.right <= bounds.right && tip.top >= bounds.top && tip.bottom <= bounds.bottom; })()";
+    }
+
+    private void touchEodObservation(boolean last) throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const c=document.querySelector('.managed-eod-history canvas'); if (!c) return null;" +
+            " c.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+            " const r=c.getBoundingClientRect(),v=visualViewport;" +
+            // Current shared chart grid and two equal category bands; input is a real native touch.
+            " const x=r.left+64+(r.width-84)*" + (last ? "0.75" : "0.25") + ",y=r.top+24+(r.height-72)/2;" +
+            " return {x,y,width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+            " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+            " &&r.width>84&&r.height>72&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+            " visible:r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height," +
+            " hit:c===document.elementFromPoint(x,y)};})()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Chart touch geometry was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        touchObservedGeometry(last ? "eod-last-observation" : "eod-first-observation", observed.get());
+    }
+
     private void retainEodLoadedScreenshot() throws Exception {
         awaitPage("invented EOD canvas rendered",
             "document.querySelector('.managed-eod-history canvas')?.width > 0" +
@@ -1394,7 +1455,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        String rawGeometry = observed.get();
+        touchObservedGeometry(id, observed.get());
+    }
+
+    private void touchObservedGeometry(String id, String rawGeometry) throws Exception {
         assertNotNull("Input geometry was null: " + id, rawGeometry);
         Log.i("ManagedInputGeometry", "id=" + id + ", geometry=" + rawGeometry.substring(0, Math.min(rawGeometry.length(), 2048)));
         JSONObject geometry = new JSONObject(rawGeometry);

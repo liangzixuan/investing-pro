@@ -198,9 +198,14 @@ source proof, native evidence, website promotion and signed-artifact delivery
 passed. See [company navigation](MANAGED_RESEARCH_NAVIGATION.md) for the route
 and lifecycle contract.
 
-The selected link outcome is complete. The next bounded product outcome has not
-been selected; use the roadmap for that decision. Full M1/M2 and broader source
-coverage remain open. Repomix PR 27 stays held under resolved Option A.
+The selected link outcome is complete. The current task is exact dated close
+inspection in the shared Markets and company Price chart: hover or tap an
+observed date to read its original raw USD decimal. It reuses the loaded response
+and ECharts, with the full exact-value table available for keyboard and
+screen-reader use. Release acceptance is pending; the
+accepted website and Android artifact remain the 1.7 baseline above. Full M1/M2
+and broader source coverage remain open. Repomix PR 27 stays held under resolved
+Option A.
 
 ## Open limits
 
