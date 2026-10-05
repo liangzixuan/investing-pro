@@ -14,11 +14,15 @@ capabilities and acceptance are different:
 | Local research workspace              | Broader financials, valuation, comparisons, screening, portfolio and filing tools                                                  | Explicit local startup with an admitted catalog and encrypted vault; not migrated to the managed service            |
 | Synthetic demo / disconnected Android | Reproducible development and test journeys                                                                                         | Invented data; no production account, provider key or owner vault required                                          |
 
-The managed website and signed Android 1.5.0 package include a three-listing
-Markets board and company research visits that retain loaded Price and Annual
-sections, with a shared watchlist research-note draft. Explicit authenticated AAPL, GOOG and GOOGL reads have passed bounded
-live checks. Coverage remains limited to those exact listings. Physical-device
-acceptance for Android 1.2 through 1.5 remains open. See [current status and limits](docs/CURRENT_WORK.md)
+The managed website and signed Android 1.6.0 package include a three-listing
+Markets board with dated raw-close changes and company research visits that
+retain loaded Price and Annual sections, with a shared watchlist research-note
+draft. Each change compares the final two observations already loaded for that
+listing and discloses that prices are not adjusted for splits or dividends.
+Explicit authenticated AAPL, GOOG and GOOGL reads and their displayed changes
+have passed bounded live checks. Coverage remains limited to those exact listings.
+Physical-device acceptance for Android 1.2 through 1.6 remains open.
+See [current status and limits](docs/CURRENT_WORK.md)
 for the dated source, release surfaces and next work.
 
 ## Start reading
