@@ -15,7 +15,7 @@ import {
 
 export interface EodHistorySelection extends ManagedEodAccessSelection {
   readonly cik: string | null;
-  readonly origin: "discover" | "watchlist" | "markets";
+  readonly origin: "discover" | "watchlist" | "markets" | "route";
 }
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;

@@ -1,10 +1,35 @@
 import { ClerkProvider, SignIn, useAuth, useSession } from "@clerk/react";
+import { useState } from "react";
 import { validateTrialConfig } from "./config";
 import type { ClerkTrialConfig } from "./config";
 import { TrialSessionScreen } from "./TrialScreen";
 import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 import { TrialFrame } from "./TrialFrame";
+import {
+  managedCompanyHref,
+  parseManagedCompanyRoute,
+} from "./managed-company-route";
 export type { ClerkTrialConfig } from "./config";
+
+function ManagedSignIn() {
+  const [destination] = useState(() => {
+    if (typeof window === "undefined" || window.location.pathname !== "/")
+      return "/";
+    const route = parseManagedCompanyRoute(
+      new URLSearchParams(window.location.search),
+    );
+    return route.kind === "company"
+      ? managedCompanyHref(route.listingId, route.section)
+      : "/";
+  });
+  return (
+    <SignIn
+      routing="hash"
+      fallbackRedirectUrl={destination}
+      forceRedirectUrl={destination}
+    />
+  );
+}
 
 function ClerkSession({
   apiOrigin,
@@ -24,7 +49,11 @@ function ClerkSession({
   ) {
     return (
       <div className="trial-sign-in">
-        <SignIn routing="hash" fallbackRedirectUrl="/" />
+        {managed ? (
+          <ManagedSignIn />
+        ) : (
+          <SignIn routing="hash" fallbackRedirectUrl="/" />
+        )}
       </div>
     );
   }

@@ -130,7 +130,8 @@ const snapshot: ManagedCatalogSnapshotDto = {
 
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
 export async function createFixture(
-  scenario: "default" | "catalog-startup-recovery" = "default",
+  scenario:
+    "default" | "catalog-startup-recovery" | "company-direct-entry" = "default",
 ) {
   const annual = await response();
   const recovered = await response(
@@ -350,6 +351,29 @@ export async function createFixture(
       });
     },
     resolve: (request, signal) => {
+      if (
+        scenario === "company-direct-entry" &&
+        request.listingIds.length === 1 &&
+        request.listingIds[0] === identity.listingId
+      ) {
+        if (
+          signal.aborted ||
+          request.snapshotSha256 !== digest ||
+          state.resolve !== 0
+        )
+          return unexpected("resolve");
+        const resolved = parseManagedCatalogResolveResponse(
+          {
+            snapshotSha256: digest,
+            results: [{ listingId: identity.listingId, listing: identity }],
+          },
+          request,
+        );
+        if (!resolved)
+          throw new Error("Invalid invented company-link identity");
+        count("resolve");
+        return Promise.resolve(resolved);
+      }
       if (
         signal.aborted ||
         request.snapshotSha256 !== digest ||

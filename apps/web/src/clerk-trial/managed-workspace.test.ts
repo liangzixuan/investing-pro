@@ -2046,3 +2046,285 @@ describe("company research visits", () => {
     },
   );
 });
+
+describe("catalog-resolved company links", () => {
+  const listing = eodSelection.listing;
+  const alternate = {
+    ...listing,
+    listingId: "listing-zero-b",
+    securityId: "security-zero-b",
+    shareClassId: "class-zero-b",
+    shareClassName: "Class B",
+  };
+  const route = (
+    listingId = listing.listingId,
+    section: "annual" | "eod" = "eod",
+  ) => ({ kind: "company" as const, listingId, section });
+  function linkedFixture() {
+    const setup = fixture({
+      ...empty,
+      memberships: [{ ...listing, note: "original draft" }],
+    });
+    vi.mocked(setup.api.resolve).mockImplementation((request) =>
+      Promise.resolve({
+        snapshotSha256: request.snapshotSha256,
+        results: request.listingIds.map((listingId) => ({
+          listingId,
+          listing:
+            [listing, alternate].find((item) => item.listingId === listingId) ??
+            null,
+        })),
+      }),
+    );
+    vi.mocked(setup.api.eodHistory).mockResolvedValue(eodResponse());
+    return setup;
+  }
+  it("publishes resolved visit and route together without a transient close notification", async () => {
+    const { workspace } = linkedFixture();
+    await workspace.refreshCatalog();
+    const states: ReturnType<ManagedWorkspace["getSnapshot"]>[] = [];
+    workspace.subscribe(() => states.push(workspace.getSnapshot()));
+    await workspace.setCompanyRoute(route());
+    expect(states.map((state) => state.companyRoute?.status)).toEqual([
+      "waiting_catalog",
+      "resolving",
+      "open",
+    ]);
+    expect(states.at(-1)?.research?.selection.origin).toBe("route");
+    workspace.closeResearch();
+    expect(states.at(-1)).toMatchObject({ research: null, companyRoute: null });
+  });
+  it("waits for the initial catalog then resolves full identity once without loading research or saving", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.coordinator.load();
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().companyRoute?.status).toBe(
+      "waiting_catalog",
+    );
+    expect(api.resolve).not.toHaveBeenCalled();
+    await workspace.refreshCatalog();
+    expect(api.resolve).toHaveBeenCalledExactlyOnceWith(
+      { snapshotSha256: digest, listingIds: [listing.listingId] },
+      expect.any(AbortSignal),
+    );
+    expect(workspace.getSnapshot().research).toMatchObject({
+      section: "eod",
+      selection: {
+        listing,
+        origin: "route",
+        cik: null,
+        catalogSnapshotSha256: digest,
+      },
+    });
+    expect(workspace.getSnapshot().companyRoute?.status).toBe("open");
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it("retains the selected class, loaded result and draft across same-listing sections but reopens unloaded", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    await workspace.setCompanyRoute(route());
+    const selected = workspace.getSnapshot().research!.selection;
+    workspace.noteResearch(selected, "kept in shared draft");
+    await workspace.eod.load();
+    const loaded = workspace.eod.getSnapshot();
+    await workspace.setCompanyRoute(route(listing.listingId, "annual"));
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().research!.selection).toBe(selected);
+    expect(workspace.eod.getSnapshot()).toBe(loaded);
+    expect(api.resolve).toHaveBeenCalledOnce();
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    await workspace.setCompanyRoute(null);
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().research!.selection).not.toBe(selected);
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("kept in shared draft");
+    workspace.noteResearch(selected, "stale callback");
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("kept in shared draft");
+  });
+  it("keeps a discovery visit's known CIK and selection when synchronizing its URL", async () => {
+    const { workspace, api } = linkedFixture();
+    const discovery = { ...result, ...listing, cik: "0000000001" };
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [discovery],
+      totalMatches: 1,
+      limitApplied: 25,
+      normalizedQuery: "ZERO",
+    });
+    await ready(workspace);
+    workspace.openDiscoveryEod(discovery);
+    await workspace.eod.load();
+    const selected = workspace.getSnapshot().research!.selection;
+    const loaded = workspace.eod.getSnapshot();
+    await workspace.setCompanyRoute(route());
+    await workspace.setCompanyRoute(route(listing.listingId, "annual"));
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().research!.selection).toBe(selected);
+    expect(selected).toMatchObject({ cik: "0000000001", origin: "discover" });
+    expect(workspace.eod.getSnapshot()).toBe(loaded);
+    expect(api.resolve).not.toHaveBeenCalled();
+  });
+  it("resolves equal tickers as separate exact listing and share-class identities", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.refreshCatalog();
+    await workspace.setCompanyRoute(route());
+    await workspace.eod.load();
+    await workspace.setCompanyRoute(route(alternate.listingId));
+    expect(workspace.getSnapshot().research!.selection.listing).toEqual(
+      alternate,
+    );
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+    expect(api.resolve).toHaveBeenCalledTimes(2);
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+  });
+  it("uses the latest section for a pending singleton resolve without repeating it", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.refreshCatalog();
+    const held = deferred<Awaited<ReturnType<ManagedApi["resolve"]>>>();
+    vi.mocked(api.resolve).mockReturnValueOnce(held.promise);
+    const pending = workspace.setCompanyRoute(route());
+    await workspace.setCompanyRoute(route(listing.listingId, "annual"));
+    held.resolve({
+      snapshotSha256: digest,
+      results: [{ listingId: listing.listingId, listing }],
+    });
+    await pending;
+    expect(workspace.getSnapshot().research?.section).toBe("annual");
+    expect(api.resolve).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+  it.each(["close", "replacement", "catalog", "retire"] as const)(
+    "discards late resolve success and auth/catalog errors after %s",
+    async (invalidation) => {
+      for (const settlement of ["success", "auth", "catalog"] as const) {
+        const { workspace, api } = linkedFixture();
+        await workspace.refreshCatalog();
+        const held = deferred<Awaited<ReturnType<ManagedApi["resolve"]>>>();
+        vi.mocked(api.resolve).mockReturnValueOnce(held.promise);
+        const pending = workspace.setCompanyRoute(route());
+        const signal = vi.mocked(api.resolve).mock.calls[0]![1];
+        if (invalidation === "close") workspace.closeResearch();
+        if (invalidation === "replacement")
+          await workspace.setCompanyRoute(route(alternate.listingId));
+        if (invalidation === "catalog") {
+          vi.mocked(api.status).mockResolvedValueOnce({
+            snapshot: { ...snapshot, snapshotSha256: nextDigest },
+          });
+          await workspace.refreshCatalog();
+        }
+        if (invalidation === "retire") workspace.coordinator.retire();
+        const retained = workspace.getSnapshot();
+        expect(signal.aborted).toBe(true);
+        if (settlement === "success")
+          held.resolve({
+            snapshotSha256: digest,
+            results: [{ listingId: listing.listingId, listing }],
+          });
+        else
+          held.reject(
+            settlement === "auth"
+              ? new TrialApiError("unauthenticated")
+              : new ManagedCatalogChangedError(),
+          );
+        await pending;
+        expect(workspace.getSnapshot()).toBe(retained);
+        expect(workspace.coordinator.getSnapshot().phase).toBe(
+          invalidation === "retire" ? "retired" : "idle",
+        );
+        expect(api.eodHistory).not.toHaveBeenCalled();
+        expect(api.annualReport).not.toHaveBeenCalled();
+      }
+    },
+  );
+  it("reports unknown identity and retries only through the explicit retry action", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.refreshCatalog();
+    vi.mocked(api.resolve).mockResolvedValueOnce({
+      snapshotSha256: digest,
+      results: [{ listingId: listing.listingId, listing: null }],
+    });
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.getSnapshot().companyRoute?.status).toBe("unavailable");
+    await workspace.setCompanyRoute(route());
+    await workspace.refreshCatalog();
+    expect(api.resolve).toHaveBeenCalledOnce();
+    await workspace.retryCompanyRoute();
+    expect(api.resolve).toHaveBeenCalledTimes(2);
+    expect(workspace.getSnapshot().companyRoute?.status).toBe("open");
+  });
+  it.each([
+    "digest",
+    "row-id",
+    "listing-id",
+    "extra-row",
+    "extra-field",
+  ] as const)("rejects a malformed resolved response: %s", async (fault) => {
+    const { workspace, api } = linkedFixture();
+    await workspace.refreshCatalog();
+    const response = {
+      snapshotSha256: digest as string,
+      results: [{ listingId: listing.listingId, listing: { ...listing } }],
+    };
+    if (fault === "digest") response.snapshotSha256 = nextDigest;
+    if (fault === "row-id")
+      response.results[0]!.listingId = alternate.listingId;
+    if (fault === "listing-id")
+      response.results[0]!.listing.listingId = alternate.listingId;
+    if (fault === "extra-row")
+      response.results.push({
+        listingId: alternate.listingId,
+        listing: alternate,
+      });
+    if (fault === "extra-field")
+      Object.assign(response.results[0]!.listing, { cik: "0000000001" });
+    vi.mocked(api.resolve).mockResolvedValueOnce(response);
+    await workspace.setCompanyRoute(route());
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.getSnapshot().companyRoute?.status).toBe("error");
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+  it.each(["catalog", "auth"] as const)(
+    "clears route admission on a current %s refusal",
+    async (refusal) => {
+      const { workspace, api } = linkedFixture();
+      await workspace.refreshCatalog();
+      vi.mocked(api.resolve).mockRejectedValueOnce(
+        refusal === "catalog"
+          ? new ManagedCatalogChangedError()
+          : new TrialApiError("unauthenticated"),
+      );
+      await workspace.setCompanyRoute(route());
+      expect(workspace.getSnapshot().companyRoute).toBeNull();
+      expect(workspace.getSnapshot().research).toBeNull();
+      if (refusal === "catalog") await workspace.refreshCatalog();
+      expect(api.resolve).toHaveBeenCalledOnce();
+    },
+  );
+  it("preserves the shared price cooldown across closing and resolving a new visit", async () => {
+    const { workspace, api } = linkedFixture();
+    await workspace.refreshCatalog();
+    await workspace.setCompanyRoute(route());
+    vi.mocked(api.eodHistory).mockRejectedValueOnce(
+      new ManagedEodCooldownError(new Date(Date.now() + 60_000).toISOString()),
+    );
+    await workspace.eod.load();
+    workspace.closeResearch();
+    await workspace.setCompanyRoute(route());
+    await workspace.eod.load();
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+  });
+});

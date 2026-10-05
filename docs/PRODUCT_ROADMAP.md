@@ -108,9 +108,11 @@ Back navigation and clearing on exit. An initial saved-watchlist read failed and
 recovered through an explicit reload; its cause and repeat reliability remain
 unknown. This step adds no feed, request or persistent state.
 
-The selected raw-close step is complete. Full M1 and M2, bookmarkable company
-routes and broader data coverage remain open. The next bounded product outcome
-remains to be selected.
+The selected raw-close step is complete. The current candidate implements
+bookmarkable company visits for the existing Price and Annual sections. It reuses
+exact catalog identity, explicit source requests and the current watchlist draft.
+Its browser history, sign-in return and Android Back behavior require acceptance
+before delivery. Full M1 and M2 and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

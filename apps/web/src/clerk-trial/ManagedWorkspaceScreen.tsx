@@ -11,6 +11,11 @@ import type {
   ManagedEodIdentity,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
+import { BrowserRouter } from "react-router";
+import {
+  useManagedCompanyNavigation,
+  type ManagedCompanyNavigation,
+} from "./useManagedCompanyNavigation";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import { createManagedApi, type ManagedApi } from "./managed-api";
 import {
@@ -59,13 +64,32 @@ function SessionWorkspace(props: SessionProps) {
     return () => current.coordinator.retire();
   }, [initial]);
   return workspace ? (
-    <ManagedWorkspaceScreen
+    <ManagedWorkspaceRouter
       workspace={workspace}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
     />
   ) : (
     <p role="status">Loading your workspace…</p>
   );
+}
+
+export function ManagedWorkspaceRouter(props: {
+  workspace: ManagedWorkspace;
+  androidBack?: AndroidBackAdapter;
+}) {
+  return (
+    <BrowserRouter>
+      <RoutedWorkspace {...props} />
+    </BrowserRouter>
+  );
+}
+
+function RoutedWorkspace(props: {
+  workspace: ManagedWorkspace;
+  androidBack?: AndroidBackAdapter;
+}) {
+  const navigation = useManagedCompanyNavigation(props.workspace);
+  return <ManagedWorkspaceScreen {...props} navigation={navigation} />;
 }
 
 function CatalogReceipt({ snapshot }: { snapshot: ManagedCatalogSnapshotDto }) {
@@ -242,17 +266,20 @@ function CatalogReviewPanel({
 export function ManagedWorkspaceScreen({
   workspace,
   androidBack,
+  navigation,
 }: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
+  navigation?: ManagedCompanyNavigation;
 }) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
-  const backToWorkspace = useCallback(() => {
-    workspace.closeResearch();
+  const routeBack = navigation?.back;
+  const hasCompanyRoute = navigation?.hasCompanyRoute;
+  const restoreFocus = useCallback(() => {
     if (panelOrigin.current?.isConnected) panelOrigin.current.focus();
     else if (workspace.getSnapshot().view === "markets")
       marketsNavigation.current?.focus();
@@ -261,6 +288,29 @@ export function ManagedWorkspaceScreen({
     else discoverHeading.current?.focus();
     panelOrigin.current = null;
   }, [workspace]);
+  const backToWorkspace = useCallback(() => {
+    if (routeBack) routeBack();
+    else {
+      workspace.closeResearch();
+      restoreFocus();
+    }
+  }, [routeBack, restoreFocus, workspace]);
+  useEffect(() => {
+    if (navigation?.returnFocus) restoreFocus();
+  }, [navigation?.returnFocus, restoreFocus]);
+  const setView = (view: "markets" | "discover" | "watchlist") => {
+    if (navigation) return navigation.view(view);
+    workspace.setView(view);
+    return true;
+  };
+  const openResearch = (opener: HTMLButtonElement, action: () => void) => {
+    const open = () => {
+      action();
+      if (workspace.getSnapshot().research) panelOrigin.current = opener;
+    };
+    if (navigation) navigation.open(open);
+    else open();
+  };
   useEffect(() => {
     if (!androidBack) return;
     const isRetired = () => {
@@ -272,7 +322,13 @@ export function ManagedWorkspaceScreen({
       androidBack,
       ({ canGoBack }) => {
         if (isRetired()) return;
-        if (workspace.getSnapshot().research) backToWorkspace();
+        if (
+          hasCompanyRoute?.() ||
+          workspace.getSnapshot().research ||
+          workspace.getSnapshot().companyRoute ||
+          navigation?.invalid
+        )
+          backToWorkspace();
         else if (canGoBack) window.history.back();
       },
       () => setBackUnavailable(true),
@@ -284,7 +340,13 @@ export function ManagedWorkspaceScreen({
       unsubscribe();
       dispose();
     };
-  }, [androidBack, workspace, backToWorkspace]);
+  }, [
+    androidBack,
+    workspace,
+    backToWorkspace,
+    hasCompanyRoute,
+    navigation?.invalid,
+  ]);
   const discovery = useSyncExternalStore(
     workspace.subscribe,
     workspace.getSnapshot,
@@ -339,7 +401,7 @@ export function ManagedWorkspaceScreen({
                 }
                 className="trial-secondary"
                 aria-current={discovery.view === view ? "page" : undefined}
-                onClick={() => workspace.setView(view)}
+                onClick={() => setView(view)}
               >
                 {
                   {
@@ -359,7 +421,7 @@ export function ManagedWorkspaceScreen({
               disabled={retired}
               onChange={(query) => workspace.setQuery(query)}
               onSearch={() => {
-                workspace.setView("discover");
+                if (!setView("discover")) return;
                 void workspace.search();
               }}
             />
@@ -378,12 +440,40 @@ export function ManagedWorkspaceScreen({
           <p role="status" aria-live="polite">
             {discovery.message}
           </p>
+          {navigation?.invalid && (
+            <section aria-label="Company link">
+              <p role="status">
+                This company link is invalid. Open a company from Markets,
+                Discover or My Watchlist.
+              </p>
+              <button onClick={backToWorkspace}>Back to Markets</button>
+            </section>
+          )}
+          {discovery.companyRoute &&
+            discovery.companyRoute.status !== "open" && (
+              <section aria-label="Company link">
+                <p role="status">{discovery.companyRoute.message}</p>
+                {(discovery.companyRoute.status === "unavailable" ||
+                  discovery.companyRoute.status === "error") && (
+                  <button onClick={() => void workspace.retryCompanyRoute()}>
+                    Retry company link
+                  </button>
+                )}
+                <button onClick={backToWorkspace}>Back to workspace</button>
+              </section>
+            )}
           {discovery.research && (
             <ManagedCompanyResearch
               research={discovery.research}
               annual={workspace.annual}
               eod={workspace.eod}
-              onBack={backToWorkspace}
+              onBack={() => {
+                if (
+                  workspace.getSnapshot().research?.selection ===
+                  discovery.research!.selection
+                )
+                  backToWorkspace();
+              }}
               watchlist={workspace.getResearchWatchlist(
                 discovery.research.selection,
               )}
@@ -399,12 +489,18 @@ export function ManagedWorkspaceScreen({
                   discovery.research!.selection
                 )
                   return;
-                workspace.setView("watchlist");
+                if (!setView("watchlist")) return;
                 panelOrigin.current = null;
                 watchlistNavigation.current?.focus();
               }}
               onSection={(section) => {
-                if (section === "annual") workspace.switchToAnnual();
+                if (
+                  workspace.getSnapshot().research?.selection !==
+                  discovery.research!.selection
+                )
+                  return;
+                if (navigation) navigation.section(section);
+                else if (section === "annual") workspace.switchToAnnual();
                 else workspace.switchToEod();
               }}
             />
@@ -413,11 +509,10 @@ export function ManagedWorkspaceScreen({
             <ManagedMarkets
               model={workspace.markets}
               onResearch={(kind, opener) => {
-                panelOrigin.current = opener;
-                workspace.openMarketResearch(kind);
+                openResearch(opener, () => workspace.openMarketResearch(kind));
               }}
               onWatchlist={() => {
-                workspace.setView("watchlist");
+                if (!setView("watchlist")) return;
                 watchlistNavigation.current?.focus();
               }}
             />
@@ -469,8 +564,9 @@ export function ManagedWorkspaceScreen({
                           className="trial-secondary"
                           aria-label={`Annual report for ${result.symbol}`}
                           onClick={(event) => {
-                            panelOrigin.current = event.currentTarget;
-                            workspace.openDiscoveryAnnual(result);
+                            openResearch(event.currentTarget, () =>
+                              workspace.openDiscoveryAnnual(result),
+                            );
                           }}
                         >
                           Annual report
@@ -479,8 +575,9 @@ export function ManagedWorkspaceScreen({
                           className="trial-secondary"
                           aria-label={`EOD close history for ${result.symbol}`}
                           onClick={(event) => {
-                            panelOrigin.current = event.currentTarget;
-                            workspace.openDiscoveryEod(result);
+                            openResearch(event.currentTarget, () =>
+                              workspace.openDiscoveryEod(result),
+                            );
                           }}
                         >
                           EOD close history
@@ -621,8 +718,9 @@ export function ManagedWorkspaceScreen({
                           disabled={!workspace.canOpenWatchlistAnnual(member)}
                           aria-label={`Annual report for saved ${member.symbol}`}
                           onClick={(event) => {
-                            panelOrigin.current = event.currentTarget;
-                            workspace.openWatchlistAnnual(member);
+                            openResearch(event.currentTarget, () =>
+                              workspace.openWatchlistAnnual(member),
+                            );
                           }}
                         >
                           Annual report
@@ -632,8 +730,9 @@ export function ManagedWorkspaceScreen({
                           disabled={!workspace.canOpenWatchlistEod(member)}
                           aria-label={`EOD close history for saved ${member.symbol}`}
                           onClick={(event) => {
-                            panelOrigin.current = event.currentTarget;
-                            workspace.openWatchlistEod(member);
+                            openResearch(event.currentTarget, () =>
+                              workspace.openWatchlistEod(member),
+                            );
                           }}
                         >
                           EOD close history

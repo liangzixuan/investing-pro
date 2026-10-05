@@ -5,6 +5,7 @@ import {
   MANAGED_WATCHLIST_LIMITS,
   membershipMatchesResult,
   normalizeWatchlistNote,
+  parseManagedCatalogResolveResponse,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
   type ManagedCatalogResolveResponse,
@@ -22,6 +23,10 @@ import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
 import { SaveCoordinator } from "./save-coordinator";
+import {
+  isManagedCompanyListingId,
+  type ManagedCompanyRoute,
+} from "./managed-company-route";
 import type { TrialSession } from "./session";
 
 type ResolvedListing = ManagedCatalogResolveResponse["results"][number];
@@ -40,6 +45,13 @@ export interface ResearchWatchlistState {
   readonly canEdit: boolean;
   readonly reason: string | null;
 }
+export interface CompanyRouteState {
+  readonly listingId: string;
+  readonly section: "annual" | "eod";
+  readonly status:
+    "waiting_catalog" | "resolving" | "unavailable" | "error" | "open";
+  readonly message: string;
+}
 export interface ManagedDiscoveryState {
   readonly view: "markets" | "discover" | "watchlist";
   readonly query: string;
@@ -51,6 +63,7 @@ export interface ManagedDiscoveryState {
   readonly message: string;
   readonly review: CatalogReview | null;
   readonly research: ManagedResearchVisit | null;
+  readonly companyRoute: CompanyRouteState | null;
 }
 const emptyDiscovery = (): ManagedDiscoveryState => ({
   view: "markets",
@@ -63,6 +76,7 @@ const emptyDiscovery = (): ManagedDiscoveryState => ({
   message: "",
   review: null,
   research: null,
+  companyRoute: null,
 });
 
 interface DraftValidation {
@@ -144,6 +158,7 @@ export class ManagedWorkspace {
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
   private resolveOperation: AbortController | null = null;
+  private companyRouteOperation: AbortController | null = null;
   private retired = false;
   private draft: MainWatchlistPayload | null = null;
   private validation: {
@@ -336,8 +351,15 @@ export class ManagedWorkspace {
       if (
         result.snapshot.snapshotSha256 !== this.state.snapshot?.snapshotSha256
       ) {
+        const waitingRoute =
+          this.state.snapshot === null &&
+          this.state.companyRoute?.status === "waiting_catalog"
+            ? this.state.companyRoute
+            : null;
         this.cancelReview();
-        this.closeResearch();
+        this.clearResearch();
+        if (waitingRoute)
+          this.state = { ...this.state, companyRoute: waitingRoute };
       }
       this.update({
         snapshot: result.snapshot,
@@ -353,6 +375,7 @@ export class ManagedWorkspace {
       });
       if (this.state.view === "markets")
         this.markets.enter(result.snapshot.snapshotSha256);
+      await this.resolveCompanyRoute();
     } catch (error) {
       if (
         !this.retired &&
@@ -452,25 +475,181 @@ export class ManagedWorkspace {
     this.markets.cancel();
     this.openResearch(selection, kind);
   }
+  async setCompanyRoute(route: ManagedCompanyRoute | null) {
+    if (this.retired) return;
+    if (
+      !route ||
+      !isManagedCompanyListingId(route.listingId) ||
+      (route.section !== "annual" && route.section !== "eod")
+    ) {
+      this.closeResearch();
+      return;
+    }
+    const research = this.state.research;
+    if (
+      research?.selection.listing.listingId === route.listingId &&
+      this.canSwitchResearch(research.selection)
+    ) {
+      this.switchResearch(route.section);
+      if (this.state.research)
+        this.update({
+          companyRoute: {
+            listingId: route.listingId,
+            section: route.section,
+            status: "open",
+            message: "",
+          },
+        });
+      return;
+    }
+    const pending = this.state.companyRoute;
+    if (pending?.listingId === route.listingId && pending.status !== "open") {
+      this.update({ companyRoute: { ...pending, section: route.section } });
+      return;
+    }
+    this.clearResearch();
+    this.markets.cancel();
+    this.update({
+      companyRoute: {
+        listingId: route.listingId,
+        section: route.section,
+        status: "waiting_catalog",
+        message: "Load the catalog to open this company link.",
+      },
+    });
+    await this.resolveCompanyRoute();
+  }
+  async retryCompanyRoute() {
+    const route = this.state.companyRoute;
+    if (
+      this.retired ||
+      !route ||
+      this.companyRouteOperation ||
+      (route.status !== "error" && route.status !== "unavailable")
+    )
+      return;
+    this.update({
+      companyRoute: {
+        ...route,
+        status: "waiting_catalog",
+        message: "Load the catalog to open this company link.",
+      },
+    });
+    await this.resolveCompanyRoute();
+  }
+  private async resolveCompanyRoute() {
+    const route = this.state.companyRoute;
+    const snapshot = this.state.snapshot;
+    if (
+      this.retired ||
+      !route ||
+      !snapshot ||
+      this.companyRouteOperation ||
+      route.status !== "waiting_catalog"
+    )
+      return;
+    const operation = new AbortController();
+    this.companyRouteOperation = operation;
+    const current = () =>
+      !this.retired &&
+      this.companyRouteOperation === operation &&
+      !operation.signal.aborted &&
+      this.state.companyRoute?.listingId === route.listingId &&
+      this.state.snapshot?.snapshotSha256 === snapshot.snapshotSha256;
+    this.update({
+      companyRoute: {
+        ...route,
+        status: "resolving",
+        message: "Resolving company link.",
+      },
+    });
+    const request = {
+      snapshotSha256: snapshot.snapshotSha256,
+      listingIds: [route.listingId],
+    };
+    try {
+      const response = await this.api.resolve(request, operation.signal);
+      if (!current()) return;
+      const admitted = parseManagedCatalogResolveResponse(response, request);
+      if (!admitted) throw new TrialApiError("invalid_response");
+      const listing = admitted.results[0]!.listing;
+      const activeRoute = this.state.companyRoute!;
+      if (!listing) {
+        this.update({
+          companyRoute: {
+            ...activeRoute,
+            status: "unavailable",
+            message:
+              "This listing is not available in the current catalog. Check the link or choose another company.",
+          },
+        });
+        return;
+      }
+      this.companyRouteOperation = null;
+      this.openResearch(
+        {
+          catalogSnapshotSha256: snapshot.snapshotSha256,
+          listing: listingIdentity(listing),
+          cik: null,
+          origin: "route",
+        },
+        activeRoute.section,
+        { ...activeRoute, status: "open", message: "" },
+      );
+    } catch (error) {
+      if (!current()) return;
+      if (error instanceof ManagedCatalogChangedError) {
+        this.invalidateCatalog();
+      } else if (
+        error instanceof TrialApiError &&
+        ["unauthenticated", "access_denied", "origin_denied"].includes(
+          error.code,
+        )
+      ) {
+        this.coordinator.readError(error);
+      } else {
+        this.update({
+          companyRoute: {
+            ...this.state.companyRoute!,
+            status: "error",
+            message:
+              "The company link could not be resolved. Select Retry company link to try again.",
+          },
+        });
+      }
+    } finally {
+      if (this.companyRouteOperation === operation)
+        this.companyRouteOperation = null;
+    }
+  }
   private openResearch(
     selection: AnnualReportSelection,
     section: ManagedResearchVisit["section"],
+    companyRoute: CompanyRouteState | null = null,
   ) {
-    this.closeResearch();
+    this.clearResearch();
     this[section].open(selection);
     const captured = this[section].getSnapshot().selection;
     if (captured)
       this.update({
         research: Object.freeze({ selection: captured, section }),
+        companyRoute,
       });
   }
   closeResearch() {
-    const hadResearch = this.state.research !== null;
+    if (this.clearResearch()) this.update({});
+  }
+  private clearResearch() {
+    const hadResearch =
+      this.state.research !== null || this.state.companyRoute !== null;
+    this.companyRouteOperation?.abort();
+    this.companyRouteOperation = null;
     // Model close notifications must never expose the visit with a cleared section.
-    if (hadResearch) this.state = { ...this.state, research: null };
+    if (hadResearch)
+      this.state = { ...this.state, research: null, companyRoute: null };
     this.annual.close();
     this.eod.close();
-    if (hadResearch) this.update({});
+    return hadResearch;
   }
   private canSwitchResearch(selection: AnnualReportSelection | null) {
     if (
@@ -480,6 +659,7 @@ export class ManagedWorkspace {
     )
       return false;
     if (selection.origin === "discover") return true;
+    if (selection.origin === "route") return selection.cik === null;
     if (selection.origin === "markets") {
       const current = this.markets.selection(selection.listing.listingId);
       return (

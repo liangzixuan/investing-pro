@@ -75,6 +75,15 @@ pending work and retains validated results; returning reuses the initialized
 model. Closing or invalidating the visit clears both models. No persistent cache
 is added.
 
+The company-link candidate uses React Router over root-level query parameters.
+The router stays below the session workspace owner, so navigation does not
+recreate its draft or request models. A cold link resolves one exact listing
+through the existing catalog operation and starts without research data. The
+model fences that resolution separately from watchlist catalog review. URLs
+contain only listing identity and section; Clerk keeps the fragment for sign-in.
+[Company navigation](MANAGED_RESEARCH_NAVIGATION.md) defines history and
+invalidation behavior; [Current work](CURRENT_WORK.md) records acceptance.
+
 The company visit's watchlist-note controls derive from its captured selection
 and the coordinator's current draft. Complete identity and catalog matching
 guard edits and explicit additions. The editor shares the watchlist row's draft;
@@ -129,7 +138,8 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. The native suite requires twelve cases; accepted results are recorded in Current work.
+admission. The native suite requires thirteen cases, including the new company-link
+candidate; accepted results are recorded in Current work.
 These are distinct from signed-release, physical-phone and
 live-provider acceptance.
 

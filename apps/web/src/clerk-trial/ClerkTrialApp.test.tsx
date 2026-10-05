@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClerkTrialApp } from "./ClerkTrialApp";
 import type { TrialSession } from "./session";
 
@@ -42,8 +42,57 @@ const config = {
   frontendApiOrigin: "https://invented-trial-12.clerk.accounts.dev",
 };
 beforeEach(() => vi.clearAllMocks());
+afterEach(() => vi.unstubAllGlobals());
 
 describe("official Clerk browser adapter", () => {
+  it.each([
+    [
+      "/",
+      "?company=listing-one&section=price",
+      "/?company=listing-one&section=price",
+    ],
+    [
+      "/",
+      "?company=listing-one&section=annual",
+      "/?company=listing-one&section=annual",
+    ],
+    [
+      "/",
+      "?company=listing-one&section=annual&redirect_url=https://example.invalid",
+      "/",
+    ],
+    ["/", "?company=listing-one&company=listing-two&section=price", "/"],
+    ["/", "?company=%2F%2Fevil.invalid&section=price", "/"],
+    ["/", "?company=listing-one&section=other", "/"],
+    ["/company/elsewhere", "?company=listing-one&section=price", "/"],
+    ["/", "?redirect_url=https://example.invalid", "/"],
+  ])(
+    "keeps a managed sign-in return at a validated root URL (%s%s)",
+    (pathname, search, destination) => {
+      vi.stubGlobal("window", {
+        location: { pathname, search, hash: "#/sign-in/factor-one" },
+      });
+      sdk.auth.mockReturnValue({ isLoaded: true, isSignedIn: false });
+      sdk.session.mockReturnValue({ isLoaded: true, isSignedIn: false });
+      renderToStaticMarkup(
+        <ClerkTrialApp
+          config={{
+            environment: "production",
+            publishableKey: `pk_live_${Buffer.from("clerk.investingpro.app$").toString("base64")}`,
+            apiOrigin: "https://investment-managed-6abac57a.appwrite.network",
+            frontendApiOrigin: "https://clerk.investingpro.app",
+          }}
+        />,
+      );
+      expect(sdk.signIn).toHaveBeenCalledExactlyOnceWith({
+        routing: "hash",
+        fallbackRedirectUrl: destination,
+        forceRedirectUrl: destination,
+      });
+      expect(sdk.managed).not.toHaveBeenCalled();
+      expect(sdk.screen).not.toHaveBeenCalled();
+    },
+  );
   it("uses the SDK sign-in component when signed out", () => {
     sdk.auth.mockReturnValue({ isLoaded: true, isSignedIn: false });
     sdk.session.mockReturnValue({ isLoaded: true, isSignedIn: false });
