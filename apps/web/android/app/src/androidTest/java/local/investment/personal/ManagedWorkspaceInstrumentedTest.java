@@ -583,6 +583,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'Markets'" +
             " && " + DIAGNOSTICS + ".marketsResolve === 1 && " + DIAGNOSTICS + ".marketsEod === 0" +
             " && document.querySelectorAll('.managed-market-row').length === 3" +
+            " && document.querySelector('.managed-market-change') === null" +
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && document.querySelector('#managed-note-0')?.closest('section')?.hidden === true");
@@ -603,20 +604,23 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-market-close strong')).every(e => e.textContent === 'Not loaded')");
         clickMarketsAction("Load board prices");
         assertMarketsRows(false);
+        assertMarketsRawChanges(false);
         assertMarketsDraftAndCounts(2, 3, 0, 0);
         awaitPage("three loaded rows keep distinct share classes",
             "Array.from(document.querySelectorAll('.managed-market-identity small')).map(e => e.textContent).join('|') === 'Common Stock · XNAS|Class A · XNAS|Class C · XNAS'" +
             " && document.querySelector('.managed-markets .trial-actions button:first-child')?.textContent === 'Refresh board prices'");
         click("button[aria-label='Select BETB on company board']");
-        assertMarketsDetail("BETB", "2026-09-18|30.25;2026-09-19|30.5", false);
+        assertMarketsDetail("BETB", "2026-09-18|30.5;2026-09-19|30.5", false);
         click("button[aria-label='Select ALFA on company board']");
         assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
         assertMarketsDraftAndCounts(2, 3, 0, 0);
+        retainMarketsRawChangeScreenshot();
         retainMarketsLoadedScreenshot();
         Log.i("ManagedMarkets", "phase=three-loaded-explicit, reads=3; " + pageDiagnostic());
 
         clickMarketsAction("Refresh board prices");
         assertMarketsRows(true);
+        assertMarketsRawChanges(true);
         awaitPage("the completed first refresh replaces its whole dated response",
             "Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|11.25;2026-09-20|11.5'" +
             " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'");
@@ -628,6 +632,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === 'BETA,BETB'");
         clickMarketsAction("Cancel board prices");
         assertMarketsDraftAndCounts(2, 5, 1, 0);
+        assertMarketsRawChanges(true);
         awaitPage("Cancel restores focus after the load action is enabled",
             "document.activeElement === document.querySelector('.managed-markets .trial-actions button:first-child')" +
             " && document.activeElement.disabled === false" +
@@ -635,8 +640,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click("#settle-cancelled-markets");
         assertMarketsDraftAndCounts(2, 5, 1, 1);
         assertMarketsRows(true);
+        assertMarketsRawChanges(true);
         click("button[aria-label='Select BETA on company board']");
-        assertMarketsDetail("BETA", "2026-09-18|20.25;2026-09-19|20.5", true);
+        assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
         awaitPage("late board values cannot replace the retained response",
             "!document.querySelector('.managed-markets')?.textContent.includes('998.25')" +
             " && !document.querySelector('.managed-markets')?.textContent.includes('999.75')");
@@ -654,7 +660,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native Back restores the original board opener and its previous history",
             "document.querySelector('.managed-eod-history') === null" +
             " && document.activeElement === document.querySelector(\"button[aria-label='Board price history for BETA']\")");
-        assertMarketsDetail("BETA", "2026-09-18|20.25;2026-09-19|20.5", true);
+        assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
+        assertMarketsRawChanges(true);
         assertRootHistory();
         pressBack();
         assertMarketsRows(true);
@@ -667,6 +674,7 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".marketsResolve === 3" +
             " && document.querySelectorAll('.managed-market-row').length === 3" +
             " && Array.from(document.querySelectorAll('.managed-market-close strong')).every(e => e.textContent === 'Not loaded')" +
+            " && document.querySelector('.managed-market-change') === null" +
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && document.querySelector('.managed-markets .managed-eod-previous') === null");
@@ -833,6 +841,22 @@ public class ManagedWorkspaceInstrumentedTest {
             "Array.from(document.querySelectorAll('.managed-market-row')).map(e => e.querySelector('.managed-market-identity strong').textContent + '|' + e.querySelector('.managed-market-close strong').textContent + '|' + e.querySelector('.managed-market-close small').textContent).join(';') === " + JSONObject.quote(expected));
     }
 
+    private void assertMarketsRawChanges(boolean refreshedFirst) throws Exception {
+        String first = refreshedFirst
+            ? "ALFA|Raw close change: +$0.25 (+2.2222%)|2026-09-19 to 2026-09-20"
+            : "ALFA|Raw close change: +$0.25 (+2.4390%)|2026-09-18 to 2026-09-19";
+        String qualification = " · not adjusted for splits or dividends.";
+        String expected = first + qualification +
+            ";BETA|Raw close change: -$0.25 (-1.2048%)|2026-09-18 to 2026-09-19" + qualification +
+            ";BETB|Raw close change: $0 (0.0000%)|2026-09-18 to 2026-09-19" + qualification;
+        awaitPage("exact within-response positive, negative and flat raw changes with both dates",
+            "Array.from(document.querySelectorAll('.managed-market-rows > li')).map(e => {" +
+            " const p = e.querySelector('.managed-market-change'); if (!p) return 'missing';" +
+            " const value = p.querySelector('strong')?.textContent;" +
+            " return e.querySelector('.managed-market-identity strong').textContent + '|' + value + '|' + p.querySelector('span')?.textContent;" +
+            " }).join(';') === " + JSONObject.quote(expected));
+    }
+
     private void assertMarketsDetail(String symbol, String rows, boolean previous) throws Exception {
         awaitPage("selected board history and source dates: " + symbol,
             "document.querySelector('#managed-market-detail-heading')?.textContent === " + JSONObject.quote(symbol + " · one month") +
@@ -855,6 +879,28 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void retainMarketsRawChangeScreenshot() throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-market-rows > li')?.scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Markets raw-change row did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const row = document.querySelector('.managed-market-rows > li'); const v = visualViewport;" +
+            " if (!row || !v) return false; const targets = [row.querySelector('.managed-market-identity')," +
+            " row.querySelector('.managed-market-close'), row.querySelector('.managed-market-change'), row.querySelector('.managed-market-change span')];" +
+            " return document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
+            " && targets.every(e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("ALFA identity, close, raw change and both dates fully visible", visible);
+        assertMarketsRawChanges(false);
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        retainScreenshot("marketsBoardRawChanges");
+        awaitPage("dated raw change stayed visible through capture", visible);
+        assertMarketsRawChanges(false);
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
     }
 
     private void retainMarketsLoadedScreenshot() throws Exception {

@@ -4,6 +4,7 @@ export {
   PERSONAL_EOD_REFERENCE_ROUNDING,
   calculatePersonalMarketBoard,
   calculatePersonalEodReference,
+  calculatePersonalRawCloseChange,
   type PersonalMarketBoardIdentity,
   type PersonalMarketBoardBar,
   type PersonalMarketBoardHistory,
@@ -13,6 +14,8 @@ export {
   type PersonalMarketBoardResult,
   type PersonalEodReferenceInput,
   type PersonalEodReferenceResult,
+  type PersonalRawCloseChangeInput,
+  type PersonalRawCloseChangeResult,
 } from "./personal-market-board";
 
 export {

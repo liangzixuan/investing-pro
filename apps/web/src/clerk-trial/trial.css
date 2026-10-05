@@ -560,8 +560,20 @@ textarea:disabled {
 }
 .managed-market-close {
   text-align: right;
-  flex-shrink: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
+}
+.managed-market-change {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.managed-market-change > span {
+  display: block;
+  margin-top: 4px;
+  color: #425d61;
 }
 .managed-market-row-status {
   margin: 8px 0 0;
@@ -608,8 +620,6 @@ textarea:disabled {
     padding: 12px;
   }
   .managed-market-close {
-    flex-shrink: 1;
-    min-width: 98px;
-    overflow-wrap: anywhere;
+    flex-basis: 40%;
   }
 }

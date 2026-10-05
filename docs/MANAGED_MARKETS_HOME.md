@@ -22,6 +22,34 @@ GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, mover
 ranking, index, breadth, news or calendar data. Those need their own inputs and
 acceptance under the [roadmap](PRODUCT_ROADMAP.md).
 
+## Dated raw-close change
+
+Each loaded row compares the final two observations within its own validated
+history. It shows both dates and an exact USD difference, calculated as latest
+close minus previous close. The percentage divides that difference by the
+previous close and multiplies by 100, rounded to four decimal places with half-up
+rounding. The existing market-analytics package uses an isolated decimal context;
+values do not pass through JavaScript floating-point arithmetic.
+
+Direction comes from the exact difference. A nonzero percentage that rounds to
+zero is described as less than 0.0001% higher or lower. An exactly unchanged close
+shows zero. A history with only one row keeps its close and chart and says the
+change is unavailable. Each listing retains its own observation dates; gaps do
+not establish adjacent exchange sessions or a change for today.
+
+The visible label is Raw close change, with a disclosure that prices are not
+adjusted for splits or dividends. This follows the usual
+[previous-close comparison](https://www.tradingview.com/support/solutions/43000635852-how-are-the-most-popular-filters-connected-with-change-calculated/)
+while preserving Tiingo's distinction between
+[raw and adjusted prices](https://www.tiingo.com/documentation/end-of-day).
+It is not a total return or a mover ranking.
+
+The comparison derives directly from the response already displayed. Refresh
+replaces both dates and values together; it never compares the latest closes of
+two refreshes. Previous-history notices apply to the comparison too. Clearing
+the response clears the comparison. This feature adds no provider request,
+persistent price storage or new response state.
+
 ## Requests and lifetime
 
 Markets is the initial managed view. Entry resolves catalog metadata only; price
