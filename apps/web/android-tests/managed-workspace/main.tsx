@@ -35,7 +35,12 @@ function Fixture() {
       />
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
-        <pre id="fixture-diagnostics">{JSON.stringify(state)}</pre>
+        <pre
+          id="fixture-diagnostics"
+          style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+        >
+          {JSON.stringify(state)}
+        </pre>
         {state.marketsEod > 0 && (
           <button
             id="settle-cancelled-markets"

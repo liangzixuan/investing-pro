@@ -204,7 +204,9 @@ export async function createFixture(
     const start =
       kind === "late"
         ? "998.25"
-        : `${(index + 1) * 10 + (refreshed ? 1 : 0)}.25`;
+        : refreshed
+          ? "11.25"
+          : ["10.25", "20.75", "30.5"][index]!;
     const close =
       kind === "late"
         ? "999.75"

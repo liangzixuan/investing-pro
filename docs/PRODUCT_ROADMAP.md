@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 4, 2026. This document defines the durable product goals and
+Updated October 5, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.4 package share Discover, a private
+The managed website and signed Android 1.5 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2, 1.3 and 1.4 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.5 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.4. Previous histories keep their original dates. Physical
+and in signed Android 1.5. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.4. It uses the three accepted
+and in signed Android 1.5. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, percentage movers or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -90,13 +90,20 @@ artifact and delivery reviews passed; physical-device acceptance remains open.
 The selected company-visit step is complete, while bookmarkable routes, key
 statistics, valuation, peers and full M2 remain open.
 
-The next selected step brings the shared watchlist research-note draft into the
+PR 35 and signed Android 1.5 bring the shared watchlist research-note draft into the
 company visit. Existing members show their current note; other listings require
 an explicit Add to watchlist draft action. Review in My Watchlist closes research
-and uses the existing full-list save and reconciliation flow. Implementation and
-focused local checks are complete; hosted checks and delivery are pending.
+and uses the existing full-list save and reconciliation flow. Focused local checks,
+required actual-main checks, website promotion and signed-artifact delivery passed.
 This step adds no automatic save or source request and
 reuses the existing schema, API and dependencies.
+
+The next selected step adds a dated raw-close comparison to each Markets row.
+It uses the final two observations already loaded for that listing, with both
+dates, exact USD change, a rounded percentage and a visible unadjusted-price
+disclosure. One observation cannot supply a change. This small board improvement
+adds no feed, request or persistent state. Implementation and verification are in
+progress; full M1 and M2 remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

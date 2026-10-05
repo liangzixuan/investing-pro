@@ -57,6 +57,13 @@ cooldown owner; their price snapshots remain separate. Navigation leaves the
 watchlist coordinator mounted. Leaving Markets clears its board data, and
 catalog/session retirement aborts every affected research read.
 
+The board derives each raw-close comparison from the final two dated rows of
+that listing's validated response. The existing market-analytics package owns
+exact decimal subtraction and percentage rounding. UI formatting exposes both
+dates, direction and the unadjusted basis. There is no additional response store,
+request or lifetime: a replacement history replaces its comparison, retained
+history keeps its original comparison, and clearing the response clears both.
+
 Each read model can retain its last validated response during explicit refresh
 and its defined recoverable failures. The panel marks that response as previous
 and preserves its original provenance. ManagedWorkspace owns one company visit

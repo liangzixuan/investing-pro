@@ -255,7 +255,7 @@ describe("Android managed fixture startup", () => {
       );
       expect(packet.security).toEqual(fixture.marketsCohort[index]);
       expect(packet.rows).toEqual([
-        { date: "2026-09-18", close: `${(index + 1) * 10}.25` },
+        { date: "2026-09-18", close: ["10.25", "20.75", "30.5"][index] },
         { date: "2026-09-19", close: `${(index + 1) * 10}.5` },
       ]);
     }

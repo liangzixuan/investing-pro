@@ -79,6 +79,20 @@ export type PersonalEodReferenceResult =
       readonly changePercent: string | null;
     };
 
+export interface PersonalRawCloseChangeInput {
+  readonly rows: readonly { readonly date: string; readonly close: string }[];
+}
+export type PersonalRawCloseChangeResult =
+  | { readonly status: "insufficient_history" }
+  | {
+      readonly status: "available";
+      readonly previousDate: string;
+      readonly latestDate: string;
+      readonly change: string;
+      readonly changePercent: string;
+      readonly direction: "up" | "down" | "unchanged";
+    };
+
 // Products of two bounded 64-character decimals remain exact at this precision.
 // Division is rounded only for outputs; displayed percentages never determine rank.
 const ExactDecimal = Decimal.clone({
@@ -200,6 +214,43 @@ export function calculatePersonalEodReference(
     });
   } catch {
     throw new TypeError("Invalid EOD reference input.");
+  }
+}
+
+/** Compare the last two observed raw closes without split or dividend adjustments. */
+export function calculatePersonalRawCloseChange(
+  input: PersonalRawCloseChangeInput,
+): PersonalRawCloseChangeResult {
+  try {
+    let previousDate: string | undefined;
+    const rows = denseArray(record(input, ["rows"]).rows, MAXIMUM_BARS).map(
+      (candidate) => {
+        const row = record(candidate, ["date", "close"]);
+        if (
+          typeof row.date !== "string" ||
+          !validDate(row.date) ||
+          (previousDate !== undefined && row.date <= previousDate)
+        )
+          throw new TypeError();
+        previousDate = row.date;
+        return { date: row.date, close: positiveDecimal(row.close) };
+      },
+    );
+    const latest = rows.at(-1);
+    const previous = rows.at(-2);
+    if (latest === undefined || previous === undefined)
+      return Object.freeze({ status: "insufficient_history" });
+    const change = new ExactDecimal(latest.close).minus(previous.close);
+    return Object.freeze({
+      status: "available",
+      previousDate: previous.date,
+      latestDate: latest.date,
+      change: change.isZero() ? "0" : change.toFixed(),
+      changePercent: percent(change.div(previous.close).times(100)),
+      direction: change.isZero() ? "unchanged" : change.gt(0) ? "up" : "down",
+    });
+  } catch {
+    throw new TypeError("Invalid raw close change input.");
   }
 }
 

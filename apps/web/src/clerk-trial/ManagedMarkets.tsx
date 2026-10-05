@@ -1,10 +1,13 @@
 import {
+  useId,
   useLayoutEffect,
   useRef,
   useSyncExternalStore,
   type MouseEventHandler,
   type Ref,
 } from "react";
+import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
+import { calculatePersonalRawCloseChange } from "@research-cockpit/personal-market-analytics";
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 import type {
   ManagedMarkets as Model,
@@ -60,6 +63,41 @@ function PriceControls({
   );
 }
 
+function RawCloseChange({
+  rows,
+  id,
+}: {
+  rows: readonly ManagedEodCloseDto[];
+  id: string;
+}) {
+  const change = calculatePersonalRawCloseChange({ rows });
+  if (change.status === "insufficient_history")
+    return (
+      <p id={id} className="managed-market-change">
+        Raw close change unavailable: two dated closes needed.
+      </p>
+    );
+  const money =
+    change.direction === "down"
+      ? `-$${change.change.slice(1)}`
+      : `${change.direction === "up" ? "+" : ""}$${change.change}`;
+  const percent =
+    change.changePercent === "0.0000" && change.direction !== "unchanged"
+      ? `less than 0.0001% ${change.direction === "up" ? "higher" : "lower"}`
+      : `${change.direction === "up" ? "+" : ""}${change.changePercent}%`;
+  return (
+    <p id={id} className="managed-market-change">
+      <strong>
+        Raw close change: {money} ({percent})
+      </strong>
+      <span>
+        {change.previousDate} to {change.latestDate} · not adjusted for splits
+        or dividends.
+      </span>
+    </p>
+  );
+}
+
 function MarketListingRow({
   row,
   active,
@@ -69,6 +107,9 @@ function MarketListingRow({
   active: boolean;
   onSelect: () => void;
 }) {
+  const descriptionId = useId();
+  const priceId = `${descriptionId}-price`;
+  const changeId = `${descriptionId}-change`;
   const last = row.response?.rows.at(-1);
   return (
     <li>
@@ -76,6 +117,7 @@ function MarketListingRow({
         className="managed-market-row"
         aria-pressed={active}
         aria-label={`Select ${row.listing.symbol} on company board`}
+        aria-describedby={row.response ? `${priceId} ${changeId}` : priceId}
         onClick={onSelect}
       >
         <span className="managed-market-identity">
@@ -85,13 +127,16 @@ function MarketListingRow({
             {row.listing.shareClassName} · {row.listing.exchangeMic}
           </small>
         </span>
-        <span className="managed-market-close">
+        <span id={priceId} className="managed-market-close">
           <strong>{last ? `$${last.close}` : "Not loaded"}</strong>
           <small>
             {last ? `USD · ${last.date}` : "Load prices when ready"}
           </small>
         </span>
       </button>
+      {row.response && (
+        <RawCloseChange rows={row.response.rows} id={changeId} />
+      )}
       <p
         className="managed-market-row-status"
         role={row.error ? "alert" : "status"}
