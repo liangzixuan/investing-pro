@@ -128,7 +128,7 @@ interface RowFailure {
 }
 
 /** Row retention and batch admission are explicit decisions for each typed refusal. */
-function rowFailure(error: unknown, action: string): RowFailure {
+function rowFailure(error: unknown, recovery: string): RowFailure {
   const failure = {
     keepPrevious: isManagedEodTransientError(error),
     message: "Price history could not be loaded. Try again when ready.",
@@ -138,7 +138,7 @@ function rowFailure(error: unknown, action: string): RowFailure {
   if (error instanceof ManagedEodCooldownError)
     return {
       keepPrevious: true,
-      message: `Price requests are available after ${error.nextAllowedAt}. Select ${action} again then.`,
+      message: `Price requests are available after ${error.nextAllowedAt}. ${recovery} again then.`,
       error: false,
       stop: true,
     };
@@ -235,10 +235,16 @@ export class ManagedMarkets {
     }
     return false;
   }
-  private priceAction() {
-    return this.state.rows.some((row) => row.response)
-      ? "Refresh board prices"
-      : "Load board prices";
+  private priceRecovery(selected?: ManagedMarketsRow) {
+    const rows = selected
+      ? this.state.rows.filter(
+          (row) => row.listing.listingId === selected.listing.listingId,
+        )
+      : this.state.rows;
+    const verb = rows.some((row) => row.response) ? "Refresh" : "Load";
+    return selected
+      ? `Select ${selected.listing.symbol}, then choose ${verb} ${selected.listing.symbol} price`
+      : `Select ${verb} board prices`;
   }
   private finishQueue() {
     const queued = this.queued;
@@ -387,6 +393,15 @@ export class ManagedMarkets {
     });
   }
   async load() {
+    await this.loadPrices();
+  }
+  async loadSelected() {
+    const selected = this.state.rows.find(
+      (row) => row.listing.listingId === this.state.selectedListingId,
+    );
+    if (selected) await this.loadPrices(selected);
+  }
+  private async loadPrices(selected?: ManagedMarketsRow) {
     const digest = this.visitDigest();
     if (
       !digest ||
@@ -402,32 +417,51 @@ export class ManagedMarkets {
       this.operation === operation &&
       !operation.signal.aborted &&
       this.visitDigest() === digest;
-    const rows = this.state.rows;
+    const rows = selected ? [selected] : this.state.rows;
     this.queued = new Set(rows.map((row) => row.listing.listingId));
     this.update({
       running: true,
       error: false,
-      message: "Loading up to three price histories in order…",
-      rows: rows.map((row) => ({
-        ...row,
-        showingPrevious: row.response !== null,
-        error: false,
-        message: "Waiting for this price request.",
-      })),
+      message: selected
+        ? `Loading price history for ${selected.listing.symbol}…`
+        : "Loading up to three price histories in order…",
+      rows: this.state.rows.map((row) =>
+        this.queued.has(row.listing.listingId)
+          ? {
+              ...row,
+              showingPrevious: row.response !== null,
+              error: false,
+              message: "Waiting for this price request.",
+            }
+          : row,
+      ),
     });
     try {
       for (const row of rows) {
         if (!current()) return;
-        if (!(await this.loadRow(row, digest, operation.signal, current)))
+        if (
+          !(await this.loadRow(
+            row,
+            digest,
+            operation.signal,
+            current,
+            selected,
+          ))
+        )
           return;
       }
       if (current()) {
-        const failed = this.state.rows.some((row) => row.error);
+        const failed = this.state.rows.some(
+          (row) =>
+            rows.some((target) => target.listing === row.listing) && row.error,
+        );
         this.update({
           error: failed,
           message: failed
-            ? `Price loading finished with row errors. Select ${this.priceAction()} to try again.`
-            : "All three price histories loaded. Each row shows its own trading date.",
+            ? `${selected ? `Price history for ${selected.listing.symbol} could not be loaded.` : "Price loading finished with row errors."} ${this.priceRecovery(selected)} to try again.`
+            : selected
+              ? `Price history for ${selected.listing.symbol} loaded. The row shows its own trading date.`
+              : "All three price histories loaded. Each row shows its own trading date.",
         });
       }
     } finally {
@@ -442,6 +476,7 @@ export class ManagedMarkets {
     digest: `sha256:${string}`,
     signal: AbortSignal,
     current: () => boolean,
+    selected?: ManagedMarketsRow,
   ): Promise<boolean> {
     const { listing } = row;
     this.queued.delete(listing.listingId);
@@ -470,11 +505,15 @@ export class ManagedMarkets {
     } catch (error) {
       if (!current()) return false;
       if (this.retireFailedRead(error)) return false;
-      return this.settleRowFailure(row, error);
+      return this.settleRowFailure(row, error, selected);
     }
   }
-  private settleRowFailure(row: ManagedMarketsRow, error: unknown): boolean {
-    const failure = rowFailure(error, this.priceAction());
+  private settleRowFailure(
+    row: ManagedMarketsRow,
+    error: unknown,
+    selected?: ManagedMarketsRow,
+  ): boolean {
+    const failure = rowFailure(error, this.priceRecovery(selected));
     this.updateRow(row.listing.listingId, {
       response: failure.keepPrevious ? row.response : null,
       showingPrevious: failure.keepPrevious && row.response !== null,
@@ -484,7 +523,7 @@ export class ManagedMarkets {
     });
     if (failure.stop)
       this.update({
-        message: `Remaining price requests stopped. ${failure.message}`,
+        message: `${selected ? `Price request for ${selected.listing.symbol} stopped.` : "Remaining price requests stopped."} ${failure.message}`,
         error: failure.error,
       });
     return !failure.stop;

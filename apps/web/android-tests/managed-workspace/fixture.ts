@@ -131,7 +131,10 @@ const snapshot: ManagedCatalogSnapshotDto = {
 /** Test-APK-only data port. There is no fetch, credential, storage, or native-auth fallback. */
 export async function createFixture(
   scenario:
-    "default" | "catalog-startup-recovery" | "company-direct-entry" = "default",
+    | "default"
+    | "catalog-startup-recovery"
+    | "company-direct-entry"
+    | "markets-selected-price" = "default",
 ) {
   const annual = await response();
   const recovered = await response(
@@ -242,7 +245,8 @@ export async function createFixture(
     marketsPacket(index, "initial"),
   );
   const marketsRefreshed = marketsPacket(0, "refreshed");
-  const marketsLate = marketsPacket(1, "late");
+  const selectedPriceScenario = scenario === "markets-selected-price";
+  const marketsLate = marketsPacket(selectedPriceScenario ? 0 : 1, "late");
   let state = {
     load: 0,
     status: 0,
@@ -401,6 +405,32 @@ export async function createFixture(
         (listing) => listing.listingId === request.listingId,
       );
       if (marketIndex !== -1) {
+        if (selectedPriceScenario) {
+          if (
+            signal.aborted ||
+            pendingMarkets ||
+            state.marketsResolve < 1 ||
+            request.catalogSnapshotSha256 !== digest ||
+            request.range !== "1m" ||
+            marketIndex !== 0 ||
+            state.marketsEod >= 3 ||
+            (state.marketsEod === 2 &&
+              (state.marketsAborted !== 1 || state.marketsLateResolved !== 1))
+          )
+            throw new Error("Unexpected invented selected-price request");
+          count("marketsEod");
+          if (state.marketsEod === 1)
+            return Promise.resolve(structuredClone(marketsInitial[0]!));
+          if (state.marketsEod === 3)
+            return Promise.resolve(structuredClone(marketsRefreshed));
+          signal.addEventListener("abort", () => count("marketsAborted"), {
+            once: true,
+          });
+          // The cancelled ALFA reply must not replace its prior dated history.
+          return new Promise((resolve) => {
+            pendingMarkets = resolve;
+          });
+        }
         const expectedIndex =
           state.marketsEod < 3 ? state.marketsEod : state.marketsEod - 3;
         if (
@@ -510,7 +540,7 @@ export async function createFixture(
     settleCancelledMarkets: () => {
       if (
         !pendingMarkets ||
-        state.marketsEod !== 5 ||
+        state.marketsEod !== (selectedPriceScenario ? 2 : 5) ||
         state.marketsAborted !== 1 ||
         state.marketsLateResolved !== 0
       )

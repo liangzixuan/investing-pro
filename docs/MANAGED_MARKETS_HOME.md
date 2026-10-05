@@ -58,6 +58,13 @@ admitting each only when its turn begins. It can consume up to three attempts
 from the existing shared budget. There is no automatic retry, prefetch or resume
 refresh. Selecting a row reuses its current board snapshot.
 
+The selected chart also offers Load or Refresh for its named listing. This
+requests one exact admitted row and preserves the other rows, including their
+dates and error states. Changing the displayed selection while it runs does not
+retarget the request or start another one. Completion and recovery messages name
+the requested listing. A selected request uses the same validation and shared
+budget as the board action; it cannot expand the admitted cohort.
+
 Partial failures belong to their rows. A checked shared cooldown, provider rate
 limit or workspace admission failure stops the remaining queue. Board and price
 panel use the same checked EOD cooldown. The app never invents a provider reset
@@ -70,6 +77,7 @@ cancelled work. Explicit refresh retains each previous history through Cancel
 and supported transient failures, labels it as previous, and replaces it only
 with a validated whole response. Fatal identity, malformed and unknown failures
 clear the affected row. Authentication or catalog retirement clears the board.
+Cancel returns focus to the load control that started the request.
 
 Prices live only in the current Markets visit. Opening research cancels pending
 board work and preserves completed board snapshots. The separate Annual and price

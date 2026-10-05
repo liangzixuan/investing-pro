@@ -106,6 +106,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("catalog-startup-recovery");
         boolean coldCompanyLink = testName.getMethodName().equals("companyLinkDirectEntryAndBackPreserveDraft");
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
+        if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
+            selectFixtureScenario("markets-selected-price");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -786,6 +788,115 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void selectedMarketPriceLoadRefreshAndCancelPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
+        AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            originalActivity.set(new WeakReference<>(activity));
+            originalWebView.set(new WeakReference<>(activity.getBridge().getWebView()));
+        });
+        awaitPage("selected-price journey starts with metadata only",
+            DIAGNOSTICS + ".marketsResolve === 1 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && document.querySelectorAll('.managed-market-row').length === 3");
+        typeIntoInput("workspace-company-query", "ZERO");
+        click(".workspace-global-search button[type=submit]");
+        awaitPage("search remains separate from price reads",
+            DIAGNOSTICS + ".search === 1 && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("selected-price journey reorders the shared draft",
+            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Markets");
+        awaitPage("returning to Markets resolves all identities without a price read",
+            DIAGNOSTICS + ".marketsResolve === 2 && document.querySelectorAll('.managed-market-row').length === 3");
+        for (String symbol : new String[] {"BETB", "BETA", "ALFA"}) {
+            click("button[aria-label='Select " + symbol + " on company board']");
+            awaitPage("selecting " + symbol + " only changes the displayed listing",
+                "document.querySelector('#managed-market-detail-heading')?.textContent === " + JSONObject.quote(symbol + " · one month") +
+                " && Array.from(document.querySelectorAll('.managed-market-close strong')).map(e => e.textContent).join('|') === 'Not loaded|Not loaded|Not loaded'" +
+                " && document.querySelector('.managed-market-detail table') === null" +
+                " && document.querySelector('.managed-market-detail canvas') === null" +
+                " && document.querySelector('.managed-market-change') === null");
+            assertMarketsDraftAndCounts(2, 0, 0, 0);
+        }
+        clickMarketsAction("Load ALFA price");
+        assertSelectedMarketRows(false, false);
+        assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        awaitPage("the one-row action now offers an explicit refresh",
+            "Array.from(document.querySelectorAll('.managed-market-detail button')).some(b => b.textContent === 'Refresh ALFA price' && !b.disabled)");
+        retainSelectedMarketPriceScreenshot();
+        Log.i("ManagedSelectedPrice", "phase=one-loaded-others-unloaded, reads=1; " + pageDiagnostic());
+
+        clickMarketsAction("Refresh ALFA price");
+        awaitPage("the selected refresh retains only ALFA's prior response",
+            DIAGNOSTICS + ".marketsEod === 2 && " + DIAGNOSTICS + ".marketsAborted === 0" +
+            " && document.querySelector('.managed-markets-toolbar .trial-actions button:first-child')?.disabled === true" +
+            " && Array.from(document.querySelectorAll('.managed-markets-toolbar .trial-actions button')).some(b => b.textContent === 'Cancel price loading')");
+        assertSelectedMarketRows(false, true);
+        click("button[aria-label='Select BETA on company board']");
+        awaitPage("changing selection cannot retarget the active ALFA request",
+            "document.querySelector('#managed-market-detail-heading')?.textContent === 'BETA · one month'" +
+            " && document.querySelector('.managed-market-detail table') === null" +
+            " && document.querySelector('.managed-market-detail canvas') === null" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail button')).some(b => b.textContent === 'Load BETA price' && b.disabled)");
+        assertMarketsDraftAndCounts(2, 2, 0, 0);
+        click("button[aria-label='Select ALFA on company board']");
+        assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", true);
+        clickMarketsAction("Cancel price loading");
+        assertMarketsDraftAndCounts(2, 2, 1, 0);
+        assertSelectedMarketRows(false, true);
+        awaitPage("selected cancellation returns focus to the original ALFA action",
+            "document.activeElement?.closest('.managed-market-detail') !== null" +
+            " && document.activeElement?.textContent === 'Refresh ALFA price' && document.activeElement.disabled === false" +
+            " && !Array.from(document.querySelectorAll('.managed-markets-toolbar button')).some(b => b.textContent === 'Cancel price loading')");
+        click("#settle-cancelled-markets");
+        assertMarketsDraftAndCounts(2, 2, 1, 1);
+        assertSelectedMarketRows(false, true);
+        assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", true);
+        awaitPage("late selected prices never replace the original dated response",
+            "!document.querySelector('.managed-markets')?.textContent.includes('998.25')" +
+            " && !document.querySelector('.managed-markets')?.textContent.includes('999.75')");
+        Log.i("ManagedSelectedPrice", "phase=selected-cancelled-late-discarded, reads=2; " + pageDiagnostic());
+
+        clickMarketsAction("Refresh ALFA price");
+        assertSelectedMarketRows(true, false);
+        assertRefreshedSelectedMarketDetail();
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+        click("button[aria-label='Board price history for ALFA']");
+        awaitPage("selected board history opens separate unloaded company research",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('.managed-eod-history table') === null" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null");
+        assertCompanyHistory("listing-alfa", "price", false);
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+        pressBack();
+        awaitPage("one native Back restores the same selected-price opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement === document.querySelector(\"button[aria-label='Board price history for ALFA']\")");
+        assertReturnedRootHistory("listing-alfa", "price");
+        assertSelectedMarketRows(true, false);
+        assertRefreshedSelectedMarketDetail();
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+        selectWorkspaceView("My Watchlist");
+        awaitPage("the selected-price journey preserves the visible unsaved draft",
+            "document.querySelector('#managed-note-1')?.closest('section')?.hidden === false");
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+        scenario.onActivity(activity -> {
+            assertNotNull("Selected-price Activity was collected", originalActivity.get().get());
+            assertNotNull("Selected-price WebView was collected", originalWebView.get().get());
+            assertSame("Selected-price research must preserve Activity", originalActivity.get().get(), activity);
+            assertSame("Selected-price research must preserve WebView", originalWebView.get().get(), activity.getBridge().getWebView());
+        });
+        assertEquals("Selected-price research must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+        Log.i("ManagedSelectedPrice", "phase=selected-refreshed-back-draft-retained, reads=3; " + pageDiagnostic());
+    }
+
+    @Test
     public void companyNoteDraftReviewSaveAndReloadPreservesIdentity() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
@@ -970,6 +1081,54 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void assertSelectedMarketRows(boolean refreshed, boolean previous) throws Exception {
+        String first = refreshed ? "ALFA|$11.5|USD · 2026-09-20" : "ALFA|$10.5|USD · 2026-09-19";
+        String change = refreshed ? "Raw close change: +$0.25 (+2.2222%)" : "Raw close change: +$0.25 (+2.4390%)";
+        String dates = refreshed ? "2026-09-19 to 2026-09-20" : "2026-09-18 to 2026-09-19";
+        awaitPage("only ALFA owns a dated history and raw change",
+            "Array.from(document.querySelectorAll('.managed-market-row')).map(e => e.querySelector('.managed-market-identity strong').textContent + '|' + e.querySelector('.managed-market-close strong').textContent + '|' + e.querySelector('.managed-market-close small').textContent).join(';') === " +
+                JSONObject.quote(first + ";BETA|Not loaded|Load prices when ready;BETB|Not loaded|Load prices when ready") +
+            " && document.querySelectorAll('.managed-market-rows .managed-market-change').length === 1" +
+            " && document.querySelector('.managed-market-rows > li:first-child .managed-market-change strong')?.textContent === " + JSONObject.quote(change) +
+            " && document.querySelector('.managed-market-rows > li:first-child .managed-market-change span')?.textContent === " +
+                JSONObject.quote(dates + " · not adjusted for splits or dividends.") +
+            " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === " + JSONObject.quote(previous ? "ALFA" : "") +
+            " && Array.from(document.querySelectorAll('.managed-market-rows > li')).slice(1).every(e => e.querySelector('.managed-market-change') === null && e.querySelector('.managed-eod-previous') === null)" +
+            " && Array.from(document.querySelectorAll('.managed-market-identity small')).map(e => e.textContent).join('|') === 'Common Stock · XNAS|Class A · XNAS|Class C · XNAS'");
+    }
+
+    private void assertRefreshedSelectedMarketDetail() throws Exception {
+        awaitPage("selected ALFA refresh replaces all values and request dates together",
+            "document.querySelector('#managed-market-detail-heading')?.textContent === 'ALFA · one month'" +
+            " && document.querySelector('.managed-market-detail caption')?.textContent === 'One-month raw closing prices in USD'" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|11.25;2026-09-20|11.5'" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
+            " && document.querySelector('.managed-market-detail .managed-eod-previous') === null" +
+            " && Array.from(document.querySelectorAll('.managed-market-detail button')).some(b => b.textContent === 'Refresh ALFA price' && !b.disabled)");
+    }
+
+    private void retainSelectedMarketPriceScreenshot() throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-market-rows')?.scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Selected-price rows did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const rows = Array.from(document.querySelectorAll('.managed-market-rows > li')); const v = visualViewport;" +
+            " if (rows.length !== 3 || !v) return false; const targets = rows.flatMap(row => [row.querySelector('.managed-market-identity'), row.querySelector('.managed-market-close')]);" +
+            " targets.push(rows[0].querySelector('.managed-market-change'), rows[0].querySelector('.managed-market-change span'));" +
+            " return document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
+            " && targets.every(e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("ALFA's dated price and both untouched listings are fully visible", visible);
+        assertSelectedMarketRows(false, false);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        retainScreenshot("marketsSelectedPrice");
+        awaitPage("one loaded listing and two unloaded listings stayed visible through capture", visible);
+        assertSelectedMarketRows(false, false);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
     }
 
     private void retainMarketsRawChangeScreenshot() throws Exception {
@@ -1181,7 +1340,8 @@ public class ManagedWorkspaceInstrumentedTest {
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
-            scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry"));
+            scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
+            scenarioName.equals("markets-selected-price"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

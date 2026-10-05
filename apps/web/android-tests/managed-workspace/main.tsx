@@ -18,7 +18,8 @@ const scenario = document
 if (
   scenario !== undefined &&
   scenario !== "catalog-startup-recovery" &&
-  scenario !== "company-direct-entry"
+  scenario !== "company-direct-entry" &&
+  scenario !== "markets-selected-price"
 )
   throw new Error("Unknown invented Android test scenario");
 // Fixed test input before the router mounts; no navigation or account bypass.
@@ -52,7 +53,8 @@ function Fixture() {
           <button
             id="settle-cancelled-markets"
             disabled={
-              state.marketsEod !== 5 ||
+              state.marketsEod !==
+                (scenario === "markets-selected-price" ? 2 : 5) ||
               state.marketsAborted !== 1 ||
               state.marketsLateResolved !== 0
             }

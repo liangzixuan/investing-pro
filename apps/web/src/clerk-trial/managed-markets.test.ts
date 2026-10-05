@@ -281,6 +281,275 @@ describe("ManagedMarkets", () => {
     });
   });
 
+  it.each([0, 1, 2])(
+    "loads only selected exact listing %s and leaves other row objects untouched",
+    async (index) => {
+      const { model, read } = await ready();
+      const before = model.getSnapshot().rows;
+      model.select(ids[index]!);
+      expect(read).not.toHaveBeenCalled();
+      await model.loadSelected();
+      expect(read.mock.calls.map(([captured]) => captured)).toEqual([
+        request(index),
+      ]);
+      for (const [rowIndex, row] of model.getSnapshot().rows.entries()) {
+        if (rowIndex === index) {
+          expect(row.response?.security).toEqual(cohort[index]);
+          expect(row.response?.rows[0]!.close).toBe("101.5");
+        } else expect(row).toBe(before[rowIndex]);
+      }
+      expect(model.getSnapshot()).toMatchObject({
+        running: false,
+        error: false,
+      });
+      expect(model.getSnapshot().message).toContain(cohort[index]!.symbol);
+      expect(model.getSnapshot().message).not.toContain("All three");
+    },
+  );
+
+  it("does not load a selection before complete cohort admission", async () => {
+    const { model, resolve, read } = setup();
+    const held = deferred<ManagedCatalogResolveResponse>();
+    await model.loadSelected();
+    model.enter(null);
+    await model.loadSelected();
+    resolve.mockReturnValueOnce(held.promise);
+    model.enter(digest);
+    model.select(ids[0]!);
+    await model.loadSelected();
+    expect(read).not.toHaveBeenCalled();
+    held.resolve({ ...resolved(), results: resolved().results.slice(0, 2) });
+    await settle();
+    await model.loadSelected();
+    expect(model.getSnapshot().rows).toEqual([]);
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("keeps unrelated errors and previous responses untouched without failing a selected success", async () => {
+    const { model, read } = await ready();
+    await model.load();
+    read.mockRejectedValueOnce(new ManagedEodHistoryError("request_timeout"));
+    await model.load();
+    const before = model.getSnapshot().rows;
+    expect(before[0]).toMatchObject({ error: true, showingPrevious: true });
+    model.select(ids[2]!);
+    const replacement = packet(request(2), "112.75");
+    read.mockResolvedValueOnce(replacement);
+    await model.loadSelected();
+    expect(read).toHaveBeenCalledTimes(7);
+    expect(read.mock.calls[6]![0]).toEqual(request(2));
+    expect(model.getSnapshot().rows[0]).toBe(before[0]);
+    expect(model.getSnapshot().rows[1]).toBe(before[1]);
+    expect(model.getSnapshot().rows[2]!.response).toBe(replacement);
+    expect(model.getSnapshot()).toMatchObject({ error: false, running: false });
+    expect(model.getSnapshot().message).toContain("PAIRA loaded");
+  });
+
+  it("captures the selected target while later selection only changes the display", async () => {
+    const { model, read } = await ready();
+    const before = model.getSnapshot().rows;
+    const held = deferred<ManagedEodHistoryResponseDto>();
+    model.select(ids[1]!);
+    read.mockReturnValueOnce(held.promise);
+    const loading = model.loadSelected();
+    model.select(ids[2]!);
+    await model.loadSelected();
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(read.mock.calls[0]![0]).toEqual(request(1));
+    expect(model.getSnapshot().rows[0]).toBe(before[0]);
+    expect(model.getSnapshot().rows[2]).toBe(before[2]);
+    expect(model.getSnapshot().message).toBe("Loading price history for PAIR…");
+    held.resolve(packet(request(1)));
+    await loading;
+    expect(model.getSnapshot().selectedListingId).toBe(ids[2]);
+    expect(model.getSnapshot().rows[1]!.response?.security).toEqual(cohort[1]);
+    expect(model.getSnapshot().rows[2]).toBe(before[2]);
+    expect(model.getSnapshot().message).toContain("PAIR loaded");
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not start a selected request during an existing board queue", async () => {
+    const { model, read } = await ready();
+    const held = deferred<ManagedEodHistoryResponseDto>();
+    read.mockReturnValueOnce(held.promise);
+    const loading = model.load();
+    model.select(ids[2]!);
+    await model.loadSelected();
+    expect(read).toHaveBeenCalledTimes(1);
+    held.resolve(packet(request(0)));
+    await loading;
+    expect(read.mock.calls.map(([captured]) => captured)).toEqual(
+      ids.map((_, index) => request(index)),
+    );
+  });
+
+  it.each(["success", "account error"] as const)(
+    "cancels a selected refresh, retains all snapshots and ignores late %s",
+    async (settlement) => {
+      const { model, read, onReadError } = await ready();
+      await model.load();
+      const before = model.getSnapshot().rows;
+      const held = deferred<ManagedEodHistoryResponseDto>();
+      model.select(ids[1]!);
+      read.mockReturnValueOnce(held.promise);
+      const loading = model.loadSelected();
+      expect(model.getSnapshot().rows[1]!.response).toBe(before[1]!.response);
+      model.select(ids[2]!);
+      model.cancel();
+      expect(read.mock.calls[3]![1].aborted).toBe(true);
+      expect(model.getSnapshot().rows[0]).toBe(before[0]);
+      expect(model.getSnapshot().rows[2]).toBe(before[2]);
+      expect(model.getSnapshot().rows[1]).toMatchObject({
+        response: before[1]!.response,
+        showingPrevious: true,
+        running: false,
+        error: false,
+        message: "Refresh cancelled. Previous history retained.",
+      });
+      const cancelled = model.getSnapshot();
+      if (settlement === "success") held.resolve(packet(request(1), "200"));
+      else held.reject(new TrialApiError("unauthenticated"));
+      await loading;
+      expect(model.getSnapshot()).toBe(cancelled);
+      expect(read).toHaveBeenCalledTimes(4);
+      expect(onReadError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["request_timeout", "unsupported_listing"] as const)(
+    "scopes %s to the captured selection with an accurate recovery action",
+    async (code) => {
+      const { model, read } = await ready();
+      await model.load();
+      const before = model.getSnapshot().rows;
+      const held = deferred<ManagedEodHistoryResponseDto>();
+      model.select(ids[1]!);
+      read.mockReturnValueOnce(held.promise);
+      const loading = model.loadSelected();
+      model.select(ids[2]!);
+      held.reject(new ManagedEodHistoryError(code));
+      await loading;
+      expect(model.getSnapshot().rows[0]).toBe(before[0]);
+      expect(model.getSnapshot().rows[2]).toBe(before[2]);
+      expect(model.getSnapshot().rows[1]).toMatchObject({
+        response: code === "request_timeout" ? before[1]!.response : null,
+        showingPrevious: code === "request_timeout",
+        error: true,
+      });
+      expect(model.getSnapshot().message).toContain(
+        `Select PAIR, then choose ${code === "request_timeout" ? "Refresh" : "Load"} PAIR price`,
+      );
+      expect(read).toHaveBeenCalledTimes(4);
+    },
+  );
+
+  it("rejects a different share-class response without touching its admitted sibling", async () => {
+    const { model, read } = await ready();
+    await model.load();
+    const before = model.getSnapshot().rows;
+    model.select(ids[1]!);
+    read.mockResolvedValueOnce(packet(request(2)));
+    await model.loadSelected();
+    expect(model.getSnapshot().rows[1]).toMatchObject({
+      response: null,
+      error: true,
+    });
+    expect(model.getSnapshot().rows[0]).toBe(before[0]);
+    expect(model.getSnapshot().rows[2]).toBe(before[2]);
+    expect(model.getSnapshot().message).toContain(
+      "Select PAIR, then choose Load PAIR price",
+    );
+    expect(read).toHaveBeenCalledTimes(4);
+  });
+
+  it("shares selected-price cooldown with board and panel actions without resuming automatically", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-20T00:00:00.000Z"));
+    const { model, read, access } = await ready();
+    model.select(ids[1]!);
+    await model.loadSelected();
+    const before = model.getSnapshot().rows;
+    read.mockRejectedValueOnce(
+      new ManagedEodCooldownError("2026-09-20T00:01:00.000Z"),
+    );
+    await model.loadSelected();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(model.getSnapshot().rows[0]).toBe(before[0]);
+    expect(model.getSnapshot().rows[2]).toBe(before[2]);
+    expect(model.getSnapshot().rows[1]!.response).toBe(before[1]!.response);
+    expect(model.getSnapshot().message).toContain(
+      "Price request for PAIR stopped.",
+    );
+    expect(model.getSnapshot().message).toContain(
+      "Select PAIR, then choose Refresh PAIR price",
+    );
+    const panel = new ManagedEodHistory(read, vi.fn(), access);
+    panel.open(eodSelection);
+    await panel.load();
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(model.getSnapshot().message).toContain(
+      "Select Refresh board prices",
+    );
+    vi.advanceTimersByTime(60_000);
+    expect(read).toHaveBeenCalledTimes(2);
+    await model.loadSelected();
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(read.mock.calls[2]![0]).toEqual(request(1));
+  });
+
+  it.each([
+    new TrialApiError("unauthenticated"),
+    new TrialApiError("access_denied"),
+    new TrialApiError("origin_denied"),
+    new ManagedCatalogChangedError(),
+    new ManagedEodHistoryError("catalog_changed"),
+  ])("invalidates the whole board on active selected %s", async (failure) => {
+    const { model, read, onReadError, onCatalogChanged } = await ready();
+    await model.load();
+    model.select(ids[2]!);
+    read.mockRejectedValueOnce(failure);
+    await model.loadSelected();
+    expect(read.mock.calls[3]![0]).toEqual(request(2));
+    expect(model.getSnapshot().rows).toEqual([]);
+    expect(model.getSnapshot().running).toBe(false);
+    expect(model.selection()).toBeNull();
+    if (failure instanceof TrialApiError) {
+      expect(onReadError).toHaveBeenCalledWith(failure);
+      expect(onCatalogChanged).not.toHaveBeenCalled();
+    } else {
+      expect(onCatalogChanged).toHaveBeenCalledTimes(1);
+      expect(onReadError).not.toHaveBeenCalled();
+    }
+    await model.loadSelected();
+    expect(read).toHaveBeenCalledTimes(4);
+  });
+
+  it.each(["leave", "retire", "catalogChanged", "new catalog"] as const)(
+    "%s aborts a selected request and fences its late settlement",
+    async (action) => {
+      const { model, read, onReadError } = await ready();
+      await model.load();
+      const held = deferred<ManagedEodHistoryResponseDto>();
+      model.select(ids[2]!);
+      read.mockReturnValueOnce(held.promise);
+      const loading = model.loadSelected();
+      if (action === "new catalog") {
+        model.enter(`sha256:${"b".repeat(64)}`);
+        await settle();
+      } else model[action]();
+      expect(read.mock.calls[3]![1].aborted).toBe(true);
+      const cleared = model.getSnapshot();
+      expect(cleared.rows.every((row) => row.response === null)).toBe(true);
+      held.reject(new TrialApiError("unauthenticated"));
+      await loading;
+      expect(model.getSnapshot()).toBe(cleared);
+      expect(read).toHaveBeenCalledTimes(4);
+      expect(onReadError).not.toHaveBeenCalled();
+    },
+  );
+
   it("retains complete previous snapshots during refresh and replaces each only on valid success", async () => {
     const { model, read } = await ready();
     await model.load();

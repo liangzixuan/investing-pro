@@ -26,6 +26,7 @@ function PriceControls({
   loadRef,
   onLoad,
   onCancel,
+  loadingSelected,
 }: {
   state: Pick<
     ManagedMarketsState,
@@ -34,6 +35,7 @@ function PriceControls({
   loadRef: Ref<HTMLButtonElement>;
   onLoad: () => void;
   onCancel: MouseEventHandler<HTMLButtonElement>;
+  loadingSelected: boolean;
 }) {
   const hasPrices = state.rows.some((row) => row.response !== null);
   return (
@@ -48,7 +50,7 @@ function PriceControls({
         }
         onClick={onLoad}
       >
-        {state.running
+        {state.running && !loadingSelected
           ? "Loading prices…"
           : hasPrices
             ? "Refresh board prices"
@@ -56,7 +58,7 @@ function PriceControls({
       </button>
       {state.running && (
         <button className="trial-secondary" onClick={onCancel}>
-          Cancel board prices
+          {loadingSelected ? "Cancel price loading" : "Cancel board prices"}
         </button>
       )}
     </div>
@@ -155,10 +157,16 @@ function MarketListingRow({
 
 function SelectedHistory({
   selected,
+  loading,
+  loadRef,
+  onLoad,
   onResearch,
   onWatchlist,
 }: {
   selected: ManagedMarketsRow;
+  loading: boolean;
+  loadRef: Ref<HTMLButtonElement>;
+  onLoad: () => void;
   onResearch: ManagedMarketsProps["onResearch"];
   onWatchlist: ManagedMarketsProps["onWatchlist"];
 }) {
@@ -173,6 +181,11 @@ function SelectedHistory({
       </h3>
       <p>{selected.listing.shareClassName}</p>
       <div className="trial-actions">
+        <button ref={loadRef} disabled={loading} onClick={onLoad}>
+          {selected.running
+            ? `Loading ${selected.listing.symbol} price…`
+            : `${response ? "Refresh" : "Load"} ${selected.listing.symbol} price`}
+        </button>
         <button
           className="trial-secondary"
           aria-label={`Board Annual report for ${selected.listing.symbol}`}
@@ -225,8 +238,8 @@ function SelectedHistory({
         </>
       ) : (
         <p className="managed-market-empty">
-          Load board prices to see this listing's dated chart and exact closing
-          values. Selecting a listing makes no price request.
+          Load {selected.listing.symbol} price to see its dated chart and exact
+          closing values. Selecting a listing makes no price request.
         </p>
       )}
     </div>
@@ -244,11 +257,13 @@ export function ManagedMarkets({
     model.getSnapshot,
   );
   const load = useRef<HTMLButtonElement>(null);
+  const loadSelected = useRef<HTMLButtonElement>(null);
+  const loadingSelected = useRef(false);
   const restoreLoad = useRef(false);
   useLayoutEffect(() => {
     if (!state.running && restoreLoad.current) {
       restoreLoad.current = false;
-      load.current?.focus();
+      (loadingSelected.current ? loadSelected : load).current?.focus();
     }
   }, [state.running]);
   const selected = state.rows.find(
@@ -273,8 +288,12 @@ export function ManagedMarkets({
         <PriceControls
           state={state}
           loadRef={load}
-          onLoad={() => void model.load()}
+          onLoad={() => {
+            loadingSelected.current = false;
+            void model.load();
+          }}
           onCancel={handleCancel}
+          loadingSelected={loadingSelected.current}
         />
       </div>
       <p className="managed-markets-scope">
@@ -312,14 +331,21 @@ export function ManagedMarkets({
             ))}
           </ul>
           <p className="managed-markets-help">
-            Load requests the listings in order, up to three separate requests.
-            Cancel keeps completed histories. Prices clear when you leave
-            Markets.
+            Load board prices requests all three listings in order. The selected
+            listing's price action makes one request and keeps the other
+            histories. Cancel keeps completed histories. Prices clear when you
+            leave Markets.
           </p>
         </div>
         {selected && (
           <SelectedHistory
             selected={selected}
+            loading={state.running || state.resolving || state.catalogChanged}
+            loadRef={loadSelected}
+            onLoad={() => {
+              loadingSelected.current = true;
+              void model.loadSelected();
+            }}
             onResearch={onResearch}
             onWatchlist={onWatchlist}
           />

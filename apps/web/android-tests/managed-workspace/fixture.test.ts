@@ -296,6 +296,100 @@ describe("Android managed fixture startup", () => {
     },
   );
 
+  it("limits the selected-price scenario to ALFA and releases only its cancelled refresh", async () => {
+    const fixture = await createFixture("markets-selected-price");
+    const signal = new AbortController().signal;
+    const request = {
+      catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
+      listingId: fixture.marketsCohort[0].listingId,
+      range: "1m" as const,
+    };
+    expect(() => fixture.api.eodHistory(request, signal)).toThrow(
+      "Unexpected invented selected-price request",
+    );
+    await fixture.api.resolve(
+      {
+        snapshotSha256: request.catalogSnapshotSha256,
+        listingIds: fixture.marketsCohort.map((listing) => listing.listingId),
+      },
+      signal,
+    );
+    expect(fixture.getSnapshot().marketsEod).toBe(0);
+    for (const listing of fixture.marketsCohort.slice(1))
+      expect(() =>
+        fixture.api.eodHistory(
+          { ...request, listingId: listing.listingId },
+          signal,
+        ),
+      ).toThrow("Unexpected invented selected-price request");
+    expect(() =>
+      fixture.api.eodHistory(
+        { ...request, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
+        signal,
+      ),
+    ).toThrow("Unexpected invented selected-price request");
+    const alreadyCancelled = new AbortController();
+    alreadyCancelled.abort();
+    expect(() =>
+      fixture.api.eodHistory(request, alreadyCancelled.signal),
+    ).toThrow("Unexpected invented selected-price request");
+    const initial = await fixture.api.eodHistory(request, signal);
+    expect(parseManagedEodHistoryResponse(initial, request)).toEqual(initial);
+    expect(initial.security).toEqual(fixture.marketsCohort[0]);
+    expect(initial.rows).toEqual([
+      { date: "2026-09-18", close: "10.25" },
+      { date: "2026-09-19", close: "10.5" },
+    ]);
+    const controller = new AbortController();
+    const pending = fixture.api.eodHistory(request, controller.signal);
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    expect(() => fixture.settleCancelledMarkets()).toThrow(
+      "Only the cancelled Markets row may settle",
+    );
+    expect(() => fixture.api.eodHistory(request, signal)).toThrow(
+      "Unexpected invented selected-price request",
+    );
+    controller.abort();
+    expect(settled).toBe(false);
+    fixture.settleCancelledMarkets();
+    const late = await pending;
+    expect(parseManagedEodHistoryResponse(late, request)).toEqual(late);
+    expect(late.security).toEqual(fixture.marketsCohort[0]);
+    expect(late.rows.at(-1)?.close).toBe("999.75");
+    expect(initial.rows.at(-1)?.close).toBe("10.5");
+    expect(() => fixture.settleCancelledMarkets()).toThrow(
+      "Only the cancelled Markets row may settle",
+    );
+    const refreshed = await fixture.api.eodHistory(request, signal);
+    expect(parseManagedEodHistoryResponse(refreshed, request)).toEqual(
+      refreshed,
+    );
+    expect(refreshed.rows).toEqual([
+      { date: "2026-09-19", close: "11.25" },
+      { date: "2026-09-20", close: "11.5" },
+    ]);
+    expect(() => fixture.api.eodHistory(request, signal)).toThrow(
+      "Unexpected invented selected-price request",
+    );
+    expect(fixture.getSnapshot()).toMatchObject({
+      marketsResolve: 1,
+      marketsEod: 3,
+      marketsAborted: 1,
+      marketsLateResolved: 1,
+      resolve: 0,
+      eod: 0,
+      annual: 0,
+      save: 0,
+      token: 0,
+      signOut: 0,
+    });
+  });
+
   it("keeps the invented board's ordered reads separate and holds only its cancelled refresh", async () => {
     const fixture = await createFixture();
     const signal = new AbortController().signal;
