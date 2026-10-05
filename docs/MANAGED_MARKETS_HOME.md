@@ -1,6 +1,6 @@
 # Managed Markets home
 
-The selected first Markets page is a company board for three admitted listings:
+Markets is a company board for three admitted listings:
 AAPL, GOOG and GOOGL, representing two issuers. It connects dated raw closes,
 one-month history, Annual research and the existing watchlist. It uses the compact
 navigation, board and chart pattern of a market portal with our own branding and

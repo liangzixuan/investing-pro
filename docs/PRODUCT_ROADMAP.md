@@ -54,25 +54,25 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.5 package share Discover, a private
+The managed website and signed Android 1.6 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.5 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.6 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.5. Previous histories keep their original dates. Physical
+and in signed Android 1.6. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.5. It uses the three accepted
+and in signed Android 1.6. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
-returns, percentage movers or benchmarks. Preserve usable data, unsaved drafts and recoverable
+returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
 error states as capabilities grow. The broader local research tools remain
 available in their separate profile; their existence does not establish managed
 delivery.
@@ -98,12 +98,19 @@ required actual-main checks, website promotion and signed-artifact delivery pass
 This step adds no automatic save or source request and
 reuses the existing schema, API and dependencies.
 
-The next selected step adds a dated raw-close comparison to each Markets row.
-It uses the final two observations already loaded for that listing, with both
-dates, exact USD change, a rounded percentage and a visible unadjusted-price
-disclosure. One observation cannot supply a change. This small board improvement
-adds no feed, request or persistent state. Implementation and verification are in
-progress; full M1 and M2 remain open.
+PR 36 and signed Android 1.6 deliver a dated raw-close comparison on each Markets
+row. It uses the final two observations already loaded for that listing, with
+both dates, exact USD change, a rounded percentage and an unadjusted-price
+disclosure. One observation cannot supply a change. Required actual-main checks,
+twelve isolated Android cases, website promotion and signed-artifact delivery
+passed. A separate bounded live board check verified all three comparisons,
+Back navigation and clearing on exit. An initial saved-watchlist read failed and
+recovered through an explicit reload; its cause and repeat reliability remain
+unknown. This step adds no feed, request or persistent state.
+
+The selected raw-close step is complete. Full M1 and M2, bookmarkable company
+routes and broader data coverage remain open. The next bounded product outcome
+remains to be selected.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

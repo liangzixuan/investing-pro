@@ -50,7 +50,7 @@ before display. The workspace stays mounted while a panel is open, preserving
 unsaved note/order state. Closing restores focus through the same screen action
 used by [Android Back](../apps/web/src/mobile/android-back.ts).
 
-The selected [Markets home](MANAGED_MARKETS_HOME.md) adds a visit-scoped board
+The delivered [Markets home](MANAGED_MARKETS_HOME.md) adds a visit-scoped board
 model owned by the same workspace. It resolves a declared exact cohort and loads
 prices sequentially only on request. Board and EOD panel share one checked
 cooldown owner; their price snapshots remain separate. Navigation leaves the
@@ -63,6 +63,9 @@ exact decimal subtraction and percentage rounding. UI formatting exposes both
 dates, direction and the unadjusted basis. There is no additional response store,
 request or lifetime: a replacement history replaces its comparison, retained
 history keeps its original comparison, and clearing the response clears both.
+
+PR 36 delivers this comparison on the managed website and in signed Android
+1.6.0/code 7. Physical-device acceptance remains separate.
 
 Each read model can retain its last validated response during explicit refresh
 and its defined recoverable failures. The panel marks that response as previous
