@@ -114,6 +114,14 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
+The next candidate adds an explicit Load/Refresh action for one selected Markets
+listing. It reuses the existing queue, shared cooldown and exact identity checks,
+keeps the other board histories unchanged and makes no request on selection.
+Source implementation and isolated verification are in progress. This candidate
+has no publication, website promotion, signed APK or physical-device acceptance
+yet; the accepted PR 40 runtime above remains the delivery baseline. PR 41
+published the corresponding release-status documentation without app changes.
+
 The portable documentation update in PR 28 is accepted on main
 `f18d80153e94dcb6236e31fd8324ee3e23a3bde0`. Its original source proof, applicable
 main jobs and nine-case synthetic native report were accepted. It changed no

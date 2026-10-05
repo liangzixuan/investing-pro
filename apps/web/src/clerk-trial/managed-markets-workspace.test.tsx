@@ -64,6 +64,7 @@ describe("Markets and mounted workspace", () => {
     expect(read).not.toHaveBeenCalled();
     const unloaded = html();
     expect(unloaded).toContain("Load board prices");
+    expect(unloaded).toContain("Load ALFA price");
     expect(unloaded).toContain('aria-label="Select ALFA on company board"');
     expect(unloaded).toContain('aria-label="Board Annual report for ALFA"');
     expect(unloaded).toContain("not live quotes or adjusted returns");
@@ -93,6 +94,75 @@ describe("Markets and mounted workspace", () => {
     workspace.markets.select(marketsCohort[2].listingId);
     expect(html()).toContain("BETB · one month");
     expect(read).toHaveBeenCalledTimes(3);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("loads only the selected listing and preserves its history and draft through research and Back", async () => {
+    const { workspace, read, save, html, marketsCohort } = await fixture();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+    workspace.note(member.listingId, "Invented note before one price read");
+    workspace.move(member.listingId, -1);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.markets.select(marketsCohort[2].listingId);
+    expect(read).not.toHaveBeenCalled();
+    expect(html()).toContain("Load BETB price");
+    const untouched = workspace.markets.getSnapshot().rows.slice(0, 2);
+    await workspace.markets.loadSelected();
+    expect(read.mock.calls.map(([request]) => request.listingId)).toEqual([
+      marketsCohort[2].listingId,
+    ]);
+    const loaded = workspace.markets.getSnapshot().rows[2]!.response;
+    expect(loaded).not.toBeNull();
+    expect(html()).toContain("Refresh BETB price");
+    untouched.forEach((row, index) =>
+      expect(workspace.markets.getSnapshot().rows[index]).toBe(row),
+    );
+    workspace.openMarketResearch("eod", marketsCohort[2].listingId);
+    expect(workspace.eod.getSnapshot().response).toBeNull();
+    workspace.closeResearch();
+    expect(workspace.markets.getSnapshot().rows[2]!.response).toBe(loaded);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.setView("watchlist");
+    expect(workspace.markets.getSnapshot().rows).toEqual([]);
+    workspace.setView("markets");
+    await vi.waitFor(() =>
+      expect(workspace.markets.getSnapshot().rows).toHaveLength(3),
+    );
+    expect(
+      workspace.markets.getSnapshot().rows.every((row) => !row.response),
+    ).toBe(true);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("opening another company's research cancels a selected refresh and fences its late response", async () => {
+    const { workspace, read, save, marketsCohort } = await fixture();
+    await workspace.markets.loadSelected();
+    const previous = workspace.markets.getSnapshot().rows[0]!.response;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    let finish!: (value: ReturnType<typeof eodResponse>) => void;
+    read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = workspace.markets.loadSelected();
+    workspace.markets.select(marketsCohort[1].listingId);
+    workspace.openMarketResearch("annual", marketsCohort[1].listingId);
+    expect(read.mock.calls[1]![1].aborted).toBe(true);
+    finish({ ...eodResponse(), security: marketsCohort[0] });
+    await pending;
+    workspace.closeResearch();
+    expect(workspace.markets.getSnapshot().selectedListingId).toBe(
+      marketsCohort[1].listingId,
+    );
+    expect(workspace.markets.getSnapshot().rows[0]!.response).toBe(previous);
+    expect(workspace.markets.getSnapshot().rows[0]!.showingPrevious).toBe(true);
+    expect(workspace.markets.getSnapshot().rows[1]!.response).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(read).toHaveBeenCalledTimes(2);
     expect(save).not.toHaveBeenCalled();
   });
 

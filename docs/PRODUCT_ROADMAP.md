@@ -123,8 +123,13 @@ original raw USD decimal from the loaded response; the full semantic table
 remains available without a pointer. Required source and hosted checks, scoped
 isolated browser/native evidence, website promotion and signed-artifact delivery
 passed. This step adds no entitlement, source, request, dependency or persistent
-data. See [Current work](./CURRENT_WORK.md) for the evidence limits. No next
-product slice is selected; full M1 and M2 and broader data coverage remain open.
+data. See [Current work](./CURRENT_WORK.md) for the evidence limits.
+
+The next selected outcome is explicit Load/Refresh for one Markets listing.
+Inspecting one company will need one admitted price request while preserving the
+other board histories. The full-board action remains available. Implementation
+and isolated verification are in progress; delivery is not accepted yet. Full M1
+and M2 and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
