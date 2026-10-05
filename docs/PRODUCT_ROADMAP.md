@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.6 package share Discover, a private
+The managed website and signed Android 1.7 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.6 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.7 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.6. Previous histories keep their original dates. Physical
+and in signed Android 1.7. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.6. It uses the three accepted
+and in signed Android 1.7. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -87,8 +87,8 @@ clears the workspace. The existing sources and request models supply this behavi
 
 Signed Android 1.4 uses the existing package and production signer. Build,
 artifact and delivery reviews passed; physical-device acceptance remains open.
-The selected company-visit step is complete, while bookmarkable routes, key
-statistics, valuation, peers and full M2 remain open.
+The selected company-visit step is complete. Key statistics, valuation, peers and
+full M2 remain open.
 
 PR 35 and signed Android 1.5 bring the shared watchlist research-note draft into the
 company visit. Existing members show their current note; other listings require
@@ -108,11 +108,18 @@ Back navigation and clearing on exit. An initial saved-watchlist read failed and
 recovered through an explicit reload; its cause and repeat reliability remain
 unknown. This step adds no feed, request or persistent state.
 
-The selected raw-close step is complete. The current candidate implements
-bookmarkable company visits for the existing Price and Annual sections. It reuses
-exact catalog identity, explicit source requests and the current watchlist draft.
-Its browser history, sign-in return and Android Back behavior require acceptance
-before delivery. Full M1 and M2 and broader data coverage remain open.
+PR 38 and signed Android 1.7 deliver bookmarkable company visits for the existing
+Price and Annual sections. The root URL keeps exact listing identity; section
+changes preserve the visit's validated results, and Back returns to the opener
+or Markets for a direct link. Opening a link resolves catalog metadata and leaves
+research unloaded. Required actual-main checks, the original thirteen-case native
+report, website promotion and signed-artifact delivery passed. External Android
+app links, process-death restoration and physical-device acceptance remain outside
+this delivered scope.
+
+The selected link outcome is complete. Select the next bounded product outcome
+from this roadmap; none is selected yet. Full M1 and M2 and broader data coverage
+remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

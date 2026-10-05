@@ -3,18 +3,18 @@
 A company visit connects the existing Price and Annual sections for one exact
 listing. Load either section, inspect the other, then return to the loaded result
 without sending another request. Back returns to the original Markets, Discover
-or watchlist control and preserves the mounted workspace draft.
+or watchlist control and preserves the mounted workspace draft. A direct link
+falls back to Markets.
 
 This is a bounded step toward the company workflow in the
 [product roadmap](PRODUCT_ROADMAP.md). It adds no key statistics, valuation or
-peers. Bookmarkable visits are implemented in the current candidate, described
-below, with release acceptance still pending.
-[Current work](CURRENT_WORK.md) distinguishes
-implementation and synthetic verification from website and signed Android delivery.
+peers. Bookmarkable visits are delivered through PR 38 on the website and in
+signed Android 1.7. [Current work](CURRENT_WORK.md) records the accepted source
+and artifacts, with physical-device acceptance kept separate.
 
-## Bookmarkable visits awaiting release
+## Bookmarkable visits
 
-The selected URL shape is `/?company=<listing-id>&section=price` or
+The URL shape is `/?company=<listing-id>&section=price` or
 `/?company=<listing-id>&section=annual`, with the listing ID canonically encoded.
 This keeps the page at the document root and leaves the fragment available for
 Clerk sign-in. A company link identifies a listing, not a ticker or issuer:
@@ -34,12 +34,13 @@ opener. A direct link has no in-app opener and returns to Markets. Forward or
 reopening creates a fresh unloaded visit. Review in My Watchlist closes research
 and uses the existing full-list save workflow.
 
-Pending catalog resolution must be cancelled on leaving, catalog invalidation or
-session retirement. A late response cannot restore an abandoned visit. These
-behaviors have local model, navigation and screen coverage. Hosted native and
-release acceptance remain pending. Browser bookmarks,
-installed-app history, Android app links and physical-device acceptance have
-separate scope; this step does not register external Android app links.
+Pending catalog resolution is cancelled on leaving, catalog invalidation or
+session retirement. A late response cannot restore an abandoned visit. Local
+model, navigation and screen checks and the original PR 38 main emulator report
+cover these lifetimes. The native journey includes a direct company link that
+resolves metadata, stays unloaded and returns to Markets through Android Back.
+External Android app links and process-death restoration are not implemented.
+Physical installation and use of signed Android 1.7 remain unperformed.
 
 ## Source and screen contract
 
@@ -119,6 +120,13 @@ close history, request counts and native Back to the original opener.
 The note journey covers draft sharing, exact identity, stale controls, guarded
 editing, Add without an implicit save, review focus and explicit save/reload
 through the existing watchlist. Mutation checks use invented records.
+
+The link checks cover validated sign-in return destinations, malformed and
+unavailable listings, pending resolution, browser history, repeated Back and
+section transitions, and preservation of the in-app opener and draft. A bounded
+live browser check observed section URLs, an unloaded direct Annual visit after
+reload, and the return to Markets without source-load or save actions. This was
+UI evidence, not a captured network-count test or physical-device check.
 
 Synthetic checks use invented records. Current work records the results actually
 obtained; live browser, exact-build website, emulator, signed-artifact and
