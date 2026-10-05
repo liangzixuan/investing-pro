@@ -8,35 +8,36 @@ or develop the repository.
 
 ## Accepted release
 
-PR 40 is merged as `d868600eaaef7592714d6e709ea130a6ad1ce2ae`, from candidate
-`89585a62c6a5971998a84577ed1f7a56900809c1`, with tree
-`2c0d9df9b284eb1cdfc5aa9157f737852117466e`. All five required actual-main workflows
-and six jobs passed, and the original source proof and thirteen-case native
-report were accepted. The website and signed Android 1.8 now offer exact dated
-raw-close inspection in the shared Markets and company Price chart. Staging
-passed its configured BrowserStack gate, followed by normal production approval
-and promotion of the same archive. The APK passed build, artifact and delivery
-review with the existing signer.
+PR 42 is merged as `8f05ab64b511d8f6de3d07f34855527d5ee8dce8`, from candidate
+`10fb2b1be25d7f5b066b497b07d380ed83dec92d`, with tree
+`1d415f5a73abc3e790d4a165d34f71438185446f`. Its required actual-main checks,
+original source proof from successful CI attempt 2 and synthetic native report
+are accepted. The website and signed Android 1.9 offer explicit Load or Refresh
+for one selected Markets listing while retaining the other board histories. Staging passed its
+configured BrowserStack gate, then normal production approval promoted the same
+archive. The signed Android 1.9 package passed build, artifact and delivery
+review with the existing production signer.
 
 | Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                       |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known   |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac3ac4a18b44a51bf2c`; PR 40 staging archive promoted after the configured normal approval                                          | Staging BrowserStack covers the inert shell; this release has no live chart/provider or continuing-availability acceptance                   |
-| Signed Android artifact   | Investment 1.8.0, code 9, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                            | Physical installation and use of 1.2 through 1.8 remain unperformed                                                                          |
-| Automated Android         | PR 40: thirteen passing API-36 emulator cases, 25 original PNGs, 22 managed captures and ten source markers; one original tooltip frame received scoped visual review           | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.8                                                                                |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac41ece3facc2368045`; PR 42 staging archive promoted after normal approval; one live selected AAPL journey passed                  | Staging BrowserStack covers the inert shell; the bounded live browser check does not establish continuing availability or physical-phone use |
+| Signed Android artifact   | Investment 1.9.0, code 10, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                           | Physical installation and use of 1.2 through 1.9 remain unperformed                                                                          |
+| Automated Android         | PR 42: fourteen passing invented-data API-36 emulator cases; two selected-price/draft frames received scoped visual review                                                      | Invented data, debug test fixture; no production sign-in, complete journey visual review, process-death persistence or physical-device claim |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.9                                                                                |
 | Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                       |
 
-The accepted 1.8 APK is 6,652,376 bytes, SHA-256
-`1816884a2fcfbe335bf0a77107c6e39bb564fc2cb792c89a3503bea585ceaac6`.
-It was built from the accepted main above, whose tree matches the published
-candidate. Production `6ac3ac4a18b44a51bf2c` replaced `6ac36e7b36f30b04188f`;
-prior signed artifacts and rollback identities remain preserved. API source
-continuity was reviewed across 109 unchanged inputs. This does not establish
+The accepted 1.9 APK is 6,652,672 bytes, SHA-256
+`05d7ece436d62f4aeb1b9f75de0db7a41695c22edd133cda96ca916113d950b3`.
+It was built from PR 42 main `8f05ab64b511d8f6de3d07f34855527d5ee8dce8`,
+whose tree matches the published candidate. The website at
+`6ac41ece3facc2368045` replaced `6ac3ac4a18b44a51bf2c`; the prior signed 1.8
+package and rollback identities remain preserved. API source continuity was
+reviewed across 109 unchanged inputs. This does not establish
 fresh API activation or continuing availability. Signed packages and operational
 evidence are not part of the public source tree.
 
-Isolated Brave checks covered desktop pointer selection, narrow exact-decimal
+For PR 40, isolated Brave checks covered desktop pointer selection, narrow exact-decimal
 wrapping, readout cleanup and keyboard focus reaching the table. The native
 report covers real touches on first, last and replacement rows with unchanged
 request/save counters; one tooltip frame received visual review. Unpressed
@@ -46,11 +47,13 @@ use remain unverified.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.8. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.9. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
-Selecting a row reuses its chart and exact-value table.
+Selecting a row reuses its chart and exact-value table. Load or Refresh for the
+named selection requests only that listing. Changing selection
+while it runs does not retarget the request; the other rows stay unchanged.
 Research opens without another price load, and Back returns to the board opener.
 Leaving Markets clears prices without changing the mounted watchlist draft.
 The board covers three listings for two issuers; it has no mover rankings,
@@ -109,18 +112,34 @@ After PR 38 website delivery, a separate bounded browser check observed Price
 and Annual URLs, reloaded the Annual link with an existing session, and returned
 to Markets. The direct visit remained unloaded. No provider-load or watchlist-save
 action was used; this UI observation did not measure network request counts.
+At 22:58 UTC on October 5, one explicit selected AAPL load on the PR 42 website
+displayed 20 dated raw USD closes from September 8 through October 5, within the
+requested September 5 to October 5 window. GOOG and GOOGL stayed unloaded.
+Switching to GOOG and back preserved AAPL's chart; company Price opened unloaded,
+and Back restored the board and opener focus. My Watchlist remained saved and
+unchanged. No Refresh, full-board load, separate panel Load or watchlist mutation
+was used. This UI observation did not measure network request counts.
 These cases establish their bounded live journeys, not other fields, ongoing
 availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-The next candidate adds an explicit Load/Refresh action for one selected Markets
-listing. It reuses the existing queue, shared cooldown and exact identity checks,
-keeps the other board histories unchanged and makes no request on selection.
-Source implementation and isolated verification are in progress. This candidate
-has no publication, website promotion, signed APK or physical-device acceptance
-yet; the accepted PR 40 runtime above remains the delivery baseline. PR 41
-published the corresponding release-status documentation without app changes.
+The selected-price website release
+[37376152577](https://github.com/liangzixuan/investing-pro/actions/runs/37376152577)
+is accepted. The full-board action remains available for AAPL, GOOG and GOOGL;
+both actions use the existing queue, shared cooldown, identity checks and
+cancellation rules. Synthetic native checks cover the single-listing request,
+selection during refresh, retained history after Cancel, late replies and the
+watchlist draft. BrowserStack covers the inert staged shell; neither establishes
+a new live selected-price provider journey.
+
+Signed Android 1.9.0, code 10, is delivered with the same package and production
+signer. Original failed verification records remain privately retained. PR 41
+published the preceding release-status documentation without app changes.
+
+The bounded live selected-AAPL journey is accepted. A physical Android update
+check remains open: use of 1.2 through 1.9 is unperformed, and the owner-reported
+1.1 result does not accept those versions. No new product slice is selected.
 
 The portable documentation update in PR 28 is accepted on main
 `f18d80153e94dcb6236e31fd8324ee3e23a3bde0`. Its original source proof, applicable
@@ -224,9 +243,8 @@ the loaded response and ECharts, with the full exact-value table available for
 keyboard and screen-reader use. No entitlement, source, request, dependency or
 persistent data was added.
 
-The selected chart outcome is complete. No next product slice is selected.
-Full M1/M2 and broader source coverage remain open. Repomix PR 27 stays held
-under resolved Option A.
+The chart outcome is complete. Full M1/M2 and broader source coverage remain
+open. Repomix PR 27 stays held under resolved Option A.
 
 ## Open limits
 

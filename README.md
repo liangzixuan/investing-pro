@@ -14,16 +14,19 @@ capabilities and acceptance are different:
 | Local research workspace              | Broader financials, valuation, comparisons, screening, portfolio and filing tools                                                  | Explicit local startup with an admitted catalog and encrypted vault; not migrated to the managed service            |
 | Synthetic demo / disconnected Android | Reproducible development and test journeys                                                                                         | Invented data; no production account, provider key or owner vault required                                          |
 
-The managed website and signed Android 1.6.0 package include a three-listing
-Markets board with dated raw-close changes and company research visits that
-retain loaded Price and Annual sections, with a shared watchlist research-note
-draft. Each change compares the final two observations already loaded for that
-listing and discloses that prices are not adjusted for splits or dividends.
-Explicit authenticated AAPL, GOOG and GOOGL reads and their displayed changes
-have passed bounded live checks. Coverage remains limited to those exact listings.
-Physical-device acceptance for Android 1.2 through 1.6 remains open.
-See [current status and limits](docs/CURRENT_WORK.md)
-for the dated source, release surfaces and next work.
+The managed workspace includes a three-listing Markets board with dated
+raw-close changes and company research visits that retain loaded Price and Annual
+sections, with a shared watchlist research-note draft. Each change compares the
+final two observations already loaded for that listing and discloses that prices
+are not adjusted for splits or dividends. Markets coverage remains limited to AAPL, GOOG
+and GOOGL. An explicit Load or Refresh for one selected listing preserves the
+other board histories. Selection alone makes no price request.
+
+[Current status and limits](docs/CURRENT_WORK.md#accepted-release) records the
+accepted website and signed Android releases, source revisions and physical-device
+status. Earlier bounded live checks covered explicit reads for those three listings
+and their displayed changes; they do not establish acceptance of later client
+changes. The current-work record retains the dated evidence and next work.
 
 ## Start reading
 

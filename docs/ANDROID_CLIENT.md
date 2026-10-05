@@ -1,11 +1,14 @@
 # Android client
 
 The managed Android app packages the shared React workspace with Capacitor.
-Clerk supplies native sign-in; Appwrite hosts the managed API and data. Signed
-Investment 1.3.0 (version code 4, `app.investingpro.android`) was built and delivered
-from the accepted PR 32 source tree. Its package, signer, bundled assets and backup
-rules passed artifact review. Physical installation and use of 1.3 remain open.
-[Current work](./CURRENT_WORK.md) records the exact source and APK digest.
+Clerk supplies native sign-in; Appwrite hosts the managed API and data. The
+production package is `app.investingpro.android`.
+[Current work](./CURRENT_WORK.md#accepted-release) records the accepted version,
+source revision, APK digest and physical-device status.
+
+PR 32 delivered Investment 1.3.0 (version code 4) from its accepted source tree.
+Its package, signer, bundled assets and backup rules passed artifact review;
+physical installation and use of 1.3 were not established by that review.
 
 The production 1.1 upgrade/checklist was owner-reported as passed on a Pixel 10 Pro
 XL running Android 17, without per-step device logs. Earlier development-trial
@@ -28,8 +31,8 @@ the browser client, whose output directories remain `dist/clerk-trial` and
 `https://localhost`; browser and native targets cannot substitute for each other.
 
 The current managed native source renders Markets, Discover and My Watchlist
-through the same native session adapter used by the trial. Signed Android 1.3
-includes Markets, direct research switching and retained refresh histories. Each
+through the same native session adapter used by the trial. The shared workspace
+includes direct research switching and retained refresh histories. Each
 session generation owns its workspace; sign-out retires it and cancels pending work.
 The Clerk Android SDK owns hosted sign-in, callbacks and encrypted credential
 storage. Short-lived operation tokens cross the bridge only when needed; the
@@ -64,8 +67,8 @@ against its selected profile and copied Capacitor configuration before packaging
 Do not sync over retained outputs before preserving their original bytes.
 
 ```powershell
-# Accepted 1.3 build shape, from apps/web/android with reviewed inputs supplied.
-# A later delivered update must use a higher version code.
+# Historical 1.3 build example, from apps/web/android with reviewed inputs supplied.
+# For a new release, supply its reviewed version name and a higher version code.
 ./gradlew.bat --no-daemon --console=plain -PinvestmentClientProfile=managed -PinvestmentVersionCode=4 -PinvestmentVersionName=1.3.0 assembleRelease
 ```
 
@@ -190,7 +193,8 @@ must preserve existing owner records and follow the selected device journey.
 
 BrowserStack remains browser-only. Synthetic tests and browser checks do not
 substitute for physical Pixel results. The production 1.1 owner report remains
-historical; physical use of 1.2 and 1.3 is unverified. These limits are summarized
-in [Current work](./CURRENT_WORK.md).
+historical and does not accept later versions. See
+[Current work](./CURRENT_WORK.md#accepted-release) for version-specific physical
+acceptance and its limits.
 Native iOS and public store distribution are later
 outcomes with separate toolchain, signing and device requirements.

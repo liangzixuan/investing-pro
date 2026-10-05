@@ -15,7 +15,7 @@ explicit retry. Catalog membership alone does not establish price coverage;
 configured service admission and typed provider refusals remain authoritative.
 
 The three Tiingo EOD mappings have separate private-use acceptance. Each history
-response supplies 1–32 raw USD closes, trading dates, a one-calendar-month window
+response supplies 1 to 32 raw USD closes, trading dates, a one-calendar-month window
 and request start/completion times. The [EOD contract](MANAGED_EOD_HISTORY.md)
 continues to validate full listing and share-class identity, decimals and dates.
 GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, mover
@@ -100,3 +100,18 @@ retirement, draft retention and panel navigation. Native fixture coverage and
 desktop/narrow visual checks are separate from live provider reads, website
 promotion, signed Android packaging and physical-phone acceptance. Do not use
 owner records as test fixtures or infer whole-market coverage from this board.
+
+## Selected-price acceptance
+
+PR 42 delivers the selected-price action on the website and in signed Android
+1.9. The invented native journey checks zero price reads on selection, one
+explicit selected load, unchanged untargeted rows, cancelled refresh with prior
+history retained, and a late reply that cannot replace it. Research, Back and the watchlist draft retain their existing behavior.
+Two original selected-price/draft frames received scoped visual review.
+
+The same staged archive passed the configured inert BrowserStack gate and normal
+production approval. These checks do not establish a live selected-price provider
+journey or physical-phone acceptance. The signed package passed artifact and
+delivery review; installation and physical use remain separate. See
+[Current work](CURRENT_WORK.md#accepted-release) for release identities and
+current limits.

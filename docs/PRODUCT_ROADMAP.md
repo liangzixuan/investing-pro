@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.8 package share Discover, a private
+The managed website and signed Android 1.9 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.8 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.9 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.8. Previous histories keep their original dates. Physical
+and in signed Android 1.9. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.8. It uses the three accepted
+and in signed Android 1.9. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -125,11 +125,13 @@ isolated browser/native evidence, website promotion and signed-artifact delivery
 passed. This step adds no entitlement, source, request, dependency or persistent
 data. See [Current work](./CURRENT_WORK.md) for the evidence limits.
 
-The next selected outcome is explicit Load/Refresh for one Markets listing.
-Inspecting one company will need one admitted price request while preserving the
-other board histories. The full-board action remains available. Implementation
-and isolated verification are in progress; delivery is not accepted yet. Full M1
-and M2 and broader data coverage remain open.
+PR 42 and signed Android 1.9 deliver explicit Load/Refresh for one selected
+Markets listing. One action requests that admitted listing while preserving the
+other board histories; selection alone makes no price request. The full-board
+action remains available. Source checks, synthetic native checks, website
+promotion and signed-package delivery are accepted. One bounded live selected-AAPL
+journey passed on October 5; the physical Android update check remains open.
+No new product slice is selected; full M1/M2 and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
