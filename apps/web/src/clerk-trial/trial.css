@@ -443,6 +443,19 @@ textarea:disabled {
 .managed-eod-table-scroll {
   overflow-x: auto;
 }
+.managed-eod-table-scroll:focus-visible {
+  outline: 2px solid #176b56;
+  outline-offset: 3px;
+}
+.managed-eod-tooltip {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+.managed-eod-tooltip-date {
+  display: block;
+}
 .managed-eod-chart table {
   width: 100%;
   border-collapse: collapse;

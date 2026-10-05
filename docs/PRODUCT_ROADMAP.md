@@ -117,9 +117,12 @@ report, website promotion and signed-artifact delivery passed. External Android
 app links, process-death restoration and physical-device acceptance remain outside
 this delivered scope.
 
-The selected link outcome is complete. Select the next bounded product outcome
-from this roadmap; none is selected yet. Full M1 and M2 and broader data coverage
-remain open.
+The selected link outcome is complete. The next bounded outcome is exact dated
+close inspection on the shared Markets and company Price chart. Hover or tap an
+observed date to read its exact raw USD close from the loaded response. Reuse
+ECharts and keep the full semantic table available without pointer interaction.
+This task adds no feed, request or persistent data. Release acceptance is pending.
+Full M1 and M2 and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
