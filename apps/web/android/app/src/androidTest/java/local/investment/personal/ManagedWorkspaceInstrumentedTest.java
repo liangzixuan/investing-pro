@@ -103,7 +103,9 @@ public class ManagedWorkspaceInstrumentedTest {
             FIXTURE, fixtureDirectory, 0);
         assertTrue("Fixture index is absent", new File(fixtureDirectory, "index.html").isFile());
         if (testName.getMethodName().equals("catalogStartupFailureRecoversWithoutReloadOrDraftLoss"))
-            selectCatalogRecovery();
+            selectFixtureScenario("catalog-startup-recovery");
+        boolean coldCompanyLink = testName.getMethodName().equals("companyLinkDirectEntryAndBackPreserveDraft");
+        if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -121,11 +123,75 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("managed fixture ready", "document.querySelector('#fixture-diagnostics') !== null" +
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
             " && document.querySelector('#managed-note-0')?.disabled === false");
-        assertFixtureBoundary();
-        // The fixture starts at one genuine root document, without leftover disconnected-route history.
+        if (coldCompanyLink)
+            awaitPage("cold company metadata admitted without research",
+                DIAGNOSTICS + ".resolve === 1 && document.querySelector('#managed-annual-heading') !== null");
+        assertFixtureBoundary(coldCompanyLink ? 1 : 0);
+        // Preserve the selected initial URL, removing only leftover disconnected-document history.
         scenario.onActivity(activity -> activity.getBridge().getWebView().clearHistory());
-        assertRootHistory();
+        if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
+        else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void companyLinkDirectEntryAndBackPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        assertCompanyHistory("listing-zero", "annual", true);
+        awaitPage("cold Annual link admits exact ZERO without fabricated source evidence",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.activeElement?.id === 'managed-annual-heading'");
+        assertCompanyLinkCounts();
+        typeIntoInput("managed-research-note", NOTE);
+        click(".managed-company-sections button[aria-label='Price section for ZERO']");
+        awaitPage("cold link Price switch retains only the draft",
+            "document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE));
+        assertCompanyHistory("listing-zero", "price", true);
+        assertCompanyLinkCounts();
+        click(".managed-company-sections button[aria-label='Annual section for ZERO']");
+        awaitPage("cold link returns to unloaded Annual with its shared draft",
+            "document.activeElement?.id === 'managed-annual-heading'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE));
+        assertCompanyHistory("listing-zero", "annual", true);
+        assertCompanyLinkCounts();
+        pressBack();
+        awaitPage("one native Back from a cold company link uses the Markets fallback",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'Markets'" +
+            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')");
+        assertRootHistory();
+        assertCompanyLinkCounts();
+        selectWorkspaceView("My Watchlist");
+        awaitPage("cold-link Back retains exact unsaved note and membership order",
+            "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+        pressBack();
+        assertRootHistory();
+        assertCompanyLinkCounts();
+        assertFixtureBoundary(1);
+        assertEquals("Cold company navigation preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedCompanyLink", "phase=cold-link-back-draft-retained; " + pageDiagnostic());
+    }
+
+    private void assertCompanyLinkCounts() throws Exception {
+        awaitPage("company URL and board resolve metadata without research or writes",
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
+            " && " + DIAGNOSTICS + ".resolve === 1 && " + DIAGNOSTICS + ".search === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".token === 0" +
+            " && " + DIAGNOSTICS + ".signOut === 0 && " + DIAGNOSTICS + ".aborted === 0" +
+            " && " + DIAGNOSTICS + ".lateResolved === 0 && " + DIAGNOSTICS + ".eodAborted === 0" +
+            " && " + DIAGNOSTICS + ".eodLateResolved === 0 && " + DIAGNOSTICS + ".marketsAborted === 0" +
+            " && " + DIAGNOSTICS + ".marketsLateResolved === 0");
     }
 
     @Test
@@ -134,11 +200,11 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("opening Annual performs no read", DIAGNOSTICS + ".annual === 0");
         pressBack();
         assertClosedDraft(true);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         pressBack();
         // Installed App defaults to a no-op at root. It must not exit or reopen Annual.
         assertClosedDraft(true);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         assertFixtureBoundary();
     }
 
@@ -157,7 +223,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("late completion has not created report values",
             "document.querySelector('.managed-annual-report') === null && " +
             DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".aborted === 1");
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         assertFixtureBoundary();
     }
 
@@ -167,6 +233,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-annual-report .trial-actions button:first-child");
         assertPendingAnnualDraft();
         assertFixtureReadCounts(1, 0, 0);
+        assertCompanyHistory("listing-zero", "annual", false);
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
         AtomicReference<WeakReference<WebView>> originalWebView = new AtomicReference<>();
@@ -207,7 +274,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertPendingAnnualDraft();
         assertFixtureReadCounts(1, 0, 0);
         assertFixtureBoundary();
-        assertRootHistory();
+        assertCompanyHistory("listing-zero", "annual", false);
         Log.i("ManagedLifecycle", "phase=resumed-pending, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
 
         pressBack();
@@ -216,11 +283,11 @@ public class ManagedWorkspaceInstrumentedTest {
         click("#settle-cancelled-read");
         assertFixtureReadCounts(1, 1, 1);
         assertClosedDraft(false);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         pressBack();
         assertClosedDraft(false);
         assertFixtureReadCounts(1, 1, 1);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         assertFixtureBoundary();
         assertEquals("Back must preserve the resumed document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         Log.i("ManagedLifecycle", "phase=cancelled-late-discarded-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
@@ -257,7 +324,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertClosedDraft(true);
         awaitPage("Back adds no API operation", DIAGNOSTICS + ".annual === 3 && " +
             DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".refreshFailed === 1");
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "annual");
         assertFixtureBoundary();
     }
 
@@ -426,7 +493,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-eod-history') === null" +
             " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
         assertEodDraftAndCounts(4, 1, 1);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "price");
         pressBack();
         awaitPage("root Back leaves both detail panels closed",
             "document.querySelector('.managed-eod-history') === null && document.querySelector('.managed-annual-report') === null");
@@ -438,7 +505,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertSame("EOD journey must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
         });
         assertEquals("EOD journey must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "price");
         assertFixtureBoundary();
         Log.i("ManagedEod", "phase=late-discarded-back-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
@@ -541,7 +608,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement?.id === 'managed-eod-heading'");
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         Log.i("ManagedResearchSwitch", "phase=loaded-sections-retained; " + pageDiagnostic());
-        assertRootHistory();
+        assertCompanyHistory("listing-zero", "price", false);
         pressBack();
         assertClosedDraft(true);
         awaitPage("native Back leaves both research panels closed",
@@ -565,7 +632,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertSame("Panel switching must preserve the WebView", originalWebView.get().get(), activity.getBridge().getWebView());
         });
         assertEquals("Panel switching must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-zero", "price");
         assertFixtureBoundary();
         Log.i("ManagedResearchSwitch", "phase=back-original-opener, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
@@ -662,7 +729,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector(\"button[aria-label='Board price history for BETA']\")");
         assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
         assertMarketsRawChanges(true);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-beta-a", "price");
         pressBack();
         assertMarketsRows(true);
         assertMarketsDraftAndCounts(2, 5, 1, 1);
@@ -690,7 +757,7 @@ public class ManagedWorkspaceInstrumentedTest {
             assertSame("Markets navigation must preserve WebView", originalWebView.get().get(), activity.getBridge().getWebView());
         });
         assertEquals("Markets navigation must preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertRootHistory();
+        assertReturnedRootHistory("listing-beta-a", "price");
         assertFixtureBoundary();
         Log.i("ManagedMarkets", "phase=left-cleared-draft-retained, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
@@ -780,7 +847,8 @@ public class ManagedWorkspaceInstrumentedTest {
             assertSame("Draft review and save preserve WebView", originalWebView.get().get(), activity.getBridge().getWebView());
         });
         assertEquals("Draft review and save preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertRootHistory();
+        // Explicit watchlist review replaces the company entry instead of restoring Markets.
+        assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedCompanyNote", "phase=saved-reloaded, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
@@ -1050,7 +1118,9 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     /** Fixed metadata in this test's copied HTML is read before the fixture's sole React mount. */
-    private void selectCatalogRecovery() throws IOException {
+    private void selectFixtureScenario(String scenarioName) throws IOException {
+        assertTrue("Only fixed invented fixture scenarios are allowed",
+            scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);
@@ -1059,7 +1129,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Fixture head is absent", html.contains("</head>"));
         assertFalse("Fixture scenario was already selected", html.contains("investment-android-test-scenario"));
         byte[] selected = html.replace("</head>",
-            "<meta name=\"investment-android-test-scenario\" content=\"catalog-startup-recovery\"></head>")
+            "<meta name=\"investment-android-test-scenario\" content=\"" + scenarioName + "\"></head>")
             .getBytes(StandardCharsets.UTF_8);
         assertTrue("Selected fixture index exceeded its bound", selected.length <= 65536);
         copiedBytes += selected.length - original.length;
@@ -1213,7 +1283,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("draft note edited", "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE));
         click(ANNUAL);
         awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'");
-        assertRootHistory();
+        assertCompanyHistory("listing-zero", "annual", false);
     }
 
     private void assertClosedDraft(boolean restoredFocus) throws Exception {
@@ -1228,6 +1298,10 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertFixtureBoundary() throws Exception {
+        assertFixtureBoundary(0);
+    }
+
+    private void assertFixtureBoundary(int expectedResolves) throws Exception {
         awaitPage("test-only source, origin and disconnected boundaries",
             "location.origin === 'https://localhost' && location.hash === ''" +
             " && document.querySelector('meta[name=investment-build-sha]')?.content === " + JSONObject.quote(expectedSourceSha) +
@@ -1235,21 +1309,44 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content === " + JSONObject.quote(CSP) +
             " && window.Capacitor?.getPlatform() === 'android'" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0");
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === " + expectedResolves);
     }
 
-    private void assertRootHistory() {
+    private void assertRootHistory() throws Exception {
+        assertExactHistory(0, "https://localhost/");
+    }
+
+    private void assertReturnedRootHistory(String listing, String section) throws Exception {
+        assertExactHistory(0, "https://localhost/", companyUrl(listing, section));
+    }
+
+    private void assertCompanyHistory(String listing, String section, boolean direct) throws Exception {
+        if (direct) assertExactHistory(0, companyUrl(listing, section));
+        else assertExactHistory(1, "https://localhost/", companyUrl(listing, section));
+    }
+
+    private String companyUrl(String listing, String section) {
+        assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|alfa|beta-a|beta-c)"));
+        assertTrue("Only supported public sections", section.equals("price") || section.equals("annual"));
+        return "https://localhost/?company=" + listing + "&section=" + section;
+    }
+
+    private void assertExactHistory(int expectedIndex, String... expectedUrls) throws Exception {
+        awaitPage("exact company URL transition committed",
+            "location.href === " + JSONObject.quote(expectedUrls[expectedIndex]));
         scenario.onActivity(activity -> {
             WebView webView = activity.getBridge().getWebView();
             WebBackForwardList history = webView.copyBackForwardList();
             String diagnostic = "index=" + history.getCurrentIndex() + ", size=" + history.getSize() +
                 ", canGoBack=" + webView.canGoBack() + ", callbacks=" + activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
             Log.i("ManagedBack", diagnostic);
-            assertEquals(diagnostic, 0, history.getCurrentIndex());
-            assertEquals(diagnostic, 1, history.getSize());
-            assertFalse(diagnostic, webView.canGoBack());
+            assertEquals(diagnostic, expectedIndex, history.getCurrentIndex());
+            assertEquals(diagnostic, expectedUrls.length, history.getSize());
+            assertEquals(diagnostic, expectedIndex > 0, webView.canGoBack());
+            for (int index = 0; index < expectedUrls.length; index++)
+                assertEquals(diagnostic, expectedUrls[index], history.getItemAtIndex(index).getUrl());
             assertTrue(diagnostic, activity.getOnBackPressedDispatcher().hasEnabledCallbacks());
-            assertEquals("https://localhost/", webView.getUrl());
+            assertEquals(expectedUrls[expectedIndex], webView.getUrl());
         });
     }
 

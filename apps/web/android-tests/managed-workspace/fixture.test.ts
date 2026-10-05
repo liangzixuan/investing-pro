@@ -6,6 +6,79 @@ import {
 import { createFixture } from "./fixture";
 
 describe("Android managed fixture startup", () => {
+  it("resolves the cold company link once without loading research or saving", async () => {
+    const fixture = await createFixture("company-direct-entry");
+    const signal = new AbortController().signal;
+    const original = await fixture.api.load(signal);
+    const request = {
+      snapshotSha256: original.payload.snapshotSha256,
+      listingIds: ["listing-zero"],
+    };
+    const resolved = await fixture.api.resolve(request, signal);
+    const { note, ...listing } = original.payload.memberships[0]!;
+    expect(note).toBe("");
+    expect(resolved).toEqual({
+      snapshotSha256: original.payload.snapshotSha256,
+      results: [{ listingId: "listing-zero", listing }],
+    });
+    expect(resolved.results[0]!.listing).not.toHaveProperty("cik");
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      resolve: 1,
+      search: 0,
+      annual: 0,
+      eod: 0,
+      save: 0,
+      token: 0,
+      signOut: 0,
+    });
+    await expect(fixture.api.resolve(request, signal)).rejects.toThrow(
+      "Unexpected fixture operation: resolve",
+    );
+    expect(await fixture.api.load(signal)).toEqual(original);
+  });
+
+  it.each(["digest", "listing", "duplicate", "aborted"] as const)(
+    "refuses a cold-link resolve with invalid %s",
+    async (kind) => {
+      const fixture = await createFixture("company-direct-entry");
+      const controller = new AbortController();
+      if (kind === "aborted") controller.abort();
+      const request = {
+        snapshotSha256:
+          `sha256:${(kind === "digest" ? "b" : "a").repeat(64)}` as const,
+        listingIds:
+          kind === "duplicate"
+            ? ["listing-zero", "listing-zero"]
+            : [kind === "listing" ? "listing-one" : "listing-zero"],
+      };
+      await expect(
+        fixture.api.resolve(request, controller.signal),
+      ).rejects.toThrow("Unexpected fixture operation: resolve");
+      expect(fixture.getSnapshot()).toMatchObject({
+        resolve: 1,
+        annual: 0,
+        eod: 0,
+        save: 0,
+        token: 0,
+        signOut: 0,
+      });
+    },
+  );
+
+  it("keeps singleton company resolution out of the default fixture", async () => {
+    const fixture = await createFixture();
+    await expect(
+      fixture.api.resolve(
+        {
+          snapshotSha256: `sha256:${"a".repeat(64)}`,
+          listingIds: ["listing-zero"],
+        },
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("Unexpected fixture operation: resolve");
+  });
+
   it("saves the exact invented company draft once and reloads independent copies", async () => {
     const fixture = await createFixture();
     const signal = new AbortController().signal;

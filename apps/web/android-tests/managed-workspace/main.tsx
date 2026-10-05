@@ -15,8 +15,15 @@ if (
 const scenario = document
   .querySelector('meta[name="investment-android-test-scenario"]')
   ?.getAttribute("content");
-if (scenario !== undefined && scenario !== "catalog-startup-recovery")
+if (
+  scenario !== undefined &&
+  scenario !== "catalog-startup-recovery" &&
+  scenario !== "company-direct-entry"
+)
   throw new Error("Unknown invented Android test scenario");
+// Fixed test input before the router mounts; no navigation or account bypass.
+if (scenario === "company-direct-entry")
+  history.replaceState(null, "", "/?company=listing-zero&section=annual");
 const fixture = await createFixture(scenario ?? "default");
 function Fixture() {
   const state = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);

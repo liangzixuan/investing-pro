@@ -178,9 +178,16 @@ The earlier native row-capture failure and its fixture framing correction also
 remain recorded. Reviewed CodeScene findings remain advisory; no security or
 merge protection was weakened.
 
-The next product outcome remains unselected. Choose one bounded step from the
-[roadmap](PRODUCT_ROADMAP.md); bookmarkable company routes and full M1/M2 remain
-open. Repomix PR 27 stays held under resolved Option A.
+The current candidate adds bookmarkable company visits. A root-level URL
+identifies one exact catalog listing and its Price or Annual section, so a browser
+bookmark can return there after sign-in. The existing catalog resolver, research
+models and mounted watchlist coordinator own identity, explicit loads and drafts.
+Browser and Android Back close the same visit, while a direct link returns
+to Markets. Local regression, type and boundary checks passed. Required hosted
+checks, native execution, website promotion and signed delivery remain pending;
+the delivered release above remains unchanged. See [company navigation](MANAGED_RESEARCH_NAVIGATION.md).
+Full M1/M2 and broader source coverage remain open. Repomix PR 27 stays held under
+resolved Option A.
 
 ## Open limits
 

@@ -18,6 +18,7 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
+import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
@@ -210,6 +211,234 @@ function elements(
   ];
 }
 describe("managed workspace screen", () => {
+  it("coordinates company section, Back and watchlist review through URL navigation", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn<ManagedCompanyNavigation["open"]>((action) => action()),
+      back: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>((view) => {
+        workspace.setView(view);
+        return true;
+      }),
+    };
+    mounted.direct = true;
+    const node = ManagedWorkspaceScreen({ workspace, navigation });
+    const company = elements(node).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    company.props.onNote("Unsent from the company link");
+    company.props.onSection("annual");
+    expect(navigation.section).toHaveBeenCalledExactlyOnceWith("annual");
+    company.props.onBack();
+    expect(navigation.back).toHaveBeenCalledOnce();
+    company.props.onReview();
+    expect(navigation.view).toHaveBeenCalledExactlyOnceWith("watchlist");
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("Unsent from the company link");
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("ignores a retained company's section, Back and review callbacks after that visit closes", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistEod(member);
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(true),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const company = elements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    ).find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(member);
+    const current = workspace.getSnapshot().research;
+    company.props.onSection("eod");
+    company.props.onBack();
+    company.props.onReview();
+    expect(navigation.section).not.toHaveBeenCalled();
+    expect(navigation.back).not.toHaveBeenCalled();
+    expect(navigation.view).not.toHaveBeenCalled();
+    expect(workspace.getSnapshot().research).toBe(current);
+  });
+
+  it("keeps focus, the draft and search untouched when a route transition rejects a view action", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(false),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const nodes = elements(ManagedWorkspaceScreen({ workspace, navigation }));
+    const company = nodes.find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const search = nodes.find(
+      (node) => node.type === WorkspaceSearch,
+    ) as React.ReactElement<React.ComponentProps<typeof WorkspaceSearch>>;
+    const original = { isConnected: true, focus: vi.fn() };
+    const focus = vi.fn();
+    mounted.refs[0]!.current = original;
+    mounted.refs[2]!.current = { focus };
+    const visit = workspace.getSnapshot().research;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    company.props.onReview();
+    search.props.onSearch({} as HTMLFormElement);
+    expect(navigation.view).toHaveBeenCalledTimes(2);
+    expect(mounted.refs[0]!.current).toBe(original);
+    expect(focus).not.toHaveBeenCalled();
+    expect(workspace.getSnapshot().research).toBe(visit);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("lets navigation reject an opener before the model or focus origin changes", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(false),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    const nodes = elements(ManagedWorkspaceScreen({ workspace, navigation }));
+    const opener = nodes.find(
+      (node) =>
+        node.type === "button" &&
+        (node.props as React.ComponentProps<"button">)["aria-label"] ===
+          "EOD close history for saved DEMO",
+    ) as React.ReactElement<React.ComponentProps<"button">>;
+    const origin = { isConnected: true, focus: vi.fn() };
+    mounted.refs[0]!.current = origin;
+    opener.props.onClick!({
+      currentTarget: {},
+    } as React.MouseEvent<HTMLButtonElement>);
+    expect(navigation.open).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(mounted.refs[0]!.current).toBe(origin);
+  });
+
+  it("restores the connected opener after a URL Back transition", () => {
+    const { workspace } = fixture();
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 1,
+      open: vi.fn<ManagedCompanyNavigation["open"]>((action) => action()),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(true),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    ManagedWorkspaceScreen({ workspace, navigation });
+    const focus = vi.fn();
+    mounted.refs[0]!.current = { isConnected: true, focus };
+    mountEffects();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(mounted.refs[0]!.current).toBeNull();
+  });
+
+  it("uses the route Back action while company metadata is still pending", async () => {
+    const { workspace, api } = fixture();
+    const native = nativeBackFixture();
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-one",
+      section: "annual",
+    });
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => true,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn<ManagedCompanyNavigation["open"]>((action) => action()),
+      section: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(true),
+      back: vi.fn(),
+    };
+    renderToStaticMarkup(
+      <ManagedWorkspaceScreen
+        workspace={workspace}
+        navigation={navigation}
+        androidBack={native.adapter}
+      />,
+    );
+    vi.mocked(navigation.back).mockImplementation(() =>
+      workspace.closeResearch(),
+    );
+    mountEffects();
+    native.ready();
+    native.press(true);
+    native.press(true);
+    expect(navigation.back).toHaveBeenCalledTimes(2);
+    expect(native.historyBack).not.toHaveBeenCalled();
+    expect(native.adapter.exitApp).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("shows a retryable unavailable company link without loading research", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    vi.mocked(api.resolve).mockResolvedValue({
+      snapshotSha256: snapshot.snapshotSha256,
+      results: [{ listingId: "listing-missing", listing: null }],
+    });
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: "listing-missing",
+      section: "eod",
+    });
+    expect(html()).toContain("Retry company link");
+    expect(html()).toContain("This listing is not available");
+    expect(api.resolve).toHaveBeenCalledTimes(1);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
   it("shares the company note with the watchlist row and reviews all changes without saving", async () => {
     const { workspace, api, html } = fixture();
     await workspace.coordinator.load();

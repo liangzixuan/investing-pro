@@ -6,9 +6,40 @@ without sending another request. Back returns to the original Markets, Discover
 or watchlist control and preserves the mounted workspace draft.
 
 This is a bounded step toward the company workflow in the
-[product roadmap](PRODUCT_ROADMAP.md). It adds no bookmarkable route, key
-statistics, valuation or peers. [Current work](CURRENT_WORK.md) distinguishes
+[product roadmap](PRODUCT_ROADMAP.md). It adds no key statistics, valuation or
+peers. Bookmarkable visits are implemented in the current candidate, described
+below, with release acceptance still pending.
+[Current work](CURRENT_WORK.md) distinguishes
 implementation and synthetic verification from website and signed Android delivery.
+
+## Bookmarkable visits awaiting release
+
+The selected URL shape is `/?company=<listing-id>&section=price` or
+`/?company=<listing-id>&section=annual`, with the listing ID canonically encoded.
+This keeps the page at the document root and leaves the fragment available for
+Clerk sign-in. A company link identifies a listing, not a ticker or issuer:
+GOOG and GOOGL remain separate. The URL carries no note, source response, saved
+version, catalog digest or session information.
+
+Opening a bookmark resolves that listing against the current managed catalog.
+Its Price and Annual sections start unloaded. The existing explicit Load and
+Refresh actions retain their request and error policy. A malformed or unavailable
+listing cannot select another company. The cold visit has no discovery CIK;
+ordinary in-app discovery keeps its captured CIK.
+
+The same session workspace owns navigation and the unsaved watchlist draft.
+Opening an in-app company creates one history entry; changing sections replaces
+that entry and preserves the visit's validated results. Back returns to its
+opener. A direct link has no in-app opener and returns to Markets. Forward or
+reopening creates a fresh unloaded visit. Review in My Watchlist closes research
+and uses the existing full-list save workflow.
+
+Pending catalog resolution must be cancelled on leaving, catalog invalidation or
+session retirement. A late response cannot restore an abandoned visit. These
+behaviors have local model, navigation and screen coverage. Hosted native and
+release acceptance remain pending. Browser bookmarks,
+installed-app history, Android app links and physical-device acceptance have
+separate scope; this step does not register external Android app links.
 
 ## Source and screen contract
 
