@@ -169,6 +169,17 @@ and save counts. Scoped captures show the pair action and note controls; they do
 not claim to display the entire long note at once. This case requires its own
 successful emulator run before native acceptance.
 
+The earlier-date comparison case uses the native date control in the shared
+chart. It checks the chosen observed close, fixed latest endpoint, exact change,
+retained history and reset behavior without extra price reads or saves. The
+accepted PR 46 main attempt 2 passed all sixteen required cases and retained 33
+PNGs, 30 managed captures and 13 source markers. Two comparison frames received
+scoped visual review. The first attempt's picker interaction failure remains
+recorded with unknown cause; passing the unchanged rerun does not establish
+repeat reliability. Android 1.11 passed separate signed-package and delivery
+review; physical use remains unperformed. [Current work](CURRENT_WORK.md) records
+the exact release and limits.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build
