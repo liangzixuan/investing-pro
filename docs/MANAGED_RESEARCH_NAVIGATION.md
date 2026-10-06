@@ -110,8 +110,9 @@ provider request. Unsaved drafts remain in the mounted session only.
 
 ## Add annual evidence to a note draft
 
-The current candidate adds an explicit **Add to note draft** action beside
-each eligible Annual pair. Choose the named revenue basis to retain its exact
+The website and signed Android 1.10 provide an explicit **Add to note draft**
+action beside each eligible Annual pair through PR 44. [Current work](CURRENT_WORK.md#accepted-release)
+records the release and limits. Choose the named revenue basis to retain its exact
 USD revenue, NetIncomeLoss and net-margin percentage with the annual period,
 filing link and original observation times. Revenue bases stay separate.
 
@@ -131,7 +132,7 @@ contract.
 Changing the visit, replacing the response or retiring the session invalidates
 old controls. Catalog, identity, pending-save and conflict checks still apply.
 Appending sends no provider or save request and does not add membership. Review
-the draft and use the existing **Save watchlist** action to save all changes.
+the draft and use **Save watchlist** to save the whole draft, including other changes.
 
 The interaction follows the explicit source-to-note pattern in
 [Zotero's note workflow](https://www.zotero.org/support/pdf_reader#adding_annotations_to_notes):
@@ -150,7 +151,11 @@ close history, request counts and native Back to the original opener.
 
 The note journey covers draft sharing, exact identity, stale controls, guarded
 editing, Add without an implicit save, review focus and explicit save/reload
-through the existing watchlist. Mutation checks use invented records.
+through the existing watchlist. PR 44's accepted actual-main native report also
+covers adding an eligible Annual pair to the existing note and saving and
+reloading it. Full note equality and ordering rely on native assertions; two
+frames received scoped visual review. Mutation checks use invented records and
+do not establish live owner-note writes.
 
 The link checks cover validated sign-in return destinations, malformed and
 unavailable listings, pending resolution, browser history, repeated Back and

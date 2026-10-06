@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.9 package share Discover, a private
+The managed website and signed Android 1.10 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.9 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.10 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.9. Previous histories keep their original dates. Physical
+and in signed Android 1.10. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.9. It uses the three accepted
+and in signed Android 1.10. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -131,11 +131,15 @@ other board histories; selection alone makes no price request. The full-board
 action remains available. Source checks, synthetic native checks, website
 promotion and signed-package delivery are accepted. One bounded live selected-AAPL
 journey passed on October 5; the physical Android update check remains open.
-The current candidate connects Annual evidence to the existing watchlist-note
-draft. One explicit action retains a chosen eligible annual pair's exact
-values, original dates and filing link, with the existing explicit save flow.
-Source implementation is complete; release acceptance is pending. Full M1/M2 and broader data coverage
-remain open.
+PR 44 and signed Android 1.10 connect Annual evidence to the existing
+watchlist-note draft. One explicit action retains a chosen eligible pair's exact
+values, named basis, original dates and filing link while preserving the latest
+user prose. Main checks, original source proof, synthetic native evidence,
+same-archive website promotion and signed-package delivery are accepted.
+The existing Save watchlist action saves the whole draft. Live Annual-to-note,
+physical-device and backup/restore acceptance remain open.
+[Current work](./CURRENT_WORK.md) records the exact release and limits. Full M1/M2
+and broader data coverage remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

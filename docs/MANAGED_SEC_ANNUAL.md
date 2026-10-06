@@ -26,11 +26,14 @@ requires an explicit first load in each section. See the
 [navigation contract](MANAGED_RESEARCH_NAVIGATION.md) and
 [current delivery status](CURRENT_WORK.md).
 
-The candidate [Annual-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-annual-evidence-to-a-note-draft)
-lets the user append one chosen eligible pair to an existing watchlist-note
-draft. It retains the exact values, named revenue basis, filing link and original
-dates. It does not load evidence or save the watchlist. Existing request lifetimes,
-response validation and source budgets remain unchanged.
+The [Annual-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-annual-evidence-to-a-note-draft)
+is delivered on the website and in signed Android 1.10. It appends one chosen
+eligible pair to an existing watchlist-note draft, retaining the exact values,
+named revenue basis, filing link and original dates. Appending does not load
+evidence or save the watchlist. **Save watchlist** saves the whole draft,
+including other changes. Existing request lifetimes, response validation and
+source budgets remain unchanged. [Current work](CURRENT_WORK.md) records the
+release and its limits.
 
 Android Back uses the same close action as Back to workspace: it cancels a
 pending read, keeps the watchlist draft and restores focus to the opening
