@@ -1,8 +1,18 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { SecAnnualEvidenceResult } from "../features/research/SecAnnualEvidenceResult";
 import type { ManagedAnnualReport as AnnualReportModel } from "./managed-annual-report";
+import {
+  ManagedAnnualNoteAction,
+  type ManagedAnnualNoteActions,
+} from "./ManagedAnnualNoteAction";
 
-export function ManagedAnnualReport({ model }: { model: AnnualReportModel }) {
+export function ManagedAnnualReport({
+  model,
+  noteActions,
+}: {
+  model: AnnualReportModel;
+  noteActions?: ManagedAnnualNoteActions;
+}) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -81,6 +91,15 @@ export function ManagedAnnualReport({ model }: { model: AnnualReportModel }) {
         <SecAnnualEvidenceResult
           key={state.response.evidence.generation.sha256}
           response={state.response}
+          renderPairAction={(pair) =>
+            noteActions && state.response ? (
+              <ManagedAnnualNoteAction
+                pair={pair}
+                action={noteActions.getAction(state.response, pair)}
+                onAppend={() => noteActions.append(state.response!, pair)}
+              />
+            ) : null
+          }
         />
       )}
     </section>

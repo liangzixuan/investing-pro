@@ -161,6 +161,14 @@ provenance. Each frame checks that its subjects are fully visible before and
 after capture. This extension still requires a successful emulator run for its
 own source revision; the earlier PR 32 result does not accept it.
 
+The Annual-note regression uses a separate invented ZERO journey. It chooses an
+eligible revenue basis, appends the dated evidence to an existing note draft,
+then reviews, explicitly saves and reloads the watchlist. It checks the full note
+text, source dates, unrelated note and membership order, plus exact source-read
+and save counts. Scoped captures show the pair action and note controls; they do
+not claim to display the entire long note at once. This case requires its own
+successful emulator run before native acceptance.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build

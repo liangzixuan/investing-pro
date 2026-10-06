@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 5, 2026. This is the portable status summary for the public
+Updated October 6, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
 order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
 operational receipts are retained separately and are not required to understand
@@ -139,7 +139,18 @@ published the preceding release-status documentation without app changes.
 
 The bounded live selected-AAPL journey is accepted. A physical Android update
 check remains open: use of 1.2 through 1.9 is unperformed, and the owner-reported
-1.1 result does not accept those versions. No new product slice is selected.
+1.1 result does not accept those versions. PR 43 published the release-status
+documentation; its six required actual-main jobs and original source proof are
+accepted at `2bc04282d551abe74fe2ca0ed04cd2c11ab6dd2c`. It changed no app behavior
+and required no new deployment or APK.
+
+The current candidate implements [Annual evidence to a watchlist-note draft](MANAGED_RESEARCH_NAVIGATION.md#add-annual-evidence-to-a-note-draft).
+An explicit action appends one chosen eligible pair with its exact values,
+original dates and filing link. It reuses the existing membership, draft and
+save flow, without a source request or automatic save. Focused synthetic tests,
+web types, scoped lint and boundary checks passed; independent source reviews
+found no issues. Hosted native evidence and delivery remain pending; the website and signed Android 1.9 remain the
+accepted product baseline.
 
 The portable documentation update in PR 28 is accepted on main
 `f18d80153e94dcb6236e31fd8324ee3e23a3bde0`. Its original source proof, applicable

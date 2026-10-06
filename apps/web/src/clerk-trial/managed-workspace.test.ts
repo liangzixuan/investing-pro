@@ -20,6 +20,8 @@ import {
 import type { TrialSession } from "./session";
 import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
+import { annualNoteExcerpt } from "./managed-annual-note";
+import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
@@ -2327,4 +2329,281 @@ describe("catalog-resolved company links", () => {
     expect(api.eodHistory).toHaveBeenCalledOnce();
     expect(workspace.eod.getSnapshot().response).toBeNull();
   });
+});
+
+describe("Annual evidence appended to the existing shared note", () => {
+  const zero: PersonalSecurityMasterSearchResultDto = {
+    ...eodSelection.listing,
+    cik: "0000000001",
+    matchKind: "current_symbol_exact",
+    matchedValue: "ZERO",
+  };
+  async function noteFixture(note = "Original thesis") {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(second), note: "Keep the other class" },
+        { ...listingMembership(zero), note },
+      ],
+    });
+    const { workspace, api } = setup;
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [zero, second],
+      totalMatches: 2,
+      limitApplied: 25,
+      normalizedQuery: "ZERO",
+    });
+    const response = await annualResponse();
+    vi.mocked(api.annualReport).mockResolvedValue(response);
+    await ready(workspace);
+    workspace.openDiscoveryAnnual(zero);
+    await workspace.annual.load();
+    const selection = workspace.getSnapshot().research!.selection;
+    const pair = response.evidence.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
+    return { ...setup, selection, response, pair };
+  }
+
+  it("uses the latest raw prose, preserves listing/order and saves only through explicit whole-list save", async () => {
+    const { workspace, api, session, saved, selection, response, pair } =
+      await noteFixture();
+    expect(workspace.getAnnualNoteAction(selection, response, pair)).toEqual({
+      canAppend: true,
+      reason: null,
+    });
+    const latest = "  Cafe\u0301 thesis updated after rendering  ";
+    workspace.note(zero.listingId, latest);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const expected = latest + " " + annualNoteExcerpt(response, pair, false)!;
+    expect(
+      workspace.appendAnnualToResearchNote(selection, response, pair),
+    ).toEqual({
+      appended: true,
+      message:
+        "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    });
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships[0]).toStrictEqual(before.memberships[0]);
+    expect(draft.memberships[1]).toEqual({
+      ...before.memberships[1],
+      note: expected,
+    });
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.switchToEod();
+    workspace.switchToAnnual();
+    workspace.closeResearch();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships[1]?.note).toBe(
+      normalizeWatchlistNote(expected),
+    );
+    const reopened = new ManagedWorkspace(api, session);
+    await reopened.coordinator.load();
+    expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
+    expect(
+      saved().payload.memberships.map((member) => member.listingId),
+    ).toEqual([second.listingId, zero.listingId]);
+  });
+
+  it.each([
+    "copied selection",
+    "copied response",
+    "copied pair",
+    "reopened visit",
+    "other listing",
+    "closed visit",
+    "Price section",
+    "replacement response",
+    "catalog change",
+    "retirement",
+  ])(
+    "rejects a callback after %s without altering the draft",
+    async (boundary) => {
+      const setup = await noteFixture();
+      const { workspace, api, response } = setup;
+      let { selection, pair } = setup;
+      let capturedResponse = response;
+      if (boundary === "copied selection") selection = { ...selection };
+      else if (boundary === "copied response")
+        capturedResponse = { ...response };
+      else if (boundary === "copied pair") pair = { ...pair };
+      else if (boundary === "reopened visit") {
+        workspace.closeResearch();
+        workspace.openDiscoveryAnnual(zero);
+        await workspace.annual.load();
+      } else if (boundary === "other listing")
+        workspace.openDiscoveryAnnual(second);
+      else if (boundary === "closed visit") workspace.closeResearch();
+      else if (boundary === "Price section") workspace.switchToEod();
+      else if (boundary === "replacement response") {
+        vi.mocked(api.annualReport).mockResolvedValueOnce(
+          await annualResponse(),
+        );
+        await workspace.annual.load();
+      } else if (boundary === "catalog change") {
+        vi.mocked(api.status).mockResolvedValue({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      } else workspace.coordinator.retire();
+      const before = workspace.coordinator.getSnapshot().draft;
+      const reads = vi.mocked(api.annualReport).mock.calls.length;
+      expect(
+        workspace.getAnnualNoteAction(selection, capturedResponse, pair)
+          .canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendAnnualToResearchNote(selection, capturedResponse, pair)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.annualReport).toHaveBeenCalledTimes(reads);
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("blocks a pending refresh, then appends the retained report after Cancel and fences late success", async () => {
+    const { workspace, api, selection, response, pair } = await noteFixture();
+    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+    vi.mocked(api.annualReport).mockReturnValueOnce(held.promise);
+    const loading = workspace.annual.load();
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualToResearchNote(selection, response, pair),
+    ).toEqual({
+      appended: false,
+      message: "Wait for the Annual report request to finish or cancel it.",
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    workspace.annual.cancel();
+    expect(
+      workspace.appendAnnualToResearchNote(selection, response, pair).appended,
+    ).toBe(true);
+    const appended = workspace.coordinator.getSnapshot().draft;
+    expect(appended?.memberships[1]?.note).toBe(
+      "Original thesis " + annualNoteExcerpt(response, pair, true),
+    );
+    held.resolve(await annualResponse(undefined, "2026-09-21T00:00:00.000Z"));
+    await loading;
+    expect(workspace.annual.getSnapshot().response).toBe(response);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(appended);
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing member", "changed identity", "stale draft catalog"])(
+    "reuses the existing %s guard and never adds implicitly",
+    async (boundary) => {
+      const { workspace, api, selection, response, pair } = await noteFixture();
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      workspace.coordinator.replaceDraft({
+        ...draft,
+        snapshotSha256:
+          boundary === "stale draft catalog" ? nextDigest : digest,
+        memberships:
+          boundary === "missing member"
+            ? [draft.memberships[0]!]
+            : draft.memberships.map((member) =>
+                member.listingId === zero.listingId &&
+                boundary === "changed identity"
+                  ? { ...member, shareClassId: "different-class" }
+                  : member,
+              ),
+      });
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendAnnualToResearchNote(selection, response, pair)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.annualReport).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["loading", "saving", "conflict", "commit_unknown"] as const)(
+    "does not bypass the %s save coordinator guard",
+    async (boundary) => {
+      const { workspace, api, selection, response, pair } = await noteFixture();
+      workspace.note(zero.listingId, "Changed thesis");
+      const held = deferred<never>();
+      let pending: Promise<void> | null = null;
+      if (boundary === "loading") {
+        vi.mocked(api.load).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.load();
+      } else if (boundary === "saving") {
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.save();
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(boundary));
+        await workspace.coordinator.save();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      const saves = vi.mocked(api.save).mock.calls.length;
+      expect(
+        workspace.getAnnualNoteAction(selection, response, pair).canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendAnnualToResearchNote(selection, response, pair)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).toHaveBeenCalledTimes(saves);
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      if (pending) {
+        held.reject(new TrialApiError("unavailable"));
+        await pending;
+      }
+    },
+  );
+
+  it.each(["emoji", "decomposed"])(
+    "accepts exactly 2,000 normalized code points with %s and rejects overflow without truncation",
+    async (kind) => {
+      const { workspace, selection, response, pair } = await noteFixture();
+      const excerpt = annualNoteExcerpt(response, pair, false)!;
+      const room = 2000 - [...excerpt].length - 1;
+      const unit = kind === "emoji" ? "😀" : "e\u0301";
+      workspace.note(zero.listingId, unit.repeat(room + 1));
+      const oversized = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendAnnualToResearchNote(selection, response, pair)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(oversized);
+      workspace.note(zero.listingId, unit.repeat(room));
+      expect(
+        workspace.appendAnnualToResearchNote(selection, response, pair)
+          .appended,
+      ).toBe(true);
+      const text =
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
+      expect(text).toBe(unit.repeat(room) + " " + excerpt);
+      expect([...normalizeWatchlistNote(text)!]).toHaveLength(2000);
+    },
+  );
+
+  it.each(["private\nline", "invisible\u200btext", "x".repeat(2001)])(
+    "rejects an invalid latest note without erasing it",
+    async (note) => {
+      const { workspace, api, selection, response, pair } = await noteFixture();
+      expect(
+        workspace.getAnnualNoteAction(selection, response, pair).canAppend,
+      ).toBe(true);
+      workspace.note(zero.listingId, note);
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendAnnualToResearchNote(selection, response, pair)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
 });
