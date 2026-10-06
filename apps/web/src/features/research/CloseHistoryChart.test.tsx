@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import * as React from "react";
 import type {
   EChartsOption,
   TooltipComponentFormatterCallbackParams,
@@ -13,6 +14,7 @@ import {
   type Mock,
 } from "vitest";
 import { CloseHistoryChart } from "./CloseHistoryChart";
+import { RawCloseComparison } from "./RawCloseComparison";
 
 interface MockElement {
   tag: string;
@@ -276,4 +278,21 @@ describe("close-only chart", () => {
     expect(chart.init).toHaveBeenCalledTimes(2);
     expect(chart.dispose).toHaveBeenCalledTimes(2);
   });
+});
+
+it("forwards an optional action slot without supplying one to ordinary charts", () => {
+  const renderAction = vi.fn(() => <button>Use comparison</button>);
+  const child = (node: React.ReactElement<{ children?: React.ReactNode }>) =>
+    React.Children.toArray(node.props.children).find(
+      (element) =>
+        React.isValidElement(element) && element.type === RawCloseComparison,
+    ) as React.ReactElement<React.ComponentProps<typeof RawCloseComparison>>;
+  const plain = child(CloseHistoryChart({ rows, symbol: "ALFA" }));
+  expect(plain.props.renderAction).toBeUndefined();
+  const company = child(
+    CloseHistoryChart({ rows, symbol: "ALFA", renderAction }),
+  );
+  expect(company.props.rows).toBe(rows);
+  expect(company.props.renderAction).toBe(renderAction);
+  expect(renderAction).not.toHaveBeenCalled();
 });

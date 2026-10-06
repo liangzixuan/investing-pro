@@ -83,6 +83,39 @@ delivered on the website and in signed Android 1.11, with isolated browser and
 sixteen-case native acceptance; [Current work](CURRENT_WORK.md) records the
 original native failure, accepted rerun and live/physical limits.
 
+On October 6, one explicit live AAPL load supported a bounded earlier-date
+comparison check. Selecting another listing reset the choice. Opening company
+Price left it unloaded; Back restored the still-mounted Markets chart and its
+choice. Returning to My Watchlist preserved its saved state. This read-only
+journey made no watchlist changes and did not measure network request counts.
+
+## Add a price comparison to a note draft
+
+The current candidate adds **Add comparison to note draft** beside a selected
+comparison in company Price. It requires that exact listing to be in the
+watchlist draft. The excerpt retains both observed dates and original USD close
+strings, the exact signed change, rounded percentage, requested window, original
+request times and Tiingo attribution. It states that prices are unadjusted for
+splits and dividends. Retained previous history is identified as retained;
+appending never refreshes the source dates.
+
+The action appends to the latest note text. **Review in My Watchlist** opens the
+existing draft, and **Save watchlist** explicitly saves all its changes. Appending
+makes no source request, adds no membership and performs no save. A complete
+proposal that exceeds the note's 2,000-character limit is refused without
+truncation. Other notes and ordering stay in the same draft.
+
+While a price request is pending, wait for it to finish or use Cancel before
+appending. The action checks the current date choice, admitted response, company
+visit, exact membership and existing draft-edit rules. A callback from an old
+choice, replaced history or closed visit cannot append. Markets keeps its
+read-only comparison. Publication and delivery of this candidate remain pending;
+[Current work](CURRENT_WORK.md) records acceptance separately.
+
+This follows the existing Annual evidence-to-draft flow. The placement also uses
+the established pattern of explicit [symbol notes from chart context](https://www.tradingview.com/support/solutions/43000667881-how-to-create-a-text-note/)
+and [selected evidence added to an existing note with source context](https://www.zotero.org/support/pdf_reader#adding_annotations_to_notes).
+
 ## Source and identity
 
 Authenticated `POST /v1/managed/eod-history` accepts at most 4 KiB and returns at

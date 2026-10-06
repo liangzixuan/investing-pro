@@ -497,6 +497,20 @@ export function ManagedWorkspaceScreen({
                     pair,
                   ),
               }}
+              priceNoteActions={{
+                getAction: (response, start) =>
+                  workspace.getPriceNoteAction(
+                    discovery.research!.selection,
+                    response,
+                    start,
+                  ),
+                append: (response, start) =>
+                  workspace.appendPriceComparisonToResearchNote(
+                    discovery.research!.selection,
+                    response,
+                    start,
+                  ),
+              }}
               onReview={() => {
                 if (
                   workspace.getSnapshot().research?.selection !==

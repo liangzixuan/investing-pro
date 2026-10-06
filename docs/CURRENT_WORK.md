@@ -22,14 +22,14 @@ promoted the same staging archive after normal production approval. Production
 code 12, passed build, artifact and delivery review with the existing package and
 production signer.
 
-| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known  |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac4f5af7ae73ae9f88c`; PR 46 staging archive promoted after normal approval                                                         | BrowserStack covers the inert staged shell; no new live comparison journey or continuing-availability claim                                 |
-| Signed Android artifact   | Investment 1.11.0, code 12, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.11 remain unperformed                                                                        |
-| Automated Android         | PR 46: sixteen passing invented-data API-36 emulator cases on attempt 2; two comparison frames received scoped visual review                                                    | Native assertions cover exact values, reset behavior and request/save counts; no production sign-in, live-provider or physical-device claim |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.11                                                                              |
-| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                      |
+| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known         |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac4f5af7ae73ae9f88c`; PR 46 staging archive promoted after normal approval                                                         | BrowserStack covers the inert staged shell; the October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
+| Signed Android artifact   | Investment 1.11.0, code 12, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.11 remain unperformed                                                                               |
+| Automated Android         | PR 46: sixteen passing invented-data API-36 emulator cases on attempt 2; two comparison frames received scoped visual review                                                    | Native assertions cover exact values, reset behavior and request/save counts; no production sign-in, live-provider or physical-device claim        |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.11                                                                                     |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                             |
 
 The accepted 1.11 APK is 6,654,152 bytes, SHA-256
 `696a7d165e05a849343ead51c3bcad188cf37dc933c4e520ffc9aa390a2a3b54`.
@@ -135,6 +135,14 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
+The selected candidate connects a [price comparison to the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft).
+In company Price, an explicit action appends the selected observed endpoints,
+exact raw USD change, percentage and original provenance. It uses the current
+watchlist membership and latest prose, followed by the existing review and
+explicit full-draft save. It adds no provider request, API, schema or dependency.
+Implementation checks, publication, website promotion and signed Android delivery
+for this candidate remain pending.
+
 The [Annual-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-annual-evidence-to-a-note-draft)
 is accepted on main and in website release
 [37410478504](https://github.com/liangzixuan/investing-pro/actions/runs/37410478504).
@@ -184,9 +192,21 @@ rerun does not establish repeat reliability. The earlier PR Windows timeout and
 reviewed CodeScene advisory also remain recorded.
 
 The comparison is delivered on the website and in signed Android 1.11. BrowserStack
-covers the inert staged shell; the native assertions use invented data. Live
-comparison, physical-phone and backup/restore acceptance remain unperformed.
+covers the inert staged shell; the native assertions use invented data. On
+October 6, one explicit live AAPL load returned 20 dated rows for the requested
+month. The selected earlier/latest comparison agreed with independent exact
+decimal arithmetic. Listing selection reset the choice; company Price opened
+unloaded, and Back restored the still-mounted Markets chart and choice. Returning
+to My Watchlist preserved its saved state. No note or other watchlist change was
+made. Network request counts and the loaded bundle hash were not measured in this
+journey. Physical-phone and backup/restore acceptance remain unperformed.
 Full M1/M2 and broader source coverage remain open.
+
+PR 47 published the PR 46 release-status documentation at
+`6306faf438dc295a698539a7d362f21afb29d0ea`. Its four required actual-main jobs
+and original CI attempt 2 source proof are accepted. The original Windows
+five-second API-test timeout remains retained; a focused local run passed and
+its cause is unknown. The documentation change required no new deployment or APK.
 
 PR 45 published the PR 44 release-status documentation at
 `6c5007e829c14ba2beaf5f32e8d7e839cacc6d47`. Its six required actual-main jobs

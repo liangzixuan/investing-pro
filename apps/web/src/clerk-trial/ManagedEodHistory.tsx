@@ -6,8 +6,18 @@ import {
 } from "react";
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 import type { ManagedEodHistory as Model } from "./managed-eod-history";
+import {
+  ManagedPriceNoteAction,
+  type ManagedPriceNoteActions,
+} from "./ManagedPriceNoteAction";
 
-export function ManagedEodHistory({ model }: { model: Model }) {
+export function ManagedEodHistory({
+  model,
+  noteActions,
+}: {
+  model: Model;
+  noteActions?: ManagedPriceNoteActions;
+}) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -105,6 +115,18 @@ export function ManagedEodHistory({ model }: { model: Model }) {
           <CloseHistoryChart
             rows={response.rows}
             symbol={response.security.symbol}
+            renderAction={
+              noteActions
+                ? (start, isCurrent) => (
+                    <ManagedPriceNoteAction
+                      key={start.date}
+                      action={noteActions.getAction(response, start)}
+                      isCurrent={isCurrent}
+                      onAppend={() => noteActions.append(response, start)}
+                    />
+                  )
+                : undefined
+            }
           />
         </>
       )}

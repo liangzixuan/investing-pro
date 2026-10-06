@@ -26,6 +26,8 @@ import { TrialApiError } from "../../src/clerk-trial/api";
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const annualNoteDraft =
   "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
+export const priceNoteDraft =
+  "Price research draft Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -137,6 +139,7 @@ export async function createFixture(
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "price-comparison-note"
     | "raw-close-comparison"
     | "markets-selected-price" = "default",
 ) {
@@ -173,21 +176,27 @@ export async function createFixture(
             ? "2026-09-21T00:00:02.000Z"
             : "2026-09-20T00:00:01.000Z",
         rows:
-          kind === "recovered"
+          scenario === "price-comparison-note" && kind === "initial"
             ? [
-                { date: "2026-09-19", close: "102.75" },
-                { date: "2026-09-20", close: "103.5" },
+                { date: "2026-09-17", close: "100.000000000000000001" },
+                { date: "2026-09-18", close: "107.500000000000000002" },
+                { date: "2026-09-19", close: "110.000000000000000003" },
               ]
-            : [
-                {
-                  date: "2026-09-18",
-                  close: kind === "late" ? "998.25" : "100.25",
-                },
-                {
-                  date: "2026-09-19",
-                  close: kind === "late" ? "999.75" : "101.5",
-                },
-              ],
+            : kind === "recovered"
+              ? [
+                  { date: "2026-09-19", close: "102.75" },
+                  { date: "2026-09-20", close: "103.5" },
+                ]
+              : [
+                  {
+                    date: "2026-09-18",
+                    close: kind === "late" ? "998.25" : "100.25",
+                  },
+                  {
+                    date: "2026-09-19",
+                    close: kind === "late" ? "999.75" : "101.5",
+                  },
+                ],
       },
       request,
     );
@@ -350,9 +359,17 @@ export async function createFixture(
       const expected = {
         ...payload,
         memberships:
-          scenario === "annual-note"
+          scenario === "annual-note" || scenario === "price-comparison-note"
             ? payload.memberships.map((member, index) =>
-                index === 0 ? { ...member, note: annualNoteDraft } : member,
+                index === 0
+                  ? {
+                      ...member,
+                      note:
+                        scenario === "annual-note"
+                          ? annualNoteDraft
+                          : priceNoteDraft,
+                    }
+                  : member,
               )
             : [
                 ...payload.memberships,
@@ -366,6 +383,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
+        (scenario === "price-comparison-note" && state.eod !== 1) ||
         savedWatchlist.version !== 1 ||
         captured?.expectedVersion !== 1 ||
         encodeMainWatchlistPayload(captured.payload) !==
@@ -429,6 +447,11 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (
+        scenario === "price-comparison-note" &&
+        (request.listingId !== "listing-zero" || state.eod !== 0)
+      )
+        throw new Error("Unexpected extra fixture price note read");
       const marketIndex = marketsCohort.findIndex(
         (listing) => listing.listingId === request.listingId,
       );
@@ -508,6 +531,8 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (scenario === "price-comparison-note")
+        throw new Error("Unexpected fixture price note Annual read");
       if (
         signal.aborted ||
         pending ||

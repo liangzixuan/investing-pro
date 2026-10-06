@@ -211,6 +211,98 @@ function elements(
   ];
 }
 describe("managed workspace screen", () => {
+  it("binds the Price action to the captured visit and latest shared note without saving or loading", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Original thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    const prices = eodResponse();
+    vi.mocked(api.eodHistory).mockResolvedValue(prices);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.eod.load();
+    const company = () => {
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const node = ManagedWorkspaceScreen({ workspace });
+      mounted.direct = false;
+      return elements(node).find(
+        (element) => element.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const captured = company().props.priceNoteActions;
+    expect(captured.getAction(prices, prices.rows[0]!).canAppend).toBe(true);
+    company().props.onNote("x".repeat(2000));
+    expect(
+      company().props.priceNoteActions.getAction(prices, prices.rows[0]!)
+        .canAppend,
+    ).toBe(false);
+    company().props.onNote("  Latest Cafe\u0301 thesis  ");
+    const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
+    expect(captured.append(prices, prices.rows[0]!)).toEqual({
+      appended: true,
+      message:
+        "Price comparison added to the note draft. Review and save all changes in My Watchlist.",
+    });
+    const note =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note;
+    expect(note.startsWith("  Latest Cafe\u0301 thesis   ")).toBe(true);
+    expect(note).toContain(prices.rows[0]!.close);
+    expect(note).toContain(prices.rows.at(-1)!.close);
+    expect(note).toContain(prices.completedAt);
+    expect(workspace.coordinator.getSnapshot().draft!.memberships[1]).toEqual(
+      other,
+    );
+    expect(api.eodHistory).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+  });
+
+  it("refuses Price callbacks captured before replacement, section change or a reopened visit", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep thesis" }],
+    });
+    const prices = eodResponse();
+    const next = eodResponse();
+    vi.mocked(api.eodHistory)
+      .mockResolvedValueOnce(prices)
+      .mockResolvedValueOnce(next);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistEod(member);
+    await workspace.eod.load();
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const actions = company.props.priceNoteActions;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.switchToAnnual();
+    expect(actions.append(prices, prices.rows[0]!).appended).toBe(false);
+    workspace.switchToEod();
+    await workspace.eod.load();
+    expect(actions.append(prices, prices.rows[0]!).appended).toBe(false);
+    workspace.closeResearch();
+    workspace.openWatchlistEod(member);
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(next);
+    await workspace.eod.load();
+    expect(actions.append(next, next.rows[0]!).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+  });
   it("updates Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
     const { workspace, api, html } = fixture({
       ...payload,

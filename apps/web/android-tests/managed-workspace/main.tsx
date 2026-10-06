@@ -20,6 +20,7 @@ if (
   scenario !== "catalog-startup-recovery" &&
   scenario !== "company-direct-entry" &&
   scenario !== "annual-note" &&
+  scenario !== "price-comparison-note" &&
   scenario !== "raw-close-comparison" &&
   scenario !== "markets-selected-price"
 )

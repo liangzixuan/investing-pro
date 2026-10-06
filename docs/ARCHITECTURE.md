@@ -90,6 +90,14 @@ guard edits and explicit additions. The editor shares the watchlist row's draft;
 reviewing My Watchlist closes research and uses the existing full-list save and
 reconciliation flow. There is no second note store or save coordinator.
 
+The price-comparison note candidate uses that same coordinator. The shared chart
+owns the earlier-date choice and retires its action when that choice changes or
+the chart unmounts. An optional action slot keeps the chart independent of managed
+storage. The managed workspace checks the current visit, active Price section,
+response object and exact earlier-row membership before formatting an excerpt
+from admitted data. It validates the complete appended note and leaves persistence
+to the existing explicit full-list save.
+
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
 [security-master package](../packages/personal-security-master/) owns catalog

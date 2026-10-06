@@ -1,6 +1,6 @@
 import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
 import * as echarts from "echarts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { RawCloseComparison } from "./RawCloseComparison";
 
 const rawCloseSeriesId = "managed-raw-close";
@@ -42,9 +42,13 @@ function closeTooltip(
 export function CloseHistoryChart({
   rows,
   symbol,
+  renderAction,
 }: {
   rows: readonly ManagedEodCloseDto[];
   symbol: string;
+  renderAction?:
+    | ((start: ManagedEodCloseDto, isCurrent: () => boolean) => ReactNode)
+    | undefined;
 }) {
   const element = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -113,7 +117,11 @@ export function CloseHistoryChart({
         role="img"
         aria-label={`${symbol} one-month raw close history in USD; exact values follow in the table`}
       />
-      <RawCloseComparison rows={rows} symbol={symbol} />
+      <RawCloseComparison
+        rows={rows}
+        symbol={symbol}
+        renderAction={renderAction}
+      />
       <div
         className="managed-eod-table-scroll"
         role="region"
