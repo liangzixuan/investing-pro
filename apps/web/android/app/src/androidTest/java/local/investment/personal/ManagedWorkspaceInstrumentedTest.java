@@ -66,6 +66,13 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String COMPANY_NOTE = "Company draft captured in research";
+    private static final String PRICE_NOTE = "Price research draft " +
+        "Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 " +
+        "to latest loaded 2026-09-19 USD 110.000000000000000003; " +
+        "raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; " +
+        "requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; " +
+        "completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
     private static final String ANNUAL_NOTE = "Annual research draft " +
         "Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; " +
         "NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; " +
@@ -119,6 +126,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
+            selectFixtureScenario("price-comparison-note");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -1148,6 +1157,99 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void priceComparisonNoteDraftReviewSaveAndReloadPreservesSource() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        awaitPage("invented board admission completed without source reads", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Price research draft");
+        click("button[aria-label='EOD close history for saved ZERO']");
+        String scope = ".managed-eod-history";
+        String comparison = scope + " .managed-raw-close-comparison";
+        String add = scope + " .managed-price-note-action button";
+        awaitPage("saved ZERO Price opens unloaded with the existing note and no append action",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Price research draft'" +
+            " && document.querySelector(" + JSONObject.quote(comparison) + ") === null" +
+            " && document.querySelector(" + JSONObject.quote(add) + ") === null");
+        assertPriceNoteCounts(0, 0, 1);
+        clickEodAction("Load one-month close history");
+        assertEmptyComparison(scope, "ZERO", "|2026-09-17|2026-09-18");
+        awaitPage("no append before choosing an observed date", "document.querySelector(" + JSONObject.quote(add) + ") === null");
+        assertPriceNoteCounts(1, 0, 1);
+        chooseComparisonDate(scope, "2026-09-17");
+        String exactComparison = rawCloseComparison(scope, "2026-09-17", "100.000000000000000001",
+            "2026-09-19", "110.000000000000000003", "Raw close change: +$10.000000000000000002 (+10.0000%)");
+        awaitPage("selected earlier date exposes the explicit draft action",
+            exactComparison + " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.textContent === 'Add comparison to note draft'");
+        retainAnnualNoteFrame("priceComparisonNoteSource", comparison,
+            comparison + " > label, " + comparison + " > select, " + comparison + " > p, " +
+            comparison + " > .managed-raw-close-comparison-result, " + add, 5);
+        awaitPage("comparison remains exact through source capture", exactComparison);
+        assertPriceNoteCounts(1, 0, 1);
+        Log.i("ManagedPriceNote", "phase=selected-exact-comparison, eod=1, save=0; " + pageDiagnostic());
+        click(add);
+        awaitPage("one explicit append preserves prose and full original price provenance",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(PRICE_NOTE) +
+            " && document.querySelector('.managed-price-note-action [role=status]')?.textContent === " +
+            JSONObject.quote("Price comparison added to the note draft. Review and save all changes in My Watchlist."));
+        assertPriceNoteDraft(1, true);
+        assertPriceNoteCounts(1, 0, 1);
+        // Full textarea bytes are asserted; this frame claims only the visible note controls.
+        retainAnnualNoteFrame("priceComparisonNoteDraft", "#managed-research-note-heading",
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
+        assertPriceNoteDraft(1, true);
+        assertPriceNoteCounts(1, 0, 1);
+        assertFixtureBoundary();
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review returns to My Watchlist without another read or save",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertPriceNoteDraft(1, true);
+        assertPriceNoteCounts(1, 0, 1);
+        Log.i("ManagedPriceNote", "phase=appended-reviewed-unsaved, eod=1, save=0; " + pageDiagnostic());
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("one explicit whole-list save acknowledges version two", DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')");
+        assertPriceNoteDraft(2, false);
+        assertPriceNoteCounts(1, 1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("reload returns the exact saved price paragraph", DIAGNOSTICS + ".load === 2 && document.querySelector('#managed-note-0')?.disabled === false");
+        assertPriceNoteDraft(2, false);
+        assertPriceNoteCounts(1, 1, 2);
+        assertEquals("Price note review, save and reload preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertExactHistory(1, "https://localhost/", "https://localhost/");
+        Log.i("ManagedPriceNote", "phase=saved-reloaded, exactNoteLength=" + PRICE_NOTE.length() + "; " + pageDiagnostic());
+    }
+
+    private void assertPriceNoteDraft(int version, boolean dirty) throws Exception {
+        awaitPage("price note preserves the complete paragraph, other note and membership order",
+            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-memberships > li').length === 2" +
+            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(PRICE_NOTE) +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")" +
+            " && Array.from(document.querySelectorAll('[aria-labelledby=managed-watchlist-heading] button')).find(button => button.textContent === 'Save watchlist')?.disabled === " + !dirty);
+    }
+
+    private void assertPriceNoteCounts(int eod, int saves, int loads) throws Exception {
+        awaitPage("price note has only its explicit company load, save and reload",
+            DIAGNOSTICS + ".eod === " + eod + " && " + DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads +
+            " && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    @Test
     public void annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         awaitPage("invented board admission completed without source reads", DIAGNOSTICS + ".marketsResolve === 1");
@@ -1608,7 +1710,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("raw-close-comparison"));
+            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

@@ -9,6 +9,8 @@ import {
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
   type ManagedCatalogResolveResponse,
+  type ManagedEodCloseDto,
+  type ManagedEodHistoryResponseDto,
   type ManagedEodIdentity,
   type PersonalSecAnnualEvidenceResponseDto,
   type PersonalSecAnnualPairDto,
@@ -23,6 +25,7 @@ import {
 } from "./managed-annual-report";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
+import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
 import { SaveCoordinator } from "./save-coordinator";
@@ -839,6 +842,75 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private priceNoteProposal(
+    selection: AnnualReportSelection,
+    response: ManagedEodHistoryResponseDto,
+    start: ManagedEodCloseDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding a price comparison.",
+      };
+    const eod = this.eod.getSnapshot();
+    if (this.state.research?.section !== "eod" || eod.response !== response)
+      return {
+        note: null,
+        reason:
+          "Choose a comparison from the current Price history before adding it.",
+      };
+    if (eod.running)
+      return {
+        note: null,
+        reason: "Wait for the close history request to finish or cancel it.",
+      };
+    const excerpt = priceComparisonNoteExcerpt(
+      response,
+      start,
+      eod.showingPrevious,
+    );
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Choose an earlier observed date from the loaded close history.",
+      };
+    const note =
+      watchlist.member.note + (watchlist.member.note ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getPriceNoteAction(
+    selection: AnnualReportSelection,
+    response: ManagedEodHistoryResponseDto,
+    start: ManagedEodCloseDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.priceNoteProposal(selection, response, start);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendPriceComparisonToResearchNote(
+    selection: AnnualReportSelection,
+    response: ManagedEodHistoryResponseDto,
+    start: ManagedEodCloseDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.priceNoteProposal(selection, response, start);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Price comparison added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {

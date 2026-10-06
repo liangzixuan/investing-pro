@@ -1,15 +1,35 @@
 import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
 import { calculatePersonalRawCloseChange } from "@research-cockpit/personal-market-analytics";
-import { useId, useState } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 interface RawCloseComparisonProps {
   rows: readonly ManagedEodCloseDto[];
   symbol: string;
+  renderAction?:
+    | ((start: ManagedEodCloseDto, isCurrent: () => boolean) => ReactNode)
+    | undefined;
 }
 
-export function RawCloseComparison({ rows, symbol }: RawCloseComparisonProps) {
+export function RawCloseComparison({
+  rows,
+  symbol,
+  renderAction,
+}: RawCloseComparisonProps) {
   const id = useId();
   const [selection, setSelection] = useState({ rows, symbol, date: "" });
+  const committed = useRef<typeof selection | null>(null);
+  useLayoutEffect(() => {
+    committed.current = selection;
+    return () => {
+      committed.current = null;
+    };
+  }, [selection]);
   const current = selection.rows === rows && selection.symbol === symbol;
   if (!current) setSelection({ rows, symbol, date: "" });
   const earlier = rows.slice(0, -1);
@@ -113,6 +133,10 @@ export function RawCloseComparison({ rows, symbol }: RawCloseComparisonProps) {
           </>
         )}
       </div>
+      {start &&
+        latest &&
+        change?.status === "available" &&
+        renderAction?.(start, () => current && committed.current === selection)}
     </section>
   );
 }

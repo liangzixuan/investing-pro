@@ -3,6 +3,8 @@ import { parseManagedEodHistoryResponse } from "@research-cockpit/contracts";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ManagedEodHistory as Panel } from "./ManagedEodHistory";
+import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
+import { ManagedPriceNoteAction } from "./ManagedPriceNoteAction";
 import { ManagedEodHistory } from "./managed-eod-history";
 import {
   ManagedCatalogChangedError,
@@ -327,4 +329,49 @@ describe("managed close history panel", () => {
     expect(output).not.toContain("<table>");
     expect(output).not.toContain("Source request completed");
   });
+});
+
+it("offers the company action with the displayed response, exact start and current-selection guard", async () => {
+  focusHooks.enabled = true;
+  const response = eodResponse();
+  const read = vi.fn<ManagedApi["eodHistory"]>().mockResolvedValue(response);
+  const model = new ManagedEodHistory(read, vi.fn());
+  model.open(eodSelection);
+  await model.load();
+  const noteActions = {
+    getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+    append: vi.fn(() => ({ appended: true, message: "Draft changed" })),
+  };
+  function all(
+    node: React.ReactNode,
+  ): React.ReactElement<{ children?: React.ReactNode }>[] {
+    if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+    return [node, ...React.Children.toArray(node.props.children).flatMap(all)];
+  }
+  const chart = all(Panel({ model, noteActions })).find(
+    (node) => node.type === CloseHistoryChart,
+  ) as React.ReactElement<React.ComponentProps<typeof CloseHistoryChart>>;
+  const isCurrent = () => true;
+  const action = chart.props.renderAction!(
+    response.rows[0]!,
+    isCurrent,
+  ) as React.ReactElement<React.ComponentProps<typeof ManagedPriceNoteAction>>;
+  expect(action.type).toBe(ManagedPriceNoteAction);
+  expect(action.props.isCurrent).toBe(isCurrent);
+  expect(noteActions.getAction).toHaveBeenCalledWith(
+    response,
+    response.rows[0],
+  );
+  expect(noteActions.append).not.toHaveBeenCalled();
+  expect(action.props.onAppend()).toEqual({
+    appended: true,
+    message: "Draft changed",
+  });
+  expect(noteActions.append).toHaveBeenCalledWith(response, response.rows[0]);
+  expect(read).toHaveBeenCalledOnce();
+  focusHooks.index = 0;
+  const plain = all(Panel({ model })).find(
+    (node) => node.type === CloseHistoryChart,
+  ) as React.ReactElement<React.ComponentProps<typeof CloseHistoryChart>>;
+  expect(plain.props.renderAction).toBeUndefined();
 });

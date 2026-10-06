@@ -4,7 +4,7 @@ import {
   parseManagedWatchlistReceipt,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
-import { annualNoteDraft, createFixture } from "./fixture";
+import { annualNoteDraft, createFixture, priceNoteDraft } from "./fixture";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 type MutableFixtureMembership = {
@@ -12,6 +12,143 @@ type MutableFixtureMembership = {
 };
 
 describe("Android managed fixture startup", () => {
+  it("admits one exact ZERO price comparison note save and reloads the unchanged other member", async () => {
+    const fixture = await createFixture("price-comparison-note");
+    const signal = new AbortController().signal;
+    const original = await fixture.api.load(signal);
+    const request = {
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      range: "1m" as const,
+    };
+    const history = await fixture.api.eodHistory(request, signal);
+    expect(parseManagedEodHistoryResponse(history, request)).toEqual(history);
+    expect(history.rows).toEqual([
+      { date: "2026-09-17", close: "100.000000000000000001" },
+      { date: "2026-09-18", close: "107.500000000000000002" },
+      { date: "2026-09-19", close: "110.000000000000000003" },
+    ]);
+    const command = {
+      expectedVersion: 1,
+      idempotencyKey: "12345678-1234-4123-8123-123456789012",
+      payload: {
+        ...original.payload,
+        memberships: original.payload.memberships.map((member, index) =>
+          index === 0 ? { ...member, note: priceNoteDraft } : member,
+        ),
+      },
+    };
+    expect(fixture.getSnapshot()).toMatchObject({ eod: 1, save: 0 });
+    const receipt = await fixture.api.save(command, signal);
+    expect(parseManagedWatchlistReceipt(receipt, command)).toEqual(receipt);
+    expect(receipt).toEqual({
+      version: 2,
+      payload: command.payload,
+      replayed: false,
+    });
+    const loaded = await fixture.api.load(signal);
+    expect(loaded).toEqual({ version: 2, payload: command.payload });
+    expect(
+      loaded.payload.memberships.map((member) => member.listingId),
+    ).toEqual(["listing-zero", "listing-one"]);
+    expect(loaded.payload.memberships[1]).toEqual(
+      original.payload.memberships[1],
+    );
+    const returnedMember = loaded.payload
+      .memberships[0]! as MutableFixtureMembership;
+    returnedMember.note = "Changed returned copy";
+    expect(await fixture.api.load(signal)).toEqual({
+      version: 2,
+      payload: command.payload,
+    });
+    expect(() => fixture.api.eodHistory(request, signal)).toThrow(
+      "Unexpected extra fixture price note read",
+    );
+    expect(() =>
+      fixture.api.eodHistory({ ...request, listingId: "listing-alfa" }, signal),
+    ).toThrow("Unexpected extra fixture price note read");
+    expect(() =>
+      fixture.api.annualReport(
+        {
+          schemaVersion: "1.0.0",
+          catalogSnapshotSha256: fixtureDigest,
+          listingId: "listing-zero",
+          symbol: "ZERO",
+        },
+        signal,
+      ),
+    ).toThrow("Unexpected fixture price note Annual read");
+    expect(fixture.getSnapshot()).toMatchObject({
+      eod: 1,
+      annual: 0,
+      save: 1,
+      marketsEod: 0,
+      search: 0,
+      resolve: 0,
+      token: 0,
+      signOut: 0,
+    });
+    await expect(fixture.api.save(command, signal)).rejects.toThrow(
+      "Unexpected fixture operation: save",
+    );
+  });
+
+  it.each([
+    "unloaded",
+    "source",
+    "other-note",
+    "order",
+    "identity",
+    "aborted",
+  ] as const)(
+    "rejects the price comparison note save with invalid %s and preserves saved data",
+    async (invalid) => {
+      const fixture = await createFixture("price-comparison-note");
+      const controller = new AbortController();
+      const original = await fixture.api.load(controller.signal);
+      if (invalid !== "unloaded")
+        await fixture.api.eodHistory(
+          {
+            catalogSnapshotSha256: fixtureDigest,
+            listingId: "listing-zero",
+            range: "1m",
+          },
+          controller.signal,
+        );
+      const payload = {
+        ...original.payload,
+        memberships: original.payload.memberships.map((member, index) => ({
+          ...member,
+          note: index === 0 ? priceNoteDraft : member.note,
+        })),
+      };
+      if (invalid === "source")
+        payload.memberships[0]!.note = priceNoteDraft.replace(
+          "+10.0000%",
+          "+9.0000%",
+        );
+      if (invalid === "other-note")
+        payload.memberships[1]!.note = "Changed other note";
+      if (invalid === "order") payload.memberships.reverse();
+      if (invalid === "identity")
+        payload.memberships[0]!.shareClassId = "different-class";
+      if (invalid === "aborted") controller.abort();
+      await expect(
+        fixture.api.save(
+          {
+            expectedVersion: 1,
+            idempotencyKey: "12345678-1234-4123-8123-123456789012",
+            payload,
+          },
+          controller.signal,
+        ),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(await fixture.api.load(new AbortController().signal)).toEqual(
+        original,
+      );
+    },
+  );
+
   it("admits one exact ZERO Annual note save and reloads the unchanged other member", async () => {
     const fixture = await createFixture("annual-note");
     const signal = new AbortController().signal;

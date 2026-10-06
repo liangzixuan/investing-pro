@@ -13,12 +13,24 @@ interface Selection {
 const hooks = vi.hoisted(() => ({
   direct: false,
   selection: null as Selection | null,
+  committed: { current: null as Selection | null },
+  layout: undefined as undefined | (() => () => void),
+  cleanup: undefined as undefined | (() => void),
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
     useId: () => (hooks.direct ? "comparison" : actual.useId()),
+    useRef: (initial: unknown) =>
+      hooks.direct ? hooks.committed : actual.useRef(initial),
+    useLayoutEffect: (
+      effect: () => () => void,
+      dependencies: React.DependencyList,
+    ) => {
+      if (hooks.direct) hooks.layout = effect;
+      else actual.useLayoutEffect(effect, dependencies);
+    },
     useState: (initial: Selection) => {
       if (!hooks.direct) return actual.useState(initial);
       hooks.selection ??= initial;
@@ -35,6 +47,10 @@ vi.mock("react", async (original) => {
 afterEach(() => {
   hooks.direct = false;
   hooks.selection = null;
+  hooks.cleanup?.();
+  hooks.committed = { current: null };
+  hooks.layout = undefined;
+  hooks.cleanup = undefined;
 });
 
 const rows: readonly ManagedEodCloseDto[] = Object.freeze([
@@ -45,9 +61,21 @@ const rows: readonly ManagedEodCloseDto[] = Object.freeze([
 
 type Element = React.ReactElement<{ children?: React.ReactNode }>;
 type Select = React.ReactElement<React.ComponentProps<"select">>;
-function render(history = rows, symbol = "ALFA") {
+function render(
+  history = rows,
+  symbol = "ALFA",
+  renderAction?: React.ComponentProps<
+    typeof RawCloseComparison
+  >["renderAction"],
+  commit = true,
+) {
   hooks.direct = true;
-  return RawCloseComparison({ rows: history, symbol });
+  const result = RawCloseComparison({ rows: history, symbol, renderAction });
+  if (commit) {
+    hooks.cleanup?.();
+    hooks.cleanup = hooks.layout?.();
+  }
+  return result;
 }
 function selectFrom(element: Element): Select {
   const select = React.Children.toArray(element.props.children).find(
@@ -66,6 +94,65 @@ function html(history = rows, symbol = "ALFA") {
 }
 
 describe("raw close comparison", () => {
+  it("offers the action only for a committed available selection and retires an earlier choice even after choosing its date again", () => {
+    const captured: Array<{
+      start: ManagedEodCloseDto;
+      isCurrent: () => boolean;
+    }> = [];
+    const action = vi.fn(
+      (start: ManagedEodCloseDto, isCurrent: () => boolean) => {
+        captured.push({ start, isCurrent });
+        return <button>Use selected comparison</button>;
+      },
+    );
+    choose(selectFrom(render(rows, "ALFA", action)), rows[0]!.date);
+    expect(action).not.toHaveBeenCalled();
+    render(rows, "ALFA", action, false);
+    const first = captured.at(-1)!;
+    expect(first.start).toBe(rows[0]);
+    expect(first.isCurrent()).toBe(false);
+    hooks.cleanup?.();
+    hooks.cleanup = hooks.layout?.();
+    expect(first.isCurrent()).toBe(true);
+    const retained = render(rows, "ALFA", action);
+    expect(first.isCurrent()).toBe(true);
+    choose(selectFrom(retained), rows[1]!.date);
+    choose(selectFrom(render(rows, "ALFA", action)), rows[0]!.date);
+    render(rows, "ALFA", action);
+    expect(first.isCurrent()).toBe(false);
+    expect(captured.at(-1)!.start).toBe(rows[0]);
+    expect(captured.at(-1)!.isCurrent()).toBe(true);
+    hooks.cleanup?.();
+    expect(captured.at(-1)!.isCurrent()).toBe(false);
+  });
+
+  it.each(["response", "symbol", "empty"])(
+    "refuses captured actions after %s scope retirement",
+    (scope) => {
+      let active!: () => boolean;
+      const action = vi.fn(
+        (_start: ManagedEodCloseDto, isCurrent: () => boolean) => {
+          active = isCurrent;
+          return null;
+        },
+      );
+      choose(selectFrom(render()), rows[0]!.date);
+      render(rows, "ALFA", action);
+      expect(active()).toBe(true);
+      action.mockClear();
+      const nextRows =
+        scope === "response"
+          ? rows.map((row) => ({ ...row }))
+          : scope === "empty"
+            ? []
+            : rows;
+      render(nextRows, scope === "symbol" ? "BETA" : "ALFA", action);
+      render(nextRows, scope === "symbol" ? "BETA" : "ALFA", action);
+      expect(active()).toBe(false);
+      expect(action).not.toHaveBeenCalled();
+    },
+  );
+
   it("starts blank with a labelled native select containing only prior observed dates", () => {
     const element = render();
     const select = selectFrom(element);

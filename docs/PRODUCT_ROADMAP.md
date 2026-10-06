@@ -147,7 +147,15 @@ shows both dated endpoints and sends no request or save. Source checks, isolated
 browser checks, sixteen actual-main native cases, website promotion and signed
 package delivery passed. Feed coverage and the unadjusted-price contract are
 unchanged. [Current work](CURRENT_WORK.md) records the first native interaction
-failure, accepted rerun and unperformed live/physical checks.
+failure, accepted rerun and the separate bounded live AAPL comparison on October 6.
+Physical-device acceptance remains open.
+
+The selected next outcome is to retain a chosen company Price comparison in its
+existing watchlist note draft. One explicit action should keep the observed
+endpoints, exact change and original provenance alongside the user's prose,
+then use the existing review and Save watchlist flow. It adds no feed, request,
+schema or automatic save. This candidate is not yet an accepted website or
+Android release.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
