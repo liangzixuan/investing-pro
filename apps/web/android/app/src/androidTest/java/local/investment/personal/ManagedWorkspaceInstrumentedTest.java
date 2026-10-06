@@ -115,6 +115,8 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
             selectFixtureScenario("markets-selected-price");
+        if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
+            selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
@@ -906,6 +908,156 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void rawCloseComparisonUsesObservedDatesAndPreservesDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        typeIntoInput("workspace-company-query", "ZERO");
+        click(".workspace-global-search button[type=submit]");
+        awaitPage("comparison search is metadata only", DIAGNOSTICS + ".search === 1");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("comparison draft reordered", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Markets");
+        awaitPage("comparison board resolved without reading prices", DIAGNOSTICS + ".marketsResolve === 2");
+        click("button[aria-label='Select ALFA on company board']");
+        assertMarketsDraftAndCounts(2, 0, 0, 0);
+        clickMarketsAction("Load ALFA price");
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        String scope = ".managed-market-detail";
+        assertEmptyComparison(scope, "ALFA", "|2026-09-17|2026-09-18");
+        assertMarketsDetail("ALFA", "2026-09-17|100.000000000000000001;2026-09-18|107.500000000000000002;2026-09-19|110.000000000000000003", false);
+        chooseComparisonDate(scope, "2026-09-17");
+        String earlier = rawCloseComparison(scope, "2026-09-17", "100.000000000000000001",
+            "2026-09-19", "110.000000000000000003", "Raw close change: +$10.000000000000000002 (+10.0000%)");
+        awaitPage("first of three exact observations compared with latest", earlier);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        retainComparisonFrame("rawCloseComparedEarlier", scope);
+        awaitPage("earlier exact comparison unchanged through capture", earlier);
+        Log.i("ManagedComparison", "phase=earlier-long-decimal, reads=1; " + pageDiagnostic());
+
+        click("button[aria-label='Select BETA on company board']");
+        awaitPage("unloaded listing has no previous listing comparison",
+            "document.querySelector('.managed-market-detail .managed-raw-close-comparison') === null");
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        click("button[aria-label='Select ALFA on company board']");
+        assertEmptyComparison(scope, "ALFA", "|2026-09-17|2026-09-18");
+        chooseComparisonDate(scope, "2026-09-18");
+        String retained = rawCloseComparison(scope, "2026-09-18", "107.500000000000000002",
+            "2026-09-19", "110.000000000000000003", "Raw close change: +$2.500000000000000001 (+2.3256%)");
+        awaitPage("second observed date compared without another request", retained);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        clickMarketsAction("Refresh ALFA price");
+        assertMarketsDraftAndCounts(2, 2, 0, 0);
+        awaitPage("pending refresh retains selected date and exact prior values", retained +
+            " && document.querySelector('.managed-market-detail .managed-eod-previous') !== null");
+        clickMarketsAction("Cancel price loading");
+        assertMarketsDraftAndCounts(2, 2, 1, 0);
+        awaitPage("cancelled refresh keeps the same comparison", retained);
+        click("#settle-cancelled-markets");
+        assertMarketsDraftAndCounts(2, 2, 1, 1);
+        awaitPage("late reply cannot replace the retained comparison", retained);
+        Log.i("ManagedComparison", "phase=retained-cancelled-late, reads=2; " + pageDiagnostic());
+        clickMarketsAction("Refresh ALFA price");
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+        // September 18 still exists in the new response; its old selection must nevertheless reset.
+        assertEmptyComparison(scope, "ALFA", "|2026-09-18|2026-09-19");
+        awaitPage("new response replaces all three exact rows",
+            "Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-18|120.000000000000000004;2026-09-19|126.000000000000000005;2026-09-20|132.000000000000000006'" +
+            " && document.querySelector('.managed-market-detail .managed-eod-previous') === null");
+        retainComparisonFrame("rawCloseComparisonReplaced", scope);
+        assertEmptyComparison(scope, "ALFA", "|2026-09-18|2026-09-19");
+        assertMarketsDraftAndCounts(2, 3, 1, 1);
+
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='EOD close history for saved ZERO']");
+        awaitPage("company Price opens unloaded without a comparison",
+            "document.querySelector('#managed-eod-heading') !== null" +
+            " && document.querySelector('.managed-eod-history .managed-raw-close-comparison') === null");
+        assertCompanyHistory("listing-zero", "price", false);
+        assertEodDraftAndCounts(0, 0, 0);
+        clickEodAction("Load one-month close history");
+        assertEmptyComparison(".managed-eod-history", "ZERO", "|2026-09-18");
+        chooseComparisonDate(".managed-eod-history", "2026-09-18");
+        awaitPage("company Price uses the same exact comparison control",
+            rawCloseComparison(".managed-eod-history", "2026-09-18", "100.25",
+                "2026-09-19", "101.5", "Raw close change: +$1.25 (+1.2469%)"));
+        assertEodDraftAndCounts(1, 0, 0);
+        pressBack();
+        awaitPage("native Back retires the company comparison and restores opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-raw-close-comparison') === null" +
+            " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
+        assertEodDraftAndCounts(1, 0, 0);
+        awaitPage("only explicit board and company loads affected counters",
+            DIAGNOSTICS + ".marketsResolve === 2 && " + DIAGNOSTICS + ".marketsEod === 3" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 1 && " + DIAGNOSTICS + ".marketsLateResolved === 1");
+        assertReturnedRootHistory("listing-zero", "price");
+        assertEquals("Comparison preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+        Log.i("ManagedComparison", "phase=response-reset-company-back-draft-retained, boardReads=3, companyReads=1; " + pageDiagnostic());
+    }
+
+    private void assertEmptyComparison(String scope, String symbol, String dates) throws Exception {
+        awaitPage("comparison starts empty for " + symbol,
+            "(() => { const panel = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ");" +
+            " const select = panel?.querySelector('select'); return select && !select.disabled && select.value === ''" +
+            " && panel.querySelector('label')?.textContent === " + JSONObject.quote(symbol + " comparison start date") +
+            " && panel.querySelector('label')?.htmlFor === select.id" +
+            " && Array.from(select.options).map(o => o.value).join('|') === " + JSONObject.quote(dates) +
+            " && panel.querySelector('.managed-raw-close-comparison-result')?.textContent === ''; })()");
+    }
+
+    private String rawCloseComparison(String scope, String date, String start, String latestDate, String latest, String change) {
+        return "(() => { const panel = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ");" +
+            " return panel?.querySelector('select')?.value === " + JSONObject.quote(date) +
+            " && panel.querySelector('.managed-raw-close-comparison-start-date')?.textContent === " + JSONObject.quote(date) +
+            " && panel.querySelector('.managed-raw-close-comparison-start-date')?.dateTime === " + JSONObject.quote(date) +
+            " && panel.querySelector('.managed-raw-close-comparison-start-close')?.textContent === " + JSONObject.quote(start) +
+            " && panel.querySelector('.managed-raw-close-comparison-latest-date')?.textContent === " + JSONObject.quote(latestDate) +
+            " && panel.querySelector('.managed-raw-close-comparison-latest-date')?.dateTime === " + JSONObject.quote(latestDate) +
+            " && panel.querySelector('.managed-raw-close-comparison-latest-close')?.textContent === " + JSONObject.quote(latest) +
+            " && panel.querySelector('.managed-raw-close-comparison-change')?.textContent === " + JSONObject.quote(change) +
+            " && panel.querySelector('.managed-raw-close-comparison-result')?.getAttribute('role') === 'status'" +
+            " && panel.textContent.includes('Raw closes are not adjusted for splits or dividends.'); })()";
+    }
+
+    private void chooseComparisonDate(String scope, String date) throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> id = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")?.id",
+            value -> { id.set(value); returned.countDown(); }));
+        assertTrue("Comparison select id was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull(id.get());
+        String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
+        assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
+        touchInput(actualId);
+        // Select an Android option after a real touch opens WebView's native select dialog.
+        onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
+            .perform(androidx.test.espresso.action.ViewActions.click());
+        awaitPage("native comparison date selected",
+            "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(date));
+    }
+
+    private void retainComparisonFrame(String name, String scope) throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ").scrollIntoView({block:'center',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Comparison frame did not scroll", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const panel = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ");" +
+            " const v = visualViewport; if (!panel || !v || v.width > 600) return false;" +
+            " const targets = [panel, ...panel.querySelectorAll('label,select,p,dt,dd,strong')];" +
+            " return document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1 && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("comparison values fit the narrow native frame", visible);
+        retainScreenshot(name);
+        awaitPage("comparison values remain inside the captured native frame", visible);
+    }
+
+    @Test
     public void companyNoteDraftReviewSaveAndReloadPreservesIdentity() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
@@ -1455,7 +1607,8 @@ public class ManagedWorkspaceInstrumentedTest {
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
-            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note"));
+            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
+            scenarioName.equals("raw-close-comparison"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

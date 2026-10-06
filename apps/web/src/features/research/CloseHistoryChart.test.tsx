@@ -128,7 +128,9 @@ describe("close-only chart", () => {
     expect(html).toContain('<th scope="col">Trading date</th>');
     expect(html).toContain('<th scope="row">2026-09-18</th>');
     expect(html).not.toContain("volume");
-    expect(html).not.toContain("adjusted");
+    expect(html).toContain(
+      "Raw closes are not adjusted for splits or dividends.",
+    );
   });
   it("plots only closes, resizes with its container and disposes the chart on retirement", () => {
     let resize!: () => void;

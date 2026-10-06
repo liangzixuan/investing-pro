@@ -53,6 +53,35 @@ physical-device acceptance remain unperformed, as recorded in
 This follows the existing library's [axis tooltip pattern](https://apache.github.io/echarts-handbook/en/concepts/axis/).
 Formatter content must remain text under the [ECharts security guidance](https://echarts.apache.org/handbook/en/best-practices/security/).
 
+## Compare an earlier observed close
+
+The current candidate adds a comparison to the shared Markets and company Price
+chart. Choose a starting date from the earlier observations in the loaded history.
+The latest loaded observation is the fixed endpoint. Both dates and their original
+raw USD decimal closes remain visible beside the signed USD change and percentage.
+The existing market-analytics module calculates the difference with exact decimals
+and rounds percentages to four places. A nonzero change that rounds to zero says
+it is less than 0.0001% higher or lower. This is raw price change, unadjusted for
+splits or dividends, rather than total return or a live quote.
+
+The choice starts empty. Histories with fewer than two observations explain why
+comparison is unavailable. The selector contains only observed earlier dates; it
+does not interpolate prices or assume that the requested month is fully covered.
+The date selector and full exact-value table support keyboard use.
+
+Comparison makes no request and changes no saved data. Refreshing, Cancel and
+supported failures keep a choice only while the same previous history remains
+rendered, with its original provenance notice. A successful replacement resets
+the choice even when the new rows have equal values. Selecting another listing
+or retiring the chart also resets it. Switching from company Price to Annual
+unmounts the chart: returning retains the loaded prices but starts a new choice.
+
+The endpoint/date/change readout follows the established
+[date and price range pattern](https://www.tradingview.com/support/solutions/43000516996-date-and-price-range-drawing-tools/),
+using a starting-date selector for this bounded history. Candidate verification
+and delivery are tracked in [Current work](CURRENT_WORK.md); earlier chart
+acceptance does not establish this interaction's acceptance.
+
 ## Source and identity
 
 Authenticated `POST /v1/managed/eod-history` accepts at most 4 KiB and returns at
