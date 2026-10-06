@@ -151,8 +151,32 @@ capture failure and separate recovery remain in the record.
 
 Physical installation and use of 1.2 through 1.10, and backup/restore acceptance,
 remain unperformed. The owner-reported 1.1 result does not accept later packages.
-No further product outcome is selected here; full M1/M2 and broader source
+The next selected outcome is an [earlier-date raw-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close)
+in the shared Markets and company Price chart. Choose an earlier date from the
+loaded history and compare its exact raw USD close with the latest loaded close.
+The existing decimal calculator supplies the signed difference and four-place
+percentage. Comparison adds no request or saved state. Replacing the history,
+changing listing or unmounting the chart clears the choice; retained previous
+history keeps its original dates and qualification.
+
+The candidate is implemented. Twenty-two component cases, twenty-five fixture
+cases and 204 workspace regressions pass, along with types, scoped lint/format,
+fixture integrity and dependency boundaries. Independent source review found no
+blocking issue. An isolated Brave fixture passed keyboard selection, exact
+earlier/latest values, narrow layout, retained refresh/Cancel/late-response states,
+replacement and section resets, and Back focus with an unsaved invented draft.
+These checks used no live provider or owner records. The new native interaction
+case is written but has not yet executed.
+
+Normal publication and hosted checks are next. Website promotion, signed Android
+delivery and physical use require their separate evidence. The accepted product
+above remains unchanged until those steps pass. Full M1/M2 and broader source
 coverage remain open.
+
+PR 45 published the PR 44 release-status documentation at
+`6c5007e829c14ba2beaf5f32e8d7e839cacc6d47`. Its six required actual-main jobs
+and original CI attempt 1 source proof are accepted. It changed no app behavior
+and required no new deployment or APK.
 
 The preceding PR 42 selected-price website and signed Android 1.9 release remain
 recorded above, including the bounded live selected-AAPL journey on October 5.

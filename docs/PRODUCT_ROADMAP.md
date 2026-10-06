@@ -141,6 +141,14 @@ physical-device and backup/restore acceptance remain open.
 [Current work](./CURRENT_WORK.md) records the exact release and limits. Full M1/M2
 and broader data coverage remain open.
 
+The next selected chart step lets the user compare an earlier observed raw close
+with the latest loaded close in Markets and company Price. It reuses the existing
+loaded rows and exact decimal calculation, shows both endpoints and makes no
+additional request. Selection and refresh lifetimes, keyboard/narrow use and
+isolated native acceptance are required before delivery. This candidate does not
+expand feed coverage or establish adjusted returns. [Current work](CURRENT_WORK.md)
+tracks its acceptance separately from the delivered baseline.
+
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
 source-reading path. Existing security checks remain unchanged.

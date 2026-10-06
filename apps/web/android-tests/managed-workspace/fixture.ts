@@ -137,6 +137,7 @@ export async function createFixture(
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "raw-close-comparison"
     | "markets-selected-price" = "default",
 ) {
   const annual = await response();
@@ -229,15 +230,28 @@ export async function createFixture(
         completedAt: refreshed
           ? eodRecovered.completedAt
           : eodInitial.completedAt,
-        rows: refreshed
-          ? [
-              { date: "2026-09-19", close: start },
-              { date: "2026-09-20", close },
-            ]
-          : [
-              { date: "2026-09-18", close: start },
-              { date: "2026-09-19", close },
-            ],
+        rows:
+          scenario === "raw-close-comparison" && index === 0 && kind !== "late"
+            ? refreshed
+              ? [
+                  { date: "2026-09-18", close: "120.000000000000000004" },
+                  { date: "2026-09-19", close: "126.000000000000000005" },
+                  { date: "2026-09-20", close: "132.000000000000000006" },
+                ]
+              : [
+                  { date: "2026-09-17", close: "100.000000000000000001" },
+                  { date: "2026-09-18", close: "107.500000000000000002" },
+                  { date: "2026-09-19", close: "110.000000000000000003" },
+                ]
+            : refreshed
+              ? [
+                  { date: "2026-09-19", close: start },
+                  { date: "2026-09-20", close },
+                ]
+              : [
+                  { date: "2026-09-18", close: start },
+                  { date: "2026-09-19", close },
+                ],
       },
       request,
     );
@@ -248,7 +262,9 @@ export async function createFixture(
     marketsPacket(index, "initial"),
   );
   const marketsRefreshed = marketsPacket(0, "refreshed");
-  const selectedPriceScenario = scenario === "markets-selected-price";
+  const selectedPriceScenario =
+    scenario === "markets-selected-price" ||
+    scenario === "raw-close-comparison";
   const marketsLate = marketsPacket(selectedPriceScenario ? 0 : 1, "late");
   let state = {
     load: 0,

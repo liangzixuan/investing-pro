@@ -456,6 +456,58 @@ textarea:disabled {
 .managed-eod-tooltip-date {
   display: block;
 }
+.managed-raw-close-comparison {
+  margin: 20px 0 8px;
+  padding: 16px;
+  border: 1px solid #d4e2e0;
+  border-radius: 10px;
+  background: #f5f9f8;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-raw-close-comparison label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.managed-raw-close-comparison select {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid #9db8b2;
+  border-radius: 6px;
+  font: inherit;
+  color: #172b32;
+  background: #fff;
+}
+.managed-raw-close-comparison select:focus-visible {
+  outline: 3px solid #087dc1;
+  outline-offset: 3px;
+}
+.managed-raw-close-comparison p {
+  margin: 10px 0 0;
+  color: #425d61;
+  font-size: 0.875rem;
+}
+.managed-raw-close-comparison-result {
+  font-variant-numeric: tabular-nums;
+}
+.managed-raw-close-comparison-result dt {
+  font-size: 0.875rem;
+  color: #425d61;
+}
+.managed-raw-close-comparison-result dd {
+  margin: 4px 0 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.managed-raw-close-comparison-change {
+  display: block;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
 .managed-eod-chart table {
   width: 100%;
   border-collapse: collapse;

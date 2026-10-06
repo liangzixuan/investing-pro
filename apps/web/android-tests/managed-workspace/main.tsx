@@ -20,6 +20,7 @@ if (
   scenario !== "catalog-startup-recovery" &&
   scenario !== "company-direct-entry" &&
   scenario !== "annual-note" &&
+  scenario !== "raw-close-comparison" &&
   scenario !== "markets-selected-price"
 )
   throw new Error("Unknown invented Android test scenario");
@@ -55,7 +56,10 @@ function Fixture() {
             id="settle-cancelled-markets"
             disabled={
               state.marketsEod !==
-                (scenario === "markets-selected-price" ? 2 : 5) ||
+                (scenario === "markets-selected-price" ||
+                scenario === "raw-close-comparison"
+                  ? 2
+                  : 5) ||
               state.marketsAborted !== 1 ||
               state.marketsLateResolved !== 0
             }

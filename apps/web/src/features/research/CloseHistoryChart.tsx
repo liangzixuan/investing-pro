@@ -1,6 +1,7 @@
 import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
 import * as echarts from "echarts";
 import { useEffect, useRef } from "react";
+import { RawCloseComparison } from "./RawCloseComparison";
 
 const rawCloseSeriesId = "managed-raw-close";
 
@@ -112,6 +113,7 @@ export function CloseHistoryChart({
         role="img"
         aria-label={`${symbol} one-month raw close history in USD; exact values follow in the table`}
       />
+      <RawCloseComparison rows={rows} symbol={symbol} />
       <div
         className="managed-eod-table-scroll"
         role="region"
