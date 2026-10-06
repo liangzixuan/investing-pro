@@ -8,26 +8,35 @@ or develop the repository.
 
 ## Accepted release
 
-PR 44 is merged as `0e970dc6dd6ae90387f4486e95434b8bab780830`, from candidate
-`9e73bead4bf873282a221a7ea1af2f82b26081cd`, with tree
-`d602b1e123b586cca91d39052cb1a553d5544d12`. Its five required actual-main
-workflows and six jobs, original CI attempt 1 source proof and fifteen-case
-synthetic native report are accepted. The website now offers an explicit action
-to append a chosen eligible Annual pair to an existing watchlist-note draft.
-Staging passed its configured BrowserStack gate, and normal production approval
-promoted the same archive. Signed Android 1.10 passed build, artifact and delivery
-review with the existing production signer.
+PR 46 is merged as `662ca9e02e3d5836c8e3d3bb36126c01d7bd4d0c`, from candidate
+`2800792c52add84e911de7e2e550dcea5a0fa3a7`, with tree
+`b26005998188a9207624b7b1202c73775f2c82a2`. Its five required actual-main
+workflows and six jobs, original CI attempt 1 source proof and sixteen-case
+synthetic native report are accepted. The shared Markets and company Price chart
+can compare an earlier observed close with the latest loaded close.
 
-| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac472728a6e13d44cc8`; PR 44 staging archive promoted after normal approval                                                         | BrowserStack covers the inert staged shell; no new live Annual-to-note journey or continuing-availability claim                            |
-| Signed Android artifact   | Investment 1.10.0, code 11, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.10 remain unperformed                                                                       |
-| Automated Android         | PR 44: fifteen passing invented-data API-36 emulator cases; two Annual-note frames received scoped visual review                                                                | Full note equality, order, save and reload rely on native assertions; no production sign-in, live provider or physical-device claim        |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.10                                                                             |
-| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                     |
+Website release
+[37466898815](https://github.com/liangzixuan/investing-pro/actions/runs/37466898815)
+promoted the same staging archive after normal production approval. Production
+`6ac4f5af7ae73ae9f88c` replaced `6ac472728a6e13d44cc8`. Signed Android 1.11.0,
+code 12, passed build, artifact and delivery review with the existing package and
+production signer.
 
-The accepted 1.10 APK is 6,653,708 bytes, SHA-256
+| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known  |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac4f5af7ae73ae9f88c`; PR 46 staging archive promoted after normal approval                                                         | BrowserStack covers the inert staged shell; no new live comparison journey or continuing-availability claim                                 |
+| Signed Android artifact   | Investment 1.11.0, code 12, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.11 remain unperformed                                                                        |
+| Automated Android         | PR 46: sixteen passing invented-data API-36 emulator cases on attempt 2; two comparison frames received scoped visual review                                                    | Native assertions cover exact values, reset behavior and request/save counts; no production sign-in, live-provider or physical-device claim |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.11                                                                              |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                      |
+
+The accepted 1.11 APK is 6,654,152 bytes, SHA-256
+`696a7d165e05a849343ead51c3bcad188cf37dc933c4e520ffc9aa390a2a3b54`.
+It was built from the PR 46 main commit above. Its signed package and delivered
+bytes are covered by separate artifact and delivery reviews.
+
+The previously accepted 1.10 APK is 6,653,708 bytes, SHA-256
 `2662bc1fd4ccfdc9a7db5766ed277b1996bedc56a80b91568ee76d613939bf2a`.
 It was built from PR 44 main `0e970dc6dd6ae90387f4486e95434b8bab780830`,
 whose tree matches the published candidate. The PR 44 website at
@@ -49,7 +58,7 @@ use remain unverified.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.10. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.11. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -144,34 +153,40 @@ Original PR Windows failure, CodeScene advisory outcome and earlier verification
 and Android capture failures remain retained; the accepted results do not erase
 them.
 
-Signed Android 1.10.0, code 11, is delivered with the same package and production
-signer. All ten build commands passed, both outer output streams were collected,
+PR 44 delivered signed Android 1.10.0, code 11, with the same package and
+production signer. All ten build commands passed, both outer output streams were collected,
 and the APK, merged manifest and delivered bytes passed review. The earlier 1.9
 capture failure and separate recovery remain in the record.
 
-Physical installation and use of 1.2 through 1.10, and backup/restore acceptance,
-remain unperformed. The owner-reported 1.1 result does not accept later packages.
-The next selected outcome is an [earlier-date raw-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close)
-in the shared Markets and company Price chart. Choose an earlier date from the
-loaded history and compare its exact raw USD close with the latest loaded close.
-The existing decimal calculator supplies the signed difference and four-place
-percentage. Comparison adds no request or saved state. Replacing the history,
-changing listing or unmounting the chart clears the choice; retained previous
-history keeps its original dates and qualification.
+Physical installation and use of 1.2 through 1.11, and backup/restore
+acceptance, remain unperformed. The owner-reported 1.1 result does not accept later
+packages.
 
-The candidate is implemented. Twenty-two component cases, twenty-five fixture
-cases and 204 workspace regressions pass, along with types, scoped lint/format,
-fixture integrity and dependency boundaries. Independent source review found no
-blocking issue. An isolated Brave fixture passed keyboard selection, exact
-earlier/latest values, narrow layout, retained refresh/Cancel/late-response states,
-replacement and section resets, and Back focus with an unsaved invented draft.
-These checks used no live provider or owner records. The new native interaction
-case is written but has not yet executed.
+The [earlier-date raw-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close)
+is accepted on PR 46 main. Choose an earlier observed date from the loaded
+history; the latest loaded observation stays fixed as the endpoint. Both dates
+and original raw USD decimals remain visible beside the exact signed difference
+and four-place percentage. Tiny nonzero percentages retain their direction.
+The comparison is unadjusted for splits and dividends, adds no request or saved
+state, and uses the existing decimal calculator. A replacement response resets
+the choice even when its values match; listing changes and chart retirement also
+reset it. Retained previous history keeps its choice and original provenance.
 
-Normal publication and hosted checks are next. Website promotion, signed Android
-delivery and physical use require their separate evidence. The accepted product
-above remains unchanged until those steps pass. Full M1/M2 and broader source
-coverage remain open.
+Twenty-two component cases, twenty-five fixture cases and 204 workspace
+regressions passed, with types, scoped lint/format and boundary checks. Isolated
+Brave checks covered keyboard selection, exact endpoints, narrow layout and
+history/section lifetimes without live providers or owner records. Actual-main
+Android attempt 2 passed all sixteen cases, retaining 33 PNGs, 30 managed capture
+callbacks and 13 source markers. Two comparison frames received scoped visual
+review. Attempt 1's initial date-picker interaction failed after a logged tap
+oversleep; the original failure remains and its cause is unknown. The unchanged
+rerun does not establish repeat reliability. The earlier PR Windows timeout and
+reviewed CodeScene advisory also remain recorded.
+
+The comparison is delivered on the website and in signed Android 1.11. BrowserStack
+covers the inert staged shell; the native assertions use invented data. Live
+comparison, physical-phone and backup/restore acceptance remain unperformed.
+Full M1/M2 and broader source coverage remain open.
 
 PR 45 published the PR 44 release-status documentation at
 `6c5007e829c14ba2beaf5f32e8d7e839cacc6d47`. Its six required actual-main jobs

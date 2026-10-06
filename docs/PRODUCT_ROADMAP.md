@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.10 package share Discover, a private
+The managed website and signed Android 1.11 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.10 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.11 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.10. Previous histories keep their original dates. Physical
+and in signed Android 1.11. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.10. It uses the three accepted
+and in signed Android 1.11. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -141,13 +141,13 @@ physical-device and backup/restore acceptance remain open.
 [Current work](./CURRENT_WORK.md) records the exact release and limits. Full M1/M2
 and broader data coverage remain open.
 
-The next selected chart step lets the user compare an earlier observed raw close
-with the latest loaded close in Markets and company Price. It reuses the existing
-loaded rows and exact decimal calculation, shows both endpoints and makes no
-additional request. Selection and refresh lifetimes, keyboard/narrow use and
-isolated native acceptance are required before delivery. This candidate does not
-expand feed coverage or establish adjusted returns. [Current work](CURRENT_WORK.md)
-tracks its acceptance separately from the delivered baseline.
+PR 46 and signed Android 1.11 deliver an earlier-date raw-close comparison in
+Markets and company Price. It reuses loaded rows and exact decimal calculation,
+shows both dated endpoints and sends no request or save. Source checks, isolated
+browser checks, sixteen actual-main native cases, website promotion and signed
+package delivery passed. Feed coverage and the unadjusted-price contract are
+unchanged. [Current work](CURRENT_WORK.md) records the first native interaction
+failure, accepted rerun and unperformed live/physical checks.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

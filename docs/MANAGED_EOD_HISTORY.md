@@ -55,8 +55,8 @@ Formatter content must remain text under the [ECharts security guidance](https:/
 
 ## Compare an earlier observed close
 
-The current candidate adds a comparison to the shared Markets and company Price
-chart. Choose a starting date from the earlier observations in the loaded history.
+PR 46 adds a comparison to the shared Markets and company Price chart. Choose a
+starting date from the earlier observations in the loaded history.
 The latest loaded observation is the fixed endpoint. Both dates and their original
 raw USD decimal closes remain visible beside the signed USD change and percentage.
 The existing market-analytics module calculates the difference with exact decimals
@@ -78,9 +78,10 @@ unmounts the chart: returning retains the loaded prices but starts a new choice.
 
 The endpoint/date/change readout follows the established
 [date and price range pattern](https://www.tradingview.com/support/solutions/43000516996-date-and-price-range-drawing-tools/),
-using a starting-date selector for this bounded history. Candidate verification
-and delivery are tracked in [Current work](CURRENT_WORK.md); earlier chart
-acceptance does not establish this interaction's acceptance.
+using a starting-date selector for this bounded history. The comparison is
+delivered on the website and in signed Android 1.11, with isolated browser and
+sixteen-case native acceptance; [Current work](CURRENT_WORK.md) records the
+original native failure, accepted rerun and live/physical limits.
 
 ## Source and identity
 
