@@ -108,6 +108,37 @@ can remain visible while editing is paused. Account/session retirement clears th
 workspace under its existing rules. Adding, typing and navigation send no save or
 provider request. Unsaved drafts remain in the mounted session only.
 
+## Add annual evidence to a note draft
+
+The current candidate adds an explicit **Add to note draft** action beside
+each eligible Annual pair. Choose the named revenue basis to retain its exact
+USD revenue, NetIncomeLoss and net-margin percentage with the annual period,
+filing link and original observation times. Revenue bases stay separate.
+
+The excerpt uses the report currently shown in that visit. A retained report
+keeps its original dates and current-use qualification; adding it to a note does
+not refresh the evidence. Missing or refused pairs have no append action.
+While a report request is pending, wait for it to finish or use Cancel before
+appending the retained report.
+
+The listing must already be in the watchlist draft. The action preserves existing
+prose and reads the latest note when clicked. If the full proposed note exceeds
+the existing 2,000-character policy or cannot be saved under that policy, the
+action explains the problem and leaves the draft unchanged. It never truncates
+the note. The excerpt is a plain-text paragraph, matching the existing note
+contract.
+
+Changing the visit, replacing the response or retiring the session invalidates
+old controls. Catalog, identity, pending-save and conflict checks still apply.
+Appending sends no provider or save request and does not add membership. Review
+the draft and use the existing **Save watchlist** action to save all changes.
+
+The interaction follows the explicit source-to-note pattern in
+[Zotero's note workflow](https://www.zotero.org/support/pdf_reader#adding_annotations_to_notes):
+choose evidence and retain its source citation. This implementation uses the
+existing plain-text watchlist and SEC response. [Current work](CURRENT_WORK.md)
+records implementation and delivery acceptance separately.
+
 ## Acceptance
 
 The selected checks cover loaded returns in both directions without extra reads,

@@ -24,6 +24,8 @@ import {
 import { TrialApiError } from "../../src/clerk-trial/api";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const annualNoteDraft =
+  "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -134,6 +136,7 @@ export async function createFixture(
     | "default"
     | "catalog-startup-recovery"
     | "company-direct-entry"
+    | "annual-note"
     | "markets-selected-price" = "default",
 ) {
   const annual = await response();
@@ -330,14 +333,23 @@ export async function createFixture(
       const captured = parseManagedWatchlistCommand(command);
       const expected = {
         ...payload,
-        memberships: [
-          ...payload.memberships,
-          { ...marketsCohort[0], note: "Company draft captured in research" },
-        ],
+        memberships:
+          scenario === "annual-note"
+            ? payload.memberships.map((member, index) =>
+                index === 0 ? { ...member, note: annualNoteDraft } : member,
+              )
+            : [
+                ...payload.memberships,
+                {
+                  ...marketsCohort[0],
+                  note: "Company draft captured in research",
+                },
+              ],
       };
       // One invented full-list save only. Other cases still require zero writes.
       if (
         signal.aborted ||
+        (scenario === "annual-note" && state.annual !== 1) ||
         savedWatchlist.version !== 1 ||
         captured?.expectedVersion !== 1 ||
         encodeMainWatchlistPayload(captured.payload) !==
@@ -489,6 +501,12 @@ export async function createFixture(
         request.symbol !== "ZERO"
       )
         throw new Error("Unexpected fixture annual request");
+      if (scenario === "annual-note") {
+        if (state.annual !== 0)
+          throw new Error("Unexpected extra fixture annual note read");
+        count("annual");
+        return Promise.resolve(structuredClone(annual));
+      }
       count("annual");
       if (!state.refreshScenario && state.annual === 2) {
         if (state.aborted !== 1 || state.lateResolved !== 1)

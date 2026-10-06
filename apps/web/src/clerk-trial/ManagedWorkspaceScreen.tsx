@@ -483,6 +483,20 @@ export function ManagedWorkspaceScreen({
               onNote={(note) =>
                 workspace.noteResearch(discovery.research!.selection, note)
               }
+              annualNoteActions={{
+                getAction: (response, pair) =>
+                  workspace.getAnnualNoteAction(
+                    discovery.research!.selection,
+                    response,
+                    pair,
+                  ),
+                append: (response, pair) =>
+                  workspace.appendAnnualToResearchNote(
+                    discovery.research!.selection,
+                    response,
+                    pair,
+                  ),
+              }}
               onReview={() => {
                 if (
                   workspace.getSnapshot().research?.selection !==

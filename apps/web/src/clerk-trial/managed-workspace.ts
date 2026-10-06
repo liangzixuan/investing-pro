@@ -10,6 +10,8 @@ import {
   type ManagedCatalogSnapshotDto,
   type ManagedCatalogResolveResponse,
   type ManagedEodIdentity,
+  type PersonalSecAnnualEvidenceResponseDto,
+  type PersonalSecAnnualPairDto,
   type PersonalSecurityMasterSearchResultDto,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -20,6 +22,7 @@ import {
   type AnnualReportSelection,
 } from "./managed-annual-report";
 import { ManagedEodHistory } from "./managed-eod-history";
+import { annualNoteExcerpt } from "./managed-annual-note";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
 import { SaveCoordinator } from "./save-coordinator";
@@ -770,6 +773,73 @@ export class ManagedWorkspace {
   noteResearch(selection: AnnualReportSelection, note: string) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
     this.note(selection.listing.listingId, note);
+  }
+  private annualNoteProposal(
+    selection: AnnualReportSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    pair: PersonalSecAnnualPairDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding Annual evidence.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose evidence from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualNoteExcerpt(response, pair, annual.showingPrevious);
+    if (excerpt === null)
+      return {
+        note: null,
+        reason: "Choose an eligible pair from the observed Annual report.",
+      };
+    const note =
+      watchlist.member.note + (watchlist.member.note ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualNoteAction(
+    selection: AnnualReportSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    pair: PersonalSecAnnualPairDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualNoteProposal(selection, response, pair);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualToResearchNote(
+    selection: AnnualReportSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+    pair: PersonalSecAnnualPairDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualNoteProposal(selection, response, pair);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    };
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;

@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 5, 2026. This document defines the durable product goals and
+Updated October 6, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -131,7 +131,11 @@ other board histories; selection alone makes no price request. The full-board
 action remains available. Source checks, synthetic native checks, website
 promotion and signed-package delivery are accepted. One bounded live selected-AAPL
 journey passed on October 5; the physical Android update check remains open.
-No new product slice is selected; full M1/M2 and broader data coverage remain open.
+The current candidate connects Annual evidence to the existing watchlist-note
+draft. One explicit action retains a chosen eligible annual pair's exact
+values, original dates and filing link, with the existing explicit save flow.
+Source implementation is complete; release acceptance is pending. Full M1/M2 and broader data coverage
+remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

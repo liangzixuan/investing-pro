@@ -211,6 +211,114 @@ function elements(
   ];
 }
 describe("managed workspace screen", () => {
+  it("updates Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Original thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    const report = await annualResponse();
+    vi.mocked(api.annualReport).mockResolvedValue(report);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    const company = () => {
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const node = ManagedWorkspaceScreen({ workspace });
+      mounted.direct = false;
+      return elements(node).find(
+        (element) => element.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const pair = report.evidence.resolution.bases.flatMap(
+      (basis) => basis.pairs,
+    )[0]!;
+    const captured = company().props.annualNoteActions;
+    expect(captured.getAction(report, pair).canAppend).toBe(true);
+    company().props.onNote("x".repeat(2000));
+    expect(html()).toMatch(
+      /<button[^>]*disabled=""[^>]*aria-label="Add Revenues annual evidence to note draft"/u,
+    );
+    expect(html()).toContain(
+      "The complete note must fit within 2,000 characters",
+    );
+    company().props.onNote("  Latest Cafe\u0301 thesis  ");
+    expect(html()).toMatch(
+      /<button class="trial-secondary" aria-label="Add Revenues annual evidence to note draft"/u,
+    );
+    const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
+    expect(captured.append(report, pair)).toEqual({
+      appended: true,
+      message:
+        "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    });
+    const note =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note;
+    expect(
+      note.startsWith("  Latest Cafe\u0301 thesis   Observed Annual report:"),
+    ).toBe(true);
+    expect(note).toContain("Revenues revenue USD 1000");
+    expect(note).toContain(report.evidence.generation.completedAt);
+    expect(workspace.coordinator.getSnapshot().draft!.memberships[1]).toEqual(
+      other,
+    );
+    expect(workspace.annual.getSnapshot().response).toBe(report);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+  });
+
+  it("rejects Annual note callbacks captured before response replacement or closing the visit", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep my thesis" }],
+    });
+    const report = await annualResponse();
+    const next = await annualResponse(undefined, "2026-09-21T00:00:00.000Z");
+    vi.mocked(api.annualReport)
+      .mockResolvedValueOnce(report)
+      .mockResolvedValueOnce(next);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const actions = company.props.annualNoteActions;
+    const pair = report.evidence.resolution.bases.flatMap(
+      (basis) => basis.pairs,
+    )[0]!;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    await workspace.annual.load();
+    expect(actions.append(report, pair).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(draft!.memberships[0]!);
+    const nextPair = next.evidence.resolution.bases.flatMap(
+      (basis) => basis.pairs,
+    )[0]!;
+    expect(actions.append(next, nextPair).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
   it("coordinates company section, Back and watchlist review through URL navigation", async () => {
     const { workspace, api } = fixture();
     await workspace.coordinator.load();

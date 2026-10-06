@@ -2,10 +2,136 @@ import { describe, expect, it } from "vitest";
 import {
   parseManagedEodHistoryResponse,
   parseManagedWatchlistReceipt,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
-import { createFixture } from "./fixture";
+import { annualNoteDraft, createFixture } from "./fixture";
+
+const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
+type MutableFixtureMembership = {
+  -readonly [Field in keyof WatchlistMembership]: WatchlistMembership[Field];
+};
 
 describe("Android managed fixture startup", () => {
+  it("admits one exact ZERO Annual note save and reloads the unchanged other member", async () => {
+    const fixture = await createFixture("annual-note");
+    const signal = new AbortController().signal;
+    const original = await fixture.api.load(signal);
+    expect(original.payload.snapshotSha256).toBe(fixtureDigest);
+    const request = {
+      schemaVersion: "1.0.0" as const,
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    const report = await fixture.api.annualReport(request, signal);
+    expect(report.evidence.generation).toEqual(fixture.generations.initial);
+    const command = {
+      expectedVersion: 1,
+      idempotencyKey: "12345678-1234-4123-8123-123456789012",
+      payload: {
+        ...original.payload,
+        memberships: original.payload.memberships.map((member, index) =>
+          index === 0 ? { ...member, note: annualNoteDraft } : member,
+        ),
+      },
+    };
+    const expected = structuredClone(command.payload);
+    const receipt = await fixture.api.save(command, signal);
+    expect(parseManagedWatchlistReceipt(receipt, command)).toEqual(receipt);
+    expect(receipt).toEqual({ version: 2, payload: expected, replayed: false });
+    const loaded = await fixture.api.load(signal);
+    expect(loaded).toEqual({ version: 2, payload: expected });
+    expect(
+      loaded.payload.memberships.map((member) => member.listingId),
+    ).toEqual(["listing-zero", "listing-one"]);
+    expect(loaded.payload.memberships[1]).toEqual(
+      original.payload.memberships[1],
+    );
+    expect(loaded.payload).not.toBe(receipt.payload);
+    // This invented adapter returns mutable structured clones. Mutate the actual
+    // returned object to prove it cannot alter the fixture's stored payload.
+    const returnedMember = loaded.payload
+      .memberships[0]! as MutableFixtureMembership;
+    returnedMember.note = "Changed returned copy";
+    expect(await fixture.api.load(signal)).toEqual({
+      version: 2,
+      payload: expected,
+    });
+    expect(() => fixture.api.annualReport(request, signal)).toThrow(
+      "Unexpected extra fixture annual note read",
+    );
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 1,
+      save: 1,
+      eod: 0,
+      marketsEod: 0,
+      search: 0,
+      resolve: 0,
+      token: 0,
+      signOut: 0,
+    });
+    await expect(fixture.api.save(command, signal)).rejects.toThrow(
+      "Unexpected fixture operation: save",
+    );
+  });
+
+  it.each([
+    "unloaded",
+    "source",
+    "other-note",
+    "order",
+    "identity",
+    "aborted",
+  ] as const)(
+    "rejects the Annual note save with invalid %s and preserves saved data",
+    async (invalid) => {
+      const fixture = await createFixture("annual-note");
+      const controller = new AbortController();
+      const original = await fixture.api.load(controller.signal);
+      if (invalid !== "unloaded")
+        await fixture.api.annualReport(
+          {
+            schemaVersion: "1.0.0",
+            catalogSnapshotSha256: fixtureDigest,
+            listingId: "listing-zero",
+            symbol: "ZERO",
+          },
+          controller.signal,
+        );
+      const payload = {
+        ...original.payload,
+        memberships: original.payload.memberships.map((member, index) => ({
+          ...member,
+          note: index === 0 ? annualNoteDraft : member.note,
+        })),
+      };
+      if (invalid === "source")
+        payload.memberships[0]!.note = annualNoteDraft.replace(
+          "USD 1000",
+          "USD 2000",
+        );
+      if (invalid === "other-note")
+        payload.memberships[1]!.note = "Changed other note";
+      if (invalid === "order") payload.memberships.reverse();
+      if (invalid === "identity")
+        payload.memberships[0]!.shareClassId = "different-class";
+      if (invalid === "aborted") controller.abort();
+      await expect(
+        fixture.api.save(
+          {
+            expectedVersion: 1,
+            idempotencyKey: "12345678-1234-4123-8123-123456789012",
+            payload,
+          },
+          controller.signal,
+        ),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(await fixture.api.load(new AbortController().signal)).toEqual(
+        original,
+      );
+    },
+  );
+
   it("resolves the cold company link once without loading research or saving", async () => {
     const fixture = await createFixture("company-direct-entry");
     const signal = new AbortController().signal;

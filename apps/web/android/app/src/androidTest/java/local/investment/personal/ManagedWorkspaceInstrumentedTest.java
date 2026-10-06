@@ -66,6 +66,13 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String COMPANY_NOTE = "Company draft captured in research";
+    private static final String ANNUAL_NOTE = "Annual research draft " +
+        "Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; " +
+        "NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
+        "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
     private static final String CATALOG_REFRESH = ".managed-search-bar > button";
@@ -108,6 +115,8 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
             selectFixtureScenario("markets-selected-price");
+        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
+            selectFixtureScenario("annual-note");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -986,6 +995,111 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedCompanyNote", "phase=saved-reloaded, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        awaitPage("invented board admission completed without source reads", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Annual research draft");
+        click(ANNUAL);
+        awaitPage("exact saved ZERO opens with existing prose and unloaded Annual",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null");
+        assertAnnualNoteCounts(0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        String basis = "section[aria-label='Annual revenue basis Revenues']";
+        String add = basis + " button[aria-label='Add Revenues annual evidence to note draft']";
+        String exactReport =
+            "(() => { const report = document.querySelector('.sec-quarterly-comparison');" +
+            " const generation = JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial;" +
+            " return report !== null && report.textContent.includes(generation.sha256)" +
+            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === '1000,100,10'" +
+            " && document.querySelector(" + JSONObject.quote(basis + " > div > p") + ")?.textContent === '2025-01-01 to 2025-12-31'" +
+            " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
+        awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
+        assertAnnualNoteCounts(1, 0, 1);
+        retainAnnualNoteFrame("annualEvidenceNoteSource", basis + " > h4",
+            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl, " + add, 4);
+        awaitPage("source pair remains unchanged through capture", exactReport);
+        assertAnnualNoteCounts(1, 0, 1);
+        click(add);
+        awaitPage("explicit chosen pair appends exact provenance to the existing draft",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
+            " && document.querySelector('.managed-annual-note-action [role=status]')?.textContent === " +
+                JSONObject.quote("Annual evidence added to the note draft. Review and save all changes in My Watchlist."));
+        assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        // The textarea contains the whole exact note, but this frame claims only its visible controls.
+        retainAnnualNoteFrame("annualEvidenceNoteDraft", "#managed-research-note-heading",
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
+        assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        assertFixtureBoundary();
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review returns to the visible watchlist without a save or research read",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("one explicit full-list save acknowledges version two", DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')");
+        assertAnnualNoteDraft(2, false);
+        assertAnnualNoteCounts(1, 1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("explicit reload returns the saved exact Annual note", DIAGNOSTICS + ".load === 2 && document.querySelector('#managed-note-0')?.disabled === false");
+        assertAnnualNoteDraft(2, false);
+        assertAnnualNoteCounts(1, 1, 2);
+        assertEquals("Annual note review, save and reload preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertExactHistory(1, "https://localhost/", "https://localhost/");
+        Log.i("ManagedAnnualNote", "phase=observed-pair-appended-saved-reloaded, exactNoteLength=" + ANNUAL_NOTE.length() + "; " + pageDiagnostic());
+    }
+
+    private void assertAnnualNoteDraft(int version, boolean dirty) throws Exception {
+        awaitPage("Annual note preserves the full exact paragraph, identities, other note and order",
+            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-memberships > li').length === 2" +
+            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
+    }
+
+    private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {
+        awaitPage("Annual note has only its explicit source load, save and reload",
+            DIAGNOSTICS + ".annual === " + annual + " && " + DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads +
+            " && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void retainAnnualNoteFrame(String name, String scrollSelector, String selectors, int count) throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector(" + JSONObject.quote(scrollSelector) + ").scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Annual note frame did not scroll", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const targets = Array.from(document.querySelectorAll(" + JSONObject.quote(selectors) + "));" +
+            " const v = visualViewport; return v && targets.length === " + count + " && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("Annual note frame targets visible: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("Annual note frame targets remained visible: " + name, visible);
+    }
+
     private void assertCompanyNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("company note preserves exact membership order and unrelated notes",
             "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
@@ -1341,7 +1455,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void selectFixtureScenario(String scenarioName) throws IOException {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
-            scenarioName.equals("markets-selected-price"));
+            scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

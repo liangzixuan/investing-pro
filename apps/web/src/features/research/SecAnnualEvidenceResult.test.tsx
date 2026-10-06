@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { PersonalSecAnnualPairDto } from "@research-cockpit/contracts";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import { response, row } from "./sec-annual-evidence-fixture";
 
@@ -36,5 +37,51 @@ describe("shared annual result", () => {
       "NetIncomeLoss is missing for this filing and exact period",
     );
     expect(html).not.toContain("Net margin · %</dt>");
+  });
+
+  it("offers an explicitly named action for each eligible basis without choosing one", async () => {
+    const wire = await response([
+      row("Revenues", "1000"),
+      row("SalesRevenueNet", "900"),
+      row("NetIncomeLoss", "-25"),
+    ]);
+    const renderPairAction = vi.fn((pair: PersonalSecAnnualPairDto) => (
+      <button aria-label={`Add ${pair.concept} annual evidence to note draft`}>
+        Add to note draft
+      </button>
+    ));
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult
+        response={wire}
+        renderPairAction={renderPairAction}
+      />,
+    );
+    expect(renderPairAction.mock.calls.map(([pair]) => pair)).toEqual(
+      wire.evidence.resolution.bases.flatMap((basis) =>
+        basis.pairs.filter((pair) => pair.status === "eligible"),
+      ),
+    );
+    expect(renderPairAction).toHaveBeenCalledTimes(2);
+    for (const concept of ["Revenues", "SalesRevenueNet"])
+      expect(html).toContain(
+        `aria-label="Add ${concept} annual evidence to note draft"`,
+      );
+    expect(html).toContain(
+      'aria-label="Annual revenue basis RevenueFromContractWithCustomerExcludingAssessedTax"',
+    );
+  });
+
+  it("does not offer pair actions when the displayed evidence has no eligible pair", async () => {
+    const wire = await response([row()]);
+    const renderPairAction = vi.fn(() => <button>Add to note draft</button>);
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult
+        response={wire}
+        renderPairAction={renderPairAction}
+      />,
+    );
+    expect(renderPairAction).not.toHaveBeenCalled();
+    expect(html).not.toContain("Add to note draft");
+    expect(html).toContain("No valid annual pair");
   });
 });

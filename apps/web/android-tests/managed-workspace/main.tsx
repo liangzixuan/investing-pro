@@ -19,6 +19,7 @@ if (
   scenario !== undefined &&
   scenario !== "catalog-startup-recovery" &&
   scenario !== "company-direct-entry" &&
+  scenario !== "annual-note" &&
   scenario !== "markets-selected-price"
 )
   throw new Error("Unknown invented Android test scenario");

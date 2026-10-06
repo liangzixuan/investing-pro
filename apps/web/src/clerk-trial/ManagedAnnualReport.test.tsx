@@ -25,6 +25,11 @@ import {
   type ManagedApi,
 } from "./managed-api";
 import { TrialApiError } from "./api";
+import { SecAnnualEvidenceResult } from "../features/research/SecAnnualEvidenceResult";
+import {
+  ManagedAnnualNoteAction,
+  type ManagedAnnualNoteActions,
+} from "./ManagedAnnualNoteAction";
 
 const panelHooks = vi.hoisted(() => ({
   enabled: false,
@@ -128,6 +133,59 @@ const laterResponse = () =>
   );
 
 describe("managed annual refresh", () => {
+  it("binds each note action to the displayed response and pair, including a captured older control", async () => {
+    const { model, load } = fixture();
+    const old = await response();
+    const next = await laterResponse();
+    load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
+    model.open(selection);
+    await model.load();
+    const getAction = vi.fn<ManagedAnnualNoteActions["getAction"]>(() => ({
+      canAppend: true,
+      reason: null,
+    }));
+    const append = vi.fn<ManagedAnnualNoteActions["append"]>(() => ({
+      appended: false,
+      message: "Recheck the current report.",
+    }));
+    panelHooks.enabled = true;
+    const actionFor = (report: typeof old) => {
+      panelHooks.index = 0;
+      const panel = Panel({
+        model,
+        noteActions: { getAction, append },
+      }) as React.ReactElement<{ children?: React.ReactNode }>;
+      const children = React.Children.toArray(panel?.props.children);
+      const result = children.find(
+        (node) =>
+          React.isValidElement(node) && node.type === SecAnnualEvidenceResult,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof SecAnnualEvidenceResult>
+      >;
+      expect(result.props.response).toBe(report);
+      expect(result.key).toContain(report.evidence.generation.sha256.slice(7));
+      const pair = report.evidence.resolution.bases.flatMap(
+        (basis) => basis.pairs,
+      )[0]!;
+      const action = result.props.renderPairAction!(pair) as React.ReactElement<
+        React.ComponentProps<typeof ManagedAnnualNoteAction>
+      >;
+      expect(action.type).toBe(ManagedAnnualNoteAction);
+      expect(action.props.pair).toBe(pair);
+      expect(getAction).toHaveBeenLastCalledWith(report, pair);
+      return { action, pair, key: result.key };
+    };
+    const captured = actionFor(old);
+    await model.load();
+    const current = actionFor(next);
+    expect(current.key).not.toBe(captured.key);
+    captured.action.props.onAppend();
+    expect(append).toHaveBeenLastCalledWith(old, captured.pair);
+    current.action.props.onAppend();
+    expect(append).toHaveBeenLastCalledWith(next, current.pair);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it("focuses the heading on initial mount and loaded return without an implicit read", async () => {
     panelHooks.enabled = true;
     const { model, load } = fixture();

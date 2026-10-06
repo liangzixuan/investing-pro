@@ -3,6 +3,7 @@ import type {
   PersonalSecAnnualPairDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
+import type { ReactNode } from "react";
 
 const sourceStatuses = {
   available: "Available",
@@ -61,8 +62,10 @@ const reasons: Readonly<Record<string, string>> = {
 
 export function SecAnnualEvidenceResult({
   response,
+  renderPairAction,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
 }) {
   const evidence = response.evidence;
   const { target, completeness, coverage, resolution, generation } = evidence;
@@ -190,6 +193,9 @@ export function SecAnnualEvidenceResult({
               key={JSON.stringify([pair.startDate, pair.endDate])}
               pair={pair}
               observations={evidence.observations}
+              action={
+                pair.status === "eligible" ? renderPairAction?.(pair) : null
+              }
             />
           ))}
         </section>
@@ -254,9 +260,11 @@ export function SecAnnualEvidenceResult({
 function AnnualPair({
   pair,
   observations,
+  action,
 }: {
   readonly pair: PersonalSecAnnualPairDto;
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+  readonly action: ReactNode;
 }) {
   const ids = [...pair.revenueObservationIds, ...pair.incomeObservationIds];
   return (
@@ -282,6 +290,7 @@ function AnnualPair({
       ) : (
         <p className="discovery-warning">Unknown. {reason(pair.status)}</p>
       )}
+      {action}
       <details className="sec-quarterly-row-details">
         <summary>
           Inspect annual pair inputs · {pair.concept} · {pair.endDate}
