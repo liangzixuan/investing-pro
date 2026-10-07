@@ -157,13 +157,25 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-The selected next outcome is [recovering an invalid watchlist note](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note).
+PR 50 merged as `fc17afab0c05f59a4721087bb275db8d45a7dcc6` and implements
+[recovery for an invalid watchlist note](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note).
 Company and watchlist editors identify invalid text beside the field, and My
 Watchlist can focus the first invalid note in the current draft. Correction keeps
 the raw draft and still requires explicit Save watchlist. The existing note
-policy, catalog checks and full-list save remain unchanged. Implementation and
-verification are in progress; the accepted website and signed package remain
-PR 48 and Android 1.12 below. No delivery acceptance is claimed for this change.
+policy, catalog checks and full-list save remain unchanged.
+
+Release acceptance is held. Actual-main Android run
+[37575074337](https://github.com/liangzixuan/investing-pro/actions/runs/37575074337),
+attempt 1, ran seventeen cases with one failure. Espresso logged that a tap on
+the comparison date selector became a long press; the expected native date option
+did not appear. The extended invalid-note journey passed. The original failure
+is retained, and actual-main Android acceptance remains pending.
+
+A test-only repair adds Espresso's bounded Escape rollback for this date selector.
+It keeps the native option selection and exact date, draft and request assertions;
+verification is pending. No new website deployment or signed Android package has
+been accepted. Production `6ac5943a7a5065198fd7` and signed Android 1.12 remain the
+accepted release above.
 
 PR 48 delivers [price comparison evidence in the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft)
 on the website and in signed Android 1.12. In company Price,
