@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 6, 2026. This document defines the durable product goals and
+Updated October 7, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.12 package share Discover, a private
+The managed website and signed Android 1.13 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.12 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.13 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.12. Previous histories keep their original dates. Physical
+and in signed Android 1.13. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.12. It uses the three accepted
+and in signed Android 1.13. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -161,11 +161,14 @@ does not save automatically. [Current work](CURRENT_WORK.md) records delivery,
 original failures and remaining live-note, physical-device and backup/restore
 limits. Full M1/M2 and broader sources remain open.
 
-The next selected outcome is to identify an invalid note, reach its editor,
-correct the draft and save explicitly. Company and watchlist editors will share
-the existing note validation. This is a recovery improvement to the daily
-research-to-watchlist workflow; provider scope and the saved-data contract stay
-unchanged. [Current work](CURRENT_WORK.md) records its pending acceptance.
+PR 50 and PR 51 deliver invalid-note recovery on the website and in signed
+Android 1.13. Company and watchlist editors share field feedback, keep the raw
+draft and let the user reach the first invalid note before an explicit save.
+Actual-main checks, the synthetic Android journey, same-archive website promotion
+and signed-package delivery are accepted. [Current work](CURRENT_WORK.md) records
+the original failures, scoped image review and physical-device limits. Provider
+scope, note policy and the saved-data contract stay unchanged. This outcome is
+complete; full M1/M2 and broader sources remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual

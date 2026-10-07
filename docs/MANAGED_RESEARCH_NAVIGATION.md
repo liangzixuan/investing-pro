@@ -110,10 +110,11 @@ provider request. Unsaved drafts remain in the mounted session only.
 
 ## Correct an invalid note
 
-PR 50 implements this workflow in the merged source. Release acceptance is held
-after a failed actual-main Android check. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
-records the status; the accepted website and signed package remain PR 48 and
-Android 1.12.
+PR 50 and PR 51 deliver this workflow on the website and in signed Android 1.13.
+The actual-main Android report accepts the invented correction, review and
+explicit save/reload journey, along with the date-selector test repair.
+[Current work](CURRENT_WORK.md#current-task-and-next-acceptance) records exact
+release acceptance and remaining limits.
 
 The company and watchlist editors show feedback beside a note that cannot be
 saved under the existing policy. The field identifies its error for assistive
@@ -138,6 +139,15 @@ This follows the [W3C form notification guidance](https://www.w3.org/WAI/tutoria
 for field-associated feedback and a direct route to correction. Implementation,
 synthetic checks and delivery status are recorded in [Current work](CURRENT_WORK.md).
 These semantics alone do not establish screen-reader acceptance.
+
+The synthetic journey retains an invalid two-line note across research and My
+Watchlist, checks its field/error association and raw value, focuses the current
+editor, corrects it through native keyboard input, and uses the existing explicit
+save/reload assertions. Other notes, ordering, exact listing identity and request
+counts remain checked. Six of thirty-nine main-run frames received visual review; the
+full note and saved reload are assertion evidence. The focused research editor
+has a minor error-text spacing issue. Live owner-note writes, physical-phone use
+and backup/restore remain unperformed for this workflow.
 
 ## Add annual evidence to a note draft
 

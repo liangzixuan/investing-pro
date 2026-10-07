@@ -22,17 +22,17 @@ are not adjusted for splits or dividends. Markets coverage remains limited to AA
 and GOOGL. An explicit Load or Refresh for one selected listing preserves the
 other board histories. Selection alone makes no price request.
 
-On the website and in signed Android 1.10, **Add to note draft** appends one
-chosen eligible Annual pair to an existing watchlist note, retaining its exact
-values, named basis, original dates and filing link. **Save watchlist** saves the
-whole draft, including other changes. [Current work](docs/CURRENT_WORK.md#accepted-release)
-records the accepted release and remaining limits.
+Annual evidence and a selected Price comparison can be added to an existing
+watchlist note draft. Review in My Watchlist keeps the rest of the draft intact;
+**Save watchlist** saves all its changes explicitly.
+
+When a note is invalid, both the company and watchlist editors keep the raw text
+and show feedback beside the field. **Go to first invalid note** in My Watchlist
+focuses the first invalid editor in the current order. Correct the note, review
+the draft, then save when ready.
 
 [Current status and limits](docs/CURRENT_WORK.md#accepted-release) records the
-accepted website and signed Android releases, source revisions and physical-device
-status. Earlier bounded live checks covered explicit reads for those three listings
-and their displayed changes; they do not establish acceptance of later client
-changes. The current-work record retains the dated evidence and next work.
+accepted website and signed Android releases, evidence limits and remaining work.
 
 ## Start reading
 
