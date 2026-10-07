@@ -1046,7 +1046,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertNotNull(id.get());
         String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
         assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
-        touchInput(actualId);
+        // Use Espresso's bounded native-key rollback when a tap becomes a long press.
+        touchInput(actualId, androidx.test.espresso.action.ViewActions.pressKey(KeyEvent.KEYCODE_ESCAPE));
         // Select an Android option after a real touch opens WebView's native select dialog.
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
             .perform(androidx.test.espresso.action.ViewActions.click());
@@ -2060,6 +2061,10 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void touchInput(String id) throws Exception {
+        touchInput(id, null);
+    }
+
+    private void touchInput(String id, ViewAction rollbackAction) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
@@ -2075,10 +2080,14 @@ public class ManagedWorkspaceInstrumentedTest {
             " hit:input.contains(document.elementFromPoint(x,y))};})()",
             value -> { observed.set(value); returned.countDown(); }));
         assertTrue("Input geometry was not returned: " + id, returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
-        touchObservedGeometry(id, observed.get());
+        touchObservedGeometry(id, observed.get(), rollbackAction);
     }
 
     private void touchObservedGeometry(String id, String rawGeometry) throws Exception {
+        touchObservedGeometry(id, rawGeometry, null);
+    }
+
+    private void touchObservedGeometry(String id, String rawGeometry, ViewAction rollbackAction) throws Exception {
         assertNotNull("Input geometry was null: " + id, rawGeometry);
         Log.i("ManagedInputGeometry", "id=" + id + ", geometry=" + rawGeometry.substring(0, Math.min(rawGeometry.length(), 2048)));
         JSONObject geometry = new JSONObject(rawGeometry);
@@ -2122,7 +2131,7 @@ public class ManagedWorkspaceInstrumentedTest {
                         .withViewDescription("Managed fixture WebView: " + nativeGeometry)
                         .withCause(new IllegalStateException("Input touch is outside the visible WebView")).build();
                 return new float[] { location[0] + localX, location[1] + localY };
-            }, Press.FINGER, InputDevice.SOURCE_TOUCHSCREEN, 0));
+            }, Press.FINGER, InputDevice.SOURCE_TOUCHSCREEN, 0, rollbackAction));
     }
 
     private void awaitNativeEditor(String id) {

@@ -110,6 +110,11 @@ provider request. Unsaved drafts remain in the mounted session only.
 
 ## Correct an invalid note
 
+PR 50 implements this workflow in the merged source. Release acceptance is held
+after a failed actual-main Android check. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
+records the status; the accepted website and signed package remain PR 48 and
+Android 1.12.
+
 The company and watchlist editors show feedback beside a note that cannot be
 saved under the existing policy. The field identifies its error for assistive
 technology and associates the message with that exact editor. The raw text stays
