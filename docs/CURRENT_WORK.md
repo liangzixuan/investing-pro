@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 6, 2026. This is the portable status summary for the public
+Updated October 7, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
 order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
 operational receipts are retained separately and are not required to understand
@@ -8,7 +8,40 @@ or develop the repository.
 
 ## Accepted release
 
-PR 48 is merged as `29181d805eb33a1af80823458ff67f1b5a6cae25`, from candidate
+PR 51 is merged as `b110ae9ca1194fbef98b85401e29451cb5b987c1`, from candidate
+`d67c354c6a9371e3750315ac88b77b13a35b3cec`, with tree
+`aa5e8a57de381bcba0bead5f5b508426e9692ed5`. Its three required actual-main
+workflows and four jobs, original CI attempt 1 source proof and seventeen-case
+synthetic native report are accepted. Invalid notes are identified beside their
+editors; My Watchlist can focus the first invalid note before explicit correction
+and Save watchlist.
+
+Website release
+[37679537485](https://github.com/liangzixuan/investing-pro/actions/runs/37679537485),
+attempt 1, promoted the accepted staging archive after normal production
+approval. Staging `6ac6a67c69f9a2103249` and production
+`6ac6ac75b756f9d2ff49` used the same archive, SHA-256
+`16980483c6a111fec3d41eaec63d72afe7793f9df7fabb7e07ab815ee808cc00`. Production
+replaced `6ac5943a7a5065198fd7`; its receipt verified activation on October 7
+at 20:33:24 UTC. This records that observation, not continuing availability.
+
+Signed Android 1.13.0, code 14, passed build, complete artifact and delivery
+review with the existing package and production signer. The delivered APK is
+6,655,320 bytes, SHA-256
+`388c45c0af01e2f76234f4b834e0cc201bbb3e2b58223b2188e87f45a9d6459a`.
+Its source is the PR 51 main commit above. Physical installation and use remain
+unverified.
+
+| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known                                                                                                                        |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac6ac75b756f9d2ff49`; PR 51 staging archive promoted after normal approval                                                         | BrowserStack covered the exact-build inert staging shell at desktop and narrow widths. Authenticated note and watchlist workflows were outside that check. The October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
+| Signed Android artifact   | Investment 1.13.0, code 14, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.13 remain unperformed                                                                                                                                                                                              |
+| Automated Android         | PR 51: seventeen passing invented-data API-36 emulator cases on actual-main attempt 1; six of thirty-nine original frames received visual review                                | Full note, focus/ARIA, save/reload and request counts rely on native assertions; scoped frames do not establish production sign-in, live-provider or physical-device acceptance                                                                                   |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.13                                                                                                                                                                                                    |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                                                                                                                                            |
+
+The previous release, PR 48, is merged as `29181d805eb33a1af80823458ff67f1b5a6cae25`, from candidate
 `41acd386ab6a4d6a2d32af317212f8c0a66fa2cb`, with tree
 `ee9be8b4cc9c953615f6a8298a4b5d0f45262781`. Its five required actual-main
 workflows and six jobs, original CI attempt 1 source proof and seventeen-case
@@ -26,16 +59,7 @@ production approval. Staging `6ac58eae4a6880c35612` and production
 1.12.0, code 13, passed build, artifact
 and delivery review with the existing package and production signer.
 
-| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                                                                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known                                                                                                                        |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac5943a7a5065198fd7`; PR 48 staging archive promoted after normal approval                                                         | BrowserStack covered the exact-build inert staging shell at desktop and narrow widths. Authenticated note and watchlist workflows were outside that check. The October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
-| Signed Android artifact   | Investment 1.12.0, code 13, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.12 remain unperformed                                                                                                                                                                                              |
-| Automated Android         | PR 48: seventeen passing invented-data API-36 emulator cases on actual-main attempt 1; source, draft and replaced-history frames received scoped visual review                  | The full 503-character note and saved reload are native-assertion evidence; no production sign-in, live-provider or physical-device claim                                                                                                                         |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.12                                                                                                                                                                                                    |
-| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                                                                                                                                            |
-
-The accepted 1.12 APK is 6,654,948 bytes, SHA-256
+The previously accepted 1.12 APK is 6,654,948 bytes, SHA-256
 `3a4b7370b8edc2595d358498254abc19aeaf2ce75872ee0ffb025252aeb308a1`. It was built from the PR 48 main commit above. Its signed
 package and delivered bytes are covered by separate artifact and delivery reviews.
 
@@ -80,7 +104,7 @@ use remain unverified.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.12. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.13. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -157,25 +181,37 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-PR 50 merged as `fc17afab0c05f59a4721087bb275db8d45a7dcc6` and implements
-[recovery for an invalid watchlist note](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note).
-Company and watchlist editors identify invalid text beside the field, and My
-Watchlist can focus the first invalid note in the current draft. Correction keeps
-the raw draft and still requires explicit Save watchlist. The existing note
-policy, catalog checks and full-list save remain unchanged.
+[Invalid-note recovery](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note)
+is delivered on the website and in signed Android 1.13.
+Company and watchlist editors show feedback beside invalid text. My Watchlist
+can focus the first invalid note in the current order. Correction keeps the raw
+draft, other notes and listing identities; Save watchlist still saves the whole
+draft explicitly. Note policy, provider scope, catalog checks and saved-data
+contracts are unchanged.
 
-Release acceptance is held. Actual-main Android run
+Actual-main Android run
+[37671834807](https://github.com/liangzixuan/investing-pro/actions/runs/37671834807),
+attempt 1, passed all seventeen synthetic cases. Its original report, tested
+source and complete note/date-comparison assertions are independently accepted.
+Six of thirty-nine original frames received visual review, including invalid notes, corrected
+Save controls and date comparisons. The focused editor outline slightly crowds
+the first error-message line; the text remains readable and controls accessible.
+The complete corrected note, focus/ARIA checks, save/reload and request counts
+rely on native assertions and original diagnostics, not on those six frames alone.
+
+The original PR 50 main run
 [37575074337](https://github.com/liangzixuan/investing-pro/actions/runs/37575074337),
-attempt 1, ran seventeen cases with one failure. Espresso logged that a tap on
-the comparison date selector became a long press; the expected native date option
-did not appear. The extended invalid-note journey passed. The original failure
-is retained, and actual-main Android acceptance remains pending.
+attempt 1, ran seventeen cases with one failure. Its invalid-note journey passed,
+but a tap on the comparison date selector became a long press and the native
+option did not appear. That failure remains retained. PR 51 adds
+Espresso's bounded Escape rollback only to that selector, preserving exact
+option, date, draft and request assertions. The successful journey does not prove
+that the rare rollback branch ran or that every cause of a stalled tap is fixed.
 
-A test-only repair adds Espresso's bounded Escape rollback for this date selector.
-It keeps the native option selection and exact date, draft and request assertions;
-verification is pending. No new website deployment or signed Android package has
-been accepted. Production `6ac5943a7a5065198fd7` and signed Android 1.12 remain the
-accepted release above.
+The website and signed-package delivery are complete. Physical installation and
+use of Android 1.2 through 1.13, backup/restore, live owner-note writes and
+screen-reader acceptance remain open. Full M1/M2 and broader source coverage
+remain separate roadmap work.
 
 PR 48 delivers [price comparison evidence in the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft)
 on the website and in signed Android 1.12. In company Price,
@@ -225,7 +261,7 @@ production signer. All ten build commands passed, both outer output streams were
 and the APK, merged manifest and delivered bytes passed review. The earlier 1.9
 capture failure and separate recovery remain in the record.
 
-Physical installation and use of 1.2 through 1.12, and backup/restore
+Physical installation and use of 1.2 through 1.13, and backup/restore
 acceptance, remain unperformed. The owner-reported 1.1 result does not accept later
 packages.
 
