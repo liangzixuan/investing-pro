@@ -3,6 +3,7 @@ package local.investment.personal;
 import static androidx.test.espresso.Espresso.closeSoftKeyboard;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.Espresso.pressBack;
+import static androidx.test.espresso.action.ViewActions.pressKey;
 import static androidx.test.espresso.action.ViewActions.typeTextIntoFocusedView;
 import static androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -20,6 +21,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.PixelCopy;
 import android.view.View;
 import android.view.ViewTreeObserver;
@@ -32,6 +34,7 @@ import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.PerformException;
 import androidx.test.espresso.UiController;
 import androidx.test.espresso.ViewAction;
+import androidx.test.espresso.action.EspressoKey;
 import androidx.test.espresso.action.GeneralClickAction;
 import androidx.test.espresso.action.Press;
 import androidx.test.espresso.action.Tap;
@@ -66,6 +69,9 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String COMPANY_NOTE = "Company draft captured in research";
+    private static final String INVALID_COMPANY_NOTE = "Company draft\nneeds correction";
+    private static final String NOTE_ERROR =
+        "Use at most 2,000 characters. Remove embedded line breaks and unsupported characters.";
     private static final String PRICE_NOTE = "Price research draft " +
         "Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 " +
         "to latest loaded 2026-09-19 USD 110.000000000000000003; " +
@@ -1124,12 +1130,36 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
             " && document.activeElement?.id === 'managed-annual-heading'");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", COMPANY_NOTE, INVALID_COMPANY_NOTE);
+        assertInvalidCompanyNote("managed-research-note", "managed-research-note-help");
+        retainAnnualNoteFrame("companyNoteInvalidResearch", "label[for=managed-research-note]",
+            "label[for=managed-research-note], #managed-research-note, #managed-research-note-error", 3);
+        assertInvalidCompanyNote("managed-research-note", "managed-research-note-help");
+        assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
         awaitPage("review closes research and focuses the visible My Watchlist control",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
             " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
+        retainAnnualNoteFrame("companyNoteInvalidWatchlist", "label[for=managed-note-2]",
+            "label[for=managed-note-2], #managed-note-2, #managed-note-2-error", 3);
+        assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
+        Log.i("ManagedCompanyNote", "phase=invalid-retained, save=0; " + pageDiagnostic());
+        // Touch the recovery action, then verify its focus without tapping the textarea.
+        touchInput("managed-note-validation-focus");
+        awaitPage("recovery action focuses the exact invalid listing",
+            "document.activeElement === document.querySelector('#managed-note-2')" +
+            " && document.activeElement?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'");
+        replaceFocusedInput("managed-note-2", INVALID_COMPANY_NOTE, COMPANY_NOTE);
+        assertCorrectedCompanyNote();
+        // This frame covers the guidance and enabled Save; exact note bytes are asserted separately.
+        retainAnnualNoteFrame("companyNoteCorrectedSave", "#managed-watchlist-note-help",
+            "#managed-watchlist-note-help, #managed-watchlist-note-help + .trial-actions > button:first-child", 2);
+        assertCorrectedCompanyNote();
+        Log.i("ManagedCompanyNote", "phase=corrected-unsaved, save=0; " + pageDiagnostic());
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
@@ -1352,6 +1382,48 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("Annual note frame targets visible: " + name, visible);
         retainScreenshot(name);
         awaitPage("Annual note frame targets remained visible: " + name, visible);
+    }
+
+    private void assertInvalidCompanyNote(String id, String helpId) throws Exception {
+        awaitPage("invalid note retains raw text and its associated field error: " + id,
+            "(() => { const note = document.getElementById(" + JSONObject.quote(id) + ");" +
+            " const error = document.getElementById(" + JSONObject.quote(id + "-error") + ");" +
+            " const save = document.querySelector('#managed-watchlist-note-help + .trial-actions > button:first-child');" +
+            " const focus = document.querySelector('#managed-note-validation-focus');" +
+            " return note?.value === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
+            " && note.disabled === false && note.maxLength === 4000" +
+            " && note.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && note.getAttribute('aria-invalid') === 'true'" +
+            " && note.getAttribute('aria-describedby') === " + JSONObject.quote(helpId + " " + id + "-error") +
+            " && document.getElementById(" + JSONObject.quote(helpId) + ") !== null" +
+            " && note.scrollHeight <= note.clientHeight && note.scrollWidth <= note.clientWidth" +
+            " && error?.textContent === " + JSONObject.quote(NOTE_ERROR) +
+            " && error.getAttribute('role') === 'status' && error.getAttribute('aria-live') === 'polite'" +
+            " && save?.textContent === 'Save watchlist' && save.disabled === true" +
+            " && focus?.textContent === 'Go to first invalid note' && focus.disabled === false" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
+            " && document.querySelector('#managed-note-0')?.value === ''" +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
+        assertCompanyNoteCounts(0, 1);
+    }
+
+    private void assertCorrectedCompanyNote() throws Exception {
+        awaitPage("native correction clears the error and enables explicit Save",
+            "(() => { const note = document.querySelector('#managed-note-2');" +
+            " const error = document.querySelector('#managed-note-2-error');" +
+            " const save = document.querySelector('#managed-watchlist-note-help + .trial-actions > button:first-child');" +
+            " return note?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && note.disabled === false && note.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && note.getAttribute('aria-invalid') === null" +
+            " && note.getAttribute('aria-describedby') === 'managed-watchlist-note-help'" +
+            " && error?.textContent === '' && error.getAttribute('role') === 'status'" +
+            " && error.getAttribute('aria-live') === 'polite'" +
+            " && document.querySelector('#managed-note-validation-focus') === null" +
+            " && save?.textContent === 'Save watchlist' && save.disabled === false; })()");
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
     }
 
     private void assertCompanyNoteDraft(int version, boolean dirty) throws Exception {
@@ -1965,6 +2037,25 @@ public class ManagedWorkspaceInstrumentedTest {
         onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
         awaitPage("native input value: " + id,
             "document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));
+        closeSoftKeyboard();
+    }
+
+    private void replaceFocusedInput(String id, String expectedBefore, String text) throws Exception {
+        String focused = "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
+            " return input && document.activeElement === input && input.disabled === false" +
+            " && input.value === " + JSONObject.quote(expectedBefore) + "; })()";
+        awaitPage("replacement keeps the exact observed editor and raw value: " + id, focused);
+        awaitNativeEditor(id);
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(new EspressoKey.Builder()
+            .withKeyCode(KeyEvent.KEYCODE_A).withCtrlPressed(true).build()));
+        awaitPage("native select all covers the complete previous note: " + id,
+            focused + " && document.getElementById(" + JSONObject.quote(id) + ").selectionStart === 0" +
+            " && document.getElementById(" + JSONObject.quote(id) + ").selectionEnd === " + expectedBefore.length());
+        awaitNativeEditor(id);
+        onView(isAssignableFrom(WebView.class)).perform(typeTextIntoFocusedView(text));
+        awaitPage("native replacement produces the exact raw note: " + id,
+            "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")" +
+            " && document.getElementById(" + JSONObject.quote(id) + ")?.value === " + JSONObject.quote(text));
         closeSoftKeyboard();
     }
 

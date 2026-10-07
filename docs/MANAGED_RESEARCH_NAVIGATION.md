@@ -108,6 +108,32 @@ can remain visible while editing is paused. Account/session retirement clears th
 workspace under its existing rules. Adding, typing and navigation send no save or
 provider request. Unsaved drafts remain in the mounted session only.
 
+## Correct an invalid note
+
+The company and watchlist editors show feedback beside a note that cannot be
+saved under the existing policy. The field identifies its error for assistive
+technology and associates the message with that exact editor. The raw text stays
+in the draft while the user corrects it; feedback does not trim or replace text.
+Price/Annual switching and Review in My Watchlist keep the same shared draft.
+
+In My Watchlist, **Go to first invalid note** focuses the first invalid note in
+the current order. Reordering or removing a member updates that target. The action
+only focuses a current, visible, editable field whose listing and raw value still
+match the draft. Leaving the screen or retiring the session makes an old action
+inactive. It changes neither browser history nor saved data.
+
+Notes retain the existing limit of 2,000 characters after trimming and Unicode
+normalization. Embedded line breaks, control/format characters and unpaired
+surrogates are rejected by the shared contract. Correcting every invalid note
+removes the field errors. Save watchlist continues to require the existing
+catalog, payload-size and save-state checks; a whole-payload size error does not
+mark otherwise valid notes as invalid. Saving is always explicit.
+
+This follows the [W3C form notification guidance](https://www.w3.org/WAI/tutorials/forms/notifications/)
+for field-associated feedback and a direct route to correction. Implementation,
+synthetic checks and delivery status are recorded in [Current work](CURRENT_WORK.md).
+These semantics alone do not establish screen-reader acceptance.
+
 ## Add annual evidence to a note draft
 
 The website and signed Android 1.10 provide an explicit **Add to note draft**

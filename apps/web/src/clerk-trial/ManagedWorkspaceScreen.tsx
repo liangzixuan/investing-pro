@@ -6,10 +6,11 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type {
-  ManagedCatalogSnapshotDto,
-  ManagedEodIdentity,
-  WatchlistMembership,
+import {
+  normalizeWatchlistNote,
+  type ManagedCatalogSnapshotDto,
+  type ManagedEodIdentity,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { BrowserRouter } from "react-router";
 import {
@@ -25,6 +26,7 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
+import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
 import {
   bindAndroidBack,
@@ -276,6 +278,7 @@ export function ManagedWorkspaceScreen({
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
+  const watchlistPanel = useRef<HTMLElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const routeBack = navigation?.back;
   const hasCompanyRoute = navigation?.hasCompanyRoute;
@@ -364,6 +367,39 @@ export function ManagedWorkspaceScreen({
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const saveIssue = workspace.saveIssue();
+  const hasInvalidNote = saved.draft?.memberships.some(
+    (member) => normalizeWatchlistNote(member.note) === null,
+  );
+  const focusFirstInvalidNote = () => {
+    const current = workspace.getSnapshot();
+    const panel = watchlistPanel.current;
+    if (
+      !workspace.canEdit() ||
+      current.view !== "watchlist" ||
+      current.research ||
+      !panel?.isConnected ||
+      panel.hidden
+    )
+      return;
+    const member = workspace.coordinator
+      .getSnapshot()
+      .draft?.memberships.find(
+        (entry) => normalizeWatchlistNote(entry.note) === null,
+      );
+    if (!member) return;
+    const field = Array.from(
+      panel.querySelectorAll<HTMLTextAreaElement>(
+        "textarea[data-managed-note-listing-id]",
+      ),
+    ).find((input) => input.dataset.managedNoteListingId === member.listingId);
+    if (
+      field?.isConnected &&
+      !field.disabled &&
+      field.value === member.note &&
+      field.getClientRects().length > 0
+    )
+      field.focus();
+  };
   return (
     <div className="managed-workspace">
       <div className="trial-session-bar">
@@ -630,6 +666,7 @@ export function ManagedWorkspaceScreen({
             className="trial-panel"
             aria-labelledby="managed-watchlist-heading"
             hidden={discovery.view !== "watchlist"}
+            ref={watchlistPanel}
           >
             <div className="trial-toolbar">
               <h2 id="managed-watchlist-heading">My Watchlist</h2>
@@ -727,17 +764,15 @@ export function ManagedWorkspaceScreen({
                       <small className="managed-listing-detail">
                         Listing ID: {member.listingId}
                       </small>
-                      <label htmlFor={`managed-note-${index}`}>
-                        Research note for {member.symbol}
-                      </label>
-                      <textarea
+                      <ManagedNoteEditor
                         id={`managed-note-${index}`}
-                        rows={3}
-                        maxLength={4000}
+                        listingId={member.listingId}
+                        symbol={member.symbol}
+                        note={member.note}
                         disabled={!editable}
-                        value={member.note}
-                        onChange={(event) =>
-                          workspace.note(member.listingId, event.target.value)
+                        helpId="managed-watchlist-note-help"
+                        onChange={(note) =>
+                          workspace.note(member.listingId, note)
                         }
                       />
                       <div className="trial-actions">
@@ -796,7 +831,7 @@ export function ManagedWorkspaceScreen({
                     </li>
                   ))}
                 </ol>
-                <p>
+                <p id="managed-watchlist-note-help">
                   Notes support up to 2,000 characters each. Changes stay in
                   this screen until you save.
                 </p>
@@ -812,6 +847,16 @@ export function ManagedWorkspaceScreen({
                   >
                     Save watchlist
                   </button>
+                  {hasInvalidNote && (
+                    <button
+                      id="managed-note-validation-focus"
+                      className="trial-secondary"
+                      disabled={!editable}
+                      onClick={focusFirstInvalidNote}
+                    >
+                      Go to first invalid note
+                    </button>
+                  )}
                   <button
                     className="trial-secondary"
                     disabled={

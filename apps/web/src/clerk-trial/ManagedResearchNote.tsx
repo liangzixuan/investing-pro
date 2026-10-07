@@ -1,4 +1,5 @@
 import type { ResearchWatchlistState } from "./managed-workspace";
+import { ManagedNoteEditor } from "./ManagedNoteEditor";
 
 /** Edits the watchlist draft; the existing watchlist screen owns explicit saves. */
 export function ManagedResearchNote({
@@ -31,17 +32,14 @@ export function ManagedResearchNote({
       </div>
       {state.member && (
         <div className="managed-research-note-editor">
-          <label htmlFor="managed-research-note">
-            Research note for {symbol}
-          </label>
-          <textarea
+          <ManagedNoteEditor
             id="managed-research-note"
-            rows={3}
-            maxLength={4000}
-            value={state.member.note}
+            listingId={state.member.listingId}
+            symbol={symbol}
+            note={state.member.note}
             disabled={!state.canEdit}
-            aria-describedby="managed-research-note-help"
-            onChange={(event) => onNote(event.target.value)}
+            helpId="managed-research-note-help"
+            onChange={onNote}
           />
         </div>
       )}
