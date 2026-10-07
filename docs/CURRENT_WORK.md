@@ -8,6 +8,37 @@ or develop the repository.
 
 ## Accepted release
 
+PR 48 is merged as `29181d805eb33a1af80823458ff67f1b5a6cae25`, from candidate
+`41acd386ab6a4d6a2d32af317212f8c0a66fa2cb`, with tree
+`ee9be8b4cc9c953615f6a8298a4b5d0f45262781`. Its five required actual-main
+workflows and six jobs, original CI attempt 1 source proof and seventeen-case
+synthetic native report are accepted. Company Price can append a selected
+comparison to an existing watchlist note draft, followed by explicit review and
+Save watchlist.
+
+Website release
+[37550772891](https://github.com/liangzixuan/investing-pro/actions/runs/37550772891),
+attempt 1, promoted the accepted staging archive after normal
+production approval. Staging `6ac58eae4a6880c35612` and production
+`6ac5943a7a5065198fd7` used the same archive, SHA-256
+`1b28a710e3fab32d84df8db0c641fe3e5ed057f4f4aea6aa6e72c8ad95aea038`. Production replaced
+`6ac4f5af7ae73ae9f88c`. Signed Android
+1.12.0, code 13, passed build, artifact
+and delivery review with the existing package and production signer.
+
+| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                                                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known                                                                                                                        |
+| Managed website           | `https://app.investingpro.app`; deployment `6ac5943a7a5065198fd7`; PR 48 staging archive promoted after normal approval                                                         | BrowserStack covered the exact-build inert staging shell at desktop and narrow widths. Authenticated note and watchlist workflows were outside that check. The October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
+| Signed Android artifact   | Investment 1.12.0, code 13, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.12 remain unperformed                                                                                                                                                                                              |
+| Automated Android         | PR 48: seventeen passing invented-data API-36 emulator cases on actual-main attempt 1; source, draft and replaced-history frames received scoped visual review                  | The full 503-character note and saved reload are native-assertion evidence; no production sign-in, live-provider or physical-device claim                                                                                                                         |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.12                                                                                                                                                                                                    |
+| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                                                                                                                                            |
+
+The accepted 1.12 APK is 6,654,948 bytes, SHA-256
+`3a4b7370b8edc2595d358498254abc19aeaf2ce75872ee0ffb025252aeb308a1`. It was built from the PR 48 main commit above. Its signed
+package and delivered bytes are covered by separate artifact and delivery reviews.
+
 PR 46 is merged as `662ca9e02e3d5836c8e3d3bb36126c01d7bd4d0c`, from candidate
 `2800792c52add84e911de7e2e550dcea5a0fa3a7`, with tree
 `b26005998188a9207624b7b1202c73775f2c82a2`. Its five required actual-main
@@ -22,16 +53,7 @@ promoted the same staging archive after normal production approval. Production
 code 12, passed build, artifact and delivery review with the existing package and
 production signer.
 
-| Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known         |
-| Managed website           | `https://app.investingpro.app`; deployment `6ac4f5af7ae73ae9f88c`; PR 46 staging archive promoted after normal approval                                                         | BrowserStack covers the inert staged shell; the October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
-| Signed Android artifact   | Investment 1.11.0, code 12, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.11 remain unperformed                                                                               |
-| Automated Android         | PR 46: sixteen passing invented-data API-36 emulator cases on attempt 2; two comparison frames received scoped visual review                                                    | Native assertions cover exact values, reset behavior and request/save counts; no production sign-in, live-provider or physical-device claim        |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.11                                                                                     |
-| Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                             |
-
-The accepted 1.11 APK is 6,654,152 bytes, SHA-256
+The previously accepted 1.11 APK is 6,654,152 bytes, SHA-256
 `696a7d165e05a849343ead51c3bcad188cf37dc933c4e520ffc9aa390a2a3b54`.
 It was built from the PR 46 main commit above. Its signed package and delivered
 bytes are covered by separate artifact and delivery reviews.
@@ -58,7 +80,7 @@ use remain unverified.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.11. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.12. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -135,13 +157,30 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-The selected candidate connects a [price comparison to the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft).
-In company Price, an explicit action appends the selected observed endpoints,
-exact raw USD change, percentage and original provenance. It uses the current
-watchlist membership and latest prose, followed by the existing review and
-explicit full-draft save. It adds no provider request, API, schema or dependency.
-Implementation checks, publication, website promotion and signed Android delivery
-for this candidate remain pending.
+PR 48 delivers [price comparison evidence in the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft)
+on the website and in signed Android 1.12. In company Price,
+Add comparison to note draft appends the selected observed endpoints, exact raw
+USD change, percentage and original provenance to the existing member's latest
+prose. Review in My Watchlist opens the draft; Save watchlist explicitly saves
+the whole draft. Appending adds no provider request, membership, API, schema,
+dependency or automatic save.
+
+Types, scoped lint/format, boundary and fixture checks and all 5,099 web tests
+passed. Isolated browser checks covered the invented append/review/save journey.
+The original actual-main Android attempt 1 passed all seventeen cases. Three
+frames covering source, draft and replaced history received scoped visual review.
+The complete 503-character note and explicit save/reload are native-assertion
+evidence; the draft screenshot
+shows only its visible portion. The website check covers the inert staging shell.
+No live owner-note write or physical-phone use is accepted by these checks.
+
+The first PR native attempt failed after a logged tap oversleep; its underlying
+cause remains unknown. An unchanged rerun passed, but does not establish repeat
+reliability. Local release classification remains unverified after its timeout,
+and full local verification is not claimed. CodeScene retains a failed advisory
+result for two complexity warnings; review found no concrete defect in the cited
+formatter. Original failures, including the acquisition preflight refusal, are
+retained in operational receipts. Full M1/M2 and broader sources remain open.
 
 The [Annual-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-annual-evidence-to-a-note-draft)
 is accepted on main and in website release
@@ -166,7 +205,7 @@ production signer. All ten build commands passed, both outer output streams were
 and the APK, merged manifest and delivered bytes passed review. The earlier 1.9
 capture failure and separate recovery remain in the record.
 
-Physical installation and use of 1.2 through 1.11, and backup/restore
+Physical installation and use of 1.2 through 1.12, and backup/restore
 acceptance, remain unperformed. The owner-reported 1.1 result does not accept later
 packages.
 

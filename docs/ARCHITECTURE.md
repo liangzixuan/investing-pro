@@ -90,7 +90,7 @@ guard edits and explicit additions. The editor shares the watchlist row's draft;
 reviewing My Watchlist closes research and uses the existing full-list save and
 reconciliation flow. There is no second note store or save coordinator.
 
-The price-comparison note candidate uses that same coordinator. The shared chart
+The price-comparison note action uses that same coordinator. The shared chart
 owns the earlier-date choice and retires its action when that choice changes or
 the chart unmounts. An optional action slot keeps the chart independent of managed
 storage. The managed workspace checks the current visit, active Price section,
@@ -146,10 +146,10 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. The native suite requires thirteen cases, including the new company-link
-candidate; accepted results are recorded in Current work.
-These are distinct from signed-release, physical-phone and
-live-provider acceptance.
+admission. The native suite requires seventeen cases, including company-link and
+comparison-to-note journeys. [Current work](CURRENT_WORK.md) records the accepted
+results. Synthetic native checks, signed-release review, physical-phone use and
+live-provider acceptance remain separate.
 
 [Source-check verification](../scripts/appwrite/github-checks.ts) derives the
 applicable workflows/jobs from the actual diff and workflow bytes. Successful
