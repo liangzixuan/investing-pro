@@ -18,6 +18,7 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
+import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -210,6 +211,69 @@ function elements(
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }
+async function noteFocusFixture() {
+  const { workspace, api } = fixture({
+    ...payload,
+    memberships: [
+      payload.memberships[0]!,
+      {
+        ...payload.memberships[0]!,
+        listingId: "listing-two",
+        securityId: "security-two",
+        shareClassId: "class-two",
+        shareClassName: "Class B",
+        note: "Keep the other draft",
+      },
+    ],
+  });
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  workspace.setView("watchlist");
+  workspace.note("listing-one", "First\ninvalid");
+  workspace.note("listing-two", "Second\ninvalid");
+  const fields = workspace.coordinator
+    .getSnapshot()
+    .draft!.memberships.map((member) => ({
+      dataset: { managedNoteListingId: member.listingId },
+      value: member.note,
+      disabled: false,
+      isConnected: true,
+      getClientRects: vi.fn(() => [{}]),
+      focus: vi.fn(),
+    }));
+  const panel = {
+    isConnected: true,
+    hidden: false,
+    querySelectorAll: vi.fn(() => fields),
+  };
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const nodes = elements(ManagedWorkspaceScreen({ workspace }));
+  mounted.direct = false;
+  const section = nodes.find(
+    (node) =>
+      node.type === "section" &&
+      (node.props as React.ComponentProps<"section">)["aria-labelledby"] ===
+        "managed-watchlist-heading",
+  ) as React.ReactElement<React.ComponentProps<"section">>;
+  const reference = section.props.ref as { current: HTMLElement | null };
+  reference.current = panel as unknown as HTMLElement;
+  const button = nodes.find(
+    (node) =>
+      node.type === "button" &&
+      (node.props as React.ComponentProps<"button">).id ===
+        "managed-note-validation-focus",
+  ) as React.ReactElement<React.ComponentProps<"button">>;
+  return {
+    workspace,
+    api,
+    fields,
+    panel,
+    focus: () =>
+      button.props.onClick!({} as React.MouseEvent<HTMLButtonElement>),
+  };
+}
+
 describe("managed workspace screen", () => {
   it("binds the Price action to the captured visit and latest shared note without saving or loading", async () => {
     const { workspace, api } = fixture({
@@ -659,8 +723,12 @@ describe("managed workspace screen", () => {
       elements(ManagedCompanyResearch(company().props)).find(
         (node) => node.type === ManagedResearchNote,
       ) as React.ReactElement<React.ComponentProps<typeof ManagedResearchNote>>;
-    const input = () =>
+    const editor = () =>
       elements(ManagedResearchNote(note().props)).find(
+        (node) => node.type === ManagedNoteEditor,
+      ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+    const input = () =>
+      elements(ManagedNoteEditor(editor().props)).find(
         (node) => node.type === "textarea",
       ) as React.ReactElement<React.ComponentProps<"textarea">>;
     expect(input().props.value).toBe("Private research note");
@@ -859,8 +927,8 @@ describe("managed workspace screen", () => {
       expect(workspace.getSnapshot().query).toBe("DEMO");
       expect(
         elements(render())
-          .filter((node) => node.type === "textarea")
-          .map((node) => (node.props as { value: string }).value),
+          .filter((node) => node.type === ManagedNoteEditor)
+          .map((node) => (node.props as { note: string }).note),
       ).toEqual(["Private research note", "Keep the navigation draft"]);
       expect(origin.focus).not.toHaveBeenCalled();
       const current = company();
@@ -1488,6 +1556,151 @@ describe("managed workspace screen", () => {
     expect(html()).toContain("Private research note");
   });
 
+  it("shows the same raw-note error in research and My Watchlist until explicit correction and save", async () => {
+    const other = {
+      ...payload.memberships[0]!,
+      listingId: "listing-two",
+      securityId: "security-two",
+      shareClassId: "class-two",
+      shareClassName: "Class B",
+      note: "Keep the other draft",
+    };
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [payload.memberships[0]!, other],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    const selection = workspace.getSnapshot().research!.selection;
+    const raw = "Company draft\nneeds correction";
+    workspace.noteResearch(selection, raw);
+    const invalid = html();
+    const tag = (markup: string, id: string) =>
+      markup.match(new RegExp(`<textarea id="${id}"[^>]*>`, "u"))?.[0];
+    expect(tag(invalid, "managed-note-0")).not.toContain('aria-invalid="true"');
+    expect(tag(invalid, "managed-note-1")).toContain('aria-invalid="true"');
+    expect(tag(invalid, "managed-note-1")).toContain(
+      'aria-describedby="managed-watchlist-note-help managed-note-1-error"',
+    );
+    expect(tag(invalid, "managed-research-note")).toContain(
+      'aria-invalid="true"',
+    );
+    expect(tag(invalid, "managed-research-note")).toContain(
+      'aria-describedby="managed-research-note-help managed-research-note-error"',
+    );
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(raw);
+    workspace.switchToAnnual();
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(raw);
+    expect(workspace.canSavePayload()).toBe(false);
+    await workspace.coordinator.save();
+    expect(api.save).not.toHaveBeenCalled();
+    const corrected = "  Cafe\u0301 research  ";
+    workspace.noteResearch(selection, corrected);
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+      corrected,
+    );
+    const valid = html();
+    expect(valid).not.toContain('aria-invalid="true"');
+    expect(valid).not.toContain('id="managed-note-validation-focus"');
+    expect(workspace.canSavePayload()).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementation((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      payload.memberships[0]!,
+      { ...other, note: "Café research" },
+    ]);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("focuses the current first invalid listing after reorder, removal and correction", async () => {
+    const { workspace, api, fields, focus } = await noteFocusFixture();
+    focus();
+    expect(fields[0]!.focus).toHaveBeenCalledOnce();
+    expect(fields[1]!.focus).not.toHaveBeenCalled();
+    workspace.note("listing-one", "Corrected first note");
+    focus();
+    expect(fields[1]!.focus).toHaveBeenCalledOnce();
+    expect(workspace.canSavePayload()).toBe(false);
+    workspace.note("listing-one", "First\ninvalid");
+    workspace.move("listing-two", -1);
+    focus();
+    expect(fields[1]!.focus).toHaveBeenCalledTimes(2);
+    workspace.remove("listing-two");
+    focus();
+    expect(fields[0]!.focus).toHaveBeenCalledTimes(2);
+    workspace.note("listing-one", "Corrected draft");
+    focus();
+    expect(fields[0]!.focus).toHaveBeenCalledTimes(2);
+    expect(fields[1]!.focus).toHaveBeenCalledTimes(2);
+    expect(workspace.canSavePayload()).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("Corrected draft");
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.load).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("does not focus a stale, disabled, disconnected or hidden field", async () => {
+    const { fields, panel, focus } = await noteFocusFixture();
+    const field = fields[0]!;
+    const note = field.value;
+    field.value = "Older rendered value";
+    focus();
+    field.value = note;
+    field.dataset.managedNoteListingId = "removed-listing";
+    focus();
+    field.dataset.managedNoteListingId = "listing-one";
+    field.disabled = true;
+    focus();
+    field.disabled = false;
+    field.isConnected = false;
+    focus();
+    field.isConnected = true;
+    field.getClientRects.mockReturnValue([]);
+    focus();
+    field.getClientRects.mockReturnValue([{}]);
+    panel.isConnected = false;
+    focus();
+    panel.isConnected = true;
+    panel.hidden = true;
+    focus();
+    expect(field.focus).not.toHaveBeenCalled();
+    expect(fields[1]!.focus).not.toHaveBeenCalled();
+    panel.hidden = false;
+    focus();
+    expect(field.focus).toHaveBeenCalledOnce();
+  });
+
+  it("retires a captured focus action on navigation, company visits and session retirement", async () => {
+    const { workspace, fields, focus } = await noteFocusFixture();
+    workspace.setView("discover");
+    focus();
+    workspace.setView("watchlist");
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    focus();
+    workspace.closeResearch();
+    workspace.coordinator.retire();
+    focus();
+    expect(fields[0]!.focus).not.toHaveBeenCalled();
+    expect(fields[1]!.focus).not.toHaveBeenCalled();
+  });
+
   it("disables Save with an explanation for invalid notes, then enables it after correction", async () => {
     const { workspace, html } = fixture();
     await workspace.coordinator.load();
@@ -1542,6 +1755,8 @@ describe("managed workspace screen", () => {
     expect(html()).toContain(
       "This watchlist is too large to save. Shorten notes or remove entries.",
     );
+    expect(html()).not.toContain('aria-invalid="true"');
+    expect(html()).not.toContain('id="managed-note-validation-focus"');
     await workspace.coordinator.save();
     expect(api.save).not.toHaveBeenCalled();
     workspace.note(last.listingId, last.note);

@@ -157,6 +157,14 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
+The selected next outcome is [recovering an invalid watchlist note](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note).
+Company and watchlist editors identify invalid text beside the field, and My
+Watchlist can focus the first invalid note in the current draft. Correction keeps
+the raw draft and still requires explicit Save watchlist. The existing note
+policy, catalog checks and full-list save remain unchanged. Implementation and
+verification are in progress; the accepted website and signed package remain
+PR 48 and Android 1.12 below. No delivery acceptance is claimed for this change.
+
 PR 48 delivers [price comparison evidence in the existing note draft](MANAGED_EOD_HISTORY.md#add-a-price-comparison-to-a-note-draft)
 on the website and in signed Android 1.12. In company Price,
 Add comparison to note draft appends the selected observed endpoints, exact raw

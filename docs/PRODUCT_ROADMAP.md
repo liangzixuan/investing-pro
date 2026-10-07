@@ -161,6 +161,12 @@ does not save automatically. [Current work](CURRENT_WORK.md) records delivery,
 original failures and remaining live-note, physical-device and backup/restore
 limits. Full M1/M2 and broader sources remain open.
 
+The next selected outcome is to identify an invalid note, reach its editor,
+correct the draft and save explicitly. Company and watchlist editors will share
+the existing note validation. This is a recovery improvement to the daily
+research-to-watchlist workflow; provider scope and the saved-data contract stay
+unchanged. [Current work](CURRENT_WORK.md) records its pending acceptance.
+
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
 source-reading path. Existing security checks remain unchanged.
