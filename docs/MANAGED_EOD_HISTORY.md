@@ -91,8 +91,8 @@ journey made no watchlist changes and did not measure network request counts.
 
 ## Add a price comparison to a note draft
 
-The current candidate adds **Add comparison to note draft** beside a selected
-comparison in company Price. It requires that exact listing to be in the
+**Add comparison to note draft** appears beside a selected comparison in
+company Price. It requires that exact listing to be in the
 watchlist draft. The excerpt retains both observed dates and original USD close
 strings, the exact signed change, rounded percentage, requested window, original
 request times and Tiingo attribution. It states that prices are unadjusted for
@@ -109,8 +109,16 @@ While a price request is pending, wait for it to finish or use Cancel before
 appending. The action checks the current date choice, admitted response, company
 visit, exact membership and existing draft-edit rules. A callback from an old
 choice, replaced history or closed visit cannot append. Markets keeps its
-read-only comparison. Publication and delivery of this candidate remain pending;
-[Current work](CURRENT_WORK.md) records acceptance separately.
+read-only comparison.
+
+PR 48 delivers this flow on the website and in signed Android
+1.12. Seventeen synthetic actual-main native cases passed;
+the source, draft and replaced-history frames received scoped visual review.
+The complete 503-character note and explicit save/reload are native-assertion
+evidence; the draft screenshot shows only its visible portion. BrowserStack
+covers the inert staged shell. Live owner-note writes and physical-device use
+remain unperformed. [Current work](CURRENT_WORK.md) records the exact delivery,
+original failures and remaining limits.
 
 This follows the existing Annual evidence-to-draft flow. The placement also uses
 the established pattern of explicit [symbol notes from chart context](https://www.tradingview.com/support/solutions/43000667881-how-to-create-a-text-note/)

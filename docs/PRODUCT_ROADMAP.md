@@ -54,22 +54,22 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.11 package share Discover, a private
+The managed website and signed Android 1.12 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
 Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.11 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Android 1.2 through 1.12 remain unperformed. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.11. Previous histories keep their original dates. Physical
+and in signed Android 1.12. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.11. It uses the three accepted
+and in signed Android 1.12. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -150,12 +150,16 @@ unchanged. [Current work](CURRENT_WORK.md) records the first native interaction
 failure, accepted rerun and the separate bounded live AAPL comparison on October 6.
 Physical-device acceptance remains open.
 
-The selected next outcome is to retain a chosen company Price comparison in its
-existing watchlist note draft. One explicit action should keep the observed
-endpoints, exact change and original provenance alongside the user's prose,
-then use the existing review and Save watchlist flow. It adds no feed, request,
-schema or automatic save. This candidate is not yet an accepted website or
-Android release.
+PR 48 and signed Android 1.12 connect a company Price comparison
+to the existing member's latest note draft. One explicit action appends the
+observed endpoints, exact change and original provenance while preserving the
+user's prose. Review in My Watchlist opens that draft, and Save watchlist saves
+all its changes. Main checks, original source proof, seventeen synthetic native
+cases, same-archive website promotion and signed-package delivery are accepted.
+Provider coverage, requests, API and schema boundaries are unchanged; appending
+does not save automatically. [Current work](CURRENT_WORK.md) records delivery,
+original failures and remaining live-note, physical-device and backup/restore
+limits. Full M1/M2 and broader sources remain open.
 
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
