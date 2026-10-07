@@ -69,7 +69,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String COMPANY_NOTE = "Company draft captured in research";
-    private static final String INVALID_COMPANY_NOTE = "Company draft\nneeds correction";
+    private static final String INVALID_COMPANY_NOTE = "Company draft\nNeeds correction";
     private static final String NOTE_ERROR =
         "Use at most 2,000 characters. Remove embedded line breaks and unsupported characters.";
     private static final String PRICE_NOTE = "Price research draft " +
