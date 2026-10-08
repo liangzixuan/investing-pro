@@ -76,6 +76,70 @@ function buttons(node: React.ReactNode): React.ReactElement<ButtonProps>[] {
 }
 
 describe("managed close history panel", () => {
+  it.each([false, true])(
+    "shows Markets provenance and original dates until company refresh (previous: %s)",
+    async (showingPrevious) => {
+      const response = eodResponse();
+      const read = vi
+        .fn<ManagedApi["eodHistory"]>()
+        .mockResolvedValue(response);
+      const model = new ManagedEodHistory(read, vi.fn());
+      model.open(
+        { ...eodSelection, origin: "markets", cik: null },
+        {
+          response,
+          showingPrevious,
+        },
+      );
+      const html = () => renderToStaticMarkup(<Panel model={model} />);
+      const carried = html();
+      expect(carried).toContain('class="managed-eod-origin"');
+      expect(carried).toContain(
+        "Showing history loaded in Markets. Original dates and request times are unchanged.",
+      );
+      expect(carried.includes('class="managed-eod-previous"')).toBe(
+        showingPrevious,
+      );
+      expect(carried).toContain("2026-08-20 to 2026-09-20");
+      expect(carried).toContain("2026-09-20T00:00:00.000Z");
+      expect(carried).toContain("2026-09-20T00:00:01.000Z");
+      expect(carried).toContain("<td>100.25</td>");
+      expect(carried).toContain("<td>101.5</td>");
+      expect(carried).toContain("Refresh close history");
+      expect(read).not.toHaveBeenCalled();
+      await model.load();
+      const refreshed = html();
+      expect(model.getSnapshot().selection?.origin).toBe("markets");
+      expect(refreshed).not.toContain('class="managed-eod-origin"');
+      expect(refreshed).not.toContain('class="managed-eod-previous"');
+      expect(refreshed).toContain("<td>100.25</td>");
+      expect(refreshed).toContain("<td>101.5</td>");
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps a rejected seed unloaded without a Markets provenance claim", () => {
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn());
+    model.open(
+      { ...eodSelection, origin: "markets" },
+      {
+        response: {
+          ...eodResponse(),
+          catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+        },
+        showingPrevious: true,
+      },
+    );
+    const output = renderToStaticMarkup(<Panel model={model} />);
+    expect(output).toContain("The loaded Markets history could not be reused.");
+    expect(output).toContain("Load one-month close history");
+    expect(output).not.toContain('class="managed-eod-origin"');
+    expect(output).not.toContain('class="managed-eod-previous"');
+    expect(output).not.toContain("<table>");
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it("focuses the heading on initial mount and loaded return without an implicit read", async () => {
     focusHooks.enabled = true;
     const read = vi

@@ -28,6 +28,8 @@ export const annualNoteDraft =
   "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 export const priceNoteDraft =
   "Price research draft Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
+export const marketsPriceNoteDraft =
+  "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -140,6 +142,7 @@ export async function createFixture(
     | "company-direct-entry"
     | "annual-note"
     | "price-comparison-note"
+    | "markets-price-handoff"
     | "raw-close-comparison"
     | "markets-selected-price" = "default",
 ) {
@@ -222,7 +225,7 @@ export async function createFixture(
       kind === "late"
         ? "998.25"
         : refreshed
-          ? "11.25"
+          ? `${(index + 1) * 10 + 1}.25`
           : ["10.25", "20.75", "30.5"][index]!;
     const close =
       kind === "late"
@@ -359,31 +362,47 @@ export async function createFixture(
       const expected = {
         ...payload,
         memberships:
-          scenario === "annual-note" || scenario === "price-comparison-note"
-            ? payload.memberships.map((member, index) =>
-                index === 0
-                  ? {
-                      ...member,
-                      note:
-                        scenario === "annual-note"
-                          ? annualNoteDraft
-                          : priceNoteDraft,
-                    }
-                  : member,
-              )
-            : [
-                ...payload.memberships,
+          scenario === "markets-price-handoff"
+            ? [
+                payload.memberships[1]!,
                 {
-                  ...marketsCohort[0],
-                  note: "Company draft captured in research",
+                  ...payload.memberships[0]!,
+                  note: "Draft survives native Back",
                 },
-              ],
+                { ...marketsCohort[1], note: marketsPriceNoteDraft },
+              ]
+            : scenario === "annual-note" || scenario === "price-comparison-note"
+              ? payload.memberships.map((member, index) =>
+                  index === 0
+                    ? {
+                        ...member,
+                        note:
+                          scenario === "annual-note"
+                            ? annualNoteDraft
+                            : priceNoteDraft,
+                      }
+                    : member,
+                )
+              : [
+                  ...payload.memberships,
+                  {
+                    ...marketsCohort[0],
+                    note: "Company draft captured in research",
+                  },
+                ],
       };
       // One invented full-list save only. Other cases still require zero writes.
       if (
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
         (scenario === "price-comparison-note" && state.eod !== 1) ||
+        (scenario === "markets-price-handoff" &&
+          (state.marketsResolve !== 3 ||
+            state.marketsEod !== 5 ||
+            state.marketsAborted !== 1 ||
+            state.marketsLateResolved !== 1 ||
+            state.eod !== 1 ||
+            state.annual !== 0)) ||
         savedWatchlist.version !== 1 ||
         captured?.expectedVersion !== 1 ||
         encodeMainWatchlistPayload(captured.payload) !==
@@ -455,7 +474,27 @@ export async function createFixture(
       const marketIndex = marketsCohort.findIndex(
         (listing) => listing.listingId === request.listingId,
       );
+      if (scenario === "markets-price-handoff" && marketIndex === -1)
+        throw new Error("Unexpected invented handoff listing");
       if (marketIndex !== -1) {
+        if (scenario === "markets-price-handoff" && state.marketsEod === 5) {
+          if (
+            signal.aborted ||
+            pendingMarkets ||
+            request.catalogSnapshotSha256 !== digest ||
+            request.range !== "1m" ||
+            marketIndex !== 1 ||
+            state.marketsAborted !== 1 ||
+            state.marketsLateResolved !== 1 ||
+            state.marketsResolve !== 2 ||
+            state.eod !== 0
+          )
+            throw new Error("Unexpected invented company handoff refresh");
+          count("eod");
+          return Promise.resolve(
+            structuredClone(marketsPacket(1, "refreshed")),
+          );
+        }
         if (selectedPriceScenario) {
           if (
             signal.aborted ||
@@ -533,6 +572,8 @@ export async function createFixture(
     annualReport: (request, signal) => {
       if (scenario === "price-comparison-note")
         throw new Error("Unexpected fixture price note Annual read");
+      if (scenario === "markets-price-handoff")
+        throw new Error("Unexpected fixture handoff Annual read");
       if (
         signal.aborted ||
         pending ||

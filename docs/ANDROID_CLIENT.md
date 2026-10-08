@@ -118,6 +118,14 @@ They use the existing disconnected profile, which has no account, API access
 or research data. The APK uses the runner's disposable debug signer. Production
 signing custody, Clerk admission and WebView debugging settings are unchanged.
 
+The disconnected route bridge follows React Router's link convention: navigating
+to the current location replaces its history entry. Repeated Home taps therefore
+keep Watchlist as the previous destination. The navigation and recreation tests
+explicitly repeat the physical Home tap, check locked state, user activation and
+native history, then press Android Back. The gesture helper retains Espresso's
+bounded Escape recovery for a tap delayed into a long press; recovery does not
+relax the navigation assertions.
+
 The test APK also contains an isolated bundle of the shared managed workspace.
 Its invented session and in-memory API make no network requests. Native tests
 open the Annual report, press Android Back and check that the unsaved note and

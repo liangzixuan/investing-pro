@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 7, 2026. This is the portable status summary for the public
+Updated October 8, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
 order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
 operational receipts are retained separately and are not required to understand
@@ -29,16 +29,18 @@ Signed Android 1.13.0, code 14, passed build, complete artifact and delivery
 review with the existing package and production signer. The delivered APK is
 6,655,320 bytes, SHA-256
 `388c45c0af01e2f76234f4b834e0cc201bbb3e2b58223b2188e87f45a9d6459a`.
-Its source is the PR 51 main commit above. Physical installation and use remain
-unverified.
+Its source is the PR 51 main commit above. On October 8 UTC, the owner reported
+physical Pixel use of Android 1.13 was fine, with no issues found. This is
+owner-reported acceptance without per-step logs; it does not establish separate
+screen-reader or backup/restore acceptance.
 
 | Surface                   | Accepted outcome                                                                                                                                                                | Limits                                                                                                                                                                                                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Managed API               | Deployment `6ac20862d12fe7560852`; authenticated catalog/watchlist/Annual/EOD routes, private storage and shared request budgets; anonymous origin/authentication checks passed | A receipt records activation at its observation time. Account-wide external provider consumption and continuing availability are not known                                                                                                                        |
 | Managed website           | `https://app.investingpro.app`; deployment `6ac6ac75b756f9d2ff49`; PR 51 staging archive promoted after normal approval                                                         | BrowserStack covered the exact-build inert staging shell at desktop and narrow widths. Authenticated note and watchlist workflows were outside that check. The October 6 live AAPL comparison is a separate bounded read, without a continuing-availability claim |
-| Signed Android artifact   | Investment 1.13.0, code 14, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Physical installation and use of 1.2 through 1.13 remain unperformed                                                                                                                                                                                              |
+| Signed Android artifact   | Investment 1.13.0, code 14, package `app.investingpro.android`; same production signer; independently accepted assets/manifest and delivered exact APK                          | Owner reported Pixel use of 1.13 without issues on October 8 UTC; no per-step logs or separate screen-reader/backup-restore proof                                                                                                                                 |
 | Automated Android         | PR 51: seventeen passing invented-data API-36 emulator cases on actual-main attempt 1; six of thirty-nine original frames received visual review                                | Full note, focus/ARIA, save/reload and request counts rely on native assertions; scoped frames do not establish production sign-in, live-provider or physical-device acceptance                                                                                   |
-| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; this report does not accept 1.2 through 1.13                                                                                                                                                                                                    |
+| Previous physical Android | Owner-reported 1.1 in-place upgrade and supplied checklist passed on Pixel 10 Pro XL / Android 17                                                                               | No per-step logs; 1.2 through 1.12 retain their historical acceptance limits; 1.13 has the separate owner report above                                                                                                                                            |
 | Local research app        | Preserved local release and encrypted vault, with broader research/portfolio tools                                                                                              | No automatic migration or claim that these panels are available in the managed product                                                                                                                                                                            |
 
 The previous release, PR 48, is merged as `29181d805eb33a1af80823458ff67f1b5a6cae25`, from candidate
@@ -135,7 +137,8 @@ validated results and provenance; returning sends no request. Back returns to
 the original opener, or Markets for a direct link, and preserves the mounted
 watchlist draft. Leaving the visit,
 selecting another listing, or catalog, session or watchlist-identity invalidation
-clears both sections. Reopening starts unloaded. Android Back uses the same
+clears both sections. Reopening through a URL starts unloaded; the current
+candidate adds a handoff from loaded Markets rows. Android Back uses the same
 close/focus action. Markets board snapshots remain separate from company Price.
 
 A bookmarkable root URL identifies the exact listing and its Price or Annual
@@ -181,6 +184,20 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
+The selected candidate carries a loaded Markets row into company Price without
+another provider request. It preserves full listing identity, original dates and
+previous-history status, including Annual-first visits. Direct entry stays
+unloaded; Refresh remains explicit. Shared cooldowns, watchlist drafts and the
+board's own snapshot retain their existing lifetimes. Implementation and release
+acceptance are in progress; this is not yet a delivered feature.
+
+PR 53's first two native runs each passed all fourteen managed-workspace cases
+and failed the disconnected recreation case. The first recorded a delayed tap;
+the second found an extra Markets history entry after tap recovery. Both failures
+remain recorded. The candidate now makes same-location disconnected navigation
+replace the current entry and explicitly checks repeated Home taps before Back.
+The new source still requires its own hosted and native acceptance.
+
 [Invalid-note recovery](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note)
 is delivered on the website and in signed Android 1.13.
 Company and watchlist editors show feedback beside invalid text. My Watchlist
@@ -208,8 +225,9 @@ Espresso's bounded Escape rollback only to that selector, preserving exact
 option, date, draft and request assertions. The successful journey does not prove
 that the rare rollback branch ran or that every cause of a stalled tap is fixed.
 
-The website and signed-package delivery are complete. Physical installation and
-use of Android 1.2 through 1.13, backup/restore, live owner-note writes and
+The website and signed-package delivery are complete. The owner reports physical
+Pixel use of Android 1.13 without issues. Versions 1.2 through 1.12 retain their
+historical limits; backup/restore, live owner-note writes and separate
 screen-reader acceptance remain open. Full M1/M2 and broader source coverage
 remain separate roadmap work.
 
@@ -261,9 +279,9 @@ production signer. All ten build commands passed, both outer output streams were
 and the APK, merged manifest and delivered bytes passed review. The earlier 1.9
 capture failure and separate recovery remain in the record.
 
-Physical installation and use of 1.2 through 1.13, and backup/restore
-acceptance, remain unperformed. The owner-reported 1.1 result does not accept later
-packages.
+Physical use of 1.2 through 1.12 and backup/restore acceptance retain their
+historical limits. The separate October 8 UTC owner report accepts general
+Pixel use of 1.13 without issues; it does not supply per-step workflow evidence.
 
 The [earlier-date raw-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close)
 is accepted on PR 46 main. Choose an earlier observed date from the loaded

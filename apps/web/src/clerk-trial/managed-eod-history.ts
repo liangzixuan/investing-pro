@@ -1,4 +1,8 @@
-import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
+import {
+  membershipMatchesResult,
+  parseManagedEodHistoryResponse,
+  type ManagedEodHistoryResponseDto,
+} from "@research-cockpit/contracts";
 import type { TrialApiError } from "./api";
 import {
   ManagedCatalogChangedError,
@@ -17,9 +21,14 @@ export interface EodHistorySelection extends ManagedEodAccessSelection {
   readonly cik: string | null;
   readonly origin: "discover" | "watchlist" | "markets" | "route";
 }
+export interface ManagedEodHistorySeed {
+  readonly response: ManagedEodHistoryResponseDto;
+  readonly showingPrevious: boolean;
+}
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
   readonly response: ManagedEodHistoryResponseDto | null;
+  readonly responseOrigin: "markets" | "company" | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
   readonly catalogChanged: boolean;
@@ -29,6 +38,7 @@ export interface ManagedEodHistoryState {
 const empty = (): ManagedEodHistoryState => ({
   selection: null,
   response: null,
+  responseOrigin: null,
   showingPrevious: false,
   running: false,
   catalogChanged: false,
@@ -57,15 +67,42 @@ export class ManagedEodHistory {
     this.state = { ...this.state, ...next };
     for (const listener of this.listeners) listener();
   }
-  open(selection: EodHistorySelection) {
+  open(selection: EodHistorySelection, seed?: ManagedEodHistorySeed) {
     if (this.retired) return;
     this.close();
+    const captured = Object.freeze({
+      ...selection,
+      listing: Object.freeze({ ...selection.listing }),
+    });
+    const parsed =
+      seed &&
+      captured.origin === "markets" &&
+      typeof seed.showingPrevious === "boolean"
+        ? parseManagedEodHistoryResponse(seed.response, {
+            catalogSnapshotSha256: captured.catalogSnapshotSha256,
+            listingId: captured.listing.listingId,
+            range: "1m",
+          })
+        : null;
+    const response =
+      parsed &&
+      membershipMatchesResult(
+        { ...captured.listing, note: "" },
+        parsed.security,
+      )
+        ? parsed
+        : null;
     this.update({
-      selection: Object.freeze({
-        ...selection,
-        listing: Object.freeze({ ...selection.listing }),
-      }),
-      message: "Load one month of raw closing prices when you are ready.",
+      selection: captured,
+      response,
+      responseOrigin: response ? "markets" : null,
+      showingPrevious: response !== null && seed?.showingPrevious === true,
+      error: seed !== undefined && response === null,
+      message: response
+        ? "Loaded Markets history is available in this company visit."
+        : seed !== undefined
+          ? "The loaded Markets history could not be reused. Load one month of raw closing prices when you are ready."
+          : "Load one month of raw closing prices when you are ready.",
     });
   }
   close() {
@@ -129,6 +166,7 @@ export class ManagedEodHistory {
       if (!current()) return;
       this.update({
         response,
+        responseOrigin: "company",
         showingPrevious: false,
         message: "One-month raw closing prices loaded.",
       });
@@ -172,6 +210,7 @@ export class ManagedEodHistory {
       }
       this.update({
         response: showingPrevious ? this.state.response : null,
+        responseOrigin: showingPrevious ? this.state.responseOrigin : null,
         showingPrevious,
         message,
         error: true,

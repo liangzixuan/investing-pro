@@ -69,6 +69,12 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
     private static final String COMPANY_NOTE = "Company draft captured in research";
+    private static final String MARKETS_PRICE_NOTE =
+        "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; " +
+        "raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; " +
+        "original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. " +
+        "Raw closes are not adjusted for splits or dividends and are not live quotes. " +
+        "Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String INVALID_COMPANY_NOTE = "Company draft\nNeeds correction";
     private static final String NOTE_ERROR =
         "Use at most 2,000 characters. Remove embedded line breaks and unsupported characters.";
@@ -128,6 +134,8 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
             selectFixtureScenario("markets-selected-price");
+        if (testName.getMethodName().equals("marketsLoadCancelAndNavigationPreserveDraft"))
+            selectFixtureScenario("markets-price-handoff");
         if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
@@ -755,25 +763,33 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.activeElement === document.querySelector('.managed-markets .trial-actions button:first-child')" +
             " && document.activeElement.disabled === false" +
             " && document.querySelector('.managed-market-rows .managed-eod-previous') !== null");
+        click("button[aria-label='Select BETA on company board']");
+        assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
+        click("button[aria-label='Board price history for BETA']");
+        awaitPage("board opens the same dated BETA response without another request",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · BETA'" +
+            " && document.querySelector('.managed-company-identity span')?.textContent === 'Beta Class A · Class A · XNAS'" +
+            " && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('.managed-market-detail table') !== null");
+        assertMarketsCompanyHistory("20.5", "2026-09-19", "2026-08-20 to 2026-09-20",
+            "2026-09-20T00:00:00.000Z", "2026-09-20T00:00:01.000Z", "2026-09-18|20.75;2026-09-19|20.5", true, true);
+        assertCompanyHistory("listing-beta-a", "price", false);
+        assertMarketsDraftAndCounts(2, 5, 1, 0);
         click("#settle-cancelled-markets");
         assertMarketsDraftAndCounts(2, 5, 1, 1);
         assertMarketsRows(true);
         assertMarketsRawChanges(true);
-        click("button[aria-label='Select BETA on company board']");
         assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
         awaitPage("late board values cannot replace the retained response",
             "!document.querySelector('.managed-markets')?.textContent.includes('998.25')" +
             " && !document.querySelector('.managed-markets')?.textContent.includes('999.75')");
-        Log.i("ManagedMarkets", "phase=cancelled-late-discarded, reads=5; " + pageDiagnostic());
-
-        click("button[aria-label='Board price history for BETA']");
-        awaitPage("board opens separate EOD panel unloaded without another request",
-            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · BETA' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
-            " && document.activeElement?.id === 'managed-eod-heading'" +
-            " && document.querySelector('.managed-eod-history table') === null" +
-            " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
-            " && document.querySelector('.managed-market-detail table') !== null");
+        assertMarketsCompanyHistory("20.5", "2026-09-19", "2026-08-20 to 2026-09-20",
+            "2026-09-20T00:00:00.000Z", "2026-09-20T00:00:01.000Z", "2026-09-18|20.75;2026-09-19|20.5", true, true);
+        retainAnnualNoteFrame("marketsPriceHandoffPrevious", ".managed-eod-history .managed-eod-origin",
+            ".managed-eod-history .managed-eod-origin, .managed-eod-history .managed-eod-previous, .managed-eod-history .managed-metadata", 3);
         assertMarketsDraftAndCounts(2, 5, 1, 1);
+        Log.i("ManagedMarkets", "phase=cancelled-late-discarded, reads=5; " + pageDiagnostic());
         pressBack();
         awaitPage("native Back restores the original board opener and its previous history",
             "document.querySelector('.managed-eod-history') === null" +
@@ -784,6 +800,48 @@ public class ManagedWorkspaceInstrumentedTest {
         pressBack();
         assertMarketsRows(true);
         assertMarketsDraftAndCounts(2, 5, 1, 1);
+        click("button[aria-label='Board Annual report for BETA']");
+        awaitPage("Annual-first entry stays unloaded without reading either provider",
+            "document.activeElement?.id === 'managed-annual-heading'" +
+            " && document.querySelector('.managed-annual-report .sec-quarterly-comparison') === null" +
+            " && document.querySelector('.managed-eod-history') === null");
+        assertCompanyHistory("listing-beta-a", "annual", false);
+        assertMarketsDraftAndCounts(2, 5, 1, 1);
+        click(".managed-company-sections button[aria-label='Price section for BETA']");
+        awaitPage("Price reveals the response seeded at Annual entry", "document.activeElement?.id === 'managed-eod-heading'");
+        assertCompanyHistory("listing-beta-a", "price", false);
+        assertMarketsCompanyHistory("20.5", "2026-09-19", "2026-08-20 to 2026-09-20",
+            "2026-09-20T00:00:00.000Z", "2026-09-20T00:00:01.000Z", "2026-09-18|20.75;2026-09-19|20.5", true, true);
+        assertMarketsDraftAndCounts(2, 5, 1, 1);
+        click("[aria-labelledby=managed-research-note-heading] button:first-child");
+        awaitPage("explicit add appends only BETA with an empty note",
+            "document.querySelector('#managed-research-note')?.value === ''" +
+            " && document.querySelector('#managed-note-2')?.value === ''" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'");
+        typeIntoInput("managed-research-note", "Markets research draft");
+        String companyScope = ".managed-eod-history";
+        assertEmptyComparison(companyScope, "BETA", "|2026-09-18");
+        chooseComparisonDate(companyScope, "2026-09-18");
+        awaitPage("seeded history supports the exact observed comparison",
+            rawCloseComparison(companyScope, "2026-09-18", "20.75", "2026-09-19", "20.5", "Raw close change: -$0.25 (-1.2048%)"));
+        click(companyScope + " .managed-price-note-action button");
+        awaitPage("append retains the old Markets evidence and previous-history qualification",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(MARKETS_PRICE_NOTE));
+        assertMarketsHandoffDraftAndCounts(2, 0, 0, 1);
+        Log.i("ManagedMarketsHandoff", "phase=annual-first-comparison-appended, eod=0, save=0; " + pageDiagnostic());
+        clickEodAction("Refresh close history");
+        assertMarketsCompanyHistory("21.5", "2026-09-20", "2026-08-21 to 2026-09-21",
+            "2026-09-21T00:00:00.000Z", "2026-09-21T00:00:02.000Z", "2026-09-19|21.25;2026-09-20|21.5", false, false);
+        assertEmptyComparison(companyScope, "BETA", "|2026-09-19");
+        assertMarketsHandoffDraftAndCounts(2, 1, 0, 1);
+        assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
+        pressBack();
+        awaitPage("Back restores the Annual opener and unchanged Markets history",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement === document.querySelector(\"button[aria-label='Board Annual report for BETA']\")");
+        assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
+        assertMarketsRawChanges(true);
+        assertReturnedRootHistory("listing-beta-a", "price");
         selectWorkspaceView("Discover");
         awaitPage("leaving Markets retires all its price views",
             "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null");
@@ -796,11 +854,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && document.querySelector('.managed-markets .managed-eod-previous') === null");
-        assertMarketsDraftAndCounts(3, 5, 1, 1);
+        assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         selectWorkspaceView("My Watchlist");
         awaitPage("the final watchlist draft is visible and unchanged",
             "document.querySelector('#managed-note-1')?.closest('section')?.hidden === false");
-        assertMarketsDraftAndCounts(3, 5, 1, 1);
+        assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         scenario.onActivity(activity -> {
             assertNotNull("Original Markets Activity was collected", originalActivity.get().get());
             assertNotNull("Original Markets WebView was collected", originalWebView.get().get());
@@ -811,6 +869,17 @@ public class ManagedWorkspaceInstrumentedTest {
         assertReturnedRootHistory("listing-beta-a", "price");
         assertFixtureBoundary();
         Log.i("ManagedMarkets", "phase=left-cleared-draft-retained, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("one explicit save acknowledges the exact three-member draft", DIAGNOSTICS + ".save === 1");
+        assertMarketsHandoffDraftAndCounts(3, 1, 1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("reload returns the saved Markets comparison", DIAGNOSTICS + ".load === 2");
+        assertMarketsHandoffDraftAndCounts(3, 1, 1, 2);
+        assertEquals("Markets note save and reload preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertReturnedRootHistory("listing-beta-a", "price");
+        Log.i("ManagedMarketsHandoff", "phase=company-refreshed-board-retained-saved-reloaded, eod=1, save=1; " + pageDiagnostic());
     }
 
     @Test
@@ -892,11 +961,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertRefreshedSelectedMarketDetail();
         assertMarketsDraftAndCounts(2, 3, 1, 1);
         click("button[aria-label='Board price history for ALFA']");
-        awaitPage("selected board history opens separate unloaded company research",
+        awaitPage("selected board history opens the refreshed response in company research",
             "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
-            " && document.activeElement?.id === 'managed-eod-heading'" +
-            " && document.querySelector('.managed-eod-history table') === null" +
-            " && document.querySelector('.managed-eod-history .managed-metadata') === null");
+            " && document.activeElement?.id === 'managed-eod-heading'");
+        assertMarketsCompanyHistory("11.5", "2026-09-20", "2026-08-21 to 2026-09-21",
+            "2026-09-21T00:00:00.000Z", "2026-09-21T00:00:02.000Z", "2026-09-19|11.25;2026-09-20|11.5", true, false);
         assertCompanyHistory("listing-alfa", "price", false);
         assertMarketsDraftAndCounts(2, 3, 1, 1);
         pressBack();
@@ -1524,6 +1593,41 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
+    private void assertMarketsCompanyHistory(String close, String date, String window, String started,
+            String completed, String rows, boolean fromMarkets, boolean previous) throws Exception {
+        String metadata = close + "|" + date + "|" + window + "|" + started + "|" + completed;
+        awaitPage("company history preserves complete response dates and explicit origin",
+            "document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
+            " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === " + JSONObject.quote(rows) +
+            " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === " + JSONObject.quote(metadata) +
+            " && (document.querySelector('.managed-eod-history .managed-eod-origin') !== null) === " + fromMarkets +
+            (fromMarkets ? " && document.querySelector('.managed-eod-history .managed-eod-origin')?.textContent === 'Showing history loaded in Markets. Original dates and request times are unchanged.'" : "") +
+            " && (document.querySelector('.managed-eod-history .managed-eod-previous') !== null) === " + previous +
+            (previous ? " && document.querySelector('.managed-eod-history .managed-eod-previous')?.textContent === " +
+                JSONObject.quote("Showing previous close history, completed " + completed + ". This refresh has not confirmed newer prices. Trading dates, requested window and request times are unchanged.") : "") +
+            " && document.querySelector('.managed-eod-history [role=alert]') === null" +
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('Data provided by Tiingo.')");
+    }
+
+    private void assertMarketsHandoffDraftAndCounts(int resolves, int eod, int saves, int loads) throws Exception {
+        awaitPage("handoff keeps source reads explicit and preserves the complete three-member draft",
+            DIAGNOSTICS + ".marketsResolve === " + resolves + " && " + DIAGNOSTICS + ".marketsEod === 5" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 1 && " + DIAGNOSTICS + ".marketsLateResolved === 1" +
+            " && " + DIAGNOSTICS + ".eod === " + eod + " && " + DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads +
+            " && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1 && " + DIAGNOSTICS + ".resolve === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(MARKETS_PRICE_NOTE) +
+            " && document.querySelectorAll('.managed-memberships > li').length === 3" +
+            " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'" +
+            " && document.body.textContent.includes(" + JSONObject.quote(saves == 0 ? "Version 1 · Unsaved changes" : "Version 2 · Saved") + ")" +
+            " && Array.from(document.querySelectorAll('[aria-labelledby=managed-watchlist-heading] button')).find(button => button.textContent === 'Save watchlist')?.disabled === " + (saves != 0));
+    }
+
     private void assertSelectedMarketRows(boolean refreshed, boolean previous) throws Exception {
         String first = refreshed ? "ALFA|$11.5|USD · 2026-09-20" : "ALFA|$10.5|USD · 2026-09-19";
         String change = refreshed ? "Raw close change: +$0.25 (+2.2222%)" : "Raw close change: +$0.25 (+2.4390%)";
@@ -1783,6 +1887,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
+            scenarioName.equals("markets-price-handoff") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());

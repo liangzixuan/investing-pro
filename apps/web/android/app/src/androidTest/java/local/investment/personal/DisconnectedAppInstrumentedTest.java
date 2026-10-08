@@ -22,6 +22,7 @@ import android.graphics.Rect;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -167,6 +168,13 @@ public class DisconnectedAppInstrumentedTest {
         assertLockedPage();
         awaitPage("real touch activated the document", "navigator.userActivation.hasBeenActive === true");
         assertNativeBackReady(MARKETS, WATCHLIST);
+
+        // Repeating Home must keep Watchlist as the immediate native Back destination.
+        touchHomeLink();
+        awaitLockedRoute(MARKETS);
+        assertLockedPage();
+        awaitPage("repeated Home retained real touch activation", "navigator.userActivation.hasBeenActive === true");
+        assertNativeBackReady(MARKETS, WATCHLIST);
     }
 
     private void touchHomeLink() throws Exception {
@@ -216,7 +224,9 @@ public class DisconnectedAppInstrumentedTest {
             },
             Press.FINGER,
             InputDevice.SOURCE_TOUCHSCREEN,
-            0
+            0,
+            // Escape supports Espresso's bounded recovery when a tap becomes a long press.
+            androidx.test.espresso.action.ViewActions.pressKey(KeyEvent.KEYCODE_ESCAPE)
         ));
     }
 

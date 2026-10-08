@@ -80,11 +80,25 @@ clear the affected row. Authentication or catalog retirement clears the board.
 Cancel returns focus to the load control that started the request.
 
 Prices live only in the current Markets visit. Opening research cancels pending
-board work and preserves completed board snapshots. The separate Annual and price
-panels start unloaded and retain their existing close/switch rules. Back returns
+board work and preserves completed board snapshots. Company Price receives an
+owned, validated copy of the selected row's loaded response, including its original
+dates and previous-history status. The copy is captured after cancellation settles.
+Opening Annual first also prepares that Price history, while Annual stays unloaded.
+The Price panel identifies history carried from Markets and offers explicit Refresh.
+A row without a response starts Price unloaded. Neither opening nor switching
+sections requests prices. Company Refresh replaces only the company response;
+Back retains the board's original snapshot and chart choice. The visit's existing
+close/switch rules still apply. Back returns
 focus to the original opener; Android Back uses that same action. Switching to
 Discover or My Watchlist clears board prices. Returning to Markets starts unloaded.
 The mounted workspace continues to own unsaved watchlist notes, order and saves.
+
+The handoff follows the established pattern of opening a selected watchlist
+instrument in a connected chart, described by
+[TradingView](https://www.tradingview.com/support/solutions/43000745825-mastering-the-tradingview-watchlists/).
+Here it reuses only an already admitted response for the exact catalog and listing.
+It adds no persistent cache, source coverage or request allowance. Direct links,
+reloads, browser Forward and Discover/watchlist entry start unloaded.
 
 ## Screen and verification
 

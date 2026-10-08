@@ -118,7 +118,11 @@ describe("Markets and mounted workspace", () => {
       expect(workspace.markets.getSnapshot().rows[index]).toBe(row),
     );
     workspace.openMarketResearch("eod", marketsCohort[2].listingId);
-    expect(workspace.eod.getSnapshot().response).toBeNull();
+    expect(workspace.eod.getSnapshot().response).toEqual(loaded);
+    expect(workspace.eod.getSnapshot().response).not.toBe(loaded);
+    expect(workspace.eod.getSnapshot().responseOrigin).toBe("markets");
+    expect(html()).toContain("Showing history loaded in Markets.");
+    expect(read).toHaveBeenCalledOnce();
     workspace.closeResearch();
     expect(workspace.markets.getSnapshot().rows[2]!.response).toBe(loaded);
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
@@ -166,7 +170,7 @@ describe("Markets and mounted workspace", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
-  it("preserves note/order drafts and board snapshots through unloaded research panels", async () => {
+  it("preserves note/order drafts and board snapshots through carried Price and unloaded Annual", async () => {
     const { workspace, read, save, html, marketsCohort } = await fixture();
     const listing = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
     workspace.note(listing.listingId, "Invented unsaved research");
@@ -177,7 +181,8 @@ describe("Markets and mounted workspace", () => {
     const originalRow = marketRow(html(), "ALFA");
     workspace.openMarketResearch("eod", marketsCohort[1].listingId);
     expect(workspace.eod.getSnapshot()).toMatchObject({
-      response: null,
+      response: rows[1]!.response,
+      responseOrigin: "markets",
       selection: { origin: "markets", cik: null, listing: marketsCohort[1] },
     });
     workspace.switchToAnnual();
@@ -186,6 +191,7 @@ describe("Markets and mounted workspace", () => {
       selection: { origin: "markets", cik: null, listing: marketsCohort[1] },
     });
     workspace.switchToEod();
+    expect(workspace.eod.getSnapshot().response).toEqual(rows[1]!.response);
     workspace.closeResearch();
     expect(workspace.markets.getSnapshot().rows).toEqual(rows);
     expect(marketRow(html(), "ALFA")).toBe(originalRow);

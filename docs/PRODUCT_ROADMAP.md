@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 7, 2026. This document defines the durable product goals and
+Updated October 8, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -59,8 +59,9 @@ watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
 browser request passed on October 3; separate GOOG/GOOGL loads passed on October 4.
-Broader provider coverage remains separate work. Physical installation and use of
-Android 1.2 through 1.13 remain unperformed. See [Current work](./CURRENT_WORK.md)
+Broader provider coverage remains separate work. The owner reported physical
+Pixel use of Android 1.13 without issues on October 8 UTC; earlier 1.2 through
+1.12 releases retain their recorded physical-acceptance limits. See [Current work](./CURRENT_WORK.md)
 for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
@@ -191,6 +192,12 @@ earlier; M5 does not permanently defer broader markets. Do not hold an available
 calendar or market module hostage to unrelated SEC interpretation work.
 
 ### Selecting the next product outcome
+
+The current M2 candidate carries an already loaded Markets price history into
+company Price, including Annual-first visits, without another source request.
+It keeps dates, identity, previous-history status and explicit refresh intact.
+Direct visits remain unloaded. Validation and release acceptance are pending;
+full M2 and broader data sources remain open.
 
 Select a bounded end-to-end outcome before implementation. The milestones above
 remain the expansion plan; they do not authorize all features or replace the

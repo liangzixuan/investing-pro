@@ -85,6 +85,12 @@ export function ManagedEodHistory({
       <p role={state.error ? "alert" : "status"} aria-live="polite">
         {state.message}
       </p>
+      {response && state.responseOrigin === "markets" && (
+        <p className="managed-eod-origin">
+          Showing history loaded in Markets. Original dates and request times
+          are unchanged.
+        </p>
+      )}
       {state.showingPrevious && response && (
         <p className="managed-eod-previous">
           Showing previous close history, completed {response.completedAt}. This
