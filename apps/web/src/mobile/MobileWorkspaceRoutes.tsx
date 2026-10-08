@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { Navigate, useLocation, useNavigate } from "react-router";
+import { createPath, Navigate, useLocation, useNavigate } from "react-router";
 import { PersonalWorkspaceClient } from "../features/workspace/PersonalWorkspaceClient";
 import { parseWorkspaceRoute } from "../features/workspace/workspace-route";
 import { bindAndroidBack } from "./android-back";
@@ -15,10 +15,10 @@ export function MobileWorkspaceRoutes() {
     () => ({
       href: (path: string) => `#${path}`,
       navigate: (path: string) => {
-        void navigate(path);
+        void navigate(path, { replace: createPath(location) === path });
       },
     }),
-    [navigate],
+    [navigate, location],
   );
   useEffect(() => {
     if (Capacitor.getPlatform() !== "android") return;

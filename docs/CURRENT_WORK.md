@@ -191,6 +191,13 @@ unloaded; Refresh remains explicit. Shared cooldowns, watchlist drafts and the
 board's own snapshot retain their existing lifetimes. Implementation and release
 acceptance are in progress; this is not yet a delivered feature.
 
+PR 53's first two native runs each passed all fourteen managed-workspace cases
+and failed the disconnected recreation case. The first recorded a delayed tap;
+the second found an extra Markets history entry after tap recovery. Both failures
+remain recorded. The candidate now makes same-location disconnected navigation
+replace the current entry and explicitly checks repeated Home taps before Back.
+The new source still requires its own hosted and native acceptance.
+
 [Invalid-note recovery](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note)
 is delivered on the website and in signed Android 1.13.
 Company and watchlist editors show feedback beside invalid text. My Watchlist

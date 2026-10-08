@@ -168,6 +168,13 @@ public class DisconnectedAppInstrumentedTest {
         assertLockedPage();
         awaitPage("real touch activated the document", "navigator.userActivation.hasBeenActive === true");
         assertNativeBackReady(MARKETS, WATCHLIST);
+
+        // Repeating Home must keep Watchlist as the immediate native Back destination.
+        touchHomeLink();
+        awaitLockedRoute(MARKETS);
+        assertLockedPage();
+        awaitPage("repeated Home retained real touch activation", "navigator.userActivation.hasBeenActive === true");
+        assertNativeBackReady(MARKETS, WATCHLIST);
     }
 
     private void touchHomeLink() throws Exception {
