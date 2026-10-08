@@ -22,6 +22,7 @@ import android.graphics.Rect;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -216,7 +217,9 @@ public class DisconnectedAppInstrumentedTest {
             },
             Press.FINGER,
             InputDevice.SOURCE_TOUCHSCREEN,
-            0
+            0,
+            // Escape supports Espresso's bounded recovery when a tap becomes a long press.
+            androidx.test.espresso.action.ViewActions.pressKey(KeyEvent.KEYCODE_ESCAPE)
         ));
     }
 
