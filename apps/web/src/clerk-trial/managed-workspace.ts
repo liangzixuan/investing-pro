@@ -23,7 +23,10 @@ import {
   ManagedAnnualReport,
   type AnnualReportSelection,
 } from "./managed-annual-report";
-import { ManagedEodHistory } from "./managed-eod-history";
+import {
+  ManagedEodHistory,
+  type ManagedEodHistorySeed,
+} from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { ManagedEodAccess } from "./managed-eod-access";
@@ -470,7 +473,17 @@ export class ManagedWorkspace {
     );
   }
   openMarketResearch(kind: "annual" | "eod", listingId?: string) {
-    const selection = this.markets.selection(listingId);
+    const requested = this.markets.selection(listingId);
+    if (
+      this.retired ||
+      this.state.view !== "markets" ||
+      !requested ||
+      requested.catalogSnapshotSha256 !== this.state.snapshot?.snapshotSha256
+    )
+      return;
+    this.markets.cancel();
+    // Cancellation settles previous-history status before the visit captures it.
+    const selection = this.markets.selection(requested.listing.listingId);
     if (
       this.retired ||
       this.state.view !== "markets" ||
@@ -478,8 +491,19 @@ export class ManagedWorkspace {
       selection.catalogSnapshotSha256 !== this.state.snapshot?.snapshotSha256
     )
       return;
-    this.markets.cancel();
-    this.openResearch(selection, kind);
+    const row = this.markets
+      .getSnapshot()
+      .rows.find(
+        (entry) => entry.listing.listingId === selection.listing.listingId,
+      );
+    this.openResearch(
+      selection,
+      kind,
+      null,
+      row?.response
+        ? { response: row.response, showingPrevious: row.showingPrevious }
+        : undefined,
+    );
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (this.retired) return;
@@ -632,9 +656,11 @@ export class ManagedWorkspace {
     selection: AnnualReportSelection,
     section: ManagedResearchVisit["section"],
     companyRoute: CompanyRouteState | null = null,
+    priceSeed?: ManagedEodHistorySeed,
   ) {
     this.clearResearch();
-    this[section].open(selection);
+    if (section === "eod" || priceSeed) this.eod.open(selection, priceSeed);
+    if (section === "annual") this.annual.open(selection);
     const captured = this[section].getSnapshot().selection;
     if (captured)
       this.update({

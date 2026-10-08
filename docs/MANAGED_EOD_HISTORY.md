@@ -1,7 +1,12 @@
 # Managed EOD history
 
-The managed workspace opens EOD close history from an admitted Discover result or
-watchlist listing. Load is explicit. The first slice requests one calendar month
+The managed workspace opens EOD close history from an admitted Markets row,
+Discover result or watchlist listing. Load is explicit. A loaded Markets row can
+carry its validated history into Price without another request, including when
+Annual opens first. The panel identifies this origin and retains the row's
+previous-history status and original timestamps. Company Refresh replaces that
+copy independently of the board. Direct links and other entry points start
+unloaded. The first slice requests one calendar month
 of daily raw USD closes and shows the last observed trading-date close, chart,
 exact decimal table, requested dates, completion time and Tiingo attribution.
 It does not calculate adjusted returns or claim that the last close is a live quote.

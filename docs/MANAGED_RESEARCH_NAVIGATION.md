@@ -31,7 +31,7 @@ The same session workspace owns navigation and the unsaved watchlist draft.
 Opening an in-app company creates one history entry; changing sections replaces
 that entry and preserves the visit's validated results. Back returns to its
 opener. A direct link has no in-app opener and returns to Markets. Forward or
-reopening creates a fresh unloaded visit. Review in My Watchlist closes research
+reopening a company URL creates a fresh unloaded visit. Review in My Watchlist closes research
 and uses the existing full-list save workflow.
 
 Pending catalog resolution is cancelled on leaving, catalog invalidation or
@@ -62,8 +62,8 @@ success, error or cooldown from a cancelled operation cannot alter either sectio
 A request already admitted by the managed service may still finish there.
 
 Back, a different listing, a changed or refused catalog, session retirement, or
-an invalidated watchlist identity clears the whole visit. Reopening starts
-unloaded. A section-specific unavailable or unsupported result follows that
+an invalidated watchlist identity clears the whole visit. A new visit starts
+unloaded unless opened from a Markets row with an admitted history. A section-specific unavailable or unsupported result follows that
 section's existing error policy and leaves unrelated validated evidence intact.
 Account or catalog invalidation applies to both sections.
 
@@ -75,8 +75,13 @@ ordering and saved version remain owned by the mounted watchlist coordinator.
 
 Per-feature cooldowns survive switching and closing. The
 [Markets board](MANAGED_MARKETS_HOME.md) shares the EOD cooldown but keeps its
-snapshots separate. Opening company research from a loaded board starts unloaded;
-its prices are not copied into the Price section.
+snapshots separate. Opening research from a loaded Markets row copies its exact
+validated history into Price after cancelling pending board work. This includes
+Annual-first visits; Annual remains unloaded. The copied history retains its
+original dates and previous-result notice, and Price identifies its Markets
+origin. Refreshing Price replaces only the company response. Back restores the
+unchanged board snapshot and chart choice. A row without history, direct links,
+reloads, Forward and Discover/watchlist entry still start unloaded.
 
 Back uses the same action on screen and on Android. Switching sections preserves
 the original opener. If that control disappears, Back focuses the current view's

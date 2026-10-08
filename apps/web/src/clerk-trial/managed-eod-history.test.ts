@@ -7,7 +7,10 @@ import {
   ManagedEodHistoryError,
   type ManagedApi,
 } from "./managed-api";
-import { ManagedEodHistory } from "./managed-eod-history";
+import {
+  ManagedEodHistory,
+  type ManagedEodHistorySeed,
+} from "./managed-eod-history";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { eodRequest, eodResponse, eodSelection } from "./eod-history-fixture";
 
@@ -445,4 +448,332 @@ describe("session-only managed EOD history", () => {
     await model.load();
     expect(read).toHaveBeenCalledTimes(3);
   });
+});
+
+describe("Markets history handoff", () => {
+  const selection = { ...eodSelection, origin: "markets" as const, cik: null };
+
+  it.each([false, true])(
+    "owns an immutable seed without a request (previous: %s)",
+    (showingPrevious) => {
+      const { model, read, readError } = fixture();
+      const original = eodResponse();
+      const packet = {
+        ...original,
+        security: { ...original.security },
+        window: { ...original.window },
+        rows: original.rows.map((row) => ({ ...row })),
+      };
+      const seed = { response: packet, showingPrevious };
+      model.open(selection, seed);
+      const state = model.getSnapshot();
+      expect(state).toMatchObject({
+        selection,
+        response: original,
+        responseOrigin: "markets",
+        showingPrevious,
+        running: false,
+        catalogChanged: false,
+        error: false,
+      });
+      expect(state.response).not.toBe(packet);
+      for (const value of [
+        state.response,
+        state.response?.security,
+        state.response?.window,
+        state.response?.rows,
+        ...state.response!.rows,
+      ])
+        expect(Object.isFrozen(value)).toBe(true);
+      packet.security.shareClassId = "other-class";
+      packet.rows[0]!.close = "999.75";
+      packet.window.startDate = "2026-08-21";
+      seed.showingPrevious = !showingPrevious;
+      expect(model.getSnapshot()).toBe(state);
+      expect(state.response).toEqual(original);
+      expect(state.showingPrevious).toBe(showingPrevious);
+      expect(read).not.toHaveBeenCalled();
+      expect(readError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["discover", "watchlist", "route"] as const)(
+    "rejects a seed for %s without a request or session error",
+    (origin) => {
+      const { model, read, readError } = fixture();
+      model.open(
+        { ...selection, origin },
+        {
+          response: eodResponse(),
+          showingPrevious: false,
+        },
+      );
+      expect(model.getSnapshot()).toMatchObject({
+        selection: { ...selection, origin },
+        response: null,
+        responseOrigin: null,
+        showingPrevious: false,
+        running: false,
+        catalogChanged: false,
+        error: true,
+      });
+      expect(read).not.toHaveBeenCalled();
+      expect(readError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "issuerId",
+    "issuerName",
+    "symbol",
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "listingId",
+  ] as const)("rejects a seed with a different %s", (field) => {
+    const { model, read, readError } = fixture();
+    const response = eodResponse();
+    model.open(selection, { response, showingPrevious: false });
+    model.open(selection, {
+      response: {
+        ...response,
+        security: { ...response.security, [field]: "other" },
+      },
+      showingPrevious: false,
+    });
+    expect(model.getSnapshot()).toMatchObject({
+      response: null,
+      responseOrigin: null,
+      showingPrevious: false,
+      error: true,
+      catalogChanged: false,
+    });
+    expect(read).not.toHaveBeenCalled();
+    expect(readError).not.toHaveBeenCalled();
+  });
+
+  it("rejects malformed or wrong-catalog seeds and still permits an explicit load", async () => {
+    const { model, read, readError } = fixture();
+    const seeds: ManagedEodHistorySeed[] = [
+      {
+        response: {
+          ...eodResponse(),
+          catalogSnapshotSha256: `sha256:${"b".repeat(64)}`,
+        },
+        showingPrevious: false,
+      },
+      {
+        response: {
+          ...eodResponse(),
+          rows: [{ date: "not-a-date", close: "100" }],
+        },
+        showingPrevious: false,
+      },
+      {
+        response: eodResponse(),
+        showingPrevious: "previous" as unknown as boolean,
+      },
+    ];
+    for (const seed of seeds) {
+      expect(() => model.open(selection, seed)).not.toThrow();
+      expect(model.getSnapshot()).toMatchObject({
+        response: null,
+        responseOrigin: null,
+        showingPrevious: false,
+        error: true,
+        catalogChanged: false,
+      });
+      expect(model.getSnapshot().message).toContain("could not be reused");
+    }
+    expect(read).not.toHaveBeenCalled();
+    expect(readError).not.toHaveBeenCalled();
+    const loaded = eodResponse();
+    read.mockResolvedValueOnce(loaded);
+    await model.load();
+    expect(model.getSnapshot().response).toBe(loaded);
+    expect(model.getSnapshot()).toMatchObject({
+      responseOrigin: "company",
+      error: false,
+      showingPrevious: false,
+    });
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    new ManagedEodHistoryError("request_timeout"),
+    new ManagedEodHistoryError("unavailable"),
+    new ManagedEodHistoryError("source_rate_limited"),
+    new TrialApiError("unavailable"),
+  ])(
+    "keeps Markets provenance through recoverable refresh %s",
+    async (error) => {
+      const { model, read, readError } = fixture();
+      model.open(selection, {
+        response: eodResponse(),
+        showingPrevious: false,
+      });
+      const retained = model.getSnapshot().response;
+      read.mockRejectedValueOnce(error);
+      await model.load();
+      expect(model.getSnapshot().response).toBe(retained);
+      expect(model.getSnapshot()).toMatchObject({
+        responseOrigin: "markets",
+        showingPrevious: true,
+        error: true,
+        running: false,
+      });
+      expect(readError).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["success", "authentication", "catalog", "cooldown"] as const)(
+    "keeps a seeded response and shared cooldown after cancelled refresh settles with %s",
+    async (settlement) => {
+      const held = deferred<ReturnType<typeof eodResponse>>();
+      const read = vi
+        .fn<ManagedApi["eodHistory"]>()
+        .mockReturnValueOnce(held.promise);
+      const readError = vi.fn();
+      const access = new ManagedEodAccess(read);
+      const model = new ManagedEodHistory(read, readError, access);
+      model.open(selection, {
+        response: eodResponse(),
+        showingPrevious: false,
+      });
+      const response = model.getSnapshot().response;
+      const pending = model.load();
+      expect(model.getSnapshot()).toMatchObject({
+        responseOrigin: "markets",
+        response,
+        running: true,
+        showingPrevious: true,
+      });
+      model.cancel();
+      const cancelled = model.getSnapshot();
+      expect(read.mock.calls[0]![1].aborted).toBe(true);
+      if (settlement === "success") held.resolve(eodResponse());
+      else if (settlement === "authentication")
+        held.reject(new TrialApiError("unauthenticated"));
+      else if (settlement === "catalog")
+        held.reject(new ManagedCatalogChangedError());
+      else held.reject(new ManagedEodCooldownError("2099-10-08T00:01:00.000Z"));
+      await pending;
+      expect(model.getSnapshot()).toBe(cancelled);
+      expect(cancelled.response).toBe(response);
+      expect(cancelled).toMatchObject({
+        responseOrigin: "markets",
+        showingPrevious: true,
+        running: false,
+        error: false,
+      });
+      expect(access.getNextAllowedAt()).toBeNull();
+      expect(readError).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("keeps the shared cooldown and changes origin only on successful explicit company refresh", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-08T00:00:00.000Z"));
+    const nextAllowedAt = "2026-10-08T00:01:00.000Z";
+    const refreshed = eodResponse();
+    const read = vi
+      .fn<ManagedApi["eodHistory"]>()
+      .mockRejectedValueOnce(new ManagedEodCooldownError(nextAllowedAt))
+      .mockResolvedValueOnce(refreshed);
+    const access = new ManagedEodAccess(read);
+    await expect(
+      access.request(selection, new AbortController().signal),
+    ).rejects.toMatchObject({ nextAllowedAt });
+    const model = new ManagedEodHistory(read, vi.fn(), access);
+    model.open(selection, { response: eodResponse(), showingPrevious: true });
+    const retained = model.getSnapshot().response;
+    await model.load();
+    expect(model.getSnapshot().response).toBe(retained);
+    expect(model.getSnapshot()).toMatchObject({
+      responseOrigin: "markets",
+      showingPrevious: true,
+      running: false,
+      error: false,
+    });
+    expect(model.getSnapshot().message).toContain(nextAllowedAt);
+    expect(read).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(read).toHaveBeenCalledOnce();
+    await model.load();
+    expect(model.getSnapshot().response).toBe(refreshed);
+    expect(model.getSnapshot()).toMatchObject({
+      selection: { origin: "markets" },
+      responseOrigin: "company",
+      showingPrevious: false,
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("fences an old request when another visit supplies a new seed", async () => {
+    const { model, read, readError } = fixture();
+    const held = deferred<ReturnType<typeof eodResponse>>();
+    read.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    model.open(selection, { response: eodResponse(), showingPrevious: false });
+    const current = model.getSnapshot();
+    held.resolve({
+      ...eodResponse(),
+      rows: [{ date: "2026-09-19", close: "999" }],
+    });
+    await pending;
+    expect(read.mock.calls[0]![1].aborted).toBe(true);
+    expect(model.getSnapshot()).toBe(current);
+    expect(current.responseOrigin).toBe("markets");
+    expect(current.response?.rows).toEqual(eodResponse().rows);
+    expect(readError).not.toHaveBeenCalled();
+  });
+
+  it.each(["close", "retire", "reopen"] as const)(
+    "clears a seed and its provenance on %s",
+    (action) => {
+      const { model, read } = fixture();
+      const seed = { response: eodResponse(), showingPrevious: true };
+      model.open(selection, seed);
+      if (action === "close") model.close();
+      else if (action === "retire") {
+        model.retire();
+        model.open(selection, seed);
+      } else model.open(selection);
+      expect(model.getSnapshot()).toMatchObject({
+        response: null,
+        responseOrigin: null,
+        showingPrevious: false,
+        running: false,
+      });
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    new ManagedCatalogChangedError(),
+    new ManagedEodHistoryError("not_configured"),
+    new ManagedEodHistoryError("unsupported_listing"),
+    new TrialApiError("invalid_response"),
+    new TrialApiError("unauthenticated"),
+  ])(
+    "clears seeded prices and their origin on current fatal error %s",
+    async (error) => {
+      const { model, read } = fixture();
+      model.open(selection, { response: eodResponse(), showingPrevious: true });
+      read.mockRejectedValueOnce(error);
+      await model.load();
+      expect(model.getSnapshot()).toMatchObject({
+        response: null,
+        responseOrigin: null,
+        showingPrevious: false,
+        running: false,
+      });
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
 });

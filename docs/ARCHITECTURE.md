@@ -75,6 +75,14 @@ pending work and retains validated results; returning reuses the initialized
 model. Closing or invalidating the visit clears both models. No persistent cache
 is added.
 
+Markets-to-company navigation settles board cancellation before capturing the
+selected response and its previous-history status. The EOD contract parser owns
+and freezes the copied response, and full listing/catalog identity must match
+the new visit. Annual-first entry initializes Price before publishing the visit.
+Each model then owns its response independently; shared cooldown admission and
+existing cancellation fences still apply. A response-origin field describes the
+copy without changing the transport DTO or adding a second cache.
+
 The company-link candidate uses React Router over root-level query parameters.
 The router stays below the session workspace owner, so navigation does not
 recreate its draft or request models. A cold link resolves one exact listing
@@ -124,8 +132,9 @@ separate [Annual admission](../apps/api/src/managed-sec-annual-admission.ts) and
 after a timely acknowledged shared reservation. Provider work has server deadlines
 because a browser cancellation is not proven to cancel the remote Appwrite request.
 
-The budgets store admission metadata, not price or filing bodies. EOD rows remain
-in the company visit or Markets board's memory. The local encrypted vault is a separate persistence
+The budgets store admission metadata, not price or filing bodies. Full EOD responses remain
+in the company visit or Markets board's memory. Explicitly appended comparison
+endpoints and provenance can persist as watchlist note text after Save. The local encrypted vault is a separate persistence
 model; managed Appwrite storage does not claim equivalent application-layer
 encryption or automatic migration.
 
