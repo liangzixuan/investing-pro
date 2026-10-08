@@ -8,6 +8,47 @@ or develop the repository.
 
 ## Accepted release
 
+PR 53 is merged as `5f0dbfc49c28a9b5ca3825033babab161041deb1`, from candidate
+`e8e550b185d784362bf3d200e676d9125dcdaadd`, with tree
+`880f7d7d99863d07aa49d7e8652149b019c88e40`. Three required actual-main workflows
+and four jobs, the original producing-CI source proof and seventeen synthetic
+native cases are accepted. Loaded Markets rows now carry their validated dated
+history into company Price, including Annual-first visits, without another price
+request. Direct visits remain unloaded. Repeated same-location Home navigation
+in the disconnected Android shell preserves the previous Back destination.
+
+Website release
+[37730493042](https://github.com/liangzixuan/investing-pro/actions/runs/37730493042),
+attempt 1, promoted the same accepted archive after normal production approval.
+Staging `6ac7245e65ebafefd376` and production `6ac7297176077331c655` used the
+827,839-byte archive, SHA-256
+`dbe63df7e1e54836567ced38a27ac3ed26a14e4ad96e30b3ef92e052d8127902`.
+Production replaced `6ac6ac75b756f9d2ff49`; its receipt verified activation on
+October 8 at 05:26:40 UTC. This records that observation, not continuing availability.
+
+Signed Android 1.14.0, code 15, passed build, complete artifact and delivery
+review with the existing package and production signer. The delivered APK is
+6,655,640 bytes, SHA-256
+`bf3280ca36b7f5fdd7324586ab7739efa8614af61db7ef1ccb995e1453645d38`.
+Its source is the PR 53 main commit above. Earlier APKs and rollback identities
+remain preserved; no physical 1.14 installation or use is accepted here.
+
+The seventeen-case emulator report covers three disconnected and fourteen
+managed journeys. Ten of forty original frames received visual review; the full
+assertions, request counters and thirty-seven captures supply the wider test
+evidence. Minor focused-note error spacing remains readable. BrowserStack covered
+the exact-build inert staging shell; authenticated interactions used separate
+invented-data checks. Physical Pixel 1.14, separate screen-reader and
+backup/restore acceptance remain open. The owner's issue-free Pixel 1.13 report
+remains a separate observation without per-step logs.
+
+Both earlier failed PR 53 native reports and the nonrequired CodeScene advisory
+failure remain recorded. The successful report does not establish every rare
+tap-recovery path. API continuity covers the same 109 selected committed inputs
+with two historical exceptions; no API redeployment or coverage expansion occurred.
+
+## Previous release: PR 51
+
 PR 51 is merged as `b110ae9ca1194fbef98b85401e29451cb5b987c1`, from candidate
 `d67c354c6a9371e3750315ac88b77b13a35b3cec`, with tree
 `aa5e8a57de381bcba0bead5f5b508426e9692ed5`. Its three required actual-main
@@ -106,7 +147,7 @@ use remain unverified.
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.13. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.14. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -137,8 +178,8 @@ validated results and provenance; returning sends no request. Back returns to
 the original opener, or Markets for a direct link, and preserves the mounted
 watchlist draft. Leaving the visit,
 selecting another listing, or catalog, session or watchlist-identity invalidation
-clears both sections. Reopening through a URL starts unloaded; the current
-candidate adds a handoff from loaded Markets rows. Android Back uses the same
+clears both sections. Reopening through a URL starts unloaded; PR 53 carries
+validated history from loaded Markets rows. Android Back uses the same
 close/focus action. Markets board snapshots remain separate from company Price.
 
 A bookmarkable root URL identifies the exact listing and its Price or Annual
@@ -184,19 +225,18 @@ availability, repeat reliability or physical-phone coverage.
 
 ## Current task and next acceptance
 
-The selected candidate carries a loaded Markets row into company Price without
-another provider request. It preserves full listing identity, original dates and
-previous-history status, including Annual-first visits. Direct entry stays
-unloaded; Refresh remains explicit. Shared cooldowns, watchlist drafts and the
-board's own snapshot retain their existing lifetimes. Implementation and release
-acceptance are in progress; this is not yet a delivered feature.
+PR 53 carries a loaded Markets row into company Price without another provider
+request. It preserves full listing identity, original dates and previous-history
+status, including Annual-first visits. Direct entry stays unloaded; Refresh
+remains explicit. Shared cooldowns, watchlist drafts and the board's own snapshot
+retain their existing lifetimes. The accepted release is recorded above.
 
 PR 53's first two native runs each passed all fourteen managed-workspace cases
 and failed the disconnected recreation case. The first recorded a delayed tap;
 the second found an extra Markets history entry after tap recovery. Both failures
-remain recorded. The candidate now makes same-location disconnected navigation
+remain recorded. The final source makes same-location disconnected navigation
 replace the current entry and explicitly checks repeated Home taps before Back.
-The new source still requires its own hosted and native acceptance.
+Its required hosted checks and original actual-main native report passed.
 
 [Invalid-note recovery](MANAGED_RESEARCH_NAVIGATION.md#correct-an-invalid-note)
 is delivered on the website and in signed Android 1.13.
