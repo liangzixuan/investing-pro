@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.15 package share Discover, a private
+The managed website and signed Android 1.16 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -174,6 +174,18 @@ complete; full M1/M2 and broader sources remain open.
 Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
 source-reading path. Existing security checks remain unchanged.
+
+PR 57 and signed Android 1.16 deliver a saved-version and retained-draft review
+after a watchlist conflict or original-command reconciliation. Notes, order,
+additions, removals and exact listing identities remain inspectable before a
+whole-version choice. Starting another read withdraws old choices; a failed read
+preserves both versions and requires a successful read before choosing. Source
+checks, eighteen invented-data native cases, same-archive website promotion and
+signed delivery passed. The API source, schema and provider scope are unchanged.
+Physical upgrade, authenticated recovery and backup/restore remain separate
+acceptance work. See [watchlist recovery](APPWRITE_WATCHLIST.md#review-the-saved-version-and-retained-draft)
+and [Current work](CURRENT_WORK.md). This completes the selected recovery outcome;
+full M1/M2 and the broader market platform remain open.
 
 ## Longer-term capability sequence
 
