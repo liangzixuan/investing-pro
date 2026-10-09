@@ -118,4 +118,5 @@ export {
   comparePersonalSecAnnualEvidence,
   type PersonalSecAnnualChange,
   type PersonalSecAnnualComparison,
+  type PersonalSecAnnualMarginComparison,
 } from "./personal-sec-annual-comparison";

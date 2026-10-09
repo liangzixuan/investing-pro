@@ -489,6 +489,9 @@ describe("Android managed fixture startup", () => {
     expect(annualNoteDraft).toContain(
       "Revenues revenue USD 800 to 1000, change USD 200 (25%)",
     );
+    expect(annualNoteDraft).toContain(
+      "Reported net margin -10% to 10%, change 20 percentage points.",
+    );
     expect(report.evidence.observations).toHaveLength(4);
     const command = {
       expectedVersion: 1,

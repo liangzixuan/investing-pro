@@ -8,7 +8,10 @@ import {
   comparePersonalSecAnnualEvidence,
   type PersonalSecAnnualComparison,
 } from "@research-cockpit/personal-financial-analytics";
-import { annualComparisonPercentText } from "../../lib/sec-annual-comparison-display";
+import {
+  annualComparisonPercentText,
+  annualMarginChangeText,
+} from "../../lib/sec-annual-comparison-display";
 
 const sourceStatuses = {
   available: "Available",
@@ -395,11 +398,33 @@ function AnnualComparison({
           </dl>
         );
       })}
+      <dl className="sec-quarterly-comparison-coordinates">
+        <div>
+          <dt>Net margin prior · %</dt>
+          <dd>
+            {comparison.netMargin.status === "available"
+              ? `${comparison.netMargin.prior}%`
+              : annualMarginChangeText(comparison.netMargin)}
+          </dd>
+        </div>
+        <div>
+          <dt>Net margin current · %</dt>
+          <dd>{comparison.netMargin.current}%</dd>
+        </div>
+        <div>
+          <dt>Net margin change · percentage points</dt>
+          <dd>{annualMarginChangeText(comparison.netMargin)}</dd>
+        </div>
+      </dl>
       <p className="sec-quarterly-caveat">
         Amounts are exact, unscaled USD. Percentage change is (current − prior)
         ÷ prior × 100, rounded half up to two decimal places, and requires a
-        positive prior value. Consecutive annual periods can differ in length.
-        No adjustment for period length, accounting changes or restatements is
+        positive prior value. Net margin is NetIncomeLoss ÷ the named revenue
+        basis × 100 and requires positive revenue. Margin change subtracts the
+        unrounded ratios and is rounded once to two decimal places, in
+        percentage points. These reported amounts include any unusual items in
+        NetIncomeLoss. Consecutive annual periods can differ in length. No
+        adjustment for period length, accounting changes or restatements is
         made. These are comparatives reported in the same filing, not an
         as-originally-filed history or organic growth.
       </p>

@@ -87,6 +87,34 @@ refuses an oversized complete note without truncation; explicit review and
 save. Refresh, cancellation, section changes and retirement keep their existing
 generation and draft boundaries.
 
+## Candidate: reported net-margin comparison
+
+The current candidate extends the same-filing annual comparison with prior and
+current net margin and their difference in percentage points. It uses the same
+eligible observations and named revenue basis. Delivery and acceptance remain
+pending; [Current work](CURRENT_WORK.md#current-task-and-next-acceptance) records
+the selected outcome.
+
+Net margin is `NetIncomeLoss / revenue * 100`. Revenue must be positive;
+negative or zero net income is valid. A zero or negative prior revenue keeps
+the existing revenue and net-income amounts and differences visible, while the
+prior margin and its change are unavailable. No alternative revenue basis,
+adjusted income or older filing replaces an unavailable operand.
+
+Both margins are rounded half up to two decimal places. The change subtracts
+the unrounded ratios and rounds once; it does not subtract the displayed rounded
+margins. A nonzero change that rounds to zero says it is less than 0.01 percentage
+points higher or lower. The existing input references and period ranges make the
+calculation inspectable. Reported NetIncomeLoss includes any unusual items.
+
+An available margin comparison joins the existing Annual note excerpt. An
+unavailable comparison explains the prior-revenue limit while retaining the
+other reported comparatives. The complete note must still fit within 2,000
+characters. Appending preserves the latest draft without truncating or saving;
+review and explicit Save watchlist remain required. This candidate adds no source
+request, response field, dependency or persistent state. Existing refresh,
+cancellation, visit and session lifetimes apply.
+
 ## Request lifetime and data
 
 Authenticated `POST /v1/managed/sec-annual-evidence` accepts at most 4 KiB and

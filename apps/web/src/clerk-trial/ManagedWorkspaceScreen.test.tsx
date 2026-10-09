@@ -13,7 +13,10 @@ import { TrialApiError } from "./api";
 import { TrialFrame } from "./TrialFrame";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import {
+  response as annualResponse,
+  annualComparativeRows,
+} from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
@@ -367,7 +370,7 @@ describe("managed workspace screen", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(api.save).not.toHaveBeenCalled();
   });
-  it("updates Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
+  it("updates comparative Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
     const { workspace, api, html } = fixture({
       ...payload,
       memberships: [
@@ -375,7 +378,7 @@ describe("managed workspace screen", () => {
         payload.memberships[0]!,
       ],
     });
-    const report = await annualResponse();
+    const report = await annualResponse(annualComparativeRows());
     vi.mocked(api.annualReport).mockResolvedValue(report);
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -406,6 +409,10 @@ describe("managed workspace screen", () => {
     expect(html()).toContain(
       "The complete note must fit within 2,000 characters",
     );
+    const oversizedDraft = workspace.coordinator.getSnapshot().draft;
+    expect(captured.append(report, pair).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(oversizedDraft);
+    expect(api.save).not.toHaveBeenCalled();
     company().props.onNote("  Latest Cafe\u0301 thesis  ");
     expect(html()).toMatch(
       /<button class="trial-secondary" aria-label="Add Revenues annual evidence to note draft"/u,
@@ -422,6 +429,9 @@ describe("managed workspace screen", () => {
       note.startsWith("  Latest Cafe\u0301 thesis   Observed Annual report:"),
     ).toBe(true);
     expect(note).toContain("Revenues revenue USD 1000");
+    expect(note).toContain(
+      "Reported net margin 10% to 10%, change 0 percentage points.",
+    );
     expect(note).toContain(report.evidence.generation.completedAt);
     expect(workspace.coordinator.getSnapshot().draft!.memberships[1]).toEqual(
       other,
@@ -433,13 +443,16 @@ describe("managed workspace screen", () => {
     expect(api.resolve).not.toHaveBeenCalled();
   });
 
-  it("rejects Annual note callbacks captured before response replacement or closing the visit", async () => {
+  it("rejects comparative Annual note callbacks captured before response replacement or closing the visit", async () => {
     const { workspace, api } = fixture({
       ...payload,
       memberships: [{ ...eodSelection.listing, note: "Keep my thesis" }],
     });
-    const report = await annualResponse();
-    const next = await annualResponse(undefined, "2026-09-21T00:00:00.000Z");
+    const report = await annualResponse(annualComparativeRows());
+    const next = await annualResponse(
+      annualComparativeRows(),
+      "2026-09-21T00:00:00.000Z",
+    );
     vi.mocked(api.annualReport)
       .mockResolvedValueOnce(report)
       .mockResolvedValueOnce(next);

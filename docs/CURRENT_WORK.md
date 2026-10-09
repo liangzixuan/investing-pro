@@ -149,6 +149,15 @@ The next useful acceptance is a physical upgrade and controlled recovery visit,
 with separate browser/session and backup coverage. Select any further product
 outcome from the roadmap only after preserving this release and its limits.
 
+The selected next product candidate adds a reported annual net-margin comparison
+to the existing company Annual view and note draft. It keeps the same filing,
+named revenue basis and admitted observations, and expresses the difference in
+percentage points. Nonpositive prior revenue makes the margin comparison
+unavailable. Focused calculation, rendering and note checks have passed; broader
+verification, hosted/native acceptance and delivery remain pending. The accepted
+website and signed Android 1.16 above remain the release baseline. See the
+[candidate calculation contract](MANAGED_SEC_ANNUAL.md#candidate-reported-net-margin-comparison).
+
 Keep authenticated-browser coverage separate from the inert BrowserStack shell.
 Use narrowly controlled identities and invented records when that work is
 authorized. Preserve origin, authentication, request and owner-data boundaries.

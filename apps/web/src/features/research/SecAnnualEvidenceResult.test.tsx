@@ -22,6 +22,11 @@ describe("shared annual result", () => {
     expect(html).toContain("Revenue change · USD</dt><dd>200</dd>");
     expect(html).toContain("Net income change · USD</dt><dd>20</dd>");
     expect(html).toContain("Revenue reported change</dt><dd>25%</dd>");
+    expect(html).toContain("Net margin prior · %</dt><dd>10%</dd>");
+    expect(html).toContain("Net margin current · %</dt><dd>10%</dd>");
+    expect(html).toContain(
+      "Net margin change · percentage points</dt><dd>0 percentage points</dd>",
+    );
     expect(html).toContain(
       "No adjustment for period length, accounting changes or restatements",
     );
@@ -29,6 +34,59 @@ describe("shared annual result", () => {
       expect(html).toContain(row.id);
     expect(html).toContain("Inspect annual comparison inputs · Revenues");
   });
+
+  it.each(["0", "-100"])(
+    "withholds prior margin for prior revenue %s while retaining other reported amounts",
+    async (priorRevenue) => {
+      const prior = {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        durationDays: 366,
+      };
+      const wire = await response([
+        row("Revenues", "1000"),
+        row("NetIncomeLoss", "100"),
+        row("Revenues", priorRevenue, prior),
+        row("NetIncomeLoss", "-10", prior),
+      ]);
+      const html = renderToStaticMarkup(
+        <SecAnnualEvidenceResult response={wire} />,
+      );
+      expect(html).toContain(
+        `Revenue prior · USD</dt><dd>${priorRevenue}</dd>`,
+      );
+      expect(html).toContain("Net margin current · %</dt><dd>10%</dd>");
+      expect(html).toContain(
+        `Unavailable: prior revenue is ${priorRevenue === "0" ? "zero" : "negative"}`,
+      );
+      expect(html).not.toContain("NaN");
+      expect(html).not.toContain("Infinity");
+    },
+  );
+
+  it.each([
+    ["1.005", "1.004", "higher"],
+    ["1.004", "1.005", "lower"],
+  ])(
+    "discloses the sub-display margin change for current income %s and prior %s",
+    async (currentIncome, priorIncome, direction) => {
+      const prior = {
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        durationDays: 366,
+      };
+      const wire = await response([
+        row("Revenues", "100"),
+        row("NetIncomeLoss", currentIncome),
+        row("Revenues", "100", prior),
+        row("NetIncomeLoss", priorIncome, prior),
+      ]);
+      const html = renderToStaticMarkup(
+        <SecAnnualEvidenceResult response={wire} />,
+      );
+      expect(html).toContain(`Less than 0.01 percentage points ${direction}`);
+    },
+  );
 
   it("keeps the current pair visible when comparison is unavailable under its original age policy", async () => {
     const wire = await response(

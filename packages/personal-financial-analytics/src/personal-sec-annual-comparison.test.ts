@@ -117,6 +117,84 @@ const compare = (observations = rows()) =>
   comparePersonalSecAnnualEvidence(packet(observations), "Revenues");
 
 describe("same-filing reported annual comparison", () => {
+  it.each([
+    ["120", "15", "100", "10", "12.5", "10", "2.5", "higher"],
+    ["120", "15", "100", "-10", "12.5", "-10", "22.5", "higher"],
+    ["120", "-15", "100", "10", "-12.5", "10", "-22.5", "lower"],
+    ["120", "0", "100", "0", "0", "0", "0", "unchanged"],
+    ["120", "12", "100", "10", "10", "10", "0", "unchanged"],
+    ["100", "1.004", "100", "0.999", "1", "1", "0.01", "higher"],
+    ["100", "0.999", "100", "1.004", "1", "1", "-0.01", "lower"],
+    ["100", "1.005", "100", "1.004", "1.01", "1", "0", "higher"],
+    ["100", "1.004", "100", "1.005", "1", "1.01", "0", "lower"],
+  ])(
+    "compares unrounded reported margins for current %s/%s and prior %s/%s",
+    (
+      currentRevenue,
+      currentIncome,
+      priorRevenue,
+      priorIncome,
+      current,
+      prior,
+      difference,
+      direction,
+    ) => {
+      const result = compare([
+        row(1, false, false, currentRevenue),
+        row(2, false, true, currentIncome),
+        row(3, true, false, priorRevenue),
+        row(4, true, true, priorIncome),
+      ]);
+      expect(result).toMatchObject({
+        status: "available",
+        netMargin: {
+          status: "available",
+          prior,
+          current,
+          difference,
+          direction,
+        },
+      });
+      if (result.status !== "available") throw new Error("Expected comparison");
+      expect(Object.isFrozen(result.netMargin)).toBe(true);
+    },
+  );
+
+  it("keeps a ratio change beyond Number precision and preserves its direction", () => {
+    const result = compare([
+      row(1, false, false, "9007199254740993123.0000000001"),
+      row(2, false, true, "9007199254740993123.0000000002"),
+      row(3, true, false, "9007199254740993123.0000000001"),
+      row(4, true, true, "9007199254740993123.0000000001"),
+    ]);
+    expect(result).toMatchObject({
+      status: "available",
+      netMargin: {
+        status: "available",
+        prior: "100",
+        current: "100",
+        difference: "0",
+        direction: "higher",
+      },
+    });
+  });
+
+  it("uses each named revenue basis for both margins", () => {
+    const input = packet([
+      ...rows(),
+      row(5, false, false, "60", { concept: "SalesRevenueNet" }),
+      row(6, true, false, "60", { concept: "SalesRevenueNet" }),
+    ]);
+    expect(comparePersonalSecAnnualEvidence(input, "Revenues")).toMatchObject({
+      netMargin: { current: "12.5", prior: "10", difference: "2.5" },
+    });
+    expect(
+      comparePersonalSecAnnualEvidence(input, "SalesRevenueNet"),
+    ).toMatchObject({
+      netMargin: { current: "25", prior: "16.67", difference: "8.33" },
+    });
+  });
+
   it("compares adjacent leap/calendar years, retains all operand references and leaves prior rows ineligible as current pairs", () => {
     const input = packet();
     const original = JSON.stringify(input);
@@ -212,6 +290,12 @@ describe("same-filing reported annual comparison", () => {
           current: "-15",
           difference: prior === "0" ? "-15" : "-5",
           percent: { status: "unavailable" },
+        },
+        netMargin: {
+          status: "unavailable",
+          current: "-12.5",
+          reason:
+            prior === "0" ? "zero_prior_revenue" : "negative_prior_revenue",
         },
       });
     },
