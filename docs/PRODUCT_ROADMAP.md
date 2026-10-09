@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.13 package share Discover, a private
+The managed website and signed Android 1.14 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -66,11 +66,11 @@ for the exact source, delivery status and limits.
 
 Portable contributor documentation is published, and direct Annual/price-history
 navigation and retained close history during refresh are delivered on the website
-and in signed Android 1.13. Previous histories keep their original dates. Physical
+and in signed Android 1.14. Previous histories keep their original dates. Physical
 Android acceptance remains separate from packaging.
 
 The first [Markets home](MANAGED_MARKETS_HOME.md) is delivered on the website
-and in signed Android 1.13. It uses the three accepted
+and in signed Android 1.14. It uses the three accepted
 listings in a compact board and selected chart, with explicit sequential loads and
 direct research/watchlist access. Its raw-close contract supplies no adjusted
 returns, mover rankings or benchmarks. Preserve usable data, unsaved drafts and recoverable
@@ -193,11 +193,13 @@ calendar or market module hostage to unrelated SEC interpretation work.
 
 ### Selecting the next product outcome
 
-The current M2 candidate carries an already loaded Markets price history into
-company Price, including Annual-first visits, without another source request.
-It keeps dates, identity, previous-history status and explicit refresh intact.
-Direct visits remain unloaded. Validation and release acceptance are pending;
-full M2 and broader data sources remain open.
+PR 53 carries an already loaded Markets price history into company Price,
+including Annual-first visits, without another source request. It keeps dates,
+identity, previous-history status and explicit refresh intact. Direct visits
+remain unloaded. The website is accepted; signed Android 1.14 passed build, artifact and delivery review.
+This bounded workflow does not complete M2 or broaden data sources. No next
+product slice is selected in this release handoff. See [Current work](CURRENT_WORK.md)
+for the exact release and its acceptance limits.
 
 Select a bounded end-to-end outcome before implementation. The milestones above
 remain the expansion plan; they do not authorize all features or replace the

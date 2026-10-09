@@ -202,8 +202,9 @@ the reviewed fixed-mapping currency, rather than an independently supplied
 currency field in the history body. [Current work](./CURRENT_WORK.md) records the release.
 
 The selected [Markets home](MANAGED_MARKETS_HOME.md) shares the same EOD admission
-and checked cooldown. Its visit-scoped board snapshots are separate from the
-single price panel; opening that panel still starts unloaded.
+and checked cooldown. Its visit-scoped board snapshots remain separate from
+company Price. Opening research from a loaded Markets row carries a copy;
+other entry paths start unloaded.
 
 Synthetic tests use invented rows and no provider connection. They establish no
 live coverage, production deployment, signed APK update or physical-device pass.
