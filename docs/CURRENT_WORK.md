@@ -127,12 +127,19 @@ that acceptance.
 
 ## Current task and next acceptance
 
-Finish this release's portable documentation publication and actual-main checks
-before selecting another product slice. The next priority is a usable daily
-workflow and its recovery boundary, as described in the roadmap. Choose one
-bounded interruption or reconciliation journey with invented records and a
-visible result. Existing synthetic coverage does not establish production
-two-device editing, physical upgrade, session-expiry recovery or cloud restore.
+PR 56 published this release's portable documentation and passed its required
+actual-main checks. The selected next candidate is a saved-version and retained-draft
+watchlist review after a conflict or reconciliation of the original save command.
+It shows changed notes, membership, order and exact listing identities before the
+explicit whole-version choice. A pending or failed repeat read withdraws old choice
+eligibility while preserving the draft. No automatic merge, save or provider request
+is added. See [watchlist recovery](APPWRITE_WATCHLIST.md#review-the-saved-version-and-retained-draft).
+
+Affected tests and an invented-data Android interruption/recovery journey are being
+verified. Candidate/main gates, deployment and signed delivery remain pending;
+PR 55 and Android 1.15 remain the accepted product baseline. Synthetic coverage
+does not establish production two-device editing, physical upgrade, session-expiry
+recovery or cloud restore.
 
 Keep authenticated-browser coverage separate from the inert BrowserStack shell.
 Use narrowly controlled identities and invented records when that work is

@@ -22,6 +22,7 @@ if (
   scenario !== "annual-note" &&
   scenario !== "price-comparison-note" &&
   scenario !== "markets-price-handoff" &&
+  scenario !== "watchlist-recovery" &&
   scenario !== "raw-close-comparison" &&
   scenario !== "markets-selected-price"
 )
@@ -53,6 +54,15 @@ function Fixture() {
         >
           {JSON.stringify(state)}
         </pre>
+        {scenario === "watchlist-recovery" && (
+          <button
+            id="fail-recovery-read"
+            disabled={state.load !== 3 || state.recoveryReadFailed !== 0}
+            onClick={fixture.failRecoveryRead}
+          >
+            Fail held invented watchlist read
+          </button>
+        )}
         {state.marketsEod > 0 && (
           <button
             id="settle-cancelled-markets"

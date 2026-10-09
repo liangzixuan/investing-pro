@@ -151,7 +151,11 @@ export class SaveCoordinator<P> {
     if (!this.available() || this.pending) return;
     const operation = new AbortController();
     this.operation = operation;
-    this.update({ phase: "loading", message: "Loading the saved version…" });
+    this.update({
+      phase: "loading",
+      latestLoaded: false,
+      message: "Loading the saved version…",
+    });
     try {
       const result = await this.port.load(operation.signal);
       if (!this.active(operation)) return;

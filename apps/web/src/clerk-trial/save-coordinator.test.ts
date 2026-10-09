@@ -132,6 +132,71 @@ describe("shared save coordinator", () => {
     });
   });
 
+  it.each(["conflict", "replay"] as const)(
+    "revokes previous choice eligibility during and after a failed repeat read following %s",
+    async (recovery) => {
+      const { controller, load, save } = fixture();
+      await controller.load();
+      controller.replaceDraft(draft("Retained draft"));
+      if (recovery === "conflict") {
+        save.mockRejectedValueOnce(new TrialApiError("conflict"));
+        await controller.save();
+      } else {
+        save.mockRejectedValueOnce(new TrialApiError("commit_unknown"));
+        await controller.save();
+        save.mockResolvedValueOnce({
+          ...version(2, "Retained draft"),
+          replayed: true,
+        });
+        await controller.reconcile();
+        expect(save.mock.calls[1]?.[0]).toEqual(save.mock.calls[0]?.[0]);
+      }
+      load.mockResolvedValueOnce(version(3, "Saved version three"));
+      await controller.load();
+      expect(controller.getSnapshot().latestLoaded).toBe(true);
+      const repeat = deferred<VersionedPayload<Draft>>();
+      load.mockReturnValueOnce(repeat.promise);
+      const loading = controller.load();
+      expect(controller.getSnapshot()).toMatchObject({
+        phase: "loading",
+        latestLoaded: false,
+        saved: version(3, "Saved version three"),
+        draft: draft("Retained draft"),
+      });
+      controller.useSaved();
+      controller.keepDraft();
+      repeat.reject(new TrialApiError("unavailable"));
+      await loading;
+      const failed = controller.getSnapshot();
+      expect(failed).toMatchObject({
+        phase: "idle",
+        latestLoaded: false,
+        conflict: true,
+        baseVersion: recovery === "conflict" ? 1 : 2,
+        draft: draft("Retained draft"),
+        saved: version(3, "Saved version three"),
+      });
+      controller.useSaved();
+      controller.keepDraft();
+      await controller.save();
+      expect(controller.getSnapshot()).toBe(failed);
+      expect(save).toHaveBeenCalledTimes(recovery === "conflict" ? 1 : 2);
+      load.mockResolvedValueOnce(version(4, "Saved version four"));
+      await controller.load();
+      controller.keepDraft();
+      save.mockResolvedValueOnce({
+        ...version(5, "Retained draft"),
+        replayed: false,
+      });
+      await controller.save();
+      expect(save.mock.lastCall?.[0]).toEqual({
+        expectedVersion: 4,
+        idempotencyKey: "invented-command-2",
+        payload: draft("Retained draft"),
+      });
+    },
+  );
+
   it.each([
     "invalid_request",
     "payload_too_large",

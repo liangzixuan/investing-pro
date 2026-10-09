@@ -71,6 +71,28 @@ review has a separate lifetime and cannot clear a pending command. Sign-out,
 session replacement and denied authentication abort active work, clear screen
 data and fence late completions.
 
+### Review the saved version and retained draft
+
+The recovery candidate compares the latest successfully loaded saved version with
+the retained draft before either explicit choice. Changed entries show both notes
+and positions, additions and removals, and changed listing identity fields. Entries
+are paired by exact listing ID, including separate listings that share a ticker.
+The review preserves raw draft text, including invalid notes; saving still applies
+the existing note, payload-size and catalog checks.
+
+Choosing **Use saved version** replaces the whole local draft with that saved
+payload without a write. **Keep my draft** retains the whole draft and adopts the
+loaded version as the base for a later explicit save with a new command key. The
+review performs no automatic merge or save. Different catalog snapshots remain
+visible and do not bypass the separate catalog review.
+
+A new saved-version read withdraws the previous review and choice eligibility as
+soon as it starts. If the read fails, both payloads remain retained, but another
+successful read is required before choosing. Pending command reconciliation still
+uses its original version, key and payload. Session retirement clears both versions
+and fences late completions. This is candidate behavior until the release gates
+recorded in Current work are accepted.
+
 The managed Appwrite bridge requires the runtime's `bodyBinary` Buffer, checks
 its visible byte length before copying and preserves the supplied encoded query
 once. It rejects query characters that URL construction would normalize. The
