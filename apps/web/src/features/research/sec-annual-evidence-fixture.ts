@@ -57,6 +57,20 @@ export function row(
 async function hash(value: string): Promise<`sha256:${string}`> {
   return `sha256:${Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))), (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
+export function annualComparativeRows() {
+  const prior = {
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    durationDays: 366,
+    frame: "CY2024",
+  };
+  return [
+    row(),
+    row("NetIncomeLoss", "100"),
+    row("Revenues", "800", prior),
+    row("NetIncomeLoss", "80", prior),
+  ];
+}
 export async function response(
   rows = [row(), row("NetIncomeLoss", "100")],
   cutoffAt = "2026-09-20T00:00:00.000Z",

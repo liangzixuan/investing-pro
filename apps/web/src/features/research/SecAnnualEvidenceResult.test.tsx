@@ -2,9 +2,69 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { PersonalSecAnnualPairDto } from "@research-cockpit/contracts";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
-import { response, row } from "./sec-annual-evidence-fixture";
+import {
+  annualComparativeRows,
+  response,
+  row,
+} from "./sec-annual-evidence-fixture";
 
 describe("shared annual result", () => {
+  it("shows exact adjacent annual amounts, reported changes and all four operand references", async () => {
+    const wire = await response(annualComparativeRows());
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} />,
+    );
+    expect(html).toContain('aria-label="Reported annual comparison Revenues"');
+    expect(html).toContain(
+      "Prior: 2024-01-01 to 2024-12-31. Current: 2025-01-01 to 2025-12-31.",
+    );
+    expect(html).toContain("Revenue prior · USD</dt><dd>800</dd>");
+    expect(html).toContain("Revenue change · USD</dt><dd>200</dd>");
+    expect(html).toContain("Net income change · USD</dt><dd>20</dd>");
+    expect(html).toContain("Revenue reported change</dt><dd>25%</dd>");
+    expect(html).toContain(
+      "No adjustment for period length, accounting changes or restatements",
+    );
+    for (const row of wire.evidence.observations)
+      expect(html).toContain(row.id);
+    expect(html).toContain("Inspect annual comparison inputs · Revenues");
+  });
+
+  it("keeps the current pair visible when comparison is unavailable under its original age policy", async () => {
+    const wire = await response(
+      annualComparativeRows(),
+      "2027-09-20T00:00:00.000Z",
+    );
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} />,
+    );
+    expect(html).toContain("Reported annual comparison unavailable.");
+    expect(html).toContain(
+      "outside the current-use policy at its original load",
+    );
+    expect(html).toContain("Revenue · USD</dt>");
+    expect(html).not.toContain("Revenue reported change</dt>");
+  });
+
+  it("explains nonpositive prior percentages and nonzero changes rounded to zero", async () => {
+    const prior = {
+      startDate: "2024-01-01",
+      endDate: "2024-12-31",
+      durationDays: 366,
+    };
+    const wire = await response([
+      row("Revenues", "100.0001"),
+      row("NetIncomeLoss", "-1"),
+      row("Revenues", "100", prior),
+      row("NetIncomeLoss", "0", prior),
+    ]);
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} />,
+    );
+    expect(html).toContain("Less than 0.01% higher");
+    expect(html).toContain("Unavailable: prior value is zero");
+    expect(html).toContain("Net income change · USD</dt><dd>-1</dd>");
+  });
   it("retains signed values, separate revenue concepts and inspectable provenance", async () => {
     const wire = await response([
       row("Revenues", "1000"),

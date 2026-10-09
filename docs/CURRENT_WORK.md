@@ -1,10 +1,25 @@
 # Current work
 
-Updated October 8, 2026. This is the portable status summary for the public
+Updated October 9, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns the goals and delivery
 order; [architecture](ARCHITECTURE.md) explains the runtime boundaries. Private
 operational receipts are retained separately and are not required to understand
 or develop the repository.
+
+## Selected outcome: reported annual comparison
+
+Compare the current eligible annual revenue and NetIncomeLoss pair with the
+immediately preceding annual period from the same selected filing and named
+revenue basis. Reuse the already validated report packet, exact decimals and
+original dates, then include an available comparison in the existing Annual note
+draft action. Missing, conflicting or ineligible inputs remain unavailable.
+No additional source request, dependency or API shape is needed.
+
+Implementation and invented-data acceptance are in progress. This selection is
+part of M2 financials; it does not complete the company page or establish a new
+website, signed package or physical-device release. The accepted product below
+remains the release baseline. [Managed annual reports](MANAGED_SEC_ANNUAL.md)
+describes the comparison contract.
 
 ## Accepted release
 

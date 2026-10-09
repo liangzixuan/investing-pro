@@ -113,3 +113,9 @@ export {
 } from "./personal-sec-annual-evidence";
 
 export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessment";
+
+export {
+  comparePersonalSecAnnualEvidence,
+  type PersonalSecAnnualChange,
+  type PersonalSecAnnualComparison,
+} from "./personal-sec-annual-comparison";

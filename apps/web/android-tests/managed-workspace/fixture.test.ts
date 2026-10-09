@@ -10,6 +10,7 @@ import {
   marketsPriceNoteDraft,
   priceNoteDraft,
 } from "./fixture";
+import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 type MutableFixtureMembership = {
@@ -354,6 +355,16 @@ describe("Android managed fixture startup", () => {
     };
     const report = await fixture.api.annualReport(request, signal);
     expect(report.evidence.generation).toEqual(fixture.generations.initial);
+    const pair = report.evidence.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
+    expect(
+      `Annual research draft ${annualNoteExcerpt(report, pair, false)}`,
+    ).toBe(annualNoteDraft);
+    expect(annualNoteDraft).toContain(
+      "Revenues revenue USD 800 to 1000, change USD 200 (25%)",
+    );
+    expect(report.evidence.observations).toHaveLength(4);
     const command = {
       expectedVersion: 1,
       idempotencyKey: "12345678-1234-4123-8123-123456789012",
