@@ -48,6 +48,9 @@ describe("managed Annual note excerpt", () => {
     expect(text).toContain(
       "Period length, accounting changes and restatements are unadjusted",
     );
+    expect(text).toContain(
+      "Reported net margin 10% to 10%, change 0 percentage points.",
+    );
     expect(text).toContain("Original load cutoff 2026-09-20T00:00:00.000Z");
     expect(text).toContain("Retained previous report.");
     expect(text.length).toBeLessThan(2000);
@@ -62,6 +65,46 @@ describe("managed Annual note excerpt", () => {
       "Same-filing annual comparison",
     );
   });
+
+  it("adds loss-to-profit margin change while keeping nonpositive prior income change unavailable", async () => {
+    const input = annualComparativeRows().map((r) =>
+      r.metric === "net_income" && r.endDate === "2024-12-31"
+        ? { ...r, value: "-80" }
+        : r,
+    );
+    const report = await response(input);
+    const pair = report.evidence.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
+    const text = annualNoteExcerpt(report, pair, false)!;
+    expect(text).toContain(
+      "NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative).",
+    );
+    expect(text).toContain(
+      "Reported net margin -10% to 10%, change 20 percentage points.",
+    );
+  });
+
+  it.each(["0", "-800"])(
+    "explains unavailable margin for prior revenue %s without dropping exact annual comparison",
+    async (value) => {
+      const input = annualComparativeRows().map((r) =>
+        r.metric === "revenue" && r.endDate === "2024-12-31"
+          ? { ...r, value }
+          : r,
+      );
+      const report = await response(input);
+      const pair = report.evidence.resolution.bases.find(
+        (basis) => basis.status === "eligible",
+      )!.pairs[0]!;
+      const text = annualNoteExcerpt(report, pair, false)!;
+      expect(text).toContain(`Revenues revenue USD ${value} to 1000`);
+      expect(text).toContain(
+        `Reported net-margin comparison unavailable: prior revenue is ${value === "0" ? "zero" : "negative"}.`,
+      );
+      expect(text).not.toContain("Infinity");
+    },
+  );
   it("retains exact values, named basis, filing and original source times in one paragraph", async () => {
     const report = await response();
     const pair = report.evidence.resolution.bases.find(

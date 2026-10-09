@@ -1,4 +1,19 @@
-import type { PersonalSecAnnualChange } from "@research-cockpit/personal-financial-analytics";
+import type {
+  PersonalSecAnnualChange,
+  PersonalSecAnnualMarginComparison,
+} from "@research-cockpit/personal-financial-analytics";
+
+export function annualMarginChangeText(
+  margin: PersonalSecAnnualMarginComparison,
+): string {
+  if (margin.status === "unavailable")
+    return margin.reason === "zero_prior_revenue"
+      ? "Unavailable: prior revenue is zero"
+      : "Unavailable: prior revenue is negative";
+  if (margin.difference === "0" && margin.direction !== "unchanged")
+    return `Less than 0.01 percentage points ${margin.direction}`;
+  return `${margin.difference} percentage points`;
+}
 
 export function annualComparisonPercentText(
   change: PersonalSecAnnualChange,

@@ -320,7 +320,11 @@ function firstReason(
     .filter((r): r is PersonalSecAnnualPairReason => r !== null);
   return rowReasonOrder.find((r) => reasons.includes(r)) ?? reasons[0] ?? null;
 }
-function margin(revenue: string, income: string): string {
+/** Exact decimal operands admitted by the annual resolver; revenue must be positive. */
+export function calculatePersonalSecAnnualNetMargin(
+  revenue: string,
+  income: string,
+): string {
   const value = new D(income)
     .div(revenue)
     .times(100)
@@ -423,7 +427,9 @@ function pairs(
       revenue: reason === null ? row.value : null,
       netIncome: reason === null ? income[0]!.value : null,
       netMarginPercent:
-        reason === null ? margin(row.value, income[0]!.value) : null,
+        reason === null
+          ? calculatePersonalSecAnnualNetMargin(row.value, income[0]!.value)
+          : null,
       revenueObservationIds: revenueRows.map((r) => r.id),
       incomeObservationIds: income.map((r) => r.id),
     };

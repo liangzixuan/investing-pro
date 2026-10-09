@@ -213,6 +213,14 @@ authenticated browser acceptance remain separate. See [Current work](CURRENT_WOR
 
 Prioritize daily use and recovery before expanding fields or cohorts:
 
+The selected next product candidate adds same-filing prior/current net margin and
+its percentage-point change to the existing Annual comparison and explicit note
+draft action. It reuses loaded evidence and the current annual margin resolver;
+no feed or cohort is expanded. This is a bounded company-page improvement toward
+M2. Verification and delivery remain pending, while the browser/physical recovery
+acceptance below stays open. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
+records the actual release baseline and candidate status.
+
 PR 57 and signed Android 1.16 complete the saved-version and retained-draft
 review after conflict or original-command reconciliation. The explicit choice
 shows both notes and order and requires a fresh successful read after a failed

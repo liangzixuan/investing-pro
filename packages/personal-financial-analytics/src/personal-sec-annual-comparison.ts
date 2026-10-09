@@ -5,6 +5,7 @@ import type {
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
 import {
+  calculatePersonalSecAnnualNetMargin,
   getPersonalSecAnnualRowReason,
   resolvePersonalSecAnnualEvidence,
 } from "./personal-sec-annual-evidence";
@@ -50,8 +51,64 @@ export type PersonalSecAnnualComparison =
       currentEndDate: string;
       revenue: PersonalSecAnnualChange;
       netIncome: PersonalSecAnnualChange;
+      netMargin: PersonalSecAnnualMarginComparison;
       observationIds: readonly string[];
     }>;
+
+export type PersonalSecAnnualMarginComparison =
+  | Readonly<{
+      status: "unavailable";
+      current: string;
+      reason: "zero_prior_revenue" | "negative_prior_revenue";
+    }>
+  | Readonly<{
+      status: "available";
+      prior: string;
+      current: string;
+      difference: string;
+      direction: "higher" | "lower" | "unchanged";
+    }>;
+
+function marginComparison(
+  priorRevenue: string,
+  priorIncome: string,
+  currentRevenue: string,
+  currentIncome: string,
+): PersonalSecAnnualMarginComparison {
+  const priorDenominator = new D(priorRevenue);
+  const current = calculatePersonalSecAnnualNetMargin(
+    currentRevenue,
+    currentIncome,
+  );
+  if (!priorDenominator.gt(0))
+    return Object.freeze({
+      status: "unavailable",
+      current,
+      reason: priorDenominator.isZero()
+        ? "zero_prior_revenue"
+        : "negative_prior_revenue",
+    });
+  // Cross multiplication preserves a small difference between large ratios.
+  // Round once after subtracting the ratios, never the displayed percentages.
+  const numerator = new D(currentIncome)
+    .times(priorDenominator)
+    .minus(new D(priorIncome).times(currentRevenue));
+  const difference = numerator
+    .div(priorDenominator.times(currentRevenue))
+    .times(100)
+    .toDecimalPlaces(2);
+  return Object.freeze({
+    status: "available",
+    prior: calculatePersonalSecAnnualNetMargin(priorRevenue, priorIncome),
+    current,
+    difference: difference.isZero() ? "0" : difference.toFixed(),
+    direction: numerator.isZero()
+      ? "unchanged"
+      : numerator.isNegative()
+        ? "lower"
+        : "higher",
+  });
+}
 
 function change(prior: string, current: string): PersonalSecAnnualChange {
   const denominator = new D(prior);
@@ -185,6 +242,12 @@ export function comparePersonalSecAnnualEvidence(
     currentEndDate: current.endDate,
     revenue: change(revenue[0]!.value, current.revenue),
     netIncome: change(income[0]!.value, current.netIncome),
+    netMargin: marginComparison(
+      revenue[0]!.value,
+      income[0]!.value,
+      current.revenue,
+      current.netIncome,
+    ),
     observationIds: Object.freeze(operands.map((row) => row.id)),
   });
 }
