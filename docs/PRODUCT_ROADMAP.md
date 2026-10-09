@@ -197,8 +197,11 @@ PR 53 carries an already loaded Markets price history into company Price,
 including Annual-first visits, without another source request. It keeps dates,
 identity, previous-history status and explicit refresh intact. Direct visits
 remain unloaded. The website is accepted; signed Android 1.14 passed build, artifact and delivery review.
-This bounded workflow does not complete M2 or broaden data sources. No next
-product slice is selected in this release handoff. See [Current work](CURRENT_WORK.md)
+This bounded workflow does not complete M2 or broaden data sources. The next
+selected outcome compares adjacent reported annual revenue and net income from
+the same filing and revenue basis, using the loaded Annual packet, and includes
+an available comparison in the existing note draft. Admission, exact arithmetic,
+provenance and daily use need their own acceptance. See [Current work](CURRENT_WORK.md)
 for the exact release and its acceptance limits.
 
 Select a bounded end-to-end outcome before implementation. The milestones above

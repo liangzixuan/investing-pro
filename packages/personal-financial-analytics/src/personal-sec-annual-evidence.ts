@@ -264,10 +264,12 @@ export function getPersonalSecAnnualRefusalReason(
     return "source_stale";
   return null;
 }
-function rowReason(
+/** Annual row admission; the caller names the filing's expected report end. */
+export function getPersonalSecAnnualRowReason(
   row: Observation,
   cutoffAt: string,
   fetchedAt: string,
+  expectedReportDate: string,
 ): PersonalSecAnnualPairReason | null {
   if (row.form !== "10-K" && row.form !== "20-F") return "unsupported_form";
   if (row.filingFocusPeriod !== "FY") return "missing_or_non_FY_focus";
@@ -288,7 +290,8 @@ function rowReason(
     row.filing.filedDate !== row.filedDate
   )
     return "filing_unmatched_or_conflicted";
-  if (row.filing.reportDate !== row.endDate) return "report_end_mismatch";
+  if (row.filing.reportDate !== expectedReportDate)
+    return "report_end_mismatch";
   if (row.startDate! > row.endDate || row.endDate > row.filedDate)
     return "future_or_inconsistent_dates";
   const reason = filingReason(
@@ -311,7 +314,9 @@ function firstReason(
   fetchedAt: string,
 ): PersonalSecAnnualPairReason | null {
   const reasons = rows
-    .map((r) => rowReason(r, cutoffAt, fetchedAt))
+    .map((r) =>
+      getPersonalSecAnnualRowReason(r, cutoffAt, fetchedAt, r.endDate),
+    )
     .filter((r): r is PersonalSecAnnualPairReason => r !== null);
   return rowReasonOrder.find((r) => reasons.includes(r)) ?? reasons[0] ?? null;
 }
@@ -378,7 +383,9 @@ function pairs(
     const diagnostics: PersonalSecAnnualDiagnosticReason[] = [
       ...new Set(
         [...revenueRows, ...income]
-          .map((r) => rowReason(r, cutoffAt, fetchedAt))
+          .map((r) =>
+            getPersonalSecAnnualRowReason(r, cutoffAt, fetchedAt, r.endDate),
+          )
           .filter((r): r is PersonalSecAnnualPairReason => r !== null),
       ),
     ];

@@ -4,6 +4,11 @@ import type {
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import type { ReactNode } from "react";
+import {
+  comparePersonalSecAnnualEvidence,
+  type PersonalSecAnnualComparison,
+} from "@research-cockpit/personal-financial-analytics";
+import { annualComparisonPercentText } from "../../lib/sec-annual-comparison-display";
 
 const sourceStatuses = {
   available: "Available",
@@ -193,6 +198,11 @@ export function SecAnnualEvidenceResult({
               key={JSON.stringify([pair.startDate, pair.endDate])}
               pair={pair}
               observations={evidence.observations}
+              comparison={
+                pair.status === "eligible"
+                  ? comparePersonalSecAnnualEvidence(evidence, pair.concept)
+                  : null
+              }
               action={
                 pair.status === "eligible" ? renderPairAction?.(pair) : null
               }
@@ -261,10 +271,12 @@ function AnnualPair({
   pair,
   observations,
   action,
+  comparison,
 }: {
   readonly pair: PersonalSecAnnualPairDto;
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
   readonly action: ReactNode;
+  readonly comparison: PersonalSecAnnualComparison | null;
 }) {
   const ids = [...pair.revenueObservationIds, ...pair.incomeObservationIds];
   return (
@@ -290,6 +302,9 @@ function AnnualPair({
       ) : (
         <p className="discovery-warning">Unknown. {reason(pair.status)}</p>
       )}
+      {comparison === null ? null : (
+        <AnnualComparison comparison={comparison} observations={observations} />
+      )}
       {action}
       <details className="sec-quarterly-row-details">
         <summary>
@@ -314,6 +329,100 @@ function AnnualPair({
         </ol>
       </details>
     </div>
+  );
+}
+
+function AnnualComparison({
+  comparison,
+  observations,
+}: {
+  readonly comparison: PersonalSecAnnualComparison;
+  readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+}) {
+  if (comparison.status === "unavailable") {
+    const messages = {
+      current_report_unavailable: "A valid current annual pair is required.",
+      current_use_unavailable:
+        "The report is outside the current-use policy at its original load.",
+      previous_period_missing:
+        "The immediately preceding annual revenue and net-income period is missing for this basis.",
+      previous_period_ambiguous:
+        "The preceding annual observations have conflicting start dates.",
+      previous_period_invalid:
+        "The preceding annual period or metadata cannot be admitted.",
+      filing_metadata_mismatch:
+        "The comparison inputs do not match the selected filing metadata.",
+      previous_values_conflicted:
+        "The preceding annual observations contain conflicting values.",
+    } as const;
+    return (
+      <p className="sec-quarterly-message">
+        Reported annual comparison unavailable. {messages[comparison.reason]}
+      </p>
+    );
+  }
+  return (
+    <section
+      className="sec-annual-comparison"
+      aria-label={`Reported annual comparison ${comparison.concept}`}
+    >
+      <h5>Reported annual comparison</h5>
+      <p className="sec-quarterly-message">
+        Prior: {comparison.priorStartDate} to {comparison.priorEndDate}.
+        Current: {comparison.currentStartDate} to {comparison.currentEndDate}.
+      </p>
+      {(["revenue", "netIncome"] as const).map((metric) => {
+        const value = comparison[metric];
+        const label = metric === "revenue" ? "Revenue" : "Net income";
+        return (
+          <dl className="sec-quarterly-comparison-coordinates" key={metric}>
+            <div>
+              <dt>{label} prior · USD</dt>
+              <dd>{value.prior}</dd>
+            </div>
+            <div>
+              <dt>{label} current · USD</dt>
+              <dd>{value.current}</dd>
+            </div>
+            <div>
+              <dt>{label} change · USD</dt>
+              <dd>{value.difference}</dd>
+            </div>
+            <div>
+              <dt>{label} reported change</dt>
+              <dd>{annualComparisonPercentText(value)}</dd>
+            </div>
+          </dl>
+        );
+      })}
+      <p className="sec-quarterly-caveat">
+        Amounts are exact, unscaled USD. Percentage change is (current − prior)
+        ÷ prior × 100, rounded half up to two decimal places, and requires a
+        positive prior value. Consecutive annual periods can differ in length.
+        No adjustment for period length, accounting changes or restatements is
+        made. These are comparatives reported in the same filing, not an
+        as-originally-filed history or organic growth.
+      </p>
+      <details className="sec-quarterly-row-details">
+        <summary>
+          Inspect annual comparison inputs · {comparison.concept}
+        </summary>
+        <p className="sec-quarterly-message">
+          Accession {comparison.accessionNumber}. Original load and source dates
+          above apply to both periods.
+        </p>
+        <ol>
+          {comparison.observationIds.map((id) => {
+            const row = observations.find((item) => item.id === id);
+            return row === undefined ? null : (
+              <li key={id}>
+                <ObservationDetails row={row} />
+              </li>
+            );
+          })}
+        </ol>
+      </details>
+    </section>
   );
 }
 

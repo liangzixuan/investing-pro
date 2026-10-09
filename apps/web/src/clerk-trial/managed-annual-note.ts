@@ -2,6 +2,8 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
+import { comparePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
+import { annualComparisonPercentText } from "../lib/sec-annual-comparison-display";
 
 /** Formats one pair from the already admitted report; never loads or saves data. */
 export function annualNoteExcerpt(
@@ -36,8 +38,17 @@ export function annualNoteExcerpt(
     return null;
 
   const filing = `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u, "")}/${target.accessionNumber}-index.htm`;
+  const comparison = comparePersonalSecAnnualEvidence(
+    response.evidence,
+    pair.concept,
+  );
   return [
     `Observed Annual report: ${response.security.symbol} (${response.security.exchangeMic}); ${target.form} ${pair.startDate} to ${pair.endDate}; ${pair.concept} revenue USD ${pair.revenue}; NetIncomeLoss USD ${pair.netIncome}; net margin ${pair.netMarginPercent}%.`,
+    ...(comparison.status === "available"
+      ? [
+          `Same-filing annual comparison: prior ${comparison.priorStartDate} to ${comparison.priorEndDate}; ${pair.concept} revenue USD ${comparison.revenue.prior} to ${comparison.revenue.current}, change USD ${comparison.revenue.difference} (${annualComparisonPercentText(comparison.revenue)}); NetIncomeLoss USD ${comparison.netIncome.prior} to ${comparison.netIncome.current}, change USD ${comparison.netIncome.difference} (${annualComparisonPercentText(comparison.netIncome)}). Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth.`,
+        ]
+      : []),
     `Filed ${target.filedDate}; accession ${target.accessionNumber}; filing ${filing}.`,
     `Original load cutoff ${generation.cutoffAt}; completed ${generation.completedAt}; Company Facts captured ${generation.sources.companyFacts.fetchedAt}; Submissions captured ${generation.sources.submissions.fetchedAt}.`,
     resolution.currentTargetEligible

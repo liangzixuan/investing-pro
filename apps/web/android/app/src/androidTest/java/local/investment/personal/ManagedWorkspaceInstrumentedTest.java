@@ -87,7 +87,10 @@ public class ManagedWorkspaceInstrumentedTest {
         "Evidence dates are unchanged; this action does not refresh sources.";
     private static final String ANNUAL_NOTE = "Annual research draft " +
         "Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; " +
-        "NetIncomeLoss USD 100; net margin 10%. Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "NetIncomeLoss USD 100; net margin 10%. " +
+        "Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); " +
+        "NetIncomeLoss USD 80 to 100, change USD 20 (25%). Period length, accounting changes and restatements are unadjusted; " +
+        "not as-originally-filed history or organic growth. Filed 2026-02-01; accession 0000000001-26-000001; " +
         "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
         "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
         "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
@@ -1375,10 +1378,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
         awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
+        String comparison = basis + " .sec-annual-comparison";
+        awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
+            "document.querySelector(" + JSONObject.quote(comparison) + ")?.getAttribute('aria-label') === 'Reported annual comparison Revenues'" +
+            " && document.querySelector(" + JSONObject.quote(comparison + " > p") + ")?.textContent === 'Prior: 2024-01-01 to 2024-12-31. Current: 2025-01-01 to 2025-12-31.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(comparison + " > dl dd") + ")).map(e => e.textContent).join(',') === '800,1000,200,25%,80,100,20,25%'" +
+            " && document.querySelector(" + JSONObject.quote(comparison + " .sec-quarterly-caveat") + ")?.textContent.includes('No adjustment for period length, accounting changes or restatements')" +
+            " && document.querySelector(" + JSONObject.quote(comparison + " > details > ol") + ")?.children.length === 4");
         assertAnnualNoteCounts(1, 0, 1);
+        // Each source region fits the native viewport; the note action follows the comparison.
         retainAnnualNoteFrame("annualEvidenceNoteSource", basis + " > h4",
-            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl, " + add, 4);
+            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl", 3);
         awaitPage("source pair remains unchanged through capture", exactReport);
+        retainAnnualNoteFrame("annualEvidenceComparisonSource", comparison + " > h5",
+            comparison + " > h5, " + comparison + " > p:first-of-type, " + comparison + " > dl:first-of-type", 3);
+        retainAnnualNoteFrame("annualEvidenceComparisonIncome", comparison + " > dl:nth-of-type(2)",
+            comparison + " > dl:nth-of-type(2), " + comparison + " > p.sec-quarterly-caveat", 2);
+        retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
+        awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
         click(add);
         awaitPage("explicit chosen pair appends exact provenance to the existing draft",

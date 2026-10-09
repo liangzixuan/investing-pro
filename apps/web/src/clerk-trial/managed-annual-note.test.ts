@@ -3,7 +3,10 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
 } from "@research-cockpit/contracts";
-import { response } from "../features/research/sec-annual-evidence-fixture";
+import {
+  annualComparativeRows,
+  response,
+} from "../features/research/sec-annual-evidence-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 
 const expected =
@@ -33,6 +36,32 @@ function replacePair(
 }
 
 describe("managed Annual note excerpt", () => {
+  it("adds available same-filing comparison to the same dated excerpt without changing original-load provenance", async () => {
+    const report = await response(annualComparativeRows());
+    const pair = report.evidence.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
+    const text = annualNoteExcerpt(report, pair, true)!;
+    expect(text).toContain(
+      "Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD 80 to 100, change USD 20 (25%).",
+    );
+    expect(text).toContain(
+      "Period length, accounting changes and restatements are unadjusted",
+    );
+    expect(text).toContain("Original load cutoff 2026-09-20T00:00:00.000Z");
+    expect(text).toContain("Retained previous report.");
+    expect(text.length).toBeLessThan(2000);
+    const historical = await response(
+      annualComparativeRows(),
+      "2027-09-20T00:00:00.000Z",
+    );
+    const oldPair = historical.evidence.resolution.bases.find(
+      (basis) => basis.status === "eligible",
+    )!.pairs[0]!;
+    expect(annualNoteExcerpt(historical, oldPair, false)).not.toContain(
+      "Same-filing annual comparison",
+    );
+  });
   it("retains exact values, named basis, filing and original source times in one paragraph", async () => {
     const report = await response();
     const pair = report.evidence.resolution.bases.find(

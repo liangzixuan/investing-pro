@@ -18,7 +18,10 @@ import {
   reviewChanges,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
-import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import {
+  annualComparativeRows,
+  response as annualResponse,
+} from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
@@ -3022,7 +3025,7 @@ describe("Annual evidence appended to the existing shared note", () => {
       limitApplied: 25,
       normalizedQuery: "ZERO",
     });
-    const response = await annualResponse();
+    const response = await annualResponse(annualComparativeRows());
     vi.mocked(api.annualReport).mockResolvedValue(response);
     await ready(workspace);
     workspace.openDiscoveryAnnual(zero);

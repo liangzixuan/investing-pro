@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  annualComparativeRows,
   request,
   response,
   row,
@@ -248,7 +249,7 @@ describe("managed annual refresh", () => {
     "retains exact previous evidence through a pending refresh and %s, then explicitly replaces it",
     async (_name, error, message) => {
       const { model, load, html } = fixture();
-      const old = await response();
+      const old = await response(annualComparativeRows());
       const oldBytes = JSON.stringify(old);
       const next = await laterResponse();
       const held = deferred<typeof old>();
@@ -273,6 +274,10 @@ describe("managed annual refresh", () => {
       );
       expect(html()).toContain(old.evidence.generation.sha256);
       expect(html()).toContain(">1000</dd>");
+      expect(html()).toContain(
+        'aria-label="Reported annual comparison Revenues"',
+      );
+      expect(html()).toContain("Prior: 2024-01-01 to 2024-12-31.");
       held.reject(error);
       await pending;
       expect(model.getSnapshot()).toMatchObject({
@@ -297,6 +302,10 @@ describe("managed annual refresh", () => {
       expect(html()).toContain(">2000</dd>");
       expect(html()).not.toContain(old.evidence.generation.sha256);
       expect(html()).not.toContain("Showing the previous report");
+      expect(html()).not.toContain(
+        'aria-label="Reported annual comparison Revenues"',
+      );
+      expect(html()).toContain("Reported annual comparison unavailable.");
     },
   );
 

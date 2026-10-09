@@ -48,6 +48,45 @@ GOOGL as distinct listings for the same Alphabet issuer. The caller cannot send
 an arbitrary CIK or source URL. This is limited annual filing and reported-fact
 coverage, with source dates and availability shown by the existing renderer.
 
+## Reported annual comparison
+
+The selected outcome adds comparison to each eligible named annual revenue
+basis. It is under development; [Current work](CURRENT_WORK.md) records actual
+acceptance and delivery. It uses the selected filing's existing packet without
+another provider request or a new API field.
+
+The current pair is recomputed under the existing annual rules. Comparison also
+requires current-use eligibility at the original load. The preceding annual
+period must end the day before the current period starts and have one agreeing
+start date, a 335 to 395 day inclusive duration and an FY filing-focus label.
+Both revenue and NetIncomeLoss must have agreeing exact USD observations for
+that period and join the same selected accession, form, filed date, report date
+and accepted time. Revenue concepts stay separate. A missing, conflicting or
+invalid prior period is unavailable; no older filing or different basis fills it.
+Comparative rows keep the filing's current report date and remain ineligible as
+current-year pairs under the original resolver.
+
+The display retains both period ranges, exact unscaled amounts, current minus
+prior USD differences and inspectable operand references. Percentage change is
+`(current - prior) / prior * 100`, calculated with exact decimals and rounded half
+up to two places. A zero or negative prior amount retains its amount and USD
+difference while percentage change is unavailable. A nonzero percentage that
+rounds to zero says it is less than 0.01% higher or lower.
+
+Consecutive annual periods can differ in length, including 52 and 53 week years.
+These are comparatives reported in one filing. Period length, accounting changes
+and restatements are unadjusted; this is not as-originally-filed history or organic
+growth. Original source and load dates apply to both periods, including retained
+previous reports.
+
+An available comparison is included by **Add annual evidence to note draft**
+alongside the existing current-year excerpt and filing provenance. An unavailable
+comparison leaves that excerpt unchanged. The existing 2,000-character limit
+refuses an oversized complete note without truncation; explicit review and
+**Save watchlist** remain required. Comparison does not load, add membership or
+save. Refresh, cancellation, section changes and retirement keep their existing
+generation and draft boundaries.
+
 ## Request lifetime and data
 
 Authenticated `POST /v1/managed/sec-annual-evidence` accepts at most 4 KiB and
