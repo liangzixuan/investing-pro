@@ -15,6 +15,13 @@ XL running Android 17, without per-step device logs. Earlier development-trial
 results are separate: its package and debug signer cannot upgrade the production
 app. The local research app and encrypted vault also remain separate.
 
+The signed 1.15.0 update (code 16) delivers PR 55's reported annual comparison
+and existing explicit note-draft/save workflow. Build, complete APK/merged-manifest
+and delivery reviews passed with the existing production signer. Seventeen
+invented-data native cases and seven scoped original frames are accepted;
+physical 1.14/1.15 use remains open. The owner's issue-free Pixel 1.13 report is
+separate. See Current work for exact source and APK identity.
+
 ## Client profiles
 
 | Profile                   | Selection                 | Bundled assets             | Application ID                         |

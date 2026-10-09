@@ -50,10 +50,10 @@ coverage, with source dates and availability shown by the existing renderer.
 
 ## Reported annual comparison
 
-The selected outcome adds comparison to each eligible named annual revenue
-basis. It is under development; [Current work](CURRENT_WORK.md) records actual
-acceptance and delivery. It uses the selected filing's existing packet without
-another provider request or a new API field.
+PR 55 delivers comparison for each eligible named annual revenue basis on the
+managed website and in signed Android 1.15. [Current work](CURRENT_WORK.md)
+records source, delivery and acceptance limits. It uses the selected filing's
+existing packet without another provider request or a new API field.
 
 The current pair is recomputed under the existing annual rules. Comparison also
 requires current-use eligibility at the original load. The preceding annual
