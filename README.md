@@ -22,8 +22,10 @@ are not adjusted for splits or dividends. Markets coverage remains limited to AA
 and GOOGL. An explicit Load or Refresh for one selected listing preserves the
 other board histories. Selection alone makes no price request.
 
-Annual evidence and a selected Price comparison can be added to an existing
-watchlist note draft. Review in My Watchlist keeps the rest of the draft intact;
+Annual reports compare eligible adjacent periods from the same filing, including
+reported net margins and their change in percentage points. Each named revenue
+basis keeps its own inputs and unavailable values. Annual evidence and a selected
+Price comparison can be added to an existing watchlist note draft. Review in My Watchlist keeps the rest of the draft intact;
 **Save watchlist** saves all its changes explicitly.
 
 When a note is invalid, both the company and watchlist editors keep the raw text

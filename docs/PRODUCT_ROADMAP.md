@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.16 package share Discover, a private
+The managed website and signed Android 1.17 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -213,13 +213,16 @@ authenticated browser acceptance remain separate. See [Current work](CURRENT_WOR
 
 Prioritize daily use and recovery before expanding fields or cohorts:
 
-The selected next product candidate adds same-filing prior/current net margin and
-its percentage-point change to the existing Annual comparison and explicit note
-draft action. It reuses loaded evidence and the current annual margin resolver;
-no feed or cohort is expanded. This is a bounded company-page improvement toward
-M2. Verification and delivery remain pending, while the browser/physical recovery
-acceptance below stays open. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
-records the actual release baseline and candidate status.
+PR 59 and signed Android 1.17 deliver same-filing prior/current net margin and
+its percentage-point change in the existing Annual view and explicit note draft
+action. It reuses loaded evidence without expanding a feed or cohort. Calculation,
+rendering and note checks, actual-main source checks, eighteen invented-data native
+cases, fresh API activation, same-archive website promotion and signed delivery
+passed. This completes the selected company-page outcome toward M2. The broader
+company page and browser/physical recovery acceptance remain open.
+[Current work](CURRENT_WORK.md#accepted-release) records the exact release and
+limits, and [the Annual guide](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
+defines the calculation contract.
 
 PR 57 and signed Android 1.16 complete the saved-version and retained-draft
 review after conflict or original-command reconciliation. The explicit choice

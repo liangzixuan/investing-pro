@@ -15,12 +15,13 @@ XL running Android 17, without per-step device logs. Earlier development-trial
 results are separate: its package and debug signer cannot upgrade the production
 app. The local research app and encrypted vault also remain separate.
 
-The signed 1.16.0 update (code 17) delivers PR 57's saved-version and retained-draft
-watchlist review, including fresh-read choice eligibility after a failed read.
-Build, complete APK/merged-manifest and delivery reviews passed with the existing
-production signer. Eighteen invented-data native cases and eleven scoped original
-frames are accepted; physical 1.14/1.15/1.16 use remains open. The owner's issue-free Pixel 1.13 report is
-separate. See Current work for exact source and APK identity.
+The signed 1.17.0 update (code 18) delivers PR 59's reported annual net-margin
+comparison and percentage-point change in the existing Annual view and note
+draft. Build, complete APK/merged-manifest and delivery reviews passed with the
+existing production signer. Eighteen invented-data native cases and thirteen
+scoped original frames are accepted; physical 1.14 through 1.17 use remains open.
+The owner's issue-free Pixel 1.13 report is separate. See Current work for exact
+source and APK identity.
 
 ## Client profiles
 

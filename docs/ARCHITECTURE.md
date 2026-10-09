@@ -106,6 +106,16 @@ response object and exact earlier-row membership before formatting an excerpt
 from admitted data. It validates the complete appended note and leaves persistence
 to the existing explicit full-list save.
 
+The [annual net-margin comparison](../packages/personal-financial-analytics/src/personal-sec-annual-comparison.ts)
+belongs to the existing financial-analytics domain package. It derives prior and
+current margins from an admitted same-filing comparison and named revenue basis.
+The existing Decimal.js dependency computes the unrounded ratios; their difference
+is rounded once and expressed in percentage points. Shared UI and note formatting
+consume that result. No API response field or second evidence store is added.
+The Annual note action validates the complete appended draft and leaves saving
+to the existing coordinator. [The Annual guide](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
+defines unavailable values and provenance.
+
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
 [security-master package](../packages/personal-security-master/) owns catalog
@@ -155,8 +165,8 @@ and bounded acceptance. The small current cohort is not a whole-market claim.
 
 Routine tests use synthetic data. The native managed fixture is packaged only in
 the test APK and uses an invented session/API; it does not bypass production
-admission. The native suite requires seventeen cases, including company-link and
-comparison-to-note journeys. [Current work](CURRENT_WORK.md) records the accepted
+admission. The native suite requires eighteen cases, including company-link,
+comparison-to-note and watchlist-recovery journeys. [Current work](CURRENT_WORK.md) records the accepted
 results. Synthetic native checks, signed-release review, physical-phone use and
 live-provider acceptance remain separate.
 

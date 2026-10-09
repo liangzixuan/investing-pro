@@ -87,13 +87,13 @@ refuses an oversized complete note without truncation; explicit review and
 save. Refresh, cancellation, section changes and retirement keep their existing
 generation and draft boundaries.
 
-## Candidate: reported net-margin comparison
+## Reported net-margin comparison
 
-The current candidate extends the same-filing annual comparison with prior and
-current net margin and their difference in percentage points. It uses the same
-eligible observations and named revenue basis. Delivery and acceptance remain
-pending; [Current work](CURRENT_WORK.md#current-task-and-next-acceptance) records
-the selected outcome.
+PR 59 delivers prior and current net margin and their difference in percentage
+points on the website and in signed Android 1.17. It uses the same eligible
+observations and named revenue basis as the reported annual comparison.
+[Current work](CURRENT_WORK.md#accepted-release) records source, delivery and
+acceptance limits.
 
 Net margin is `NetIncomeLoss / revenue * 100`. Revenue must be positive;
 negative or zero net income is valid. A zero or negative prior revenue keeps
@@ -111,7 +111,7 @@ An available margin comparison joins the existing Annual note excerpt. An
 unavailable comparison explains the prior-revenue limit while retaining the
 other reported comparatives. The complete note must still fit within 2,000
 characters. Appending preserves the latest draft without truncating or saving;
-review and explicit Save watchlist remain required. This candidate adds no source
+review and explicit Save watchlist remain required. The comparison adds no source
 request, response field, dependency or persistent state. Existing refresh,
 cancellation, visit and session lifetimes apply.
 
