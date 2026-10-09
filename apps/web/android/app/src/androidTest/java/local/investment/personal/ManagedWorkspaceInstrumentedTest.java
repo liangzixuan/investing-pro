@@ -1400,7 +1400,9 @@ public class ManagedWorkspaceInstrumentedTest {
         retainAnnualNoteFrame("annualEvidenceComparisonIncome", comparison + " > dl:nth-of-type(2)",
             comparison + " > dl:nth-of-type(2)", 1);
         retainAnnualNoteFrame("annualEvidenceComparisonMargin", comparison + " > dl:nth-of-type(3)",
-            comparison + " > dl:nth-of-type(3), " + comparison + " > p.sec-quarterly-caveat", 2);
+            comparison + " > dl:nth-of-type(3)", 1);
+        retainAnnualNoteFrame("annualEvidenceComparisonDisclosure", comparison + " > p.sec-quarterly-caveat",
+            comparison + " > p.sec-quarterly-caveat", 1);
         retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
         awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
