@@ -1464,6 +1464,120 @@ describe("managed workspace screen", () => {
     expect(output).toContain("the next save replaces this saved version");
   });
 
+  it.each(["Use saved version", "Keep my draft"] as const)(
+    "keeps the draft through failed repeat reads before the explicit %s action",
+    async (choice) => {
+      const initial: MainWatchlistPayload = {
+        ...payload,
+        memberships: [
+          payload.memberships[0]!,
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            securityId: "security-two",
+            shareClassId: "class-two",
+            shareClassName: "Class B",
+            note: "Unchanged second note",
+          },
+        ],
+      };
+      const { workspace, api, html } = fixture(initial);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      workspace.note("listing-one", "Retained draft note");
+      const retained = structuredClone(
+        workspace.coordinator.getSnapshot().draft!,
+      );
+      vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+      await workspace.coordinator.save();
+      const latest: MainWatchlistPayload = {
+        ...initial,
+        memberships: [
+          initial.memberships[1]!,
+          { ...initial.memberships[0]!, note: "New saved note" },
+        ],
+      };
+      vi.mocked(api.load).mockResolvedValueOnce({
+        version: 3,
+        payload: latest,
+      });
+      await workspace.coordinator.load();
+      const reviewed = html();
+      expect(reviewed).toContain("Review saved version 3 and my draft");
+      expect(reviewed).toContain("New saved note");
+      expect(reviewed).toContain("Retained draft note");
+      expect(reviewed).toContain("Order differs");
+      expect(reviewed.indexOf("Review saved version 3")).toBeLessThan(
+        reviewed.indexOf("Use saved version"),
+      );
+      const repeat = deferred<Awaited<ReturnType<ManagedApi["load"]>>>();
+      vi.mocked(api.load).mockReturnValueOnce(repeat.promise);
+      const loading = workspace.coordinator.load();
+      const pending = html();
+      expect(pending).not.toContain("managed-version-review-heading");
+      expect(pending).not.toContain("Use saved version");
+      expect(pending).not.toContain("Keep my draft");
+      expect(pending).toContain("Retained draft note");
+      repeat.reject(new TrialApiError("unavailable"));
+      await loading;
+      const failed = html();
+      expect(failed).not.toContain("managed-version-review-heading");
+      expect(failed).not.toContain("Use saved version");
+      expect(failed).not.toContain("Keep my draft");
+      expect(failed).toContain("Retained draft note");
+      expect(failed).toContain("could not be loaded");
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(retained);
+      expect(api.save).toHaveBeenCalledTimes(1);
+      vi.mocked(api.load).mockResolvedValueOnce({
+        version: 4,
+        payload: latest,
+      });
+      await workspace.coordinator.load();
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const button = elements(ManagedWorkspaceScreen({ workspace })).find(
+        (element) =>
+          element.type === "button" && element.props.children === choice,
+      ) as React.ReactElement<{ onClick: () => void }>;
+      mounted.direct = false;
+      expect(button).toBeDefined();
+      button.props.onClick();
+      expect(html()).not.toContain("managed-version-review-heading");
+      expect(api.save).toHaveBeenCalledTimes(1);
+      const chosen = workspace.coordinator.getSnapshot();
+      expect(chosen).toMatchObject({ conflict: false, baseVersion: 4 });
+      if (choice === "Use saved version") {
+        expect(chosen.draft).toEqual(latest);
+        expect(chosen.dirty).toBe(false);
+      } else {
+        expect(chosen.draft).toEqual(retained);
+        expect(chosen.dirty).toBe(true);
+        vi.mocked(api.save).mockImplementationOnce((command) =>
+          Promise.resolve({
+            version: 5,
+            payload: command.payload,
+            replayed: false,
+          }),
+        );
+        await workspace.coordinator.save();
+        expect(api.save).toHaveBeenCalledTimes(2);
+        expect(vi.mocked(api.save).mock.calls[1]?.[0]).toMatchObject({
+          expectedVersion: 4,
+          payload: retained,
+        });
+        expect(vi.mocked(api.save).mock.calls[1]?.[0].idempotencyKey).not.toBe(
+          vi.mocked(api.save).mock.calls[0]?.[0].idempotencyKey,
+        );
+      }
+      workspace.coordinator.retire();
+      const retired = html();
+      expect(retired).not.toContain("New saved note");
+      expect(retired).not.toContain("Retained draft note");
+      expect(retired).not.toContain("Unchanged second note");
+    },
+  );
+
   it("uses product copy for managed mode while preserving the default DEMO frame", () => {
     const managed = renderToStaticMarkup(
       <TrialFrame managed>

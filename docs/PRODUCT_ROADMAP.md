@@ -201,7 +201,15 @@ authenticated browser acceptance remain separate. See [Current work](CURRENT_WOR
 
 Prioritize daily use and recovery before expanding fields or cohorts:
 
-1. Choose one interrupted-save or reconciliation journey and prove its visible
+The current selected candidate compares the saved watchlist with the retained draft
+after conflict or original-command reconciliation. Its visible result is an explicit
+choice with both notes and order available for review, and safe recovery from a
+failed repeat read. Verify the invented interruption journey on Android, then the
+required source and delivery gates. This does not establish real two-device editing
+or durable draft restoration. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
+records its acceptance status.
+
+1. Complete the selected interrupted-save or reconciliation journey and prove its visible
    outcome with invented records. Follow with session expiry and two-session
    conflicts where the current acceptance leaves gaps.
 2. Complete physical upgrade and screen-reader acceptance when the owner and

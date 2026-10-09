@@ -145,6 +145,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
+        if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
+            selectFixtureScenario("watchlist-recovery");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -1434,6 +1436,103 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedAnnualNote", "phase=observed-pair-appended-saved-reloaded, exactNoteLength=" + ANNUAL_NOTE.length() + "; " + pageDiagnostic());
     }
 
+    @Test
+    public void watchlistReplayReviewAndFailedReadPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Retained recovery draft");
+        closeSoftKeyboard();
+        clickWatchlistAction("Save watchlist");
+        awaitPage("uncertain save retains the captured draft and locks edits",
+            DIAGNOSTICS + ".save === 1 && " + DIAGNOSTICS + ".recoveryCommits === 1" +
+            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && document.querySelector('#managed-note-0')?.disabled === true" +
+            " && document.querySelector('.trial-status')?.textContent.includes('uncertain')" +
+            " && document.querySelector('.managed-version-review') === null");
+        clickWatchlistAction("Reconcile pending save");
+        awaitPage("original command replay confirms its one invented commit without another write",
+            DIAGNOSTICS + ".save === 2 && " + DIAGNOSTICS + ".recoveryCommits === 1" +
+            " && " + DIAGNOSTICS + ".recoveryReplays === 1 && " + DIAGNOSTICS + ".load === 1" +
+            " && document.querySelector('.trial-status')?.textContent.includes('from the original command')" +
+            " && document.querySelector('#managed-note-0')?.disabled === true" +
+            " && document.querySelector('.managed-version-review') === null");
+        clickWatchlistAction("Load saved watchlist");
+        assertRecoveryReview();
+        String row = "[data-managed-review-listing-id=listing-zero]";
+        retainAnnualNoteFrame("watchlistRecoveryVersions", row + " h4",
+            row + " h4," + row + " .managed-version-side", 3);
+        assertRecoveryReview();
+        retainAnnualNoteFrame("watchlistRecoveryChoices", ".managed-version-review + .trial-actions",
+            ".managed-version-review + .trial-actions > button", 2);
+        assertRecoveryReview();
+        Log.i("ManagedWatchlistRecovery", "phase=original-replay-and-version-review; " + pageDiagnostic());
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("a pending repeat read revokes previous review and choices without losing draft",
+            DIAGNOSTICS + ".load === 3 && " + DIAGNOSTICS + ".recoveryReadFailed === 0" +
+            " && document.querySelector('.managed-version-review') === null" +
+            " && !Array.from(document.querySelectorAll('button')).some(b => b.textContent === 'Use saved version' || b.textContent === 'Keep my draft')" +
+            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && document.querySelector('#managed-note-0')?.disabled === true");
+        click("#fail-recovery-read");
+        awaitPage("failed repeat read cannot offer old saved choices",
+            DIAGNOSTICS + ".recoveryReadFailed === 1 && " + DIAGNOSTICS + ".save === 2" +
+            " && document.querySelector('.trial-status')?.textContent.includes('could not be loaded')" +
+            " && document.querySelector('.managed-version-review') === null" +
+            " && !Array.from(document.querySelectorAll('button')).some(b => b.textContent === 'Use saved version' || b.textContent === 'Keep my draft')" +
+            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-0')?.disabled === true");
+        retainAnnualNoteFrame("watchlistRecoveryFailedRead", ".trial-status", ".trial-status", 1);
+        Log.i("ManagedWatchlistRecovery", "phase=failed-repeat-read-draft-retained; " + pageDiagnostic());
+        clickWatchlistAction("Load saved watchlist");
+        assertRecoveryReview();
+        clickWatchlistAction("Use saved version");
+        awaitPage("explicit saved choice uses the whole later version and sends no save",
+            DIAGNOSTICS + ".load === 4 && " + DIAGNOSTICS + ".save === 2" +
+            " && " + DIAGNOSTICS + ".recoveryCommits === 1 && " + DIAGNOSTICS + ".recoveryReplays === 1" +
+            " && " + DIAGNOSTICS + ".recoveryReadFailed === 1" +
+            " && document.querySelector('.managed-version-review') === null" +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-1')?.value === 'New saved research note'" +
+            " && document.querySelector('#managed-note-1')?.disabled === false" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 3 · Saved')");
+        awaitPage("recovery makes no research or authentication requests",
+            DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0" +
+            " && " + DIAGNOSTICS + ".marketsEod === 0 && " + DIAGNOSTICS + ".search === 0" +
+            " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".token === 0" +
+            " && " + DIAGNOSTICS + ".signOut === 0 && location.origin === 'https://localhost'");
+        assertEquals("Recovery preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertRootHistory();
+        Log.i("ManagedWatchlistRecovery", "phase=fresh-read-explicit-saved-choice; " + pageDiagnostic());
+    }
+
+    private void clickWatchlistAction(String label) {
+        assertTrue("Only the fixed recovery actions are admitted", label.equals("Save watchlist") ||
+            label.equals("Reconcile pending save") || label.equals("Load saved watchlist") || label.equals("Use saved version"));
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertRecoveryReview() throws Exception {
+        awaitPage("review pairs exact listing IDs, complete notes and both membership positions",
+            "(() => { const review = document.querySelector('.managed-version-review');" +
+            " const zero = review?.querySelector('[data-managed-review-listing-id=listing-zero]');" +
+            " const one = review?.querySelector('[data-managed-review-listing-id=listing-one]');" +
+            " const sides = zero?.querySelectorAll('.managed-version-side');" +
+            " return review?.querySelector('h3')?.textContent === 'Review saved version 3 and my draft'" +
+            " && review.querySelectorAll('li').length === 2 && sides?.length === 2" +
+            " && sides[0].querySelector('.trial-saved-note')?.textContent === 'New saved research note'" +
+            " && sides[1].querySelector('.trial-saved-note')?.textContent === 'Retained recovery draft'" +
+            " && sides[0].textContent.includes('Position 2') && sides[1].textContent.includes('Position 1')" +
+            " && one?.textContent.includes('Invented second note') && one.textContent.includes('Order differs')" +
+            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-0')?.disabled === true" +
+            " && Array.from(document.querySelectorAll('.managed-version-review + .trial-actions > button')).map(b => b.textContent).join(',') === 'Use saved version,Keep my draft'; })()");
+    }
+
     private void assertAnnualNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("Annual note preserves the full exact paragraph, identities, other note and order",
             "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
@@ -1904,7 +2003,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("markets-price-handoff") ||
+            scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());

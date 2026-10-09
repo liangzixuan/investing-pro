@@ -31,6 +31,8 @@ export const priceNoteDraft =
   "Price research draft Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
 export const marketsPriceNoteDraft =
   "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
+export const recoveryNoteDraft = "Retained recovery draft";
+export const recoverySavedNote = "New saved research note";
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -144,6 +146,7 @@ export async function createFixture(
     | "annual-note"
     | "price-comparison-note"
     | "markets-price-handoff"
+    | "watchlist-recovery"
     | "raw-close-comparison"
     | "markets-selected-price" = "default",
 ) {
@@ -303,6 +306,9 @@ export async function createFixture(
     marketsEod: 0,
     marketsAborted: 0,
     marketsLateResolved: 0,
+    recoveryCommits: 0,
+    recoveryReplays: 0,
+    recoveryReadFailed: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -325,9 +331,49 @@ export async function createFixture(
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
   let savedWatchlist = { version: 1, payload: structuredClone(payload) };
+  let recoveryCommand: ReturnType<typeof parseManagedWatchlistCommand> = null;
+  let rejectRecoveryRead: ((error: unknown) => void) | null = null;
+  const recoveryPayload: MainWatchlistPayload = {
+    ...payload,
+    memberships: payload.memberships.map((member, index) =>
+      index === 0 ? { ...member, note: recoveryNoteDraft } : member,
+    ),
+  };
+  const laterSavedPayload: MainWatchlistPayload = {
+    ...payload,
+    memberships: [
+      payload.memberships[1]!,
+      { ...payload.memberships[0]!, note: recoverySavedNote },
+    ],
+  };
   const api: ManagedApi = {
-    load: () => {
+    load: (signal) => {
       count("load");
+      if (scenario === "watchlist-recovery") {
+        if (signal.aborted)
+          return Promise.reject(new Error("Cancelled recovery fixture read"));
+        if (state.load === 1 && state.save === 0)
+          return Promise.resolve(structuredClone(savedWatchlist));
+        if (state.save !== 2 || state.recoveryReplays !== 1)
+          return Promise.reject(
+            new Error("Reconcile before reading the recovery fixture"),
+          );
+        if (state.load === 3)
+          return new Promise((_, reject) => {
+            rejectRecoveryRead = reject;
+          });
+        if (
+          state.load === 2 ||
+          (state.load === 4 && state.recoveryReadFailed === 1)
+        )
+          return Promise.resolve({
+            version: 3,
+            payload: structuredClone(laterSavedPayload),
+          });
+        return Promise.reject(
+          new Error("Unexpected extra recovery fixture read"),
+        );
+      }
       return Promise.resolve(structuredClone(savedWatchlist));
     },
     status: () => {
@@ -362,6 +408,42 @@ export async function createFixture(
     },
     save: (command, signal) => {
       const captured = parseManagedWatchlistCommand(command);
+      if (scenario === "watchlist-recovery") {
+        if (
+          signal.aborted ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(recoveryPayload)
+        )
+          return unexpected("save");
+        if (state.save === 0 && state.recoveryCommits === 0) {
+          recoveryCommand = structuredClone(captured);
+          savedWatchlist = {
+            version: 2,
+            payload: structuredClone(captured.payload),
+          };
+          count("save");
+          count("recoveryCommits");
+          return Promise.reject(new TrialApiError("commit_unknown"));
+        }
+        if (
+          state.save !== 1 ||
+          state.recoveryCommits !== 1 ||
+          !recoveryCommand ||
+          captured.idempotencyKey !== recoveryCommand.idempotencyKey ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(recoveryCommand.payload)
+        )
+          return unexpected("save");
+        count("save");
+        count("recoveryReplays");
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: true,
+        });
+      }
       const expected = {
         ...payload,
         memberships:
@@ -639,6 +721,19 @@ export async function createFixture(
       return () => {
         listeners.delete(listener);
       };
+    },
+    failRecoveryRead: () => {
+      if (
+        scenario !== "watchlist-recovery" ||
+        state.load !== 3 ||
+        state.recoveryReadFailed !== 0 ||
+        !rejectRecoveryRead
+      )
+        throw new Error("Only the third recovery fixture read may fail");
+      const reject = rejectRecoveryRead;
+      rejectRecoveryRead = null;
+      count("recoveryReadFailed");
+      reject(new TrialApiError("unavailable"));
     },
     settleCancelledMarkets: () => {
       if (

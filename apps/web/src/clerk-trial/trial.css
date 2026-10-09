@@ -182,6 +182,31 @@ textarea:disabled {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.managed-version-changes {
+  padding: 0;
+  list-style: none;
+}
+.managed-version-changes > li {
+  border-top: 1px solid #dfc893;
+  margin-top: 20px;
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+.managed-version-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 16px;
+}
+.managed-version-side {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dfc893;
+  border-radius: 8px;
+  background: #fffdf7;
+}
+.managed-version-side h5 {
+  margin: 0 0 10px;
+}
 .trial-session-help {
   border-top: 1px solid #e1e9e7;
   margin: 28px 0 0;

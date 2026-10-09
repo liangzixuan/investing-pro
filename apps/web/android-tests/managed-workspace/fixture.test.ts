@@ -9,8 +9,11 @@ import {
   createFixture,
   marketsPriceNoteDraft,
   priceNoteDraft,
+  recoveryNoteDraft,
+  recoverySavedNote,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
+import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 type MutableFixtureMembership = {
@@ -64,6 +67,128 @@ async function prepareMarketsHandoffFixture() {
 }
 
 describe("Android managed fixture startup", () => {
+  it("uses the real coordinator to reconcile once and retain its draft through a failed repeat read", async () => {
+    const fixture = await createFixture("watchlist-recovery");
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", recoveryNoteDraft);
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot().uncertain).toBe(true);
+    await workspace.coordinator.load();
+    await workspace.coordinator.save();
+    workspace.note("listing-zero", "Blocked replacement");
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      save: 1,
+      recoveryCommits: 1,
+    });
+    await workspace.coordinator.reconcile();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      replayPending: true,
+      conflict: true,
+      latestLoaded: false,
+      baseVersion: 2,
+    });
+    await workspace.coordinator.load();
+    const retained = structuredClone(
+      workspace.coordinator.getSnapshot().draft!,
+    );
+    expect(retained.memberships[0]!.note).toBe(recoveryNoteDraft);
+    expect(workspace.coordinator.getSnapshot().saved).toMatchObject({
+      version: 3,
+      payload: {
+        memberships: [
+          { listingId: "listing-one" },
+          { listingId: "listing-zero", note: recoverySavedNote },
+        ],
+      },
+    });
+    const loading = workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().latestLoaded).toBe(false);
+    fixture.failRecoveryRead();
+    await loading;
+    workspace.coordinator.useSaved();
+    workspace.coordinator.keepDraft();
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      latestLoaded: false,
+      conflict: true,
+      draft: retained,
+    });
+    await workspace.coordinator.load();
+    workspace.coordinator.useSaved();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 3,
+      conflict: false,
+      replayPending: false,
+      dirty: false,
+      draft: {
+        memberships: [
+          { listingId: "listing-one", note: "Invented second note" },
+          { listingId: "listing-zero", note: recoverySavedNote },
+        ],
+      },
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 4,
+      status: 1,
+      save: 2,
+      recoveryCommits: 1,
+      recoveryReplays: 1,
+      recoveryReadFailed: 1,
+      token: 0,
+      signOut: 0,
+      annual: 0,
+      eod: 0,
+      marketsEod: 0,
+    });
+    workspace.coordinator.retire();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: null,
+      saved: null,
+    });
+  });
+
+  it.each(["key", "version", "payload", "cancelled"] as const)(
+    "rejects an altered %s recovery replay without a second invented commit",
+    async (change) => {
+      const fixture = await createFixture("watchlist-recovery");
+      const signal = new AbortController().signal;
+      const initial = await fixture.api.load(signal);
+      await fixture.api.status(signal);
+      const command = {
+        expectedVersion: 1,
+        idempotencyKey: "12345678-1234-4123-8123-123456789012",
+        payload: {
+          ...initial.payload,
+          memberships: initial.payload.memberships.map((member, index) =>
+            index === 0 ? { ...member, note: recoveryNoteDraft } : member,
+          ),
+        },
+      };
+      await expect(fixture.api.save(command, signal)).rejects.toMatchObject({
+        code: "commit_unknown",
+      });
+      const changed = structuredClone(command);
+      const abort = new AbortController();
+      if (change === "key")
+        changed.idempotencyKey = "12345678-1234-4123-8123-123456789013";
+      if (change === "version") changed.expectedVersion = 2;
+      if (change === "payload")
+        (changed.payload.memberships[0]! as MutableFixtureMembership).note =
+          "Replacement";
+      if (change === "cancelled") abort.abort();
+      await expect(fixture.api.save(changed, abort.signal)).rejects.toThrow(
+        "Unexpected fixture operation: save",
+      );
+      expect(fixture.getSnapshot()).toMatchObject({
+        recoveryCommits: 1,
+        recoveryReplays: 0,
+      });
+    },
+  );
   it("admits the exact Markets handoff save after one separate company refresh and returns isolated saved copies", async () => {
     const { fixture, signal, resolveRequest, request, command } =
       await prepareMarketsHandoffFixture();
@@ -713,6 +838,9 @@ describe("Android managed fixture startup", () => {
         marketsEod: 0,
         marketsAborted: 0,
         marketsLateResolved: 0,
+        recoveryCommits: 0,
+        recoveryReplays: 0,
+        recoveryReadFailed: 0,
       };
       expect(fixture.getSnapshot()).toEqual(initial);
       const signal = new AbortController().signal;

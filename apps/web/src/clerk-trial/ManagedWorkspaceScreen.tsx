@@ -10,7 +10,6 @@ import {
   normalizeWatchlistNote,
   type ManagedCatalogSnapshotDto,
   type ManagedEodIdentity,
-  type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { BrowserRouter } from "react-router";
 import {
@@ -28,6 +27,8 @@ import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
+import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import {
   bindAndroidBack,
   type AndroidBackAdapter,
@@ -162,37 +163,6 @@ function CatalogReceipt({ snapshot }: { snapshot: ManagedCatalogSnapshotDto }) {
     </details>
   );
 }
-
-function ListingIdentity({
-  member,
-}: {
-  member: Omit<WatchlistMembership, "note">;
-}) {
-  return (
-    <>
-      <strong>{member.symbol}</strong> · {member.issuerName}
-      <span className="managed-listing-detail">
-        {member.shareClassName} · {member.exchangeMic} ·{" "}
-        {member.instrumentType === "adr" ? "ADR" : "Common stock"}
-      </span>
-    </>
-  );
-}
-
-const identityLabels: Record<keyof Omit<WatchlistMembership, "note">, string> =
-  {
-    country: "Country",
-    exchangeMic: "Exchange MIC",
-    instrumentType: "Instrument type",
-    issuerId: "Issuer ID",
-    issuerName: "Company name",
-    listingId: "Listing ID",
-    securityId: "Security ID",
-    securityName: "Security name",
-    shareClassId: "Share class ID",
-    shareClassName: "Share class name",
-    symbol: "Ticker",
-  };
 
 function CatalogReviewPanel({
   review,
@@ -705,19 +675,13 @@ export function ManagedWorkspaceScreen({
                     ? "The original save is confirmed. Load the latest shared version before choosing what to edit next."
                     : "Your draft is intact. Load the latest version, then choose which version to use."}
                 </p>
-                {saved.latestLoaded && saved.saved && (
+                {saved.latestLoaded && saved.saved && saved.draft && (
                   <>
-                    <h3>Saved version {saved.saved.version}</h3>
-                    <ol>
-                      {saved.saved.payload.memberships.map((member) => (
-                        <li key={member.listingId}>
-                          <ListingIdentity member={member} />
-                          <p className="trial-saved-note">
-                            {member.note || "No note"}
-                          </p>
-                        </li>
-                      ))}
-                    </ol>
+                    <ManagedWatchlistReview
+                      saved={saved.saved.payload}
+                      draft={saved.draft}
+                      version={saved.saved.version}
+                    />
                     <div className="trial-actions">
                       <button
                         disabled={busy}
