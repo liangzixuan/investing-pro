@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.15 package share Discover, a private
+The managed website and signed Android 1.16 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -175,6 +175,18 @@ Repomix automation remains held in PR 27 because of its dependency blocker;
 [AI context](./AI_CONTEXT.md) records the dependency blocker and the manual
 source-reading path. Existing security checks remain unchanged.
 
+PR 57 and signed Android 1.16 deliver a saved-version and retained-draft review
+after a watchlist conflict or original-command reconciliation. Notes, order,
+additions, removals and exact listing identities remain inspectable before a
+whole-version choice. Starting another read withdraws old choices; a failed read
+preserves both versions and requires a successful read before choosing. Source
+checks, eighteen invented-data native cases, same-archive website promotion and
+signed delivery passed. The API source, schema and provider scope are unchanged.
+Physical upgrade, authenticated recovery and backup/restore remain separate
+acceptance work. See [watchlist recovery](APPWRITE_WATCHLIST.md#review-the-saved-version-and-retained-draft)
+and [Current work](CURRENT_WORK.md). This completes the selected recovery outcome;
+full M1/M2 and the broader market platform remain open.
+
 ## Longer-term capability sequence
 
 | Milestone                                        | User-visible outcome                                                                                                                                                           | Completion evidence                                                                                                                                                                                                                                   |
@@ -201,17 +213,17 @@ authenticated browser acceptance remain separate. See [Current work](CURRENT_WOR
 
 Prioritize daily use and recovery before expanding fields or cohorts:
 
-The current selected candidate compares the saved watchlist with the retained draft
-after conflict or original-command reconciliation. Its visible result is an explicit
-choice with both notes and order available for review, and safe recovery from a
-failed repeat read. Verify the invented interruption journey on Android, then the
-required source and delivery gates. This does not establish real two-device editing
-or durable draft restoration. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
-records its acceptance status.
+PR 57 and signed Android 1.16 complete the saved-version and retained-draft
+review after conflict or original-command reconciliation. The explicit choice
+shows both notes and order and requires a fresh successful read after a failed
+repeat read. The invented Android journey, required source checks, website
+promotion and signed delivery are accepted. Real two-device editing and durable
+draft restoration remain open. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
+records the separate acceptance limits.
 
-1. Complete the selected interrupted-save or reconciliation journey and prove its visible
-   outcome with invented records. Follow with session expiry and two-session
-   conflicts where the current acceptance leaves gaps.
+1. Follow the accepted recovery journey with controlled session expiry and
+   two-session conflicts where the current acceptance leaves gaps. Use invented
+   records and keep those outcomes separate from durable draft restoration.
 2. Complete physical upgrade and screen-reader acceptance when the owner and
    supported controls are available. Design an isolated managed restore exercise
    with controlled records before claiming cloud-data recovery. Signing recovery

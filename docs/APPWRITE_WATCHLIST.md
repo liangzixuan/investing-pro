@@ -73,7 +73,7 @@ data and fence late completions.
 
 ### Review the saved version and retained draft
 
-The recovery candidate compares the latest successfully loaded saved version with
+The recovery review compares the latest successfully loaded saved version with
 the retained draft before either explicit choice. Changed entries show both notes
 and positions, additions and removals, and changed listing identity fields. Entries
 are paired by exact listing ID, including separate listings that share a ticker.
@@ -90,8 +90,11 @@ A new saved-version read withdraws the previous review and choice eligibility as
 soon as it starts. If the read fails, both payloads remain retained, but another
 successful read is required before choosing. Pending command reconciliation still
 uses its original version, key and payload. Session retirement clears both versions
-and fences late completions. This is candidate behavior until the release gates
-recorded in Current work are accepted.
+and fences late completions. PR 57 and signed Android 1.16 deliver this behavior.
+The eighteen-case invented-data emulator report includes recovery review, a failed
+repeat read and whole-version choice. It establishes no production two-device
+editing or owner-record recovery test. Current work records the separate source,
+website, signed-package and physical acceptance limits.
 
 The managed Appwrite bridge requires the runtime's `bodyBinary` Buffer, checks
 its visible byte length before copying and preserves the supplied encoded query
