@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 8, 2026. This document defines the durable product goals and
+Updated October 9, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.14 package share Discover, a private
+The managed website and signed Android 1.15 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -193,16 +193,40 @@ calendar or market module hostage to unrelated SEC interpretation work.
 
 ### Selecting the next product outcome
 
-PR 53 carries an already loaded Markets price history into company Price,
-including Annual-first visits, without another source request. It keeps dates,
-identity, previous-history status and explicit refresh intact. Direct visits
-remain unloaded. The website is accepted; signed Android 1.14 passed build, artifact and delivery review.
-This bounded workflow does not complete M2 or broaden data sources. The next
-selected outcome compares adjacent reported annual revenue and net income from
-the same filing and revenue basis, using the loaded Annual packet, and includes
-an available comparison in the existing note draft. Admission, exact arithmetic,
-provenance and daily use need their own acceptance. See [Current work](CURRENT_WORK.md)
-for the exact release and its acceptance limits.
+PR 55 and signed Android 1.15 deliver same-filing adjacent annual revenue and
+net-income comparison, including an available comparison in the existing note
+draft. Source checks, invented-data native acceptance, fresh API activation,
+same-archive website promotion and signed delivery passed. Physical 1.15 and
+authenticated browser acceptance remain separate. See [Current work](CURRENT_WORK.md).
+
+Prioritize daily use and recovery before expanding fields or cohorts:
+
+1. Choose one interrupted-save or reconciliation journey and prove its visible
+   outcome with invented records. Follow with session expiry and two-session
+   conflicts where the current acceptance leaves gaps.
+2. Complete physical upgrade and screen-reader acceptance when the owner and
+   supported controls are available. Design an isolated managed restore exercise
+   with controlled records before claiming cloud-data recovery. Signing recovery
+   and Clerk-key rotation need their own reviewed procedure and acceptance.
+3. Add authenticated browser coverage as a separate, narrow test suite using
+   controlled identities and invented data. Keep the exact-build inert
+   BrowserStack check, CORS protections and synthetic native coverage distinct.
+4. Expand one useful company field or cohort only after confirming source fields,
+   provider rights, cost and quotas. AAPL, GOOG and GOOGL remain three listings
+   for two issuers; their raw USD EOD closes supply no adjusted-return universe.
+
+Maintenance should shorten repeated work that obstructs these outcomes. Reviewed,
+parameterized release helpers and one release manifest can reduce copied scripts
+while retaining exact source/artifact pins, normal approvals, finite observations,
+output caps, original failures and safe cleanup. Any reusable artifact-policy
+proposal needs separate review; it is not permission to relax current limits.
+
+Doppler adoption remains an unverified integration proposal. Start with an
+inventory of this application's GitHub, Appwrite and private runtime consumers,
+stores, environments and rotation owners. Keep its project separate from other
+applications. Any later synchronization must define ownership and propagation of
+removals before changing secrets; a roadmap entry grants no credential operation.
+The managed Vite/React, Capacitor, Clerk and Appwrite boundaries remain in place.
 
 Select a bounded end-to-end outcome before implementation. The milestones above
 remain the expansion plan; they do not authorize all features or replace the
