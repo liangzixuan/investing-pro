@@ -29,6 +29,7 @@ import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
+import { ManagedSignOut } from "./ManagedSignOut";
 import {
   bindAndroidBack,
   type AndroidBackAdapter,
@@ -372,18 +373,7 @@ export function ManagedWorkspaceScreen({
   };
   return (
     <div className="managed-workspace">
-      <div className="trial-session-bar">
-        <p>Shared across your signed-in devices</p>
-        <button
-          className="trial-secondary"
-          disabled={saved.phase === "signing_out"}
-          onClick={() => void coordinator.signOut()}
-        >
-          {saved.signOutFailed
-            ? "Try signing out again"
-            : "Sign out this session"}
-        </button>
-      </div>
+      <ManagedSignOut coordinator={coordinator} />
       <p className="trial-status" role="status" aria-live="polite">
         {saved.message}
       </p>
