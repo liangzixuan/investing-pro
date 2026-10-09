@@ -4,88 +4,84 @@ Updated October 9, 2026. This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns goals and delivery order;
 [architecture](ARCHITECTURE.md) explains runtime boundaries. Private operational
 receipts remain outside Git. Earlier releases and bounded live journeys are in
-the [dated status archive](history/CURRENT_WORK-2026-10-09-before-pr57.md).
+the [dated status archive](history/CURRENT_WORK-2026-10-09-before-pr59.md).
 
 ## Accepted release
 
-[PR 57](https://github.com/liangzixuan/investing-pro/pull/57) is merged as
-`4616ff9e1f5b6b8878cbd47d1d7b7af5f75b0843`, from candidate
-`21bbfc2258a16d8108cacbbd3c697fda9904360f`, with tree
-`11a4b6bb232ea3a80bb03dfcb521f9851208dfb4`. Three required actual-main workflows
-and four jobs, the original producing-CI source proof and eighteen invented-data
-native cases are accepted. The original candidate native failure occurred before
-the new journey because its fixed scenario selector omitted watchlist recovery.
-The one-line selector correction passed. Original failures remain preserved.
+[PR 59](https://github.com/liangzixuan/investing-pro/pull/59) is merged as
+`c2fe66ca102da0d5a751f610772cffa04b874701`, from candidate
+`3f938bf0da918bf9bec5a2cbae1aadb588cd960a`, with tree
+`9a01034cf6a7539afeeb259c8d03b82321d7eea5`. Five required actual-main workflows
+and six jobs, the original producing-CI source proof and eighteen invented-data
+native cases are accepted. The first native capture could not show the margin
+and full disclosure together; separate viewports passed with the value,
+visibility and complete-note assertions retained. Original failures are preserved.
+
+The [reported net-margin comparison](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
+shows prior and current `NetIncomeLoss / revenue * 100` for each eligible named
+revenue basis in the same filing. Its change is in percentage points, computed
+from unrounded ratios and rounded once. Nonpositive prior revenue makes that
+margin and change unavailable; the reported amounts and differences stay visible.
+The comparison joins the Annual note excerpt without another provider request.
+Appending preserves the latest draft and the 2,000-character limit. Review and
+explicit **Save watchlist** remain required. This completes the selected margin
+outcome; full M2 remains open.
 
 [Watchlist recovery](APPWRITE_WATCHLIST.md#review-the-saved-version-and-retained-draft)
-shows the latest saved version beside the retained draft: changed notes, positions,
-additions, removals and exact listing identities. The explicit choices apply a
-whole version. Use saved version replaces the draft without saving; Keep my draft
-retains it for a later explicit save. A new read withdraws choices immediately.
-A failed read keeps both versions and requires a successful read before choosing.
-The review adds no automatic merge, save, provider request or API field.
+retains PR 57's saved-version and draft review. A fresh successful read is required
+before choosing either complete version after a failed repeat read. The current
+release preserves that behavior and the existing source, quota and identity limits.
 
-An eligible Annual report can compare current revenue and NetIncomeLoss with
-the adjacent annual period from the same filing and named revenue basis. Exact
-USD amounts, both period ranges, differences and provenance remain inspectable.
-Percentage change is unavailable for a zero or negative prior amount. An
-available comparison joins the existing Annual note draft action, followed by
-review and explicit Save watchlist. The 2,000-character limit remains. It uses
-the loaded report without another provider request or a new API field. See
-[managed Annual](MANAGED_SEC_ANNUAL.md#reported-annual-comparison) for admission
-and calculation limits. This completes the selected comparison outcome, not M2.
-
-Whole-source review found the API, shared packages and root toolchain inputs
-unchanged from the accepted PR 55 build at
-`e19829e9e06e604daa3a83ec04d8eba46641e763`. A finite production-pointer read
-confirmed existing deployment `6ac86cc425ba09b3b95b`; this release did not rebuild
-or redeploy the API. Its original activation receipt is retained in the archive.
-Provider admission, quotas and authentication settings remain unchanged. Release
-verification made no live provider request or owner-record write.
+A fresh API build and normal activation accepted deployment
+`6ac93c888eb42e76a4e5`, replacing retained rollback identity
+`6ac86cc425ba09b3b95b`. Complete bundle review found only two identifier renames
+against the prior accepted bundle. Compiled admission checks and ten finite
+anonymous production checks passed. Authentication and provider configuration
+are unchanged. Release verification made no live provider request or owner write.
 
 Website release
-[37942825319](https://github.com/liangzixuan/investing-pro/actions/runs/37942825319),
+[37980363346](https://github.com/liangzixuan/investing-pro/actions/runs/37980363346),
 attempt 1, promoted the same accepted archive after normal production approval.
-Staging `6ac8f72e83878979bdba` and production `6ac8fa1dca9788d5bca3` used the
-830,060-byte archive, SHA-256
-`d043a46f8b5654ad895b5d4b354543501f9849bdbf0c2b8843ef991f8dd4f780`.
-Production replaced `6ac872c27121e99166b4`; its receipt verified activation on
-October 9. These receipts record finite observations rather than
-continuing availability.
+Staging `6ac9404d0a91d69e0210` and production `6ac9440624fa2932a6da` used the
+830,646-byte archive, SHA-256
+`009392f489851fb22289e5dff910627fb738300947ca6756488a78924fbc5a10`.
+Production replaced `6ac8fa1dca9788d5bca3`; its receipt verified activation on
+October 9 at 19:44:37 UTC. These are finite observations, without a continuing
+availability claim.
 
-Signed Android 1.16.0, code 17, passed build, complete artifact and delivery
+Signed Android 1.17.0, code 18, passed build, complete artifact and delivery
 review with package `app.investingpro.android` and the existing production
-signer. The delivered APK is 6,657,880 bytes, SHA-256
-`dbc9de0e0f22b8917145b0f20a0022715a1b7594c9ac1875dc91c98e9ab466b0`.
-Its source is the PR 57 main commit above. All 510 APK members, five declared
+signer. The delivered APK is 6,658,308 bytes, SHA-256
+`2935f134eef78ab139d66a83f0b9f93296c2397192af072ebfebd930ae30124a`.
+Its source is the PR 59 main commit above. All 510 APK members, five declared
 managed assets and fourteen merged native component declarations were checked.
-Earlier APKs and rollback identities remain preserved. No physical 1.16
-installation or use is accepted here.
+Earlier APKs and rollback identities remain preserved. Physical 1.17 installation
+or use is not accepted here.
 
 The eighteen-case API-36 emulator report covers three disconnected and fifteen
-managed journeys. Eleven of forty-seven original PNGs received scoped visual
-review. Forty-four capture callbacks, forty-two phase diagnostics and the full
-867-character invented saved-note assertion are separate native evidence;
+managed journeys. Thirteen of forty-nine original PNGs received scoped visual
+review. Forty-six capture callbacks, forty-two phase diagnostics and the full
+964-character invented saved-note assertion are separate native evidence;
 scoped screenshots do not establish the full note or chart visually.
 BrowserStack covered the exact staging build's inert shell at desktop and
-narrow widths. Authenticated browser use, physical Pixel 1.14/1.15/1.16, separate
-screen-reader and backup/restore acceptance remain open. The owner reported
-Pixel use of 1.13 without issues, without per-step logs.
+narrow widths. Authenticated browser use, physical Pixel 1.14 through 1.17,
+separate screen-reader and backup/restore acceptance remain open. The owner
+reported Pixel use of 1.13 without issues, without per-step logs.
 
 ## Delivery status
 
-| Surface                 | Accepted scope                                                     | Remaining acceptance                                                 |
-| ----------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| Managed API and website | Existing API source/pointer continuity and PR 57 website promotion | Continuing availability and authenticated browser recovery use       |
-| Signed Android 1.16     | Build, complete artifact and exact delivered bytes                 | Physical upgrade and use                                             |
-| Synthetic native tests  | Eighteen invented-data journeys and eleven scoped frames           | Production sign-in, live-provider use and physical-device behavior   |
-| Physical Pixel          | Owner reported issue-free Android 1.13 use                         | Separate 1.14/1.15/1.16, screen-reader and backup/restore acceptance |
-| Local research app      | Preserved local release and encrypted vault                        | No migration or managed feature-parity claim                         |
+| Surface                 | Accepted scope                                             | Remaining acceptance                                                    |
+| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Managed API and website | PR 59 API activation and same-archive website promotion    | Continuing availability and authenticated browser recovery use          |
+| Signed Android 1.17     | Build, complete artifact and exact delivered bytes         | Physical upgrade and use                                                |
+| Synthetic native tests  | Eighteen invented-data journeys and thirteen scoped frames | Production sign-in, live-provider use and physical-device behavior      |
+| Physical Pixel          | Owner reported issue-free Android 1.13 use                 | Separate 1.14 through 1.17, screen-reader and backup/restore acceptance |
+| Local research app      | Preserved local release and encrypted vault                | No migration or managed feature-parity claim                            |
 
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.16. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.17. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -138,25 +134,18 @@ that acceptance.
 
 ## Current task and next acceptance
 
-The selected watchlist recovery outcome is delivered through PR 57 on the website
-and in signed Android 1.16. Affected web tests, types, lint, formatting, boundaries
-and fixture checks passed, followed by candidate/main source checks, the original
-native report, website promotion and signed delivery reviews. Synthetic coverage
-does not establish production two-device editing, physical upgrade, session-expiry
+The selected reported net-margin outcome is delivered through PR 59 on the
+website and in signed Android 1.17. Affected calculation, rendering and note
+checks passed, followed by actual-main source checks, the original native report,
+fresh API activation, same-archive website promotion and signed delivery reviews.
+The earlier watchlist recovery outcome remains available. Synthetic coverage does
+not establish production two-device editing, physical upgrade, session-expiry
 recovery or cloud restore.
 
 The next useful acceptance is a physical upgrade and controlled recovery visit,
-with separate browser/session and backup coverage. Select any further product
-outcome from the roadmap only after preserving this release and its limits.
-
-The selected next product candidate adds a reported annual net-margin comparison
-to the existing company Annual view and note draft. It keeps the same filing,
-named revenue basis and admitted observations, and expresses the difference in
-percentage points. Nonpositive prior revenue makes the margin comparison
-unavailable. Focused calculation, rendering and note checks have passed; broader
-verification, hosted/native acceptance and delivery remain pending. The accepted
-website and signed Android 1.16 above remain the release baseline. See the
-[candidate calculation contract](MANAGED_SEC_ANNUAL.md#candidate-reported-net-margin-comparison).
+with separate browser/session and backup coverage. Select further product work
+from the roadmap after preserving this release and its limits. Broader fields or
+cohorts require a separate source, rights, cost and quota review.
 
 Keep authenticated-browser coverage separate from the inert BrowserStack shell.
 Use narrowly controlled identities and invented records when that work is
