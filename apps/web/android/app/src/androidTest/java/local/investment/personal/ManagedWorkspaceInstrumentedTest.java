@@ -1386,11 +1386,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector(" + JSONObject.quote(comparison + " .sec-quarterly-caveat") + ")?.textContent.includes('No adjustment for period length, accounting changes or restatements')" +
             " && document.querySelector(" + JSONObject.quote(comparison + " > details > ol") + ")?.children.length === 4");
         assertAnnualNoteCounts(1, 0, 1);
+        // Each source region fits the native viewport; the note action follows the comparison.
         retainAnnualNoteFrame("annualEvidenceNoteSource", basis + " > h4",
-            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl, " + add, 4);
+            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl", 3);
         awaitPage("source pair remains unchanged through capture", exactReport);
         retainAnnualNoteFrame("annualEvidenceComparisonSource", comparison + " > h5",
-            comparison + " > h5, " + comparison + " > p:first-of-type, " + comparison + " > dl, " + comparison + " > p.sec-quarterly-caveat", 5);
+            comparison + " > h5, " + comparison + " > p:first-of-type, " + comparison + " > dl:first-of-type", 3);
+        retainAnnualNoteFrame("annualEvidenceComparisonIncome", comparison + " > dl:nth-of-type(2)",
+            comparison + " > dl:nth-of-type(2), " + comparison + " > p.sec-quarterly-caveat", 2);
+        retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
+        awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
         click(add);
         awaitPage("explicit chosen pair appends exact provenance to the existing draft",
