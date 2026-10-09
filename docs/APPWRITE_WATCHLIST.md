@@ -71,6 +71,26 @@ review has a separate lifetime and cannot clear a pending command. Sign-out,
 session replacement and denied authentication abort active work, clear screen
 data and fence late completions.
 
+### Review an intentional sign-out
+
+The shared managed screen reviews an intentional sign-out when there are unsaved
+changes, an active save or an uncertain save result. **Keep editing** retains the
+exact draft without a request. The separate confirmation clears local screen data
+through the existing session operation; it does not delete the saved watchlist.
+
+For an active or uncertain save, the review explains that the server may already
+have committed it. **Stay and check save** preserves the original command for
+explicit reconciliation. Signing out clears those local command details; a later
+sign-in and saved-version read is needed to check the outcome. A save settling
+while the review is open updates its explanation without refocusing the action.
+
+Clean sign-out and a failed sign-out retry remain direct. Authentication rejection,
+expiry and session replacement still retire the workspace immediately, hiding the
+review and fencing stale confirmations and late responses. The review keeps no
+durable draft, adds no provider request and changes no authentication rule.
+This implementation is awaiting native acceptance and release; current work
+records the separately accepted website and Android versions.
+
 ### Review the saved version and retained draft
 
 The recovery review compares the latest successfully loaded saved version with

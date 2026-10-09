@@ -68,6 +68,7 @@ import org.junit.runner.RunWith;
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
+    private static final String SIGNOUT_NOTE = "Sign-out review draft";
     private static final String COMPANY_NOTE = "Company draft captured in research";
     private static final String MARKETS_PRICE_NOTE =
         "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; " +
@@ -149,6 +150,10 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("price-comparison-note");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
             selectFixtureScenario("watchlist-recovery");
+        if (testName.getMethodName().equals("signOutReviewKeepsDraftAndUpdatesAfterSave"))
+            selectFixtureScenario("signout-save-review");
+        if (testName.getMethodName().equals("uncertainSignOutReviewClearsLocalStateAndFencesLateReceipt"))
+            selectFixtureScenario("signout-uncertain-review");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -175,6 +180,167 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void signOutReviewKeepsDraftAndUpdatesAfterSave() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareSignOutDraft();
+        assertSignOutCounts(0, 0, 0, 0, 0);
+        click("#managed-signout-open");
+        assertSignOutReview("Sign out with unsaved changes?", "Your changes have not been confirmed as saved.");
+        assertSignOutDraft();
+        retainSignOutReviewScreenshot("signoutDirtyReview", "managed-signout-stay");
+        click("#managed-signout-stay");
+        awaitPage("cancel sign-out returns to its opener without discarding the draft",
+            "document.querySelector('#managed-signout-review') === null && document.activeElement?.id === 'managed-signout-open'");
+        assertSignOutDraft();
+        assertSignOutCounts(0, 0, 0, 0, 0);
+        Log.i("ManagedSignOut", "phase=draft-kept; " + pageDiagnostic());
+
+        clickWatchlistAction("Save watchlist");
+        awaitPage("one save is held and the local draft remains mounted", DIAGNOSTICS + ".save === 1" +
+            " && document.querySelector('#managed-note-1')?.disabled === true");
+        click("#managed-signout-open");
+        assertSignOutReview("Check this save before signing out", "The save is still in progress.");
+        assertSignOutDraft();
+        assertSignOutCounts(1, 0, 0, 0, 0);
+        retainSignOutReviewScreenshot("signoutPendingSaveReview", "managed-signout-stay");
+        click("#settle-signout-save");
+        // The one-use fixture trigger becomes disabled; the review must not steal focus back.
+        awaitPage("save settles while its review remains open without refocusing its action",
+            "document.querySelector('#managed-signout-review h2')?.textContent === 'Sign out this session?'" +
+            " && document.querySelector('#managed-signout-review p')?.textContent.includes('There are no unconfirmed local changes.')" +
+            " && document.activeElement === document.body" +
+            " && document.querySelector('#managed-note-1')?.disabled === false");
+        assertSignOutDraft();
+        assertSignOutCounts(1, 0, 1, 1, 0);
+        assertSignOutSavedPayload();
+        retainSignOutReviewScreenshot("signoutSavedReview", "");
+        click("#managed-signout-stay");
+        awaitPage("cancel settled review returns to opener", "document.querySelector('#managed-signout-review') === null" +
+            " && document.activeElement?.id === 'managed-signout-open'");
+        click("#managed-signout-open");
+        assertSignOutCleared();
+        assertSignOutCounts(1, 0, 1, 1, 1);
+        assertSignOutSavedPayload();
+        assertEquals("Sign-out review keeps the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedSignOut", "phase=clean-signout-cleared; " + pageDiagnostic());
+    }
+
+    @Test
+    public void uncertainSignOutReviewClearsLocalStateAndFencesLateReceipt() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareSignOutDraft();
+        clickWatchlistAction("Save watchlist");
+        awaitPage("invented save commits with an uncertain acknowledgement",
+            "document.body.textContent.includes('The save result is uncertain.') && " + DIAGNOSTICS + ".save === 1" +
+            " && " + DIAGNOSTICS + ".reviewSaveCommits === 1");
+        click("#managed-signout-open");
+        assertSignOutReview("Check this save before signing out", "The save result is uncertain.");
+        awaitPage("uncertain review explains server outcome and later read",
+            "document.querySelector('#managed-signout-review p')?.textContent.includes('The server may already have saved it.')" +
+            " && document.querySelector('#managed-signout-review p')?.textContent.includes('Sign in again and load the saved version')");
+        assertSignOutDraft();
+        assertSignOutSavedPayload();
+        retainSignOutReviewScreenshot("signoutUncertainReview", "managed-signout-stay");
+        click("#managed-signout-stay");
+        awaitPage("uncertain review cancellation retains recovery without signing out",
+            "document.querySelector('#managed-signout-review') === null && document.activeElement?.id === 'managed-signout-open'");
+        assertSignOutDraft();
+        assertSignOutCounts(1, 0, 1, 0, 0);
+        Log.i("ManagedSignOut", "phase=uncertain-kept; " + pageDiagnostic());
+
+        clickWatchlistAction("Reconcile pending save");
+        awaitPage("original command reconciliation is held", DIAGNOSTICS + ".save === 2" +
+            " && document.body.textContent.includes('Reconciling the original save')");
+        click("#managed-signout-open");
+        assertSignOutReview("Check this save before signing out", "The save result is uncertain.");
+        assertSignOutDraft();
+        assertSignOutCounts(2, 0, 1, 0, 0);
+        retainSignOutReviewScreenshot("signoutReconcilingReview", "managed-signout-stay");
+        click("#managed-signout-confirm");
+        assertSignOutCleared();
+        assertSignOutCounts(2, 1, 1, 0, 1);
+        assertSignOutSavedPayload();
+        Log.i("ManagedSignOut", "phase=confirmed-cleared; " + pageDiagnostic());
+        click("#settle-signout-save");
+        awaitPage("one late reconciliation receipt settled", DIAGNOSTICS + ".reviewSaveSettled === 1");
+        assertSignOutCleared();
+        assertSignOutCounts(2, 1, 1, 1, 1);
+        assertSignOutSavedPayload();
+        assertEquals("Late reconciliation cannot reload the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedSignOut", "phase=late-receipt-ignored; " + pageDiagnostic());
+    }
+
+    private void prepareSignOutDraft() throws Exception {
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", SIGNOUT_NOTE);
+        click("button[aria-label='Move ONE up']");
+        assertSignOutDraft();
+    }
+
+    private void assertSignOutDraft() throws Exception {
+        awaitPage("exact sign-out note and order remain mounted",
+            "document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(SIGNOUT_NOTE) +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e=>e.textContent).join(',') === 'ONE,ZERO'");
+    }
+
+    private void assertSignOutReview(String heading, String explanation) throws Exception {
+        awaitPage("current sign-out review and safe initial focus",
+            "document.querySelector('#managed-signout-review h2')?.textContent === " + JSONObject.quote(heading) +
+            " && document.querySelector('#managed-signout-review p')?.textContent.includes(" + JSONObject.quote(explanation) + ")" +
+            " && document.activeElement?.id === 'managed-signout-stay'" +
+            " && document.querySelector('#managed-signout-open')?.getAttribute('aria-expanded') === 'true'" +
+            " && document.querySelector('#managed-signout-confirm')?.disabled === false");
+    }
+
+    private void assertSignOutCounts(int saves, int aborted, int commits, int settled, int signOuts) throws Exception {
+        awaitPage("bounded sign-out scenario counts",
+            DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".reviewSaveAborted === " + aborted +
+            " && " + DIAGNOSTICS + ".reviewSaveCommits === " + commits + " && " + DIAGNOSTICS + ".reviewSaveSettled === " + settled +
+            " && " + DIAGNOSTICS + ".signOut === " + signOuts +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
+            " && " + DIAGNOSTICS + ".search === 0 && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
+            " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0");
+    }
+
+    private void assertSignOutSavedPayload() throws Exception {
+        awaitPage("sign-out leaves the exact invented saved note and order intact",
+            "(() => { const saved=JSON.parse(document.querySelector('#fixture-signout-saved').textContent);" +
+            " return saved.version === 2 && saved.payload.name === 'My Watchlist' && saved.payload.schemaVersion === 1" +
+            " && saved.payload.memberships.length === 2 && saved.payload.memberships[0].listingId === 'listing-one'" +
+            " && saved.payload.memberships[0].note === 'Invented second note' && saved.payload.memberships[1].listingId === 'listing-zero'" +
+            " && saved.payload.memberships[1].note === " + JSONObject.quote(SIGNOUT_NOTE) + "; })()");
+    }
+
+    private void assertSignOutCleared() throws Exception {
+        awaitPage("signed-out workspace stays cleared without a sign-out review",
+            "document.body.textContent.includes('Signed out. Local watchlist data has been cleared.')" +
+            " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
+            " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
+            " && document.querySelector('#managed-signout-review') === null && document.querySelector('.managed-company-visit') === null");
+    }
+
+    private void retainSignOutReviewScreenshot(String name, String focusedId) throws Exception {
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('#managed-signout-review')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> scrolled.countDown()));
+        assertTrue("Sign-out review did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { const targets=Array.from(document.querySelectorAll('#managed-signout-review h2, #managed-signout-review p, #managed-signout-review button'));" +
+            " const v=visualViewport; return v && targets.length === 4 && targets.every(e=>{const r=e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft+v.width && r.top >= v.offsetTop && r.bottom <= v.offsetTop+v.height;});})()";
+        awaitPage("entire sign-out explanation and both actions visible before capture", visible);
+        retainScreenshot(name);
+        String focus = focusedId.isEmpty() ? "document.activeElement === document.body" : "document.activeElement?.id === " + JSONObject.quote(focusedId);
+        awaitPage("entire sign-out review and focus retained through capture", visible + " && " + focus);
+        assertSignOutDraft();
+        Log.i("ManagedSignOut", "phase=" + name + "; " + pageDiagnostic());
     }
 
     @Test
@@ -2011,6 +2177,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
+            scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());

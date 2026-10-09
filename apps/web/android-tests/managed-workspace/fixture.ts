@@ -25,6 +25,7 @@ import {
 import { TrialApiError } from "../../src/clerk-trial/api";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const signOutNoteDraft = "Sign-out review draft";
 export const annualNoteDraft =
   "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). Reported net margin -10% to 10%, change 20 percentage points. Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 export const priceNoteDraft =
@@ -147,6 +148,8 @@ export async function createFixture(
     | "price-comparison-note"
     | "markets-price-handoff"
     | "watchlist-recovery"
+    | "signout-save-review"
+    | "signout-uncertain-review"
     | "raw-close-comparison"
     | "markets-selected-price" = "default",
 ) {
@@ -291,6 +294,9 @@ export async function createFixture(
     scenario === "markets-selected-price" ||
     scenario === "raw-close-comparison";
   const marketsLate = marketsPacket(selectedPriceScenario ? 0 : 1, "late");
+  const signOutScenario =
+    scenario === "signout-save-review" ||
+    scenario === "signout-uncertain-review";
   let state = {
     load: 0,
     status: 0,
@@ -316,6 +322,9 @@ export async function createFixture(
     recoveryCommits: 0,
     recoveryReplays: 0,
     recoveryReadFailed: 0,
+    reviewSaveAborted: 0,
+    reviewSaveSettled: 0,
+    reviewSaveCommits: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -338,6 +347,15 @@ export async function createFixture(
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
   let savedWatchlist = { version: 1, payload: structuredClone(payload) };
+  const signOutPayload: MainWatchlistPayload = {
+    ...payload,
+    memberships: [
+      payload.memberships[1]!,
+      { ...payload.memberships[0]!, note: signOutNoteDraft },
+    ],
+  };
+  let signOutCommand: ReturnType<typeof parseManagedWatchlistCommand> = null;
+  let pendingSignOutSave: (() => void) | null = null;
   let recoveryCommand: ReturnType<typeof parseManagedWatchlistCommand> = null;
   let rejectRecoveryRead: ((error: unknown) => void) | null = null;
   const recoveryPayload: MainWatchlistPayload = {
@@ -415,6 +433,62 @@ export async function createFixture(
     },
     save: (command, signal) => {
       const captured = parseManagedWatchlistCommand(command);
+      if (signOutScenario) {
+        if (
+          signal.aborted ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.signOut !== 0 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(signOutPayload) ||
+          pendingSignOutSave ||
+          state.reviewSaveSettled !== 0 ||
+          state.reviewSaveAborted !== 0
+        )
+          return unexpected("save");
+        if (state.save === 0) {
+          signOutCommand = structuredClone(captured);
+          count("save");
+          if (scenario === "signout-uncertain-review") {
+            savedWatchlist = {
+              version: 2,
+              payload: structuredClone(captured.payload),
+            };
+            count("reviewSaveCommits");
+            return Promise.reject(new TrialApiError("commit_unknown"));
+          }
+        } else if (
+          scenario === "signout-uncertain-review" &&
+          state.save === 1 &&
+          state.reviewSaveCommits === 1 &&
+          signOutCommand &&
+          captured.idempotencyKey === signOutCommand.idempotencyKey &&
+          encodeMainWatchlistPayload(captured.payload) ===
+            encodeMainWatchlistPayload(signOutCommand.payload)
+        )
+          count("save");
+        else return unexpected("save");
+        signal.addEventListener("abort", () => count("reviewSaveAborted"), {
+          once: true,
+        });
+        // Deliberately permit a late receipt: the real coordinator must fence it after sign-out.
+        return new Promise((resolve) => {
+          pendingSignOutSave = () => {
+            if (scenario === "signout-save-review") {
+              savedWatchlist = {
+                version: 2,
+                payload: structuredClone(captured.payload),
+              };
+              count("reviewSaveCommits");
+            }
+            resolve({
+              ...structuredClone(savedWatchlist),
+              replayed: scenario === "signout-uncertain-review",
+            });
+          };
+        });
+      }
       if (scenario === "watchlist-recovery") {
         if (
           signal.aborted ||
@@ -712,7 +786,23 @@ export async function createFixture(
     userId: "invented-android-user",
     sessionId: "invented-android-session",
     getToken: () => unexpected("token"),
-    signOut: () => unexpected("signOut"),
+    signOut: () => {
+      if (
+        !signOutScenario ||
+        state.signOut !== 0 ||
+        state.reviewSaveCommits !== 1 ||
+        (scenario === "signout-save-review"
+          ? state.save !== 1 ||
+            state.reviewSaveSettled !== 1 ||
+            state.reviewSaveAborted !== 0
+          : state.save !== 2 ||
+            state.reviewSaveSettled !== 0 ||
+            state.reviewSaveAborted !== 1)
+      )
+        return unexpected("signOut");
+      count("signOut");
+      return Promise.resolve();
+    },
   };
   return {
     api,
@@ -721,6 +811,34 @@ export async function createFixture(
     generations: {
       initial: annual.evidence.generation,
       recovered: recovered.evidence.generation,
+    },
+    signOutSavedWatchlist: () => {
+      if (!signOutScenario)
+        throw new Error(
+          "Only sign-out scenarios expose their invented saved watchlist",
+        );
+      return structuredClone(savedWatchlist);
+    },
+    settleSignOutSave: () => {
+      if (
+        !pendingSignOutSave ||
+        state.reviewSaveSettled !== 0 ||
+        (scenario === "signout-save-review"
+          ? state.save !== 1 ||
+            state.signOut !== 0 ||
+            state.reviewSaveCommits !== 0 ||
+            state.reviewSaveAborted !== 0
+          : scenario !== "signout-uncertain-review" ||
+            state.save !== 2 ||
+            state.signOut !== 1 ||
+            state.reviewSaveCommits !== 1 ||
+            state.reviewSaveAborted !== 1)
+      )
+        throw new Error("Only the fixed held sign-out save may settle");
+      const settle = pendingSignOutSave;
+      pendingSignOutSave = null;
+      settle();
+      void Promise.resolve().then(() => count("reviewSaveSettled"));
     },
     getSnapshot: () => state,
     subscribe: (listener: () => void) => {

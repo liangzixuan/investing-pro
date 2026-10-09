@@ -11,11 +11,175 @@ import {
   priceNoteDraft,
   recoveryNoteDraft,
   recoverySavedNote,
+  signOutNoteDraft,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
+
+describe("bounded invented sign-out save scenarios", () => {
+  async function prepared(
+    scenario: "signout-save-review" | "signout-uncertain-review",
+  ) {
+    const fixture = await createFixture(scenario);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { marketsCohort: fixture.marketsCohort },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-zero", signOutNoteDraft);
+    workspace.move("listing-one", -1);
+    return { fixture, workspace };
+  }
+  it("holds exactly the selected full-list save and settles without changing note/order or saved-copy ownership", async () => {
+    const { fixture, workspace } = await prepared("signout-save-review");
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    const saving = workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot().phase).toBe("saving");
+    expect(fixture.signOutSavedWatchlist().version).toBe(1);
+    expect(fixture.getSnapshot()).toMatchObject({
+      save: 1,
+      signOut: 0,
+      reviewSaveCommits: 0,
+      reviewSaveSettled: 0,
+    });
+    fixture.settleSignOutSave();
+    await saving;
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "idle",
+      dirty: false,
+      draft,
+      saved: { version: 2, payload: draft },
+    });
+    expect(fixture.signOutSavedWatchlist()).toEqual({
+      version: 2,
+      payload: draft,
+    });
+    const copy = fixture.signOutSavedWatchlist();
+    (copy.payload.memberships[0]! as MutableFixtureMembership).note =
+      "Changed returned invented copy";
+    expect(fixture.signOutSavedWatchlist()).toEqual({
+      version: 2,
+      payload: draft,
+    });
+    await workspace.coordinator.signOut();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+      saved: null,
+    });
+    expect(fixture.signOutSavedWatchlist()).toEqual({
+      version: 2,
+      payload: draft,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      save: 1,
+      signOut: 1,
+      reviewSaveCommits: 1,
+      reviewSaveSettled: 1,
+      reviewSaveAborted: 0,
+      token: 0,
+      annual: 0,
+      eod: 0,
+    });
+    expect(() => fixture.settleSignOutSave()).toThrow(
+      "Only the fixed held sign-out save may settle",
+    );
+  });
+  it("retains the original uncertain command, aborts its held reconciliation and ignores a late receipt after sign-out", async () => {
+    const { fixture, workspace } = await prepared("signout-uncertain-review");
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "idle",
+      dirty: true,
+      uncertain: true,
+      draft,
+    });
+    expect(fixture.signOutSavedWatchlist()).toEqual({
+      version: 2,
+      payload: draft,
+    });
+    const reconciling = workspace.coordinator.reconcile();
+    expect(workspace.coordinator.getSnapshot().phase).toBe("reconciling");
+    expect(() => fixture.settleSignOutSave()).toThrow(
+      "Only the fixed held sign-out save may settle",
+    );
+    await workspace.coordinator.signOut();
+    const retired = workspace.coordinator.getSnapshot();
+    expect(retired).toMatchObject({
+      phase: "retired",
+      draft: null,
+      saved: null,
+      uncertain: false,
+    });
+    fixture.settleSignOutSave();
+    await reconciling;
+    expect(workspace.coordinator.getSnapshot()).toBe(retired);
+    expect(fixture.signOutSavedWatchlist()).toEqual({
+      version: 2,
+      payload: draft,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      save: 2,
+      signOut: 1,
+      reviewSaveCommits: 1,
+      reviewSaveSettled: 1,
+      reviewSaveAborted: 1,
+      load: 1,
+      status: 1,
+      search: 0,
+      resolve: 0,
+      token: 0,
+      annual: 0,
+      eod: 0,
+    });
+  });
+  it.each(["note", "order", "identity", "version", "aborted"] as const)(
+    "rejects a %s mismatch without changing the invented saved watchlist",
+    async (invalid) => {
+      const fixture = await createFixture("signout-save-review");
+      const controller = new AbortController();
+      const original = await fixture.api.load(controller.signal);
+      await fixture.api.status(controller.signal);
+      const payload = {
+        ...original.payload,
+        memberships: [
+          original.payload.memberships[1]!,
+          { ...original.payload.memberships[0]!, note: signOutNoteDraft },
+        ],
+      };
+      const command = {
+        expectedVersion: invalid === "version" ? 2 : 1,
+        idempotencyKey: "12345678-1234-4123-8123-123456789012",
+        payload,
+      };
+      if (invalid === "note")
+        (command.payload.memberships[1]! as MutableFixtureMembership).note =
+          "Unexpected note";
+      if (invalid === "order") command.payload.memberships.reverse();
+      if (invalid === "identity")
+        (
+          command.payload.memberships[1]! as MutableFixtureMembership
+        ).listingId = "listing-other";
+      if (invalid === "aborted") controller.abort();
+      await expect(
+        fixture.api.save(command, controller.signal),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(fixture.signOutSavedWatchlist()).toEqual(original);
+      expect(fixture.getSnapshot()).toMatchObject({
+        signOut: 0,
+        reviewSaveCommits: 0,
+        reviewSaveSettled: 0,
+        reviewSaveAborted: 0,
+      });
+    },
+  );
+});
 type MutableFixtureMembership = {
   -readonly [Field in keyof WatchlistMembership]: WatchlistMembership[Field];
 };
@@ -844,6 +1008,9 @@ describe("Android managed fixture startup", () => {
         recoveryCommits: 0,
         recoveryReplays: 0,
         recoveryReadFailed: 0,
+        reviewSaveAborted: 0,
+        reviewSaveSettled: 0,
+        reviewSaveCommits: 0,
       };
       expect(fixture.getSnapshot()).toEqual(initial);
       const signal = new AbortController().signal;

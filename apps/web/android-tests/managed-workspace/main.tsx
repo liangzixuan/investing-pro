@@ -23,6 +23,8 @@ if (
   scenario !== "price-comparison-note" &&
   scenario !== "markets-price-handoff" &&
   scenario !== "watchlist-recovery" &&
+  scenario !== "signout-save-review" &&
+  scenario !== "signout-uncertain-review" &&
   scenario !== "raw-close-comparison" &&
   scenario !== "markets-selected-price"
 )
@@ -54,6 +56,29 @@ function Fixture() {
         >
           {JSON.stringify(state)}
         </pre>
+        {(scenario === "signout-save-review" ||
+          scenario === "signout-uncertain-review") && (
+          <>
+            <button
+              id="settle-signout-save"
+              disabled={
+                state.reviewSaveSettled !== 0 ||
+                (scenario === "signout-save-review"
+                  ? state.save !== 1 || state.signOut !== 0
+                  : state.save !== 2 || state.signOut !== 1)
+              }
+              onClick={fixture.settleSignOutSave}
+            >
+              Settle held invented sign-out save
+            </button>
+            <pre
+              id="fixture-signout-saved"
+              style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+            >
+              {JSON.stringify(fixture.signOutSavedWatchlist())}
+            </pre>
+          </>
+        )}
         {scenario === "watchlist-recovery" && (
           <button
             id="fail-recovery-read"
