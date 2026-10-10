@@ -1,82 +1,89 @@
 # Current work
 
-Updated October 10, 2026 (UTC). This is the portable status summary for the public
-repository. [Product roadmap](PRODUCT_ROADMAP.md) owns goals and delivery order;
+Updated October 10, 2026 (UTC). This is the public repository's portable status.
+[Product roadmap](PRODUCT_ROADMAP.md) owns goals and delivery order;
 [architecture](ARCHITECTURE.md) explains runtime boundaries. Private operational
-receipts remain outside Git. Earlier releases and bounded live journeys are in
-the [dated status archive](history/CURRENT_WORK-2026-10-10-before-pr63.md).
+receipts remain outside Git. Earlier releases and bounded live journeys retain
+their dates and limits in the [status archive](history/CURRENT_WORK-2026-10-10-before-pr65.md).
 
 ## Accepted release
 
-[PR 63](https://github.com/liangzixuan/investing-pro/pull/63) is merged as
-`7d75eb2e015f943241ed099e4c4d5c0684f291e7`, from candidate
-`ffae49b0d5e10145849e4a5cf95f75b6ab5e5c9c`, with tree
-`5147bee5f8a7f23f7c1a489a6e6eb294f3444e14`. Three required actual-main workflows and
-four jobs, the original producing-CI source proof and twenty invented-data native
-cases are accepted. Original failures and earlier release evidence remain retained.
+[PR 65](https://github.com/liangzixuan/investing-pro/pull/65) is merged as
+`3658cf15b3576d600274e50d9733a70cf347130e`, from candidate
+`fff45b99e2ff86731fbf4847d8a1d9eb73acd25f`, with tree
+`17d1e5177bc207b17798393186b292818a670b4e`. Five required actual-main workflows and
+six jobs, the original producing-CI source proof and twenty invented-data native
+cases are accepted. All original failures and earlier releases remain retained.
 
-[Read full note](MANAGED_RESEARCH_NAVIGATION.md#read-a-full-note) opens the complete
-current watchlist draft as wrapped plain text in company research and My Watchlist.
-Unsaved changes appear immediately, and the note remains readable while editing
-is paused during recovery. Closing the reader keeps the draft. Opening it sends
-no provider or save request. Save watchlist remains explicit, with the existing
-field validation and session-retirement rules. Intentional sign-out review and
-earlier Annual and Price workflows remain available. Full M1 and M2 remain open.
+[Read reported annual history](MANAGED_SEC_ANNUAL.md#reported-annual-history)
+opens up to three adjacent periods for an eligible named revenue basis from the
+already loaded filing packet. It retains exact period ranges, unscaled revenue
+and NetIncomeLoss, available net margin and inspectable observations. History
+stops at the first missing, conflicting or invalid period; it keeps the selected
+accession and basis. Accounting changes and restatements remain unadjusted.
 
-The API remains at deployment `6ac93c888eb42e76a4e5`, built from
-PR 59's `c2fe66ca102da0d5a751f610772cffa04b874701`. Current source, tool,
-configuration hashes and bundle inputs matched before and after one finite
-production-pointer read. No new API build or activation was needed. Authentication,
-entitlement and quota boundaries remain unchanged. Verification made no live
-provider request or owner-record write.
+An admitted third period joins the explicit Annual note-draft action. The complete
+note must fit the existing 2,000-character limit. Reading and appending send no
+source or save request. Review and Save watchlist remain explicit. Full current-note
+reading, draft-aware sign-out and the earlier Price workflows remain available.
+Full M1 and M2 remain open.
+
+The API remains at deployment `6ac93c888eb42e76a4e5`. A fresh PR65 bundle built
+after two consumed shared production inputs changed; its complete executable and
+package bytes matched the accepted PR59 build from
+`c2fe66ca102da0d5a751f610772cffa04b874701`. Source, tool and configuration hashes
+were checked before and after, and one finite production-pointer read passed.
+No API activation was needed. Authentication, entitlement and quotas are unchanged;
+verification made no live provider request or owner-record write.
 
 Website release
-[38021822858](https://github.com/liangzixuan/investing-pro/actions/runs/38021822858),
+[38073652461](https://github.com/liangzixuan/investing-pro/actions/runs/38073652461),
 attempt 1, promoted the same accepted archive after normal production approval.
-Staging `6ac9b59a1472e7aeba13` and production
-`6ac9b8b5853ab9a46dff` used the 830,635-byte archive,
-SHA-256 `616e1a7e2b9b7c79f3e566ff430e815aa6b1960c4f6c430b0720468634dbf77b`.
-Production replaced `6ac98282697ead2c30bc`; its receipt
-verified activation at `2026-10-10T04:02:28.131Z`. These are finite
-observations, without a continuing availability claim.
+Staging `6aca7c036f244f1b584d` and production `6aca7f3258ff62ec7f9d`
+used the 831,924-byte archive, SHA-256
+`c7aa4629e0b5191c23872b6fb2ce0a3f4c76e34de1e6665779d2acb1527082a7`.
+Production replaced `6ac9b8b5853ab9a46dff`; its original
+receipt verified activation at `2026-10-10T18:09:21.478Z`.
+This is finite receipt evidence without a continuing availability claim.
 
-Signed Android 1.19.0, code 20, passed build, complete artifact and delivery review
+Signed Android 1.20.0, code 21, passed build, complete artifact and delivery review
 with package `app.investingpro.android` and the existing production signer.
-The delivered APK is 6,658,868 bytes, SHA-256
-`fc1e9d494ee07f9b77f6003dc688d2cc898a163d8eb8c4382d4d38d42bcf97b3`. Its source is the PR 63 main commit above.
-Earlier APKs and rollback identities remain preserved. On October 10 the owner
-reported that the requested Android 1.19 and Brave checklist passed on a Pixel
-10 Pro XL running Android 17. This is owner-reported acceptance without per-step
-device logs, browser version or viewport measurements.
+The delivered APK is 6,659,632 bytes, SHA-256
+`a10f067def8574eb191ae86a07b958997a90190cba8d46c7f0987936745c7d85`. Its source is the PR65 main commit above.
+All prior APKs and rollback identities remain preserved. Physical Android 1.20
+acceptance remains open.
 
 The twenty-case API-36 emulator report covers three disconnected and seventeen
-managed journeys. Twenty-two of fifty-eight original PNGs received scoped visual
-review. Fifty-five capture callbacks, fifty-two phase diagnostics and the full
-964-character invented saved-note assertion are separate native evidence;
-scoped screenshots do not establish the full note or chart visually. BrowserStack
-covered the exact staging build's inert shell at desktop and narrow widths.
-The owner's checklist covers upgrade without wiping saved data, full current-note
-reading, unsaved drafts and sign-out cancellation, and background/resume and
-reopening. The requested Brave visit covered saved data and note reading with
-unsaved drafts and cancellation at desktop and narrow widths. Agent-controlled
-authenticated browser checks remain separate. Physical 1.14 through 1.18,
-screen-reader and backup/restore acceptance remain open. The earlier issue-free
-Pixel 1.13 report retains its original scope.
+managed journeys. Twenty-six of sixty-two original PNGs received scoped visual
+review. Fifty-nine callbacks, fifty-two phase diagnostics and the exact
+1,091-character invented saved-note assertion are separate evidence; scoped
+frames do not establish the entire note or chart visually. BrowserStack covered
+the exact staging build's inert shell at desktop and narrow widths.
+
+On October 10 the owner reported that the requested Android 1.19 and Brave
+checklist passed on a Pixel 10 Pro XL running Android 17. It covered upgrade
+without wiping saved data, company/watchlist full-note reading, unsaved drafts,
+sign-out cancellation, and background/resume and reopening. The Brave visit
+covered saved data and note reading with drafts and cancellation at desktop and
+narrow widths. The report has no per-step logs, browser version or viewport
+measurements. It retains its 1.19 scope; controlled authenticated browser recovery,
+physical 1.20, screen-reader and backup/restore acceptance remain separate.
+The earlier issue-free Pixel 1.13 report remains historical.
 
 ## Delivery status
 
-| Surface                 | Accepted scope                                                                             | Remaining acceptance                                                    |
-| ----------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| Managed API and website | PR 63 API continuity, same-archive promotion and owner-reported Brave checklist            | Continuing availability and controlled authenticated recovery           |
-| Signed Android 1.19     | Build, complete artifact, delivered bytes and owner-reported Pixel checklist               | Screen-reader and backup/restore acceptance                             |
-| Synthetic native tests  | Twenty invented-data journeys and 22 scoped frames                                         | Production sign-in, live-provider use and physical-device behavior      |
-| Physical Pixel          | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use | Separate 1.14 through 1.18, screen-reader and backup/restore acceptance |
-| Local research app      | Preserved local release and encrypted vault                                                | No migration or managed feature-parity claim                            |
+| Surface                              | Accepted scope                                                                                 | Remaining acceptance                                          |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Managed API and website              | Fresh complete byte-identical API build, finite pointer review and same-archive PR65 promotion | Continuing availability and controlled authenticated recovery |
+| Signed Android 1.20                  | Build, complete artifact and exact delivered bytes                                             | Physical upgrade/use, screen-reader and backup/restore        |
+| Synthetic native tests               | Twenty invented-data journeys and 26 scoped original frames                                    | Production sign-in, live provider use and physical behavior   |
+| Physical Pixel and owner Brave visit | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use     | Separate 1.20, controlled recovery and backup/restore         |
+| Local research app                   | Preserved local release and encrypted vault                                                    | No migration or managed feature-parity claim                  |
 
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.19. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.20. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -129,21 +136,17 @@ that acceptance.
 
 ## Current task and next acceptance
 
-Reading the complete current note draft is delivered through PR 63 on the website
-and in signed Android 1.19. Local checks, actual-main source proof, twenty
-invented-data native cases, 22 scoped original images, API continuity,
-same-archive website promotion and signed delivery passed. The disclosure retains
-the current draft and explicit Save. Synthetic coverage does not establish
-physical upgrade, authenticated recovery or cloud restore.
+PR65 reported annual history is delivered on the website and in signed Android
+1.20. Local calculation, rendering and note checks, actual-main source proof,
+twenty native cases, 26 scoped frames, fresh byte-identical API build, same-archive
+website promotion and signed delivery passed. Three-period availability depends
+on the admitted packet; the release adds no feed, cohort, response field or request.
 
-The selected next company outcome is [reported annual history](MANAGED_SEC_ANNUAL.md#reported-annual-history-candidate):
-up to three adjacent periods from an already loaded, admitted filing packet,
-with exact amounts, available net margins and an explicit third-period note
-excerpt. Missing older evidence stays visible as unavailable. Implementation
-and release acceptance are pending; production remains the PR 63 release above.
-Controlled browser/session recovery, screen-reader and backup coverage remain
-separate work. Broader fields or cohorts require a source, rights, cost and quota
-review.
+The next product outcome has not yet been selected. Prioritize useful daily
+workflows and recovery using the existing modules and permitted sources. Controlled
+session conflicts, physical upgrade/use, screen-reader and backup/restore coverage
+retain their separate acceptance requirements. Broader fields or cohorts need a
+source, rights, cost and quota review.
 
 Keep authenticated-browser coverage separate from the inert BrowserStack shell.
 Use narrowly controlled identities and invented records when that work is
