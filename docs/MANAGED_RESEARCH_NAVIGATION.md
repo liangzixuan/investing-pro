@@ -113,6 +113,21 @@ can remain visible while editing is paused. Account/session retirement clears th
 workspace under its existing rules. Adding, typing and navigation send no save or
 provider request. Unsaved drafts remain in the mounted session only.
 
+## Read a full note
+
+**Read full note for the selected symbol** opens the current draft as wrapped
+plain text in company research and My Watchlist. It shows the complete note,
+including edits that are not yet saved. Editing can remain paused during a save
+or recovery while the note is still available to read. An empty draft says that
+it has no note. Closing the disclosure returns to the compact editor.
+
+Reading does not save, add a listing or request research. The existing field
+keeps its raw text and validation feedback; **Save watchlist** remains the
+explicit whole-list save. Notes are displayed as text without interpreting HTML
+or Markdown. A different listing starts with its disclosure closed, and session
+retirement clears it with the workspace. Current work records this outcome's
+verification and delivery status.
+
 ## Correct an invalid note
 
 PR 50 and PR 51 deliver this workflow on the website and in signed Android 1.13.

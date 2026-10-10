@@ -1586,6 +1586,15 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
         assertFixtureBoundary();
+        touchInput("managed-research-note-reading-toggle");
+        assertFullNoteReading("managed-research-note", ANNUAL_NOTE, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        retainFullNoteTextFrame("annualNoteReadingStart", "managed-research-note", false);
+        retainFullNoteTextFrame("annualNoteReadingEnd", "managed-research-note", true);
+        assertFullNoteReading("managed-research-note", ANNUAL_NOTE, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        touchInput("managed-research-note-reading-toggle");
+        assertFullNoteReading("managed-research-note", ANNUAL_NOTE, false);
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
         awaitPage("Review returns to the visible watchlist without a save or research read",
             "document.querySelector('.managed-company-visit') === null" +
@@ -1593,6 +1602,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
         assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
+        touchInput("managed-note-0-reading-toggle");
+        assertFullNoteReading("managed-note-0", ANNUAL_NOTE, true);
         assertAnnualNoteCounts(1, 0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
@@ -1604,6 +1616,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("explicit reload returns the saved exact Annual note", DIAGNOSTICS + ".load === 2 && document.querySelector('#managed-note-0')?.disabled === false");
         assertAnnualNoteDraft(2, false);
         assertAnnualNoteCounts(1, 1, 2);
+        assertFullNoteReading("managed-note-0", ANNUAL_NOTE, true);
         assertEquals("Annual note review, save and reload preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedAnnualNote", "phase=observed-pair-appended-saved-reloaded, exactNoteLength=" + ANNUAL_NOTE.length() + "; " + pageDiagnostic());
@@ -1622,6 +1635,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-0')?.disabled === true" +
             " && document.querySelector('.trial-status')?.textContent.includes('uncertain')" +
             " && document.querySelector('.managed-version-review') === null");
+        touchInput("managed-note-0-reading-toggle");
+        assertFullNoteReading("managed-note-0", "Retained recovery draft", true);
+        awaitPage("reading a paused draft sends no save or read",
+            DIAGNOSTICS + ".save === 1 && " + DIAGNOSTICS + ".load === 1" +
+            " && document.querySelector('#managed-note-0')?.disabled === true");
         clickWatchlistAction("Reconcile pending save");
         awaitPage("original command replay confirms its one invented commit without another write",
             DIAGNOSTICS + ".save === 2 && " + DIAGNOSTICS + ".recoveryCommits === 1" +
@@ -1725,6 +1743,44 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
             " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void assertFullNoteReading(String id, String expected, boolean open) throws Exception {
+        awaitPage("full current draft is literal wrapped text: " + id,
+            "(() => { const text = document.getElementById(" + JSONObject.quote(id + "-reading-text") + ");" +
+            " const disclosure = text?.closest('details'); const summary = disclosure?.querySelector('summary');" +
+            " return text?.textContent === " + JSONObject.quote(expected) +
+            " && text.children.length === 0 && getComputedStyle(text).whiteSpace === 'pre-wrap'" +
+            " && getComputedStyle(text).overflowWrap === 'anywhere' && text.scrollWidth <= text.clientWidth" +
+            " && disclosure?.open === " + open +
+            " && summary?.id === " + JSONObject.quote(id + "-reading-toggle") +
+            " && summary.textContent.startsWith('Read full note for ')" +
+            " && getComputedStyle(summary).minHeight === '44px'; })()");
+    }
+
+    // These two frames cover only the first or last eighty characters.
+    // The separate assertion checks every character of the complete paragraph.
+    private void retainFullNoteTextFrame(String name, String id, boolean last) throws Exception {
+        String range = "const text = document.getElementById(" + JSONObject.quote(id + "-reading-text") + ");" +
+            " if (!text || text.textContent !== " + JSONObject.quote(ANNUAL_NOTE) + " || text.children.length !== 0) return false;" +
+            " const node = text.firstChild; if (!node || node.nodeType !== Node.TEXT_NODE) return false;" +
+            " const length = node.length; if (length < 80) return false; const range = document.createRange();" +
+            " range.setStart(node," + (last ? "length - 80" : "0") + ");" +
+            " range.setEnd(node," + (last ? "length" : "80") + ");";
+        CountDownLatch scrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { " + range + " const r = range.getBoundingClientRect(), v = visualViewport;" +
+            " if (!v) return false; window.scrollBy({top:r.top-v.offsetTop-16,behavior:'instant'}); return true; })()",
+            ignored -> scrolled.countDown()));
+        assertTrue("Full-note text range did not scroll", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String visible = "(() => { " + range +
+            " const v = visualViewport, rects = Array.from(range.getClientRects());" +
+            " return v && text.closest('details')?.open && rects.length > 0 && rects.every(r =>" +
+            " r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height); })()";
+        awaitPage("Full-note declared text range is visible: " + name, visible);
+        retainScreenshot(name);
+        awaitPage("Full-note declared text range stayed visible: " + name, visible);
     }
 
     private void retainAnnualNoteFrame(String name, String scrollSelector, String selectors, int count) throws Exception {
