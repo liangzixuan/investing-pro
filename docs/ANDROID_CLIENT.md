@@ -19,9 +19,12 @@ The signed 1.19.0 update (code 20) delivers PR 63's complete current-note reader
 in company research and My Watchlist. Wrapped plain text includes unsaved changes
 and remains available when editing is paused. Saving stays explicit. Build,
 complete artifact and delivery reviews passed with the existing production signer.
-Twenty invented-data native cases and 22 scoped original images are accepted;
-physical 1.14 through 1.19 use remains open. The owner's issue-free Pixel 1.13
-report is separate. See Current work for exact source and APK identity.
+Twenty invented-data native cases and 22 scoped original images are accepted.
+On October 10 the owner reported the requested 1.19 and Brave checklist passed
+on a Pixel 10 Pro XL running Android 17, without per-step device logs or browser
+measurements. Physical 1.14 through 1.18, screen-reader and backup/restore
+acceptance remain open. The earlier issue-free Pixel 1.13 report is separate.
+See Current work for exact source, APK identity and checklist scope.
 
 ## Client profiles
 

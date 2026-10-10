@@ -656,7 +656,10 @@ describe("Android managed fixture startup", () => {
     expect(annualNoteDraft).toContain(
       "Reported net margin -10% to 10%, change 20 percentage points.",
     );
-    expect(report.evidence.observations).toHaveLength(4);
+    expect(annualNoteDraft).toContain(
+      "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%.",
+    );
+    expect(report.evidence.observations).toHaveLength(6);
     const command = {
       expectedVersion: 1,
       idempotencyKey: "12345678-1234-4123-8123-123456789012",

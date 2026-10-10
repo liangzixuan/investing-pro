@@ -136,35 +136,66 @@ function change(prior: string, current: string): PersonalSecAnnualChange {
   });
 }
 
-/** Uses a structurally validated bounded packet; no source request or older-filing fallback. */
-export function comparePersonalSecAnnualEvidence(
+type UnavailableReason = Extract<
+  PersonalSecAnnualComparison,
+  { status: "unavailable" }
+>["reason"];
+
+export type PersonalSecAnnualPeriod = Readonly<{
+  startDate: string;
+  endDate: string;
+  revenue: string;
+  netIncome: string;
+  netMarginPercent: string | null;
+  observationIds: readonly string[];
+}>;
+
+export type PersonalSecAnnualHistory =
+  | Readonly<{
+      status: "unavailable";
+      reason: "current_report_unavailable" | "current_use_unavailable";
+    }>
+  | Readonly<{
+      status: "available";
+      concept: PersonalSecAnnualPairDto["concept"];
+      accessionNumber: string;
+      periods: readonly PersonalSecAnnualPeriod[];
+      stoppedReason: UnavailableReason | null;
+    }>;
+
+function period(
+  startDate: string,
+  endDate: string,
+  revenue: string,
+  netIncome: string,
+  observationIds: readonly string[],
+): PersonalSecAnnualPeriod {
+  return Object.freeze({
+    startDate,
+    endDate,
+    revenue,
+    netIncome,
+    netMarginPercent: new D(revenue).gt(0)
+      ? calculatePersonalSecAnnualNetMargin(revenue, netIncome)
+      : null,
+    observationIds: Object.freeze([...observationIds]),
+  });
+}
+
+function previousPeriod(
   input: PersonalSecAnnualResolutionInput,
   concept: PersonalSecAnnualPairDto["concept"],
-): PersonalSecAnnualComparison {
-  const unavailable = (
-    reason: Extract<
-      PersonalSecAnnualComparison,
-      { status: "unavailable" }
-    >["reason"],
-  ): PersonalSecAnnualComparison =>
-    Object.freeze({ status: "unavailable", reason });
-  const resolution = resolvePersonalSecAnnualEvidence(input);
-  const current = resolution.bases
-    .find((basis) => basis.concept === concept)
-    ?.pairs.find((pair) => pair.status === "eligible");
+  next: PersonalSecAnnualPeriod,
+):
+  | Readonly<{ status: "available"; period: PersonalSecAnnualPeriod }>
+  | Readonly<{ status: "unavailable"; reason: UnavailableReason }> {
+  const unavailable = (reason: UnavailableReason) =>
+    Object.freeze({ status: "unavailable" as const, reason });
   const { target, generation, observations } = input;
-  if (
-    target.status !== "target" ||
-    current === undefined ||
-    current.startDate === null ||
-    current.revenue === null ||
-    current.netIncome === null
-  )
+  if (target.status !== "target")
     return unavailable("current_report_unavailable");
-  if (!resolution.currentTargetEligible)
-    return unavailable("current_use_unavailable");
   const priorEnd = new Date(
-    Date.parse(`${current.startDate}T00:00:00Z`) - 86_400_000,
+    Date.parse(`${next.startDate}T00:00:00Z`) - 86_400_000,
   )
     .toISOString()
     .slice(0, 10);
@@ -206,12 +237,8 @@ export function comparePersonalSecAnnualEvidence(
     )
   )
     return unavailable("previous_period_invalid");
-  const currentIds = [
-    ...current.revenueObservationIds,
-    ...current.incomeObservationIds,
-  ];
   const operands = [
-    ...observations.filter((row) => currentIds.includes(row.id)),
+    ...observations.filter((row) => next.observationIds.includes(row.id)),
     ...priorRows,
   ];
   if (
@@ -234,20 +261,107 @@ export function comparePersonalSecAnnualEvidence(
     return unavailable("previous_values_conflicted");
   return Object.freeze({
     status: "available",
-    concept,
-    accessionNumber: target.accessionNumber,
-    priorStartDate: revenue[0]!.startDate!,
-    priorEndDate: priorEnd,
-    currentStartDate: current.startDate,
-    currentEndDate: current.endDate,
-    revenue: change(revenue[0]!.value, current.revenue),
-    netIncome: change(income[0]!.value, current.netIncome),
-    netMargin: marginComparison(
+    period: period(
+      revenue[0]!.startDate!,
+      priorEnd,
       revenue[0]!.value,
       income[0]!.value,
+      priorRows.map((row) => row.id),
+    ),
+  });
+}
+
+function annualHistory(
+  input: PersonalSecAnnualResolutionInput,
+  concept: PersonalSecAnnualPairDto["concept"],
+  limit: 2 | 3,
+): PersonalSecAnnualHistory {
+  const resolution = resolvePersonalSecAnnualEvidence(input);
+  const current = resolution.bases
+    .find((basis) => basis.concept === concept)
+    ?.pairs.find((pair) => pair.status === "eligible");
+  if (
+    input.target.status !== "target" ||
+    current === undefined ||
+    current.startDate === null ||
+    current.revenue === null ||
+    current.netIncome === null
+  )
+    return Object.freeze({
+      status: "unavailable",
+      reason: "current_report_unavailable",
+    });
+  if (!resolution.currentTargetEligible)
+    return Object.freeze({
+      status: "unavailable",
+      reason: "current_use_unavailable",
+    });
+  const periods = [
+    period(
+      current.startDate,
+      current.endDate,
       current.revenue,
       current.netIncome,
+      [...current.revenueObservationIds, ...current.incomeObservationIds],
     ),
-    observationIds: Object.freeze(operands.map((row) => row.id)),
+  ];
+  let stoppedReason: UnavailableReason | null = null;
+  while (periods.length < limit) {
+    const previous = previousPeriod(input, concept, periods.at(-1)!);
+    if (previous.status === "unavailable") {
+      stoppedReason = previous.reason;
+      break;
+    }
+    periods.push(previous.period);
+  }
+  return Object.freeze({
+    status: "available",
+    concept,
+    accessionNumber: input.target.accessionNumber,
+    periods: Object.freeze(periods),
+    stoppedReason,
+  });
+}
+
+/** At most three contiguous annual periods from the already admitted filing. */
+export function resolvePersonalSecAnnualHistory(
+  input: PersonalSecAnnualResolutionInput,
+  concept: PersonalSecAnnualPairDto["concept"],
+): PersonalSecAnnualHistory {
+  return annualHistory(input, concept, 3);
+}
+
+/** Uses a structurally validated bounded packet; no source request or older-filing fallback. */
+export function comparePersonalSecAnnualEvidence(
+  input: PersonalSecAnnualResolutionInput,
+  concept: PersonalSecAnnualPairDto["concept"],
+): PersonalSecAnnualComparison {
+  const history = annualHistory(input, concept, 2);
+  if (history.status === "unavailable") return history;
+  const [current, prior] = history.periods;
+  if (prior === undefined)
+    return Object.freeze({
+      status: "unavailable",
+      reason: history.stoppedReason!,
+    });
+  return Object.freeze({
+    status: "available",
+    concept,
+    accessionNumber: history.accessionNumber,
+    priorStartDate: prior.startDate,
+    priorEndDate: prior.endDate,
+    currentStartDate: current!.startDate,
+    currentEndDate: current!.endDate,
+    revenue: change(prior.revenue, current!.revenue),
+    netIncome: change(prior.netIncome, current!.netIncome),
+    netMargin: marginComparison(
+      prior.revenue,
+      prior.netIncome,
+      current!.revenue,
+      current!.netIncome,
+    ),
+    observationIds: Object.freeze(
+      history.periods.flatMap((p) => p.observationIds),
+    ),
   });
 }

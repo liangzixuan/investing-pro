@@ -93,7 +93,9 @@ public class ManagedWorkspaceInstrumentedTest {
         "NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). " +
         "Reported net margin -10% to 10%, change 20 percentage points. " +
         "Period length, accounting changes and restatements are unadjusted; " +
-        "not as-originally-filed history or organic growth. Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "not as-originally-filed history or organic growth. " +
+        "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; " +
+        "NetIncomeLoss USD 32; net margin 5%. Filed 2026-02-01; accession 0000000001-26-000001; " +
         "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
         "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
         "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
@@ -1557,6 +1559,26 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector(" + JSONObject.quote(comparison + " .sec-quarterly-caveat") + ")?.textContent.includes('No adjustment for period length, accounting changes or restatements')" +
             " && document.querySelector(" + JSONObject.quote(comparison + " > details > ol") + ")?.children.length === 4");
         assertAnnualNoteCounts(1, 0, 1);
+        String history = basis + " .sec-annual-history";
+        click(history + " > summary");
+        awaitPage("three adjacent annual periods retain exact dates, values and original inputs",
+            "document.querySelector(" + JSONObject.quote(history) + ")?.open === true" +
+            " && document.querySelector(" + JSONObject.quote(history + " > summary") + ")?.textContent === 'Read reported annual history · 3 periods'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > h5") + ")).map(e => e.textContent).join(',') === '2025-01-01 to 2025-12-31,2024-01-01 to 2024-12-31,2023-01-01 to 2023-12-31'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > dl dd") + ")).map(e => e.textContent).join(',') === '1000,100,10%,800,-80,-10%,640,32,5%'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > details > ol") + ")).map(e => e.children.length).join(',') === '2,2,2'" +
+            " && document.querySelector(" + JSONObject.quote(history) + ")?.textContent.includes('0000000001-26-000001')" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualNoteCounts(1, 0, 1);
+        retainAnnualNoteFrame("annualEvidenceHistorySummary", history + " > summary", history + " > summary", 1);
+        retainAnnualNoteFrame("annualEvidenceHistoryCurrent", history + " > ol > li:nth-child(1)", history + " > ol > li:nth-child(1)", 1);
+        retainAnnualNoteFrame("annualEvidenceHistoryPrior", history + " > ol > li:nth-child(2)", history + " > ol > li:nth-child(2)", 1);
+        retainAnnualNoteFrame("annualEvidenceHistoryEarlier", history + " > ol > li:nth-child(3)", history + " > ol > li:nth-child(3)", 1);
+        assertAnnualNoteCounts(1, 0, 1);
+        click(history + " > summary");
+        awaitPage("closing annual history preserves the draft and selected report",
+            "document.querySelector(" + JSONObject.quote(history) + ")?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
         // Each source region fits the native viewport; the note action follows the comparison.
         retainAnnualNoteFrame("annualEvidenceNoteSource", basis + " > h4",
             basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl", 3);

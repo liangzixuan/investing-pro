@@ -372,8 +372,22 @@ textarea:disabled {
 .managed-annual-report ol {
   padding-left: 22px;
 }
+.managed-annual-report .sec-annual-history-periods {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  list-style: none;
+  padding: 0;
+}
+.managed-annual-report .sec-annual-history-periods > li {
+  min-width: 0;
+}
+.managed-annual-report .sec-annual-history-periods dd {
+  overflow-wrap: anywhere;
+}
 @media (max-width: 640px) {
-  .managed-annual-report .sec-quarterly-comparison-coordinates {
+  .managed-annual-report .sec-quarterly-comparison-coordinates,
+  .managed-annual-report .sec-annual-history-periods {
     grid-template-columns: minmax(0, 1fr);
   }
   .managed-annual-report .sec-quarterly-comparison,
