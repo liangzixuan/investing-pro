@@ -42,6 +42,12 @@ identity, conflicts and uncertain saves. Catalog reads have their own lifetime;
 they cannot clear a pending save. Session changes retire the old workspace and
 fence late responses.
 
+[ManagedSignOut](../apps/web/src/clerk-trial/ManagedSignOut.tsx) reads the existing
+coordinator snapshot and owns only the transient confirmation view. It checks a
+fresh snapshot when confirming; session retirement hides the review and fences
+stale actions. Pending-save completion updates the explanation without moving
+focus. No additional command store, authentication rule or durable draft is added.
+
 [Annual](../apps/web/src/clerk-trial/managed-annual-report.ts) and
 [EOD](../apps/web/src/clerk-trial/managed-eod-history.ts) have separate read models.
 Opening a panel makes no source request. Selection includes the exact catalog

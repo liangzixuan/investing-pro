@@ -1,87 +1,81 @@
 # Current work
 
-Updated October 9, 2026. This is the portable status summary for the public
+Updated October 10, 2026 (UTC). This is the portable status summary for the public
 repository. [Product roadmap](PRODUCT_ROADMAP.md) owns goals and delivery order;
 [architecture](ARCHITECTURE.md) explains runtime boundaries. Private operational
 receipts remain outside Git. Earlier releases and bounded live journeys are in
-the [dated status archive](history/CURRENT_WORK-2026-10-09-before-pr59.md).
+the [dated status archive](history/CURRENT_WORK-2026-10-10-before-pr61.md).
 
 ## Accepted release
 
-[PR 59](https://github.com/liangzixuan/investing-pro/pull/59) is merged as
-`c2fe66ca102da0d5a751f610772cffa04b874701`, from candidate
-`3f938bf0da918bf9bec5a2cbae1aadb588cd960a`, with tree
-`9a01034cf6a7539afeeb259c8d03b82321d7eea5`. Five required actual-main workflows
-and six jobs, the original producing-CI source proof and eighteen invented-data
-native cases are accepted. The first native capture could not show the margin
-and full disclosure together; separate viewports passed with the value,
-visibility and complete-note assertions retained. Original failures are preserved.
+[PR 61](https://github.com/liangzixuan/investing-pro/pull/61) is merged as
+`ed3e342f8223eff9ff589e39c74b015e45217fe7`, from candidate
+`da6dad8dd3728bda7d23666c485f01fdd98cc8cf`, with tree
+`31079cbfb809e8f913b21e6b6b43bb5f1e69ec0d`. Three required actual-main workflows and
+four jobs, the original producing-CI source proof and twenty invented-data native
+cases are accepted. Original failures and the unchanged-job capture retry remain
+preserved; the passing retry does not establish the original failure's cause.
 
-The [reported net-margin comparison](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
-shows prior and current `NetIncomeLoss / revenue * 100` for each eligible named
-revenue basis in the same filing. Its change is in percentage points, computed
-from unrounded ratios and rounded once. Nonpositive prior revenue makes that
-margin and change unavailable; the reported amounts and differences stay visible.
-The comparison joins the Annual note excerpt without another provider request.
-Appending preserves the latest draft and the 2,000-character limit. Review and
-explicit **Save watchlist** remain required. This completes the selected margin
-outcome; full M2 remains open.
+[Intentional sign-out review](APPWRITE_WATCHLIST.md#review-an-intentional-sign-out)
+lets the user keep editing or confirm sign-out when the draft is unsaved, a save
+is running or its result is uncertain. The save review explains that the server
+may already have committed it. Staying preserves the original command; confirming
+clears local command details through the existing session operation. A later
+sign-in and saved-version read is needed to check the outcome. Clean sign-out
+remains direct. Expiry, authentication rejection and session replacement still
+retire the workspace immediately and fence stale confirmations and late responses.
+This completes the selected sign-out outcome without changing authentication,
+storage, providers or dependencies. Earlier Annual comparisons and recovery remain
+available; full M1 and M2 remain open.
 
-[Watchlist recovery](APPWRITE_WATCHLIST.md#review-the-saved-version-and-retained-draft)
-retains PR 57's saved-version and draft review. A fresh successful read is required
-before choosing either complete version after a failed repeat read. The current
-release preserves that behavior and the existing source, quota and identity limits.
-
-A fresh API build and normal activation accepted deployment
-`6ac93c888eb42e76a4e5`, replacing retained rollback identity
-`6ac86cc425ba09b3b95b`. Complete bundle review found only two identifier renames
-against the prior accepted bundle. Compiled admission checks and ten finite
-anonymous production checks passed. Authentication and provider configuration
-are unchanged. Release verification made no live provider request or owner write.
+The API remains at deployment `6ac93c888eb42e76a4e5`, built from
+PR 59's `c2fe66ca102da0d5a751f610772cffa04b874701`. Current source, tool,
+configuration hashes and bundle inputs matched before and after one finite
+production-pointer read. No API build or activation was needed. Authentication,
+source entitlement and quota boundaries remain unchanged. Verification made no
+live provider request or owner-record write.
 
 Website release
-[37980363346](https://github.com/liangzixuan/investing-pro/actions/runs/37980363346),
+[38006849982](https://github.com/liangzixuan/investing-pro/actions/runs/38006849982),
 attempt 1, promoted the same accepted archive after normal production approval.
-Staging `6ac9404d0a91d69e0210` and production `6ac9440624fa2932a6da` used the
-830,646-byte archive, SHA-256
-`009392f489851fb22289e5dff910627fb738300947ca6756488a78924fbc5a10`.
-Production replaced `6ac8fa1dca9788d5bca3`; its receipt verified activation on
-October 9 at 19:44:37 UTC. These are finite observations, without a continuing
-availability claim.
+Staging `6ac97f6adc9be5748522` and production
+`6ac98282697ead2c30bc` used the 831,131-byte archive,
+SHA-256 `26f50e270ad43204e26311b22f675be2036cf8b2e5d3a7ec1ef289abd920badc`.
+Production replaced `6ac9440624fa2932a6da`; its receipt
+verified activation at `2026-10-10T00:11:13.402Z`. These are finite
+observations, without a continuing availability claim.
 
-Signed Android 1.17.0, code 18, passed build, complete artifact and delivery
-review with package `app.investingpro.android` and the existing production
-signer. The delivered APK is 6,658,308 bytes, SHA-256
-`2935f134eef78ab139d66a83f0b9f93296c2397192af072ebfebd930ae30124a`.
-Its source is the PR 59 main commit above. All 510 APK members, five declared
-managed assets and fourteen merged native component declarations were checked.
-Earlier APKs and rollback identities remain preserved. Physical 1.17 installation
+Signed Android 1.18.0, code 19, passed build, complete artifact and delivery review
+with package `app.investingpro.android` and the existing production signer.
+The delivered APK is 6,658,748 bytes, SHA-256
+`7345027fc962a412492b6ddf49799cab4eec78a50eed21702a32cf79df983d75`. Its source is the PR 61 main commit above.
+Earlier APKs and rollback identities remain preserved. Physical 1.18 installation
 or use is not accepted here.
 
-The eighteen-case API-36 emulator report covers three disconnected and fifteen
-managed journeys. Thirteen of forty-nine original PNGs received scoped visual
-review. Forty-six capture callbacks, forty-two phase diagnostics and the full
+The twenty-case API-36 emulator report covers three disconnected and seventeen
+managed journeys. Twenty of fifty-six original PNGs received scoped visual review.
+Fifty-three capture callbacks, fifty-two phase diagnostics and the full
 964-character invented saved-note assertion are separate native evidence;
-scoped screenshots do not establish the full note or chart visually.
-BrowserStack covered the exact staging build's inert shell at desktop and
-narrow widths. Authenticated browser use, physical Pixel 1.14 through 1.17,
-separate screen-reader and backup/restore acceptance remain open. The owner
-reported Pixel use of 1.13 without issues, without per-step logs.
+scoped screenshots do not establish the full note or chart visually. BrowserStack
+covered the exact staging build's inert shell at desktop and narrow widths.
+Authenticated browser use, physical Pixel 1.14 through 1.18, separate screen-reader
+and backup/restore acceptance remain open. The owner reported Pixel use of 1.13
+without issues, without per-step logs.
 
 ## Delivery status
 
-| Surface                 | Accepted scope                                             | Remaining acceptance                                                    |
-| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Managed API and website | PR 59 API activation and same-archive website promotion    | Continuing availability and authenticated browser recovery use          |
-| Signed Android 1.17     | Build, complete artifact and exact delivered bytes         | Physical upgrade and use                                                |
-| Synthetic native tests  | Eighteen invented-data journeys and thirteen scoped frames | Production sign-in, live-provider use and physical-device behavior      |
-| Physical Pixel          | Owner reported issue-free Android 1.13 use                 | Separate 1.14 through 1.17, screen-reader and backup/restore acceptance |
-| Local research app      | Preserved local release and encrypted vault                | No migration or managed feature-parity claim                            |
+| Surface                 | Accepted scope                                          | Remaining acceptance                                                    |
+| ----------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Managed API and website | PR 61 API continuity and same-archive website promotion | Continuing availability and authenticated browser recovery use          |
+| Signed Android 1.18     | Build, complete artifact and exact delivered bytes      | Physical upgrade and use                                                |
+| Synthetic native tests  | Twenty invented-data journeys and twenty scoped frames  | Production sign-in, live-provider use and physical-device behavior      |
+| Physical Pixel          | Owner reported issue-free Android 1.13 use              | Separate 1.14 through 1.18, screen-reader and backup/restore acceptance |
+| Local research app      | Preserved local release and encrypted vault             | No migration or managed feature-parity claim                            |
 
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.17. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.18. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -134,13 +128,12 @@ that acceptance.
 
 ## Current task and next acceptance
 
-The selected reported net-margin outcome is delivered through PR 59 on the
-website and in signed Android 1.17. Affected calculation, rendering and note
-checks passed, followed by actual-main source checks, the original native report,
-fresh API activation, same-archive website promotion and signed delivery reviews.
-The earlier watchlist recovery outcome remains available. Synthetic coverage does
-not establish production two-device editing, physical upgrade, session-expiry
-recovery or cloud restore.
+The selected intentional sign-out review is delivered through PR 61 on the
+website and in signed Android 1.18. Local coordinator and screen checks, actual-main
+source checks, twenty invented-data native cases, scoped original screenshots,
+API continuity, same-archive website promotion and signed delivery passed.
+Synthetic coverage does not establish production two-device editing, physical
+upgrade, real interruption recovery or cloud restore.
 
 The next useful acceptance is a physical upgrade and controlled recovery visit,
 with separate browser/session and backup coverage. Select further product work
