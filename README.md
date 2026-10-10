@@ -33,6 +33,10 @@ and show feedback beside the field. **Go to first invalid note** in My Watchlist
 focuses the first invalid editor in the current order. Correct the note, review
 the draft, then save when ready.
 
+Intentional sign-out reviews unsaved drafts, active saves and uncertain results.
+Keep editing or check the original save command before choosing to sign out.
+Expiry and session replacement still clear the retired workspace immediately.
+
 [Current status and limits](docs/CURRENT_WORK.md#accepted-release) records the
 accepted website and signed Android releases, evidence limits and remaining work.
 

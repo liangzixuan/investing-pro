@@ -88,8 +88,10 @@ Clean sign-out and a failed sign-out retry remain direct. Authentication rejecti
 expiry and session replacement still retire the workspace immediately, hiding the
 review and fencing stale confirmations and late responses. The review keeps no
 durable draft, adds no provider request and changes no authentication rule.
-This implementation is awaiting native acceptance and release; current work
-records the separately accepted website and Android versions.
+PR 61 and signed Android 1.18 deliver this review. Twenty invented-data emulator
+cases cover draft cancellation, save settlement, uncertain-save retirement and
+late-response fences. Current work records source, website, signed-package and
+separate browser and physical acceptance limits.
 
 ### Review the saved version and retained draft
 
