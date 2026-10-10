@@ -115,6 +115,10 @@ provider request. Unsaved drafts remain in the mounted session only.
 
 ## Read a full note
 
+PR 63 and signed Android 1.19 deliver this reader. [Current work](CURRENT_WORK.md#accepted-release)
+records the source, website and signed-package acceptance, with separate visual,
+authenticated-browser and physical-device limits.
+
 **Read full note for the selected symbol** opens the current draft as wrapped
 plain text in company research and My Watchlist. It shows the complete note,
 including edits that are not yet saved. Editing can remain paused during a save

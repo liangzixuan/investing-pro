@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.18 package share Discover, a private
+The managed website and signed Android 1.19 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -212,6 +212,14 @@ same-archive website promotion and signed delivery passed. Physical 1.15 and
 authenticated browser acceptance remain separate. See [Current work](CURRENT_WORK.md).
 
 Prioritize daily use and recovery before expanding fields or cohorts:
+
+PR 63 and signed Android 1.19 deliver complete current-note reading in company
+research and My Watchlist. The wrapped plain-text disclosure includes unsaved
+changes and keeps explicit Save, validation and session retirement. Local checks,
+actual-main source proof, twenty invented-data native journeys, 22 scoped original
+images, API continuity, same-archive website promotion and signed delivery passed.
+Physical upgrade, authenticated-browser recovery, screen-reader and backup/restore
+acceptance remain separate. See [Current work](CURRENT_WORK.md).
 
 PR 61 and signed Android 1.18 deliver a review before intentional sign-out with
 unsaved or uncertain watchlist work. Staying preserves the draft or original save

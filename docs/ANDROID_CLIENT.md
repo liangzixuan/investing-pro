@@ -15,13 +15,13 @@ XL running Android 17, without per-step device logs. Earlier development-trial
 results are separate: its package and debug signer cannot upgrade the production
 app. The local research app and encrypted vault also remain separate.
 
-The signed 1.18.0 update (code 19) delivers PR 61's intentional sign-out review
-for unsaved drafts, active saves and uncertain save results. It preserves the
-existing session adapter and immediate retirement rules. Build, complete artifact
-and delivery reviews passed with the existing production signer. Twenty invented-data
-native cases and twenty scoped original frames are accepted; physical 1.14 through
-1.18 use remains open. The owner's issue-free Pixel 1.13 report is separate.
-See Current work for exact source and APK identity.
+The signed 1.19.0 update (code 20) delivers PR 63's complete current-note reader
+in company research and My Watchlist. Wrapped plain text includes unsaved changes
+and remains available when editing is paused. Saving stays explicit. Build,
+complete artifact and delivery reviews passed with the existing production signer.
+Twenty invented-data native cases and 22 scoped original images are accepted;
+physical 1.14 through 1.19 use remains open. The owner's issue-free Pixel 1.13
+report is separate. See Current work for exact source and APK identity.
 
 ## Client profiles
 
