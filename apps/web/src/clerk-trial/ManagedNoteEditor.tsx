@@ -39,6 +39,15 @@ export function ManagedNoteEditor({
           ? "Use at most 2,000 characters. Remove embedded line breaks and unsupported characters."
           : null}
       </div>
+      <details key={listingId} className="managed-note-reading">
+        <summary id={`${id}-reading-toggle`}>
+          Read full note for {symbol}
+        </summary>
+        <p>Current draft. Save all changes in My Watchlist.</p>
+        <p id={`${id}-reading-text`} className="trial-saved-note">
+          {note || "No note in this draft."}
+        </p>
+      </details>
     </>
   );
 }

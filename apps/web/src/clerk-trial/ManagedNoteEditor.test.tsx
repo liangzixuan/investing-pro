@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 
 function editor(note: string, disabled = false) {
-  const onChange = vi.fn();
+  const onChange = vi.fn<(note: string) => void>();
   const element: React.ReactElement<{ children: React.ReactNode }> =
     ManagedNoteEditor({
       id: "invented-note",
@@ -18,7 +18,16 @@ function editor(note: string, disabled = false) {
   const input = React.Children.toArray(element.props.children).find(
     (child) => React.isValidElement(child) && child.type === "textarea",
   ) as React.ReactElement<React.ComponentProps<"textarea">>;
-  return { input, onChange, html: renderToStaticMarkup(element) };
+  const reading = React.Children.toArray(element.props.children).find(
+    (child) => React.isValidElement(child) && child.type === "details",
+  ) as React.ReactElement<React.ComponentProps<"details">>;
+  return {
+    input,
+    reading,
+    onChange,
+    html: renderToStaticMarkup(element),
+    readingHtml: renderToStaticMarkup(reading),
+  };
 }
 
 describe("managed note editor", () => {
@@ -73,5 +82,44 @@ describe("managed note editor", () => {
     expect(blocked.input.props.disabled).toBe(true);
     expect(blocked.input.props.value).toBe(raw);
     expect(blocked.input.props["aria-invalid"]).toBe(true);
+  });
+
+  it("offers the complete long current draft without a save or truncated reading field", () => {
+    const note = `Start of invented research. ${"Exact evidence; ".repeat(110)}End of invented research.`;
+    const { reading, readingHtml, onChange } = editor(note);
+    expect(reading.props.open).toBeUndefined();
+    expect(readingHtml).toContain("Read full note for INVENTED");
+    expect(readingHtml).toContain(
+      `<p id="invented-note-reading-text" class="trial-saved-note">${note}</p>`,
+    );
+    expect(readingHtml).toContain(
+      "Current draft. Save all changes in My Watchlist.",
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps raw invalid text and literal markup readable while editing is paused", () => {
+    const raw =
+      "  First line\n<script>alert('invented')</script> & second line  ";
+    const { input, readingHtml, onChange } = editor(raw, true);
+    expect(input.props.disabled).toBe(true);
+    expect(input.props["aria-invalid"]).toBe(true);
+    expect(readingHtml).toContain(
+      "  First line\n&lt;script&gt;alert(&#x27;invented&#x27;)&lt;/script&gt; &amp; second line  ",
+    );
+    expect(readingHtml).not.toContain("<script>");
+    expect(readingHtml).not.toContain("disabled");
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("reads the latest edit and explains an empty draft", () => {
+    const original = editor("Earlier draft");
+    original.input.props.onChange!({
+      target: { value: "Latest invented draft" },
+    } as React.ChangeEvent<HTMLTextAreaElement>);
+    const updated = editor(original.onChange.mock.calls[0]![0]);
+    expect(updated.readingHtml).toContain("Latest invented draft");
+    expect(updated.readingHtml).not.toContain("Earlier draft");
+    expect(editor("").readingHtml).toContain("No note in this draft.");
   });
 });

@@ -1458,6 +1458,7 @@ describe("managed workspace screen", () => {
     expect(output).not.toContain("Private research note");
     expect(output).not.toContain("Private search");
     expect(output).not.toContain("textarea");
+    expect(output).not.toContain("managed-note-reading");
     expect(output).not.toContain("Find a company");
     expect(output).not.toContain("Save watchlist");
     expect(output).toContain("local watchlist data has been cleared");
@@ -1705,6 +1706,12 @@ describe("managed workspace screen", () => {
     const raw = "Company draft\nneeds correction";
     workspace.noteResearch(selection, raw);
     const invalid = html();
+    expect(invalid).toContain(
+      `<p id="managed-research-note-reading-text" class="trial-saved-note">${raw}</p>`,
+    );
+    expect(invalid).toContain(
+      `<p id="managed-note-1-reading-text" class="trial-saved-note">${raw}</p>`,
+    );
     const tag = (markup: string, id: string) =>
       markup.match(new RegExp(`<textarea id="${id}"[^>]*>`, "u"))?.[0];
     expect(tag(invalid, "managed-note-0")).not.toContain('aria-invalid="true"');
@@ -1730,6 +1737,9 @@ describe("managed workspace screen", () => {
       corrected,
     );
     const valid = html();
+    expect(valid).toContain(
+      `<p id="managed-research-note-reading-text" class="trial-saved-note">${corrected}</p>`,
+    );
     expect(valid).not.toContain('aria-invalid="true"');
     expect(valid).not.toContain('id="managed-note-validation-focus"');
     expect(workspace.canSavePayload()).toBe(true);

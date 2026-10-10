@@ -128,12 +128,12 @@ that acceptance.
 
 ## Current task and next acceptance
 
-The selected intentional sign-out review is delivered through PR 61 on the
-website and in signed Android 1.18. Local coordinator and screen checks, actual-main
-source checks, twenty invented-data native cases, scoped original screenshots,
-API continuity, same-archive website promotion and signed delivery passed.
-Synthetic coverage does not establish production two-device editing, physical
-upgrade, real interruption recovery or cloud restore.
+The selected next outcome is [reading a complete current note
+draft](MANAGED_RESEARCH_NAVIGATION.md#read-a-full-note) in company research and
+My Watchlist. The inline disclosure reuses the shared editor and wrapped plain
+text. It retains explicit Save, validation and session retirement. Source,
+invented-data native acceptance, website and Android delivery remain pending;
+PR 61 and signed Android 1.18 remain the accepted product release above.
 
 The next useful acceptance is a physical upgrade and controlled recovery visit,
 with separate browser/session and backup coverage. Select further product work
