@@ -95,7 +95,7 @@ separate browser and physical acceptance limits.
 
 ### Leaving the managed browser with unconfirmed work
 
-The current candidate requests the browser's standard leave confirmation before
+PR67 on the managed website requests the browser's standard leave confirmation before
 a reload, tab close or navigation outside the document when the mounted watchlist
 has an unsaved draft, an active save/reconciliation or an uncertain save result.
 Raw invalid notes also count as unsaved work. The listener reads the current
@@ -114,11 +114,12 @@ can skip the event entirely. This is no durable draft or process-death recovery.
 See the [HTML navigation contract](https://html.spec.whatwg.org/multipage/browsing-the-web.html#preventing-navigation)
 and [browser event guidance](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event).
 
-Candidate tests use invented records and cancelable events to cover invalid drafts,
+Focused tests use invented records and cancelable events to cover invalid drafts,
 active saves, conflicts, the original uncertain command, explicit reconciliation,
 saved-version choice, retirement, late completion and disposal. Composition tests
-check the browser opt-in and native exclusion. Hosted checks, delivery and actual
-browser confirmation acceptance remain pending; production status is in
+check the browser opt-in and native exclusion. Required actual-main checks, source
+proof, twenty native journeys and same-archive website promotion passed. Actual
+browser confirmation remains unaccepted; signed Android 1.20 is unchanged. Exact status is in
 [Current work](CURRENT_WORK.md).
 
 ### Review the saved version and retained draft
