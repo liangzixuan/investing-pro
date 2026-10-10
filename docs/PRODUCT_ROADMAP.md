@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.19 package share Discover, a private
+The managed website and signed Android 1.20 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -223,13 +223,19 @@ Pro XL running Android 17 on October 10. Controlled authenticated recovery,
 screen-reader and backup/restore acceptance remain separate. See
 [Current work](CURRENT_WORK.md) for the checklist scope and evidence limits.
 
-The next selected company outcome is up to three adjacent annual periods from
-the existing admitted same-filing packet. It retains exact dates and USD amounts,
-available net margins, inspectable inputs and explicit note review. Missing or
-conflicting older evidence stops history without substituting another filing or
-revenue basis. No source, cohort or request expansion is selected. Implementation
-and release acceptance are pending; see the
-[Annual guide](MANAGED_SEC_ANNUAL.md#reported-annual-history-candidate).
+PR65 and signed Android 1.20 deliver up to three adjacent annual periods from
+the existing admitted same-filing packet. Exact dates, unscaled USD amounts,
+available net margins and inspectable observations remain visible. An admitted
+third period joins the explicit note-draft action within the existing character
+limit. Missing or conflicting evidence stops history without switching filing
+or basis. Five required actual-main workflows/six jobs, twenty native cases and
+26 scoped original frames, a fresh byte-identical API build, same-archive website
+promotion and signed delivery passed. Physical 1.20 and controlled authenticated
+recovery remain open. No feed, cohort, response field or request was added. See
+the [Annual guide](MANAGED_SEC_ANNUAL.md#reported-annual-history).
+
+The next product outcome is unselected. Continue the daily-use and recovery
+priorities below before expanding fields or cohorts.
 
 PR 61 and signed Android 1.18 deliver a review before intentional sign-out with
 unsaved or uncertain watchlist work. Staying preserves the draft or original save

@@ -115,9 +115,9 @@ review and explicit Save watchlist remain required. The comparison adds no sourc
 request, response field, dependency or persistent state. Existing refresh,
 cancellation, visit and session lifetimes apply.
 
-## Reported annual history candidate
+## Reported annual history
 
-The selected candidate adds a collapsed **Read reported annual history** view
+PR65 and signed Android 1.20 deliver a collapsed **Read reported annual history** view
 for each eligible named revenue basis. It lists up to three adjacent periods,
 newest first, from the already loaded packet and selected accession. Each period
 retains its exact date range, unscaled USD revenue and NetIncomeLoss, net margin
