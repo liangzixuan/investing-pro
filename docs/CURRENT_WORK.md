@@ -8,13 +8,22 @@ their dates and limits in the [status archive](history/CURRENT_WORK-2026-10-10-b
 
 ## Accepted release
 
-[PR 65](https://github.com/liangzixuan/investing-pro/pull/65) is merged as
-`3658cf15b3576d600274e50d9733a70cf347130e`, from candidate
-`fff45b99e2ff86731fbf4847d8a1d9eb73acd25f`, with tree
-`17d1e5177bc207b17798393186b292818a670b4e`. Five required actual-main workflows and
-six jobs, the original producing-CI source proof and twenty invented-data native
-cases are accepted. All original failures and earlier releases remain retained.
+[PR 67](https://github.com/liangzixuan/investing-pro/pull/67) is merged as
+`04bdf94a1b5bb3f0894f14070501653c863b387d`, from candidate
+`8c96d6fb6836e0de2dd46459cf1893e79e2bb59f`, with tree
+`eeee043b0186c6c8d19eab47b394d4ac74d3d5e2`. Three required actual-main workflows and
+four jobs, the original producing-CI source proof and twenty invented-data native
+cases are accepted. The first native attempt failed during initial note entry;
+the sole unchanged retry passed. Its original failure remains retained, without
+a root-cause or regression-exclusion claim.
 
+The managed website now requests the browser's standard leave confirmation for
+unsaved or uncertain watchlist work. It uses the current save coordinator and
+adds no automatic write or durable draft. Clean sessions and retired workspaces
+have no listener. Native Android and disconnected sessions omit the warning.
+Actual browser confirmation remains unaccepted; browsers can suppress it.
+
+The annual-history capability from PR65 and signed Android 1.20 remains delivered.
 [Read reported annual history](MANAGED_SEC_ANNUAL.md#reported-annual-history)
 opens up to three adjacent periods for an eligible named revenue basis from the
 already loaded filing packet. It retains exact period ranges, unscaled revenue
@@ -28,28 +37,29 @@ source or save request. Review and Save watchlist remain explicit. Full current-
 reading, draft-aware sign-out and the earlier Price workflows remain available.
 Full M1 and M2 remain open.
 
-The API remains at deployment `6ac93c888eb42e76a4e5`. A fresh PR65 bundle built
-after two consumed shared production inputs changed; its complete executable and
-package bytes matched the accepted PR59 build from
-`c2fe66ca102da0d5a751f610772cffa04b874701`. Source, tool and configuration hashes
-were checked before and after, and one finite production-pointer read passed.
-No API activation was needed. Authentication, entitlement and quotas are unchanged;
-verification made no live provider request or owner-record write.
+The API remains at deployment `6ac93c888eb42e76a4e5`, with the accepted
+PR65 executable and package bytes. All API/shared/root toolchain inputs were
+unchanged across the twelve reviewed web/documentation deltas. Complete source,
+tool and opaque configuration hashes were checked before and after one finite
+production-pointer read. No API build or activation was needed. Authentication,
+entitlement and quotas are unchanged; verification made no live provider request
+or owner-record write.
 
 Website release
-[38073652461](https://github.com/liangzixuan/investing-pro/actions/runs/38073652461),
+[38093464618](https://github.com/liangzixuan/investing-pro/actions/runs/38093464618),
 attempt 1, promoted the same accepted archive after normal production approval.
-Staging `6aca7c036f244f1b584d` and production `6aca7f3258ff62ec7f9d`
-used the 831,924-byte archive, SHA-256
-`c7aa4629e0b5191c23872b6fb2ce0a3f4c76e34de1e6665779d2acb1527082a7`.
-Production replaced `6ac9b8b5853ab9a46dff`; its original
-receipt verified activation at `2026-10-10T18:09:21.478Z`.
+Staging `6acac39de099821301a8` and production `6acac6ae6f819df0aa99`
+used the 831,539-byte archive, SHA-256
+`17722a88f5a32287a4c6197ad106bb95da13463e9ed4c5aa72605f82a175c813`.
+Production replaced `6aca7f3258ff62ec7f9d`; its original
+receipt verified activation at `2026-10-10T23:14:22.503Z`.
 This is finite receipt evidence without a continuing availability claim.
 
 Signed Android 1.20.0, code 21, passed build, complete artifact and delivery review
 with package `app.investingpro.android` and the existing production signer.
 The delivered APK is 6,659,632 bytes, SHA-256
-`a10f067def8574eb191ae86a07b958997a90190cba8d46c7f0987936745c7d85`. Its source is the PR65 main commit above.
+`a10f067def8574eb191ae86a07b958997a90190cba8d46c7f0987936745c7d85`. Its source remains PR65 main `3658cf15b3576d600274e50d9733a70cf347130e`.
+The browser-only PR67 change does not require an Android rebuild.
 All prior APKs and rollback identities remain preserved. Physical Android 1.20
 acceptance remains open.
 
@@ -72,13 +82,13 @@ The earlier issue-free Pixel 1.13 report remains historical.
 
 ## Delivery status
 
-| Surface                              | Accepted scope                                                                                 | Remaining acceptance                                          |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Managed API and website              | Fresh complete byte-identical API build, finite pointer review and same-archive PR65 promotion | Continuing availability and controlled authenticated recovery |
-| Signed Android 1.20                  | Build, complete artifact and exact delivered bytes                                             | Physical upgrade/use, screen-reader and backup/restore        |
-| Synthetic native tests               | Twenty invented-data journeys and 26 scoped original frames                                    | Production sign-in, live provider use and physical behavior   |
-| Physical Pixel and owner Brave visit | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use     | Separate 1.20, controlled recovery and backup/restore         |
-| Local research app                   | Preserved local release and encrypted vault                                                    | No migration or managed feature-parity claim                  |
+| Surface                              | Accepted scope                                                                             | Remaining acceptance                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Managed API and website              | Unchanged API input/pointer continuity and same-archive PR67 promotion                     | Continuing availability and controlled authenticated recovery |
+| Signed Android 1.20                  | Build, complete artifact and exact delivered bytes                                         | Physical upgrade/use, screen-reader and backup/restore        |
+| Synthetic native tests               | Twenty invented-data journeys and 26 scoped original frames                                | Production sign-in, live provider use and physical behavior   |
+| Physical Pixel and owner Brave visit | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use | Separate 1.20, controlled recovery and backup/restore         |
+| Local research app                   | Preserved local release and encrypted vault                                                | No migration or managed feature-parity claim                  |
 
 ## What works in the managed product
 
@@ -136,19 +146,18 @@ that acceptance.
 
 ## Current task and next acceptance
 
-PR65 reported annual history is delivered on the website and in signed Android
-1.20. Local calculation, rendering and note checks, actual-main source proof,
-twenty native cases, 26 scoped frames, fresh byte-identical API build, same-archive
-website promotion and signed delivery passed. Three-period availability depends
-on the admitted packet; the release adds no feed, cohort, response field or request.
+PR67 browser leave warnings are delivered on the website. The current save
+coordinator supplies unsaved, saving, reconciling and uncertain state; confirmed
+saves, the saved-version choice, cleanup and retirement remove the listener.
+Local unit and mounted-composition checks, required actual-main checks, source
+proof, twenty native journeys and same-archive website promotion passed.
+The actual browser dialog remains open, distinct from the inert BrowserStack shell.
 
-The next candidate requests the browser's standard leave confirmation for unsaved
-or uncertain watchlist work before a reload, tab close or external navigation.
-It uses the mounted save coordinator, adds no automatic write or durable draft,
-and explicitly excludes native Android and disconnected sessions. See the
-[watchlist guide](APPWRITE_WATCHLIST.md#leaving-the-managed-browser-with-unconfirmed-work).
-Hosted checks, delivery and actual browser confirmation acceptance are pending;
-the accepted website and Android 1.20 above remain the delivery baseline.
+Signed Android 1.20 retains PR65 annual history. Physical 1.20, screen-reader and
+backup/restore acceptance remain open; owner-reported 1.19 checks keep their scope.
+Prior PR66 actual-main Windows failures remain retained: the original owner-account
+test and sole unchanged retry failed with their existing limits. PR67 results do
+not retroactively accept those executions or establish their causes.
 
 Prioritize useful daily workflows and recovery using the existing modules and
 permitted sources. Controlled

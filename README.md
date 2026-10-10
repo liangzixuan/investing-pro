@@ -37,6 +37,12 @@ Intentional sign-out reviews unsaved drafts, active saves and uncertain results.
 Keep editing or check the original save command before choosing to sign out.
 Expiry and session replacement still clear the retired workspace immediately.
 
+The managed website requests a standard browser leave confirmation for unsaved
+or uncertain watchlist work. Browser rules can suppress it, especially on mobile;
+it does not save or restore a draft. Native Android and disconnected sessions
+omit this warning. [Current status](docs/CURRENT_WORK.md) keeps actual dialog
+acceptance separate from synthetic event and composition tests.
+
 [Current status and limits](docs/CURRENT_WORK.md#accepted-release) records the
 accepted website and signed Android releases, evidence limits and remaining work.
 
