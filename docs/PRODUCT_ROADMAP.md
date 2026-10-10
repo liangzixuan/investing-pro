@@ -218,8 +218,18 @@ research and My Watchlist. The wrapped plain-text disclosure includes unsaved
 changes and keeps explicit Save, validation and session retirement. Local checks,
 actual-main source proof, twenty invented-data native journeys, 22 scoped original
 images, API continuity, same-archive website promotion and signed delivery passed.
-Physical upgrade, authenticated-browser recovery, screen-reader and backup/restore
-acceptance remain separate. See [Current work](CURRENT_WORK.md).
+The owner reported the requested 1.19 and Brave checklist passed on a Pixel 10
+Pro XL running Android 17 on October 10. Controlled authenticated recovery,
+screen-reader and backup/restore acceptance remain separate. See
+[Current work](CURRENT_WORK.md) for the checklist scope and evidence limits.
+
+The next selected company outcome is up to three adjacent annual periods from
+the existing admitted same-filing packet. It retains exact dates and USD amounts,
+available net margins, inspectable inputs and explicit note review. Missing or
+conflicting older evidence stops history without substituting another filing or
+revenue basis. No source, cohort or request expansion is selected. Implementation
+and release acceptance are pending; see the
+[Annual guide](MANAGED_SEC_ANNUAL.md#reported-annual-history-candidate).
 
 PR 61 and signed Android 1.18 deliver a review before intentional sign-out with
 unsaved or uncertain watchlist work. Staying preserves the draft or original save

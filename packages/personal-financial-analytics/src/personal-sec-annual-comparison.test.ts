@@ -3,7 +3,10 @@ import type {
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import { describe, expect, it } from "vitest";
-import { comparePersonalSecAnnualEvidence } from "./personal-sec-annual-comparison";
+import {
+  comparePersonalSecAnnualEvidence,
+  resolvePersonalSecAnnualHistory,
+} from "./personal-sec-annual-comparison";
 import { resolvePersonalSecAnnualEvidence } from "./personal-sec-annual-evidence";
 
 const target = {
@@ -115,6 +118,273 @@ function packet(observations = rows()): PersonalSecAnnualResolutionInput {
 }
 const compare = (observations = rows()) =>
   comparePersonalSecAnnualEvidence(packet(observations), "Revenues");
+
+function historyRows() {
+  const older = {
+    startDate: "2023-01-01",
+    endDate: "2023-12-31",
+    durationDays: 365,
+  };
+  return [
+    ...rows(),
+    row(5, true, false, "80", older),
+    row(6, true, true, "4", older),
+  ];
+}
+
+describe("bounded same-filing annual history", () => {
+  it("returns three contiguous dated periods with exact signed amounts and all references", () => {
+    const result = resolvePersonalSecAnnualHistory(
+      packet(historyRows().reverse()),
+      "Revenues",
+    );
+    expect(result).toMatchObject({
+      status: "available",
+      accessionNumber: target.accessionNumber,
+      stoppedReason: null,
+      periods: [
+        {
+          startDate: "2025-01-01",
+          endDate: "2025-12-31",
+          revenue: "120",
+          netIncome: "15",
+          netMarginPercent: "12.5",
+        },
+        {
+          startDate: "2024-01-01",
+          endDate: "2024-12-31",
+          revenue: "100",
+          netIncome: "10",
+          netMarginPercent: "10",
+        },
+        {
+          startDate: "2023-01-01",
+          endDate: "2023-12-31",
+          revenue: "80",
+          netIncome: "4",
+          netMarginPercent: "5",
+        },
+      ],
+    });
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(new Set(result.periods.flatMap((p) => p.observationIds))).toEqual(
+      new Set(historyRows().map((r) => r.id)),
+    );
+    expect(Object.isFrozen(result.periods)).toBe(true);
+    expect(
+      result.periods.every(
+        (p) => Object.isFrozen(p) && Object.isFrozen(p.observationIds),
+      ),
+    ).toBe(true);
+  });
+
+  it("stops at three without adding an older fourth period", () => {
+    const oldest = {
+      startDate: "2022-01-01",
+      endDate: "2022-12-31",
+      durationDays: 365,
+    };
+    const result = resolvePersonalSecAnnualHistory(
+      packet([
+        ...historyRows(),
+        row(7, true, false, "60", oldest),
+        row(8, true, true, "3", oldest),
+      ]),
+      "Revenues",
+    );
+    expect(result).toMatchObject({ status: "available", stoppedReason: null });
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.periods.map((p) => p.endDate)).toEqual([
+      "2025-12-31",
+      "2024-12-31",
+      "2023-12-31",
+    ]);
+  });
+
+  it.each(["0", "-80"])(
+    "keeps older revenue %s and signed income without fabricating margin",
+    (revenue) => {
+      const input = packet(
+        historyRows().map((r) =>
+          r.id === row(5, true, false, "80").id ? { ...r, value: revenue } : r,
+        ),
+      );
+      const result = resolvePersonalSecAnnualHistory(input, "Revenues");
+      expect(result).toMatchObject({
+        status: "available",
+        periods: [{}, {}, { revenue, netIncome: "4", netMarginPercent: null }],
+      });
+    },
+  );
+
+  it("retains two admitted periods when third income is missing", () => {
+    const input = packet(
+      historyRows().filter((r) => r.id !== row(6, true, true, "4").id),
+    );
+    const result = resolvePersonalSecAnnualHistory(input, "Revenues");
+    expect(result).toMatchObject({
+      status: "available",
+      stoppedReason: "previous_period_missing",
+    });
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.periods).toHaveLength(2);
+    expect(comparePersonalSecAnnualEvidence(input, "Revenues")).toMatchObject({
+      status: "available",
+      revenue: { difference: "20" },
+    });
+  });
+
+  it("does not skip a missing middle period or mix revenue bases", () => {
+    for (const input of [
+      packet(historyRows().filter((r) => r.endDate !== "2024-12-31")),
+      packet(
+        historyRows().map((r) =>
+          r.endDate === "2024-12-31" && r.metric === "revenue"
+            ? { ...r, concept: "SalesRevenueNet" as const }
+            : r,
+        ),
+      ),
+    ]) {
+      const result = resolvePersonalSecAnnualHistory(input, "Revenues");
+      expect(result).toMatchObject({
+        status: "available",
+        stoppedReason: "previous_period_missing",
+      });
+      if (result.status !== "available") throw new Error("Expected history");
+      expect(result.periods).toHaveLength(1);
+    }
+  });
+
+  it.each([
+    [{ value: "999" }, "previous_values_conflicted"],
+    [
+      { startDate: "2023-01-02", durationDays: 364 },
+      "previous_period_ambiguous",
+    ],
+    [{ filedDate: "2026-01-31" }, "previous_period_invalid"],
+  ] as const)(
+    "stops before a conflicting or invalid third period %o",
+    (changes, reason) => {
+      const input = packet([
+        ...historyRows(),
+        row(7, true, false, "80", {
+          startDate: "2023-01-01",
+          endDate: "2023-12-31",
+          durationDays: 365,
+          ...changes,
+        }),
+      ]);
+      const result = resolvePersonalSecAnnualHistory(input, "Revenues");
+      expect(result).toMatchObject({
+        status: "available",
+        stoppedReason: reason,
+      });
+      if (result.status !== "available") throw new Error("Expected history");
+      expect(result.periods).toHaveLength(2);
+      expect(comparePersonalSecAnnualEvidence(input, "Revenues").status).toBe(
+        "available",
+      );
+    },
+  );
+
+  it("keeps agreeing older references and refuses an invalid whole packet", () => {
+    const extra = row(7, true, false, "80", {
+      startDate: "2023-01-01",
+      endDate: "2023-12-31",
+      durationDays: 365,
+      frame: "CY2023",
+    });
+    const result = resolvePersonalSecAnnualHistory(
+      packet([...historyRows(), extra]),
+      "Revenues",
+    );
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.periods[2]!.observationIds).toContain(extra.id);
+    expect(() =>
+      resolvePersonalSecAnnualHistory(
+        packet([
+          ...historyRows(),
+          { ...extra, accessionNumber: "0000999999-25-000002" },
+        ]),
+        "Revenues",
+      ),
+    ).toThrow("Invalid annual SEC evidence input");
+  });
+
+  it("uses actual adjacent 52/53-week dates instead of filing-focus years", () => {
+    const dates = [
+      ["2024-09-29", "2025-09-27", 364],
+      ["2023-10-01", "2024-09-28", 364],
+      ["2022-09-25", "2023-09-30", 371],
+    ] as const;
+    const observations = historyRows().map((r, i) => ({
+      ...r,
+      startDate: dates[Math.floor(i / 2)]![0],
+      endDate: dates[Math.floor(i / 2)]![1],
+      durationDays: dates[Math.floor(i / 2)]![2],
+      filing: { ...r.filing, reportDate: "2025-09-27" },
+    }));
+    const input = {
+      ...packet(observations),
+      target: { ...target, reportDate: "2025-09-27" },
+    };
+    const result = resolvePersonalSecAnnualHistory(input, "Revenues");
+    expect(result).toMatchObject({ status: "available", stoppedReason: null });
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.periods.map((p) => p.endDate)).toEqual(
+      dates.map((d) => d[1]),
+    );
+  });
+
+  it("honors current-use eligibility and preserves large exact older decimals", () => {
+    const input = packet(
+      historyRows().map((r) =>
+        r.endDate === "2023-12-31"
+          ? {
+              ...r,
+              value:
+                r.metric === "revenue"
+                  ? "9007199254740993123.0000000001"
+                  : "-1.0000000001",
+            }
+          : r,
+      ),
+    );
+    expect(resolvePersonalSecAnnualHistory(input, "Revenues")).toMatchObject({
+      status: "available",
+      periods: [
+        {},
+        {},
+        {
+          revenue: "9007199254740993123.0000000001",
+          netIncome: "-1.0000000001",
+        },
+      ],
+    });
+    const stale = {
+      ...input,
+      generation: {
+        ...input.generation,
+        cutoffAt: "2027-09-20T06:00:00.000Z",
+        completedAt: "2027-09-20T06:00:03.000Z",
+        sources: {
+          companyFacts: {
+            ...input.generation.sources.companyFacts,
+            fetchedAt: "2027-09-20T06:00:01.000Z",
+          },
+          submissions: {
+            ...input.generation.sources.submissions,
+            fetchedAt: "2027-09-20T06:00:02.000Z",
+          },
+        },
+      },
+    };
+    expect(resolvePersonalSecAnnualHistory(stale, "Revenues")).toEqual({
+      status: "unavailable",
+      reason: "current_use_unavailable",
+    });
+  });
+});
 
 describe("same-filing reported annual comparison", () => {
   it.each([

@@ -115,6 +115,32 @@ review and explicit Save watchlist remain required. The comparison adds no sourc
 request, response field, dependency or persistent state. Existing refresh,
 cancellation, visit and session lifetimes apply.
 
+## Reported annual history candidate
+
+The selected candidate adds a collapsed **Read reported annual history** view
+for each eligible named revenue basis. It lists up to three adjacent periods,
+newest first, from the already loaded packet and selected accession. Each period
+retains its exact date range, unscaled USD revenue and NetIncomeLoss, net margin
+when revenue is positive, and inspectable original observation references.
+
+The current period and each preceding period use the existing admission rules
+described above. History stops at the first missing, conflicting or invalid
+period. It does not skip a gap, switch revenue concepts or load an older filing.
+Periods retain the selected filing metadata and original source/load dates;
+52 and 53 week years can differ in length. Accounting changes and restatements
+remain unadjusted. Three-period availability depends on the admitted packet and
+is not promised for every company or filing.
+
+When a third period is admitted, **Add annual evidence to note draft** includes
+its dates, exact amounts and available margin alongside the current pair,
+existing comparison and filing provenance. It preserves the existing draft,
+2,000-character validation, explicit review and **Save watchlist**. Reading or
+appending history makes no source request or save. Current-use policy, refresh,
+cancellation and retirement retain their existing boundaries.
+
+This is candidate behavior. Publication, hosted checks, native acceptance and
+delivery are pending; [Current work](CURRENT_WORK.md) records the accepted release.
+
 ## Request lifetime and data
 
 Authenticated `POST /v1/managed/sec-annual-evidence` accepts at most 4 KiB and

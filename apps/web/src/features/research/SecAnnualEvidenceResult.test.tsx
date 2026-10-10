@@ -4,11 +4,36 @@ import type { PersonalSecAnnualPairDto } from "@research-cockpit/contracts";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 import {
   annualComparativeRows,
+  annualHistoryRows,
   response,
   row,
 } from "./sec-annual-evidence-fixture";
 
 describe("shared annual result", () => {
+  it("shows three dated same-filing periods in a plain-text disclosure with inspectable inputs", async () => {
+    const wire = await response(annualHistoryRows());
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} />,
+    );
+    expect(html).toContain('aria-label="Reported annual history Revenues"');
+    expect(html).toContain("Read reported annual history · 3 periods");
+    expect(html).toContain("2023-01-01 to 2023-12-31");
+    expect(html).toContain("Revenue · USD</dt><dd>640</dd>");
+    expect(html).toContain("Net income · USD</dt><dd>32</dd>");
+    expect(html).toContain("Net margin · %</dt><dd>5%</dd>");
+    expect(html).toContain("Inspect period inputs · 2023-12-31");
+    expect(html).not.toContain("The next earlier period is unavailable");
+  });
+
+  it("keeps available dates and amounts when the next earlier pair is missing", async () => {
+    const wire = await response(annualComparativeRows());
+    const html = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} />,
+    );
+    expect(html).toContain("Read reported annual history · 2 periods");
+    expect(html).toContain("The next earlier period is unavailable.");
+    expect(html).toContain("Revenue reported change</dt><dd>25%</dd>");
+  });
   it("shows exact adjacent annual amounts, reported changes and all four operand references", async () => {
     const wire = await response(annualComparativeRows());
     const html = renderToStaticMarkup(

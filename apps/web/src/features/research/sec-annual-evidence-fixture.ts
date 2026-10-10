@@ -71,6 +71,19 @@ export function annualComparativeRows() {
     row("NetIncomeLoss", "80", prior),
   ];
 }
+export function annualHistoryRows() {
+  const older = {
+    startDate: "2023-01-01",
+    endDate: "2023-12-31",
+    durationDays: 365,
+    frame: "CY2023",
+  };
+  return [
+    ...annualComparativeRows(),
+    row("Revenues", "640", older),
+    row("NetIncomeLoss", "32", older),
+  ];
+}
 export async function response(
   rows = [row(), row("NetIncomeLoss", "100")],
   cutoffAt = "2026-09-20T00:00:00.000Z",

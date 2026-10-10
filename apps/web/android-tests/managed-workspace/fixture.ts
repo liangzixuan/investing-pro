@@ -18,7 +18,7 @@ import {
 import { listingMembership } from "../../src/clerk-trial/managed-workspace";
 import type { TrialSession } from "../../src/clerk-trial/session";
 import {
-  annualComparativeRows,
+  annualHistoryRows,
   response,
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
@@ -27,7 +27,7 @@ import { TrialApiError } from "../../src/clerk-trial/api";
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const signOutNoteDraft = "Sign-out review draft";
 export const annualNoteDraft =
-  "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). Reported net margin -10% to 10%, change 20 percentage points. Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
+  "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). Reported net margin -10% to 10%, change 20 percentage points. Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth. Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 export const priceNoteDraft =
   "Price research draft Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
 export const marketsPriceNoteDraft =
@@ -155,7 +155,7 @@ export async function createFixture(
 ) {
   const annual = await response(
     scenario === "annual-note"
-      ? annualComparativeRows().map((observation) =>
+      ? annualHistoryRows().map((observation) =>
           observation.metric === "net_income" &&
           observation.endDate === "2024-12-31"
             ? { ...observation, value: "-80" }

@@ -116,7 +116,10 @@ export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessm
 
 export {
   comparePersonalSecAnnualEvidence,
+  resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualChange,
   type PersonalSecAnnualComparison,
   type PersonalSecAnnualMarginComparison,
+  type PersonalSecAnnualHistory,
+  type PersonalSecAnnualPeriod,
 } from "./personal-sec-annual-comparison";

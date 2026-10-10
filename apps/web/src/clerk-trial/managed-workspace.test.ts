@@ -20,6 +20,7 @@ import {
 import type { TrialSession } from "./session";
 import {
   annualComparativeRows,
+  annualHistoryRows,
   response as annualResponse,
 } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
@@ -3009,7 +3010,7 @@ describe("Annual evidence appended to the existing shared note", () => {
     matchKind: "current_symbol_exact",
     matchedValue: "ZERO",
   };
-  async function noteFixture(note = "Original thesis") {
+  async function noteFixture(note = "Original thesis", history = false) {
     const setup = fixture({
       ...empty,
       memberships: [
@@ -3025,7 +3026,9 @@ describe("Annual evidence appended to the existing shared note", () => {
       limitApplied: 25,
       normalizedQuery: "ZERO",
     });
-    const response = await annualResponse(annualComparativeRows());
+    const response = await annualResponse(
+      history ? annualHistoryRows() : annualComparativeRows(),
+    );
     vi.mocked(api.annualReport).mockResolvedValue(response);
     await ready(workspace);
     workspace.openDiscoveryAnnual(zero);
@@ -3234,11 +3237,22 @@ describe("Annual evidence appended to the existing shared note", () => {
     },
   );
 
-  it.each(["emoji", "decomposed"])(
-    "accepts exactly 2,000 normalized code points with %s and rejects overflow without truncation",
-    async (kind) => {
-      const { workspace, selection, response, pair } = await noteFixture();
+  it.each([
+    ["emoji", false],
+    ["decomposed", false],
+    ["emoji", true],
+    ["decomposed", true],
+  ] as const)(
+    "accepts exactly 2,000 normalized code points with %s (three-period history %s) and rejects overflow without truncation",
+    async (kind, history) => {
+      const { workspace, api, selection, response, pair } = await noteFixture(
+        "Original thesis",
+        history,
+      );
       const excerpt = annualNoteExcerpt(response, pair, false)!;
+      expect(excerpt.includes("Additional same-filing annual period")).toBe(
+        history,
+      );
       const room = 2000 - [...excerpt].length - 1;
       const unit = kind === "emoji" ? "😀" : "e\u0301";
       workspace.note(zero.listingId, unit.repeat(room + 1));
@@ -3257,6 +3271,8 @@ describe("Annual evidence appended to the existing shared note", () => {
         workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
       expect(text).toBe(unit.repeat(room) + " " + excerpt);
       expect([...normalizeWatchlistNote(text)!]).toHaveLength(2000);
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
     },
   );
 

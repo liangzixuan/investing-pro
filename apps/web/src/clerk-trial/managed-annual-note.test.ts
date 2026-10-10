@@ -5,6 +5,7 @@ import type {
 } from "@research-cockpit/contracts";
 import {
   annualComparativeRows,
+  annualHistoryRows,
   response,
 } from "../features/research/sec-annual-evidence-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
@@ -36,6 +37,44 @@ function replacePair(
 }
 
 describe("managed Annual note excerpt", () => {
+  it.each(["0", "-640"])(
+    "keeps the third-period amounts with an unavailable margin for revenue %s",
+    async (value) => {
+      const report = await response(
+        annualHistoryRows().map((r) =>
+          r.metric === "revenue" && r.endDate === "2023-12-31"
+            ? { ...r, value }
+            : r,
+        ),
+      );
+      const pair = report.evidence.resolution.bases.find(
+        (b) => b.status === "eligible",
+      )!.pairs[0]!;
+      const text = annualNoteExcerpt(report, pair, false)!;
+      expect(text).toContain(
+        `Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD ${value}; NetIncomeLoss USD 32; net margin unavailable because revenue is not positive.`,
+      );
+      expect(text).toContain(
+        "Revenues revenue USD 800 to 1000, change USD 200 (25%)",
+      );
+      expect(text).not.toContain("Infinity");
+    },
+  );
+  it("adds the admitted third period to the same explicit draft excerpt with original provenance", async () => {
+    const report = await response(annualHistoryRows());
+    const pair = report.evidence.resolution.bases.find(
+      (b) => b.status === "eligible",
+    )!.pairs[0]!;
+    const text = annualNoteExcerpt(report, pair, false)!;
+    expect(text).toContain(
+      "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%.",
+    );
+    expect(text).toContain("Original load cutoff 2026-09-20T00:00:00.000Z");
+    expect(text.length).toBeLessThan(2000);
+    expect(annualNoteExcerpt(report, pair, true)).toContain(
+      "Retained previous report.",
+    );
+  });
   it("adds available same-filing comparison to the same dated excerpt without changing original-load provenance", async () => {
     const report = await response(annualComparativeRows());
     const pair = report.evidence.resolution.bases.find(

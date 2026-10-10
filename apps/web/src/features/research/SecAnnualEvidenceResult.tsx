@@ -6,7 +6,9 @@ import type {
 import type { ReactNode } from "react";
 import {
   comparePersonalSecAnnualEvidence,
+  resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualComparison,
+  type PersonalSecAnnualHistory,
 } from "@research-cockpit/personal-financial-analytics";
 import {
   annualComparisonPercentText,
@@ -206,6 +208,11 @@ export function SecAnnualEvidenceResult({
                   ? comparePersonalSecAnnualEvidence(evidence, pair.concept)
                   : null
               }
+              history={
+                pair.status === "eligible"
+                  ? resolvePersonalSecAnnualHistory(evidence, pair.concept)
+                  : null
+              }
               action={
                 pair.status === "eligible" ? renderPairAction?.(pair) : null
               }
@@ -275,11 +282,13 @@ function AnnualPair({
   observations,
   action,
   comparison,
+  history,
 }: {
   readonly pair: PersonalSecAnnualPairDto;
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
   readonly action: ReactNode;
   readonly comparison: PersonalSecAnnualComparison | null;
+  readonly history: PersonalSecAnnualHistory | null;
 }) {
   const ids = [...pair.revenueObservationIds, ...pair.incomeObservationIds];
   return (
@@ -308,6 +317,9 @@ function AnnualPair({
       {comparison === null ? null : (
         <AnnualComparison comparison={comparison} observations={observations} />
       )}
+      {history?.status === "available" ? (
+        <AnnualHistory history={history} observations={observations} />
+      ) : null}
       {action}
       <details className="sec-quarterly-row-details">
         <summary>
@@ -335,6 +347,89 @@ function AnnualPair({
   );
 }
 
+const comparisonMessages = {
+  current_report_unavailable: "A valid current annual pair is required.",
+  current_use_unavailable:
+    "The report is outside the current-use policy at its original load.",
+  previous_period_missing:
+    "The immediately preceding annual revenue and net-income period is missing for this basis.",
+  previous_period_ambiguous:
+    "The preceding annual observations have conflicting start dates.",
+  previous_period_invalid:
+    "The preceding annual period or metadata cannot be admitted.",
+  filing_metadata_mismatch:
+    "The comparison inputs do not match the selected filing metadata.",
+  previous_values_conflicted:
+    "The preceding annual observations contain conflicting values.",
+} as const;
+
+function AnnualHistory({
+  history,
+  observations,
+}: {
+  readonly history: Extract<PersonalSecAnnualHistory, { status: "available" }>;
+  readonly observations: readonly PersonalSecQuarterlyObservationDto[];
+}) {
+  return (
+    <details
+      className="sec-quarterly-row-details sec-annual-history"
+      aria-label={`Reported annual history ${history.concept}`}
+    >
+      <summary>
+        Read reported annual history · {history.periods.length}{" "}
+        {history.periods.length === 1 ? "period" : "periods"}
+      </summary>
+      <p className="sec-quarterly-message">
+        Up to three adjacent annual periods, newest first, reported in accession{" "}
+        {history.accessionNumber}. Amounts are exact, unscaled USD. Original
+        load and source dates above apply to every period. Period length,
+        accounting changes and restatements are unadjusted; these are not
+        as-originally-filed history or organic growth.
+      </p>
+      <ol className="sec-annual-history-periods">
+        {history.periods.map((period) => (
+          <li key={period.endDate}>
+            <h5>
+              {period.startDate} to {period.endDate}
+            </h5>
+            <dl>
+              <dt>Revenue · USD</dt>
+              <dd>{period.revenue}</dd>
+              <dt>Net income · USD</dt>
+              <dd>{period.netIncome}</dd>
+              <dt>Net margin · %</dt>
+              <dd>
+                {period.netMarginPercent === null
+                  ? "Unavailable: revenue must be positive"
+                  : `${period.netMarginPercent}%`}
+              </dd>
+            </dl>
+            <details className="sec-quarterly-row-details">
+              <summary>Inspect period inputs · {period.endDate}</summary>
+              <ol>
+                {period.observationIds.map((id) => {
+                  const row = observations.find((item) => item.id === id);
+                  return row === undefined ? null : (
+                    <li key={id}>
+                      <ObservationDetails row={row} />
+                    </li>
+                  );
+                })}
+              </ol>
+            </details>
+          </li>
+        ))}
+      </ol>
+      {history.stoppedReason === null ? null : (
+        <p className="sec-quarterly-message">
+          The next earlier period is unavailable.{" "}
+          {comparisonMessages[history.stoppedReason]}
+        </p>
+      )}
+    </details>
+  );
+}
+
 function AnnualComparison({
   comparison,
   observations,
@@ -343,24 +438,10 @@ function AnnualComparison({
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
 }) {
   if (comparison.status === "unavailable") {
-    const messages = {
-      current_report_unavailable: "A valid current annual pair is required.",
-      current_use_unavailable:
-        "The report is outside the current-use policy at its original load.",
-      previous_period_missing:
-        "The immediately preceding annual revenue and net-income period is missing for this basis.",
-      previous_period_ambiguous:
-        "The preceding annual observations have conflicting start dates.",
-      previous_period_invalid:
-        "The preceding annual period or metadata cannot be admitted.",
-      filing_metadata_mismatch:
-        "The comparison inputs do not match the selected filing metadata.",
-      previous_values_conflicted:
-        "The preceding annual observations contain conflicting values.",
-    } as const;
     return (
       <p className="sec-quarterly-message">
-        Reported annual comparison unavailable. {messages[comparison.reason]}
+        Reported annual comparison unavailable.{" "}
+        {comparisonMessages[comparison.reason]}
       </p>
     );
   }

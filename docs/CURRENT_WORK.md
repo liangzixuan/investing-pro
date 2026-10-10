@@ -44,8 +44,10 @@ Signed Android 1.19.0, code 20, passed build, complete artifact and delivery rev
 with package `app.investingpro.android` and the existing production signer.
 The delivered APK is 6,658,868 bytes, SHA-256
 `fc1e9d494ee07f9b77f6003dc688d2cc898a163d8eb8c4382d4d38d42bcf97b3`. Its source is the PR 63 main commit above.
-Earlier APKs and rollback identities remain preserved. Physical 1.19 installation
-or use is not accepted here.
+Earlier APKs and rollback identities remain preserved. On October 10 the owner
+reported that the requested Android 1.19 and Brave checklist passed on a Pixel
+10 Pro XL running Android 17. This is owner-reported acceptance without per-step
+device logs, browser version or viewport measurements.
 
 The twenty-case API-36 emulator report covers three disconnected and seventeen
 managed journeys. Twenty-two of fifty-eight original PNGs received scoped visual
@@ -53,19 +55,23 @@ review. Fifty-five capture callbacks, fifty-two phase diagnostics and the full
 964-character invented saved-note assertion are separate native evidence;
 scoped screenshots do not establish the full note or chart visually. BrowserStack
 covered the exact staging build's inert shell at desktop and narrow widths.
-Authenticated browser use, physical Pixel 1.14 through 1.19, separate screen-reader
-and backup/restore acceptance remain open. The owner reported Pixel use of 1.13
-without issues, without per-step logs.
+The owner's checklist covers upgrade without wiping saved data, full current-note
+reading, unsaved drafts and sign-out cancellation, and background/resume and
+reopening. The requested Brave visit covered saved data and note reading with
+unsaved drafts and cancellation at desktop and narrow widths. Agent-controlled
+authenticated browser checks remain separate. Physical 1.14 through 1.18,
+screen-reader and backup/restore acceptance remain open. The earlier issue-free
+Pixel 1.13 report retains its original scope.
 
 ## Delivery status
 
-| Surface                 | Accepted scope                                          | Remaining acceptance                                                    |
-| ----------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Managed API and website | PR 63 API continuity and same-archive website promotion | Continuing availability and authenticated browser recovery use          |
-| Signed Android 1.19     | Build, complete artifact and exact delivered bytes      | Physical upgrade and use                                                |
-| Synthetic native tests  | Twenty invented-data journeys and 22 scoped frames      | Production sign-in, live-provider use and physical-device behavior      |
-| Physical Pixel          | Owner reported issue-free Android 1.13 use              | Separate 1.14 through 1.19, screen-reader and backup/restore acceptance |
-| Local research app      | Preserved local release and encrypted vault             | No migration or managed feature-parity claim                            |
+| Surface                 | Accepted scope                                                                             | Remaining acceptance                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Managed API and website | PR 63 API continuity, same-archive promotion and owner-reported Brave checklist            | Continuing availability and controlled authenticated recovery           |
+| Signed Android 1.19     | Build, complete artifact, delivered bytes and owner-reported Pixel checklist               | Screen-reader and backup/restore acceptance                             |
+| Synthetic native tests  | Twenty invented-data journeys and 22 scoped frames                                         | Production sign-in, live-provider use and physical-device behavior      |
+| Physical Pixel          | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use | Separate 1.14 through 1.18, screen-reader and backup/restore acceptance |
+| Local research app      | Preserved local release and encrypted vault                                                | No migration or managed feature-parity claim                            |
 
 ## What works in the managed product
 
@@ -130,10 +136,14 @@ same-archive website promotion and signed delivery passed. The disclosure retain
 the current draft and explicit Save. Synthetic coverage does not establish
 physical upgrade, authenticated recovery or cloud restore.
 
-The next useful acceptance is a physical upgrade and controlled recovery visit,
-with separate browser/session and backup coverage. Select further product work
-from the roadmap after preserving this release and its limits. Broader fields or
-cohorts require a separate source, rights, cost and quota review.
+The selected next company outcome is [reported annual history](MANAGED_SEC_ANNUAL.md#reported-annual-history-candidate):
+up to three adjacent periods from an already loaded, admitted filing packet,
+with exact amounts, available net margins and an explicit third-period note
+excerpt. Missing older evidence stays visible as unavailable. Implementation
+and release acceptance are pending; production remains the PR 63 release above.
+Controlled browser/session recovery, screen-reader and backup coverage remain
+separate work. Broader fields or cohorts require a source, rights, cost and quota
+review.
 
 Keep authenticated-browser coverage separate from the inert BrowserStack shell.
 Use narrowly controlled identities and invented records when that work is
