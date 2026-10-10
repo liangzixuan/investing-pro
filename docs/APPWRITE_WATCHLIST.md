@@ -93,6 +93,34 @@ cases cover draft cancellation, save settlement, uncertain-save retirement and
 late-response fences. Current work records source, website, signed-package and
 separate browser and physical acceptance limits.
 
+### Leaving the managed browser with unconfirmed work
+
+The current candidate requests the browser's standard leave confirmation before
+a reload, tab close or navigation outside the document when the mounted watchlist
+has an unsaved draft, an active save/reconciliation or an uncertain save result.
+Raw invalid notes also count as unsaved work. The listener reads the current
+coordinator state and sends no save, reconciliation or provider request.
+
+Clean sessions have no listener. Confirmed saves and an explicit choice to use the
+saved version remove it; session retirement and component cleanup remove it
+synchronously. A retired or disposed session cannot warn for a replacement
+session. Intentional sign-out keeps its separate review, and authentication
+rejection and expiry still clear local data immediately.
+
+Only the managed browser composition opts in. Native Android and the disconnected
+profile omit this warning. The browser supplies generic confirmation text, usually
+requires prior user interaction and may suppress the prompt. Mobile termination
+can skip the event entirely. This is no durable draft or process-death recovery.
+See the [HTML navigation contract](https://html.spec.whatwg.org/multipage/browsing-the-web.html#preventing-navigation)
+and [browser event guidance](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event).
+
+Candidate tests use invented records and cancelable events to cover invalid drafts,
+active saves, conflicts, the original uncertain command, explicit reconciliation,
+saved-version choice, retirement, late completion and disposal. Composition tests
+check the browser opt-in and native exclusion. Hosted checks, delivery and actual
+browser confirmation acceptance remain pending; production status is in
+[Current work](CURRENT_WORK.md).
+
 ### Review the saved version and retained draft
 
 The recovery review compares the latest successfully loaded saved version with

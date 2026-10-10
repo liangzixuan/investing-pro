@@ -66,6 +66,7 @@ function ClerkSession({
     <Screen
       key={`${session.user.id}:${session.id}`}
       apiOrigin={apiOrigin}
+      {...(managed ? { warnOnBrowserLeave: true } : {})}
       session={{
         userId: session.user.id,
         sessionId: session.id,

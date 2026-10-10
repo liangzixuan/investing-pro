@@ -234,8 +234,14 @@ promotion and signed delivery passed. Physical 1.20 and controlled authenticated
 recovery remain open. No feed, cohort, response field or request was added. See
 the [Annual guide](MANAGED_SEC_ANNUAL.md#reported-annual-history).
 
-The next product outcome is unselected. Continue the daily-use and recovery
-priorities below before expanding fields or cohorts.
+The next candidate warns before leaving the managed browser with unsaved or
+uncertain watchlist work. It requests the browser's standard confirmation and
+follows the current save coordinator's lifetime without automatic writes or
+durable storage. Native Android and disconnected sessions remain excluded.
+Hosted checks, delivery and actual dialog acceptance are pending. See the
+[watchlist guide](APPWRITE_WATCHLIST.md#leaving-the-managed-browser-with-unconfirmed-work)
+and [Current work](CURRENT_WORK.md). Continue the daily-use and recovery priorities
+below before expanding fields or cohorts.
 
 PR 61 and signed Android 1.18 deliver a review before intentional sign-out with
 unsaved or uncertain watchlist work. Staying preserves the draft or original save

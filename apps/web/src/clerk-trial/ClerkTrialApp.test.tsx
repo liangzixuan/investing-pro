@@ -133,8 +133,10 @@ describe("official Clerk browser adapter", () => {
     const props = sdk.screen.mock.calls[0]?.[0] as {
       session: TrialSession;
       apiOrigin: string;
+      warnOnBrowserLeave?: boolean;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
+    expect(props.warnOnBrowserLeave).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
     expect(getToken).toHaveBeenCalledTimes(1);
@@ -195,7 +197,11 @@ describe("official Clerk browser adapter", () => {
     expect(html).not.toContain("Synthetic data only");
     expect(sdk.managed).toHaveBeenCalledTimes(1);
     expect(sdk.screen).not.toHaveBeenCalled();
-    const props = sdk.managed.mock.calls[0]?.[0] as { session: TrialSession };
+    const props = sdk.managed.mock.calls[0]?.[0] as {
+      session: TrialSession;
+      warnOnBrowserLeave?: boolean;
+    };
+    expect(props.warnOnBrowserLeave).toBe(true);
     expect(props.session).toMatchObject({
       userId: "user_owner",
       sessionId: "session_owner",

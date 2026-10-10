@@ -142,8 +142,16 @@ twenty native cases, 26 scoped frames, fresh byte-identical API build, same-arch
 website promotion and signed delivery passed. Three-period availability depends
 on the admitted packet; the release adds no feed, cohort, response field or request.
 
-The next product outcome has not yet been selected. Prioritize useful daily
-workflows and recovery using the existing modules and permitted sources. Controlled
+The next candidate requests the browser's standard leave confirmation for unsaved
+or uncertain watchlist work before a reload, tab close or external navigation.
+It uses the mounted save coordinator, adds no automatic write or durable draft,
+and explicitly excludes native Android and disconnected sessions. See the
+[watchlist guide](APPWRITE_WATCHLIST.md#leaving-the-managed-browser-with-unconfirmed-work).
+Hosted checks, delivery and actual browser confirmation acceptance are pending;
+the accepted website and Android 1.20 above remain the delivery baseline.
+
+Prioritize useful daily workflows and recovery using the existing modules and
+permitted sources. Controlled
 session conflicts, physical upgrade/use, screen-reader and backup/restore coverage
 retain their separate acceptance requirements. Broader fields or cohorts need a
 source, rights, cost and quota review.
