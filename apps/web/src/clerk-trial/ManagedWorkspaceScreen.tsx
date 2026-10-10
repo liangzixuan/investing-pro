@@ -30,6 +30,7 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
+import { bindManagedBrowserUnload } from "./managed-browser-unload";
 import {
   bindAndroidBack,
   type AndroidBackAdapter,
@@ -41,6 +42,7 @@ interface SessionProps {
   api?: ManagedApi;
   androidBack?: AndroidBackAdapter;
   marketsCohort?: readonly ManagedEodIdentity[];
+  warnOnBrowserLeave?: boolean;
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -62,10 +64,16 @@ function SessionWorkspace(props: SessionProps) {
       undefined,
       initial.marketsCohort ? { marketsCohort: initial.marketsCohort } : {},
     );
+    const unbindBrowserLeave = initial.warnOnBrowserLeave
+      ? bindManagedBrowserUnload(current.coordinator, window)
+      : undefined;
     setWorkspace(current);
     void current.coordinator.load();
     void current.refreshCatalog();
-    return () => current.coordinator.retire();
+    return () => {
+      unbindBrowserLeave?.();
+      current.coordinator.retire();
+    };
   }, [initial]);
   return workspace ? (
     <ManagedWorkspaceRouter

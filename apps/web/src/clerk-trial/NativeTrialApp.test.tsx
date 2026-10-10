@@ -130,6 +130,7 @@ function findScreen(node: ReactNode):
       session: TrialSession;
       apiOrigin: string;
       androidBack?: AndroidBackAdapter;
+      warnOnBrowserLeave?: boolean;
     }>
   | undefined {
   const children: ReactNode[] = [];
@@ -146,6 +147,7 @@ function findScreen(node: ReactNode):
         session: TrialSession;
         apiOrigin: string;
         androidBack?: AndroidBackAdapter;
+        warnOnBrowserLeave?: boolean;
       }>;
     }
     const found = findScreen(child.props.children);
@@ -166,6 +168,7 @@ describe("native shared workspace composition", () => {
       expect(screen?.key).toBe("1");
       expect(screen?.props.apiOrigin).toBe(config.apiOrigin);
       expect(screen?.props.session.userId).toBe(signedIn.userId);
+      expect(screen?.props.warnOnBrowserLeave).toBeUndefined();
       expect(screen?.props.androidBack).toBe(
         config.environment === "production" ? hooks.androidBack : undefined,
       );
