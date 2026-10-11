@@ -2070,7 +2070,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "Array.from(document.querySelectorAll('.managed-market-rows > li')).map(e => {" +
             " const p = e.querySelector('.managed-market-change'); if (!p) return 'missing';" +
             " const value = p.querySelector('strong')?.textContent;" +
-            " return e.querySelector('.managed-market-identity strong').textContent + '|' + value + '|' + p.querySelector('span')?.textContent;" +
+            " return e.querySelector('.managed-market-identity strong').textContent + '|' + value + '|' + p.querySelector('.managed-market-change-basis')?.textContent;" +
             " }).join(';') === " + JSONObject.quote(expected));
     }
 
@@ -2142,7 +2142,7 @@ public class ManagedWorkspaceInstrumentedTest {
                 JSONObject.quote(first + ";BETA|Not loaded|Load prices when ready;BETB|Not loaded|Load prices when ready") +
             " && document.querySelectorAll('.managed-market-rows .managed-market-change').length === 1" +
             " && document.querySelector('.managed-market-rows > li:first-child .managed-market-change strong')?.textContent === " + JSONObject.quote(change) +
-            " && document.querySelector('.managed-market-rows > li:first-child .managed-market-change span')?.textContent === " +
+            " && document.querySelector('.managed-market-rows > li:first-child .managed-market-change-basis')?.textContent === " +
                 JSONObject.quote(dates + " · not adjusted for splits or dividends.") +
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === " + JSONObject.quote(previous ? "ALFA" : "") +
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).slice(1).every(e => e.querySelector('.managed-market-change') === null && e.querySelector('.managed-eod-previous') === null)" +
@@ -2167,7 +2167,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Selected-price rows did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const rows = Array.from(document.querySelectorAll('.managed-market-rows > li')); const v = visualViewport;" +
             " if (rows.length !== 3 || !v) return false; const targets = rows.flatMap(row => [row.querySelector('.managed-market-identity'), row.querySelector('.managed-market-close')]);" +
-            " targets.push(rows[0].querySelector('.managed-market-change'), rows[0].querySelector('.managed-market-change span'));" +
+            " targets.push(rows[0].querySelector('.managed-market-change'), rows[0].querySelector('.managed-market-change-basis'));" +
             " return document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
             " && targets.every(e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
@@ -2189,7 +2189,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Markets raw-change row did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const row = document.querySelector('.managed-market-rows > li'); const v = visualViewport;" +
             " if (!row || !v) return false; const targets = [row.querySelector('.managed-market-identity')," +
-            " row.querySelector('.managed-market-close'), row.querySelector('.managed-market-change'), row.querySelector('.managed-market-change span')];" +
+            " row.querySelector('.managed-market-close'), row.querySelector('.managed-market-change'), row.querySelector('.managed-market-change-basis')];" +
             " return document.documentElement.scrollWidth <= document.documentElement.clientWidth" +
             " && targets.every(e => { if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +

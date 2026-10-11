@@ -419,6 +419,7 @@
 .managed-frame .managed-market-close {
   text-align: right;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 .managed-frame .managed-market-close > strong {
   display: block;
@@ -490,14 +491,15 @@
   margin: 0 0 20px;
 }
 .managed-frame .managed-market-quote {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px 20px;
   margin: 20px 0;
 }
 .managed-frame .managed-market-quote-value {
   display: block;
+  min-width: 0;
   margin: 0;
   font-size: clamp(28px, 3vw, 40px);
   font-weight: 650;
@@ -505,12 +507,14 @@
   letter-spacing: -0.035em;
 }
 .managed-frame .managed-market-quote-date {
-  grid-column: 1 / -1;
+  flex: 0 0 100%;
   font-size: 13px;
   color: var(--managed-muted);
   margin: 8px 0;
 }
 .managed-frame .managed-market-quote .managed-market-change {
+  flex: 1 1 160px;
+  min-width: 0;
   margin: 0;
 }
 .managed-frame .managed-market-quote-unloaded {

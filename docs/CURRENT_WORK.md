@@ -172,6 +172,15 @@ reload remain recorded; a fresh root entry and in-app navigation worked without
 changing browser protections. This preview does not accept deep reload or native
 recovery. No production account or provider was used.
 
+The first overhaul Android run completed 22 cases with three failures: two
+price-row assertions selected the newly added accessibility label, and long
+decimal prices caused horizontal overflow. The assertions now select the dated
+basis explicitly, preserving exact expected text. Price rows wrap long values;
+the detail quote and change wrap onto separate lines when needed. Follow-up
+Brave geometry checks at 411 and 320 pixels found no document overflow and kept
+the comparison above bottom navigation. The original failed report is retained;
+fresh native execution is required.
+
 All 255 focused component, lifecycle and chart tests passed, alongside 98
 packaging tests, root/web types and scoped lint/format checks. The font's
 WOFF2 signature and declared length are admitted by the existing bounded website
