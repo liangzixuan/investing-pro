@@ -8,6 +8,7 @@ import type { InvestmentAuthPlugin } from "./native-session";
 import { TrialFrame } from "./TrialFrame";
 import { TrialSessionScreen } from "./TrialScreen";
 import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
+import { ManagedEntry, ManagedSessionNotice } from "./ManagedEntry";
 
 export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
   const checked = validateTrialConfig(config);
@@ -29,7 +30,15 @@ export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
     />
   ) : (
     <TrialFrame managed={managed}>
-      <p role="status">Checking the installed session…</p>
+      {managed ? (
+        <ManagedEntry
+          title="Opening Investment"
+          message="Checking the installed session…"
+          busy
+        />
+      ) : (
+        <p role="status">Checking the installed session…</p>
+      )}
     </TrialFrame>
   );
 }
@@ -49,15 +58,36 @@ function NativeSession({
     store.getSnapshot,
   );
   const session = store.session();
+  const signInMessage =
+    state.message ||
+    (state.auth.status === "loading"
+      ? "Checking your session…"
+      : managed
+        ? "Sign in to open your shared watchlist."
+        : "Use the secure Clerk sign-in flow to join the trial.");
+  const signInButton = (
+    <button
+      type="button"
+      disabled={state.busy || state.auth.status === "loading"}
+      onClick={() => {
+        void store.signIn();
+      }}
+    >
+      {state.signOutUnconfirmed ? "Sign in again" : "Sign in with Clerk"}
+    </button>
+  );
   return (
     <TrialFrame managed={managed} compact={managed && Boolean(session)}>
       {session ? (
         <>
-          {state.message && (
-            <p role="status" className="trial-status">
-              {state.message}
-            </p>
-          )}
+          {state.message &&
+            (managed ? (
+              <ManagedSessionNotice>{state.message}</ManagedSessionNotice>
+            ) : (
+              <p role="status" className="trial-status">
+                {state.message}
+              </p>
+            ))}
           {managed ? (
             <ManagedSessionScreen
               key={state.auth.generation}
@@ -73,29 +103,27 @@ function NativeSession({
             />
           )}
         </>
+      ) : managed ? (
+        <ManagedEntry
+          title="Sign in on this device"
+          message={signInMessage}
+          busy={state.busy || state.auth.status === "loading"}
+          tone={
+            state.signOutUnconfirmed || state.auth.status === "error"
+              ? "warning"
+              : "neutral"
+          }
+        >
+          {signInButton}
+        </ManagedEntry>
       ) : (
         <section
           className="trial-panel"
           aria-labelledby="native-sign-in-heading"
         >
           <h2 id="native-sign-in-heading">Sign in on this device</h2>
-          <p role="status">
-            {state.message ||
-              (state.auth.status === "loading"
-                ? "Checking your session…"
-                : managed
-                  ? "Sign in to open your shared watchlist."
-                  : "Use the secure Clerk sign-in flow to join the trial.")}
-          </p>
-          <button
-            type="button"
-            disabled={state.busy || state.auth.status === "loading"}
-            onClick={() => {
-              void store.signIn();
-            }}
-          >
-            {state.signOutUnconfirmed ? "Sign in again" : "Sign in with Clerk"}
-          </button>
+          <p role="status">{signInMessage}</p>
+          {signInButton}
         </section>
       )}
     </TrialFrame>

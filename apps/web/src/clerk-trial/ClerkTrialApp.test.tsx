@@ -86,10 +86,30 @@ describe("official Clerk browser adapter", () => {
       );
       expect(html).toContain("<h1>Your markets and research</h1>");
       expect(html.match(/<h1[ >]/g)).toHaveLength(1);
-      expect(sdk.signIn).toHaveBeenCalledExactlyOnceWith({
+      expect(html).toContain("Sign in to your workspace</h2>");
+      expect(html).toContain('class="managed-sign-in"');
+      expect(html).toContain("Official sign-in");
+      expect(sdk.signIn).toHaveBeenCalledTimes(1);
+      const { appearance, ...routeProps } = sdk.signIn.mock
+        .calls[0]?.[0] as Record<string, unknown>;
+      expect(routeProps).toEqual({
         routing: "hash",
         fallbackRedirectUrl: destination,
         forceRedirectUrl: destination,
+      });
+      expect(appearance).toMatchObject({
+        variables: {
+          colorPrimary: "#8796ff",
+          colorPrimaryForeground: "#101426",
+          colorBackground: "#191b1f",
+          colorForeground: "#f2f3f5",
+          colorInputForeground: "#f2f3f5",
+          colorNeutral: "#f2f3f5",
+        },
+        elements: {
+          rootBox: { width: "100%", maxWidth: "100%" },
+          cardBox: { width: "100%", maxWidth: "100%" },
+        },
       });
       expect(sdk.managed).not.toHaveBeenCalled();
       expect(sdk.screen).not.toHaveBeenCalled();
@@ -100,6 +120,7 @@ describe("official Clerk browser adapter", () => {
     sdk.session.mockReturnValue({ isLoaded: true, isSignedIn: false });
     const html = renderToStaticMarkup(<ClerkTrialApp config={config} />);
     expect(html).toContain("Official sign-in");
+    expect(html).not.toContain("managed-entry");
     expect(sdk.signIn).toHaveBeenCalledWith({
       routing: "hash",
       fallbackRedirectUrl: "/",
@@ -199,6 +220,8 @@ describe("official Clerk browser adapter", () => {
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).not.toContain("Discover companies");
     expect(html).not.toContain("Synthetic data only");
+    expect(html).not.toContain("managed-entry");
+    expect(sdk.signIn).not.toHaveBeenCalled();
     expect(sdk.managed).toHaveBeenCalledTimes(1);
     expect(sdk.screen).not.toHaveBeenCalled();
     const props = sdk.managed.mock.calls[0]?.[0] as {
@@ -241,16 +264,24 @@ describe("official Clerk browser adapter", () => {
         />,
       );
       expect(html).toContain("Checking your session");
+      expect(html).toContain("Opening Investment</h2>");
+      expect(html).toContain('data-busy="true"');
+      expect(html).toContain('<p class="managed-entry-message" role="status">');
       expect(html).toContain("<h1>Your markets and research</h1>");
       expect(html.match(/<h1[ >]/g)).toHaveLength(1);
       expect(sdk.managed).not.toHaveBeenCalled();
       expect(sdk.screen).not.toHaveBeenCalled();
+      expect(sdk.signIn).not.toHaveBeenCalled();
     },
   );
 
-  it.each(["pending", "ended", "revoked"])(
-    "keeps an inactive %s session out of both workspaces",
-    (status) => {
+  it.each(
+    ["pending", "ended", "revoked"].flatMap((status) =>
+      ["development", "production"].map((environment) => [status, environment]),
+    ),
+  )(
+    "keeps an inactive %s session out of the %s workspace",
+    (status, environment) => {
       sdk.auth.mockReturnValue({
         isLoaded: true,
         isSignedIn: true,
@@ -262,8 +293,24 @@ describe("official Clerk browser adapter", () => {
         isSignedIn: true,
         session: { id: "session_owner", user: { id: "user_owner" }, status },
       });
-      expect(renderToStaticMarkup(<ClerkTrialApp config={config} />)).toContain(
-        "Official sign-in",
+      const html = renderToStaticMarkup(
+        <ClerkTrialApp
+          config={
+            environment === "production"
+              ? {
+                  environment,
+                  publishableKey: `pk_live_${Buffer.from("clerk.investingpro.app$").toString("base64")}`,
+                  apiOrigin:
+                    "https://investment-managed-6abac57a.appwrite.network",
+                  frontendApiOrigin: "https://clerk.investingpro.app",
+                }
+              : config
+          }
+        />,
+      );
+      expect(html).toContain("Official sign-in");
+      expect(html.includes("Sign in to your workspace</h2>")).toBe(
+        environment === "production",
       );
       expect(sdk.screen).not.toHaveBeenCalled();
       expect(sdk.managed).not.toHaveBeenCalled();

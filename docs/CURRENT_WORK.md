@@ -170,7 +170,7 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The active increment restores keyboard position after a successful watchlist
+[PR77](https://github.com/liangzixuan/investing-pro/pull/77) restores keyboard position after a successful watchlist
 recovery choice. Choosing **Use saved version** or **Keep my draft** removes that
 review; focus should move once to the visible My Watchlist heading. A stale choice,
 inactive view, session retirement or a user moving focus elsewhere must not pull
@@ -184,10 +184,24 @@ console errors or document overflow were observed. Source review and local brows
 checks are complete; hosted checks and delivery remain separate. The accepted
 release above remains the deployed baseline.
 
+The next design increment brings the managed entry, loading and native recovery
+states into Precision Desk. It uses one shared presentation section and a distinct
+retained-session warning while preserving authentication, session ownership,
+redirects and complete status messages. The browser form remains Clerk's component
+with its supported appearance settings. All 37 affected adapter/session tests,
+web types, scoped lint/format and source boundaries pass. Independent source review
+found no authentication or session regression. Actual presentation-component Brave
+checks covered seven invented states across desktop and narrow widths, with a
+final warning/footer check at 1440, 390 and 320 pixels. The observed controls were
+44 pixels high, with one page h1, visible keyboard focus, complete messages and no
+document overflow or console errors. The browser SDK and real active workspace
+were excluded from that entry fixture. Actual SDK rendering needs a separate
+check before delivery.
+
 The [product roadmap](PRODUCT_ROADMAP.md) continues to guide later increments.
 Physical installation or use of Android 1.24 remains optional and unverified.
-Default signed-out/loading and native recovery states still need their remaining
-scoped visual checks. The presentation overhaul adds no broader market-data
+The entry work has local source and presentation acceptance; hosted checks,
+the actual sign-in widget and delivery remain open. The presentation overhaul adds no broader market-data
 coverage and does not complete M1, M2 or M3.
 
 The October 10 owner report remains limited to the requested Android 1.19 and
