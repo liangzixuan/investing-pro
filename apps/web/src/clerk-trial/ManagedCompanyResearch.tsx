@@ -56,36 +56,45 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
-      <ManagedResearchNote
-        state={watchlist}
-        symbol={listing.symbol}
-        onAdd={onAdd}
-        onNote={onNote}
-        onReview={onReview}
-      />
-      <nav
-        className="managed-company-sections"
-        aria-label="Company research sections"
-      >
-        {(["eod", "annual"] as const).map((section) => (
-          <button
-            key={section}
-            className="trial-secondary"
-            aria-label={`${section === "eod" ? "Price" : "Annual"} section for ${listing.symbol}`}
-            aria-pressed={research.section === section}
-            aria-controls="managed-company-content"
-            onClick={() => onSection(section)}
+      <div className="managed-research-body">
+        <div>
+          <nav
+            className="managed-company-sections"
+            aria-label="Company research sections"
           >
-            {section === "eod" ? "Price" : "Annual"}
-          </button>
-        ))}
-      </nav>
-      <div id="managed-company-content">
-        {research.section === "annual" ? (
-          <ManagedAnnualReport model={annual} noteActions={annualNoteActions} />
-        ) : (
-          <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
-        )}
+            {(["eod", "annual"] as const).map((section) => (
+              <button
+                key={section}
+                className="trial-secondary"
+                aria-label={`${section === "eod" ? "Price" : "Annual"} section for ${listing.symbol}`}
+                aria-pressed={research.section === section}
+                aria-controls="managed-company-content"
+                onClick={() => onSection(section)}
+              >
+                {section === "eod" ? "Price" : "Annual"}
+              </button>
+            ))}
+          </nav>
+          <div id="managed-company-content">
+            {research.section === "annual" ? (
+              <ManagedAnnualReport
+                model={annual}
+                noteActions={annualNoteActions}
+              />
+            ) : (
+              <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
+            )}
+          </div>
+        </div>
+        <aside className="managed-research-aside" aria-label="Research note">
+          <ManagedResearchNote
+            state={watchlist}
+            symbol={listing.symbol}
+            onAdd={onAdd}
+            onNote={onNote}
+            onReview={onReview}
+          />
+        </aside>
       </div>
     </section>
   );

@@ -184,6 +184,30 @@ describe("static site release evidence", () => {
       },
     ],
     [
+      "unhashed font",
+      (m: ArtifactManifest) => {
+        m.files[1]!.path = "assets/InterVariable.woff2";
+      },
+    ],
+    [
+      "nested font",
+      (m: ArtifactManifest) => {
+        m.files[1]!.path = "assets/nested/InterVariable-ABCDEFGH.woff2";
+      },
+    ],
+    [
+      "font traversal",
+      (m: ArtifactManifest) => {
+        m.files[1]!.path = "assets/../InterVariable-ABCDEFGH.woff2";
+      },
+    ],
+    [
+      "unsupported font format",
+      (m: ArtifactManifest) => {
+        m.files[1]!.path = "assets/InterVariable-ABCDEFGH.woff";
+      },
+    ],
+    [
       "duplicate index",
       (m: ArtifactManifest) => {
         m.files[1]!.path = "index.html";

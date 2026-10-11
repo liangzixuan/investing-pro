@@ -50,7 +50,7 @@ function NativeSession({
   );
   const session = store.session();
   return (
-    <TrialFrame managed={managed}>
+    <TrialFrame managed={managed} compact={managed && Boolean(session)}>
       {session ? (
         <>
           {state.message && (

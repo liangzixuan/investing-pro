@@ -74,7 +74,7 @@ describe("official Clerk browser adapter", () => {
       });
       sdk.auth.mockReturnValue({ isLoaded: true, isSignedIn: false });
       sdk.session.mockReturnValue({ isLoaded: true, isSignedIn: false });
-      renderToStaticMarkup(
+      const html = renderToStaticMarkup(
         <ClerkTrialApp
           config={{
             environment: "production",
@@ -84,6 +84,8 @@ describe("official Clerk browser adapter", () => {
           }}
         />,
       );
+      expect(html).toContain("<h1>Your markets and research</h1>");
+      expect(html.match(/<h1[ >]/g)).toHaveLength(1);
       expect(sdk.signIn).toHaveBeenCalledExactlyOnceWith({
         routing: "hash",
         fallbackRedirectUrl: destination,
@@ -193,7 +195,9 @@ describe("official Clerk browser adapter", () => {
     });
     const html = renderToStaticMarkup(<ClerkTrialApp config={production} />);
     expect(html).toContain("Managed Discover and watchlist");
-    expect(html).toContain("Discover companies");
+    expect(html).toContain("<h1>Investment</h1>");
+    expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+    expect(html).not.toContain("Discover companies");
     expect(html).not.toContain("Synthetic data only");
     expect(sdk.managed).toHaveBeenCalledTimes(1);
     expect(sdk.screen).not.toHaveBeenCalled();
@@ -207,6 +211,42 @@ describe("official Clerk browser adapter", () => {
       sessionId: "session_owner",
     });
   });
+
+  it.each([false, true])(
+    "keeps the full managed frame while session hooks are loading or disagree (loaded=%s)",
+    (loaded) => {
+      sdk.auth.mockReturnValue({
+        isLoaded: loaded,
+        isSignedIn: true,
+        userId: "user_new",
+        sessionId: "session_new",
+      });
+      sdk.session.mockReturnValue({
+        isLoaded: true,
+        isSignedIn: true,
+        session: {
+          id: "session_old",
+          user: { id: "user_old" },
+          status: "active",
+        },
+      });
+      const html = renderToStaticMarkup(
+        <ClerkTrialApp
+          config={{
+            environment: "production",
+            publishableKey: `pk_live_${Buffer.from("clerk.investingpro.app$").toString("base64")}`,
+            apiOrigin: "https://investment-managed-6abac57a.appwrite.network",
+            frontendApiOrigin: "https://clerk.investingpro.app",
+          }}
+        />,
+      );
+      expect(html).toContain("Checking your session");
+      expect(html).toContain("<h1>Your markets and research</h1>");
+      expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+      expect(sdk.managed).not.toHaveBeenCalled();
+      expect(sdk.screen).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["pending", "ended", "revoked"])(
     "keeps an inactive %s session out of both workspaces",

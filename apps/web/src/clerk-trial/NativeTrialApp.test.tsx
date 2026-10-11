@@ -104,9 +104,11 @@ async function mount(config: ClerkTrialConfig, state = signedIn) {
   };
   hooks.register.mockReturnValue(plugin);
   const loading = NativeTrialApp({ config });
-  expect(renderToStaticMarkup(loading)).toContain(
-    "Checking the installed session",
-  );
+  const loadingHtml = renderToStaticMarkup(loading);
+  expect(loadingHtml).toContain("Checking the installed session");
+  expect(loadingHtml.match(/<h1[ >]/g)).toHaveLength(1);
+  if (config.environment === "production")
+    expect(loadingHtml).toContain("<h1>Your markets and research</h1>");
   cleanup = hooks.effects[0]!();
   await Promise.resolve();
   await Promise.resolve();
@@ -176,6 +178,11 @@ describe("native shared workspace composition", () => {
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);
       const html = renderToStaticMarkup(frame());
+      expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+      if (config.environment === "production") {
+        expect(html).toContain("<h1>Investment</h1>");
+        expect(html).not.toContain("Discover companies");
+      }
       expect(html.includes("Synthetic data only.")).toBe(
         config.environment === "development",
       );
@@ -212,6 +219,8 @@ describe("native shared workspace composition", () => {
     await expect(pending).rejects.toMatchObject({ code: "unauthenticated" });
     const html = renderToStaticMarkup(frame());
     expect(html).toContain("Sign in again");
+    expect(html).toContain("<h1>Your markets and research</h1>");
+    expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).not.toContain("Managed workspace fixture");
     expect(html).not.toContain("join the trial");
   });
@@ -225,6 +234,8 @@ describe("native shared workspace composition", () => {
     });
     const html = renderToStaticMarkup(frame());
     expect(html).toContain("Sign in to open your shared watchlist.");
+    expect(html).toContain("<h1>Your markets and research</h1>");
+    expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).toContain("Discover companies");
     expect(html).not.toContain("Synthetic data only.");
     expect(findScreen(frame())).toBeUndefined();

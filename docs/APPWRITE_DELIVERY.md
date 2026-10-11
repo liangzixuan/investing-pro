@@ -32,7 +32,7 @@ successful CI attempt.
 The pipeline then:
 
 1. Builds the production Clerk client once with the full commit SHA embedded in the
-   document. Packaging admits only its index and hashed JavaScript/CSS assets;
+   document. Packaging admits only its index and hashed JavaScript/CSS/WOFF2 assets;
    it records file and archive hashes and enforces a 4 MiB compressed limit.
 2. Uploads that archive to the fixed staging site without activation. It waits
    within a bounded deadline for a ready build, checks for an intervening site

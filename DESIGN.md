@@ -1,90 +1,171 @@
 # Investment workspace design
 
-## Purpose
+## Direction and purpose
 
-Help the owner scan a declared set of companies, inspect dated evidence and keep
-research notes without losing context. Financial facts, provenance and available
-actions should be easy to distinguish. Every displayed value must keep its
-meaning through loading, refresh, error and navigation.
+The owner selected **Option 1, Precision Desk**: a dark investment research
+workspace inspired by Linear's application hierarchy. Make it easy to scan
+companies, inspect dated evidence and keep research notes. Use Investment's
+own identity, product language and financial models.
 
-## Profiles
+This guide describes the selected direction and current implementation under
+review. It does not record completed visual, accessibility or release acceptance.
 
-The managed browser and Android workspace use green actions on light neutral
-surfaces. The local Market Atlas profile retains its charcoal masthead, orange
-actions and separate owner/session model. The development trial remains distinct.
-Shared components may share layout and semantics; each profile owns its theme.
-New managed rules belong under `.managed-frame`. Do not use a global body,
-`:root`, heading or button change to restyle one profile.
+## Profiles and ownership
 
-## Typography and numbers
+The managed browser and Android workspace share the Precision Desk presentation.
+The local Market Atlas profile retains its charcoal masthead, orange actions and
+separate owner/session model. The disconnected development trial remains
+distinct. Shared components may share semantics and calculations; each profile
+owns its theme.
 
-Use the existing Inter/system sans-serif stack. Keep 24 to 28px workspace headings,
-20px section headings, 18px key prices and 14px supporting text. Form text remains
-16px on narrow screens. Heading emphasis should identify the next task, while
-dates and source text remain readable. Long names, notes and messages wrap.
+Keep managed tokens and shell rules in `managed-workspace.css`, scoped under
+`.managed-frame`. Watchlist presentation belongs in `managed-watchlist.css` with
+the same profile boundary. Do not restyle the local profile through global body,
+heading or button overrides.
 
-Use tabular figures for prices, changes, dates and times. Right-align numeric
-table headings and values and leave descriptive labels readable. Preserve exact decimals,
-currency, comparison dates and calculation basis; styling must never round or
-rewrite data. “Not loaded”, unavailable and previous data are different states.
-Keep explicit signs and words so financial meaning does not depend on color.
+The existing verified-session branch supplies `TrialFrame`'s managed compact
+presentation. The active shell has one accessible app-level h1 and a visible
+Investment wordmark. Loading, mismatched and signed-out branches retain their
+introduction. Presentation must not infer authentication or alter session keys.
 
-## Spacing and surfaces
+## Color and surfaces
 
-Use a small 4/8/12/16/24/32px spacing scale. Align toolbars, content and section
-headings. The managed frame remains at its existing maximum width; the board and
-selected chart keep their established desktop columns and narrow stacking.
+Use these semantic managed tokens:
 
-Use white panels, dark ink `#172b32`, secondary text `#425d61`, border `#d4e2e0`,
-green action `#0f625e` and selected fill `#edf5f3`. Use 12px panel corners and 8px
-control corners. Thin rules and surface changes separate content; routine panels
-do not need decorative shadows. Preserve distinctive error and previous-result
-treatments. Selection must remain apparent independently of hover.
+| Role             | Token                      | Value     |
+| ---------------- | -------------------------- | --------- |
+| Canvas           | `--managed-canvas`         | `#101113` |
+| Surface          | `--managed-surface`        | `#191b1f` |
+| Raised surface   | `--managed-surface-raised` | `#22252b` |
+| Primary text     | `--managed-ink`            | `#f2f3f5` |
+| Supporting text  | `--managed-muted`          | `#aeb4c0` |
+| Separator        | `--managed-line`           | `#2c2f36` |
+| Form border      | `--managed-field-border`   | `#697384` |
+| Action           | `--managed-action`         | `#8796ff` |
+| Selected surface | `--managed-selected`       | `#252b42` |
+| Positive change  | `--managed-positive`       | `#65d99a` |
+| Negative change  | `--managed-negative`       | `#ff9096` |
 
-## Navigation and actions
+Use thin separators and surface changes to organize the workspace. Routine
+content sits directly on the canvas without oversized enclosing cards or
+decorative shadows. Controls use 7–8px corners. Warning and previous-result
+notices retain a distinct amber treatment and their full explanation. Native
+session status and sign-out review must remain legible in the dark theme.
 
-Keep Markets, Discover and My Watchlist visible and in their existing order.
-Preserve `aria-current`, current route behavior, Back and focus restoration.
-Use a quiet navigation row with an obvious selected state. Search, catalog
-refresh, board acquisition and agenda acquisition remain distinct actions.
+Primary actions use the periwinkle accent with dark text. Secondary actions use
+quiet surfaces and clear labels. Selected navigation has a surface change and
+an accent indicator; selected research sections retain a visible border and fill
+through hover. Keep the 3px focus outline distinct from resting borders.
 
-Primary actions use managed green. Secondary actions use neutral surfaces and
-clear labels. Maintain at least 44px interactive control height. Compact spacing
-before shrinking targets. Search input and Search may share a narrow row when
-they fit; controls can wrap without changing reading or tab order. Never remove
-scope or recovery text to make a screen look cleaner.
+## Typography and financial evidence
 
-## State and accessibility
+Use the bundled normal-style Inter Latin variable font for the managed profile,
+with system sans-serif fallbacks for characters outside its coverage. Its local
+WOFF2 file stabilizes metrics without a runtime font CDN request. Keep the local
+profile's font selection separate. Base managed text is 15px with roughly 1.5
+line height. Markets uses a
+36px desktop heading and 28px narrow heading, 16px company symbols and 13px
+supporting identity. Selected quotes use 28–40px type. Status and provenance text
+can use 12–14px with sufficient contrast and wrapping.
 
-The CSS layer owns no requests, saves, navigation state or session lifetime.
-Keep all explicit load/refresh/cancel behavior and previous-result notices.
-Retirement clears the workspace and late responses cannot restore it. Notes,
-order and save/reconciliation state remain owned by existing models.
+Use tabular figures and right-aligned numeric table headings and values. Preserve
+exact decimal strings, currency, date, share class, exchange and calculation
+basis. Long values must wrap or use the existing contained table scroll without
+creating page-wide overflow. A chart's exact-value table remains available.
 
-Retain visible focus, native labels, semantic headings, alerts/status regions,
-disabled states and keyboard access. Do not rely on placeholder text as a label,
-hover alone to reveal essential information, or color alone to convey meaning.
-Use flexible heights and keep document-wide overflow out of the narrow layout.
-Reduced-motion behavior, exact-value chart tables and native controls remain.
+Raw close changes retain their signs, comparison dates and unadjusted-price
+explanation. Color supplements that text. “Not loaded”, unavailable and a retained
+previous result are separate states. No value is invented to fill an empty view.
+
+The implemented price range remains one month. Omit the generated concept's
+unsupported 3M, 1Y and all-time controls. Its sample companies, prices and chart
+coordinates are visual examples only.
+
+## Composition and navigation
+
+On desktop, place Markets, Discover and My Watchlist in a left rail, with global
+search, catalog refresh and session controls above the main content. The rail is
+224px wide, reducing to 192px below 1150px. Main content uses flexible columns and
+24–32px spacing; avoid a fixed maximum-width card around the whole app.
+
+Markets pairs a compact company list with a larger selected-company detail and
+chart. My Watchlist pairs ordered listing selection with one note editor and its
+research, move and remove actions. Selection is presentation state; the shared
+watchlist draft owns every note and membership.
+
+Company research shows Price/Annual content beside the watchlist note on wide
+screens. Below 1150px the note follows that content in reading order. Opening
+research hides the origin view while preserving its mounted state. Returning
+restores focus after the origin is visible; route and Android Back behavior stay
+with their existing owners.
+
+At 760px and below, use a single-column workspace and three fixed bottom
+destinations in the same order. Reserve bottom space including the safe-area
+inset so content and focused controls remain reachable. Keep search near the top
+and session actions visible. Listing/detail content stacks naturally. Watchlist
+choices may scroll within their own horizontal strip; the page must not scroll
+horizontally. Preserve DOM reading order and avoid hover-only actions.
+
+## Controls, state and accessibility
+
+Maintain at least 44px interactive control height. Keep visible labels, accessible
+names, semantic headings, `aria-current`/`aria-pressed`, status regions, disabled
+states and keyboard access. Use native controls and flexible heights. Focus must
+remain visible around bottom navigation, scrolling choices and exact-value tables.
+
+Load, refresh, cancel and save remain explicit actions. Search, catalog refresh,
+board prices and the BEA agenda are separate operations. Retain full request
+scope, dated provenance and previous-result messages. Never remove error or
+recovery text merely to reduce height.
+
+The presentation layer owns no request, save or session lifetime. Preserve draft
+retention, conflict choices, uncertain-save reconciliation, cancellation and late
+response fences. Retirement clears private content. Sign-out confirmation keeps
+its complete explanation and actions in document flow.
+
+Navigation uses three unmodified local Tabler outline SVGs, rendered as decorative
+images beside text labels. Their MIT notice is available in Software licenses.
+Do not add runtime icon requests or copy another product's wordmark.
 
 ## Verification
 
-Use invented data and the real managed frame/components for design fixtures.
-Keep fixture banners and diagnostics outside the product frame. Compare the same
-states and viewport in fresh Brave captures: unloaded and loaded Markets,
-previous-result failure, Cancel, navigation and research with a dirty note.
-Review desktop and 390px wrapping, focus and overflow before accepting a pass.
-Screenshots establish visible scope; lifecycle assertions establish asynchronous
-behavior. Hosted, signed-package and physical-device acceptance remain separate.
+Use invented data with the actual managed frame, components and CSS. Keep fixture
+identification outside the product frame. Compare fresh Brave captures against
+the selected direction at 1440px, 390px and 320px. Inspect unloaded and loaded
+Markets, company research, watchlist editing, invalid notes, recovery and sign-out
+confirmation. Check selected and hover states, focus, all control targets, long
+values, safe-area spacing and document overflow.
 
-## References
+Screenshots establish the visible state only. Focus tests and lifecycle tests
+establish their specific behavior. Local previews, hosted native checks, signed
+packages and physical-device acceptance remain separate. Record observed results
+and limitations before claiming a pass.
 
-This direction adapts a few general patterns from VoltAgent's
-[IBM](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/ibm/DESIGN.md),
-[Coinbase](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/coinbase/DESIGN.md)
-and [Linear](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/linear.app/DESIGN.md)
-website analyses: consistent alignment, a clear numeric hierarchy and restrained
-actions. These are reference analyses, not brand assets or instructions for this
-project. The current product and the owner's selected Market Atlas direction
-govern composition and behavior. No third-party prompt, brand palette, proprietary
-font or component implementation is copied.
+## References and adaptations
+
+The primary community reference is VoltAgent's
+[Linear analysis](https://github.com/VoltAgent/awesome-design-md/blob/13be5c05c63be24b57581162364167028020f043/design-md/linear.app/DESIGN.md),
+from commit `13be5c05c63be24b57581162364167028020f043` of
+[awesome-design-md](https://github.com/VoltAgent/awesome-design-md).
+The collection is MIT licensed, copyright 2026 VoltAgent. It analyzes a website
+surface; it is not an official application specification.
+
+Linear's official
+[application redesign article](https://linear.app/now/how-we-redesigned-the-linear-ui)
+informs the separation of global navigation from working content, restrained
+chrome and consistent hierarchy. Investment adapts those principles to its
+existing research tasks, responsive layouts and accessibility requirements.
+Its palette, typography scale and components are project decisions. No Linear
+brand assets, proprietary fonts or application implementation are copied.
+
+The normal-style Latin variable subset of [Inter](https://rsms.me/inter/) is
+bundled unchanged from the Google Fonts distribution under SIL OFL 1.1. Its source
+URL, coverage, hash and complete license are retained in
+`apps/web/src/clerk-trial/fonts/`; the copyright and license remain available in
+Software licenses. Use a distinct managed font-family name so loading this asset
+does not change the local or development-trial font selection.
+
+The navigation assets come from
+[Tabler Icons](https://github.com/tabler/tabler-icons/tree/a4ce1404bc6d24d3c365afe7b258d6bf6f48d62d)
+at commit `a4ce1404bc6d24d3c365afe7b258d6bf6f48d62d`; their source and complete MIT
+notice are retained in `apps/web/src/clerk-trial/icons/`.

@@ -292,6 +292,12 @@ describe("selected SEC filing context route", () => {
 
   it("rejects a provider substituting another selected amount", async () => {
     const fixture = await setup();
+    const traceId = "trace-00000999-0000-4000-8000-000000000000";
+    // A generated trace ID can contain the rejected amount without leaking it.
+    fixture.app.addHook("preHandler", (request, _reply, done) => {
+      request.id = traceId;
+      done();
+    });
     fixture.loadContext.mockResolvedValueOnce({
       cik: "0000000001",
       status: "available",
@@ -299,7 +305,15 @@ describe("selected SEC filing context route", () => {
     } as PersonalSecFilingContextInspectionDto);
     const response = await fixture.request();
     expect(response.statusCode).toBe(502);
-    expect(response.payload).not.toContain("999");
+    expect(response.json()).toEqual({
+      type: "https://research-cockpit.local/problems/502",
+      title: "SEC filing context unavailable",
+      status: 502,
+      detail: "The selected filing context request was not accepted.",
+      instance: PERSONAL_SEC_FILING_CONTEXT_PATH,
+      traceId,
+      code: "provider_unavailable",
+    });
   });
 
   it.each([

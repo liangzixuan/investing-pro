@@ -181,6 +181,40 @@ describe("close-only chart", () => {
     expect(chart.disconnect).toHaveBeenCalledOnce();
     expect(chart.dispose).toHaveBeenCalledOnce();
   });
+  it("uses the selected dark presentation while preserving exact values and comparison access", () => {
+    const html = renderToStaticMarkup(
+      <CloseHistoryChart
+        symbol="ZERO"
+        rows={rows}
+        appearance="precision-desk"
+        actions={<button>Open company research</button>}
+      />,
+    );
+    expect(html).toContain("ZERO comparison start date");
+    expect(html).toContain("Open company research");
+    expect(html).toContain(
+      '<details class="managed-eod-exact-values"><summary>Exact closing values</summary>',
+    );
+    expect(html).toContain('aria-label="ZERO exact raw closing prices"');
+    expect(html).toContain("100.1234567890123456789");
+    expect(html).toContain('<th scope="row">2026-09-18</th>');
+    CloseHistoryChart({ symbol: "ZERO", rows, appearance: "precision-desk" });
+    hooks.effect?.();
+    expect(chart.setOption.mock.calls.at(-1)?.[0]).toMatchObject({
+      animation: false,
+      tooltip: {
+        backgroundColor: "#191b1f",
+        textStyle: { color: "#f2f3f5" },
+      },
+      xAxis: { axisLabel: { color: "#aeb4c0" } },
+      yAxis: { axisLabel: { color: "#aeb4c0" } },
+      series: [{ lineStyle: { color: "#8796ff" } }],
+    });
+    const tooltip = tooltipFor([point(0)]);
+    expect(tooltip.append.mock.calls[0]![1].textContent).toBe(
+      "Raw close (USD): 100.1234567890123456789",
+    );
+  });
   it("does not initialize a chart without rows", () => {
     CloseHistoryChart({ symbol: "ZERO", rows: [] });
     hooks.effect?.();

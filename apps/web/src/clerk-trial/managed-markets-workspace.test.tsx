@@ -50,11 +50,19 @@ async function fixture(
 function marketRow(markup: string, symbol: string): string {
   const match = markup.match(
     new RegExp(
-      `<li><button[^>]*aria-label="Select ${symbol} on company board"[\\s\\S]*?</li>`,
+      `<li[^>]*><button[^>]*aria-label="Select ${symbol} on company board"[\\s\\S]*?</li>`,
     ),
   );
   expect(match).not.toBeNull();
   return match![0];
+}
+
+// Keep inline spacing and screen-reader text in this controlled SSR output.
+function renderedText(markup: string): string {
+  return markup
+    .replace(/<[^>]*>/gu, "")
+    .replace(/\s+/gu, " ")
+    .trim();
 }
 
 describe("Markets and mounted workspace", () => {
@@ -78,8 +86,10 @@ describe("Markets and mounted workspace", () => {
     expect(loaded).toContain("Source and request dates");
     expect(loaded).toContain("2026-09-19");
     expect(loaded).toContain("101.5");
-    expect(loaded).toContain("Raw close change: +$1.25 (+1.2469%)");
-    expect(loaded).toContain(
+    expect(renderedText(loaded)).toContain(
+      "Raw close change: +$1.25 (+1.2469%)",
+    );
+    expect(renderedText(loaded)).toContain(
       "2026-09-18 to 2026-09-19 · not adjusted for splits or dividends.",
     );
     const descriptions = marketsCohort.map(({ symbol }) => {
@@ -88,6 +98,14 @@ describe("Markets and mounted workspace", () => {
       expect(ids).toHaveLength(2);
       expect(row).toContain(`id="${ids[0]}" class="managed-market-close"`);
       expect(row).toContain(`id="${ids[1]}" class="managed-market-change"`);
+      expect(renderedText(row)).toContain(
+        "Raw close change: +$1.25 (+1.2469%)",
+      );
+      expect(renderedText(row)).toContain(
+        "2026-09-18 to 2026-09-19 · not adjusted for splits or dividends.",
+      );
+      expect(row).toContain('<time dateTime="2026-09-18">2026-09-18</time>');
+      expect(row).toContain('<time dateTime="2026-09-19">2026-09-19</time>');
       return ids;
     });
     expect(new Set(descriptions.flat()).size).toBe(6);
@@ -239,11 +257,11 @@ describe("Markets and mounted workspace", () => {
     );
     await workspace.markets.load();
     const alfa = marketRow(html(), "ALFA");
-    expect(alfa).toContain("Raw close change: +$0.25 (+2.4390%)");
-    expect(alfa).toContain("2026-09-11 to 2026-09-14");
+    expect(renderedText(alfa)).toContain("Raw close change: +$0.25 (+2.4390%)");
+    expect(renderedText(alfa)).toContain("2026-09-11 to 2026-09-14");
     const beta = marketRow(html(), "BETA");
-    expect(beta).toContain("Raw close change: -$0.25 (-1.2048%)");
-    expect(beta).toContain("2026-09-10 to 2026-09-18");
+    expect(renderedText(beta)).toContain("Raw close change: -$0.25 (-1.2048%)");
+    expect(renderedText(beta)).toContain("2026-09-10 to 2026-09-18");
     const betb = marketRow(html(), "BETB");
     expect(betb).toContain("$30.5");
     expect(betb).toContain("USD · 2026-09-19");
@@ -272,7 +290,7 @@ describe("Markets and mounted workspace", () => {
       ]);
       await workspace.markets.load();
       const row = marketRow(html(), "ALFA");
-      expect(row).toContain(`Raw close change: ${label}`);
+      expect(renderedText(row)).toContain(`Raw close change: ${label}`);
       expect(row).not.toContain("-0.0000%");
       if (close !== "100") expect(row).not.toContain("(0.0000%)");
     },
@@ -288,7 +306,7 @@ describe("Markets and mounted workspace", () => {
     await workspace.markets.load();
     const row = marketRow(html(), "ALFA");
     expect(row).toContain(`<strong>$${close}</strong>`);
-    expect(row).toContain(
+    expect(renderedText(row)).toContain(
       `Raw close change: +$${difference} (+${difference}.0000%)`,
     );
     expect(row).not.toContain("e+");
@@ -304,8 +322,10 @@ describe("Markets and mounted workspace", () => {
     const previous = workspace.markets.getSnapshot().rows[0]!.response;
     const expectPrevious = () => {
       const row = marketRow(html(), "ALFA");
-      expect(row).toContain("Raw close change: +$1.25 (+1.2469%)");
-      expect(row).toContain("2026-09-18 to 2026-09-19");
+      expect(renderedText(row)).toContain(
+        "Raw close change: +$1.25 (+1.2469%)",
+      );
+      expect(renderedText(row)).toContain("2026-09-18 to 2026-09-19");
       expect(row).toContain(
         "Previous history · completed 2026-09-20T00:00:01.000Z",
       );
@@ -356,8 +376,8 @@ describe("Markets and mounted workspace", () => {
     );
     await workspace.markets.load();
     const current = marketRow(html(), "ALFA");
-    expect(current).toContain("Raw close change: +$2 (+2.0000%)");
-    expect(current).toContain("2026-09-19 to 2026-09-20");
+    expect(renderedText(current)).toContain("Raw close change: +$2 (+2.0000%)");
+    expect(renderedText(current)).toContain("2026-09-19 to 2026-09-20");
     expect(current).not.toContain("Previous history");
     expect(current).not.toContain("2026-09-18");
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);

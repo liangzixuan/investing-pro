@@ -44,8 +44,8 @@ export function ManagedResearchNote({
         </div>
       )}
       <p id="managed-research-note-help">
-        Notes support up to 2,000 characters. This is your watchlist draft.
-        Review and save all watchlist changes in My Watchlist.
+        Up to 2,000 characters. Edit your watchlist draft here, then review and
+        save all changes in My Watchlist.
       </p>
       {state.reason && <p role="status">{state.reason}</p>}
     </section>
