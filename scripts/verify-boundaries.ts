@@ -10831,6 +10831,14 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/managed-recovery.integration.test.ts",
+      [
+        "MANAGED_SECURITY_MASTER_PROFILE",
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+      ],
+    ],
+    [
       "apps/api/src/managed-workspace-catalog.ts",
       [
         "PersonalSecurityMasterError",
@@ -10956,6 +10964,28 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
   ]);
+  const recoveryTestPath = "apps/api/src/managed-recovery.integration.test.ts";
+  const recoveryTestSource = await cycle2kText(recoveryTestPath, found);
+  if (
+    personalSecurityMasterApiImportViolation(
+      recoveryTestPath,
+      recoveryTestSource,
+      allowedApiImporters,
+    ) !== null ||
+    personalSecurityMasterApiImportViolation(
+      "apps/api/src/managed-recovery.ts",
+      recoveryTestSource,
+      allowedApiImporters,
+    ) === null ||
+    personalSecurityMasterApiImportViolation(
+      recoveryTestPath,
+      `${recoveryTestSource}\nimport { searchPersonalSecurityMaster } from "@research-cockpit/personal-security-master";`,
+      allowedApiImporters,
+    ) === null
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: recovery integration test import classifier regressed",
+    );
   const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
   const managedAnnualSource = await cycle2kText(managedAnnualPath, found);
   const managedAnnualImports = [
