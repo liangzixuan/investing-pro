@@ -207,6 +207,29 @@ Appwrite Account session. BrowserStack checks an inert website copy and cannot
 prove these connected workflows. Public status is in [Current work](./CURRENT_WORK.md).
 Private operational evidence and account identifiers stay outside the repository.
 
+### Composed recovery checks
+
+The [recovery integration test](../apps/api/src/managed-recovery.integration.test.ts)
+connects two invented sessions through the production client, workspace model,
+managed handler and watchlist repository, with an atomic in-memory TablesDB port.
+It checks persisted versions and receipts alongside the retained draft. A stale
+edit cannot overwrite another session's save without a successful latest read
+and explicit whole-version choice. Failed rereads preserve both versions while
+withdrawing choice eligibility.
+
+When a committed save reply is lost and another session saves a newer version,
+reconciliation returns the original receipt. The client must load the latest
+version before choosing what to edit. Authentication rejection on a catalog read
+during a held save or reconciliation clears the entire workspace; the late receipt
+cannot restore it. A fresh session reads the committed record. A missing token
+retires an unsaved draft without dispatching a write.
+
+These checks simulate admission and response loss in process. They do not measure
+Clerk expiry detection, real network loss or simultaneous cloud transactions.
+An isolated Brave check separately observed mounted-screen cleanup and fresh-session
+loading with invented records. Its navigation attempts showed no leave dialog;
+the browser confirmation and live managed-account recovery remain unaccepted.
+
 ## References
 
 - [TablesDB transactions](https://appwrite.io/docs/products/databases/tablesdb/transactions)

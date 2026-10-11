@@ -143,6 +143,42 @@ that acceptance.
 
 ## Current task and next acceptance
 
+The October 11 Project Manager run reconciled PR70's actual main
+`537a81f67c59486ac663b183beb4f6011ddcd529`: all five required workflows and six jobs
+passed, including CI attempt 1 on Linux and Windows. Remote main matched that
+revision. Source-proof capture/upload passed; this reconciliation did not acquire
+the artifact or change the deployed website, API or Android package.
+
+The recovery increment has passed local verification and independent review.
+Five invented-data integration cases compose the real managed client, API handler
+and watchlist repository. They cover two-session stale edits, failed latest-version
+reads, explicit whole-version choices, original-command replay after another
+session saves, and authentication loss during held save/reconciliation responses.
+A fresh session reads committed data while late responses cannot repopulate the
+retired workspace. Missing tokens dispatch no write. Stored versions and receipts
+are checked independently of the coordinator. The transaction port is in memory;
+Clerk timing and simultaneous cloud contention remain separate acceptance.
+
+All 2,609 API tests, API/root types, scoped lint/format and the boundary gate passed.
+The gate admits only this test's three catalog imports; adverse probes still reject
+a production-neighbor path and extra bindings. Original fixture timing, nullable
+test capture and missing allowlist failures were corrected and retained. Current
+candidate hosted checks and source merge remain pending. No production behavior,
+authentication, schema, provider or dependency changed.
+
+An isolated Brave fixture exercised the unchanged mounted managed screen with
+invented records: rejected-session cleanup removed the unsaved note, and a fresh
+session loaded only saved data. Two navigation attempts showed no leave dialog,
+including after keyboard input; the cause is unproven and actual dialog acceptance
+remains open. No live Clerk account or owner records were used. The earlier
+October 10 URL-policy stop remains historical evidence; current supported Brave
+extension access to the loopback fixture succeeded without a workaround.
+
+After this recovery increment, the next candidate is a managed BEA release agenda
+using the existing bounded public-source adapter and calendar renderer. Confirm
+source availability and managed request limits before implementation. This adds
+a daily planning task toward M3; full M1/M2, broader fields and cohorts remain open.
+
 PR69's earlier reported annual changes are delivered on the website and in signed
 Android 1.21. Source checks, producing source proof, twenty native cases, scoped
 pixels, complete API bytes, same-archive promotion and signed delivery passed.
