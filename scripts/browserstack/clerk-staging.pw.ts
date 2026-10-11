@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { previewOrigin, webTarget } from "./playwright.config";
+import { isAllowedStagingRequest } from "./staging-request-policy";
 
 test("exact-build Clerk staging boots without auth or data requests", async ({
   context,
@@ -24,18 +25,13 @@ test("exact-build Clerk staging boots without auth or data requests", async ({
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    const type = request.resourceType();
-    const document = type === "document" && url.pathname === "/";
-    const asset =
-      ["script", "stylesheet", "font", "image"].includes(type) &&
-      /^\/assets\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]{8,}\.(?:js|css)$/u.test(
-        url.pathname,
-      );
     if (
-      request.method() === "GET" &&
-      url.origin === previewOrigin &&
-      url.search === "" &&
-      (document || asset)
+      isAllowedStagingRequest({
+        url,
+        method: request.method(),
+        resourceType: request.resourceType(),
+        expectedOrigin: previewOrigin,
+      })
     ) {
       await route.fallback();
       return;

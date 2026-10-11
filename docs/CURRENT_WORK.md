@@ -178,18 +178,33 @@ decimal prices caused horizontal overflow. The assertions now select the dated
 basis explicitly, preserving exact expected text. Price rows wrap long values;
 the detail quote and change wrap onto separate lines when needed. Follow-up
 Brave geometry checks at 411 and 320 pixels found no document overflow and kept
-the comparison above bottom navigation. The original failed report is retained;
-fresh native execution is required.
+the comparison above bottom navigation. The original failed report is retained.
+Fresh native run `38167144905`, attempt 1, passed all 22 cases with no failures,
+errors or skips. Its producing checkout has the overhaul tree
+`4d5bbe7f9d6389876229e7a5465f3ca87f8090fe`; all nineteen source markers match.
+Sixteen of 67 retained frames received scoped visual review. Calendar layout
+remains outside those final frames.
 
 All 255 focused component, lifecycle and chart tests passed, alongside 98
 packaging tests, root/web types and scoped lint/format checks. The font's
 WOFF2 signature and declared length are admitted by the existing bounded website
 packager; path, hash, link and size checks remain in place. The local dependency
-license inventory stopped at a missing pnpm package-index file, so fresh hosted
-inventory remains required. Final source checks, native execution, staging,
-release approval and delivery are pending. PR74 and Android 1.23 remain the
-accepted release above. Default signed-out/loading and native recovery states
-still need their scoped visual checks.
+license inventory stopped at a missing pnpm package-index file; the subsequent
+hosted inventory passed. PR75 merged as
+`91e65a47f5eb46711d68440371d89a84c17d5f0e`; all six applicable main workflows,
+seven jobs and the exact source proof passed. Its signed Android 1.24 package
+passed full archive, manifest, bundled font/license and existing-signer checks;
+final delivery and device acceptance remain separate.
+
+Website staging run `38172917243`, attempt 1, deployed the overhaul but failed its
+BrowserStack step. The retained log reports the runner failure without assertion
+details. Source review found that the smoke test permits font requests but its
+asset rule rejects the newly bundled WOFF2 file. The repair admits hashed
+same-origin WOFF2 font requests while preserving the other request restrictions
+and the zero unexpected-request assertion. Fresh source checks, successful
+staging and release approval are required before publication. PR74 and Android
+1.23 remain the delivered release above. Default signed-out/loading and native
+recovery states still need their scoped visual checks.
 
 The October 10 owner report remains limited to the requested Android 1.19 and
 Brave checklist on Pixel 10 Pro XL/Android 17, without per-step device logs or
