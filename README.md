@@ -24,7 +24,9 @@ other board histories. Selection alone makes no price request.
 
 Annual reports compare eligible adjacent periods from the same filing, including
 reported net margins and their change in percentage points. Each named revenue
-basis keeps its own inputs and unavailable values. Annual evidence and a selected
+basis keeps its own inputs and unavailable values. Up to three admitted periods
+show both adjacent revenue/net-income changes with their dates. The dated earlier
+comparison joins the explicit note draft under its whole-note limit. Annual evidence and a selected
 Price comparison can be added to an existing watchlist note draft. Review in My Watchlist keeps the rest of the draft intact;
 **Save watchlist** saves all its changes explicitly.
 

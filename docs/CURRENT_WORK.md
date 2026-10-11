@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 10, 2026 (UTC). This is the public repository's portable status.
+Updated October 11, 2026 (UTC). This is the public repository's portable status.
 [Product roadmap](PRODUCT_ROADMAP.md) owns goals and delivery order;
 [architecture](ARCHITECTURE.md) explains runtime boundaries. Private operational
 receipts remain outside Git. Earlier releases and bounded live journeys retain
@@ -8,92 +8,89 @@ their dates and limits in the [status archive](history/CURRENT_WORK-2026-10-10-b
 
 ## Accepted release
 
-[PR 67](https://github.com/liangzixuan/investing-pro/pull/67) is merged as
-`04bdf94a1b5bb3f0894f14070501653c863b387d`, from candidate
-`8c96d6fb6836e0de2dd46459cf1893e79e2bb59f`, with tree
-`eeee043b0186c6c8d19eab47b394d4ac74d3d5e2`. Three required actual-main workflows and
-four jobs, the original producing-CI source proof and twenty invented-data native
-cases are accepted. The first native attempt failed during initial note entry;
-the sole unchanged retry passed. Its original failure remains retained, without
-a root-cause or regression-exclusion claim.
+[PR 69](https://github.com/liangzixuan/investing-pro/pull/69) is merged as
+`cd285576508a3da59610b6e87730b2d0a598ed2d`, from candidate
+`14beff5acacd4950a984161465d0796c8e48060f`, with tree
+`e6cdd0a080680c952013119e74714ccf676550f6`. All five required actual-main workflows and six jobs passed.
+The original Windows CI attempt failed at the unchanged 5,000 ms dossier test
+limit; one unchanged Windows retry passed. A fresh Linux execution produced
+source proof for CI attempt 3. Its carried Windows metadata retains the attempt 2
+execution; it does not represent a third Windows run. The original failure
+remains retained and its cause is unproven.
 
-The managed website now requests the browser's standard leave confirmation for
-unsaved or uncertain watchlist work. It uses the current save coordinator and
-adds no automatic write or durable draft. Clean sessions and retired workspaces
-have no listener. Native Android and disconnected sessions omit the warning.
-Actual browser confirmation remains unaccepted; browsers can suppress it.
+Reported annual history now shows the earlier adjacent revenue and net-income
+comparison when all three periods are admitted. Both date ranges, exact raw USD
+amounts, changes, available percentages and original observations remain visible.
+The dated excerpt joins the explicit Annual note-draft action under the unchanged
+2,000-character whole-note limit. Reading and appending make no source request or
+save. Missing or conflicting third-period evidence leaves the two-period view
+and note unchanged. Same-filing, period, revenue-basis and accounting limits
+remain in the [Annual guide](MANAGED_SEC_ANNUAL.md#earlier-reported-changes).
 
-The annual-history capability from PR65 and signed Android 1.20 remains delivered.
-[Read reported annual history](MANAGED_SEC_ANNUAL.md#reported-annual-history)
-opens up to three adjacent periods for an eligible named revenue basis from the
-already loaded filing packet. It retains exact period ranges, unscaled revenue
-and NetIncomeLoss, available net margin and inspectable observations. History
-stops at the first missing, conflicting or invalid period; it keeps the selected
-accession and basis. Accounting changes and restatements remain unadjusted.
-
-An admitted third period joins the explicit Annual note-draft action. The complete
-note must fit the existing 2,000-character limit. Reading and appending send no
-source or save request. Review and Save watchlist remain explicit. Full current-note
-reading, draft-aware sign-out and the earlier Price workflows remain available.
+The website retains PR67's standard leave-confirmation request for unsaved or
+uncertain watchlist work. Browsers can suppress the dialog; actual dialog
+acceptance remains separate. Native Android and disconnected sessions omit it.
+Full-note reading, draft-aware sign-out and the Price workflows remain available.
 Full M1 and M2 remain open.
 
-The API remains at deployment `6ac93c888eb42e76a4e5`, with the accepted
-PR65 executable and package bytes. All API/shared/root toolchain inputs were
-unchanged across the twelve reviewed web/documentation deltas. Complete source,
-tool and opaque configuration hashes were checked before and after one finite
-production-pointer read. No API build or activation was needed. Authentication,
-entitlement and quotas are unchanged; verification made no live provider request
+A fresh PR69 API build matched every executable and package byte of the accepted
+prior bundle. One finite production-pointer read verified deployment
+`6ac93c888eb42e76a4e5`; no API activation was needed. Its original build source
+remains `c2fe66ca102da0d5a751f610772cffa04b874701`. Authentication,
+entitlement and quotas are unchanged. Verification made no live provider request
 or owner-record write.
 
 Website release
-[38093464618](https://github.com/liangzixuan/investing-pro/actions/runs/38093464618),
-attempt 1, promoted the same accepted archive after normal production approval.
-Staging `6acac39de099821301a8` and production `6acac6ae6f819df0aa99`
-used the 831,539-byte archive, SHA-256
-`17722a88f5a32287a4c6197ad106bb95da13463e9ed4c5aa72605f82a175c813`.
-Production replaced `6aca7f3258ff62ec7f9d`; its original
-receipt verified activation at `2026-10-10T23:14:22.503Z`.
+[38108523911](https://github.com/liangzixuan/investing-pro/actions/runs/38108523911),
+attempt 1, promoted the same accepted archive after normal approval.
+Staging `6acb02a7be2e811dcde7` and production `6acb05c91d08729f1b03`
+used the 832,057-byte archive, SHA-256
+`3e393efffff611190bc95814e12c143ae8a10e8a72422162821654aad9c6dfa6`.
+Production replaced `6acac6ae6f819df0aa99`; its original
+receipt verified activation at `2026-10-11T03:43:35.617Z`.
 This is finite receipt evidence without a continuing availability claim.
 
-Signed Android 1.20.0, code 21, passed build, complete artifact and delivery review
-with package `app.investingpro.android` and the existing production signer.
-The delivered APK is 6,659,632 bytes, SHA-256
-`a10f067def8574eb191ae86a07b958997a90190cba8d46c7f0987936745c7d85`. Its source remains PR65 main `3658cf15b3576d600274e50d9733a70cf347130e`.
-The browser-only PR67 change does not require an Android rebuild.
-All prior APKs and rollback identities remain preserved. Physical Android 1.20
-acceptance remains open.
+Signed Android 1.21.0, code 22, passed build, complete artifact and exact delivery
+review with package `app.investingpro.android` and the existing production signer.
+Its source is the PR69 main commit above. The APK is 6,660,096 bytes,
+SHA-256 `e4b185cb5b08f30489d461eca1292fa65b63d355eec436791cb06089e05e85ce`.
+Android 1.20 and earlier APKs, signing custody and rollback identities remain
+preserved. Physical use of Android 1.20 and 1.21 remains open.
 
 The twenty-case API-36 emulator report covers three disconnected and seventeen
-managed journeys. Twenty-six of sixty-two original PNGs received scoped visual
-review. Fifty-nine callbacks, fifty-two phase diagnostics and the exact
-1,091-character invented saved-note assertion are separate evidence; scoped
-frames do not establish the entire note or chart visually. BrowserStack covered
-the exact staging build's inert shell at desktop and narrow widths.
+managed journeys. Twenty-eight of sixty-four original PNGs received scoped visual
+review. Sixty-one callbacks, fifty-two phase diagnostics and the exact
+1,274-character saved-note assertion are separate evidence; scoped frames do not
+establish the entire note or chart visually. BrowserStack covered the exact
+staging build's inert shell at desktop and narrow widths.
 
-On October 10 the owner reported that the requested Android 1.19 and Brave
-checklist passed on a Pixel 10 Pro XL running Android 17. It covered upgrade
-without wiping saved data, company/watchlist full-note reading, unsaved drafts,
-sign-out cancellation, and background/resume and reopening. The Brave visit
-covered saved data and note reading with drafts and cancellation at desktop and
-narrow widths. The report has no per-step logs, browser version or viewport
-measurements. It retains its 1.19 scope; controlled authenticated browser recovery,
-physical 1.20, screen-reader and backup/restore acceptance remain separate.
-The earlier issue-free Pixel 1.13 report remains historical.
+On October 10 the owner reported the requested Android 1.19 and Brave checklist
+passed on a Pixel 10 Pro XL running Android 17. It covered upgrade without wiping
+saved data, company/watchlist full-note reading, unsaved drafts, sign-out
+cancellation, and background/resume and reopening. The Brave visit covered saved
+data, note reading, drafts and cancellation at desktop and narrow widths. The
+report has no per-step logs, browser version or viewport measurements. It retains
+its 1.19 scope. Controlled authenticated browser recovery, physical 1.20 and 1.21,
+screen-reader and backup/restore acceptance remain separate. The earlier
+issue-free Pixel 1.13 report remains historical.
+
+The [previous status](history/CURRENT_WORK-2026-10-11-before-pr69.md) preserves
+PR65/PR67 delivery details and prior failures with their original scope.
 
 ## Delivery status
 
 | Surface                              | Accepted scope                                                                             | Remaining acceptance                                          |
 | ------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
-| Managed API and website              | Unchanged API input/pointer continuity and same-archive PR67 promotion                     | Continuing availability and controlled authenticated recovery |
-| Signed Android 1.20                  | Build, complete artifact and exact delivered bytes                                         | Physical upgrade/use, screen-reader and backup/restore        |
-| Synthetic native tests               | Twenty invented-data journeys and 26 scoped original frames                                | Production sign-in, live provider use and physical behavior   |
-| Physical Pixel and owner Brave visit | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use | Separate 1.20, controlled recovery and backup/restore         |
+| Managed API and website              | Fresh complete byte-identical API build, finite pointer and same-archive PR69 promotion    | Continuing availability and controlled authenticated recovery |
+| Signed Android 1.21                  | Build, complete artifact and exact delivered bytes                                         | Physical upgrade/use, screen-reader and backup/restore        |
+| Synthetic native tests               | Twenty invented-data journeys and 28 scoped original frames                                | Production sign-in, live provider use and physical behavior   |
+| Physical Pixel and owner Brave visit | Owner-reported 1.19 checklist on Pixel 10 Pro XL / Android 17; earlier issue-free 1.13 use | Separate 1.20/1.21, controlled recovery and backup/restore    |
 | Local research app                   | Preserved local release and encrypted vault                                                | No migration or managed feature-parity claim                  |
 
 ## What works in the managed product
 
 [Markets](MANAGED_MARKETS_HOME.md) is the initial managed view on the website
-and in signed Android 1.20. An explicit board load requests AAPL, GOOG and GOOGL
+and in signed Android 1.21. An explicit board load requests AAPL, GOOG and GOOGL
 sequentially. Each row keeps its own trading dates and shows the raw USD difference
 and four-decimal percentage between its final two observations, with both dates
 and a split/dividend disclosure. One-row history reports an unavailable change.
@@ -146,26 +143,13 @@ that acceptance.
 
 ## Current task and next acceptance
 
-PR67 browser leave warnings are delivered on the website. The current save
-coordinator supplies unsaved, saving, reconciling and uncertain state; confirmed
-saves, the saved-version choice, cleanup and retirement remove the listener.
-Local unit and mounted-composition checks, required actual-main checks, source
-proof, twenty native journeys and same-archive website promotion passed.
-The actual browser dialog remains open, distinct from the inert BrowserStack shell.
-
-Signed Android 1.20 retains PR65 annual history. Physical 1.20, screen-reader and
-backup/restore acceptance remain open; owner-reported 1.19 checks keep their scope.
-Prior PR66 actual-main Windows failures remain retained: the original owner-account
-test and sole unchanged retry failed with their existing limits. PR67 results do
-not retroactively accept those executions or establish their causes.
-
-The current candidate adds the earlier adjacent revenue/net-income comparison
-inside the admitted three-period Annual history, with both date ranges, exact
-USD changes, reported percentages and original inputs. It joins the explicit
-Annual note draft under the unchanged whole-note limit. No new source request,
-response field, revenue basis or margin assumption is introduced. The website,
-API and signed Android 1.20 remain at their accepted releases while validation
-and delivery of this candidate are pending.
+PR69's earlier reported annual changes are delivered on the website and in signed
+Android 1.21. Source checks, producing source proof, twenty native cases, scoped
+pixels, complete API bytes, same-archive promotion and signed delivery passed.
+Physical 1.20/1.21, the actual browser leave dialog, controlled authenticated
+recovery, screen-reader and backup/restore acceptance remain open. The owner's
+1.19 report retains its scope. Original CI/native failures remain preserved;
+later successful executions do not establish their causes or exclude regressions.
 
 Prioritize useful daily workflows and recovery using the existing modules and
 permitted sources. Controlled

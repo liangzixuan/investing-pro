@@ -119,7 +119,8 @@ active saves, conflicts, the original uncertain command, explicit reconciliation
 saved-version choice, retirement, late completion and disposal. Composition tests
 check the browser opt-in and native exclusion. Required actual-main checks, source
 proof, twenty native journeys and same-archive website promotion passed. Actual
-browser confirmation remains unaccepted; signed Android 1.20 is unchanged. Exact status is in
+browser confirmation remains unaccepted. Signed Android 1.21 includes PR69
+annual changes; physical use remains separate. Exact status is in
 [Current work](CURRENT_WORK.md).
 
 ### Review the saved version and retained draft
