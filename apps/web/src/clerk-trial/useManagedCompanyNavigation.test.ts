@@ -149,6 +149,7 @@ async function settle() {
 }
 function fixture() {
   const api: ManagedApi = {
+    economicCalendar: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     load: vi.fn<ManagedApi["load"]>().mockResolvedValue({
       version: 1,

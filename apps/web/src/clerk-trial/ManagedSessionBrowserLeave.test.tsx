@@ -49,6 +49,7 @@ describe("managed session browser warning lifetime", () => {
         memberships: [],
       };
       const api: ManagedApi = {
+        economicCalendar: vi.fn(),
         load: vi.fn().mockResolvedValue({ version: 1, payload }),
         save: vi.fn(),
         status: vi.fn().mockRejectedValue(new TrialApiError("unavailable")),

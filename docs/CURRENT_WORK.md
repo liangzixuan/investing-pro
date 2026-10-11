@@ -174,10 +174,44 @@ remains open. No live Clerk account or owner records were used. The earlier
 October 10 URL-policy stop remains historical evidence; current supported Brave
 extension access to the loopback fixture succeeded without a workaround.
 
-After this recovery increment, the next candidate is a managed BEA release agenda
-using the existing bounded public-source adapter and calendar renderer. Confirm
-source availability and managed request limits before implementation. This adds
-a daily planning task toward M3; full M1/M2, broader fields and cohorts remain open.
+Recovery coverage is published in [PR72](https://github.com/liangzixuan/investing-pro/pull/72)
+at `6b9d4d70c4cfa37465b5eeb91693fc7f2907e4e8`; five fast workflows passed and
+the complete CI result remains pending.
+The active product increment is a managed BEA release agenda using the existing
+bounded public-source adapter and calendar renderer. BEA's official calendar
+page, JSON source and public-domain reuse policy were checked on October 11.
+The admitted source remains a fixed, credential-free schedule request. It adds
+no stock cohort, source credentials, subscription or persistent provider data.
+
+The shared contract reuses the validated 30-day BEA DTO with a separate 512 KiB
+response cap. An authenticated body-free managed GET must make at most one source
+request within ten seconds of function entry, including auth and serialization.
+This is a per-invocation bound, not an aggregate quota claim. The client loads only
+on request, retains dated results across navigation and transient refresh failures,
+and clears them on session retirement. No catalog dependency or automatic load is
+added. The owner can inspect Eastern-time releases without disturbing a watchlist
+draft. Invalid data, denied auth, cancellation and late completions must fail safely.
+
+Implementation and independent review are complete. Full affected suites passed:
+2,648 API tests, 5,268 web tests and 709 contract tests, plus affected types,
+scoped lint/format and the source boundary check. The invented native fixture
+passes 49 tests locally; two new instrumentation journeys bring the required
+emulator manifest to twenty-two named cases. They require fresh hosted execution.
+
+The isolated Brave build verified explicit loading, simultaneous releases and
+Eastern daylight-saving labels, failed-refresh retention, Cancel focus restoration,
+navigation cancellation and unchanged notes/order/base version. A fixture catalog
+401 during a held agenda refresh cleared the workspace; its late response could
+not restore data. Desktop and 390-pixel layouts were inspected without horizontal
+overflow. A visual correction reuses the managed panel and green controls while
+preserving the local theme. This used invented data and no signed-in account.
+
+The [Markets guide](MANAGED_MARKETS_HOME.md#bea-release-agenda) owns the feature
+contract. Hosted source checks, native execution, API activation, website promotion
+and signed Android delivery remain pending and need separate current-source
+evidence. This is a BEA planning slice toward M3; full M1/M2, broader fields and
+cohorts remain open. Initial fixture counter assertions and the first unconfigured
+local boundary command were corrected; their failures remain retained.
 
 PR69's earlier reported annual changes are delivered on the website and in signed
 Android 1.21. Source checks, producing source proof, twenty native cases, scoped

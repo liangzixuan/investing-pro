@@ -4,12 +4,15 @@ import type {
   ManagedEodHistoryResponseDto,
   PersonalSecurityMasterSearchResultDto,
   PersonalSecAnnualEvidenceResponseDto,
+  PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
 import {
   encodeMainWatchlistPayload,
   parseManagedCatalogResolveResponse,
   parseManagedEodHistoryResponse,
   parseManagedWatchlistCommand,
+  parseManagedEconomicCalendar,
+  PERSONAL_BEA_CALENDAR_SOURCE,
 } from "@research-cockpit/contracts";
 import {
   ManagedEodHistoryError,
@@ -34,6 +37,21 @@ export const marketsPriceNoteDraft =
   "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoveryNoteDraft = "Retained recovery draft";
 export const recoverySavedNote = "New saved research note";
+export const beaAgenda = parseManagedEconomicCalendar({
+  schemaVersion: "1.0.0",
+  source: PERSONAL_BEA_CALENDAR_SOURCE,
+  fetchedAt: "2026-10-20T18:00:00.000Z",
+  window: {
+    fromInclusive: "2026-10-20T18:00:00.000Z",
+    toExclusive: "2026-11-19T18:00:00.000Z",
+  },
+  events: [
+    { series: "Invented GDP", scheduledAt: "2026-10-29T12:30:00.000Z" },
+    { series: "Invented Income", scheduledAt: "2026-10-29T12:30:00.000Z" },
+    { series: "Invented Trade", scheduledAt: "2026-11-04T13:30:00.000Z" },
+  ],
+});
+if (!beaAgenda) throw new Error("Invalid invented BEA agenda");
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -151,6 +169,8 @@ export async function createFixture(
     | "signout-save-review"
     | "signout-uncertain-review"
     | "raw-close-comparison"
+    | "bea-agenda"
+    | "bea-session-retirement"
     | "markets-selected-price" = "default",
 ) {
   const annual = await response(
@@ -325,6 +345,9 @@ export async function createFixture(
     reviewSaveAborted: 0,
     reviewSaveSettled: 0,
     reviewSaveCommits: 0,
+    calendar: 0,
+    calendarAborted: 0,
+    calendarLateResolved: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -338,6 +361,8 @@ export async function createFixture(
   let rejectRefresh: ((error: unknown) => void) | null = null;
   let releaseCatalog: (() => void) | null = null;
   let pendingEod: ((value: ManagedEodHistoryResponseDto) => void) | null = null;
+  let pendingCalendar: ((value: PersonalEconomicCalendarDto) => void) | null =
+    null;
   let pendingMarkets: ((value: ManagedEodHistoryResponseDto) => void) | null =
     null;
   const unexpected = (
@@ -403,6 +428,13 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenario === "bea-session-retirement" && state.status === 2) {
+        if (state.calendar !== 2 || !pendingCalendar)
+          return Promise.reject(
+            new Error("Hold the second calendar read before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (state.catalogRecovery) {
         if (state.status === 1)
           return Promise.reject(new TrialApiError("unavailable"));
@@ -418,6 +450,27 @@ export async function createFixture(
         );
       }
       return Promise.resolve({ snapshot: structuredClone(snapshot) });
+    },
+    economicCalendar: (signal) => {
+      if (
+        signal.aborted ||
+        (scenario !== "bea-agenda" && scenario !== "bea-session-retirement") ||
+        pendingCalendar ||
+        state.calendar >= (scenario === "bea-agenda" ? 4 : 2)
+      )
+        throw new Error("Unexpected invented calendar read");
+      count("calendar");
+      if (state.calendar === 1)
+        return Promise.resolve(structuredClone(beaAgenda!));
+      if (scenario === "bea-agenda" && state.calendar === 2)
+        return Promise.reject(new TrialApiError("unavailable"));
+      return new Promise<PersonalEconomicCalendarDto>((resolve) => {
+        pendingCalendar = resolve;
+        // Deliberately ignores cancellation until the test releases the response.
+        signal.addEventListener("abort", () => count("calendarAborted"), {
+          once: true,
+        });
+      });
     },
     search: (query) => {
       count("search");
@@ -808,6 +861,17 @@ export async function createFixture(
     api,
     session,
     marketsCohort,
+    settleCancelledCalendar: () => {
+      if (
+        !pendingCalendar ||
+        state.calendarAborted !== state.calendarLateResolved + 1
+      )
+        throw new Error("Only an aborted invented calendar read may settle");
+      const resolve = pendingCalendar;
+      pendingCalendar = null;
+      resolve({ ...structuredClone(beaAgenda!), events: [] });
+      void Promise.resolve().then(() => count("calendarLateResolved"));
+    },
     generations: {
       initial: annual.evidence.generation,
       recovered: recovered.evidence.generation,

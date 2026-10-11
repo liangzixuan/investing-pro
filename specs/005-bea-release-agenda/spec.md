@@ -4,6 +4,13 @@ Created September 26, 2026. Implementation and release verification are pending.
 Base: accepted a83 `d0ad5d3537d012f2d96af1355dc05f015a76c7e8` in `markets-home`.
 This is a bounded part of [roadmap M3](../../docs/PRODUCT_ROADMAP.md).
 
+October 11 managed integration: the current candidate reuses this provider and
+response contract through a separate authenticated managed route and session
+model. The [managed Markets guide](../../docs/MANAGED_MARKETS_HOME.md#bea-release-agenda)
+records its request, size and lifetime boundaries. The original local-profile
+design below retains its scope; [Current work](../../docs/CURRENT_WORK.md) owns
+current verification and deployment status.
+
 ## User outcome
 
 On Markets, the owner can load the next 30 days of scheduled BEA series releases

@@ -64,6 +64,14 @@ notes, ordering, removal, explicit saves and conflict/uncertain-save
 reconciliation reuse the website's implementation and private storage adapter.
 There is no offline editing queue or local-vault migration.
 
+The BEA candidate adds the shared explicit agenda under Markets. Its invented
+native suite requires two additional journeys: retained dates and an unchanged
+dirty draft through failed refresh, Cancel, late completion and navigation; then
+catalog-auth expiry clearing the retained agenda before a late response settles.
+The CI manifest requires all twenty-two named native cases. Source presence and
+local fixture tests do not establish emulator execution or a signed release;
+Current work records those acceptance events separately.
+
 ## Build and identity
 
 Use the Node and pnpm versions pinned in the repository, Java 21, SDK 36 and

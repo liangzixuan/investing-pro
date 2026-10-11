@@ -6,15 +6,20 @@ import {
   type PersonalEconomicCalendarDto,
   type PersonalEconomicCalendarEventDto,
 } from "@research-cockpit/contracts";
-import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
+import type { MouseEventHandler, Ref } from "react";
 import "./bea-release-agenda.css";
 
 export interface BeaReleaseAgendaProps {
+  readonly className?: string;
   readonly agenda: PersonalEconomicCalendarDto | null;
   readonly busy: boolean;
-  readonly error: PersonalWorkspaceApiErrorCode | null;
+  readonly error: "invalid_response" | "rate_limited" | "unavailable" | null;
   readonly enabled: boolean;
   readonly onLoad: () => void;
+  readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
+  readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly showingPrevious?: boolean;
+  readonly message?: string;
 }
 const date = new Intl.DateTimeFormat("en-US", {
   timeZone: PERSONAL_BEA_CALENDAR_SOURCE.timeZone,
@@ -33,11 +38,16 @@ const timestamp = (instant: string) =>
   `${date.format(new Date(instant))}, ${time.format(new Date(instant))}`;
 
 export function BeaReleaseAgenda({
+  className = "",
   agenda,
   busy,
   error,
   enabled,
   onLoad,
+  onCancel,
+  loadButtonRef,
+  showingPrevious = false,
+  message = "",
 }: BeaReleaseAgendaProps) {
   const groups = new Map<string, PersonalEconomicCalendarEventDto[]>();
   for (const event of agenda?.events ?? []) {
@@ -47,7 +57,10 @@ export function BeaReleaseAgenda({
     groups.set(day, group);
   }
   return (
-    <section className="bea-release-agenda" aria-labelledby="bea-agenda-title">
+    <section
+      className={`bea-release-agenda ${className}`.trim()}
+      aria-labelledby="bea-agenda-title"
+    >
       <header className="bea-agenda-heading">
         <div>
           <h2 id="bea-agenda-title">Economic calendar</h2>
@@ -55,13 +68,25 @@ export function BeaReleaseAgenda({
             BEA releases · {PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS}-day agenda
           </p>
         </div>
-        <button type="button" disabled={!enabled || busy} onClick={onLoad}>
-          {busy
-            ? "Loading agenda…"
-            : agenda === null
-              ? "Load agenda"
-              : "Refresh agenda"}
-        </button>
+        <div className="bea-agenda-actions">
+          <button
+            ref={loadButtonRef}
+            type="button"
+            disabled={!enabled || busy}
+            onClick={onLoad}
+          >
+            {busy
+              ? "Loading agenda…"
+              : agenda === null
+                ? "Load agenda"
+                : "Refresh agenda"}
+          </button>
+          {busy && onCancel && (
+            <button type="button" onClick={onCancel}>
+              Cancel agenda
+            </button>
+          )}
+        </div>
       </header>
       <p className="bea-agenda-source">
         {PERSONAL_BEA_CALENDAR_SOURCE.name} · All times Eastern.{" "}
@@ -73,6 +98,16 @@ export function BeaReleaseAgenda({
           Official BEA schedule
         </a>
       </p>
+      {message && (
+        <p role="status" aria-live="polite">
+          {message}
+        </p>
+      )}
+      {showingPrevious && agenda !== null && (
+        <p className="bea-agenda-note">
+          Previous agenda. This attempt has not confirmed a newer schedule.
+        </p>
+      )}
       {error !== null && (
         <p role="alert" className="bea-agenda-error">
           {error === "invalid_response"
@@ -89,7 +124,7 @@ export function BeaReleaseAgenda({
           <p className="bea-agenda-note">
             {enabled
               ? "Load scheduled BEA releases for the next 30 days. Forecasts and released values are not included."
-              : "The agenda is available when local access is ready."}
+              : "The agenda is available when your session is ready."}
           </p>
         ) : (
           <>

@@ -16,6 +16,10 @@ import {
 } from "./managed-eod-service";
 import type { ClerkTrialAuth } from "./clerk-trial-auth";
 import {
+  ManagedEconomicCalendarServiceError,
+  type ManagedEconomicCalendarService,
+} from "./managed-economic-calendar-service";
+import {
   ManagedSecAnnualServiceError,
   type ManagedSecAnnualService,
 } from "./managed-sec-annual-service";
@@ -33,6 +37,21 @@ const NATIVE_ORIGIN = "https://localhost";
 const OWNER = { userId: "clerk-invented-owner" };
 const STATUS = "/v1/managed/catalog";
 const SEARCH = `${STATUS}/search`;
+
+function inventedCalendar(): contracts.PersonalEconomicCalendarDto {
+  return {
+    schemaVersion: "1.0.0",
+    source: contracts.PERSONAL_BEA_CALENDAR_SOURCE,
+    fetchedAt: "2026-10-11T12:00:00.000Z",
+    window: {
+      fromInclusive: "2026-10-11T12:00:00.000Z",
+      toExclusive: "2026-11-10T12:00:00.000Z",
+    },
+    events: [
+      { series: "Invented GDP", scheduledAt: "2026-10-12T12:30:00.000Z" },
+    ],
+  };
+}
 
 function inventedStatus(): ManagedCatalogStatusDto {
   return {
@@ -1343,5 +1362,166 @@ describe("managed EOD read-only boundary", () => {
         throw new ManagedEodServiceError("request_timeout");
       });
     expect((await f.handler(f.post())).status).toBe(408);
+  });
+});
+
+describe("managed economic calendar request boundary", () => {
+  const path = contracts.MANAGED_ECONOMIC_CALENDAR_PATH;
+  function setup() {
+    const f = fixture();
+    const load = vi
+      .fn<ManagedEconomicCalendarService["load"]>()
+      .mockResolvedValue(inventedCalendar());
+    const assertActive =
+      vi.fn<ManagedEconomicCalendarService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      calendar: { load, assertActive },
+    });
+    return { ...f, handler, load, assertActive };
+  }
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "loads the calendar after %s authentication without storage or catalog work",
+    async (origin) => {
+      const f = setup();
+      const response = await f.handler(request(path, { origin }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual(inventedCalendar());
+      expect(response.headers.get("cache-control")).toBe("no-store");
+      expect(f.auth.mock.invocationCallOrder[0]).toBeLessThan(
+        f.load.mock.invocationCallOrder[0]!,
+      );
+      expect(f.load).toHaveBeenCalledOnce();
+      expect(f.assertActive).toHaveBeenCalledTimes(2);
+      expect(f.openRepository).not.toHaveBeenCalled();
+      expect(f.status).not.toHaveBeenCalled();
+      expect(f.search).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    ["HEAD", path, ORIGIN, undefined, 405],
+    ["POST", path, ORIGIN, "{}", 400],
+    ["GET", `${path}?days=1`, ORIGIN, undefined, 400],
+    ["GET", path, "https://untrusted.example", undefined, 403],
+  ] as const)(
+    "rejects %s %s before authentication or source work",
+    async (method, url, origin, body, code) => {
+      const f = setup();
+      const response = await f.handler(
+        new Request(`https://api.example.invalid${url}`, {
+          method,
+          headers: { origin },
+          ...(body === undefined ? {} : { body }),
+        }),
+      );
+      expect(response.status).toBe(code);
+      expect(f.auth).not.toHaveBeenCalled();
+      expect(f.load).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it.each(["unauthenticated", "access_denied"] as const)(
+    "rejects %s before source or storage",
+    async (status) => {
+      const f = setup();
+      f.auth.mockResolvedValue({ status });
+      const response = await f.handler(request(path));
+      expect(response.status).toBe(status === "unauthenticated" ? 401 : 403);
+      expect(f.load).not.toHaveBeenCalled();
+      expect(f.openRepository).not.toHaveBeenCalled();
+    },
+  );
+  it("admits only GET preflight and never loads the source during preflight", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          request(path, {
+            method: "OPTIONS",
+            headers: {
+              "access-control-request-method": "GET",
+              "access-control-request-headers": "authorization",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await f.handler(
+          request(path, {
+            method: "OPTIONS",
+            headers: {
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "authorization",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(403);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it.each([
+    [
+      new ManagedEconomicCalendarServiceError("request_timeout"),
+      408,
+      "request_timeout",
+    ],
+    [
+      new ManagedEconomicCalendarServiceError("unavailable"),
+      503,
+      "unavailable",
+    ],
+    [new Error("private-provider-body"), 503, "unavailable"],
+  ] as const)(
+    "returns bounded calendar errors %#",
+    async (error, status, code) => {
+      const f = setup();
+      f.load.mockRejectedValue(error);
+      const response = await f.handler(request(path));
+      expect(response.status).toBe(status);
+      expect(await response.json()).toEqual({ error: code });
+    },
+  );
+  it("rejects malformed data and enforces the serialized byte cap independently of parser admission", async () => {
+    const f = setup();
+    f.load.mockResolvedValue({
+      ...inventedCalendar(),
+      extra: "private",
+    } as contracts.PersonalEconomicCalendarDto);
+    expect((await f.handler(request(path))).status).toBe(503);
+    const oversized = {
+      ...inventedCalendar(),
+      events: [
+        {
+          series: "x".repeat(
+            contracts.MANAGED_ECONOMIC_CALENDAR_LIMITS.responseBytes,
+          ),
+          scheduledAt: "2026-10-12T12:30:00.000Z",
+        },
+      ],
+    };
+    vi.spyOn(contracts, "parseManagedEconomicCalendar").mockReturnValue(
+      oversized,
+    );
+    f.load.mockResolvedValue(oversized);
+    const response = await f.handler(request(path));
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "unavailable" });
+  });
+  it("checks lifetime after serialization before returning a calendar", async () => {
+    const f = setup();
+    f.assertActive
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedEconomicCalendarServiceError("request_timeout");
+      });
+    const response = await f.handler(request(path));
+    expect(response.status).toBe(408);
+    expect(await response.json()).toEqual({ error: "request_timeout" });
+    expect(f.assertActive).toHaveBeenCalledTimes(2);
   });
 });

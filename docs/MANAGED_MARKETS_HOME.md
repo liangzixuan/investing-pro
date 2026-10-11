@@ -19,8 +19,42 @@ response supplies 1 to 32 raw USD closes, trading dates, a one-calendar-month wi
 and request start/completion times. The [EOD contract](MANAGED_EOD_HISTORY.md)
 continues to validate full listing and share-class identity, decimals and dates.
 GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, mover
-ranking, index, breadth, news or calendar data. Those need their own inputs and
+ranking, index, breadth or news data. Those need their own inputs and
 acceptance under the [roadmap](PRODUCT_ROADMAP.md).
+
+## BEA release agenda
+
+The current candidate adds an Economic calendar below the company board.
+Deployment status remains in [Current work](CURRENT_WORK.md). Load agenda makes
+one explicit read of the official BEA schedule for the next 30 elapsed days.
+Series names and release times appear in Eastern time with daylight-saving
+offsets, the original retrieval time, loaded window and official schedule link.
+Different series at the same time stay separate. This covers BEA releases;
+forecasts, reported values, importance scores and company earnings are unavailable.
+
+The authenticated, body-free and query-free
+`GET /v1/managed/economic-calendar` reuses the existing BEA adapter. It fetches
+one fixed public JSON URL without credentials, redirects or retries. The adapter
+admits at most 256 KiB of source data, 128 series and 4,096 input dates. The
+normalized response allows 512 events and 512 KiB. Ten seconds from function
+entry includes authentication and serialization. This bounds one invocation;
+it does not establish an aggregate upstream request allowance. No table, catalog
+lookup, price entitlement or provider token is required.
+
+Refresh preserves the previous validated window with its dates and a clear
+previous-result notice. Failure, an invalid replacement and Cancel leave that
+window visible. Late responses cannot replace it. Cancel restores focus to Load
+or Refresh. Leaving Markets cancels pending work and retains accepted results
+within the session; returning, background/resume and opening company research
+make no calendar request. Session retirement clears the agenda immediately.
+Calendar actions do not save, reconcile, reorder or edit the watchlist.
+
+The shared parser owns and freezes accepted response data. The local research
+profile retains its separate transport and owner-activity lifetime. See the
+[source specification](../specs/005-bea-release-agenda/spec.md) for normalization
+and source-rights evidence. Synthetic API, client and native journeys exercise
+failure and lifetime boundaries; live service, native execution and physical
+acceptance retain their separate evidence.
 
 ## Dated raw-close change
 

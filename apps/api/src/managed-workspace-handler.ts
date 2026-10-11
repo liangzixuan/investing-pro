@@ -12,6 +12,9 @@ import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_ECONOMIC_CALENDAR_LIMITS,
+  parseManagedEconomicCalendar,
   parseManagedEodHistoryRequest,
   parseManagedEodError,
   encodeMainWatchlistPayload,
@@ -37,6 +40,10 @@ import {
   type ManagedEodService,
 } from "./managed-eod-service";
 import {
+  ManagedEconomicCalendarServiceError,
+  type ManagedEconomicCalendarService,
+} from "./managed-economic-calendar-service";
+import {
   WatchlistRepositoryError,
   type MainWatchlistReceipt,
   type MainWatchlistRecord,
@@ -52,6 +59,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly catalog: ManagedCatalogService;
   readonly annual?: ManagedSecAnnualService;
   readonly eod?: ManagedEodService;
+  readonly calendar?: ManagedEconomicCalendarService;
   readonly openRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedWorkspaceRepositoryOperation>;
@@ -74,6 +82,7 @@ const PATHS: readonly string[] = [
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
 ];
 
 class RequestFailure extends Error {
@@ -308,6 +317,9 @@ function errorResponse(
   if (error instanceof RequestFailure) {
     status = error.status;
     code = error.code;
+  } else if (error instanceof ManagedEconomicCalendarServiceError) {
+    code = error.code;
+    status = code === "request_timeout" ? 408 : 503;
   } else if (
     error instanceof ManagedSecAnnualServiceError ||
     error instanceof ManagedEodServiceError
@@ -391,6 +403,18 @@ export function createManagedWorkspaceHandler(
       if (auth.status !== "allowed")
         return fail(auth.status === "access_denied" ? 403 : 401, auth.status);
       requireActiveRequest(request);
+      if (route.path === MANAGED_ECONOMIC_CALENDAR_PATH) {
+        if (!options.calendar) throw new Error("Calendar service unavailable");
+        const result = await options.calendar.load(request.signal);
+        options.calendar.assertActive(request.signal);
+        response = jsonResponse(
+          parseManagedEconomicCalendar(result),
+          MANAGED_ECONOMIC_CALENDAR_LIMITS.responseBytes,
+          headers,
+        );
+        options.calendar.assertActive(request.signal);
+        return response;
+      }
       if (route.path === MANAGED_EOD_HISTORY_PATH) {
         const command = parseManagedEodHistoryRequest(
           await readJson(request, MANAGED_EOD_HISTORY_LIMITS.requestBytes),

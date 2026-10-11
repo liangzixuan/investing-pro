@@ -72,6 +72,33 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("BEA release agenda presentation", () => {
+  it("offers explicit cancellation during a refresh and keeps the previous packet's dates visible", () => {
+    const onCancel = vi.fn();
+    const view = BeaReleaseAgenda(
+      props({
+        busy: true,
+        showingPrevious: true,
+        message: "Refreshing BEA agenda…",
+        onCancel,
+      }),
+    );
+    expect(text(view)).toContain("Previous agenda");
+    expect(text(view)).toContain("Tue, Oct 20, 2026, 2:00 PM EDT");
+    const cancel = nodes(view).find(
+      (node) => node.type === "button" && text(node) === "Cancel agenda",
+    );
+    expect(cancel?.props.disabled).not.toBe(true);
+    (cancel?.props.onClick as () => void)();
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(text(BeaReleaseAgenda(props({ onCancel })))).not.toContain(
+      "Cancel agenda",
+    );
+  });
+  it("describes session availability without local-access wording", () => {
+    const view = BeaReleaseAgenda(props({ enabled: false, agenda: null }));
+    expect(text(view)).toContain("when your session is ready");
+    expect(text(view)).not.toContain("local access");
+  });
   it("requires an explicit load and names its source and limited scope", () => {
     const input = props({ agenda: null });
     const view = BeaReleaseAgenda(input);
@@ -114,7 +141,7 @@ describe("BEA release agenda presentation", () => {
     vi.useFakeTimers();
     try {
       vi.setSystemTime(new Date("2027-01-01T00:00:00.000Z"));
-      const view = BeaReleaseAgenda(props({ error: "provider_unavailable" }));
+      const view = BeaReleaseAgenda(props({ error: "unavailable" }));
       expect(text(view)).toContain(
         "The previous loaded window is still shown below",
       );
