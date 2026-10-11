@@ -68,16 +68,22 @@ function PriceControls({
 function RawCloseChange({
   rows,
   id,
+  compact = false,
 }: {
   rows: readonly ManagedEodCloseDto[];
   id: string;
+  compact?: boolean;
 }) {
   const change = calculatePersonalRawCloseChange({ rows });
   if (change.status === "insufficient_history")
     return (
-      <p id={id} className="managed-market-change">
+      <span
+        id={id}
+        className="managed-market-change"
+        data-direction="unavailable"
+      >
         Raw close change unavailable: two dated closes needed.
-      </p>
+      </span>
     );
   const money =
     change.direction === "down"
@@ -88,15 +94,26 @@ function RawCloseChange({
       ? `less than 0.0001% ${change.direction === "up" ? "higher" : "lower"}`
       : `${change.direction === "up" ? "+" : ""}${change.changePercent}%`;
   return (
-    <p id={id} className="managed-market-change">
+    <span
+      id={id}
+      className="managed-market-change"
+      data-direction={change.direction}
+    >
       <strong>
-        Raw close change: {money} ({percent})
+        <span className={compact ? "sr-only" : undefined}>
+          Raw close change:{" "}
+        </span>
+        {money} ({percent})
       </strong>
-      <span>
-        {change.previousDate} to {change.latestDate} · not adjusted for splits
-        or dividends.
+      <span className="managed-market-change-basis">
+        <time dateTime={change.previousDate}>{change.previousDate}</time> to{" "}
+        <time dateTime={change.latestDate}>{change.latestDate}</time>
+        <span className={compact ? "sr-only" : undefined}>
+          {" "}
+          · not adjusted for splits or dividends.
+        </span>
       </span>
-    </p>
+    </span>
   );
 }
 
@@ -114,7 +131,7 @@ function MarketListingRow({
   const changeId = `${descriptionId}-change`;
   const last = row.response?.rows.at(-1);
   return (
-    <li>
+    <li className="managed-market-listing" data-selected={active || undefined}>
       <button
         className="managed-market-row"
         aria-pressed={active}
@@ -135,12 +152,15 @@ function MarketListingRow({
             {last ? `USD · ${last.date}` : "Load prices when ready"}
           </small>
         </span>
+        {row.response && (
+          <RawCloseChange rows={row.response.rows} id={changeId} compact />
+        )}
       </button>
-      {row.response && (
-        <RawCloseChange rows={row.response.rows} id={changeId} />
-      )}
       <p
         className="managed-market-row-status"
+        data-quiet={Boolean(
+          row.response && !row.running && !row.error && !row.showingPrevious,
+        )}
         role={row.error ? "alert" : "status"}
       >
         {row.message}
@@ -171,42 +191,71 @@ function SelectedHistory({
   onWatchlist: ManagedMarketsProps["onWatchlist"];
 }) {
   const response = selected.response;
+  const last = response?.rows.at(-1);
+  const changeId = useId();
+  const actions = (
+    <div className="trial-actions managed-market-research-actions">
+      <button
+        className="trial-secondary"
+        aria-label={`Board price history for ${selected.listing.symbol}`}
+        onClick={(event) => onResearch("eod", event.currentTarget)}
+      >
+        Price history
+      </button>
+      <button
+        className="trial-secondary"
+        aria-label={`Board Annual report for ${selected.listing.symbol}`}
+        onClick={(event) => onResearch("annual", event.currentTarget)}
+      >
+        Annual report
+      </button>
+      <button className="trial-secondary" onClick={onWatchlist}>
+        Open My Watchlist
+      </button>
+    </div>
+  );
   return (
     <div
       className="managed-market-detail"
       aria-labelledby="managed-market-detail-heading"
     >
-      <h3 id="managed-market-detail-heading">
-        {selected.listing.symbol} · one month
-      </h3>
-      <p>{selected.listing.shareClassName}</p>
-      <div className="trial-actions">
-        <button ref={loadRef} disabled={loading} onClick={onLoad}>
-          {selected.running
-            ? `Loading ${selected.listing.symbol} price…`
-            : `${response ? "Refresh" : "Load"} ${selected.listing.symbol} price`}
-        </button>
-        <button
-          className="trial-secondary"
-          aria-label={`Board Annual report for ${selected.listing.symbol}`}
-          onClick={(event) => onResearch("annual", event.currentTarget)}
-        >
-          Annual report
-        </button>
-        <button
-          className="trial-secondary"
-          aria-label={`Board price history for ${selected.listing.symbol}`}
-          onClick={(event) => onResearch("eod", event.currentTarget)}
-        >
-          Price history
-        </button>
-        <button className="trial-secondary" onClick={onWatchlist}>
-          Open My Watchlist
-        </button>
+      <header className="managed-market-detail-header">
+        <h3 id="managed-market-detail-heading">
+          {selected.listing.issuerName}
+        </h3>
+        <p className="managed-market-detail-identity">
+          <strong>{selected.listing.symbol}</strong> ·{" "}
+          {selected.listing.exchangeMic} · {selected.listing.shareClassName}
+        </p>
+        {last && response ? (
+          <div className="managed-market-quote">
+            <p className="managed-market-quote-value">
+              <span className="sr-only">Last raw close: </span>${last.close}
+            </p>
+            <RawCloseChange rows={response.rows} id={changeId} />
+            <p className="managed-market-quote-date">
+              Last trading date <time dateTime={last.date}>{last.date}</time> ·
+              USD raw close
+            </p>
+          </div>
+        ) : (
+          <p className="managed-market-quote-unloaded">Price not loaded</p>
+        )}
+      </header>
+      <div className="managed-market-chart-toolbar">
+        <p className="managed-market-period">
+          {selected.listing.symbol} · one month
+        </p>
+        <div className="trial-actions">
+          <button ref={loadRef} disabled={loading} onClick={onLoad}>
+            {selected.running
+              ? `Loading ${selected.listing.symbol} price…`
+              : `${response ? "Refresh" : "Load"} ${selected.listing.symbol} price`}
+          </button>
+        </div>
       </div>
       {response ? (
         <>
-          <p>Last trading date {response.rows.at(-1)?.date} · USD raw close</p>
           {selected.showingPrevious && (
             <p className="managed-eod-previous">
               Showing previous history completed {response.completedAt}. Dates
@@ -216,6 +265,8 @@ function SelectedHistory({
           <CloseHistoryChart
             rows={response.rows}
             symbol={selected.listing.symbol}
+            appearance="precision-desk"
+            actions={actions}
           />
           <details className="managed-market-source">
             <summary>Source and request dates</summary>
@@ -237,10 +288,13 @@ function SelectedHistory({
           </details>
         </>
       ) : (
-        <p className="managed-market-empty">
-          Load {selected.listing.symbol} price to see its dated chart and exact
-          closing values. Selecting a listing makes no price request.
-        </p>
+        <>
+          <p className="managed-market-empty">
+            Load {selected.listing.symbol} price to see its dated chart and
+            exact closing values. Selecting a listing makes no price request.
+          </p>
+          {actions}
+        </>
       )}
     </div>
   );
@@ -280,10 +334,10 @@ export function ManagedMarkets({
     >
       <div className="trial-toolbar managed-markets-toolbar">
         <div>
-          <p className="trial-eyebrow">Company board</p>
           <h2 id="managed-markets-heading" tabIndex={-1}>
             Markets
           </h2>
+          <p className="managed-markets-subtitle">Your company board</p>
         </div>
         <PriceControls
           state={state}
@@ -316,7 +370,10 @@ export function ManagedMarkets({
           </button>
         )}
       <div className="managed-markets-layout">
-        <div>
+        <div className="managed-market-list">
+          <p className="managed-market-list-heading">
+            {state.rows.length} listings
+          </p>
           <ul
             className="managed-market-rows"
             aria-label="Company board listings"
@@ -331,10 +388,9 @@ export function ManagedMarkets({
             ))}
           </ul>
           <p className="managed-markets-help">
-            Load board prices requests all three listings in order. The selected
-            listing's price action makes one request and keeps the other
-            histories. Cancel keeps completed histories. Prices clear when you
-            leave Markets.
+            Load board prices requests all three listings in order. Load or
+            Refresh one listing makes one request and keeps other histories.
+            Cancel keeps completed histories. Leaving Markets clears prices.
           </p>
         </div>
         {selected && (

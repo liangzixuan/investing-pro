@@ -25,12 +25,16 @@ import {
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
-import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import {
+  ManagedWatchlistEditor,
+  type ManagedWatchlistEditorHandle,
+} from "./ManagedWatchlistEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
+import { ManagedIcon } from "./ManagedIcon";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
 import {
   bindAndroidBack,
@@ -259,7 +263,9 @@ export function ManagedWorkspaceScreen({
   const watchlistNavigation = useRef<HTMLButtonElement | null>(null);
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const watchlistPanel = useRef<HTMLElement | null>(null);
+  const watchlistEditor = useRef<ManagedWatchlistEditorHandle>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
+  const [localReturnFocus, setLocalReturnFocus] = useState(0);
   const routeBack = navigation?.back;
   const hasCompanyRoute = navigation?.hasCompanyRoute;
   const restoreFocus = useCallback(() => {
@@ -275,12 +281,12 @@ export function ManagedWorkspaceScreen({
     if (routeBack) routeBack();
     else {
       workspace.closeResearch();
-      restoreFocus();
+      setLocalReturnFocus((value) => value + 1);
     }
-  }, [routeBack, restoreFocus, workspace]);
+  }, [routeBack, workspace]);
   useEffect(() => {
-    if (navigation?.returnFocus) restoreFocus();
-  }, [navigation?.returnFocus, restoreFocus]);
+    if (navigation?.returnFocus || localReturnFocus) restoreFocus();
+  }, [navigation?.returnFocus, localReturnFocus, restoreFocus]);
   const setView = (view: "markets" | "discover" | "watchlist") => {
     if (navigation) return navigation.view(view);
     workspace.setView(view);
@@ -361,38 +367,15 @@ export function ManagedWorkspaceScreen({
       panel.hidden
     )
       return;
-    const member = workspace.coordinator
-      .getSnapshot()
-      .draft?.memberships.find(
-        (entry) => normalizeWatchlistNote(entry.note) === null,
-      );
-    if (!member) return;
-    const field = Array.from(
-      panel.querySelectorAll<HTMLTextAreaElement>(
-        "textarea[data-managed-note-listing-id]",
-      ),
-    ).find((input) => input.dataset.managedNoteListingId === member.listingId);
-    if (
-      field?.isConnected &&
-      !field.disabled &&
-      field.value === member.note &&
-      field.getClientRects().length > 0
-    )
-      field.focus();
+    watchlistEditor.current?.focusFirstInvalidNote();
   };
   return (
     <div className="managed-workspace">
-      <ManagedSignOut coordinator={coordinator} />
-      <p className="trial-status" role="status" aria-live="polite">
-        {saved.message}
-      </p>
-      {retired ? null : (
-        <>
-          {backUnavailable && (
-            <p role="status">
-              Use the on-screen navigation while Android Back is unavailable.
-            </p>
-          )}
+      <aside className="managed-sidebar">
+        <p className="managed-brand" aria-hidden="true">
+          Investment
+        </p>
+        {!retired && (
           <nav className="managed-navigation" aria-label="Workspace">
             {(["markets", "discover", "watchlist"] as const).map((view) => (
               <button
@@ -408,6 +391,7 @@ export function ManagedWorkspaceScreen({
                 aria-current={discovery.view === view ? "page" : undefined}
                 onClick={() => setView(view)}
               >
+                <ManagedIcon name={view} />
                 {
                   {
                     markets: "Markets",
@@ -418,444 +402,457 @@ export function ManagedWorkspaceScreen({
               </button>
             ))}
           </nav>
-          <div className="managed-search-bar">
-            <WorkspaceSearch
-              query={discovery.query}
-              busy={discovery.read !== null}
-              busyLabel={discovery.read === "status" ? "Search" : "Searching…"}
-              disabled={retired}
-              onChange={(query) => workspace.setQuery(query)}
-              onSearch={() => {
-                if (!setView("discover")) return;
-                void workspace.search();
-              }}
-            />
-            <button
-              className="trial-secondary"
-              disabled={discovery.read !== null}
-              onClick={() => void workspace.refreshCatalog()}
-            >
-              {discovery.read === "status"
-                ? discovery.snapshot
-                  ? "Refreshing catalog…"
-                  : "Loading catalog…"
-                : "Refresh catalog"}
-            </button>
-          </div>
-          <p role="status" aria-live="polite">
-            {discovery.message}
-          </p>
-          {navigation?.invalid && (
-            <section aria-label="Company link">
-              <p role="status">
-                This company link is invalid. Open a company from Markets,
-                Discover or My Watchlist.
-              </p>
-              <button onClick={backToWorkspace}>Back to Markets</button>
-            </section>
-          )}
-          {discovery.companyRoute &&
-            discovery.companyRoute.status !== "open" && (
-              <section aria-label="Company link">
-                <p role="status">{discovery.companyRoute.message}</p>
-                {(discovery.companyRoute.status === "unavailable" ||
-                  discovery.companyRoute.status === "error") && (
-                  <button onClick={() => void workspace.retryCompanyRoute()}>
-                    Retry company link
-                  </button>
-                )}
-                <button onClick={backToWorkspace}>Back to workspace</button>
-              </section>
-            )}
-          {discovery.research && (
-            <ManagedCompanyResearch
-              research={discovery.research}
-              annual={workspace.annual}
-              eod={workspace.eod}
-              onBack={() => {
-                if (
-                  workspace.getSnapshot().research?.selection ===
-                  discovery.research!.selection
-                )
-                  backToWorkspace();
-              }}
-              watchlist={workspace.getResearchWatchlist(
-                discovery.research.selection,
-              )}
-              onAdd={() =>
-                workspace.addResearchToWatchlist(discovery.research!.selection)
-              }
-              onNote={(note) =>
-                workspace.noteResearch(discovery.research!.selection, note)
-              }
-              annualNoteActions={{
-                getAction: (response, pair) =>
-                  workspace.getAnnualNoteAction(
-                    discovery.research!.selection,
-                    response,
-                    pair,
-                  ),
-                append: (response, pair) =>
-                  workspace.appendAnnualToResearchNote(
-                    discovery.research!.selection,
-                    response,
-                    pair,
-                  ),
-              }}
-              priceNoteActions={{
-                getAction: (response, start) =>
-                  workspace.getPriceNoteAction(
-                    discovery.research!.selection,
-                    response,
-                    start,
-                  ),
-                append: (response, start) =>
-                  workspace.appendPriceComparisonToResearchNote(
-                    discovery.research!.selection,
-                    response,
-                    start,
-                  ),
-              }}
-              onReview={() => {
-                if (
-                  workspace.getSnapshot().research?.selection !==
-                  discovery.research!.selection
-                )
-                  return;
-                if (!setView("watchlist")) return;
-                panelOrigin.current = null;
-                watchlistNavigation.current?.focus();
-              }}
-              onSection={(section) => {
-                if (
-                  workspace.getSnapshot().research?.selection !==
-                  discovery.research!.selection
-                )
-                  return;
-                if (navigation) navigation.section(section);
-                else if (section === "annual") workspace.switchToAnnual();
-                else workspace.switchToEod();
-              }}
-            />
-          )}
-          {discovery.view === "markets" && (
-            <>
-              <ManagedMarkets
-                model={workspace.markets}
-                onResearch={(kind, opener) => {
-                  openResearch(opener, () =>
-                    workspace.openMarketResearch(kind),
-                  );
-                }}
-                onWatchlist={() => {
-                  if (!setView("watchlist")) return;
-                  watchlistNavigation.current?.focus();
+        )}
+        <p className="managed-sidebar-caption">Your research workspace</p>
+      </aside>
+      <div className="managed-workspace-main">
+        <header className="managed-workspace-toolbar">
+          {!retired && (
+            <div className="managed-search-bar">
+              <WorkspaceSearch
+                query={discovery.query}
+                busy={discovery.read !== null}
+                busyLabel={
+                  discovery.read === "status" ? "Search" : "Searching…"
+                }
+                disabled={retired}
+                onChange={(query) => workspace.setQuery(query)}
+                onSearch={() => {
+                  if (!setView("discover")) return;
+                  void workspace.search();
                 }}
               />
-              <ManagedBeaReleaseAgenda model={workspace.agenda} />
-            </>
-          )}
-          <section
-            className="trial-panel"
-            aria-labelledby="managed-discover-heading"
-            hidden={discovery.view !== "discover"}
-          >
-            <div className="trial-toolbar">
-              <h2
-                id="managed-discover-heading"
-                ref={discoverHeading}
-                tabIndex={-1}
-              >
-                Discover
-              </h2>
-            </div>
-            {discovery.results.length > 0 && (
-              <ul className="managed-results">
-                {discovery.results.map((result) => {
-                  const included = saved.draft?.memberships.some(
-                    (member) => member.listingId === result.listingId,
-                  );
-                  return (
-                    <li key={result.listingId}>
-                      <div>
-                        <ListingIdentity member={result} />
-                        <small>{result.securityName}</small>
-                        {result.matchKind.startsWith("former_symbol") && (
-                          <small>
-                            Former ticker match: {result.matchedValue}
-                          </small>
-                        )}
-                      </div>
-                      <div className="trial-actions">
-                        <button
-                          disabled={
-                            !editable ||
-                            !currentCatalog ||
-                            included ||
-                            (saved.draft?.memberships.length ?? 0) >= 10_000
-                          }
-                          onClick={() => workspace.add(result)}
-                        >
-                          {included ? "Added" : `Add ${result.symbol}`}
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          aria-label={`Annual report for ${result.symbol}`}
-                          onClick={(event) => {
-                            openResearch(event.currentTarget, () =>
-                              workspace.openDiscoveryAnnual(result),
-                            );
-                          }}
-                        >
-                          Annual report
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          aria-label={`EOD close history for ${result.symbol}`}
-                          onClick={(event) => {
-                            openResearch(event.currentTarget, () =>
-                              workspace.openDiscoveryEod(result),
-                            );
-                          }}
-                        >
-                          EOD close history
-                        </button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {discovery.totalMatches > discovery.results.length && (
-              <p>
-                Showing the first {discovery.results.length} matches. Refine
-                your search to find another listing.
-              </p>
-            )}
-            {discovery.snapshot && (
-              <CatalogReceipt snapshot={discovery.snapshot} />
-            )}
-          </section>
-          <section
-            className="trial-panel"
-            aria-labelledby="managed-watchlist-heading"
-            hidden={discovery.view !== "watchlist"}
-            ref={watchlistPanel}
-          >
-            <div className="trial-toolbar">
-              <h2 id="managed-watchlist-heading">My Watchlist</h2>
               <button
                 className="trial-secondary"
-                disabled={busy || saved.uncertain}
-                onClick={() => void coordinator.load()}
+                disabled={discovery.read !== null}
+                onClick={() => void workspace.refreshCatalog()}
               >
-                Load saved watchlist
+                {discovery.read === "status"
+                  ? discovery.snapshot
+                    ? "Refreshing catalog…"
+                    : "Loading catalog…"
+                  : "Refresh catalog"}
               </button>
             </div>
-            <p>
-              {saved.baseVersion === null
-                ? "Load your watchlist to begin."
-                : `Version ${saved.baseVersion} · ${saved.dirty ? "Unsaved changes" : "Saved"}`}
-            </p>
-            {saved.uncertain && (
-              <div className="trial-review">
-                <p>
-                  The save may already have completed. Keep this screen open.
-                  Reconciliation sends the original command again; if it never
-                  reached the server, this action can complete it.
+          )}
+          <div className="managed-session-controls">
+            <ManagedSignOut coordinator={coordinator} />
+          </div>
+          <p className="managed-save-status" role="status" aria-live="polite">
+            {saved.message}
+          </p>
+        </header>
+        <div className="managed-workspace-content">
+          {retired ? null : (
+            <>
+              {backUnavailable && (
+                <p role="status">
+                  Use the on-screen navigation while Android Back is
+                  unavailable.
                 </p>
-                <button
-                  disabled={busy}
-                  onClick={() => void coordinator.reconcile()}
-                >
-                  Reconcile pending save
-                </button>
-              </div>
-            )}
-            {saved.conflict && (
-              <div className="trial-review">
-                <p>
-                  {saved.replayPending
-                    ? "The original save is confirmed. Load the latest shared version before choosing what to edit next."
-                    : "Your draft is intact. Load the latest version, then choose which version to use."}
-                </p>
-                {saved.latestLoaded && saved.saved && saved.draft && (
-                  <>
-                    <ManagedWatchlistReview
-                      saved={saved.saved.payload}
-                      draft={saved.draft}
-                      version={saved.saved.version}
-                    />
-                    <div className="trial-actions">
+              )}
+              <p
+                className="managed-discovery-status"
+                role="status"
+                aria-live="polite"
+              >
+                {discovery.message}
+              </p>
+              {navigation?.invalid && (
+                <section aria-label="Company link">
+                  <p role="status">
+                    This company link is invalid. Open a company from Markets,
+                    Discover or My Watchlist.
+                  </p>
+                  <button onClick={backToWorkspace}>Back to Markets</button>
+                </section>
+              )}
+              {discovery.companyRoute &&
+                discovery.companyRoute.status !== "open" && (
+                  <section aria-label="Company link">
+                    <p role="status">{discovery.companyRoute.message}</p>
+                    {(discovery.companyRoute.status === "unavailable" ||
+                      discovery.companyRoute.status === "error") && (
                       <button
-                        disabled={busy}
-                        onClick={() => coordinator.useSaved()}
+                        onClick={() => void workspace.retryCompanyRoute()}
                       >
-                        Use saved version
+                        Retry company link
                       </button>
-                      <button
-                        disabled={busy}
-                        onClick={() => coordinator.keepDraft()}
-                      >
-                        Keep my draft
-                      </button>
-                    </div>
-                    <p>
-                      Keeping your draft means the next save replaces this saved
-                      version.
-                    </p>
-                  </>
+                    )}
+                    <button onClick={backToWorkspace}>Back to workspace</button>
+                  </section>
                 )}
-              </div>
-            )}
-            {saved.draft && !currentCatalog && discovery.snapshot && (
-              <div className="trial-review">
-                <p>
-                  Your watchlist uses a different catalog. Review its exact
-                  listings before adding, saving or opening an annual report or
-                  close history.
-                </p>
-              </div>
-            )}
-            {saved.draft && (
-              <>
-                {saved.draft.memberships.length === 0 && (
+              {discovery.research && (
+                <ManagedCompanyResearch
+                  research={discovery.research}
+                  annual={workspace.annual}
+                  eod={workspace.eod}
+                  onBack={() => {
+                    if (
+                      workspace.getSnapshot().research?.selection ===
+                      discovery.research!.selection
+                    )
+                      backToWorkspace();
+                  }}
+                  watchlist={workspace.getResearchWatchlist(
+                    discovery.research.selection,
+                  )}
+                  onAdd={() =>
+                    workspace.addResearchToWatchlist(
+                      discovery.research!.selection,
+                    )
+                  }
+                  onNote={(note) =>
+                    workspace.noteResearch(discovery.research!.selection, note)
+                  }
+                  annualNoteActions={{
+                    getAction: (response, pair) =>
+                      workspace.getAnnualNoteAction(
+                        discovery.research!.selection,
+                        response,
+                        pair,
+                      ),
+                    append: (response, pair) =>
+                      workspace.appendAnnualToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                        pair,
+                      ),
+                  }}
+                  priceNoteActions={{
+                    getAction: (response, start) =>
+                      workspace.getPriceNoteAction(
+                        discovery.research!.selection,
+                        response,
+                        start,
+                      ),
+                    append: (response, start) =>
+                      workspace.appendPriceComparisonToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                        start,
+                      ),
+                  }}
+                  onReview={() => {
+                    if (
+                      workspace.getSnapshot().research?.selection !==
+                      discovery.research!.selection
+                    )
+                      return;
+                    if (!setView("watchlist")) return;
+                    panelOrigin.current = null;
+                    watchlistNavigation.current?.focus();
+                  }}
+                  onSection={(section) => {
+                    if (
+                      workspace.getSnapshot().research?.selection !==
+                      discovery.research!.selection
+                    )
+                      return;
+                    if (navigation) navigation.section(section);
+                    else if (section === "annual") workspace.switchToAnnual();
+                    else workspace.switchToEod();
+                  }}
+                />
+              )}
+              {discovery.view === "markets" && (
+                <div
+                  hidden={Boolean(
+                    discovery.research ||
+                    discovery.companyRoute ||
+                    navigation?.invalid,
+                  )}
+                >
+                  <ManagedMarkets
+                    model={workspace.markets}
+                    onResearch={(kind, opener) => {
+                      openResearch(opener, () =>
+                        workspace.openMarketResearch(kind),
+                      );
+                    }}
+                    onWatchlist={() => {
+                      if (!setView("watchlist")) return;
+                      watchlistNavigation.current?.focus();
+                    }}
+                  />
+                  <ManagedBeaReleaseAgenda model={workspace.agenda} />
+                </div>
+              )}
+              <section
+                className="trial-panel"
+                aria-labelledby="managed-discover-heading"
+                hidden={
+                  discovery.view !== "discover" ||
+                  Boolean(
+                    discovery.research ||
+                    discovery.companyRoute ||
+                    navigation?.invalid,
+                  )
+                }
+              >
+                <div className="trial-toolbar">
+                  <h2
+                    id="managed-discover-heading"
+                    ref={discoverHeading}
+                    tabIndex={-1}
+                  >
+                    Discover
+                  </h2>
+                </div>
+                {discovery.results.length > 0 && (
+                  <ul className="managed-results">
+                    {discovery.results.map((result) => {
+                      const included = saved.draft?.memberships.some(
+                        (member) => member.listingId === result.listingId,
+                      );
+                      return (
+                        <li key={result.listingId}>
+                          <div>
+                            <ListingIdentity member={result} />
+                            <small>{result.securityName}</small>
+                            {result.matchKind.startsWith("former_symbol") && (
+                              <small>
+                                Former ticker match: {result.matchedValue}
+                              </small>
+                            )}
+                          </div>
+                          <div className="trial-actions">
+                            <button
+                              disabled={
+                                !editable ||
+                                !currentCatalog ||
+                                included ||
+                                (saved.draft?.memberships.length ?? 0) >= 10_000
+                              }
+                              onClick={() => workspace.add(result)}
+                            >
+                              {included ? "Added" : `Add ${result.symbol}`}
+                            </button>
+                            <button
+                              className="trial-secondary"
+                              aria-label={`Annual report for ${result.symbol}`}
+                              onClick={(event) => {
+                                openResearch(event.currentTarget, () =>
+                                  workspace.openDiscoveryAnnual(result),
+                                );
+                              }}
+                            >
+                              Annual report
+                            </button>
+                            <button
+                              className="trial-secondary"
+                              aria-label={`EOD close history for ${result.symbol}`}
+                              onClick={(event) => {
+                                openResearch(event.currentTarget, () =>
+                                  workspace.openDiscoveryEod(result),
+                                );
+                              }}
+                            >
+                              EOD close history
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {discovery.totalMatches > discovery.results.length && (
                   <p>
-                    Your watchlist is empty. Search for a company and add its
-                    exact listing.
+                    Showing the first {discovery.results.length} matches. Refine
+                    your search to find another listing.
                   </p>
                 )}
-                <ol className="managed-memberships">
-                  {saved.draft.memberships.map((member, index) => (
-                    <li key={member.listingId}>
-                      <ListingIdentity member={member} />
-                      <small className="managed-listing-detail">
-                        Listing ID: {member.listingId}
-                      </small>
-                      <ManagedNoteEditor
-                        id={`managed-note-${index}`}
-                        listingId={member.listingId}
-                        symbol={member.symbol}
-                        note={member.note}
-                        disabled={!editable}
-                        helpId="managed-watchlist-note-help"
-                        onChange={(note) =>
-                          workspace.note(member.listingId, note)
-                        }
-                      />
-                      <div className="trial-actions">
-                        <button
-                          className="trial-secondary"
-                          disabled={!workspace.canOpenWatchlistAnnual(member)}
-                          aria-label={`Annual report for saved ${member.symbol}`}
-                          onClick={(event) => {
-                            openResearch(event.currentTarget, () =>
-                              workspace.openWatchlistAnnual(member),
-                            );
-                          }}
-                        >
-                          Annual report
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          disabled={!workspace.canOpenWatchlistEod(member)}
-                          aria-label={`EOD close history for saved ${member.symbol}`}
-                          onClick={(event) => {
-                            openResearch(event.currentTarget, () =>
-                              workspace.openWatchlistEod(member),
-                            );
-                          }}
-                        >
-                          EOD close history
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          disabled={!editable || index === 0}
-                          aria-label={`Move ${member.symbol} up`}
-                          onClick={() => workspace.move(member.listingId, -1)}
-                        >
-                          Move up
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          disabled={
-                            !editable ||
-                            index === saved.draft!.memberships.length - 1
-                          }
-                          aria-label={`Move ${member.symbol} down`}
-                          onClick={() => workspace.move(member.listingId, 1)}
-                        >
-                          Move down
-                        </button>
-                        <button
-                          className="trial-secondary"
-                          disabled={!editable}
-                          aria-label={`Remove ${member.symbol}`}
-                          onClick={() => workspace.remove(member.listingId)}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <p id="managed-watchlist-note-help">
-                  Notes support up to 2,000 characters each. Changes stay in
-                  this screen until you save.
-                </p>
-                <div className="trial-actions">
-                  <button
-                    disabled={
-                      !editable || !saved.dirty || !workspace.canSavePayload()
-                    }
-                    aria-describedby={
-                      saveIssue ? "managed-save-issue" : undefined
-                    }
-                    onClick={() => void coordinator.save()}
-                  >
-                    Save watchlist
-                  </button>
-                  {hasInvalidNote && (
-                    <button
-                      id="managed-note-validation-focus"
-                      className="trial-secondary"
-                      disabled={!editable}
-                      onClick={focusFirstInvalidNote}
-                    >
-                      Go to first invalid note
-                    </button>
-                  )}
+                {discovery.snapshot && (
+                  <CatalogReceipt snapshot={discovery.snapshot} />
+                )}
+              </section>
+              <section
+                className="trial-panel"
+                aria-labelledby="managed-watchlist-heading"
+                hidden={
+                  discovery.view !== "watchlist" ||
+                  Boolean(
+                    discovery.research ||
+                    discovery.companyRoute ||
+                    navigation?.invalid,
+                  )
+                }
+                ref={watchlistPanel}
+              >
+                <div className="trial-toolbar">
+                  <h2 id="managed-watchlist-heading">My Watchlist</h2>
                   <button
                     className="trial-secondary"
-                    disabled={
-                      !editable || !discovery.snapshot || discovery.reviewing
-                    }
-                    onClick={() => void workspace.reviewCatalog()}
+                    disabled={busy || saved.uncertain}
+                    onClick={() => void coordinator.load()}
                   >
-                    Review catalog changes
+                    Load saved watchlist
                   </button>
                 </div>
-                {saveIssue && (
-                  <p id="managed-save-issue" role="status">
-                    {saveIssue}
-                  </p>
+                <p>
+                  {saved.baseVersion === null
+                    ? "Load your watchlist to begin."
+                    : `Version ${saved.baseVersion} · ${saved.dirty ? "Unsaved changes" : "Saved"}`}
+                </p>
+                {saved.uncertain && (
+                  <div className="trial-review">
+                    <p>
+                      The save may already have completed. Keep this screen
+                      open. Reconciliation sends the original command again; if
+                      it never reached the server, this action can complete it.
+                    </p>
+                    <button
+                      disabled={busy}
+                      onClick={() => void coordinator.reconcile()}
+                    >
+                      Reconcile pending save
+                    </button>
+                  </div>
                 )}
-              </>
-            )}
-            {discovery.review && (
-              <CatalogReviewPanel
-                review={discovery.review}
-                workspace={workspace}
-                busy={discovery.reviewing}
-              />
-            )}
-          </section>
-        </>
-      )}
-      <p className="trial-session-help">
-        Other signed-in devices keep their own sessions. Signing out clears this
-        screen, including unsaved changes.
-      </p>
+                {saved.conflict && (
+                  <div className="trial-review">
+                    <p>
+                      {saved.replayPending
+                        ? "The original save is confirmed. Load the latest shared version before choosing what to edit next."
+                        : "Your draft is intact. Load the latest version, then choose which version to use."}
+                    </p>
+                    {saved.latestLoaded && saved.saved && saved.draft && (
+                      <>
+                        <ManagedWatchlistReview
+                          saved={saved.saved.payload}
+                          draft={saved.draft}
+                          version={saved.saved.version}
+                        />
+                        <div className="trial-actions">
+                          <button
+                            disabled={busy}
+                            onClick={() => coordinator.useSaved()}
+                          >
+                            Use saved version
+                          </button>
+                          <button
+                            disabled={busy}
+                            onClick={() => coordinator.keepDraft()}
+                          >
+                            Keep my draft
+                          </button>
+                        </div>
+                        <p>
+                          Keeping your draft means the next save replaces this
+                          saved version.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {saved.draft && !currentCatalog && discovery.snapshot && (
+                  <div className="trial-review">
+                    <p>
+                      Your watchlist uses a different catalog. Review its exact
+                      listings before adding, saving or opening an annual report
+                      or close history.
+                    </p>
+                  </div>
+                )}
+                {saved.draft && (
+                  <>
+                    <ManagedWatchlistEditor
+                      ref={watchlistEditor}
+                      memberships={saved.draft.memberships}
+                      editable={editable}
+                      active={
+                        discovery.view === "watchlist" &&
+                        !discovery.research &&
+                        !discovery.companyRoute &&
+                        !navigation?.invalid
+                      }
+                      canOpenAnnual={(member) =>
+                        workspace.canOpenWatchlistAnnual(member)
+                      }
+                      canOpenEod={(member) =>
+                        workspace.canOpenWatchlistEod(member)
+                      }
+                      onNote={(listingId, note) =>
+                        workspace.note(listingId, note)
+                      }
+                      onMove={(listingId, direction) =>
+                        workspace.move(listingId, direction)
+                      }
+                      onRemove={(listingId) => workspace.remove(listingId)}
+                      onOpenAnnual={(member, opener) =>
+                        openResearch(opener, () =>
+                          workspace.openWatchlistAnnual(member),
+                        )
+                      }
+                      onOpenEod={(member, opener) =>
+                        openResearch(opener, () =>
+                          workspace.openWatchlistEod(member),
+                        )
+                      }
+                    />
+                    <p id="managed-watchlist-note-help">
+                      Notes support up to 2,000 characters each. Changes stay in
+                      this screen until you save.
+                    </p>
+                    <div className="trial-actions">
+                      <button
+                        disabled={
+                          !editable ||
+                          !saved.dirty ||
+                          !workspace.canSavePayload()
+                        }
+                        aria-describedby={
+                          saveIssue ? "managed-save-issue" : undefined
+                        }
+                        onClick={() => void coordinator.save()}
+                      >
+                        Save watchlist
+                      </button>
+                      {hasInvalidNote && (
+                        <button
+                          id="managed-note-validation-focus"
+                          className="trial-secondary"
+                          disabled={!editable}
+                          onClick={focusFirstInvalidNote}
+                        >
+                          Go to first invalid note
+                        </button>
+                      )}
+                      <button
+                        className="trial-secondary"
+                        disabled={
+                          !editable ||
+                          !discovery.snapshot ||
+                          discovery.reviewing
+                        }
+                        onClick={() => void workspace.reviewCatalog()}
+                      >
+                        Review catalog changes
+                      </button>
+                    </div>
+                    {saveIssue && (
+                      <p id="managed-save-issue" role="status">
+                        {saveIssue}
+                      </p>
+                    )}
+                  </>
+                )}
+                {discovery.review && (
+                  <CatalogReviewPanel
+                    review={discovery.review}
+                    workspace={workspace}
+                    busy={discovery.reviewing}
+                  />
+                )}
+              </section>
+            </>
+          )}
+          <p className="trial-session-help">
+            Other signed-in devices keep their own sessions. Signing out clears
+            this screen, including unsaved changes.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

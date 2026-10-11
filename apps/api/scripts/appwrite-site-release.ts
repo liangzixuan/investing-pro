@@ -125,7 +125,7 @@ export function validateArtifact(
     if (
       typeof file.path !== "string" ||
       (file.path !== "index.html" &&
-        !/^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.(?:js|css)$/u.test(
+        !/^assets\/[A-Za-z0-9_-]+-[A-Za-z0-9_-]{8,}\.(?:js|css|woff2)$/u.test(
           file.path,
         )) ||
       paths.has(file.path) ||

@@ -277,6 +277,30 @@ describe("managed close history panel", () => {
       expect(output).toContain(text);
     expect(output).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
     expect(output).toMatch(/<td(?:\s[^>]*)?>101\.5<\/td>/u);
+    const metadata = Array.from(
+      output.matchAll(
+        /<dl class="managed-metadata(?: managed-eod-quote)?">(.*?)<\/dl>/gu,
+      ),
+      (match) => match[1]!,
+    );
+    expect(metadata).toEqual([
+      "<dt>Last raw close (USD)</dt><dd>101.5</dd><dt>Last trading date</dt><dd>2026-09-19</dd>",
+      "<dt>Requested window</dt><dd>2026-08-20 to 2026-09-20</dd><dt>Request started</dt><dd>2026-09-20T00:00:00.000Z</dd><dt>Source request completed</dt><dd>2026-09-20T00:00:01.000Z</dd>",
+    ]);
+    expect(output).toContain(
+      '<details class="managed-eod-source"><summary>Source and request dates</summary>',
+    );
+    expect(
+      output.indexOf('class="managed-metadata managed-eod-quote"'),
+    ).toBeLessThan(output.indexOf('class="managed-eod-chart"'));
+    expect(output.indexOf('class="managed-eod-chart"')).toBeLessThan(
+      output.indexOf('class="managed-eod-source"'),
+    );
+    expect(
+      output.slice(output.indexOf('class="managed-eod-source"')),
+    ).toContain(
+      "Data provided by Tiingo. Completion time records this request, not a live market update.",
+    );
     expect(output).not.toContain("Volume");
     model.close();
     expect(html()).toBe("");

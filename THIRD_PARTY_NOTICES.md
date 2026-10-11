@@ -64,7 +64,16 @@ Transitive content notice: `caniuse-lite` 1.0.30001809 is licensed under
 Next.js browser-compatibility toolchain. Project attribution:
 [browserslist/caniuse-lite](https://github.com/browserslist/caniuse-lite).
 
-No third-party financial market data, competitor content, images, fonts, or model weights are included.
+## Managed interface assets
+
+The managed workspace bundles three unmodified Tabler Icons SVGs under the MIT
+license and an unmodified Inter Latin variable font served by Google Fonts under
+the SIL Open Font License 1.1. Their exact source URLs, hashes and complete
+licenses are retained with the [icons](apps/web/src/clerk-trial/icons/README.md)
+and [font](apps/web/src/clerk-trial/fonts/README.md). Both licenses are available
+through the managed client's Software licenses disclosure.
+
+No third-party financial market data, competitor content or model weights are included.
 
 ## CI acceptance infrastructure
 

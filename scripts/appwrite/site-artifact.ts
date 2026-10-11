@@ -43,13 +43,24 @@ export function validateBuiltFiles(
     .map(([path, bytes]) => {
       if (
         path !== "index.html" &&
-        !/^assets\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]{8,}\.(?:js|css)$/u.test(path)
+        !/^assets\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]{8,}\.(?:js|css|woff2)$/u.test(
+          path,
+        )
       ) {
         throw new Error("Unexpected static artifact path.");
       }
       total += bytes.length;
       if (bytes.length === 0 || total > 16 * 1024 * 1024)
         throw new Error("Static artifact exceeds its bounds.");
+      // WOFF2 has a 48-byte header; offset 8 declares the complete file length.
+      // This admits a bounded font container, not a decoded font or its tables.
+      if (
+        path.endsWith(".woff2") &&
+        (bytes.length <= 48 ||
+          bytes.readUInt32BE(0) !== 0x774f4632 ||
+          bytes.readUInt32BE(8) !== bytes.length)
+      )
+        throw new Error("Invalid static font header.");
       return { path, sha256: digest(bytes), bytes: bytes.length };
     });
 }

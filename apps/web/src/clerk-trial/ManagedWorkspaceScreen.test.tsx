@@ -22,6 +22,10 @@ import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import {
+  ManagedWatchlistEditor,
+  type ManagedWatchlistEditorHandle,
+} from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
@@ -32,15 +36,47 @@ const mounted = vi.hoisted(() => ({
   cleanups: [] as Array<() => void>,
   direct: false,
   refIndex: 0,
+  screenState: [] as unknown[],
+  screenStateIndex: 0,
+  editorDirect: false,
+  editorState: [] as unknown[],
+  editorStateIndex: 0,
+  editorRefs: [] as Array<{ current: unknown }>,
+  editorRefIndex: 0,
+  editorEffects: [] as Array<() => void>,
 }));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
     useEffect: (effect: () => (() => void) | void) =>
-      mounted.effects.push(effect),
+      mounted.editorDirect
+        ? mounted.editorEffects.push(effect)
+        : mounted.effects.push(effect),
+    useLayoutEffect: (
+      effect: () => (() => void) | void,
+      dependencies: React.DependencyList,
+    ) =>
+      mounted.editorDirect
+        ? mounted.editorEffects.push(effect)
+        : actual.useLayoutEffect(effect, dependencies),
+    useImperativeHandle: (
+      ref: React.Ref<ManagedWatchlistEditorHandle>,
+      create: () => ManagedWatchlistEditorHandle,
+      dependencies: React.DependencyList,
+    ) => {
+      if (!mounted.editorDirect)
+        return actual.useImperativeHandle(ref, create, dependencies);
+      if (typeof ref === "function") ref(create());
+      else if (ref) ref.current = create();
+    },
     useRef: (value: unknown) => {
+      if (mounted.editorDirect)
+        return (mounted.editorRefs[mounted.editorRefIndex++] ??= {
+          current: value,
+        });
       if (mounted.direct) {
+        if (mounted.refIndex === 0) mounted.screenStateIndex = 0;
         const index = mounted.refIndex++;
         return (mounted.refs[index] ??= { current: value });
       }
@@ -48,8 +84,33 @@ vi.mock("react", async (original) => {
       mounted.refs.push(ref);
       return ref;
     },
-    useState: (value: unknown) =>
-      mounted.direct ? [value, vi.fn()] : actual.useState(value),
+    useState: (value: unknown) => {
+      if (mounted.editorDirect) {
+        const index = mounted.editorStateIndex++;
+        if (!(index in mounted.editorState)) mounted.editorState[index] = value;
+        return [
+          mounted.editorState[index],
+          (next: unknown) => (mounted.editorState[index] = next),
+        ];
+      }
+      if (mounted.direct) {
+        const index = mounted.screenStateIndex++;
+        if (index >= 2) return [value, vi.fn()];
+        if (!(index in mounted.screenState)) mounted.screenState[index] = value;
+        return [
+          mounted.screenState[index],
+          (next: unknown) => {
+            mounted.screenState[index] =
+              typeof next === "function"
+                ? (next as (previous: unknown) => unknown)(
+                    mounted.screenState[index],
+                  )
+                : next;
+          },
+        ];
+      }
+      return actual.useState(value);
+    },
     useCallback: (callback: () => void, dependencies: React.DependencyList) =>
       mounted.direct ? callback : actual.useCallback(callback, dependencies),
     useSyncExternalStore: (
@@ -72,11 +133,18 @@ beforeEach(() => {
   mounted.cleanups.length = 0;
   mounted.direct = false;
   mounted.refIndex = 0;
+  mounted.screenState = [];
+  mounted.screenStateIndex = 0;
+  mounted.editorDirect = false;
+  mounted.editorState = [];
+  mounted.editorRefs = [];
+  mounted.editorEffects = [];
 });
 afterEach(() => {
   for (const cleanup of mounted.cleanups) cleanup();
   vi.unstubAllGlobals();
   mounted.direct = false;
+  mounted.editorDirect = false;
 });
 
 function nativeBackFixture() {
@@ -216,6 +284,48 @@ function elements(
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }
+
+function watchlistEditor(node: React.ReactNode) {
+  return elements(node).find(
+    (entry) => entry.type === ManagedWatchlistEditor,
+  ) as
+    | React.ReactElement<React.ComponentProps<typeof ManagedWatchlistEditor>>
+    | undefined;
+}
+
+function editorElements(node: React.ReactNode) {
+  const child = watchlistEditor(node);
+  if (!child) return [];
+  mounted.editorStateIndex = 0;
+  mounted.editorRefIndex = 0;
+  mounted.editorEffects = [];
+  mounted.editorDirect = true;
+  try {
+    return elements(ManagedWatchlistEditor(child.props));
+  } finally {
+    mounted.editorDirect = false;
+  }
+}
+
+function commitReturnFocus(
+  workspace: ManagedWorkspace,
+  beforeCommit?: (screen: React.ReactNode) => void,
+  androidBack?: AndroidBackAdapter,
+) {
+  const direct = mounted.direct;
+  const effectIndex = mounted.effects.length;
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const screen = ManagedWorkspaceScreen({
+    workspace,
+    ...(androidBack ? { androidBack } : {}),
+  });
+  mounted.direct = direct;
+  beforeCommit?.(screen);
+  // The first Screen effect restores focus; native listener registration stays mounted.
+  mounted.effects[effectIndex]!();
+}
+
 async function noteFocusFixture() {
   const { workspace, api } = fixture({
     ...payload,
@@ -250,19 +360,37 @@ async function noteFocusFixture() {
     isConnected: true,
     hidden: false,
     querySelectorAll: vi.fn(() => fields),
+    querySelector: vi.fn(() => fields[0]),
   };
-  mounted.direct = true;
-  mounted.refIndex = 0;
-  const nodes = elements(ManagedWorkspaceScreen({ workspace }));
-  mounted.direct = false;
-  const section = nodes.find(
-    (node) =>
-      node.type === "section" &&
-      (node.props as React.ComponentProps<"section">)["aria-labelledby"] ===
-        "managed-watchlist-heading",
-  ) as React.ReactElement<React.ComponentProps<"section">>;
-  const reference = section.props.ref as { current: HTMLElement | null };
-  reference.current = panel as unknown as HTMLElement;
+  const render = () => {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({ workspace });
+    mounted.direct = false;
+    const nodes = elements(screen);
+    const section = nodes.find(
+      (node) =>
+        node.type === "section" &&
+        (node.props as React.ComponentProps<"section">)["aria-labelledby"] ===
+          "managed-watchlist-heading",
+    ) as React.ReactElement<React.ComponentProps<"section">> | undefined;
+    if (section) {
+      const reference = section.props.ref as { current: HTMLElement | null };
+      reference.current = panel as unknown as HTMLElement;
+    }
+    const editor = editorElements(screen);
+    const note = editor.find((entry) => entry.type === ManagedNoteEditor) as
+      | React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>
+      | undefined;
+    panel.querySelector.mockImplementation(() =>
+      fields.find(
+        (field) => field.dataset.managedNoteListingId === note?.props.listingId,
+      ),
+    );
+    if (mounted.editorRefs[0]) mounted.editorRefs[0].current = panel;
+    return nodes;
+  };
+  const nodes = render();
   const button = nodes.find(
     (node) =>
       node.type === "button" &&
@@ -274,8 +402,12 @@ async function noteFocusFixture() {
     api,
     fields,
     panel,
-    focus: () =>
-      button.props.onClick!({} as React.MouseEvent<HTMLButtonElement>),
+    focus: () => {
+      render();
+      button.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
+      render();
+      for (const effect of mounted.editorEffects) effect();
+    },
   };
 }
 
@@ -655,7 +787,9 @@ describe("managed workspace screen", () => {
       back: vi.fn(),
     };
     mounted.direct = true;
-    const nodes = elements(ManagedWorkspaceScreen({ workspace, navigation }));
+    const nodes = editorElements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    );
     const opener = nodes.find(
       (node) =>
         node.type === "button" &&
@@ -847,9 +981,7 @@ describe("managed workspace screen", () => {
     const output = html();
     expect(output).toContain('for="managed-research-note"');
     expect(output).toContain("In watchlist draft");
-    expect(output).toContain(
-      "Review and save all watchlist changes in My Watchlist.",
-    );
+    expect(output).toContain("review and save all changes in My Watchlist.");
     expect(output).toContain("Draft before reviewing");
     const before = workspace.coordinator.getSnapshot().draft;
     workspace.openWatchlistAnnual(before!.memberships[0]!);
@@ -920,6 +1052,7 @@ describe("managed workspace screen", () => {
       });
       await workspace.coordinator.load();
       await workspace.refreshCatalog();
+      workspace.setView("watchlist");
       workspace.setQuery("DEMO");
       workspace.note("listing-one", "Keep the navigation draft");
       workspace.move("listing-two", -1);
@@ -938,7 +1071,14 @@ describe("managed workspace screen", () => {
         native.ready();
       }
       const label = `${start === "annual" ? "Annual report" : "EOD close history"} for saved DEMO`;
-      const opener = elements(first).find(
+      const choice = editorElements(first).find(
+        (node) =>
+          (node.props as { "data-watchlist-selection"?: string })[
+            "data-watchlist-selection"
+          ] === "listing-one",
+      ) as React.ReactElement<React.ComponentProps<"button">>;
+      choice.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
+      const opener = editorElements(first).find(
         (node) =>
           node.type === "button" &&
           (node.props as { "aria-label"?: string })["aria-label"] === label,
@@ -972,16 +1112,40 @@ describe("managed workspace screen", () => {
       expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
       expect(workspace.getSnapshot().query).toBe("DEMO");
       expect(
-        elements(render())
+        watchlistEditor(render())!.props.memberships.map(
+          (member) => member.note,
+        ),
+      ).toEqual(["Private research note", "Keep the navigation draft"]);
+      expect(
+        editorElements(render())
           .filter((node) => node.type === ManagedNoteEditor)
           .map((node) => (node.props as { note: string }).note),
-      ).toEqual(["Private research note", "Keep the navigation draft"]);
+      ).toEqual(["Keep the navigation draft"]);
       expect(origin.focus).not.toHaveBeenCalled();
       const current = company();
+      const watchlistPane = (screen: React.ReactNode) =>
+        elements(screen).find(
+          (node) =>
+            node.type === "section" &&
+            (node.props as React.ComponentProps<"section">)[
+              "aria-labelledby"
+            ] === "managed-watchlist-heading",
+        ) as React.ReactElement<React.ComponentProps<"section">>;
+      expect(watchlistPane(render()).props.hidden).toBe(true);
       if (native) native.press(false);
       else current.props.onBack();
       expect(workspace.annual.getSnapshot().selection).toBeNull();
       expect(workspace.eod.getSnapshot().selection).toBeNull();
+      expect(origin.focus).not.toHaveBeenCalled();
+      expect(mounted.refs[0]!.current).toBe(origin);
+      commitReturnFocus(
+        workspace,
+        (screen) => {
+          expect(watchlistPane(screen).props.hidden).toBe(false);
+          expect(origin.focus).not.toHaveBeenCalled();
+        },
+        native?.adapter,
+      );
       expect(origin.focus).toHaveBeenCalledOnce();
       expect(mounted.refs[0]!.current).toBeNull();
       expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
@@ -1018,7 +1182,7 @@ describe("managed workspace screen", () => {
       return ManagedWorkspaceScreen({ workspace });
     };
     const origin = { isConnected: true, focus: vi.fn() };
-    const opener = elements(render()).find(
+    const opener = editorElements(render()).find(
       (node) =>
         node.type === "button" &&
         (node.props as { "aria-label"?: string })["aria-label"] ===
@@ -1097,6 +1261,8 @@ describe("managed workspace screen", () => {
     expect(workspace.getSnapshot().research).toBeNull();
     expect(workspace.eod.getSnapshot().response).toBeNull();
     expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(origin.focus).not.toHaveBeenCalled();
+    commitReturnFocus(workspace);
     expect(origin.focus).toHaveBeenCalledOnce();
   });
   it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
@@ -1128,11 +1294,12 @@ describe("managed workspace screen", () => {
     "native Back consumes a pending EOD panel, restores focus and keeps the draft (history %s)",
     async (canGoBack) => {
       const native = nativeBackFixture();
-      const { workspace, api, html } = fixture();
+      const { workspace, api } = fixture();
       await workspace.coordinator.load();
       await workspace.refreshCatalog();
       workspace.note("listing-one", "Keep my EOD draft");
-      html(native.adapter);
+      mounted.direct = true;
+      ManagedWorkspaceScreen({ workspace, androidBack: native.adapter });
       mountEffects();
       native.ready();
       const focus = vi.fn();
@@ -1152,6 +1319,8 @@ describe("managed workspace screen", () => {
       });
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
       expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+      expect(focus).not.toHaveBeenCalled();
+      commitReturnFocus(workspace, undefined, native.adapter);
       expect(focus).toHaveBeenCalledOnce();
       expect(native.historyBack).not.toHaveBeenCalled();
       held.resolve(eodResponse());
@@ -1349,12 +1518,13 @@ describe("managed workspace screen", () => {
           },
         ],
       };
-      const { workspace, html } = fixture(initial);
+      const { workspace } = fixture(initial);
       await workspace.coordinator.load();
       await workspace.refreshCatalog();
       workspace.note("listing-one", "Unsaved native note");
       workspace.move("listing-two", -1);
-      html(native.adapter);
+      mounted.direct = true;
+      ManagedWorkspaceScreen({ workspace, androidBack: native.adapter });
       mountEffects();
       native.ready();
       const focus = vi.fn();
@@ -1367,6 +1537,8 @@ describe("managed workspace screen", () => {
       expect(workspace.annual.getSnapshot().selection).toBeNull();
       expect(workspace.coordinator.getSnapshot().draft).toEqual(before);
       expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+      expect(focus).not.toHaveBeenCalled();
+      commitReturnFocus(workspace, undefined, native.adapter);
       expect(focus).toHaveBeenCalledOnce();
       expect(native.historyBack).not.toHaveBeenCalled();
       expect(native.adapter.exitApp).not.toHaveBeenCalled();
@@ -1379,10 +1551,11 @@ describe("managed workspace screen", () => {
   );
   it("native Back aborts a pending read and fences its late result while restoring fallback focus", async () => {
     const native = nativeBackFixture();
-    const { workspace, api, html } = fixture();
+    const { workspace, api } = fixture();
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
-    html(native.adapter);
+    mounted.direct = true;
+    ManagedWorkspaceScreen({ workspace, androidBack: native.adapter });
     mountEffects();
     native.ready();
     const focus = vi.fn();
@@ -1403,6 +1576,8 @@ describe("managed workspace screen", () => {
     const signal = vi.mocked(api.annualReport).mock.calls[0]![1];
     native.press(false);
     expect(signal.aborted).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
+    commitReturnFocus(workspace, undefined, native.adapter);
     expect(focus).toHaveBeenCalledOnce();
     complete(await annualResponse());
     await pending;
@@ -1742,14 +1917,38 @@ describe("managed workspace screen", () => {
     expect(invalid).toContain(
       `<p id="managed-research-note-reading-text" class="trial-saved-note">${raw}</p>`,
     );
-    expect(invalid).toContain(
-      `<p id="managed-note-1-reading-text" class="trial-saved-note">${raw}</p>`,
-    );
     const tag = (markup: string, id: string) =>
       markup.match(new RegExp(`<textarea id="${id}"[^>]*>`, "u"))?.[0];
     expect(tag(invalid, "managed-note-0")).not.toContain('aria-invalid="true"');
-    expect(tag(invalid, "managed-note-1")).toContain('aria-invalid="true"');
-    expect(tag(invalid, "managed-note-1")).toContain(
+    expect(tag(invalid, "managed-note-1")).toBeUndefined();
+    expect(invalid).toContain("Note needs correction");
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({ workspace });
+    const choice = editorElements(screen).find(
+      (node) =>
+        (node.props as { "data-watchlist-selection"?: string })[
+          "data-watchlist-selection"
+        ] === "listing-two",
+    ) as React.ReactElement<React.ComponentProps<"button">>;
+    choice.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
+    const selectedEditors = editorElements(screen).filter(
+      (node) => node.type === ManagedNoteEditor,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>[];
+    mounted.direct = false;
+    expect(selectedEditors).toHaveLength(1);
+    expect(selectedEditors[0]!.props).toMatchObject({
+      listingId: "listing-two",
+      note: raw,
+    });
+    const selectedHtml = renderToStaticMarkup(selectedEditors[0]);
+    expect(selectedHtml).toContain(
+      `<p id="managed-note-1-reading-text" class="trial-saved-note">${raw}</p>`,
+    );
+    expect(tag(selectedHtml, "managed-note-1")).toContain(
+      'aria-invalid="true"',
+    );
+    expect(tag(selectedHtml, "managed-note-1")).toContain(
       'aria-describedby="managed-watchlist-note-help managed-note-1-error"',
     );
     expect(tag(invalid, "managed-research-note")).toContain(

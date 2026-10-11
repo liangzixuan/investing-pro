@@ -12,7 +12,11 @@ export function ThirdPartyNotices() {
     try {
       const notices =
         await import("../../clerk-trial/third-party-notices.txt?raw");
-      setText(notices.default);
+      const icons = await import("./icons/LICENSE.txt?raw");
+      const font = await import("./fonts/OFL.txt?raw");
+      setText(
+        `${notices.default}\n\nTabler Icons\n\n${icons.default}\n\nInter\n\n${font.default}`,
+      );
     } catch {
       setFailed(true);
     } finally {

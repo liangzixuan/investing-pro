@@ -41,39 +41,51 @@ function ClerkSession({
   const auth = useAuth();
   const current = useSession();
   if (!auth.isLoaded || !current.isLoaded)
-    return <p role="status">Checking your session…</p>;
+    return (
+      <TrialFrame managed={managed}>
+        <p role="status">Checking your session…</p>
+      </TrialFrame>
+    );
   if (
     !auth.isSignedIn ||
     !current.isSignedIn ||
     current.session.status !== "active"
   ) {
     return (
-      <div className="trial-sign-in">
-        {managed ? (
-          <ManagedSignIn />
-        ) : (
-          <SignIn routing="hash" fallbackRedirectUrl="/" />
-        )}
-      </div>
+      <TrialFrame managed={managed}>
+        <div className="trial-sign-in">
+          {managed ? (
+            <ManagedSignIn />
+          ) : (
+            <SignIn routing="hash" fallbackRedirectUrl="/" />
+          )}
+        </div>
+      </TrialFrame>
     );
   }
   const session = current.session;
   if (auth.sessionId !== session.id || auth.userId !== session.user.id) {
-    return <p role="status">Checking your session…</p>;
+    return (
+      <TrialFrame managed={managed}>
+        <p role="status">Checking your session…</p>
+      </TrialFrame>
+    );
   }
   const Screen = managed ? ManagedSessionScreen : TrialSessionScreen;
   return (
-    <Screen
-      key={`${session.user.id}:${session.id}`}
-      apiOrigin={apiOrigin}
-      {...(managed ? { warnOnBrowserLeave: true } : {})}
-      session={{
-        userId: session.user.id,
-        sessionId: session.id,
-        getToken: () => session.getToken(),
-        signOut: () => auth.signOut({ sessionId: session.id }),
-      }}
-    />
+    <TrialFrame managed={managed} compact={managed}>
+      <Screen
+        key={`${session.user.id}:${session.id}`}
+        apiOrigin={apiOrigin}
+        {...(managed ? { warnOnBrowserLeave: true } : {})}
+        session={{
+          userId: session.user.id,
+          sessionId: session.id,
+          getToken: () => session.getToken(),
+          signOut: () => auth.signOut({ sessionId: session.id }),
+        }}
+      />
+    </TrialFrame>
   );
 }
 
@@ -81,12 +93,10 @@ export function ClerkTrialApp({ config }: { config: ClerkTrialConfig }) {
   const checked = validateTrialConfig(config);
   return (
     <ClerkProvider publishableKey={checked.publishableKey} afterSignOutUrl="/">
-      <TrialFrame managed={checked.environment === "production"}>
-        <ClerkSession
-          apiOrigin={checked.apiOrigin}
-          managed={checked.environment === "production"}
-        />
-      </TrialFrame>
+      <ClerkSession
+        apiOrigin={checked.apiOrigin}
+        managed={checked.environment === "production"}
+      />
     </ClerkProvider>
   );
 }

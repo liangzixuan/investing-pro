@@ -1,8 +1,9 @@
 import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
-import { useSyncExternalStore } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
-import { ManagedSessionScreen } from "../../src/clerk-trial/ManagedWorkspaceScreen";
+import { ManagedWorkspaceRouter } from "../../src/clerk-trial/ManagedWorkspaceScreen";
+import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
 import "../../src/clerk-trial/trial.css";
 import { createFixture } from "./fixture";
@@ -36,6 +37,69 @@ if (
 if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 const fixture = await createFixture(scenario ?? "default");
+
+/** Own the real session model so diagnostics can observe invented drafts without a production bridge. */
+function FixtureSession() {
+  const [workspace, setWorkspace] = useState<ManagedWorkspace | null>(null);
+  useLayoutEffect(() => {
+    const current = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      {
+        marketsCohort: fixture.marketsCohort,
+      },
+    );
+    setWorkspace(current);
+    void current.coordinator.load();
+    void current.refreshCatalog();
+    return () => current.coordinator.retire();
+  }, []);
+  return (
+    <>
+      <TrialFrame managed compact>
+        {workspace ? (
+          <ManagedWorkspaceRouter workspace={workspace} androidBack={App} />
+        ) : (
+          <p role="status">Loading your workspace…</p>
+        )}
+      </TrialFrame>
+      {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+    </>
+  );
+}
+
+function FixtureDraftDiagnostics({
+  workspace,
+}: {
+  workspace: ManagedWorkspace;
+}) {
+  const draft = useSyncExternalStore(
+    workspace.coordinator.subscribe,
+    workspace.coordinator.getSnapshot,
+  );
+  return (
+    <aside aria-label="Invented draft diagnostics">
+      <pre
+        id="fixture-workspace-draft"
+        style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+      >
+        {JSON.stringify({
+          phase: draft.phase,
+          baseVersion: draft.baseVersion,
+          dirty: draft.dirty,
+          memberships:
+            draft.draft?.memberships.map(({ listingId, symbol, note }) => ({
+              listingId,
+              symbol,
+              note,
+            })) ?? null,
+        })}
+      </pre>
+    </aside>
+  );
+}
+
 function Fixture() {
   const state = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);
   return (
@@ -46,15 +110,7 @@ function Fixture() {
         </p>
         <p>No signed-in account, network, provider, or saved owner data.</p>
       </aside>
-      <TrialFrame managed>
-        <ManagedSessionScreen
-          session={fixture.session}
-          api={fixture.api}
-          apiOrigin="https://managed-fixture.invalid"
-          marketsCohort={fixture.marketsCohort}
-          androidBack={App}
-        />
-      </TrialFrame>
+      <FixtureSession />
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre

@@ -1,7 +1,41 @@
-import { describe, expect, it } from "vitest";
-import { createManifest, digest, validateBuiltFiles } from "./site-artifact";
+import { readFileSync } from "node:fs";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { validateArtifact } from "../../apps/api/scripts/appwrite-site-release";
+import {
+  createManifest,
+  digest,
+  packageSite,
+  validateBuiltFiles,
+} from "./site-artifact";
 
 const sha = "a".repeat(40);
+const fontPath = "assets/InterVariable-ABC12345.woff2";
+const font = () =>
+  readFileSync(
+    new URL(
+      "../../apps/web/src/clerk-trial/fonts/InterVariable.woff2",
+      import.meta.url,
+    ),
+  );
+const directories: string[] = [];
+
+afterEach(async () => {
+  for (const directory of directories.splice(0))
+    await rm(directory, { recursive: true, force: true });
+});
+
 const files = () =>
   new Map([
     [
@@ -35,6 +69,57 @@ describe("static release artifact", () => {
       },
     ]);
   });
+  it("binds the bundled WOFF2 bytes through build manifest and release parsing", () => {
+    const input = files();
+    const bytes = font();
+    input.set(fontPath, bytes);
+    const archive = Buffer.from("synthetic archive containing the bound files");
+    const manifest = createManifest(sha, input, archive);
+    expect(manifest.files).toContainEqual({
+      path: fontPath,
+      bytes: bytes.length,
+      sha256: digest(bytes),
+    });
+    const serialized = Buffer.from(JSON.stringify(manifest));
+    expect(validateArtifact(archive, serialized)).toEqual({
+      manifest,
+      manifestSha256: digest(serialized),
+    });
+    expect(() =>
+      validateArtifact(Buffer.from("changed archive"), serialized),
+    ).toThrow("invalid_evidence");
+  });
+  it.each(["truncated header", "header only", "signature", "declared length"])(
+    "rejects a WOFF2 with invalid %s",
+    (kind) => {
+      const input = files();
+      let bytes = font();
+      if (kind === "truncated header") bytes = bytes.subarray(0, 12);
+      else if (kind === "header only") bytes = bytes.subarray(0, 48);
+      else if (kind === "signature") bytes.write("wOFF", 0, "ascii");
+      else bytes.writeUInt32BE(bytes.length - 1, 8);
+      input.set(fontPath, bytes);
+      expect(() => validateBuiltFiles(sha, input)).toThrow(
+        "Invalid static font header.",
+      );
+    },
+  );
+  it("rejects a linked asset directory before creating any archive output", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "investment-site-font-"));
+    directories.push(directory);
+    const input = join(directory, "input");
+    const target = join(directory, "linked-assets");
+    const output = join(directory, "output");
+    await mkdir(input);
+    await mkdir(target);
+    await writeFile(join(input, "index.html"), files().get("index.html")!);
+    await writeFile(join(target, "InterVariable-ABC12345.woff2"), font());
+    await symlink(target, join(input, "assets"), "junction");
+    await expect(packageSite(sha, input, output)).rejects.toThrow(
+      "Assets must be a local directory.",
+    );
+    await expect(access(output)).rejects.toMatchObject({ code: "ENOENT" });
+  });
   it.each(["", "a".repeat(39), "A".repeat(40), "a".repeat(41)])(
     "rejects invalid source identity %s",
     (value) => {
@@ -48,6 +133,12 @@ describe("static release artifact", () => {
     "assets/index-ABC12345.js.map",
     "assets/nested/index-ABC.js",
     "assets/extra.html",
+    "assets/InterVariable.woff2",
+    "assets/InterVariable-ABC.woff2",
+    "assets/nested/InterVariable-ABC12345.woff2",
+    "assets/../InterVariable-ABC12345.woff2",
+    "assets/InterVariable-ABC12345.woff2.map",
+    "assets/InterVariable-ABC12345.woff",
   ])("rejects unexpected path %s", (path) => {
     const input = files();
     input.set(path, Buffer.from("extra"));

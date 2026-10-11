@@ -47,13 +47,12 @@ export function ManagedEodHistory({
       <h3 id="managed-eod-heading" ref={heading} tabIndex={-1}>
         EOD close history
       </h3>
-      <p>
-        One month of end-of-day raw closing prices in USD from Tiingo. Prices
-        are not adjusted for splits or dividends and are not live quotes. Load
-        or refresh explicitly to request prices. Prices stay only during this
-        company visit. Cancel stops this screen's pending request and keeps any
-        previous history shown here. An already admitted service request may
-        finish and consume its existing budget.
+      <p className="managed-eod-help">
+        One month of raw end-of-day closing prices in USD from Tiingo. Prices
+        are not adjusted for splits or dividends and are not live quotes. Use
+        Load or Refresh to request prices; they stay for this company visit.
+        Cancel stops loading here and keeps previous history. An accepted
+        request may still finish and use the service's request budget.
       </p>
       <div className="trial-actions">
         <button
@@ -100,25 +99,14 @@ export function ManagedEodHistory({
       )}
       {response && last && (
         <>
-          <dl className="managed-metadata">
+          <dl className="managed-metadata managed-eod-quote">
             <dt>Last raw close (USD)</dt>
             <dd>{last.close}</dd>
             <dt>Last trading date</dt>
             <dd>{last.date}</dd>
-            <dt>Requested window</dt>
-            <dd>
-              {response.window.startDate} to {response.window.endDate}
-            </dd>
-            <dt>Request started</dt>
-            <dd>{response.requestStartedAt}</dd>
-            <dt>Source request completed</dt>
-            <dd>{response.completedAt}</dd>
           </dl>
-          <p>
-            Data provided by Tiingo. Completion time records this request, not a
-            live market update.
-          </p>
           <CloseHistoryChart
+            appearance="precision-desk"
             rows={response.rows}
             symbol={response.security.symbol}
             renderAction={
@@ -134,6 +122,23 @@ export function ManagedEodHistory({
                 : undefined
             }
           />
+          <details className="managed-eod-source">
+            <summary>Source and request dates</summary>
+            <dl className="managed-metadata">
+              <dt>Requested window</dt>
+              <dd>
+                {response.window.startDate} to {response.window.endDate}
+              </dd>
+              <dt>Request started</dt>
+              <dd>{response.requestStartedAt}</dd>
+              <dt>Source request completed</dt>
+              <dd>{response.completedAt}</dd>
+            </dl>
+            <p>
+              Data provided by Tiingo. Completion time records this request, not
+              a live market update.
+            </p>
+          </details>
         </>
       )}
     </section>

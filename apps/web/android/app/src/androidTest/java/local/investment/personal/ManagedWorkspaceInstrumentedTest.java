@@ -106,13 +106,15 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
     private static final String CATALOG_REFRESH = ".managed-search-bar > button";
-    private static final String CATALOG_STATUS = ".managed-search-bar + p[role=status]";
+    private static final String CATALOG_STATUS = ".managed-discovery-status";
     private static final String CATALOG_FAILURE =
         "The catalog could not be loaded. Select Refresh catalog to try again.";
     private static final String CSP =
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; " +
         "base-uri 'none'; form-action 'none'";
+    private static final String DRAFT =
+        "JSON.parse(document.getElementById('fixture-workspace-draft').textContent)";
     private static final String DIAGNOSTICS =
         "JSON.parse(document.querySelector('#fixture-diagnostics').textContent)";
     private static final long PAGE_TIMEOUT_MS = 10_000;
@@ -248,11 +250,13 @@ public class ManagedWorkspaceInstrumentedTest {
         click(CATALOG_REFRESH);
         awaitPage("expired session removes retained agenda and the entire draft",
             DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
+            " && " + DRAFT + ".memberships === null && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('.bea-release-agenda') === null");
         click("#settle-cancelled-calendar");
         assertBeaCounts(2, 1, 1);
         awaitPage("late response cannot remount the retired workspace",
             "document.querySelector('.managed-navigation') === null && document.querySelector('.bea-release-agenda') === null" +
+            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
             " && !document.body.textContent.includes('Invented GDP') && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
         assertFixtureBoundary();
     }
@@ -262,7 +266,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.bea-release-agenda time') === null && " + DIAGNOSTICS + ".calendar === 0");
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
-        awaitPage("calendar test reorders the draft", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        awaitPage("calendar test reorders the draft", "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         selectWorkspaceView("Markets");
         assertBeaDraft();
@@ -285,9 +289,9 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertBeaDraft() throws Exception {
         awaitPage("calendar preserves unsaved watchlist order, notes and base version",
-            "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
@@ -393,15 +397,17 @@ public class ManagedWorkspaceInstrumentedTest {
     private void prepareSignOutDraft() throws Exception {
         selectWorkspaceView("My Watchlist");
         typeIntoInput("managed-note-0", SIGNOUT_NOTE);
+        selectWatchlistNote(1);
         click("button[aria-label='Move ONE up']");
+        selectWatchlistNote(1);
         assertSignOutDraft();
     }
 
     private void assertSignOutDraft() throws Exception {
         awaitPage("exact sign-out note and order remain mounted",
-            "document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(SIGNOUT_NOTE) +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e=>e.textContent).join(',') === 'ONE,ZERO'");
+            "" + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(SIGNOUT_NOTE) +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e=>e.textContent).join(',') === 'ONE,ZERO'");
     }
 
     private void assertSignOutReview(String heading, String explanation) throws Exception {
@@ -440,6 +446,8 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.body.textContent.includes('Signed out. Local watchlist data has been cleared.')" +
             " && document.querySelector('.managed-navigation') === null && document.querySelector('.managed-search-bar') === null" +
             " && document.querySelector('#managed-note-0') === null && document.querySelector('#managed-note-1') === null" +
+            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false" +
             " && document.querySelector('#managed-signout-review') === null && document.querySelector('.managed-company-visit') === null");
     }
 
@@ -495,9 +503,9 @@ public class ManagedWorkspaceInstrumentedTest {
         assertCompanyLinkCounts();
         selectWorkspaceView("My Watchlist");
         awaitPage("cold-link Back retains exact unsaved note and membership order",
-            "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            "" + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
         pressBack();
         assertRootHistory();
@@ -670,7 +678,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("draft reordered before catalog recovery",
-            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         selectWorkspaceView("Discover");
         assertCatalogRecoveryState(1, 0, "", false, false, CATALOG_FAILURE);
@@ -727,7 +735,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
-        awaitPage("EOD draft reordered", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        awaitPage("EOD draft reordered", "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         click("button[aria-label='EOD close history for saved ZERO']");
         awaitPage("EOD opens without fetching",
@@ -757,7 +765,9 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEodDraftAndCounts(1, 0, 0);
         retainScreenshot("eodInspectedClose");
         awaitPage("exact dated raw close remained readable through capture", inspectedClose);
+        click(".managed-eod-history .managed-eod-exact-values > summary");
         awaitPage("inspection preserves the complete accessible table", initialHistory +
+            " && document.querySelector('.managed-eod-history .managed-eod-exact-values')?.open === true" +
             " && document.querySelector('.managed-eod-table-scroll')?.getAttribute('role') === 'region'" +
             " && document.querySelector('.managed-eod-table-scroll')?.getAttribute('aria-label') === 'ZERO exact raw closing prices'" +
             " && document.querySelector('.managed-eod-table-scroll')?.tabIndex === 0");
@@ -1002,7 +1012,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-market-change') === null" +
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
-            " && document.querySelector('#managed-note-0')?.closest('section')?.hidden === true");
+            " && document.querySelector('[aria-labelledby=managed-watchlist-heading]')?.hidden === true");
         typeIntoInput("workspace-company-query", "ZERO");
         click(".workspace-global-search button[type=submit]");
         awaitPage("Search opens visible Discover without a price read",
@@ -1012,7 +1022,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("Markets journey reorders the mounted draft",
-            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         selectWorkspaceView("Markets");
         awaitPage("second Markets visit resolves again without loading prices",
@@ -1077,7 +1087,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsCompanyHistory("20.5", "2026-09-19", "2026-08-20 to 2026-09-20",
             "2026-09-20T00:00:00.000Z", "2026-09-20T00:00:01.000Z", "2026-09-18|20.75;2026-09-19|20.5", true, true);
         retainAnnualNoteFrame("marketsPriceHandoffPrevious", ".managed-eod-history .managed-eod-origin",
-            ".managed-eod-history .managed-eod-origin, .managed-eod-history .managed-eod-previous, .managed-eod-history .managed-metadata", 3);
+            ".managed-eod-history .managed-eod-origin, .managed-eod-history .managed-eod-previous, .managed-eod-history .managed-eod-quote", 3);
         assertMarketsDraftAndCounts(2, 5, 1, 1);
         Log.i("ManagedMarkets", "phase=cancelled-late-discarded, reads=5; " + pageDiagnostic());
         pressBack();
@@ -1106,8 +1116,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click("[aria-labelledby=managed-research-note-heading] button:first-child");
         awaitPage("explicit add appends only BETA with an empty note",
             "document.querySelector('#managed-research-note')?.value === ''" +
-            " && document.querySelector('#managed-note-2')?.value === ''" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'");
+            " && " + DRAFT + ".memberships?.[2]?.note === ''" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'");
         typeIntoInput("managed-research-note", "Markets research draft");
         String companyScope = ".managed-eod-history";
         assertEmptyComparison(companyScope, "BETA", "|2026-09-18");
@@ -1147,7 +1157,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         selectWorkspaceView("My Watchlist");
         awaitPage("the final watchlist draft is visible and unchanged",
-            "document.querySelector('#managed-note-1')?.closest('section')?.hidden === false");
+            "document.querySelector('[aria-labelledby=managed-watchlist-heading]')?.hidden === false");
         assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         scenario.onActivity(activity -> {
             assertNotNull("Original Markets Activity was collected", originalActivity.get().get());
@@ -1191,7 +1201,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("selected-price journey reorders the shared draft",
-            "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         selectWorkspaceView("Markets");
         awaitPage("returning to Markets resolves all identities without a price read",
@@ -1199,7 +1209,7 @@ public class ManagedWorkspaceInstrumentedTest {
         for (String symbol : new String[] {"BETB", "BETA", "ALFA"}) {
             click("button[aria-label='Select " + symbol + " on company board']");
             awaitPage("selecting " + symbol + " only changes the displayed listing",
-                "document.querySelector('#managed-market-detail-heading')?.textContent === " + JSONObject.quote(symbol + " · one month") +
+                "document.querySelector('.managed-market-period')?.textContent === " + JSONObject.quote(symbol + " · one month") +
                 " && Array.from(document.querySelectorAll('.managed-market-close strong')).map(e => e.textContent).join('|') === 'Not loaded|Not loaded|Not loaded'" +
                 " && document.querySelector('.managed-market-detail table') === null" +
                 " && document.querySelector('.managed-market-detail canvas') === null" +
@@ -1223,7 +1233,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertSelectedMarketRows(false, true);
         click("button[aria-label='Select BETA on company board']");
         awaitPage("changing selection cannot retarget the active ALFA request",
-            "document.querySelector('#managed-market-detail-heading')?.textContent === 'BETA · one month'" +
+            "document.querySelector('.managed-market-period')?.textContent === 'BETA · one month'" +
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && Array.from(document.querySelectorAll('.managed-market-detail button')).some(b => b.textContent === 'Load BETA price' && b.disabled)");
@@ -1268,7 +1278,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsDraftAndCounts(2, 3, 1, 1);
         selectWorkspaceView("My Watchlist");
         awaitPage("the selected-price journey preserves the visible unsaved draft",
-            "document.querySelector('#managed-note-1')?.closest('section')?.hidden === false");
+            "document.querySelector('[aria-labelledby=managed-watchlist-heading]')?.hidden === false");
         assertMarketsDraftAndCounts(2, 3, 1, 1);
         scenario.onActivity(activity -> {
             assertNotNull("Selected-price Activity was collected", originalActivity.get().get());
@@ -1289,7 +1299,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("comparison search is metadata only", DIAGNOSTICS + ".search === 1");
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
-        awaitPage("comparison draft reordered", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        awaitPage("comparison draft reordered", "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
         selectWorkspaceView("Markets");
         awaitPage("comparison board resolved without reading prices", DIAGNOSTICS + ".marketsResolve === 2");
@@ -1458,10 +1468,10 @@ public class ManagedWorkspaceInstrumentedTest {
         click("[aria-labelledby=managed-research-note-heading] button:first-child");
         awaitPage("adding appends a blank draft membership without saving",
             "document.querySelector('#managed-research-note')?.value === ''" +
-            " && document.querySelector('#managed-note-2')?.value === ''" +
+            " && " + DRAFT + ".memberships?.[2]?.note === ''" +
             " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.textContent === 'In watchlist draft'" +
             " && document.querySelector('[aria-labelledby=managed-research-note-heading] button:first-child')?.disabled === true" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'");
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'");
         assertCompanyNoteCounts(0, 1);
         typeIntoInput("managed-research-note", COMPANY_NOTE);
         assertCompanyNoteDraft(1, true);
@@ -1503,12 +1513,14 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
             " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        selectWatchlistNote(2);
         assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
         retainAnnualNoteFrame("companyNoteInvalidWatchlist", "label[for=managed-note-2]",
             "label[for=managed-note-2], #managed-note-2, #managed-note-2-error", 3);
         assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
         Log.i("ManagedCompanyNote", "phase=invalid-retained, save=0; " + pageDiagnostic());
         // Touch the recovery action, then verify its focus without tapping the textarea.
+        selectWatchlistNote(0);
         touchInput("managed-note-validation-focus");
         awaitPage("recovery action focuses the exact invalid listing",
             "document.activeElement === document.querySelector('#managed-note-2')" +
@@ -1619,10 +1631,10 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertPriceNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("price note preserves the complete paragraph, other note and membership order",
-            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
-            " && document.querySelectorAll('.managed-memberships > li').length === 2" +
-            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(PRICE_NOTE) +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li').length === 2" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(PRICE_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")" +
             " && Array.from(document.querySelectorAll('[aria-labelledby=managed-watchlist-heading] button')).find(button => button.textContent === 'Save watchlist')?.disabled === " + !dirty);
     }
@@ -1779,9 +1791,9 @@ public class ManagedWorkspaceInstrumentedTest {
         clickWatchlistAction("Save watchlist");
         awaitPage("uncertain save retains the captured draft and locks edits",
             DIAGNOSTICS + ".save === 1 && " + DIAGNOSTICS + ".recoveryCommits === 1" +
-            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Retained recovery draft'" +
             " && document.querySelector('#managed-note-0')?.disabled === true" +
-            " && document.querySelector('.trial-status')?.textContent.includes('uncertain')" +
+            " && document.querySelector('.managed-save-status')?.textContent.includes('uncertain')" +
             " && document.querySelector('.managed-version-review') === null");
         touchInput("managed-note-0-reading-toggle");
         assertFullNoteReading("managed-note-0", "Retained recovery draft", true);
@@ -1792,7 +1804,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("original command replay confirms its one invented commit without another write",
             DIAGNOSTICS + ".save === 2 && " + DIAGNOSTICS + ".recoveryCommits === 1" +
             " && " + DIAGNOSTICS + ".recoveryReplays === 1 && " + DIAGNOSTICS + ".load === 1" +
-            " && document.querySelector('.trial-status')?.textContent.includes('from the original command')" +
+            " && document.querySelector('.managed-save-status')?.textContent.includes('from the original command')" +
             " && document.querySelector('#managed-note-0')?.disabled === true" +
             " && document.querySelector('.managed-version-review') === null");
         clickWatchlistAction("Load saved watchlist");
@@ -1810,18 +1822,18 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".load === 3 && " + DIAGNOSTICS + ".recoveryReadFailed === 0" +
             " && document.querySelector('.managed-version-review') === null" +
             " && !Array.from(document.querySelectorAll('button')).some(b => b.textContent === 'Use saved version' || b.textContent === 'Keep my draft')" +
-            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Retained recovery draft'" +
             " && document.querySelector('#managed-note-0')?.disabled === true");
         click("#fail-recovery-read");
         awaitPage("failed repeat read cannot offer old saved choices",
             DIAGNOSTICS + ".recoveryReadFailed === 1 && " + DIAGNOSTICS + ".save === 2" +
-            " && document.querySelector('.trial-status')?.textContent.includes('could not be loaded')" +
+            " && document.querySelector('.managed-save-status')?.textContent.includes('could not be loaded')" +
             " && document.querySelector('.managed-version-review') === null" +
             " && !Array.from(document.querySelectorAll('button')).some(b => b.textContent === 'Use saved version' || b.textContent === 'Keep my draft')" +
-            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Retained recovery draft'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.querySelector('#managed-note-0')?.disabled === true");
-        retainAnnualNoteFrame("watchlistRecoveryFailedRead", ".trial-status", ".trial-status", 1);
+        retainAnnualNoteFrame("watchlistRecoveryFailedRead", ".managed-save-status", ".managed-save-status", 1);
         Log.i("ManagedWatchlistRecovery", "phase=failed-repeat-read-draft-retained; " + pageDiagnostic());
         clickWatchlistAction("Load saved watchlist");
         assertRecoveryReview();
@@ -1831,10 +1843,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".recoveryCommits === 1 && " + DIAGNOSTICS + ".recoveryReplays === 1" +
             " && " + DIAGNOSTICS + ".recoveryReadFailed === 1" +
             " && document.querySelector('.managed-version-review') === null" +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
-            " && document.querySelector('#managed-note-1')?.value === 'New saved research note'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'New saved research note'" +
             " && document.querySelector('#managed-note-1')?.disabled === false" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 3 · Saved')");
         awaitPage("recovery makes no research or authentication requests",
             DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".marketsResolve === 1" +
@@ -1866,18 +1878,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && sides[1].querySelector('.trial-saved-note')?.textContent === 'Retained recovery draft'" +
             " && sides[0].textContent.includes('Position 2') && sides[1].textContent.includes('Position 1')" +
             " && one?.textContent.includes('Invented second note') && one.textContent.includes('Order differs')" +
-            " && document.querySelector('#managed-note-0')?.value === 'Retained recovery draft'" +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Retained recovery draft'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.querySelector('#managed-note-0')?.disabled === true" +
             " && Array.from(document.querySelectorAll('.managed-version-review + .trial-actions > button')).map(b => b.textContent).join(',') === 'Use saved version,Keep my draft'; })()");
     }
 
     private void assertAnnualNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("Annual note preserves the full exact paragraph, identities, other note and order",
-            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
-            " && document.querySelectorAll('.managed-memberships > li').length === 2" +
-            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
+            "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li').length === 2" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
     }
 
@@ -1964,10 +1976,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && error.getAttribute('role') === 'status' && error.getAttribute('aria-live') === 'polite'" +
             " && save?.textContent === 'Save watchlist' && save.disabled === true" +
             " && focus?.textContent === 'Go to first invalid note' && focus.disabled === false" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
-            " && document.querySelector('#managed-note-0')?.value === ''" +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
-            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === ''" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
             " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
         assertCompanyNoteCounts(0, 1);
     }
@@ -1991,10 +2003,10 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertCompanyNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("company note preserves exact membership order and unrelated notes",
-            "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
-            " && document.querySelector('#managed-note-0')?.value === ''" +
-            " && document.querySelector('#managed-note-1')?.value === 'Invented second note'" +
-            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE,ALFA'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === ''" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE) +
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
     }
 
@@ -2064,7 +2076,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertMarketsDetail(String symbol, String rows, boolean previous) throws Exception {
         awaitPage("selected board history and source dates: " + symbol,
-            "document.querySelector('#managed-market-detail-heading')?.textContent === " + JSONObject.quote(symbol + " · one month") +
+            "document.querySelector('.managed-market-period')?.textContent === " + JSONObject.quote(symbol + " · one month") +
             " && document.querySelector('.managed-market-detail caption')?.textContent === 'One-month raw closing prices in USD'" +
             " && Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === " + JSONObject.quote(rows) +
             " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
@@ -2079,10 +2091,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 1" +
             " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".resolve === 0" +
             " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
@@ -2111,12 +2123,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
             " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(MARKETS_PRICE_NOTE) +
-            " && document.querySelectorAll('.managed-memberships > li').length === 3" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(MARKETS_PRICE_NOTE) +
+            " && document.querySelectorAll('.managed-watchlist-choices li').length === 3" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO,BETA'" +
             " && document.body.textContent.includes(" + JSONObject.quote(saves == 0 ? "Version 1 · Unsaved changes" : "Version 2 · Saved") + ")" +
             " && Array.from(document.querySelectorAll('[aria-labelledby=managed-watchlist-heading] button')).find(button => button.textContent === 'Save watchlist')?.disabled === " + (saves != 0));
     }
@@ -2139,7 +2151,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertRefreshedSelectedMarketDetail() throws Exception {
         awaitPage("selected ALFA refresh replaces all values and request dates together",
-            "document.querySelector('#managed-market-detail-heading')?.textContent === 'ALFA · one month'" +
+            "document.querySelector('.managed-market-period')?.textContent === 'ALFA · one month'" +
             " && document.querySelector('.managed-market-detail caption')?.textContent === 'One-month raw closing prices in USD'" +
             " && Array.from(document.querySelectorAll('.managed-market-detail tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|11.25;2026-09-20|11.5'" +
             " && Array.from(document.querySelectorAll('.managed-market-detail .managed-metadata dd')).map(e => e.textContent).join('|') === '2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
@@ -2218,11 +2230,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
             " && document.querySelectorAll('.managed-company-sections button').length === 2" +
             " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
@@ -2269,21 +2281,49 @@ public class ManagedWorkspaceInstrumentedTest {
 
         CountDownLatch metadataScrolled = new CountDownLatch(1);
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "document.querySelector('.managed-eod-history .managed-metadata')?.scrollIntoView({block:'start',behavior:'instant'})",
+            "document.querySelector('.managed-eod-history .managed-eod-quote')?.scrollIntoView({block:'start',behavior:'instant'})",
             ignored -> metadataScrolled.countDown()));
         assertTrue("Retained history metadata did not scroll into view", metadataScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String metadataVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'.managed-eod-history .managed-metadata > dt, .managed-eod-history .managed-metadata > dd'));" +
-            " const v = visualViewport; return v && targets.length === 10 && targets.every(e => {" +
+            "'.managed-eod-history .managed-eod-quote > dt, .managed-eod-history .managed-eod-quote > dd'));" +
+            " const v = visualViewport; return v && targets.length === 4 && targets.every(e => {" +
             " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("all five retained history label and value pairs visible", metadataVisible);
+        awaitPage("retained close and trading date label and value pairs visible", metadataVisible);
         awaitPage("retained Price evidence before history capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchSwitchEodLoaded");
         awaitPage("retained history metadata stayed visible through capture", metadataVisible);
         awaitPage("retained Price evidence after history capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+
+        awaitPage("history source disclosure starts closed",
+            "document.querySelector('.managed-eod-source')?.open === false");
+        click(".managed-eod-source > summary");
+        awaitPage("history source disclosure opens",
+            "document.querySelector('.managed-eod-source')?.open === true");
+        CountDownLatch sourceScrolled = new CountDownLatch(1);
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "document.querySelector('.managed-eod-source')?.scrollIntoView({block:'start',behavior:'instant'})",
+            ignored -> sourceScrolled.countDown()));
+        assertTrue("Retained history source did not scroll into view", sourceScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        String sourceVisible = "(() => { const details = document.querySelector('.managed-eod-source');" +
+            " const targets = Array.from(details?.querySelectorAll('summary, .managed-metadata > dt, .managed-metadata > dd, p') || []);" +
+            " const v = visualViewport; return details?.open && v && targets.length === 8 && targets.every(e => {" +
+            " const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+            " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
+        awaitPage("source window, request dates and Tiingo explanation visible", sourceVisible);
+        awaitPage("retained Price evidence before source capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        retainScreenshot("researchSwitchEodSource");
+        awaitPage("retained source stayed visible through capture", sourceVisible);
+        awaitPage("retained Price evidence after source capture", loadedEod);
+        assertResearchSwitchDraftAndCounts(2, 1, 1);
+        click(".managed-eod-source > summary");
+        awaitPage("closing source preserves exact retained history",
+            "document.querySelector('.managed-eod-source')?.open === false && (" + loadedEod + ")");
         assertResearchSwitchDraftAndCounts(2, 1, 1);
     }
 
@@ -2306,10 +2346,10 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertEodDraftAndCounts(int reads, int aborted, int late) throws Exception {
         awaitPage("EOD preserves draft and exact operation counts",
-            "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')" +
             " && " + DIAGNOSTICS + ".eod === " + reads + " && " + DIAGNOSTICS + ".eodAborted === " + aborted +
             " && " + DIAGNOSTICS + ".eodLateResolved === " + late +
@@ -2420,9 +2460,9 @@ public class ManagedWorkspaceInstrumentedTest {
                 " && receipt.textContent.includes('Synthetic engineering data')" +
                 " && receipt.textContent.includes('sha256:' + 'a'.repeat(64))" : "") +
             " && Array.from(discover.querySelectorAll('.managed-results strong')).map(e => e.textContent).join(',') === " + JSONObject.quote(searchCalls == 1 ? "ZERO" : "") +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')" +
             " && document.querySelector('.managed-annual-report') === null; })()");
     }
@@ -2465,10 +2505,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
             " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === 0" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
     }
 
@@ -2503,11 +2543,11 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("same pending Annual and unsaved draft",
             "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
             " && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
     }
 
@@ -2541,9 +2581,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-results strong')?.textContent === 'ZERO'");
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
-        awaitPage("watchlist reordered", "Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'");
+        awaitPage("watchlist reordered", "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'");
         typeIntoInput("managed-note-1", NOTE);
-        awaitPage("draft note edited", "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE));
+        awaitPage("draft note edited", "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         click(ANNUAL);
         awaitPage("Annual panel opened", "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'");
         assertCompanyHistory("listing-zero", "annual", false);
@@ -2551,10 +2591,10 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertClosedDraft(boolean restoredFocus) throws Exception {
         awaitPage("Annual closed with the same draft", "document.querySelector('.managed-annual-report') === null" +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
-            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
-            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')" +
             " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".load === 1" +
             (restoredFocus ? " && document.activeElement === document.querySelector(" + JSONObject.quote(ANNUAL) + ")" : ""));
@@ -2626,9 +2666,52 @@ public class ManagedWorkspaceInstrumentedTest {
             "Array.from(document.querySelectorAll('.managed-navigation button')).some(b => b.textContent === " + JSONObject.quote(label) +
             " && b.getAttribute('aria-current') === 'page')" +
             " && document.getElementById(" + JSONObject.quote(expectedHeading) + ")?.closest('section')?.hidden === false");
+        if (label.equals("My Watchlist")) assertVisibleWatchlistDraft();
+    }
+
+    /** Inspect each real selected editor, then return to the selection used by the journey. */
+    private void assertVisibleWatchlistDraft() throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> observed = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const choices = Array.from(document.querySelectorAll('.managed-watchlist-choice'));" +
+            " return [choices.length, choices.findIndex(choice => choice.getAttribute('aria-pressed') === 'true')]; })()",
+            value -> { observed.set(value); returned.countDown(); }));
+        assertTrue("Watchlist selection was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertNotNull(observed.get());
+        org.json.JSONArray selection = new org.json.JSONArray(observed.get());
+        int count = selection.getInt(0);
+        int selected = selection.getInt(1);
+        assertTrue("Only the bounded invented watchlist is inspected", count >= 0 && count <= 3);
+        awaitPage("visible listing order matches the current fixture-owned draft",
+            "Array.from(document.querySelectorAll('.managed-watchlist-choice')).map(e => e.dataset.watchlistSelection).join('|') === " +
+            DRAFT + ".memberships.map(member => member.listingId).join('|')");
+        if (count == 0) return;
+        assertTrue("Exactly one current listing must be selected", selected >= 0 && selected < count);
+        for (int index = 0; index < count; index++) selectWatchlistNote(index);
+        selectWatchlistNote(selected);
+    }
+
+    private void selectWatchlistNote(int index) throws Exception {
+        assertTrue("Only bounded invented note positions are selected", index >= 0 && index < 3);
+        awaitPage("watchlist is visible before selecting a note",
+            "document.querySelector('[aria-labelledby=managed-watchlist-heading]')?.hidden === false");
+        String selector = ".managed-watchlist-choices li:nth-child(" + (index + 1) + ") .managed-watchlist-choice";
+        click(selector);
+        awaitPage("selected editor retains the exact listing and raw draft at position " + index,
+            "(() => { const choice = document.querySelector(" + JSONObject.quote(selector) + ");" +
+            " const input = document.getElementById(" + JSONObject.quote("managed-note-" + index) + ");" +
+            " const member = " + DRAFT + ".memberships?.[" + index + "];" +
+            " return member && choice?.getAttribute('aria-pressed') === 'true'" +
+            " && document.querySelectorAll('.managed-watchlist-choice[aria-pressed=true]').length === 1" +
+            " && choice.dataset.watchlistSelection === member.listingId" +
+            " && input?.dataset.managedNoteListingId === member.listingId" +
+            " && input.value === member.note && input.getClientRects().length > 0; })()");
     }
 
     private void typeIntoInput(String id, String text) throws Exception {
+        if (id.matches("managed-note-[0-9]+"))
+            selectWatchlistNote(Integer.parseInt(id.substring("managed-note-".length())));
         touchInput(id);
         awaitPage("input focused: " + id,
             "document.activeElement === document.getElementById(" + JSONObject.quote(id) + ")");
