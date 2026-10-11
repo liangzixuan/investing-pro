@@ -69,50 +69,40 @@ read model. Loading is explicit. Failed refresh, Cancel and navigation retain
 accepted dates and the dirty watchlist draft; session retirement clears the
 agenda and rejects late responses. See the [Markets contract](MANAGED_MARKETS_HOME.md#bea-release-agenda).
 
-The Precision Desk candidate shares the browser's dark workspace, selected-note
+The Precision Desk workspace shares the browser's dark surfaces, selected-note
 editor, bundled Inter font and narrow bottom navigation. Its native fixture
 mounts the real workspace coordinator and router in the managed frame. Hidden
-notes are checked through fixture-only subscriptions to the coordinator; visible
-checkpoints select each listing and check its actual editor. These diagnostics
-add no production bridge or authentication path. EOD captures separate the main
-quote from the expanded source/request details. The candidate requires its own
-native run and artifact review; the earlier results below do not accept it.
+notes are checked through fixture-only subscriptions; visible checkpoints select
+each listing and check its actual editor. These diagnostics add no production
+bridge or authentication path.
 
-The design candidate's API-36 run 38124428746, attempt 1, passed all 22 required
-named cases: three disconnected and nineteen managed, without failures, errors
-or skips. Its actual PR merge checkout `d023208d313beb50397037b449bf4edb27904e00`
-has the release tree `9ae22906cd7d3cfd48d0b30d18d4759b7116e16b`. All nineteen
-managed source markers match that checkout. The actual-main native workflow
-separately passed the 22-case gate; the downloaded report remains the equivalent
-PR merge report, with its exact checkout and visual limits.
+API-36 run `38174145166`, attempt 1, passed all 22 named cases: three disconnected
+and nineteen managed, with no failures, errors or skips. Its PR merge checkout
+`429085563064546c06166f1788e4774195133e5b` has tree
+`8e9a26b57bb8ba9571d0623c8b75c96d0854cd49`, shared by accepted actual main
+`c13b6e4bff3e1b78c9cc82f0b5ad85884c2cc9bf`. All nineteen managed source markers
+matched. The actual-main native workflow passed separately; the downloaded
+report remains the equivalent-tree PR report.
 
-The two BEA journeys assert original retrieval/release dates, simultaneous series
-and EDT/EST labels, unchanged notes/order/base version, retained data through
-failed refresh, Cancel and navigation, and rejection of late replies. A global
-catalog refresh returns unauthenticated while a calendar request remains mounted;
-retirement aborts it and a late completion cannot restore the agenda. Sixteen of
-66 retained frames received scoped visual review. Both final BEA frames exclude
-the calendar, so its dates and request lifetimes are supported by Java assertions
-and checkpoints. Invented-data Brave desktop and 390-pixel screenshots cover the
-shared React/CSS layout; none of these checks establishes a physical-device or
-authenticated production journey.
+Of 67 retained native images, sixteen received agent visual review and two
+received separate root review. Calendar layout is outside that image scope.
+Executed Java assertions cover dates, retained data and drafts, cancellation and
+late-response fencing. Invented-data Brave checks cover the shared responsive
+layout at desktop, 390 and 320 pixels. These checks do not establish a live
+account or physical-device journey.
 
-Original local offline compile failures remain retained. A native-user diagnostic
-passed the previously denied cached-JAR stage, then stopped because the offline
-cache lacked test dependencies. No installation, cache permission change or
-physical-device action was performed. The exact cause of the original denial
-remains unproven. Hosted execution supplies the native test result.
-
-Android 1.23.0/code 24 has an accepted actual-main build and existing-signer
-verification. The APK is 6,662,968 bytes, SHA-256
-`6fcd1824f62394b07ee5dd0b765d1023c7b350daa9f61a81d5a29e0a50508a86`.
-Complete review accepted all 510 APK members, five client assets and the full
-merged manifest, which differs from accepted 1.22 only in version code/name.
-The exact eight-file delivery and ninth receipt are accepted; all nine files
-in the previous 1.22 delivery remain unchanged. No installation was performed.
-[Current work](CURRENT_WORK.md) records source, unchanged API, website and
-Android acceptance separately. These checks add no production sign-in, live
-provider, installed upgrade, physical-use or backup/restore claim.
+Android 1.24.0/code 25 has an accepted actual-main build and production signer.
+The APK is 6,719,623 bytes, SHA-256
+`59c8247b51c87d0c3bac1440a996cac11f4ab99435b666e9f1de8c2313a73127`.
+Complete review covered all 513 archive members, eight client assets, bundled
+font/licenses and the full manifest. The manifest differs from accepted 1.23
+only in version code/name. All eight payload files and the
+ninth receipt were verified. All nine files in the previous 1.23 delivery remain
+unchanged.
+No installation, physical use or backup/restore is accepted. The earlier signed
+1.24 candidate remains preserved and undelivered; it has a different digest.
+[Current work](CURRENT_WORK.md) records website and Android delivery separately.
+Original failed native runs and local offline compile evidence remain retained.
 
 ## Build and identity
 

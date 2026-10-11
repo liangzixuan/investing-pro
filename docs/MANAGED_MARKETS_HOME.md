@@ -2,9 +2,11 @@
 
 Markets is a company board for three admitted listings:
 AAPL, GOOG and GOOGL, representing two issuers. It connects dated raw closes,
-one-month history, Annual research and the existing watchlist. It uses the compact
-navigation, board and chart pattern of a market portal with our own branding and
-permitted inputs. Delivery is recorded separately in [Current work](CURRENT_WORK.md).
+one-month history, Annual research and the existing watchlist. Precision Desk pairs
+a company list with selected detail and a chart, using a desktop navigation rail
+and narrow bottom navigation. It retains our branding and permitted inputs.
+[DESIGN.md](../DESIGN.md) records the presentation; delivery is recorded separately
+in [Current work](CURRENT_WORK.md).
 
 ## Inputs and scope
 

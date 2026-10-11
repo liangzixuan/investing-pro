@@ -7,8 +7,9 @@ workspace inspired by Linear's application hierarchy. Make it easy to scan
 companies, inspect dated evidence and keep research notes. Use Investment's
 own identity, product language and financial models.
 
-This guide describes the selected direction and current implementation under
-review. It does not record completed visual, accessibility or release acceptance.
+This guide describes the selected direction and implementation. [Current work](docs/CURRENT_WORK.md)
+records source, visual and release acceptance with their limits. The design
+reference alone establishes no accessibility or release acceptance.
 
 ## Profiles and ownership
 

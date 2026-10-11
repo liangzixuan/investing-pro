@@ -54,7 +54,13 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.21 package share Discover, a private
+The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
+using Linear-inspired hierarchy adapted to investment research. Investing.com
+remains a reference for functional breadth. This design change adds no data
+coverage and does not complete the capability milestones below. Exact website
+and Android release status remains in [Current work](CURRENT_WORK.md).
+
+The managed website and Android client share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -270,7 +276,7 @@ review after conflict or original-command reconciliation. The explicit choice
 shows both notes and order and requires a fresh successful read after a failed
 repeat read. The invented Android journey, required source checks, website
 promotion and signed delivery are accepted. Real two-device editing and durable
-draft restoration remain open. [Current work](CURRENT_WORK.md#current-task-and-next-acceptance)
+draft restoration remain open. [Current work](CURRENT_WORK.md#next-acceptance-and-open-limits)
 records the separate acceptance limits.
 
 1. Follow the accepted recovery journey with controlled session expiry and

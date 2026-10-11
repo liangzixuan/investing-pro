@@ -7,54 +7,72 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The managed workspace design release, [PR74](https://github.com/liangzixuan/investing-pro/pull/74),
-is delivered from main `5b3701b25bc2c0e9e3ff8c60940991d9ef65fe71`, tree
-`9ae22906cd7d3cfd48d0b30d18d4759b7116e16b`. It consolidates managed styles,
-improves mobile spacing and numeric alignment, and gives the native test fixture
-the production frame. The local Market Atlas theme, explicit data requests,
-drafts and session boundaries are unchanged.
+The Precision Desk overhaul in [PR75](https://github.com/liangzixuan/investing-pro/pull/75)
+and its staging font-policy repair in [PR76](https://github.com/liangzixuan/investing-pro/pull/76)
+have accepted source at main `c13b6e4bff3e1b78c9cc82f0b5ad85884c2cc9bf`, tree
+`8e9a26b57bb8ba9571d0623c8b75c96d0854cd49`.
+The website is live and signed Android 1.24.0/code 25 is delivered.
 
-Each release surface has its own evidence:
+The managed workspace now uses a dark left rail, periwinkle actions, locally
+bundled Inter and Tabler icons, listing/detail Markets and one selected watchlist
+editor. Research notes sit beside evidence on wide screens; narrow screens use
+bottom navigation. Exact decimals, dated provenance, explicit requests, drafts,
+recovery and session ownership retain their contracts. The local Market Atlas
+profile remains separate. [DESIGN.md](../DESIGN.md) records the reference choices
+and implementation rules.
 
-| Item                                            | Identity and result                                                                                                                                                                                                                            |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Required actual-main workflows and source proof | Accepted: five required workflows, six jobs and exact source proof; CI run `38126827379`, attempt 1                                                                                                                                            |
-| Hosted native report                            | Run `38124428746`, attempt 1; 22 named cases, no failures, errors or skips; producing checkout `d023208d313beb50397037b449bf4edb27904e00` has the release tree above                                                                           |
-| Unchanged API                                   | Deployment `6acb3949c735fea153f5`, package SHA-256 `562e934576dcffb15b7fc0df9319fb87c31dbe5724697449d2c62a888166fea4`; active pointer and unchanged settings observed October 11 at 09:36:28.011 UTC                                           |
-| Website                                         | Run `38129294428`, attempt 1; 835,005 bytes, SHA-256 `9ec423c53af02bbfe22448f07f8c508563274c9ba8d2fc63d4d0596a8b22c2a9`; staging `6acb5a06ba2ed9f972b7`, production `6acbb81798d244538872`; activation verified October 11 at 16:24:23.230 UTC |
-| Signed Android 1.23.0/code 24                   | Build, signer and complete APK accepted: 6,662,968 bytes, SHA-256 `6fcd1824f62394b07ee5dd0b765d1023c7b350daa9f61a81d5a29e0a50508a86`; eight copied files and the ninth receipt verified                                                        |
+| Surface                | Evidence and status                                                                                                                                                                                                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Source                 | Four required PR workflows/five jobs and three actual-main workflows/four jobs passed; CI `38176323214`, attempt 1, and its original source proof accepted                                                                                                                                       |
+| Native                 | Run `38174145166`, attempt 1, passed 22 named cases without failures, errors or skips; checkout `429085563064546c06166f1788e4774195133e5b` has the release tree; nineteen managed source markers matched                                                                                         |
+| API                    | Deployment `6acb3949c735fea153f5`, package SHA-256 `562e934576dcffb15b7fc0df9319fb87c31dbe5724697449d2c62a888166fea4`; enabled pointer and unchanged settings observed October 11 at 22:40:05.686 UTC                                                                                            |
+| Staging                | Run `38181587015`, attempt 1, job `114595113294` passed; original archive and staging accepted at deployment `6acc115c76326ec143b1`                                                                                                                                                              |
+| Production             | deployment `6acc131b1cc9946cee6b`, activation verified October 11 at 22:52:41.965 UTC; archive 892,079 bytes, SHA-256 `574fccb382cfc633b0aede210634da8b598a08faff15196a4fa207839184e2ef`; the tested archive was promoted without rebuilding, preserving prior production `6acbb81798d244538872` |
+| Android 1.24.0/code 25 | Build and complete artifact accepted: 6,719,623 bytes, SHA-256 `59c8247b51c87d0c3bac1440a996cac11f4ab99435b666e9f1de8c2313a73127`; eight payload files and the ninth receipt verified                                                                                                            |
 
-The API bundle remains the accepted BEA build from candidate
-`bbe7850eb44416cee030ded574c593d9b40ad234`, tree
-`4fb75351156fe29430641e6c1925a3cfb0d5fbe8`, deployed for main
-`18d2ae497ba0a86bd33fe20d910e5c3068466c8d`. Equivalent API/build/configuration
-sources and the fresh pointer observation support carrying that delivery forward;
-this design release performed no API rebuild, activation or settings change.
+The API keeps the BEA bundle built from `bbe7850eb44416cee030ded574c593d9b40ad234`,
+tree `4fb75351156fe29430641e6c1925a3cfb0d5fbe8`, and deployed for
+`18d2ae497ba0a86bd33fe20d910e5c3068466c8d`. The 713 protected inputs, retained bundle,
+opaque configuration hashes and fresh pointer support carrying it forward.
+No API rebuild, activation or settings change occurred.
 
-The Android package is `app.investingpro.android` with the existing production
-signer. Complete artifact review covered all 510 archive members, five client
-assets and the full merged manifest. The manifest differs from accepted 1.22
-only in version code/name. The verified APK is
-`delivery/android-1.23.0/Investment-1.23.0-release.apk` outside this repository.
-All eight copied files and the ninth receipt were verified, and all nine files
-in the previous 1.22 delivery remain unchanged. No installation or
-physical-device acceptance was performed.
+The Android artifact retains package `app.investingpro.android` and the production
+signer. Review covered all 513 archive members, eight client assets, bundled font
+and licenses, and the full merged manifest. The manifest differs from accepted
+1.23 only in version code/name. The verified APK is
+`delivery/android-1.24.0/Investment-1.24.0-release.apk` outside this repository.
+All eight payload files and the ninth receipt were verified, and all nine files
+in the previous 1.23 delivery remain unchanged.
+Artifact review does not establish installation or physical use.
 
-The website promoted the tested staging archive without rebuilding, preserving
-previous production deployment `6acb3f823bff0d315466`. BrowserStack
-covered its exact-build inert shell at desktop and narrow widths. Activation was
-verified at the recorded time; these checks establish no new authenticated
-journey, live provider result or continuing availability claim.
+Actual-source Brave reviews used invented data at desktop, 390 and 320 pixels.
+They covered loaded/unloaded Markets, long prices, selected watchlist editing,
+invalid-note and return focus, dirty sign-out review, Annual evidence and BEA
+refresh failure/Cancel. Narrow views had no document overflow and retained
+44-pixel controls. PR76 changed no application source or assets, preserving that
+scoped visual evidence. Focused verification passed 255 component/lifecycle/chart
+checks and 98 packaging checks; the font-policy regression passed all 32 cases.
 
-The downloaded native report belongs to the equivalent PR merge tree; actual-main
-native workflow acceptance is separately included in the source checks above.
-Sixteen of 66 retained native frames received scoped visual review. Both final
-BEA frames exclude the agenda, so calendar dates and request lifetimes are
-supported by passed Java assertions rather than those images. Invented-data
-Brave checks of the actual repository components passed at desktop and 390-pixel
-widths: numeric alignment, 44-pixel controls, visible focus, retained agenda after
-failure and Cancel, late-response fencing and dirty-note retention across research
-navigation. These checks used no account or provider.
+The native archive retains 67 images. Sixteen received agent visual review and
+two received separate root review. Calendar layout remains outside that image
+scope; executed Java assertions support its dates and request-lifetime behavior.
+Actual-main native checks passed separately from the downloaded equivalent-tree
+PR report. BrowserStack covered the exact-build inert shell.
+
+A separate production Brave check reused the existing session and matched the
+release marker. The initial workspace and three catalog listings rendered at
+1440 and 390 pixels without document overflow. Prices remained unloaded; no
+price, report or agenda action, fresh sign-in or owner write was performed.
+This establishes initial rendering, not a full authenticated journey, provider
+retrieval or continuing availability.
+
+The original native failures and PR75 staging failure remain retained. The old
+staging log reports a runner failure without its hidden assertion. A separate
+regression proved that its asset rule rejected the bundled WOFF2 font. PR76
+admits hashed same-origin WOFF2 font requests while preserving the other request
+restrictions and zero unexpected-request assertion. The earlier signed 1.24
+candidate remains preserved and undelivered; the digest above identifies the
+fresh build from the accepted PR76 main.
 
 ## Verified BEA source and behavior
 
@@ -152,63 +170,16 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The owner selected Precision Desk for a full managed-workspace redesign,
-superseding the compact-header proposal. The candidate adds a dark left rail,
-periwinkle actions, locally bundled Inter and Tabler icons, a listing/detail
-Markets layout and one selected watchlist editor. Company research places notes
-beside evidence on wide screens. Narrow screens use bottom navigation. Exact
-prices, dates, explicit requests, drafts, recovery and session ownership retain
-their existing contracts. The [design guide](../DESIGN.md) records references,
-tokens, layout and verification requirements.
-
-Actual-source invented-data Brave review covered loaded and unloaded Markets,
-watchlist selection, invalid-note focus, research return focus, dirty sign-out
-review and BEA refresh failure/cancellation at desktop, 390 and 320 pixels.
-The final narrow views had no document overflow and retained 44-pixel controls.
-Fresh captures verified the quote/provenance layout, loaded Annual evidence and
-keyboard clearance above bottom navigation. The software-license panel contains
-the bundled icon and font notices. An earlier tab timeout and a blocked deep-query
-reload remain recorded; a fresh root entry and in-app navigation worked without
-changing browser protections. This preview does not accept deep reload or native
-recovery. No production account or provider was used.
-
-The first overhaul Android run completed 22 cases with three failures: two
-price-row assertions selected the newly added accessibility label, and long
-decimal prices caused horizontal overflow. The assertions now select the dated
-basis explicitly, preserving exact expected text. Price rows wrap long values;
-the detail quote and change wrap onto separate lines when needed. Follow-up
-Brave geometry checks at 411 and 320 pixels found no document overflow and kept
-the comparison above bottom navigation. The original failed report is retained.
-Fresh native run `38167144905`, attempt 1, passed all 22 cases with no failures,
-errors or skips. Its producing checkout has the overhaul tree
-`4d5bbe7f9d6389876229e7a5465f3ca87f8090fe`; all nineteen source markers match.
-Sixteen of 67 retained frames received scoped visual review. Calendar layout
-remains outside those final frames.
-
-All 255 focused component, lifecycle and chart tests passed, alongside 98
-packaging tests, root/web types and scoped lint/format checks. The font's
-WOFF2 signature and declared length are admitted by the existing bounded website
-packager; path, hash, link and size checks remain in place. The local dependency
-license inventory stopped at a missing pnpm package-index file; the subsequent
-hosted inventory passed. PR75 merged as
-`91e65a47f5eb46711d68440371d89a84c17d5f0e`; all six applicable main workflows,
-seven jobs and the exact source proof passed. Its signed Android 1.24 package
-passed full archive, manifest, bundled font/license and existing-signer checks;
-final delivery and device acceptance remain separate.
-
-Website staging run `38172917243`, attempt 1, deployed the overhaul but failed its
-BrowserStack step. The retained log reports the runner failure without assertion
-details. Source review found that the smoke test permits font requests but its
-asset rule rejects the newly bundled WOFF2 file. The repair admits hashed
-same-origin WOFF2 font requests while preserving the other request restrictions
-and the zero unexpected-request assertion. Fresh source checks, successful
-staging and release approval are required before publication. PR74 and Android
-1.23 remain the delivered release above. Default signed-out/loading and native
-recovery states still need their scoped visual checks.
+This handoff records the delivered overhaul. The next product increment follows
+the [product roadmap](PRODUCT_ROADMAP.md); none was started in this handoff.
+Physical installation or use of Android 1.24 remains optional and unverified.
+Default signed-out/loading and native recovery states still need their remaining
+scoped visual checks. The presentation overhaul adds no broader market-data
+coverage and does not complete M1, M2 or M3.
 
 The October 10 owner report remains limited to the requested Android 1.19 and
 Brave checklist on Pixel 10 Pro XL/Android 17, without per-step device logs or
-browser measurements. Physical 1.20 through 1.23 use, controlled live
+browser measurements. Physical 1.20 through 1.24 use, controlled live
 authenticated recovery, the browser leave dialog, screen-reader and backup/restore
 acceptance remain open. This increment adds no new physical-device or live-auth
 claim. Earlier live reads retain their original dates and limits in the archive.
