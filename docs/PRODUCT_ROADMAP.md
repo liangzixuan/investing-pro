@@ -287,6 +287,13 @@ records the separate acceptance limits.
    provider rights, cost and quotas. AAPL, GOOG and GOOGL remain three listings
    for two issuers; their raw USD EOD closes supply no adjusted-return universe.
 
+The current candidate extends the admitted three-period Annual history with the
+earlier adjacent revenue and net-income comparison and an explicit note-draft
+excerpt. It reuses existing SEC observations and exact decimal rules, retaining
+unavailable percentages for nonpositive prior values. No new source field or
+request is added. Hosted acceptance, website delivery and signed Android delivery
+remain pending; [Current work](CURRENT_WORK.md) records the accepted release.
+
 Maintenance should shorten repeated work that obstructs these outcomes. Reviewed,
 parameterized release helpers and one release manifest can reduce copied scripts
 while retaining exact source/artifact pins, normal approvals, finite observations,

@@ -659,6 +659,9 @@ describe("Android managed fixture startup", () => {
     expect(annualNoteDraft).toContain(
       "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%.",
     );
+    expect(annualNoteDraft).toContain(
+      "Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%).",
+    );
     expect(report.evidence.observations).toHaveLength(6);
     const command = {
       expectedVersion: 1,

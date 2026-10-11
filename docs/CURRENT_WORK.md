@@ -159,6 +159,14 @@ Prior PR66 actual-main Windows failures remain retained: the original owner-acco
 test and sole unchanged retry failed with their existing limits. PR67 results do
 not retroactively accept those executions or establish their causes.
 
+The current candidate adds the earlier adjacent revenue/net-income comparison
+inside the admitted three-period Annual history, with both date ranges, exact
+USD changes, reported percentages and original inputs. It joins the explicit
+Annual note draft under the unchanged whole-note limit. No new source request,
+response field, revenue basis or margin assumption is introduced. The website,
+API and signed Android 1.20 remain at their accepted releases while validation
+and delivery of this candidate are pending.
+
 Prioritize useful daily workflows and recovery using the existing modules and
 permitted sources. Controlled
 session conflicts, physical upgrade/use, screen-reader and backup/restore coverage

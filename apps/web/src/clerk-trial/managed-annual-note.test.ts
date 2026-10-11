@@ -58,6 +58,9 @@ describe("managed Annual note excerpt", () => {
         "Revenues revenue USD 800 to 1000, change USD 200 (25%)",
       );
       expect(text).not.toContain("Infinity");
+      expect(text).toContain(
+        `Revenues revenue change USD ${value === "0" ? "800" : "1440"} (Unavailable: prior value is ${value === "0" ? "zero" : "negative"})`,
+      );
     },
   );
   it("adds the admitted third period to the same explicit draft excerpt with original provenance", async () => {
@@ -66,6 +69,10 @@ describe("managed Annual note excerpt", () => {
       (b) => b.status === "eligible",
     )!.pairs[0]!;
     const text = annualNoteExcerpt(report, pair, false)!;
+    expect(text).toContain(
+      "Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; Revenues revenue change USD 160 (25%); NetIncomeLoss change USD 48 (150%).",
+    );
+    expect(text.length).toBeLessThan(2000);
     expect(text).toContain(
       "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%.",
     );

@@ -95,7 +95,10 @@ public class ManagedWorkspaceInstrumentedTest {
         "Period length, accounting changes and restatements are unadjusted; " +
         "not as-originally-filed history or organic growth. " +
         "Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; " +
-        "NetIncomeLoss USD 32; net margin 5%. Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "NetIncomeLoss USD 32; net margin 5%. " +
+        "Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; " +
+        "Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%). " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; " +
         "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
         "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
         "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
@@ -1574,6 +1577,17 @@ public class ManagedWorkspaceInstrumentedTest {
         retainAnnualNoteFrame("annualEvidenceHistoryCurrent", history + " > ol > li:nth-child(1)", history + " > ol > li:nth-child(1)", 1);
         retainAnnualNoteFrame("annualEvidenceHistoryPrior", history + " > ol > li:nth-child(2)", history + " > ol > li:nth-child(2)", 1);
         retainAnnualNoteFrame("annualEvidenceHistoryEarlier", history + " > ol > li:nth-child(3)", history + " > ol > li:nth-child(3)", 1);
+        String earlierComparison = history + " > .sec-annual-earlier-comparison";
+        awaitPage("earlier adjacent amounts use original dates and exact signed changes",
+            "document.querySelector(" + JSONObject.quote(earlierComparison) + ")?.getAttribute('aria-label') === 'Earlier reported annual comparison Revenues'" +
+            " && document.querySelector(" + JSONObject.quote(earlierComparison + " > p:first-of-type") + ")?.textContent === 'Prior: 2023-01-01 to 2023-12-31. Current: 2024-01-01 to 2024-12-31.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(earlierComparison + " > dl dd") + ")).map(e => e.textContent).join(',') === '640,800,160,25%,32,-80,-112,-350%'" +
+            " && document.querySelector(" + JSONObject.quote(earlierComparison + " > details > ol") + ")?.children.length === 4" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        retainAnnualNoteFrame("annualEvidenceEarlierComparisonRevenue", earlierComparison + " > h5",
+            earlierComparison + " > h5, " + earlierComparison + " > p:first-of-type, " + earlierComparison + " > dl:first-of-type", 3);
+        retainAnnualNoteFrame("annualEvidenceEarlierComparisonIncome", earlierComparison + " > dl:nth-of-type(2)",
+            earlierComparison + " > dl:nth-of-type(2)", 1);
         assertAnnualNoteCounts(1, 0, 1);
         click(history + " > summary");
         awaitPage("closing annual history preserves the draft and selected report",

@@ -66,6 +66,14 @@ export function annualNoteExcerpt(
       : [
           `Additional same-filing annual period: ${earlier.startDate} to ${earlier.endDate}; ${pair.concept} revenue USD ${earlier.revenue}; NetIncomeLoss USD ${earlier.netIncome}; net margin ${earlier.netMarginPercent === null ? "unavailable because revenue is not positive" : `${earlier.netMarginPercent}%`}.`,
         ];
+  const earlierComparison =
+    history.status === "available" ? history.comparisons[1] : undefined;
+  const earlierComparisonExcerpt =
+    earlierComparison === undefined
+      ? []
+      : [
+          `Earlier same-filing annual comparison: prior ${earlierComparison.priorStartDate} to ${earlierComparison.priorEndDate}; current ${earlierComparison.currentStartDate} to ${earlierComparison.currentEndDate}; ${pair.concept} revenue change USD ${earlierComparison.revenue.difference} (${annualComparisonPercentText(earlierComparison.revenue)}); NetIncomeLoss change USD ${earlierComparison.netIncome.difference} (${annualComparisonPercentText(earlierComparison.netIncome)}).`,
+        ];
   return [
     `Observed Annual report: ${response.security.symbol} (${response.security.exchangeMic}); ${target.form} ${pair.startDate} to ${pair.endDate}; ${pair.concept} revenue USD ${pair.revenue}; NetIncomeLoss USD ${pair.netIncome}; net margin ${pair.netMarginPercent}%.`,
     ...(comparison.status === "available"
@@ -74,6 +82,7 @@ export function annualNoteExcerpt(
         ]
       : []),
     ...earlierExcerpt,
+    ...earlierComparisonExcerpt,
     `Filed ${target.filedDate}; accession ${target.accessionNumber}; filing ${filing}.`,
     `Original load cutoff ${generation.cutoffAt}; completed ${generation.completedAt}; Company Facts captured ${generation.sources.companyFacts.fetchedAt}; Submissions captured ${generation.sources.submissions.fetchedAt}.`,
     resolution.currentTargetEligible

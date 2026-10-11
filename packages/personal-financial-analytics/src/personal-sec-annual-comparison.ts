@@ -150,6 +150,34 @@ export type PersonalSecAnnualPeriod = Readonly<{
   observationIds: readonly string[];
 }>;
 
+type AnnualAmountComparison = Readonly<{
+  priorStartDate: string;
+  priorEndDate: string;
+  currentStartDate: string;
+  currentEndDate: string;
+  revenue: PersonalSecAnnualChange;
+  netIncome: PersonalSecAnnualChange;
+  observationIds: readonly string[];
+}>;
+
+function amountComparison(
+  prior: PersonalSecAnnualPeriod,
+  current: PersonalSecAnnualPeriod,
+): AnnualAmountComparison {
+  return Object.freeze({
+    priorStartDate: prior.startDate,
+    priorEndDate: prior.endDate,
+    currentStartDate: current.startDate,
+    currentEndDate: current.endDate,
+    revenue: change(prior.revenue, current.revenue),
+    netIncome: change(prior.netIncome, current.netIncome),
+    observationIds: Object.freeze([
+      ...current.observationIds,
+      ...prior.observationIds,
+    ]),
+  });
+}
+
 export type PersonalSecAnnualHistory =
   | Readonly<{
       status: "unavailable";
@@ -160,6 +188,7 @@ export type PersonalSecAnnualHistory =
       concept: PersonalSecAnnualPairDto["concept"];
       accessionNumber: string;
       periods: readonly PersonalSecAnnualPeriod[];
+      comparisons: readonly AnnualAmountComparison[];
       stoppedReason: UnavailableReason | null;
     }>;
 
@@ -319,6 +348,11 @@ function annualHistory(
     concept,
     accessionNumber: input.target.accessionNumber,
     periods: Object.freeze(periods),
+    comparisons: Object.freeze(
+      periods
+        .slice(1)
+        .map((prior, index) => amountComparison(prior, periods[index]!)),
+    ),
     stoppedReason,
   });
 }
@@ -348,20 +382,12 @@ export function comparePersonalSecAnnualEvidence(
     status: "available",
     concept,
     accessionNumber: history.accessionNumber,
-    priorStartDate: prior.startDate,
-    priorEndDate: prior.endDate,
-    currentStartDate: current!.startDate,
-    currentEndDate: current!.endDate,
-    revenue: change(prior.revenue, current!.revenue),
-    netIncome: change(prior.netIncome, current!.netIncome),
+    ...history.comparisons[0]!,
     netMargin: marginComparison(
       prior.revenue,
       prior.netIncome,
       current!.revenue,
       current!.netIncome,
-    ),
-    observationIds: Object.freeze(
-      history.periods.flatMap((p) => p.observationIds),
     ),
   });
 }

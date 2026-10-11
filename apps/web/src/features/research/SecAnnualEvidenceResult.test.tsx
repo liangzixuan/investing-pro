@@ -22,6 +22,16 @@ describe("shared annual result", () => {
     expect(html).toContain("Net income · USD</dt><dd>32</dd>");
     expect(html).toContain("Net margin · %</dt><dd>5%</dd>");
     expect(html).toContain("Inspect period inputs · 2023-12-31");
+    expect(html).toContain(
+      'aria-label="Earlier reported annual comparison Revenues"',
+    );
+    expect(html).toContain(
+      "Prior: 2023-01-01 to 2023-12-31. Current: 2024-01-01 to 2024-12-31.",
+    );
+    expect(html).toContain("Revenue change · USD</dt><dd>160</dd>");
+    expect(html).toContain("Net income change · USD</dt><dd>48</dd>");
+    expect(html).toContain("Net income reported change</dt><dd>150%</dd>");
+    expect(html).toContain("Inspect earlier comparison inputs · Revenues");
     expect(html).not.toContain("The next earlier period is unavailable");
   });
 
@@ -33,6 +43,7 @@ describe("shared annual result", () => {
     expect(html).toContain("Read reported annual history · 2 periods");
     expect(html).toContain("The next earlier period is unavailable.");
     expect(html).toContain("Revenue reported change</dt><dd>25%</dd>");
+    expect(html).not.toContain("Earlier reported annual comparison");
   });
   it("shows exact adjacent annual amounts, reported changes and all four operand references", async () => {
     const wire = await response(annualComparativeRows());
