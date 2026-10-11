@@ -370,6 +370,7 @@ function AnnualHistory({
   readonly history: Extract<PersonalSecAnnualHistory, { status: "available" }>;
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
 }) {
+  const earlier = history.comparisons[1];
   return (
     <details
       className="sec-quarterly-row-details sec-annual-history"
@@ -420,6 +421,40 @@ function AnnualHistory({
           </li>
         ))}
       </ol>
+      {earlier === undefined ? null : (
+        <section
+          className="sec-annual-earlier-comparison"
+          aria-label={`Earlier reported annual comparison ${history.concept}`}
+        >
+          <h5>Earlier reported annual comparison</h5>
+          <p className="sec-quarterly-message">
+            Prior: {earlier.priorStartDate} to {earlier.priorEndDate}. Current:{" "}
+            {earlier.currentStartDate} to {earlier.currentEndDate}.
+          </p>
+          <AnnualAmountChanges comparison={earlier} />
+          <p className="sec-quarterly-caveat">
+            Changes use the exact reported amounts above. Percentage change
+            requires a positive prior value and is rounded half up to two
+            places. The same filing, source dates and unadjusted-period limits
+            apply.
+          </p>
+          <details className="sec-quarterly-row-details">
+            <summary>
+              Inspect earlier comparison inputs · {history.concept}
+            </summary>
+            <ol>
+              {earlier.observationIds.map((id) => {
+                const row = observations.find((item) => item.id === id);
+                return row === undefined ? null : (
+                  <li key={id}>
+                    <ObservationDetails row={row} />
+                  </li>
+                );
+              })}
+            </ol>
+          </details>
+        </section>
+      )}
       {history.stoppedReason === null ? null : (
         <p className="sec-quarterly-message">
           The next earlier period is unavailable.{" "}
@@ -427,6 +462,44 @@ function AnnualHistory({
         </p>
       )}
     </details>
+  );
+}
+
+function AnnualAmountChanges({
+  comparison,
+}: {
+  readonly comparison: Pick<
+    Extract<PersonalSecAnnualComparison, { status: "available" }>,
+    "revenue" | "netIncome"
+  >;
+}) {
+  return (
+    <>
+      {(["revenue", "netIncome"] as const).map((metric) => {
+        const value = comparison[metric];
+        const label = metric === "revenue" ? "Revenue" : "Net income";
+        return (
+          <dl className="sec-quarterly-comparison-coordinates" key={metric}>
+            <div>
+              <dt>{label} prior · USD</dt>
+              <dd>{value.prior}</dd>
+            </div>
+            <div>
+              <dt>{label} current · USD</dt>
+              <dd>{value.current}</dd>
+            </div>
+            <div>
+              <dt>{label} change · USD</dt>
+              <dd>{value.difference}</dd>
+            </div>
+            <div>
+              <dt>{label} reported change</dt>
+              <dd>{annualComparisonPercentText(value)}</dd>
+            </div>
+          </dl>
+        );
+      })}
+    </>
   );
 }
 
@@ -455,30 +528,7 @@ function AnnualComparison({
         Prior: {comparison.priorStartDate} to {comparison.priorEndDate}.
         Current: {comparison.currentStartDate} to {comparison.currentEndDate}.
       </p>
-      {(["revenue", "netIncome"] as const).map((metric) => {
-        const value = comparison[metric];
-        const label = metric === "revenue" ? "Revenue" : "Net income";
-        return (
-          <dl className="sec-quarterly-comparison-coordinates" key={metric}>
-            <div>
-              <dt>{label} prior · USD</dt>
-              <dd>{value.prior}</dd>
-            </div>
-            <div>
-              <dt>{label} current · USD</dt>
-              <dd>{value.current}</dd>
-            </div>
-            <div>
-              <dt>{label} change · USD</dt>
-              <dd>{value.difference}</dd>
-            </div>
-            <div>
-              <dt>{label} reported change</dt>
-              <dd>{annualComparisonPercentText(value)}</dd>
-            </div>
-          </dl>
-        );
-      })}
+      <AnnualAmountChanges comparison={comparison} />
       <dl className="sec-quarterly-comparison-coordinates">
         <div>
           <dt>Net margin prior · %</dt>

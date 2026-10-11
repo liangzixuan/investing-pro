@@ -133,6 +133,145 @@ function historyRows() {
 }
 
 describe("bounded same-filing annual history", () => {
+  it("compares both adjacent pairs without changing their filing operands", () => {
+    const input = historyRows().reverse();
+    const result = resolvePersonalSecAnnualHistory(packet(input), "Revenues");
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.comparisons).toMatchObject([
+      {
+        priorEndDate: "2024-12-31",
+        currentEndDate: "2025-12-31",
+        revenue: {
+          prior: "100",
+          current: "120",
+          difference: "20",
+          percent: { status: "available", value: "20" },
+        },
+        netIncome: {
+          difference: "5",
+          percent: { status: "available", value: "50" },
+        },
+      },
+      {
+        priorStartDate: "2023-01-01",
+        priorEndDate: "2023-12-31",
+        currentStartDate: "2024-01-01",
+        currentEndDate: "2024-12-31",
+        revenue: {
+          prior: "80",
+          current: "100",
+          difference: "20",
+          percent: { status: "available", value: "25" },
+        },
+        netIncome: {
+          prior: "4",
+          current: "10",
+          difference: "6",
+          percent: { status: "available", value: "150" },
+        },
+      },
+    ]);
+    expect(new Set(result.comparisons[1]!.observationIds)).toEqual(
+      new Set(input.filter((r) => r.endDate !== "2025-12-31").map((r) => r.id)),
+    );
+    expect(Object.isFrozen(result.comparisons)).toBe(true);
+    expect(
+      result.comparisons.every(
+        (c) => Object.isFrozen(c) && Object.isFrozen(c.observationIds),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["0", "100", "100", "zero_prior"],
+    ["-5", "100", "105", "negative_prior"],
+  ])(
+    "retains the earlier USD change for nonpositive prior revenue %s",
+    (older, current, difference, reason) => {
+      const result = resolvePersonalSecAnnualHistory(
+        packet(
+          historyRows().map((r) =>
+            r.metric !== "revenue"
+              ? r
+              : {
+                  ...r,
+                  value:
+                    r.endDate === "2023-12-31"
+                      ? older
+                      : r.endDate === "2024-12-31"
+                        ? current
+                        : r.value,
+                },
+          ),
+        ),
+        "Revenues",
+      );
+      if (result.status !== "available") throw new Error("Expected history");
+      expect(result.comparisons[1]!.revenue).toEqual({
+        prior: older,
+        current,
+        difference,
+        percent: { status: "unavailable", reason },
+      });
+    },
+  );
+
+  it.each([
+    ["0", "-80", "-100"],
+    ["-10", "-90", "-112.5"],
+  ])(
+    "admits a nonpositive comparative current revenue %s without assuming its margin",
+    (current, difference, percent) => {
+      const result = resolvePersonalSecAnnualHistory(
+        packet(
+          historyRows().map((r) =>
+            r.metric === "revenue" && r.endDate === "2024-12-31"
+              ? { ...r, value: current }
+              : r,
+          ),
+        ),
+        "Revenues",
+      );
+      if (result.status !== "available") throw new Error("Expected history");
+      expect(result.periods[1]!.netMarginPercent).toBeNull();
+      expect(result.comparisons[1]!.revenue).toMatchObject({
+        difference,
+        percent: { status: "available", value: percent },
+      });
+    },
+  );
+
+  it("preserves a tiny earlier difference between large exact amounts", () => {
+    const result = resolvePersonalSecAnnualHistory(
+      packet(
+        historyRows().map((r) =>
+          r.metric !== "revenue" || r.endDate === "2025-12-31"
+            ? r
+            : {
+                ...r,
+                value:
+                  r.endDate === "2023-12-31"
+                    ? "9007199254740993.000000000000000001"
+                    : "9007199254740993.000000000000000002",
+              },
+        ),
+      ),
+      "Revenues",
+    );
+    if (result.status !== "available") throw new Error("Expected history");
+    expect(result.comparisons[1]!.revenue).toMatchObject({
+      difference: "0.000000000000000001",
+      percent: { status: "available", value: "0" },
+    });
+    const withoutThird = resolvePersonalSecAnnualHistory(
+      packet(rows()),
+      "Revenues",
+    );
+    if (withoutThird.status !== "available")
+      throw new Error("Expected history");
+    expect(withoutThird.comparisons).toHaveLength(1);
+  });
+
   it("returns three contiguous dated periods with exact signed amounts and all references", () => {
     const result = resolvePersonalSecAnnualHistory(
       packet(historyRows().reverse()),

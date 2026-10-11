@@ -138,8 +138,31 @@ existing comparison and filing provenance. It preserves the existing draft,
 appending history makes no source request or save. Current-use policy, refresh,
 cancellation and retirement retain their existing boundaries.
 
-This is candidate behavior. Publication, hosted checks, native acceptance and
-delivery are pending; [Current work](CURRENT_WORK.md) records the accepted release.
+The website and signed Android 1.20 history are delivered. Physical use and other
+acceptance limits remain separate; [Current work](CURRENT_WORK.md) records them.
+
+### Earlier reported changes
+
+The current candidate adds **Earlier reported annual comparison** when all three
+periods are admitted. It compares the oldest period with the middle period,
+retaining both date ranges, exact revenue and NetIncomeLoss amounts, USD changes
+and original observation references. The existing newest-versus-prior comparison
+remains available above the history.
+
+The existing decimal calculation supplies `(current - prior) / prior * 100`,
+rounded half up to two places. A zero or negative prior value keeps the USD change
+while withholding its percentage. A positive prior value can be compared with a
+zero or negative current value. A nonzero percentage below display precision is
+identified as less than 0.01% higher or lower. No earlier margin comparison is
+added; each period keeps its existing available or unavailable margin.
+
+The dated earlier comparison joins **Add annual evidence to note draft**. The
+whole note must still fit within 2,000 characters, without truncation, automatic
+save or source refresh. Missing or conflicting third-period evidence leaves the
+existing two-period view and note unchanged. Same-filing, contiguous-period,
+source-date and unadjusted-accounting limits apply throughout.
+
+This comparison is candidate behavior. Hosted acceptance and delivery are pending.
 
 ## Request lifetime and data
 
