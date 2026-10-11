@@ -143,7 +143,7 @@ acceptance limits remain separate; [Current work](CURRENT_WORK.md) records them.
 
 ### Earlier reported changes
 
-The current candidate adds **Earlier reported annual comparison** when all three
+PR69 and signed Android 1.21 deliver **Earlier reported annual comparison** when all three
 periods are admitted. It compares the oldest period with the middle period,
 retaining both date ranges, exact revenue and NetIncomeLoss amounts, USD changes
 and original observation references. The existing newest-versus-prior comparison
@@ -162,7 +162,10 @@ save or source refresh. Missing or conflicting third-period evidence leaves the
 existing two-period view and note unchanged. Same-filing, contiguous-period,
 source-date and unadjusted-accounting limits apply throughout.
 
-This comparison is candidate behavior. Hosted acceptance and delivery are pending.
+Required actual-main checks, source proof, twenty invented-data native cases,
+same-archive website promotion and signed Android 1.21 delivery passed. Physical
+use and other acceptance limits remain separate; [Current work](CURRENT_WORK.md)
+records them.
 
 ## Request lifetime and data
 

@@ -54,7 +54,7 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The managed website and signed Android 1.20 package share Discover, a private
+The managed website and signed Android 1.21 package share Discover, a private
 watchlist with notes and ordering, read-only Annual reports and explicit
 one-month EOD close history for AAPL, GOOG and GOOGL. Catalog recovery, report cancellation, Android Back
 and same-Activity stop/resume have focused synthetic coverage. One live AAPL
@@ -287,12 +287,14 @@ records the separate acceptance limits.
    provider rights, cost and quotas. AAPL, GOOG and GOOGL remain three listings
    for two issuers; their raw USD EOD closes supply no adjusted-return universe.
 
-The current candidate extends the admitted three-period Annual history with the
-earlier adjacent revenue and net-income comparison and an explicit note-draft
-excerpt. It reuses existing SEC observations and exact decimal rules, retaining
-unavailable percentages for nonpositive prior values. No new source field or
-request is added. Hosted acceptance, website delivery and signed Android delivery
-remain pending; [Current work](CURRENT_WORK.md) records the accepted release.
+PR69 and signed Android 1.21 extend the admitted three-period Annual history with
+the earlier adjacent revenue and net-income comparison and a dated, explicit
+note-draft excerpt. They reuse existing SEC observations and exact decimal rules,
+retaining unavailable percentages for nonpositive prior values. No new source
+field or request is added. Required actual-main checks, source proof, twenty
+invented-data native cases, same-archive website promotion and signed delivery
+passed. Physical 1.20/1.21 and controlled browser acceptance remain separate;
+[Current work](CURRENT_WORK.md) records the exact release and limits.
 
 Maintenance should shorten repeated work that obstructs these outcomes. Reviewed,
 parameterized release helpers and one release manifest can reduce copied scripts
