@@ -170,8 +170,21 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-This handoff records the delivered overhaul. The next product increment follows
-the [product roadmap](PRODUCT_ROADMAP.md); none was started in this handoff.
+The active increment restores keyboard position after a successful watchlist
+recovery choice. Choosing **Use saved version** or **Keep my draft** removes that
+review; focus should move once to the visible My Watchlist heading. A stale choice,
+inactive view, session retirement or a user moving focus elsewhere must not pull
+focus back. Saved payloads, drafts, request behavior and explicit Save retain their
+existing contracts. All 66 component tests and 14 coordinator tests pass, along
+with web types, scoped lint and formatting. An independent review caught and
+resolved a pending-navigation timing edge. Actual-component Brave checks with
+invented data passed at 1440 and 390 pixels, covering both choices, replay recovery,
+an empty saved result, the next Tab stop and unchanged request counts. No browser
+console errors or document overflow were observed. Source review and local browser
+checks are complete; hosted checks and delivery remain separate. The accepted
+release above remains the deployed baseline.
+
+The [product roadmap](PRODUCT_ROADMAP.md) continues to guide later increments.
 Physical installation or use of Android 1.24 remains optional and unverified.
 Default signed-out/loading and native recovery states still need their remaining
 scoped visual checks. The presentation overhaul adds no broader market-data

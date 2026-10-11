@@ -138,6 +138,11 @@ loaded version as the base for a later explicit save with a new command key. The
 review performs no automatic merge or save. Different catalog snapshots remain
 visible and do not bypass the separate catalog review.
 
+After a successful choice removes its focused button, the screen moves keyboard
+focus to the visible **My Watchlist** heading. This also works when the chosen
+saved version has no listings. The request is consumed once; a changed view,
+retired session, newer recovery state or focus on another control cancels it.
+
 A new saved-version read withdraws the previous review and choice eligibility as
 soon as it starts. If the read fails, both payloads remain retained, but another
 successful read is required before choosing. Pending command reconciliation still
