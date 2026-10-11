@@ -253,7 +253,7 @@ describe("Markets and mounted workspace", () => {
     expect(betb).not.toContain("0.0000%");
     workspace.markets.select(marketsCohort[2].listingId);
     expect(html()).toContain("BETB · one month");
-    expect(html()).toContain("<td>30.5</td>");
+    expect(html()).toMatch(/<td(?:\s[^>]*)?>30\.5<\/td>/u);
     expect(html()).not.toMatch(/today|daily return|previous session|movers/iu);
     expect(read).toHaveBeenCalledTimes(3);
     expect(save).not.toHaveBeenCalled();

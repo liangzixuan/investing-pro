@@ -1,15 +1,27 @@
 # BEA release agenda
 
-Created September 26, 2026. Implementation and release verification are pending.
+Created September 26, 2026. The October 11 managed implementation has accepted
+actual-main source checks, API and website delivery, and signed Android artifact
+and delivery review.
 Base: accepted a83 `d0ad5d3537d012f2d96af1355dc05f015a76c7e8` in `markets-home`.
 This is a bounded part of [roadmap M3](../../docs/PRODUCT_ROADMAP.md).
 
-October 11 managed integration: the current candidate reuses this provider and
+October 11 managed integration: the managed implementation reuses this provider and
 response contract through a separate authenticated managed route and session
 model. The [managed Markets guide](../../docs/MANAGED_MARKETS_HOME.md#bea-release-agenda)
 records its request, size and lifetime boundaries. The original local-profile
 design below retains its scope; [Current work](../../docs/CURRENT_WORK.md) owns
-current verification and deployment status.
+current verification and deployment status. Implementation evidence includes 8,625
+affected unit tests, 27 compiled anonymous admission cases with no network
+attempts, 22 native cases on an equivalent PR merge tree, a separately accepted
+actual-main native gate, and invented-data Brave desktop/390-pixel checks. The
+two final BEA native frames do not show the calendar;
+the date and recovery results come from Java assertions and checkpoints.
+These checks do not establish a new authenticated managed read or physical-device
+acceptance. The signed artifact and final delivery passed their separate reviews.
+This specification retains the original local
+route and owner-lifetime design below; the managed guide owns its distinct
+function-entry deadline, transport and session-retirement boundaries.
 
 ## User outcome
 

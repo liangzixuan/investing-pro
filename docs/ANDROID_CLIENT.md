@@ -64,13 +64,42 @@ notes, ordering, removal, explicit saves and conflict/uncertain-save
 reconciliation reuse the website's implementation and private storage adapter.
 There is no offline editing queue or local-vault migration.
 
-The BEA candidate adds the shared explicit agenda under Markets. Its invented
-native suite requires two additional journeys: retained dates and an unchanged
-dirty draft through failed refresh, Cancel, late completion and navigation; then
-catalog-auth expiry clearing the retained agenda before a late response settles.
-The CI manifest requires all twenty-two named native cases. Source presence and
-local fixture tests do not establish emulator execution or a signed release;
-Current work records those acceptance events separately.
+The BEA agenda shares the managed Markets renderer and an independent session
+read model. Loading is explicit. Failed refresh, Cancel and navigation retain
+accepted dates and the dirty watchlist draft; session retirement clears the
+agenda and rejects late responses. See the [Markets contract](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+The candidate's API-36 run 38116337217, attempt 1, passed all 22 required named
+cases: three disconnected and nineteen managed, without failures, errors or
+skips. Its actual PR merge checkout `0bdb5c90b281b645ed21c1ff04336ca82a855ab1`
+has the candidate tree `4fb75351156fe29430641e6c1925a3cfb0d5fbe8`. Nineteen managed
+source markers match that checkout. The actual-main native workflow separately
+passed the 22-case gate; the downloaded report reviewed here remains the PR merge
+report, with its exact checkout and visual limits.
+
+The two BEA journeys assert original retrieval/release dates, simultaneous series
+and EDT/EST labels, unchanged notes/order/base version, retained data through
+failed refresh, Cancel and navigation, and rejection of late replies. A global
+catalog refresh returns unauthenticated while a calendar request remains mounted;
+retirement aborts it and a late completion cannot restore the agenda. The two
+final frames were visually inspected but do not show the calendar: one frames
+upper Markets and one fixture diagnostics. These are functional Java-assertion
+and checkpoint results, without native calendar-layout acceptance. Invented-data
+Brave desktop and 390-pixel screenshots cover the shared React/CSS layout.
+
+Original local offline compile failures remain retained. A native-user diagnostic
+passed the previously denied cached-JAR stage, then stopped because the offline
+cache lacked test dependencies. No installation, cache permission change or
+physical-device action was performed. The exact cause of the original denial
+remains unproven. Hosted execution supplies the native test result.
+
+Android 1.22.0/code 23 has an accepted actual-main build and existing-signer
+verification. The APK is 6,662,428 bytes, SHA-256
+`1dc915f1ac667ddf89afc746972dfa98de7e06d7f4ddf0ac85393d019ae8b889`.
+Complete APK review and the exact final delivery copy are accepted; no installation
+was performed. [Current work](CURRENT_WORK.md)
+records each gate separately. These checks add no
+production sign-in, live provider, installed upgrade or physical-use claim.
 
 ## Build and identity
 

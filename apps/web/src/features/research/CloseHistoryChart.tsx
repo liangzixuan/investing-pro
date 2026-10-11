@@ -133,14 +133,16 @@ export function CloseHistoryChart({
           <thead>
             <tr>
               <th scope="col">Trading date</th>
-              <th scope="col">Raw close (USD)</th>
+              <th scope="col" className="managed-numeric">
+                Raw close (USD)
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.date}>
                 <th scope="row">{row.date}</th>
-                <td>{row.close}</td>
+                <td className="managed-numeric">{row.close}</td>
               </tr>
             ))}
           </tbody>
