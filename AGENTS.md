@@ -10,6 +10,7 @@ Honor the current task's authorization and narrower applicable instructions.
 2. [Current work](docs/CURRENT_WORK.md) for the dated accepted baseline and active outcome.
 3. [Architecture](docs/ARCHITECTURE.md) and the relevant feature guide or specification.
 4. [Product roadmap](docs/PRODUCT_ROADMAP.md) when selecting new product work.
+5. [Design guide](DESIGN.md) when changing an interface, including profile themes and accessibility.
 
 For source orientation and sharing limits, follow [AI context](docs/AI_CONTEXT.md). Missing operational
 receipts or private configuration are not a reason to search another workspace,

@@ -103,8 +103,8 @@ describe("managed close history panel", () => {
       expect(carried).toContain("2026-08-20 to 2026-09-20");
       expect(carried).toContain("2026-09-20T00:00:00.000Z");
       expect(carried).toContain("2026-09-20T00:00:01.000Z");
-      expect(carried).toContain("<td>100.25</td>");
-      expect(carried).toContain("<td>101.5</td>");
+      expect(carried).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
+      expect(carried).toMatch(/<td(?:\s[^>]*)?>101\.5<\/td>/u);
       expect(carried).toContain("Refresh close history");
       expect(read).not.toHaveBeenCalled();
       await model.load();
@@ -112,8 +112,8 @@ describe("managed close history panel", () => {
       expect(model.getSnapshot().selection?.origin).toBe("markets");
       expect(refreshed).not.toContain('class="managed-eod-origin"');
       expect(refreshed).not.toContain('class="managed-eod-previous"');
-      expect(refreshed).toContain("<td>100.25</td>");
-      expect(refreshed).toContain("<td>101.5</td>");
+      expect(refreshed).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
+      expect(refreshed).toMatch(/<td(?:\s[^>]*)?>101\.5<\/td>/u);
       expect(read).toHaveBeenCalledOnce();
     },
   );
@@ -275,8 +275,8 @@ describe("managed close history panel", () => {
       "Refresh close history",
     ])
       expect(output).toContain(text);
-    expect(output).toContain("<td>100.25</td>");
-    expect(output).toContain("<td>101.5</td>");
+    expect(output).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
+    expect(output).toMatch(/<td(?:\s[^>]*)?>101\.5<\/td>/u);
     expect(output).not.toContain("Volume");
     model.close();
     expect(html()).toBe("");
@@ -315,8 +315,8 @@ describe("managed close history panel", () => {
         );
         expect(output).toContain("2026-08-20 to 2026-09-20");
         expect(output).toContain("2026-09-20T00:00:00.000Z");
-        expect(output).toContain("<td>100.25</td>");
-        expect(output).toContain("<td>101.5</td>");
+        expect(output).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
+        expect(output).toMatch(/<td(?:\s[^>]*)?>101\.5<\/td>/u);
         expect(model.getSnapshot().response).toBe(previous);
         return output;
       };
@@ -368,11 +368,11 @@ describe("managed close history panel", () => {
       await model.load();
       const refreshed = html();
       expect(refreshed).not.toContain('class="managed-eod-previous"');
-      expect(refreshed).not.toContain("<td>100.25</td>");
+      expect(refreshed).not.toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);
       expect(refreshed).not.toContain("2026-09-20T00:00:01.000Z");
       expect(refreshed).toContain("2026-08-21 to 2026-09-21");
       expect(refreshed).toContain("2026-09-21T00:00:01.000Z");
-      expect(refreshed).toContain("<td>102.75</td>");
+      expect(refreshed).toMatch(/<td(?:\s[^>]*)?>102\.75<\/td>/u);
       expect(refreshed).not.toContain('role="alert"');
       expect(read).toHaveBeenCalledTimes(4);
     },

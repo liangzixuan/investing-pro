@@ -24,7 +24,7 @@ acceptance under the [roadmap](PRODUCT_ROADMAP.md).
 
 ## BEA release agenda
 
-The current candidate adds an Economic calendar below the company board.
+The BEA agenda appears below the company board.
 Deployment status remains in [Current work](CURRENT_WORK.md). Load agenda makes
 one explicit read of the official BEA schedule for the next 30 elapsed days.
 Series names and release times appear in Eastern time with daylight-saving
@@ -53,8 +53,13 @@ The shared parser owns and freezes accepted response data. The local research
 profile retains its separate transport and owner-activity lifetime. See the
 [source specification](../specs/005-bea-release-agenda/spec.md) for normalization
 and source-rights evidence. Synthetic API, client and native journeys exercise
-failure and lifetime boundaries; live service, native execution and physical
-acceptance retain their separate evidence.
+failure and lifetime boundaries. The accepted candidate native report contains
+22 cases on a PR merge with the same source tree. Its two BEA final frames do not
+show the calendar; exact dates and recovery behavior are verified by executed
+Java assertions. Invented-data Brave desktop and 390-pixel checks cover the shared
+agenda layout. Actual-main checks include a separately accepted 22-case native
+gate. API, website and signed Android delivery are accepted.
+No new live authenticated managed read or physical use is established.
 
 ## Dated raw-close change
 

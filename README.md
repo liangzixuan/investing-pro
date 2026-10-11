@@ -54,6 +54,7 @@ accepted website and signed Android releases, evidence limits and remaining work
 - [Product roadmap](docs/PRODUCT_ROADMAP.md): Android-first delivery order and longer-term goals.
 - [Architecture](docs/ARCHITECTURE.md): runtime profiles, module ownership and trust boundaries.
 - [Agent instructions](AGENTS.md): repository working rules and verification.
+- [Design guide](DESIGN.md): interface conventions, profile themes and accessibility.
 - [AI context guide](docs/AI_CONTEXT.md): reading current source and the pending Repomix integration.
 
 The [capability guide](docs/CAPABILITY_STATUS.md) retains the broader local-app

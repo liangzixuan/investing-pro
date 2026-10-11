@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { ManagedSessionScreen } from "../../src/clerk-trial/ManagedWorkspaceScreen";
+import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
 import "../../src/clerk-trial/trial.css";
 import { createFixture } from "./fixture";
 
@@ -38,18 +39,22 @@ const fixture = await createFixture(scenario ?? "default");
 function Fixture() {
   const state = useSyncExternalStore(fixture.subscribe, fixture.getSnapshot);
   return (
-    <main className="clerk-trial">
-      <header>
-        <h1>Invented managed workspace test</h1>
+    <>
+      <aside aria-label="Invented fixture identification">
+        <p>
+          <strong>Invented managed workspace test</strong>
+        </p>
         <p>No signed-in account, network, provider, or saved owner data.</p>
-      </header>
-      <ManagedSessionScreen
-        session={fixture.session}
-        api={fixture.api}
-        apiOrigin="https://managed-fixture.invalid"
-        marketsCohort={fixture.marketsCohort}
-        androidBack={App}
-      />
+      </aside>
+      <TrialFrame managed>
+        <ManagedSessionScreen
+          session={fixture.session}
+          api={fixture.api}
+          apiOrigin="https://managed-fixture.invalid"
+          marketsCohort={fixture.marketsCohort}
+          androidBack={App}
+        />
+      </TrialFrame>
       <aside aria-label="Invented fixture diagnostics">
         <h2>Fixture diagnostics</h2>
         <pre
@@ -171,7 +176,7 @@ function Fixture() {
           Settle cancelled fixture response
         </button>
       </aside>
-    </main>
+    </>
   );
 }
 const root = document.getElementById("root");
