@@ -2,6 +2,8 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 
 import {
   encodeMainWatchlistPayload,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
+  parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +15,9 @@ import * as repositoryModule from "./appwrite-watchlist-repository";
 import * as catalogModule from "./managed-workspace-catalog";
 import * as annualAdmissionModule from "./managed-sec-annual-admission";
 import * as eodAdmissionModule from "./managed-eod-admission";
+import * as beaProviderModule from "./bea-release-provider";
+import * as annualServiceModule from "./managed-sec-annual-service";
+import * as eodServiceModule from "./managed-eod-service";
 import {
   MANAGED_EOD_MAPPING_CANDIDATES,
   MANAGED_EOD_TOKEN_ENVIRONMENT_KEY,
@@ -150,6 +155,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
@@ -1244,4 +1250,232 @@ describe("managed EOD composed function", () => {
       vi.useRealTimers();
     }
   });
+});
+
+describe("managed BEA calendar composed function", () => {
+  const path = MANAGED_ECONOMIC_CALENDAR_PATH;
+  const schedule = () => ({
+    "Invented GDP": {
+      release_dates: [new Date(Date.now() + 86_400_000).toISOString()],
+    },
+  });
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "loads one fixed public request for the signed %s caller without execution credentials or storage",
+    async (origin) => {
+      const f = memoryRepository();
+      const annual = vi.spyOn(
+        annualServiceModule,
+        "createManagedSecAnnualService",
+      );
+      const eod = vi.spyOn(eodServiceModule, "createManagedEodService");
+      const provider = vi.spyOn(beaProviderModule, "createBeaReleaseProvider");
+      const fetch = vi.fn(() => Promise.resolve(Response.json(schedule())));
+      vi.stubGlobal("fetch", fetch);
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      expect(provider).not.toHaveBeenCalled();
+      const answer = (await run(
+        context({
+          path,
+          headers: {
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        }),
+      )) as { status: number; body: unknown; headers: Record<string, string> };
+      expect(answer.status).toBe(200);
+      expect(parseManagedEconomicCalendar(answer.body)?.events[0]?.series).toBe(
+        "Invented GDP",
+      );
+      expect(answer.headers["cache-control"]).toBe("no-store");
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
+        "https://apps.bea.gov/API/signup/release_dates.json",
+        {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "omit",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          cache: "no-store",
+          signal: expect.any(AbortSignal) as AbortSignal,
+        },
+      );
+      expect(provider).toHaveBeenCalledOnce();
+      expect(annual).not.toHaveBeenCalled();
+      expect(eod).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    { method: "POST", bodyBinary: Buffer.from("{}") },
+    { method: "HEAD" },
+    { bodyBinary: Buffer.from("x") },
+    { queryString: "days=365" },
+    { headers: { origin: ORIGIN } },
+    { headers: { origin: "https://untrusted.example" } },
+  ])(
+    "denies an unadmitted calendar request before upstream or repository work %#",
+    async (patch) => {
+      const f = memoryRepository();
+      const provider = vi.spyOn(beaProviderModule, "createBeaReleaseProvider");
+      const answer = (await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path, ...patch }))) as { status: number };
+      expect([400, 401, 403, 405]).toContain(answer.status);
+      expect(provider).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+  it("includes default-entry configuration work in its total deadline before BEA can start", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    const validate = configModule.validateClerkTrialFunctionConfiguration;
+    vi.spyOn(
+      configModule,
+      "validateClerkTrialFunctionConfiguration",
+    ).mockImplementation((input) => {
+      elapsed = 10_000;
+      return validate(input);
+    });
+    vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
+    vi.stubGlobal("__MANAGED_SEC_ANNUAL_CONFIG__", null);
+    const f = memoryRepository();
+    expect(await main(context({ path }))).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("bounds stalled authentication and rejects its late acceptance without creating a provider", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: authModule.ClerkTrialAuthResult) => void;
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const provider = vi.spyOn(beaProviderModule, "createBeaReleaseProvider");
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    finish({
+      status: "allowed",
+      principal: { userId: "invented-calendar-owner" },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(provider).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("bounds provider work by time left after auth, closes it, and makes no retry", async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(() => {
+      elapsed = 4_000;
+      return Promise.resolve({
+        status: "allowed",
+        principal: { userId: "invented-calendar-owner" },
+      });
+    });
+    const original = beaProviderModule.createBeaReleaseProvider;
+    const close = vi.fn();
+    vi.spyOn(beaProviderModule, "createBeaReleaseProvider").mockImplementation(
+      () => {
+        const provider = original();
+        return {
+          load: provider.load.bind(provider),
+          close: () => {
+            close();
+            provider.close();
+          },
+        };
+      },
+    );
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      () => new Promise(() => undefined),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(5_999);
+    expect(close).not.toHaveBeenCalled();
+    elapsed = 10_000;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("checks the total deadline after reading the serialized response body", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(Response.json(schedule()))),
+    );
+    vi.spyOn(Response.prototype, "text").mockImplementation(() => {
+      elapsed = 10_000;
+      return Promise.resolve("{}");
+    });
+    const f = memoryRepository();
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path })),
+    ).toMatchObject({ status: 408, body: { error: "request_timeout" } });
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it.each(["invalid", "failure"] as const)(
+    "returns generic unavailable for %s provider output without a source body",
+    async (failure) => {
+      const f = memoryRepository();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          failure === "failure"
+            ? Promise.reject(new Error("private-provider-body"))
+            : Promise.resolve(Response.json({ "private-provider-body": {} })),
+        ),
+      );
+      const answer = await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path }));
+      expect(answer).toMatchObject({
+        status: 503,
+        body: { error: "unavailable" },
+      });
+      expect(JSON.stringify(answer)).not.toContain("private-provider-body");
+      expect(globalThis.fetch).toHaveBeenCalledOnce();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
 });

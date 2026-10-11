@@ -12,11 +12,102 @@ import {
   recoveryNoteDraft,
   recoverySavedNote,
   signOutNoteDraft,
+  beaAgenda,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
+
+describe("bounded invented BEA journeys", () => {
+  it("retains dated results and the complete dirty draft through failures, cancellation and navigation", async () => {
+    const fixture = await createFixture("bea-agenda");
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Calendar research draft");
+    workspace.move("listing-zero", 1);
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    workspace.setView("markets");
+    expect(fixture.getSnapshot().calendar).toBe(0);
+    await workspace.agenda.load();
+    expect(workspace.agenda.getSnapshot().agenda).toEqual(beaAgenda);
+    await workspace.agenda.load();
+    expect(workspace.agenda.getSnapshot()).toMatchObject({
+      agenda: beaAgenda,
+      error: "unavailable",
+      showingPrevious: true,
+    });
+    const pending = workspace.agenda.load();
+    await workspace.agenda.load();
+    expect(fixture.getSnapshot().calendar).toBe(3);
+    expect(() => fixture.settleCancelledCalendar()).toThrow("Only an aborted");
+    workspace.agenda.cancel();
+    fixture.settleCancelledCalendar();
+    await pending;
+    expect(workspace.agenda.getSnapshot().agenda).toEqual(beaAgenda);
+    const navigationRead = workspace.agenda.load();
+    workspace.setView("watchlist");
+    fixture.settleCancelledCalendar();
+    await navigationRead;
+    workspace.setView("markets");
+    expect(workspace.agenda.getSnapshot().agenda).toEqual(beaAgenda);
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 1,
+      dirty: true,
+      draft,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      calendar: 4,
+      calendarAborted: 2,
+      calendarLateResolved: 2,
+      save: 0,
+      load: 1,
+      annual: 0,
+      eod: 0,
+      marketsEod: 0,
+    });
+    workspace.coordinator.retire();
+  });
+
+  it("clears the retained calendar when catalog auth expires, then rejects the late response", async () => {
+    const fixture = await createFixture("bea-session-retirement");
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-zero", "Retire this draft");
+    await workspace.agenda.load();
+    const pending = workspace.agenda.load();
+    await workspace.refreshCatalog();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(workspace.agenda.getSnapshot()).toMatchObject({
+      agenda: null,
+      busy: false,
+    });
+    fixture.settleCancelledCalendar();
+    await pending;
+    expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    expect(fixture.getSnapshot()).toMatchObject({
+      calendar: 2,
+      calendarAborted: 1,
+      calendarLateResolved: 1,
+      save: 0,
+    });
+  });
+
+  it("does not expose agenda controls outside the two fixed scenarios", async () => {
+    const fixture = await createFixture();
+    expect(() =>
+      fixture.api.economicCalendar(new AbortController().signal),
+    ).toThrow("Unexpected invented");
+    expect(() => fixture.settleCancelledCalendar()).toThrow("Only an aborted");
+    expect(fixture.getSnapshot().calendar).toBe(0);
+  });
+});
 
 describe("bounded invented sign-out save scenarios", () => {
   async function prepared(
@@ -174,6 +265,9 @@ describe("bounded invented sign-out save scenarios", () => {
       expect(fixture.getSnapshot()).toMatchObject({
         signOut: 0,
         reviewSaveCommits: 0,
+        calendar: 0,
+        calendarAborted: 0,
+        calendarLateResolved: 0,
         reviewSaveSettled: 0,
         reviewSaveAborted: 0,
       });
@@ -1003,6 +1097,9 @@ describe("Android managed fixture startup", () => {
         refreshScenario: false,
         refreshFailed: 0,
         catalogRecovery: scenario === "catalog-startup-recovery",
+        calendar: 0,
+        calendarAborted: 0,
+        calendarLateResolved: 0,
         catalogReleased: 0,
         eod: 0,
         eodAborted: 0,

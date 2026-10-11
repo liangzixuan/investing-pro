@@ -22,6 +22,7 @@ import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { economicCalendarFixture } from "./economic-calendar-fixture";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -176,6 +177,7 @@ function deferred<T>() {
 }
 function fixture(initial = payload) {
   const api: ManagedApi = {
+    economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     annualReport: vi.fn(),
     load: vi
@@ -278,6 +280,37 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  it("shows the explicitly loaded dated agenda in Markets and hides it after shared retirement", async () => {
+    const { workspace, api, html } = fixture();
+    workspace.setView("markets");
+    const read = vi
+      .mocked(api.economicCalendar)
+      .mockResolvedValue(economicCalendarFixture());
+    expect(html()).toContain("Load agenda");
+    expect(read).not.toHaveBeenCalled();
+    await workspace.agenda.load();
+    const loaded = html();
+    expect(loaded).toContain("Refresh agenda");
+    expect(loaded).toContain("Invented October release");
+    expect(loaded).toContain("8:30 AM EDT");
+    expect(loaded).toContain("8:30 AM EST");
+    expect(loaded).toContain('dateTime="2026-10-20T18:00:00.000Z"');
+    expect(loaded).not.toContain("local access");
+    read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    await workspace.agenda.load();
+    const previous = html();
+    expect(previous).toContain("Previous agenda");
+    expect(previous).toContain("could not be verified");
+    expect(previous).toContain("Invented October release");
+    workspace.setView("watchlist");
+    expect(html()).not.toContain("bea-release-agenda");
+    workspace.setView("markets");
+    expect(html()).toContain("Invented October release");
+    expect(read).toHaveBeenCalledTimes(2);
+    workspace.coordinator.retire();
+    expect(html()).not.toContain("bea-release-agenda");
+    expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+  });
   it("binds the Price action to the captured visit and latest shared note without saving or loading", async () => {
     const { workspace, api } = fixture({
       ...payload,

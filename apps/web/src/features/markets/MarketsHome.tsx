@@ -113,7 +113,17 @@ export function MarketsHome(props: MarketsHomeProps) {
             });
         }}
       />
-      <BeaReleaseAgenda {...agenda} enabled={props.enabled} />
+      <BeaReleaseAgenda
+        {...agenda}
+        error={
+          agenda.error === null ||
+          agenda.error === "invalid_response" ||
+          agenda.error === "rate_limited"
+            ? agenda.error
+            : "unavailable"
+        }
+        enabled={props.enabled}
+      />
       <FedMonetaryAnnouncements {...announcements} enabled={props.enabled} />
     </div>
   );

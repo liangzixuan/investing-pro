@@ -1,4 +1,8 @@
 import {
+  MANAGED_ECONOMIC_CALENDAR_LIMITS,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
+  parseManagedEconomicCalendar,
+  type PersonalEconomicCalendarDto,
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   parseManagedEodHistoryRequest,
@@ -39,6 +43,9 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  economicCalendar: (
+    signal: AbortSignal,
+  ) => Promise<PersonalEconomicCalendarDto>;
   eodHistory: (
     request: ManagedEodHistoryRequestDto,
     signal: AbortSignal,
@@ -93,7 +100,7 @@ export class ManagedEodCooldownError extends Error {
   }
 }
 
-type RequestKind = "watchlist" | "resolve" | "annual" | "eod";
+type RequestKind = "watchlist" | "resolve" | "annual" | "eod" | "calendar";
 
 function annualCooldown(value: unknown): never {
   if (
@@ -165,6 +172,19 @@ function responseError(
   value: unknown,
   kind: RequestKind,
 ): never {
+  if (kind === "calendar") {
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 1 &&
+      "error" in value &&
+      ((status === 408 && value.error === "request_timeout") ||
+        (status === 503 && value.error === "unavailable"))
+    )
+      throw new TrialApiError("unavailable");
+    throw new TrialApiError("invalid_response");
+  }
   if (kind === "eod") {
     const error = parseManagedEodError(value);
     if (!error) throw new TrialApiError("invalid_response");
@@ -317,6 +337,15 @@ export function createManagedApi(
     }
   }
   return {
+    economicCalendar: (signal) =>
+      request(
+        MANAGED_ECONOMIC_CALENDAR_PATH,
+        signal,
+        MANAGED_ECONOMIC_CALENDAR_LIMITS.responseBytes,
+        parseManagedEconomicCalendar,
+        undefined,
+        "calendar",
+      ),
     eodHistory: async (input, signal) => {
       const captured = parseManagedEodHistoryRequest(input);
       if (!captured) throw new TrialApiError("invalid_request");

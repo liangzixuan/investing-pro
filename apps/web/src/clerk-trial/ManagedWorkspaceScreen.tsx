@@ -27,6 +27,7 @@ import type { TrialSession } from "./session";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
@@ -538,16 +539,21 @@ export function ManagedWorkspaceScreen({
             />
           )}
           {discovery.view === "markets" && (
-            <ManagedMarkets
-              model={workspace.markets}
-              onResearch={(kind, opener) => {
-                openResearch(opener, () => workspace.openMarketResearch(kind));
-              }}
-              onWatchlist={() => {
-                if (!setView("watchlist")) return;
-                watchlistNavigation.current?.focus();
-              }}
-            />
+            <>
+              <ManagedMarkets
+                model={workspace.markets}
+                onResearch={(kind, opener) => {
+                  openResearch(opener, () =>
+                    workspace.openMarketResearch(kind),
+                  );
+                }}
+                onWatchlist={() => {
+                  if (!setView("watchlist")) return;
+                  watchlistNavigation.current?.focus();
+                }}
+              />
+              <ManagedBeaReleaseAgenda model={workspace.agenda} />
+            </>
           )}
           <section
             className="trial-panel"

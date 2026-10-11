@@ -31,6 +31,7 @@ import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
+import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import {
   isManagedCompanyListingId,
@@ -163,6 +164,7 @@ export class ManagedWorkspace {
   readonly annual: ManagedAnnualReport;
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
+  readonly agenda: ManagedBeaReleaseAgenda;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -196,6 +198,10 @@ export class ManagedWorkspace {
     );
     this.annual = new ManagedAnnualReport(
       (request, signal) => api.annualReport(request, signal),
+      (error) => this.coordinator.readError(error),
+    );
+    this.agenda = new ManagedBeaReleaseAgenda(
+      (signal) => api.economicCalendar(signal),
       (error) => this.coordinator.readError(error),
     );
     const eodAccess = new ManagedEodAccess((request, signal) =>
@@ -253,6 +259,7 @@ export class ManagedWorkspace {
     this.annual.retire();
     this.eod.retire();
     this.markets.retire();
+    this.agenda.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
     this.searchOperation = null;
@@ -311,9 +318,13 @@ export class ManagedWorkspace {
     if (this.retired) return;
     this.closeResearch();
     if (view === this.state.view) return;
-    if (view === "markets")
+    if (view === "markets") {
       this.markets.enter(this.state.snapshot?.snapshotSha256 ?? null);
-    else this.markets.leave();
+      this.agenda.enter();
+    } else {
+      this.markets.leave();
+      this.agenda.leave();
+    }
     this.update({ view });
   }
   private invalidateCatalog() {

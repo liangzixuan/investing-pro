@@ -26,6 +26,7 @@ import {
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
+import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -103,6 +104,7 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     annualReport: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
@@ -156,6 +158,108 @@ async function ready(workspace: ManagedWorkspace) {
 }
 
 describe("managed workspace composition", () => {
+  it("loads the agenda independently of catalog and watchlist work without changing a draft", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    workspace.coordinator.replaceDraft({
+      ...empty,
+      memberships: [
+        {
+          ...listingMembership(result),
+          note: "Retained calendar research draft",
+        },
+      ],
+    });
+    const before = workspace.coordinator.getSnapshot();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValue(
+      economicCalendarFixture(),
+    );
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    await workspace.agenda.load();
+    expect(workspace.agenda.getSnapshot().agenda).toEqual(
+      economicCalendarFixture(),
+    );
+    expect(workspace.coordinator.getSnapshot()).toBe(before);
+    expect(api.status).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("keeps the agenda through company research, cancels when leaving Markets and fences a late session error", async () => {
+    const { workspace, api } = fixture();
+    await ready(workspace);
+    workspace.add(result);
+    workspace.note(result.listingId, "Unchanged draft while reading calendar");
+    workspace.setView("markets");
+    const before = workspace.coordinator.getSnapshot();
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const agenda = workspace.agenda.getSnapshot().agenda;
+    workspace.openWatchlistAnnual(before.draft!.memberships[0]!);
+    expect(workspace.getSnapshot().research?.section).toBe("annual");
+    expect(workspace.agenda.getSnapshot().agenda).toBe(agenda);
+    const held =
+      deferred<Awaited<ReturnType<ManagedApi["economicCalendar"]>>>();
+    vi.mocked(api.economicCalendar).mockReturnValueOnce(held.promise);
+    const pending = workspace.agenda.load();
+    workspace.closeResearch();
+    expect(workspace.agenda.getSnapshot().busy).toBe(true);
+    workspace.setView("watchlist");
+    expect(vi.mocked(api.economicCalendar).mock.calls[1]![0].aborted).toBe(
+      true,
+    );
+    workspace.setView("markets");
+    held.reject(new TrialApiError("unauthenticated"));
+    await pending;
+    expect(workspace.agenda.getSnapshot()).toMatchObject({
+      agenda,
+      busy: false,
+      showingPrevious: true,
+      error: null,
+    });
+    expect(workspace.coordinator.getSnapshot()).toBe(before);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("retires the shared workspace on current agenda authentication loss and aborts agenda work on other session rejection", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockRejectedValueOnce(
+      new TrialApiError("unauthenticated"),
+    );
+    await workspace.agenda.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      saved: null,
+      draft: null,
+    });
+    expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    const second = fixture();
+    await second.workspace.coordinator.load();
+    second.workspace.setView("markets");
+    const held =
+      deferred<Awaited<ReturnType<ManagedApi["economicCalendar"]>>>();
+    vi.mocked(second.api.economicCalendar).mockReturnValueOnce(held.promise);
+    const pending = second.workspace.agenda.load();
+    second.workspace.coordinator.readError(new TrialApiError("access_denied"));
+    expect(
+      vi.mocked(second.api.economicCalendar).mock.calls[0]![0].aborted,
+    ).toBe(true);
+    held.resolve(economicCalendarFixture());
+    await pending;
+    expect(second.workspace.agenda.getSnapshot()).toMatchObject({
+      agenda: null,
+      busy: false,
+    });
+    expect(second.workspace.coordinator.getSnapshot().phase).toBe("retired");
+  });
   it("adds exact listings, normalizes notes, orders, removes, explicitly saves and reopens the same list", async () => {
     const { workspace, api, session, saved } = fixture();
     await ready(workspace);

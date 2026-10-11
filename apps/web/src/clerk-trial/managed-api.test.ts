@@ -4,6 +4,8 @@ import {
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_ECONOMIC_CALENDAR_LIMITS,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
   type ManagedCatalogSnapshotDto,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
@@ -23,6 +25,7 @@ import {
 import * as annualDecoder from "../lib/sec-annual-evidence-response";
 import type { TrialSession } from "./session";
 import { eodRequest, eodResponse } from "./eod-history-fixture";
+import { economicCalendarFixture } from "./economic-calendar-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const payload = {
@@ -99,6 +102,83 @@ afterEach(() => {
 });
 
 describe("managed browser transport", () => {
+  it("requests the BEA calendar explicitly with the session bearer and returns an owned frozen dated packet", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = economicCalendarFixture();
+    fetcher.mockResolvedValue(Response.json(wire));
+    const result = await api.economicCalendar(abort.signal);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      `${origin}${MANAGED_ECONOMIC_CALENDAR_PATH}`,
+    );
+    expect(fetcher.mock.calls[0]?.[1]).toMatchObject({
+      method: "GET",
+      headers: { Authorization: "Bearer synthetic-token" },
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+    });
+    expect(fetcher.mock.calls[0]?.[1]?.body).toBeUndefined();
+    expect(result).toEqual(wire);
+    expect(Object.isFrozen(result)).toBe(true);
+    expect(Object.isFrozen(result.window)).toBe(true);
+    expect(Object.isFrozen(result.events[0])).toBe(true);
+  });
+
+  it.each([
+    [408, { error: "request_timeout" }, "unavailable"],
+    [503, { error: "unavailable" }, "unavailable"],
+    [401, { error: "unauthenticated" }, "unauthenticated"],
+    [403, { error: "access_denied" }, "access_denied"],
+    [503, { error: "commit_unknown" }, "invalid_response"],
+    [409, { error: "catalog_changed" }, "invalid_response"],
+    [408, { error: "request_timeout", extra: true }, "invalid_response"],
+  ] as const)(
+    "maps calendar status %s with its exact error body %j",
+    async (status, error, code) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(Response.json(error, { status }));
+      await expect(api.economicCalendar(abort.signal)).rejects.toMatchObject({
+        code,
+      });
+    },
+  );
+
+  it("rejects invalid calendar provenance and oversized calendar responses", async () => {
+    const { api, fetcher, abort } = fixture();
+    const wire = economicCalendarFixture();
+    fetcher.mockResolvedValueOnce(
+      Response.json({
+        ...wire,
+        source: { ...wire.source, scheduleUrl: "https://unreviewed.invalid" },
+      }),
+    );
+    await expect(api.economicCalendar(abort.signal)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    fetcher.mockResolvedValueOnce(
+      new Response(
+        " ".repeat(MANAGED_ECONOMIC_CALENDAR_LIMITS.responseBytes + 1),
+        { headers: { "content-type": "application/json" } },
+      ),
+    );
+    await expect(api.economicCalendar(abort.signal)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+
+  it("aborts a held calendar request and ignores its late valid packet", async () => {
+    const { api, fetcher, abort } = fixture();
+    const held = deferred<Response>();
+    fetcher.mockReturnValue(held.promise);
+    const pending = api.economicCalendar(abort.signal);
+    await Promise.resolve();
+    abort.abort();
+    await expect(pending).rejects.toMatchObject({ code: "aborted" });
+    held.resolve(Response.json(economicCalendarFixture()));
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
+  });
   it("captures the EOD request before token acquisition and owns the parsed exact close packet", async () => {
     const { api, fetcher, session, abort } = fixture();
     const token = deferred<string>();

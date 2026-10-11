@@ -31,7 +31,8 @@ button:disabled {
 }
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+.clerk-trial .bea-agenda-source a:focus-visible {
   outline: 3px solid #087dc1;
   outline-offset: 3px;
 }
@@ -366,7 +367,8 @@ textarea:disabled {
   cursor: pointer;
 }
 .managed-annual-report a,
-.managed-annual-report summary {
+.managed-annual-report summary,
+.clerk-trial .bea-agenda-source a {
   color: #086650;
 }
 .managed-annual-report ol {

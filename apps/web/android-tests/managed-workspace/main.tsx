@@ -26,6 +26,8 @@ if (
   scenario !== "signout-save-review" &&
   scenario !== "signout-uncertain-review" &&
   scenario !== "raw-close-comparison" &&
+  scenario !== "bea-agenda" &&
+  scenario !== "bea-session-retirement" &&
   scenario !== "markets-selected-price"
 )
   throw new Error("Unknown invented Android test scenario");
@@ -78,6 +80,16 @@ function Fixture() {
               {JSON.stringify(fixture.signOutSavedWatchlist())}
             </pre>
           </>
+        )}
+        {(scenario === "bea-agenda" ||
+          scenario === "bea-session-retirement") && (
+          <button
+            id="settle-cancelled-calendar"
+            disabled={state.calendarAborted !== state.calendarLateResolved + 1}
+            onClick={fixture.settleCancelledCalendar}
+          >
+            Settle cancelled invented calendar response
+          </button>
         )}
         {scenario === "watchlist-recovery" && (
           <button

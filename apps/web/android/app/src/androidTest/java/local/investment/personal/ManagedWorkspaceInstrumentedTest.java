@@ -159,6 +159,10 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("signout-save-review");
         if (testName.getMethodName().equals("uncertainSignOutReviewClearsLocalStateAndFencesLateReceipt"))
             selectFixtureScenario("signout-uncertain-review");
+        if (testName.getMethodName().equals("beaAgendaRefreshCancelAndNavigationPreserveDraft"))
+            selectFixtureScenario("bea-agenda");
+        if (testName.getMethodName().equals("beaSessionExpiryClearsAgendaAndFencesLateResponse"))
+            selectFixtureScenario("bea-session-retirement");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -185,6 +189,114 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void beaAgendaRefreshCancelAndNavigationPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareBeaDraft();
+        assertBeaCounts(0, 0, 0);
+        clickBeaAction("Load agenda");
+        assertBeaPacket();
+        assertBeaCounts(1, 0, 0);
+        assertBeaDraft();
+
+        clickBeaAction("Refresh agenda");
+        awaitPage("failed refresh labels the original loaded window",
+            "document.querySelector('.bea-release-agenda [role=alert]')?.textContent.includes('previous loaded window')");
+        assertBeaPacket();
+        assertBeaCounts(2, 0, 0);
+        clickBeaAction("Refresh agenda");
+        awaitPage("one calendar refresh is held", DIAGNOSTICS + ".calendar === 3" +
+            " && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        clickBeaAction("Cancel agenda");
+        assertBeaCounts(3, 1, 0);
+        click("#settle-cancelled-calendar");
+        assertBeaCounts(3, 1, 1);
+        assertBeaPacket();
+        assertBeaDraft();
+
+        clickBeaAction("Refresh agenda");
+        awaitPage("fourth explicit calendar read is pending", DIAGNOSTICS + ".calendar === 4");
+        selectWorkspaceView("My Watchlist");
+        assertBeaCounts(4, 2, 1);
+        click("#settle-cancelled-calendar");
+        assertBeaCounts(4, 2, 2);
+        assertBeaDraft();
+        selectWorkspaceView("Markets");
+        assertBeaPacket();
+        assertBeaCounts(4, 2, 2);
+        scenario.moveToState(Lifecycle.State.CREATED);
+        scenario.moveToState(Lifecycle.State.RESUMED);
+        assertBeaPacket();
+        assertBeaCounts(4, 2, 2);
+        assertBeaDraft();
+        assertEquals("Calendar actions preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    @Test
+    public void beaSessionExpiryClearsAgendaAndFencesLateResponse() throws Exception {
+        prepareBeaDraft();
+        clickBeaAction("Load agenda");
+        assertBeaPacket();
+        clickBeaAction("Refresh agenda");
+        awaitPage("calendar read is held before session expiry", DIAGNOSTICS + ".calendar === 2");
+        assertBeaCounts(2, 0, 0);
+        // The global catalog action can expire the session while Markets and its
+        // held agenda read remain mounted; retirement must abort both models.
+        click(CATALOG_REFRESH);
+        awaitPage("expired session removes retained agenda and the entire draft",
+            DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
+            " && document.querySelector('#managed-note-0') === null && document.querySelector('.bea-release-agenda') === null");
+        click("#settle-cancelled-calendar");
+        assertBeaCounts(2, 1, 1);
+        awaitPage("late response cannot remount the retired workspace",
+            "document.querySelector('.managed-navigation') === null && document.querySelector('.bea-release-agenda') === null" +
+            " && !document.body.textContent.includes('Invented GDP') && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
+        assertFixtureBoundary();
+    }
+
+    private void prepareBeaDraft() throws Exception {
+        awaitPage("calendar starts unloaded", "document.querySelector('.bea-release-agenda') !== null" +
+            " && document.querySelector('.bea-release-agenda time') === null && " + DIAGNOSTICS + ".calendar === 0");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("calendar test reorders the draft", "document.querySelector('.managed-memberships > li > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Markets");
+        assertBeaDraft();
+    }
+
+    private void clickBeaAction(String label) {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[contains(@class,'bea-release-agenda')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertBeaPacket() throws Exception {
+        awaitPage("BEA packet preserves both simultaneous releases, DST and original dates",
+            "document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li span')).map(e => e.textContent).join('|') === 'Invented GDP|Invented Income|Invented Trade'" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li time')).map(e => e.dateTime).join('|') === '2026-10-29T12:30:00.000Z|2026-10-29T12:30:00.000Z|2026-11-04T13:30:00.000Z'" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li time')).map(e => e.textContent).join('|') === '8:30 AM EDT|8:30 AM EDT|8:30 AM EST'" +
+            " && document.querySelectorAll('.bea-agenda-day').length === 2" +
+            " && document.querySelector('.bea-agenda-source a')?.href === 'https://www.bea.gov/news/schedule'");
+    }
+
+    private void assertBeaDraft() throws Exception {
+        awaitPage("calendar preserves unsaved watchlist order, notes and base version",
+            "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-note-0')?.value === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-memberships > li > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void assertBeaCounts(int reads, int aborted, int late) throws Exception {
+        awaitPage("bounded BEA requests and no implicit price, annual or save actions",
+            DIAGNOSTICS + ".calendar === " + reads + " && " + DIAGNOSTICS + ".calendarAborted === " + aborted +
+            " && " + DIAGNOSTICS + ".calendarLateResolved === " + late + " && " + DIAGNOSTICS + ".save === 0" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".annual === 0" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
     }
 
     @Test
@@ -2270,7 +2382,8 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
-            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note"));
+            scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
+            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

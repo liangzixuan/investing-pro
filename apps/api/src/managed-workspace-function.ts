@@ -10,6 +10,7 @@ import {
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
 } from "@research-cockpit/contracts";
 import { TablesDB } from "node-appwrite";
 
@@ -44,6 +45,11 @@ import {
   awaitManagedEod,
   ManagedEodServiceError,
 } from "./managed-eod-service";
+import {
+  createManagedEconomicCalendarService,
+  awaitManagedEconomicCalendar,
+  ManagedEconomicCalendarServiceError,
+} from "./managed-economic-calendar-service";
 import {
   createManagedCatalogService,
   getManagedWorkspaceCatalog,
@@ -87,6 +93,7 @@ const PATHS: readonly string[] = [
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_EOD_HISTORY_PATH,
+  MANAGED_ECONOMIC_CALENDAR_PATH,
 ];
 const FORWARDED_HEADERS = [
   "authorization",
@@ -192,11 +199,11 @@ export function createManagedWorkspaceFunction(
       return res.json({ error: "origin_denied" }, 403, headers);
     headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
+    const annual = req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
+    const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH;
     const sourceController =
-      req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH || eod
-        ? new AbortController()
-        : undefined;
+      annual || eod || calendar ? new AbortController() : undefined;
     const sourceTimer =
       sourceController === undefined
         ? undefined
@@ -218,7 +225,7 @@ export function createManagedWorkspaceFunction(
             ? nativeAuth
             : webAuth,
         catalog,
-        ...(sourceController === undefined || eod
+        ...(!annual
           ? {}
           : {
               annual: createManagedSecAnnualService({
@@ -261,6 +268,9 @@ export function createManagedWorkspaceFunction(
                 },
               }),
             }),
+        ...(!calendar
+          ? {}
+          : { calendar: createManagedEconomicCalendarService({ startedAt }) }),
         ...(!eod
           ? {}
           : {
@@ -332,9 +342,14 @@ export function createManagedWorkspaceFunction(
       dispatchedWrite =
         req.method === "POST" && req.path === MANAGED_WATCHLIST_PATH;
       const response = await (sourceController
-        ? eod
-          ? awaitManagedEod(handle(request), sourceController.signal)
-          : awaitManagedSecAnnual(handle(request), sourceController.signal)
+        ? calendar
+          ? awaitManagedEconomicCalendar(
+              handle(request),
+              sourceController.signal,
+            )
+          : eod
+            ? awaitManagedEod(handle(request), sourceController.signal)
+            : awaitManagedSecAnnual(handle(request), sourceController.signal)
         : handle(request));
       const body = await response.text();
       if (
@@ -342,9 +357,11 @@ export function createManagedWorkspaceFunction(
         (sourceController.signal.aborted ||
           performance.now() - startedAt >= 10_000)
       )
-        throw eod
-          ? new ManagedEodServiceError("request_timeout")
-          : new ManagedSecAnnualServiceError("request_timeout");
+        throw calendar
+          ? new ManagedEconomicCalendarServiceError("request_timeout")
+          : eod
+            ? new ManagedEodServiceError("request_timeout")
+            : new ManagedSecAnnualServiceError("request_timeout");
       return res.text(
         body,
         response.status,
@@ -357,7 +374,8 @@ export function createManagedWorkspaceFunction(
             error instanceof BridgeFailure
               ? error.code
               : error instanceof ManagedSecAnnualServiceError ||
-                  error instanceof ManagedEodServiceError
+                  error instanceof ManagedEodServiceError ||
+                  error instanceof ManagedEconomicCalendarServiceError
                 ? error.code
                 : dispatchedWrite
                   ? "commit_unknown"
@@ -366,7 +384,8 @@ export function createManagedWorkspaceFunction(
         error instanceof BridgeFailure
           ? error.status
           : (error instanceof ManagedSecAnnualServiceError ||
-                error instanceof ManagedEodServiceError) &&
+                error instanceof ManagedEodServiceError ||
+                error instanceof ManagedEconomicCalendarServiceError) &&
               error.code === "request_timeout"
             ? 408
             : 503,
