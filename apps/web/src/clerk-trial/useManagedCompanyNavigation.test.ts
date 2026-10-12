@@ -191,12 +191,17 @@ function fixture() {
       }),
     ),
   };
-  const workspace = new ManagedWorkspace(api, {
-    userId: "invented",
-    sessionId: "invented",
-    getToken: vi.fn(),
-    signOut: vi.fn(),
-  });
+  const workspace = new ManagedWorkspace(
+    api,
+    {
+      userId: "invented",
+      sessionId: "invented",
+      getToken: vi.fn(),
+      signOut: vi.fn(),
+    },
+    undefined,
+    { priceCoverage: [eodSelection.listing] },
+  );
   workspace.setView("discover");
   const render = () => {
     mount.index = 0;
