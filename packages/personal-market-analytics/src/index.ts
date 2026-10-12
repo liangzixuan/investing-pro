@@ -5,6 +5,7 @@ export {
   calculatePersonalMarketBoard,
   calculatePersonalEodReference,
   calculatePersonalRawCloseChange,
+  comparePersonalRawCloseChange,
   type PersonalMarketBoardIdentity,
   type PersonalMarketBoardBar,
   type PersonalMarketBoardHistory,

@@ -7,11 +7,31 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
+Release `2b3c252a6aee4d1eb21c3a6967416a7c381d9e2d`, tree
+`6f396d33eb3f55858dbae20244c6d9b61697bb42`, is live on the website. It adds
+shared-date raw-price comparisons, Precision Desk entry states and keyboard focus
+after watchlist recovery. The staging archive was promoted unchanged after owner
+approval on October 12. Production deployment `6acc6e06264dd8676f54` was verified
+active at 05:20:37.707 UTC; previous deployment `6acc131b1cc9946cee6b` is retained
+for rollback. Source checks, the exact-build inert BrowserStack check and Android
+package checks passed. The API remains unchanged.
+
+A live Brave check reused the existing session and confirmed the release marker
+and initial unloaded workspace at 1440 and 390 pixels without document overflow
+or console errors. It made no Price, Annual or agenda request, fresh sign-in or
+owner write. Signed Android 1.25.0/code 26 is delivered: 6,722,015 bytes, SHA-256
+`2af548c10e7ee65f38553ee9d40c8cc12d96165380f912c4f0dd7457ec0e40ab`.
+All nine delivered files and the unchanged prior 1.24 release passed independent
+verification. Physical-device installation is not established. Later source
+increments below remain outside this release.
+
+## Earlier Precision Desk release
+
 The Precision Desk overhaul in [PR75](https://github.com/liangzixuan/investing-pro/pull/75)
 and its staging font-policy repair in [PR76](https://github.com/liangzixuan/investing-pro/pull/76)
 have accepted source at main `c13b6e4bff3e1b78c9cc82f0b5ad85884c2cc9bf`, tree
 `8e9a26b57bb8ba9571d0623c8b75c96d0854cd49`.
-The website is live and signed Android 1.24.0/code 25 is delivered.
+This website release preceded 2b3c252; signed Android 1.24.0/code 25 remains preserved.
 
 The managed workspace now uses a dark left rail, periwinkle actions, locally
 bundled Inter and Tabler icons, listing/detail Markets and one selected watchlist
@@ -170,7 +190,29 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The active MSFT increment adds a fourth Discover listing and a third Annual
+The active comparison-ordering increment adds Board order, Highest raw change
+and Lowest raw change to the complete three-listing shared-date comparison.
+Ordering uses exact endpoint ratios before display rounding. Exact ties retain
+symbol, exchange and listing-ID order in both directions. The table and its source
+details share the selected order; the board, chart selection and note draft stay
+unchanged. Missing history still withholds the complete comparison.
+
+The labelled order selector remains available through missing or insufficient
+history, retaining its choice while the view is mounted. Local verification passed
+109 analytics tests and 92 comparison/Markets tests, types and scoped lint/format.
+Independent arithmetic and UI reviews and source boundaries passed. Brave checks
+with invented data at 1440, 390 and 320 pixels confirmed exact tiny-change and tie
+ordering, matching source details, retained request dates, selection and draft
+preservation, company Back, cancellation, late-response rejection and retirement.
+The results region kept keyboard focus through refresh and unavailable states;
+the narrow table supports arrow-key scrolling without document overflow.
+No console errors were observed. Native picker keyboard selection was not
+established by these browser checks. The existing invented Android journey now
+exercises all three choices and their request/draft invariants; execution and
+hosted acceptance remain pending. See the
+[comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
+
+The accepted MSFT increment adds a fourth Discover listing and a third Annual
 issuer. Its common-stock identity is bound to the reviewed SEC cover, unique
 OpenFIGI result and dated MIC relationship. Existing AAPL, GOOG and GOOGL
 identities and price mappings remain unchanged. The catalog keeps its source
@@ -190,7 +232,14 @@ Annual note append/Save/reload, navigation cancellation, late-response rejection
 and session retirement. No overflow or console errors were observed. The first
 boundary run caught a package import in an Annual test. The test now uses the
 local catalog API, all 19 Annual tests pass again, and the unchanged dependency
-rule passes. Hosted checks and live delivery are separate.
+rule passes. Hosted CI then caught a navigation fixture without explicit coverage
+for its invented listing. The fixture now declares that coverage, with all 12
+navigation tests, types and scoped checks passing; production guards are unchanged.
+All eight hosted checks passed for
+`d44fc5f0d4b3a8d2785c5a40ceec3e4b8ca3ae69`, including both CI platforms and
+Android. [PR83](https://github.com/liangzixuan/investing-pro/pull/83) merged as
+`0b4922b78f33c7a1e49c823ff8433a8728efb234` on October 12 at 05:50:21 UTC.
+Actual-main and live-delivery acceptance remain separate.
 See the [catalog](MANAGED_SECURITY_CATALOG.md),
 [Annual](MANAGED_SEC_ANNUAL.md) and
 [research navigation](MANAGED_RESEARCH_NAVIGATION.md) guides.

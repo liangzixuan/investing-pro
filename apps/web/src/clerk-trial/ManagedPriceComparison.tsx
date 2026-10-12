@@ -1,19 +1,53 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import {
   deriveManagedPriceComparison,
+  orderManagedPriceComparison,
+  type ManagedPriceComparisonOrder,
   type ManagedPriceComparisonResult,
   type ManagedPriceComparisonState,
 } from "./managed-price-comparison";
 
 type ActiveComparison = NonNullable<ManagedPriceComparisonResult>;
+const ORDER_LABELS = {
+  board: "Board order",
+  highest: "Highest raw change",
+  lowest: "Lowest raw change",
+} as const;
+const SORT_DIRECTIONS = {
+  board: "none",
+  highest: "descending",
+  lowest: "ascending",
+} as const;
 
 export function ManagedPriceComparison({
   state,
 }: {
   state: ManagedPriceComparisonState;
 }) {
+  const [order, setOrder] = useState<ManagedPriceComparisonOrder>("board");
+  return (
+    <ManagedPriceComparisonView
+      state={state}
+      order={order}
+      onOrder={setOrder}
+    />
+  );
+}
+
+export function ManagedPriceComparisonView({
+  state,
+  order,
+  onOrder,
+}: {
+  state: ManagedPriceComparisonState;
+  order: ManagedPriceComparisonOrder;
+  onOrder: (order: ManagedPriceComparisonOrder) => void;
+}) {
   const id = useId();
-  const comparison = deriveManagedPriceComparison(state);
+  const comparison = orderManagedPriceComparison(
+    deriveManagedPriceComparison(state),
+    order,
+  );
   if (!comparison) return null;
   return (
     <section
@@ -21,6 +55,7 @@ export function ManagedPriceComparison({
       aria-labelledby={`${id}-heading`}
     >
       <h3 id={`${id}-heading`}>Compare raw price changes</h3>
+      <ComparisonOrder id={`${id}-order`} order={order} onOrder={onOrder} />
       {comparison.status !== "unavailable" &&
         comparison.rows.some((row) => row.showingPrevious) && (
           <p className="managed-eod-previous">
@@ -42,8 +77,9 @@ export function ManagedPriceComparison({
             {comparison.sharedDateCount} shared observed dates
           </p>
           <p id={`${id}-scroll`} className="managed-price-comparison-help">
-            All three listings in board order. Scroll the table horizontally
-            when needed; keyboard users can focus it and use the arrow keys.
+            All three listings · {ORDER_LABELS[order]}. Scroll the table
+            horizontally when needed; keyboard users can focus it and use the
+            arrow keys.
           </p>
         </>
       )}
@@ -57,7 +93,7 @@ export function ManagedPriceComparison({
         tabIndex={comparison.status === "available" ? 0 : -1}
       >
         {comparison.status === "available" ? (
-          <ComparisonTable rows={comparison.rows} />
+          <ComparisonTable rows={comparison.rows} order={order} />
         ) : (
           <ComparisonStatus comparison={comparison} />
         )}
@@ -72,6 +108,37 @@ export function ManagedPriceComparison({
       )}
       <ComparisonCoverage comparison={comparison} />
     </section>
+  );
+}
+
+function ComparisonOrder({
+  id,
+  order,
+  onOrder,
+}: {
+  id: string;
+  order: ManagedPriceComparisonOrder;
+  onOrder: (order: ManagedPriceComparisonOrder) => void;
+}) {
+  return (
+    <label className="managed-price-comparison-order" htmlFor={id}>
+      <span>Comparison order</span>
+      <select
+        id={id}
+        value={order}
+        onChange={(event) => {
+          const value = event.currentTarget.value;
+          if (value === "board" || value === "highest" || value === "lowest")
+            onOrder(value);
+        }}
+      >
+        {Object.entries(ORDER_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -111,8 +178,10 @@ function ComparisonStatus({
 
 function ComparisonTable({
   rows,
+  order,
 }: {
   rows: Extract<ActiveComparison, { status: "available" }>["rows"];
+  order: ManagedPriceComparisonOrder;
 }) {
   return (
     <table className="managed-price-comparison-values">
@@ -125,7 +194,9 @@ function ComparisonTable({
           <th scope="col">Listing</th>
           <th scope="col">First close (USD)</th>
           <th scope="col">Last close (USD)</th>
-          <th scope="col">Raw price change</th>
+          <th scope="col" aria-sort={SORT_DIRECTIONS[order]}>
+            Raw price change
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -217,6 +288,10 @@ function ComparisonCoverage({ comparison }: { comparison: ActiveComparison }) {
             decimal places. Omitted observations have dates absent from another
             listing's loaded history. Missing dates are not filled. This
             comparison makes no additional price request.
+          </p>
+          <p>
+            Ordering uses exact endpoint ratios before rounding. Exact ties use
+            symbol, exchange MIC and listing ID in that order.
           </p>
         </>
       )}

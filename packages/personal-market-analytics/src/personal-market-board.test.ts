@@ -6,6 +6,8 @@ import {
   PERSONAL_MARKET_BOARD_ROUNDING,
   calculatePersonalEodReference,
   calculatePersonalMarketBoard,
+  calculatePersonalRawCloseChange,
+  comparePersonalRawCloseChange,
   type PersonalMarketBoardBar,
   type PersonalMarketBoardIdentity,
   type PersonalMarketBoardInput,
@@ -362,6 +364,142 @@ describe("personal EOD reference", () => {
     expect(result).not.toHaveProperty("sourceTime");
     expect(result).not.toHaveProperty("freshness");
     expect(result).not.toHaveProperty("currency");
+  });
+});
+
+describe("raw close change ordering", () => {
+  it.each([
+    ["100", "110", "200", "210", 1],
+    ["100", "90", "200", "160", 1],
+    ["100", "90", "200", "200", -1],
+    ["100", "100", "200", "220", -1],
+    ["100", "100", "2", "2", 0],
+    ["0.003", "0.0033", "100.00", "110.000", 0],
+  ] as const)(
+    "compares %s→%s against %s→%s by exact proportional change",
+    (firstClose, lastClose, otherFirst, otherLast, expected) => {
+      const left = { firstClose, lastClose };
+      const right = { firstClose: otherFirst, lastClose: otherLast };
+      expect(comparePersonalRawCloseChange(left, right)).toBe(expected);
+      expect(comparePersonalRawCloseChange(right, left)).toBe(
+        expected === 0 ? 0 : -expected,
+      );
+    },
+  );
+
+  it("distinguishes tiny changes whose displayed percentages are identical", () => {
+    const left = { firstClose: "1", lastClose: "1.00000000000000001" };
+    const right = { firstClose: "1", lastClose: "1.00000000000000002" };
+    for (const value of [left, right])
+      expect(
+        calculatePersonalRawCloseChange({
+          rows: [
+            { date: previous, close: value.firstClose },
+            { date: latest, close: value.lastClose },
+          ],
+        }),
+      ).toMatchObject({ changePercent: "0.0000", direction: "up" });
+    expect(comparePersonalRawCloseChange(left, right)).toBe(-1);
+  });
+
+  it("compares full-length decimals without losing the last source digit", () => {
+    const largest = "9".repeat(64);
+    const lower = `${"9".repeat(63)}8`;
+    const smallest = `0.${"0".repeat(61)}1`;
+    expect(
+      comparePersonalRawCloseChange(
+        { firstClose: largest, lastClose: largest },
+        { firstClose: largest, lastClose: lower },
+      ),
+    ).toBe(1);
+    expect(
+      comparePersonalRawCloseChange(
+        { firstClose: smallest, lastClose: `0.${"0".repeat(61)}2` },
+        { firstClose: largest, lastClose: lower },
+      ),
+    ).toBe(1);
+  });
+
+  it.each([
+    "",
+    "NaN",
+    "Infinity",
+    "1e3",
+    " 1",
+    "01",
+    "-0",
+    "0",
+    "-1",
+    "0.0",
+    "1.",
+    ".1",
+    "9".repeat(65),
+    1,
+    null,
+    undefined,
+  ])("rejects each malformed or nonpositive operand: %j", (value) => {
+    const compare = comparePersonalRawCloseChange as (
+      left: unknown,
+      right: unknown,
+    ) => unknown;
+    const valid = { firstClose: "1", lastClose: "2" };
+    for (const key of ["firstClose", "lastClose"])
+      for (const reverse of [false, true]) {
+        const invalid = { ...valid, [key]: value };
+        expect(() =>
+          reverse ? compare(valid, invalid) : compare(invalid, valid),
+        ).toThrow("Invalid raw close comparison input.");
+      }
+  });
+
+  it("requires both exact record shapes without accepting extra identity fields", () => {
+    const compare = comparePersonalRawCloseChange as (
+      left: unknown,
+      right: unknown,
+    ) => unknown;
+    const valid = { firstClose: "1", lastClose: "2" };
+    for (const invalid of [
+      null,
+      undefined,
+      [],
+      { firstClose: "1" },
+      { lastClose: "2" },
+      { ...valid, symbol: "AAA" },
+      { ...valid, [Symbol("extra")]: true },
+      Object.create(valid),
+    ]) {
+      expect(() => compare(invalid, valid)).toThrow(TypeError);
+      expect(() => compare(valid, invalid)).toThrow(TypeError);
+    }
+  });
+
+  it("accepts frozen inputs without freezing or changing mutable inputs", () => {
+    const left = Object.freeze({ firstClose: "2.00", lastClose: "2.200" });
+    const right = { firstClose: "1.00", lastClose: "1.100" };
+    const original = { ...right };
+    expect(comparePersonalRawCloseChange(left, right)).toBe(0);
+    expect(right).toEqual(original);
+    expect(Object.isFrozen(right)).toBe(false);
+    right.lastClose = "1.200";
+    expect(comparePersonalRawCloseChange(left, right)).toBe(-1);
+  });
+
+  it("does not depend on or alter the global decimal configuration", () => {
+    const precision = Decimal.precision;
+    const rounding = Decimal.rounding;
+    try {
+      Decimal.set({ precision: 2, rounding: Decimal.ROUND_DOWN });
+      expect(
+        comparePersonalRawCloseChange(
+          { firstClose: "1", lastClose: "1.00000000000000002" },
+          { firstClose: "1", lastClose: "1.00000000000000001" },
+        ),
+      ).toBe(1);
+      expect(Decimal.precision).toBe(2);
+      expect(Decimal.rounding).toBe(Decimal.ROUND_DOWN);
+    } finally {
+      Decimal.set({ precision, rounding });
+    }
   });
 });
 

@@ -4,9 +4,14 @@ import {
 } from "@research-cockpit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ManagedPriceComparison } from "./ManagedPriceComparison";
+import {
+  ManagedPriceComparison,
+  ManagedPriceComparisonView,
+} from "./ManagedPriceComparison";
 import {
   deriveManagedPriceComparison,
+  orderManagedPriceComparison,
+  type ManagedPriceComparisonOrder,
   type ManagedPriceComparisonState,
 } from "./managed-price-comparison";
 import type { ManagedMarketsRow } from "./managed-markets";
@@ -82,6 +87,199 @@ const text = (html: string) =>
     .trim();
 
 describe("managed complete-board raw price comparison", () => {
+  it("orders the complete shared-date comparison without changing its source or board order", () => {
+    const input = state();
+    const before = JSON.stringify(input);
+    const comparison = deriveManagedPriceComparison(input);
+    if (comparison?.status !== "available")
+      throw new Error("Expected comparison");
+    expect(orderManagedPriceComparison(comparison, "board")).toBe(comparison);
+    for (const [order, symbols] of [
+      ["highest", ["AAPL", "GOOGL", "GOOG"]],
+      ["lowest", ["GOOG", "GOOGL", "AAPL"]],
+    ] as const) {
+      const result = orderManagedPriceComparison(comparison, order);
+      if (result?.status !== "available")
+        throw new Error("Expected comparison");
+      expect(result.rows.map((row) => row.listing.symbol)).toEqual(symbols);
+      expect(result.firstDate).toBe("2026-09-11");
+      expect(result.lastDate).toBe("2026-09-18");
+      expect(result.sharedDateCount).toBe(3);
+      for (const row of result.rows)
+        expect(
+          comparison.rows.find((original) => original.listing === row.listing),
+        ).toBe(row);
+    }
+    expect(comparison.rows.map((row) => row.listing.symbol)).toEqual([
+      "AAPL",
+      "GOOG",
+      "GOOGL",
+    ]);
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
+  it("ranks unequal exact ratios even when every displayed percentage is zero", () => {
+    const comparison = deriveManagedPriceComparison(
+      state([
+        loadedRow(0, [
+          close("2026-09-11", "1"),
+          close(
+            "2026-09-18",
+            "1.00000000000000000000000000000000000000000000000001",
+          ),
+        ]),
+        loadedRow(1, [close("2026-09-11", "1"), close("2026-09-18", "1")]),
+        loadedRow(2, [
+          close("2026-09-11", "1"),
+          close(
+            "2026-09-18",
+            "1.00000000000000000000000000000000000000000000000002",
+          ),
+        ]),
+      ]),
+    );
+    if (comparison?.status !== "available")
+      throw new Error("Expected comparison");
+    expect(comparison.rows.map((row) => row.change.changePercent)).toEqual([
+      "0.0000",
+      "0.0000",
+      "0.0000",
+    ]);
+    for (const [order, expected] of [
+      ["highest", ["GOOGL", "AAPL", "GOOG"]],
+      ["lowest", ["GOOG", "AAPL", "GOOGL"]],
+    ] as const) {
+      const result = orderManagedPriceComparison(comparison, order);
+      if (result?.status !== "available")
+        throw new Error("Expected comparison");
+      expect(result.rows.map((row) => row.listing.symbol)).toEqual(expected);
+    }
+  });
+
+  it("keeps exact ties in symbol, venue and listing order in both directions", () => {
+    const comparison = deriveManagedPriceComparison(
+      state(
+        [2, 1, 0].map((index) =>
+          loadedRow(index, [
+            close("2026-09-11", String(index + 1)),
+            close("2026-09-18", String((index + 1) * 2)),
+          ]),
+        ),
+      ),
+    );
+    if (comparison?.status !== "available")
+      throw new Error("Expected comparison");
+    const aliases = {
+      ...comparison,
+      rows: comparison.rows.map((row, index) => ({
+        ...row,
+        listing: {
+          ...row.listing,
+          symbol: "SAME",
+          exchangeMic: index === 1 ? "XNYS" : "XNAS",
+          listingId: ["listing-c", "listing-b", "listing-a"][index]!,
+        },
+      })),
+    };
+    for (const order of ["highest", "lowest"] as const) {
+      const result = orderManagedPriceComparison(comparison, order);
+      const aliasResult = orderManagedPriceComparison(aliases, order);
+      if (result?.status !== "available" || aliasResult?.status !== "available")
+        throw new Error("Expected comparison");
+      expect(result.rows.map((row) => row.listing.symbol)).toEqual([
+        "AAPL",
+        "GOOG",
+        "GOOGL",
+      ]);
+      expect(aliasResult.rows.map((row) => row.listing.listingId)).toEqual([
+        "listing-a",
+        "listing-c",
+        "listing-b",
+      ]);
+    }
+  });
+
+  it.each([
+    ["board", "none", ["AAPL", "GOOG", "GOOGL"]],
+    ["highest", "descending", ["AAPL", "GOOGL", "GOOG"]],
+    ["lowest", "ascending", ["GOOG", "GOOGL", "AAPL"]],
+  ] as const)(
+    "renders %s order identically in the table and original source details",
+    (order, ariaSort, symbols) => {
+      const rows = [0, 1, 2].map((index) => loadedRow(index));
+      rows[1] = { ...rows[1]!, showingPrevious: true, running: true };
+      let callbacks = 0;
+      const html = renderToStaticMarkup(
+        <ManagedPriceComparisonView
+          state={state(rows)}
+          order={order}
+          onOrder={() => {
+            callbacks++;
+          }}
+        />,
+      );
+      expect(html).toContain(`aria-sort="${ariaSort}"`);
+      expect(html).toContain(`<option value="${order}" selected="">`);
+      expect(
+        [...html.matchAll(/<th scope="row"><strong>([^<]+)<\/strong>/gu)].map(
+          (match) => match[1],
+        ),
+      ).toEqual(symbols);
+      expect(
+        [...html.matchAll(/<h4>([^<]+) · XNAS<\/h4>/gu)].map(
+          (match) => match[1],
+        ),
+      ).toEqual(symbols);
+      expect(text(html)).toContain("Previous history retained for GOOG.");
+      expect(text(html)).toContain(
+        "Exact ties use symbol, exchange MIC and listing ID",
+      );
+      expect(html).toContain("2026-09-20T00:00:01.000Z");
+      expect(html).toContain("<td>20</td><td>10</td>");
+      expect(callbacks).toBe(0);
+    },
+  );
+
+  it("keeps an enabled labelled order control without inventing unavailable ranking", () => {
+    const inputs = [
+      state([{ ...loadedRow(0), response: null }, loadedRow(1), loadedRow(2)]),
+      state(
+        [0, 1, 2].map((index) => loadedRow(index, [close("2026-09-18", "10")])),
+      ),
+    ];
+    for (const input of inputs) {
+      const comparison = deriveManagedPriceComparison(input);
+      for (const order of [
+        "board",
+        "highest",
+        "lowest",
+      ] as const satisfies readonly ManagedPriceComparisonOrder[]) {
+        expect(orderManagedPriceComparison(comparison, order)).toBe(comparison);
+        const html = renderToStaticMarkup(
+          <ManagedPriceComparisonView
+            state={input}
+            order={order}
+            onOrder={() => {
+              throw new Error("Unexpected order event");
+            }}
+          />,
+        );
+        expect(html).toMatch(
+          /<label class="managed-price-comparison-order" for="([^"]+)"><span>Comparison order<\/span><select id="\1">/u,
+        );
+        expect(html).toContain(`<option value="${order}" selected="">`);
+        expect(html).not.toContain("disabled");
+        expect(html).not.toContain("<table");
+        expect(html).not.toContain("aria-sort");
+        expect(html).toContain('aria-label="Raw price comparison results"');
+        expect(html).toContain(
+          "Comparison coverage and request dates</summary>",
+        );
+      }
+    }
+    expect(orderManagedPriceComparison(null, "highest")).toBeNull();
+  });
+
   it("uses the earliest and latest shared observations across shifted dates and gaps", () => {
     const input = state();
     const before = JSON.stringify(input);

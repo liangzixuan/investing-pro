@@ -20,7 +20,7 @@ The three Tiingo EOD mappings have separate private-use acceptance. Each history
 response supplies 1 to 32 raw USD closes, trading dates, a one-calendar-month window
 and request start/completion times. The [EOD contract](MANAGED_EOD_HISTORY.md)
 continues to validate full listing and share-class identity, decimals and dates.
-GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, mover
+GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, market-wide mover
 ranking, index, breadth or news data. Those need their own inputs and
 acceptance under the [roadmap](PRODUCT_ROADMAP.md).
 
@@ -93,8 +93,8 @@ persistent price storage or new response state.
 
 ## Compare the three listings
 
-The next increment compares raw price changes across all three loaded histories,
-in board order. It uses the earliest and latest dates observed in every history,
+The comparison shows raw price changes across all three loaded histories,
+initially in board order. It uses the earliest and latest dates observed in every history,
 with at least two shared observations. The table shows those common dates, their
 observation count, each listing's original USD endpoint closes and a four-place
 percentage calculated by the existing exact-decimal module. A nonzero change
@@ -105,7 +105,22 @@ All three histories are required; a missing response never silently reduces the
 cohort. Fewer than two shared dates produces an explanation without numeric
 comparison. Dates are not filled or interpolated, and the shared span is not
 necessarily a complete month. Prices remain unadjusted for splits or dividends;
-the table supplies neither total return nor a performance ranking.
+the table supplies neither total return nor a market-wide performance ranking.
+
+**Comparison order** offers Board order, Highest raw change and Lowest raw change.
+Ordering compares exact shared endpoint ratios before percentage rounding, so
+different changes can appear in a precise order even when both display as zero.
+Exact ties use symbol, exchange MIC and listing ID in that order, in either
+direction. Highest and lowest include positive, unchanged and negative changes;
+they do not select only gainers or losers. Table rows and their source details
+use the same order, without changing the board or selected chart.
+
+The selector stays available when histories are missing or have fewer than two
+shared dates. Its choice applies when a complete comparison becomes available;
+unavailable data never becomes zero or a partial ranking. The choice stays in
+memory while the comparison is mounted, including refresh and a company visit,
+and resets when Markets unmounts. It sends no request and changes no watchlist,
+draft, history or saved state.
 
 The comparison derives from the currently displayed responses and adds no
 request, cache, selection or saved state. Each row retains its requested window,
@@ -116,7 +131,7 @@ response withholds the comparison. Existing navigation, catalog and session
 retirement clear the source responses and their derived comparison together.
 The table scrolls within its own labelled region on narrow screens; keyboard
 users can focus that region and use the arrow keys. The results region and
-coverage disclosure remain mounted when a refresh leaves the comparison
+coverage disclosure and order selector remain mounted when a refresh leaves the comparison
 unavailable, preserving focus while replacing values with an explanation.
 Delivery and verification remain in [Current work](CURRENT_WORK.md).
 

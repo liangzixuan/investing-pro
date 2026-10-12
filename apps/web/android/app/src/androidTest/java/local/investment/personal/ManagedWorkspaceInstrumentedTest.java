@@ -1032,6 +1032,19 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsRows(false);
         assertMarketsRawChanges(false);
         assertMarketsSharedComparison(false);
+        chooseComparisonOption(".managed-price-comparison-order select", "highest", "Highest raw change");
+        assertMarketsComparisonOrder("highest", "ALFA,BETB,BETA",
+            "ALFA|10.25|10.5|+2.4390%;BETB|30.5|30.5|0.0000%;BETA|20.75|20.5|-1.2048%");
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        chooseComparisonOption(".managed-price-comparison-order select", "board", "Board order");
+        assertMarketsSharedComparison(false);
+        awaitPage("explicit board order restores the original comparison",
+            "document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
+            " && document.querySelector('.managed-price-comparison th[aria-sort]')?.getAttribute('aria-sort') === 'none'");
+        chooseComparisonOption(".managed-price-comparison-order select", "lowest", "Lowest raw change");
+        assertMarketsComparisonOrder("lowest", "BETA,BETB,ALFA",
+            "BETA|20.75|20.5|-1.2048%;BETB|30.5|30.5|0.0000%;ALFA|10.25|10.5|+2.4390%");
+        assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
         assertMarketsDraftAndCounts(2, 3, 0, 0);
         awaitPage("three loaded rows keep distinct share classes",
             "Array.from(document.querySelectorAll('.managed-market-identity small')).map(e => e.textContent).join('|') === 'Common Stock · XNAS|Class A · XNAS|Class C · XNAS'" +
@@ -1058,6 +1071,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-market-rows .managed-eod-previous')).every(e => e.textContent === 'Previous history · completed 2026-09-20T00:00:01.000Z. This refresh has not confirmed newer prices.')" +
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === 'BETA,BETB'");
         assertMarketsSharedComparison(true);
+        awaitPage("unavailable comparison retains the enabled order preference",
+            "document.querySelector('.managed-price-comparison-order select')?.value === 'lowest'" +
+            " && document.querySelector('.managed-price-comparison-order select')?.disabled === false");
         clickMarketsAction("Cancel board prices");
         assertMarketsDraftAndCounts(2, 5, 1, 0);
         assertMarketsRawChanges(true);
@@ -1146,6 +1162,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
         assertMarketsRawChanges(true);
         assertReturnedRootHistory("listing-beta-a", "price");
+        awaitPage("company Back retains the mounted comparison order",
+            "document.querySelector('.managed-price-comparison-order select')?.value === 'lowest'");
         selectWorkspaceView("Discover");
         awaitPage("leaving Markets retires all its price views",
             "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null" +
@@ -1160,6 +1178,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && document.querySelector('.managed-markets .managed-eod-previous') === null" +
             " && document.querySelector('.managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
+            " && document.querySelector('.managed-price-comparison-order select')?.disabled === false" +
             " && document.querySelector('.managed-price-comparison-provenance') === null" +
             " && document.querySelector('.managed-price-comparison [role=status]')?.textContent.includes('Comparison unavailable.')" +
             " && !document.querySelector('.managed-price-comparison')?.textContent.includes('2026-09-')");
@@ -1415,13 +1435,17 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void chooseComparisonDate(String scope, String date) throws Exception {
+        chooseComparisonOption(scope + " .managed-raw-close-comparison select", date, date);
+    }
+
+    private void chooseComparisonOption(String selector, String optionValue, String label) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> id = new AtomicReference<>();
         scenario.onActivity(activity -> {
             WebView webView = activity.getBridge().getWebView();
             assertTrue("Comparison WebView must accept focus", webView.requestFocus());
             webView.evaluateJavascript(
-                "(() => { const select = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ");" +
+                "(() => { const select = document.querySelector(" + JSONObject.quote(selector) + ");" +
                 " if (!(select instanceof HTMLSelectElement) || select.disabled || !select.id) return null;" +
                 " select.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
                 " select.focus({preventScroll:true}); return select.id; })()",
@@ -1434,8 +1458,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("exact enabled comparison select has DOM focus",
             "(() => { const select = document.getElementById(" + JSONObject.quote(actualId) + ");" +
             " return select instanceof HTMLSelectElement && !select.disabled && document.activeElement === select" +
-            " && select === document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")" +
-            " && [...select.options].some(option => option.value === " + JSONObject.quote(date) + " && !option.disabled); })()");
+            " && select === document.querySelector(" + JSONObject.quote(selector) + ")" +
+            " && [...select.options].some(option => option.value === " + JSONObject.quote(optionValue) + " && !option.disabled); })()");
         // Native Space opens the picker without a tap becoming a long press under load.
         onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
             if (noViewFoundException != null) throw noViewFoundException;
@@ -1443,11 +1467,11 @@ public class ManagedWorkspaceInstrumentedTest {
             assertTrue("Comparison window must have focus", view.hasWindowFocus());
         }).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         // Wait for WebView's native dialog instead of searching the Activity root.
-        onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
+        onView(androidx.test.espresso.matcher.ViewMatchers.withText(label))
             .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
             .perform(androidx.test.espresso.action.ViewActions.click());
-        awaitPage("native comparison date selected",
-            "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(date));
+        awaitPage("native comparison option selected",
+            "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(optionValue));
     }
 
     private void retainComparisonFrame(String name, String scope) throws Exception {
@@ -2181,6 +2205,28 @@ public class ManagedWorkspaceInstrumentedTest {
             " section.querySelector('h4')?.textContent + '|' + section.querySelector('p')?.textContent + '|' +" +
             " Array.from(section.querySelectorAll('dd')).map(e => e.textContent).join('|') + '|' +" +
             " (section.querySelector('.managed-eod-previous') !== null)).join(';') === " + JSONObject.quote(expectedCoverage) +
+            "; })()");
+    }
+
+    private void assertMarketsComparisonOrder(String order, String symbols, String expectedRows) throws Exception {
+        String sort = order.equals("highest") ? "descending" : "ascending";
+        String coverage = "2026-08-20 to 2026-09-20|2026-09-18 to 2026-09-19|2 / 0|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z";
+        String expectedCoverage = "ALFA · XNAS|Alfa Company · Common Stock|" + coverage + "|false;" +
+            "BETA · XNAS|Beta Company · Class A|" + coverage + "|false;" +
+            "BETB · XNAS|Beta Company · Class C|" + coverage + "|false";
+        awaitPage("native comparison order preserves exact values and original per-listing evidence: " + order,
+            "(() => { const comparison = document.querySelector('.managed-price-comparison'); if (!comparison) return false;" +
+            " const select = comparison.querySelector('.managed-price-comparison-order select');" +
+            " return select instanceof HTMLSelectElement && !select.disabled && select.value === " + JSONObject.quote(order) +
+            " && select.labels[0]?.querySelector('span')?.textContent === 'Comparison order'" +
+            " && comparison.querySelector('th[aria-sort]')?.getAttribute('aria-sort') === " + JSONObject.quote(sort) +
+            " && comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates'" +
+            " && Array.from(comparison.querySelectorAll('tbody tr')).map(tr => tr.querySelector('th strong')?.textContent + '|' + Array.from(tr.querySelectorAll('td')).map(e => e.textContent).join('|')).join(';') === " + JSONObject.quote(expectedRows) +
+            " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance h4')).map(e => e.textContent.split(' · ')[0]).join(',') === " + JSONObject.quote(symbols) +
+            " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance > section')).map(section =>" +
+            " section.querySelector('h4')?.textContent + '|' + section.querySelector('p')?.textContent + '|' +" +
+            " Array.from(section.querySelectorAll('dd')).map(e => e.textContent).join('|') + '|' +" +
+            " (section.querySelector('.managed-eod-previous') !== null)).sort().join(';') === " + JSONObject.quote(expectedCoverage) +
             "; })()");
     }
 
