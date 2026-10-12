@@ -94,18 +94,10 @@ export function SecAnnualFinancials({
   return (
     <div className="managed-annual-financials">
       <ReportedAmounts periods={periods} />
-      {comparison?.status === "available" && (
-        <>
-          <ReportedChanges
-            comparison={comparison}
-            concept={pair.concept}
-            label="Reported annual comparison"
-          />
-          <p className="managed-annual-margin-change">
-            Net margin change · {annualMarginChangeText(comparison.netMargin)}
-          </p>
-        </>
-      )}
+      <CurrentReportedComparison
+        comparison={comparison}
+        concept={pair.concept}
+      />
       {comparisonMessage && (
         <p className="managed-annual-unavailable">
           Reported annual comparison unavailable. {comparisonMessage}
@@ -130,6 +122,28 @@ export function SecAnnualFinancials({
         organic growth.
       </p>
     </div>
+  );
+}
+
+function CurrentReportedComparison({
+  comparison,
+  concept,
+}: {
+  readonly comparison: PersonalSecAnnualComparison | null;
+  readonly concept: PersonalSecAnnualPairDto["concept"];
+}) {
+  if (comparison?.status !== "available") return null;
+  return (
+    <>
+      <ReportedChanges
+        comparison={comparison}
+        concept={concept}
+        label="Reported annual comparison"
+      />
+      <p className="managed-annual-margin-change">
+        Net margin change · {annualMarginChangeText(comparison.netMargin)}
+      </p>
+    </>
   );
 }
 
