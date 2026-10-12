@@ -74,6 +74,34 @@ Catalog invalidation and session retirement clear them too. The shared request
 cooldown survives view changes; no action retries automatically. Prices are held
 only in the mounted session and are never written into the saved watchlist.
 
+## Compare two watchlist listings
+
+Choose two distinct listings in **Compare two watchlist listings** to compare histories
+already loaded in this view. The selectors include the complete current draft,
+independent of watchlist search. Unsupported listings are labelled unavailable;
+covered listings with no history require an explicit price load first. Choosing
+a pair or date never loads prices or saves notes.
+
+The comparison starts with the full span of dates observed in both histories.
+Start and End offer shared observed dates only. Both exact endpoint USD closes,
+their dates and signed raw-price changes remain visible, with the count of shared
+observations and observations omitted from the overlap. Zero or one common date
+cannot establish a change. No gaps are filled, and the result is not adjusted for
+splits or dividends. Each listing retains its original source request window and
+times; a retained response keeps its previous-history notice.
+
+Changing either listing or receiving a replacement history resets the interval
+to its full common span. Pending refreshes, recoverable failures and Cancel that
+retain the same history preserve the interval. Note edits, ordering, Save copies
+and unrelated row updates also preserve it. Removing and re-adding a listing
+requires selecting its new row again. Catalog replacement, top-level navigation
+and session retirement discard retired selections with their histories. Opening
+company research retains the mounted comparison for the return journey.
+
+The comparison is read-only and remains available while Save or recovery blocks
+new price reads. Comparison choices are session state; they are not saved in the
+watchlist. Broader comparison sets, ranking and charting are outside this slice.
+
 ## Search the current watchlist draft
 
 **Search My Watchlist** filters the loaded draft by symbol, company name, share

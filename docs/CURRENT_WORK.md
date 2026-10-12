@@ -7,7 +7,16 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The next local increment adds dated prices to the current watchlist draft and
+The active local increment adds a comparison of two explicitly chosen watchlist
+listings using their already-loaded histories. It starts with no selected pair,
+uses shared observed dates and retains exact endpoints and provenance. Search,
+note edits and Save do not change its full-draft scope or cause a price request.
+Focused model, component and workspace checks pass, including independent source
+review. Browser/native review, source integration and delivery remain open. The
+[comparison guide](APPWRITE_WATCHLIST.md#compare-two-watchlist-listings) records the
+contract.
+
+The preceding local increment adds dated prices to the current watchlist draft and
 reuses its checked history in company Price. Coverage remains AAPL, GOOG and
 GOOGL. Loading stays explicit; note edits, search, ordering and Save send no price
 request. Full identity and catalog changes retire a row; ordinary copies retain
@@ -16,20 +25,20 @@ changes, and session retirement clears prices with the draft. The
 [watchlist guide](APPWRITE_WATCHLIST.md#dated-prices-in-the-watchlist) records the
 contract. The full web suite passes 5,784 tests, with types and scoped lint.
 Independent integration review found and resolved a pending-request gap on
-invalid company navigation. Browser checks covered loaded prices, draft recovery,
-cancellation, company handoff and session retirement. A narrow-screen check found
-hidden accessibility labels escaping the scrolling list; their containing block
-is now local to each price readout. Rendered verification of this repair remains
-open. The original Android run passed the price journey but failed a later export
-picker probe. Its cause is unproven; the test now awaits cleanup and records probe
-readiness while preserving the original picker and output assertions. Native
-acceptance, source integration and delivery remain open.
+invalid company navigation. Brave checks cover explicit loading, draft recovery,
+cancellation, checked company handoff and session/catalog retirement. A rendered
+repair keeps hidden accessibility labels inside the scrolling list at narrow
+widths. The original Android run passed the price journey but failed a later
+export picker probe. Its cause remains unproven; the reviewed test repair awaits
+cleanup and records probe readiness while preserving original assertions.
+Current native acceptance, source integration and delivery remain open.
 
 PR89 through PR92 have merged into main. They add selectable shared-date Markets
 comparisons, recent SEC filings, filing references in research notes and exact
 form filtering. Their reviewed source, browser and native evidence is accepted.
-The main source tree matches the final reviewed tree; all applicable actual-main
-checks passed. These changes are outside the live release below.
+The main source tree matches the final reviewed tree; all four applicable
+actual-main CI jobs passed on their original attempts. These changes are outside
+the live release below.
 
 Release `2b3c252a6aee4d1eb21c3a6967416a7c381d9e2d`, tree
 `6f396d33eb3f55858dbae20244c6d9b61697bb42`, is live on the website. It adds

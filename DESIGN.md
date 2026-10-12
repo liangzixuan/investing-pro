@@ -109,6 +109,14 @@ The implemented price range remains one month. Omit the generated concept's
 unsupported 3M, 1Y and all-time controls. Its sample companies, prices and chart
 coordinates are visual examples only.
 
+The watchlist comparison begins with two empty, labelled listing selectors.
+Choices describe the full draft even when the listing search is active. Keep
+unavailable and unloaded states explicit, then show shared Start/End selectors
+and both exact endpoints in the stable results region. Span the watchlist columns
+on desktop and stack controls on narrow screens. Retain full identities and
+original source dates beside the results. Comparison controls use the same 44px
+targets and focus treatment as other research controls.
+
 ## Composition and navigation
 
 On desktop, place Markets, Discover and My Watchlist in a left rail, with global

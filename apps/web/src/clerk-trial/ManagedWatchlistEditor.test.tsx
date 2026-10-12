@@ -7,6 +7,7 @@ import {
   type ManagedWatchlistEditorProps,
 } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 
@@ -73,7 +74,9 @@ function elements(
   if (!React.isValidElement<Record<string, unknown>>(node)) return [];
   return [
     node,
-    ...(typeof node.type === "function" && node.type !== ManagedNoteEditor
+    ...(typeof node.type === "function" &&
+    node.type !== ManagedNoteEditor &&
+    node.type !== ManagedWatchlistComparison
       ? elements(
           (node.type as (props: Record<string, unknown>) => React.ReactNode)(
             node.props,
@@ -229,6 +232,35 @@ function fixture() {
 }
 
 describe("ManagedWatchlistEditor", () => {
+  it("keeps the full comparison cohort available through search and edit locks", () => {
+    const f = fixture();
+    const filtered = f.search("BETA");
+    expect(choices(filtered)).toEqual(["two"]);
+    const comparison = filtered.find(
+      (entry) => entry.type === ManagedWatchlistComparison,
+    )!;
+    expect(comparison.props.memberships).toBe(f.props.memberships);
+    expect(comparison.props.prices).toBe(f.props.prices);
+    expect(comparison.props.active).toBe(true);
+    const locked = f.render({ editable: false });
+    expect(
+      locked.find((entry) => entry.type === ManagedWatchlistComparison)?.props,
+    ).toMatchObject({
+      memberships: f.props.memberships,
+      prices: f.props.prices,
+      active: true,
+    });
+    const hidden = f.render({ active: false });
+    expect(
+      hidden.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .active,
+    ).toBe(false);
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onNote).not.toHaveBeenCalled();
+    expect(f.props.onMove).not.toHaveBeenCalled();
+    expect(f.props.onRemove).not.toHaveBeenCalled();
+  });
+
   it("keeps exact price readouts with their identity while search and note selection make no load", () => {
     const f = fixture();
     const first = f.props.memberships[0]!;

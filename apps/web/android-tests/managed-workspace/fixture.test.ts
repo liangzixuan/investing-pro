@@ -20,6 +20,137 @@ import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 
+describe("bounded invented watchlist comparison", () => {
+  it("loads only the two declared draft identities after the normal startup resolve", async () => {
+    const fixture = await createFixture("watchlist-comparison");
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      {
+        marketsCohort: fixture.marketsCohort,
+        priceCoverage: fixture.priceCoverage,
+      },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Comparison research draft");
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    expect(fixture.priceCoverage.map((listing) => listing.listingId)).toEqual([
+      "listing-zero",
+      "listing-one",
+    ]);
+    for (const row of workspace.watchlistPrices.getSnapshot().rows)
+      await workspace.loadWatchlistPrice(row.handle);
+    expect(
+      workspace.watchlistPrices
+        .getSnapshot()
+        .rows.map((row) => row.history.response?.rows),
+    ).toEqual([
+      [
+        { date: "2026-09-17", close: "100" },
+        { date: "2026-09-18", close: "110" },
+        { date: "2026-09-19", close: "90" },
+      ],
+      [
+        { date: "2026-09-17", close: "100" },
+        { date: "2026-09-18", close: "95" },
+        { date: "2026-09-19", close: "120" },
+      ],
+    ]);
+    for (const row of workspace.watchlistPrices.getSnapshot().rows)
+      expect(row.history.response?.security).toEqual(row.listing);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+    expect(fixture.getSnapshot()).toMatchObject({
+      load: 1,
+      status: 1,
+      eod: 2,
+      marketsEod: 0,
+      marketsResolve: 1,
+      resolve: 0,
+      save: 0,
+      annual: 0,
+    });
+    workspace.setView("discover");
+    workspace.setView("watchlist");
+    expect(
+      workspace.watchlistPrices
+        .getSnapshot()
+        .rows.every((row) => row.history.response === null),
+    ).toBe(true);
+    expect(fixture.getSnapshot().eod).toBe(2);
+    workspace.coordinator.retire();
+  });
+
+  it("rejects changed identity, range, digest, cancellation, order and every third read", async () => {
+    const fixture = await createFixture("watchlist-comparison");
+    const signal = new AbortController().signal;
+    const request = {
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      range: "1m" as const,
+    };
+    for (const changed of [
+      { ...request, listingId: "listing-one" },
+      { ...request, listingId: "listing-alfa" },
+      {
+        ...request,
+        catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const,
+      },
+      { ...request, range: "1y" as "1m" },
+    ])
+      expect(() => fixture.api.eodHistory(changed, signal)).toThrow(
+        "Unexpected invented watchlist comparison request",
+      );
+    const aborted = new AbortController();
+    aborted.abort();
+    expect(() => fixture.api.eodHistory(request, aborted.signal)).toThrow(
+      "Unexpected invented watchlist comparison request",
+    );
+    expect(fixture.getSnapshot().eod).toBe(0);
+    const first = await fixture.api.eodHistory(request, signal);
+    expect(parseManagedEodHistoryResponse(first, request)).toEqual(first);
+    expect(() => fixture.api.eodHistory(request, signal)).toThrow(
+      "Unexpected invented watchlist comparison request",
+    );
+    const secondRequest = { ...request, listingId: "listing-one" };
+    const second = await fixture.api.eodHistory(secondRequest, signal);
+    expect(parseManagedEodHistoryResponse(second, secondRequest)).toEqual(
+      second,
+    );
+    expect(() => fixture.api.eodHistory(secondRequest, signal)).toThrow(
+      "Unexpected invented watchlist comparison request",
+    );
+    expect(fixture.getSnapshot()).toMatchObject({
+      eod: 2,
+      marketsEod: 0,
+      marketsResolve: 0,
+      save: 0,
+    });
+  });
+
+  it("keeps ONE outside the default fixture's declared coverage", async () => {
+    const fixture = await createFixture();
+    expect(
+      fixture.priceCoverage.some(
+        (listing) => listing.listingId === "listing-one",
+      ),
+    ).toBe(false);
+    expect(() =>
+      fixture.api.eodHistory(
+        {
+          catalogSnapshotSha256: fixtureDigest,
+          listingId: "listing-one",
+          range: "1m",
+        },
+        new AbortController().signal,
+      ),
+    ).toThrow("Unexpected fixture EOD request");
+    expect(fixture.getSnapshot().eod).toBe(0);
+  });
+});
+
 describe("bounded invented BEA journeys", () => {
   it("retains dated results and the complete dirty draft through failures, cancellation and navigation", async () => {
     const fixture = await createFixture("bea-agenda");

@@ -1,6 +1,7 @@
 import {
   membershipMatchesResult,
   type ManagedEodHistoryResponseDto,
+  type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
 import {
   calculatePersonalRawCloseChange,
@@ -36,9 +37,12 @@ export interface ManagedPriceComparisonSelection extends ManagedPriceComparisonI
   readonly resetNotice: boolean;
 }
 
-type LoadedRow = Pick<ManagedMarketsRow, "listing" | "showingPrevious"> & {
+export interface ManagedPriceComparisonLoadedRow {
+  readonly listing: ManagedEodIdentity;
+  readonly showingPrevious: boolean;
   readonly response: ManagedEodHistoryResponseDto;
-};
+}
+type LoadedRow = ManagedPriceComparisonLoadedRow;
 type ComparedRow = LoadedRow & {
   readonly firstClose: string;
   readonly lastClose: string;
@@ -115,6 +119,14 @@ export function deriveManagedPriceComparisonHistory(
       showingPrevious: row.showingPrevious,
     });
   }
+  return deriveLoadedPriceComparisonHistory(rows);
+}
+
+/** Intersect already-admitted histories; each caller owns its complete set. */
+export function deriveLoadedPriceComparisonHistory(
+  rows: readonly ManagedPriceComparisonLoadedRow[],
+): Exclude<ManagedPriceComparisonHistory, null> {
+  if (rows.length < 2) return { status: "unavailable" };
   const dates = rows.map(
     (row) => new Set(row.response.rows.map((item) => item.date)),
   );
@@ -122,6 +134,16 @@ export function deriveManagedPriceComparisonHistory(
     .map((row) => row.date)
     .filter((date) => dates.every((loaded) => loaded.has(date)));
   return { status: "loaded", rows, sharedDates };
+}
+
+export function defaultManagedPriceComparisonInterval(
+  history: ManagedPriceComparisonHistory,
+): ManagedPriceComparisonInterval {
+  const dates = history?.status === "loaded" ? history.sharedDates : [];
+  return {
+    startDate: dates.length >= 2 ? dates[0]! : "",
+    endDate: dates.length >= 2 ? dates.at(-1)! : "",
+  };
 }
 
 export function deriveManagedPriceComparison(
@@ -163,18 +185,16 @@ export function createManagedPriceComparisonSelection(
   history: ManagedPriceComparisonHistory,
   replaced = false,
 ): ManagedPriceComparisonSelection {
-  const dates = history?.status === "loaded" ? history.sharedDates : [];
-  const usable = dates.length >= 2;
+  const interval = defaultManagedPriceComparisonInterval(history);
   return {
     sources: {
       active: state.active,
       catalogChanged: state.catalogChanged,
       rows: state.rows.map(({ listing, response }) => ({ listing, response })),
     },
-    startDate: usable ? dates[0]! : "",
-    endDate: usable ? dates.at(-1)! : "",
+    ...interval,
     hadHistory: history?.status === "loaded",
-    resetNotice: replaced && usable,
+    resetNotice: replaced && interval.startDate !== "",
   };
 }
 
@@ -197,12 +217,16 @@ export function sameManagedPriceComparisonSources(
   );
 }
 
-export function changeManagedPriceComparisonInterval(
-  selection: ManagedPriceComparisonSelection,
+export function changeManagedPriceComparisonInterval<
+  Selection extends ManagedPriceComparisonInterval & {
+    readonly resetNotice: boolean;
+  },
+>(
+  selection: Selection,
   history: ManagedPriceComparisonHistory,
   field: keyof ManagedPriceComparisonInterval,
   date: string,
-): ManagedPriceComparisonSelection {
+): Selection {
   if (history?.status !== "loaded" || history.sharedDates.length < 2)
     return selection;
   const dates = history.sharedDates;

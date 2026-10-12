@@ -29,6 +29,13 @@ import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import {
+  changeManagedWatchlistComparisonInterval,
+  createManagedWatchlistComparisonSelection,
+  projectManagedWatchlistComparison,
+  reconcileManagedWatchlistComparison,
+  selectManagedWatchlistComparisonRow,
+} from "./managed-watchlist-comparison";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -4014,6 +4021,150 @@ describe("watchlist price workspace composition", () => {
     value.workspace.setView("watchlist");
     return value;
   }
+
+  it("compares two loaded histories without reading the third or altering the draft", async () => {
+    const payload = {
+      ...initial(),
+      memberships: [
+        ...initial().memberships,
+        { ...listingMembership(second), note: "Third stays unloaded" },
+      ],
+    };
+    const { workspace, api } = fixture(payload);
+    await ready(workspace);
+    workspace.setView("watchlist");
+    const initialRows = workspace.watchlistPrices.getSnapshot().rows;
+    for (const [index, values] of [
+      [0, ["100", "110", "90"]],
+      [1, ["100", "95", "120"]],
+    ] as const) {
+      const { note, ...security } = payload.memberships[index]!;
+      expect(note.length).toBeGreaterThan(0);
+      vi.mocked(api.eodHistory).mockResolvedValueOnce({
+        ...eodResponse(),
+        security,
+        rows: values.map((close, day) => ({
+          date: `2026-09-${17 + day}`,
+          close,
+        })),
+      });
+      await workspace.loadWatchlistPrice(initialRows[index]!.handle);
+    }
+    const prices = workspace.watchlistPrices.getSnapshot();
+    expect(prices.rows[2]!.history.response).toBeNull();
+    const before = structuredClone(workspace.coordinator.getSnapshot().draft);
+    let selection = createManagedWatchlistComparisonSelection();
+    for (const [side, row] of [
+      ["left", prices.rows[0]!],
+      ["right", prices.rows[1]!],
+    ] as const)
+      selection = selectManagedWatchlistComparisonRow(
+        selection,
+        selection,
+        prices,
+        side,
+        row,
+      );
+    const full = projectManagedWatchlistComparison(
+      selection,
+      prices,
+    ).comparison;
+    expect(full?.status).toBe("available");
+    if (full?.status !== "available") throw new Error("Expected loaded pair");
+    expect(full.rows.map((row) => row.change.changePercent)).toEqual([
+      "-10.0000",
+      "20.0000",
+    ]);
+    selection = changeManagedWatchlistComparisonInterval(
+      selection,
+      selection,
+      prices,
+      "endDate",
+      "2026-09-18",
+    );
+    const first = projectManagedWatchlistComparison(
+      selection,
+      prices,
+    ).comparison;
+    expect(first?.status).toBe("available");
+    if (first?.status !== "available")
+      throw new Error("Expected first interval");
+    expect(first.rows.map((row) => row.change.changePercent)).toEqual([
+      "10.0000",
+      "-5.0000",
+    ]);
+    expect(first.rows.map((row) => [row.firstClose, row.lastClose])).toEqual([
+      ["100", "110"],
+      ["100", "95"],
+    ]);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(before);
+    expect(api.eodHistory).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+
+    workspace.note(
+      prices.rows[0]!.listing.listingId,
+      "Unsaved café 東京 thesis",
+    );
+    workspace.move(prices.rows[0]!.listing.listingId, 1);
+    const retained = workspace.watchlistPrices.getSnapshot();
+    expect(reconcileManagedWatchlistComparison(selection, retained)).toBe(
+      selection,
+    );
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    const locked = workspace.watchlistPrices.getSnapshot();
+    expect(locked.canRead).toBe(false);
+    expect(reconcileManagedWatchlistComparison(selection, locked)).toBe(
+      selection,
+    );
+    expect(
+      projectManagedWatchlistComparison(selection, locked).comparison,
+    ).toEqual(first);
+    expect(api.eodHistory).toHaveBeenCalledTimes(2);
+    await workspace.coordinator.load();
+    workspace.coordinator.keepDraft();
+    expect(
+      reconcileManagedWatchlistComparison(
+        selection,
+        workspace.watchlistPrices.getSnapshot(),
+      ),
+    ).toBe(selection);
+    await workspace.coordinator.save();
+    expect(
+      reconcileManagedWatchlistComparison(
+        selection,
+        workspace.watchlistPrices.getSnapshot(),
+      ),
+    ).toBe(selection);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toBe("Unsaved café 東京 thesis");
+
+    workspace.setView("markets");
+    const retired = workspace.watchlistPrices.getSnapshot();
+    const cleared = reconcileManagedWatchlistComparison(selection, retired);
+    expect(cleared.left).toBeNull();
+    expect(cleared.right).toBeNull();
+    workspace.setView("watchlist");
+    expect(
+      selectManagedWatchlistComparisonRow(
+        cleared,
+        selection,
+        workspace.watchlistPrices.getSnapshot(),
+        "left",
+        prices.rows[0]!,
+      ),
+    ).toBe(cleared);
+    expect(
+      workspace.watchlistPrices
+        .getSnapshot()
+        .rows.every((row) => row.history.response === null),
+    ).toBe(true);
+    expect(api.eodHistory).toHaveBeenCalledTimes(2);
+  });
 
   it("keeps price rows through note, order and Save copies, then hands off a checked retained history", async () => {
     const { workspace, api, saved } = await watchlistReady();

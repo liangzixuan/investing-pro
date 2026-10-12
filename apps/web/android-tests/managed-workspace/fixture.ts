@@ -178,6 +178,7 @@ export async function createFixture(
     | "bea-agenda"
     | "bea-session-retirement"
     | "markets-selected-price"
+    | "watchlist-comparison"
     | "watchlist-export" = "default",
 ) {
   const annual = await response(
@@ -252,6 +253,35 @@ export async function createFixture(
   const eodInitial = eodPacket("initial");
   const eodLate = eodPacket("late");
   const eodRecovered = eodPacket("recovered");
+  const comparisonListings = payload.memberships.map((member) => {
+    const { note, ...listing } = member;
+    void note;
+    return listing;
+  });
+  const comparisonPacket = (index: number) => {
+    const security = comparisonListings[index];
+    if (!security)
+      throw new Error("Unknown invented watchlist comparison listing");
+    const closes = index === 0 ? ["100", "110", "90"] : ["100", "95", "120"];
+    const parsed = parseManagedEodHistoryResponse(
+      {
+        ...eodInitial,
+        security,
+        rows: closes.map((close, offset) => ({
+          date: `2026-09-${17 + offset}`,
+          close,
+        })),
+      },
+      {
+        catalogSnapshotSha256: digest,
+        listingId: security.listingId,
+        range: "1m",
+      },
+    );
+    if (!parsed)
+      throw new Error("Invalid invented watchlist comparison packet");
+    return parsed;
+  };
   const marketsPacket = (
     index: number,
     kind: "initial" | "refreshed" | "late",
@@ -536,6 +566,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
+      if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
       if (signOutScenario) {
         if (
@@ -703,6 +734,8 @@ export async function createFixture(
       });
     },
     resolve: (request, signal) => {
+      if (scenario === "watchlist-comparison" && state.marketsResolve !== 0)
+        return unexpected("resolve");
       if (
         scenario === "company-direct-entry" &&
         request.listingIds.length === 1 &&
@@ -749,6 +782,20 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (scenario === "watchlist-comparison") {
+        const expected = comparisonListings[state.eod];
+        if (
+          signal.aborted ||
+          !expected ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.range !== "1m" ||
+          request.listingId !== expected.listingId
+        )
+          throw new Error("Unexpected invented watchlist comparison request");
+        const packet = comparisonPacket(state.eod);
+        count("eod");
+        return Promise.resolve(packet);
+      }
       if (
         scenario === "price-comparison-note" &&
         (request.listingId !== "listing-zero" || state.eod !== 0)
@@ -853,6 +900,8 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (scenario === "watchlist-comparison")
+        throw new Error("Unexpected invented watchlist comparison Annual read");
       if (scenario === "price-comparison-note")
         throw new Error("Unexpected fixture price note Annual read");
       if (scenario === "markets-price-handoff")
@@ -925,7 +974,10 @@ export async function createFixture(
     api,
     session,
     marketsCohort,
-    priceCoverage: [identity, ...marketsCohort],
+    priceCoverage:
+      scenario === "watchlist-comparison"
+        ? comparisonListings
+        : [identity, ...marketsCohort],
     settleCancelledFilings: () => {
       if (
         !pendingFilings ||
