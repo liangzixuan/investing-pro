@@ -91,4 +91,75 @@ describe("filing reference row action", () => {
       "The visit changed.",
     );
   });
+  it.each([
+    [
+      "explicit membership Add",
+      "Add this company to the watchlist draft first.",
+    ],
+    ["valid note edit", "The complete note must fit within 2,000 characters."],
+    [
+      "request cancellation",
+      "Wait for the filings request to finish or cancel it.",
+    ],
+  ])(
+    "removes obsolete refusal after %s makes the action available",
+    (_, reason) => {
+      const { actions, render, button } = fixture();
+      vi.mocked(actions.getAction).mockReturnValue({
+        canAppend: false,
+        reason,
+      });
+      button(render()).props.onClick();
+      expect(renderToStaticMarkup(render())).toContain(reason);
+
+      vi.mocked(actions.getAction).mockReturnValue({
+        canAppend: true,
+        reason: null,
+      });
+      const available = renderToStaticMarkup(render());
+      expect(available).toContain('aria-disabled="false"');
+      expect(available).not.toContain(reason);
+      expect(actions.append).not.toHaveBeenCalled();
+
+      button(render()).props.onClick();
+      expect(actions.append).toHaveBeenCalledTimes(1);
+      expect(renderToStaticMarkup(render())).toContain(
+        "Added to draft. Review and save.",
+      );
+    },
+  );
+  it("replaces an obsolete refusal with the current guard after a note edit", () => {
+    const { actions, render, button } = fixture();
+    vi.mocked(actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "This exact filing reference is already in the note draft.",
+    });
+    button(render()).props.onClick();
+    vi.mocked(actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "The complete note must fit within 2,000 characters.",
+    });
+    const changed = renderToStaticMarkup(render());
+    expect(changed).not.toContain("already in the note draft");
+    expect(changed).toContain(
+      "The complete note must fit within 2,000 characters.",
+    );
+    expect(changed).toContain('aria-disabled="true"');
+    expect(actions.append).not.toHaveBeenCalled();
+  });
+  it("preserves a successful append announcement when the duplicate guard becomes active", () => {
+    const { actions, render, button } = fixture();
+    button(render()).props.onClick();
+    vi.mocked(actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "This exact filing reference is already in the note draft.",
+    });
+    const completed = renderToStaticMarkup(render());
+    expect(completed).toContain("Added to draft. Review and save.");
+    expect(completed).toContain(
+      "This exact filing reference is already in the note draft.",
+    );
+    expect(completed).toContain('aria-disabled="true"');
+    expect(actions.append).toHaveBeenCalledTimes(1);
+  });
 });
