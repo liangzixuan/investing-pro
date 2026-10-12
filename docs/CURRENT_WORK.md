@@ -7,12 +7,23 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The active local increment adds a comparison of two explicitly chosen watchlist
+The active local increment adds a Research notes scope to Search My Watchlist.
+It searches complete current draft notes while retaining the selected editor,
+explicit Save and existing recovery behavior. Listing identity remains the default
+scope. All 41 editor and 91 workspace composition tests, fresh web types, scoped
+lint/format and dependency boundaries pass. Independent source review is clear.
+Actual browser/native checks, source integration and delivery remain open.
+
+The preceding local increment adds a comparison of two explicitly chosen watchlist
 listings using their already-loaded histories. It starts with no selected pair,
 uses shared observed dates and retains exact endpoints and provenance. Search,
 note edits and Save do not change its full-draft scope or cause a price request.
 Focused model, component and workspace checks pass, including independent source
-review. Browser/native review, source integration and delivery remain open. The
+review. Actual-component Brave review covers shared dates, refresh, Save/recovery,
+navigation and retirement. A shared CSS repair contains hidden accessibility text
+inside narrow scrolling results. The original Android comparison run passed all
+25 required cases; the repaired source's CI/native acceptance, source integration
+and delivery remain open. The
 [comparison guide](APPWRITE_WATCHLIST.md#compare-two-watchlist-listings) records the
 contract.
 
@@ -31,7 +42,9 @@ repair keeps hidden accessibility labels inside the scrolling list at narrow
 widths. The original Android run passed the price journey but failed a later
 export picker probe. Its cause remains unproven; the reviewed test repair awaits
 cleanup and records probe readiness while preserving original assertions.
-Current native acceptance, source integration and delivery remain open.
+The repaired price source passed all 24 native cases and applicable CI checks,
+with independent browser, source and artifact review. Source integration and
+delivery remain open.
 
 PR89 through PR92 have merged into main. They add selectable shared-date Markets
 comparisons, recent SEC filings, filing references in research notes and exact

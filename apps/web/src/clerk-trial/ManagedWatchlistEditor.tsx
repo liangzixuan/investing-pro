@@ -53,13 +53,20 @@ type FocusRequest = (
   | { kind: "removal"; removedId: string; listingId: string | null }
 ) & { origin: Element | null };
 
+type WatchlistSearchScope = "identity" | "notes";
+
 const normalizeSearch = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/gu, " ");
 
 function matchingMemberships(
   memberships: readonly WatchlistMembership[],
   query: string,
+  scope: WatchlistSearchScope,
 ) {
+  if (scope === "notes")
+    return memberships.filter((member) =>
+      normalizeSearch(member.note).includes(query),
+    );
   return memberships.filter((member) =>
     [
       member.symbol,
@@ -199,7 +206,9 @@ function WatchlistChoices({
   total,
   selectedId,
   query,
+  scope,
   onQuery,
+  onScope,
   onClear,
   onSelect,
   prices,
@@ -208,7 +217,9 @@ function WatchlistChoices({
   total: number;
   selectedId: string | undefined;
   query: string;
+  scope: WatchlistSearchScope;
   onQuery: (query: string) => void;
+  onScope: (scope: string) => void;
   onClear: () => void;
   onSelect: (listingId: string) => void;
   prices: ManagedWatchlistPricesState;
@@ -216,6 +227,19 @@ function WatchlistChoices({
   return (
     <div className="managed-watchlist-choices">
       <div className="managed-watchlist-search">
+        <div className="managed-watchlist-search-scope">
+          <label htmlFor="managed-watchlist-search-scope">Search in</label>
+          <select
+            id="managed-watchlist-search-scope"
+            data-watchlist-search-scope
+            value={scope}
+            aria-describedby="managed-watchlist-search-help"
+            onChange={(event) => onScope(event.target.value)}
+          >
+            <option value="identity">Listing identity</option>
+            <option value="notes">Research notes</option>
+          </select>
+        </div>
         <label htmlFor="managed-watchlist-search">Search My Watchlist</label>
         <div className="managed-watchlist-search-controls">
           <input
@@ -240,7 +264,9 @@ function WatchlistChoices({
           </button>
         </div>
         <p id="managed-watchlist-search-help">
-          Symbol, company, share class or exchange. Searches this draft only.
+          {scope === "notes"
+            ? "Complete research notes, including unsaved changes. Searches this draft only."
+            : "Symbol, company, share class or exchange. Searches this draft only."}
         </p>
       </div>
       <p
@@ -252,7 +278,9 @@ function WatchlistChoices({
       </p>
       {matches.length === 0 && total > 0 && (
         <p className="managed-watchlist-no-matches">
-          No listings match this search.
+          {scope === "notes"
+            ? "No research notes match this search."
+            : "No listings match this search."}
         </p>
       )}
       <ol aria-label="Watchlist listings">
@@ -437,13 +465,14 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
   );
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<WatchlistSearchScope>("identity");
   const editor = useRef<HTMLDivElement | null>(null);
   const selected =
     memberships.find((member) => member.listingId === selectedId) ??
     memberships[0];
   const selectedIndex = selected ? memberships.indexOf(selected) : -1;
   const normalizedQuery = normalizeSearch(query);
-  const matches = matchingMemberships(memberships, normalizedQuery);
+  const matches = matchingMemberships(memberships, normalizedQuery, scope);
   const searching = normalizedQuery.length > 0;
 
   useEffect(() => {
@@ -489,6 +518,11 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
     setFocusRequest(null);
     setQuery(value);
   };
+  const changeScope = (value: string) => {
+    if (!active || (value !== "identity" && value !== "notes")) return;
+    setFocusRequest(null);
+    setScope(value);
+  };
   const clearQuery = () => {
     if (!active) return;
     changeQuery("");
@@ -518,7 +552,9 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
         selectedId={selected?.listingId}
         prices={props.prices}
         query={query}
+        scope={scope}
         onQuery={changeQuery}
+        onScope={changeScope}
         onClear={clearQuery}
         onSelect={(listingId) => {
           setFocusRequest(null);

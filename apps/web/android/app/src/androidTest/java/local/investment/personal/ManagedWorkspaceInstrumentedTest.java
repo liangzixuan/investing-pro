@@ -2215,6 +2215,61 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedCompanyNote", "phase=corrected-unsaved, save=0; " + pageDiagnostic());
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);
+        awaitPage("watchlist search has one labelled native scope selector",
+            "(() => { const scope = document.querySelector('#managed-watchlist-search-scope');" +
+            " return scope instanceof HTMLSelectElement && scope.value === 'identity' && !scope.disabled" +
+            " && scope.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('label[for=managed-watchlist-search-scope]')?.textContent === 'Search in'" +
+            " && [...scope.options].map(option => option.value + '|' + option.textContent).join(';') === 'identity|Listing identity;notes|Research notes'; })()");
+        typeIntoInput("managed-watchlist-search", "captured in research");
+        awaitPage("identity search does not silently search note text",
+            "document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
+        awaitPage("research-note scope finds the existing unsaved phrase without retargeting the editor",
+            "document.querySelector('#managed-watchlist-search')?.value === 'captured in research'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'" +
+            " && document.querySelector('#managed-note-2')?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ZERO,ONE,ALFA'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === ''" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteCounts(0, 1);
+        touchInput("managed-note-2");
+        replaceFocusedInput("managed-note-2", COMPANY_NOTE, NOTE);
+        awaitPage("editing out of note results retains the exact visible focused selected editor",
+            "(() => { const input = document.querySelector('#managed-note-2');" +
+            " return input instanceof HTMLTextAreaElement && document.activeElement === input" +
+            " && input.getClientRects().length > 0 && !input.disabled" +
+            " && input.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && input.value === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
+            " && document.querySelector('#managed-watchlist-search')?.value === 'captured in research'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0; })()");
+        assertCompanyNoteCounts(0, 1);
+        replaceFocusedInput("managed-note-2", NOTE, COMPANY_NOTE);
+        awaitPage("restoring the original note restores its match without moving focus",
+            "document.activeElement === document.querySelector('#managed-note-2')" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'");
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        click("button[aria-label='Clear watchlist search']");
+        awaitPage("Clear preserves Research notes and the selected draft while restoring all choices",
+            "document.querySelector('#managed-watchlist-search')?.value === ''" +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'" +
+            " && document.activeElement === document.querySelector('#managed-watchlist-search')" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        chooseNativeSelectOption("#managed-watchlist-search-scope", "identity", "Listing identity");
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
         typeIntoInput("managed-watchlist-search", "alfa");
         awaitPage("filtered Save retains the exact selected note at its full-draft index",
             "document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +

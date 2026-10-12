@@ -1256,13 +1256,17 @@ describe("managed workspace screen", () => {
     expect(workspace.markets.getSnapshot().active).toBe(false);
   });
   it.each([
-    ["annual", "screen"],
-    ["eod", "screen"],
-    ["annual", "native"],
-    ["eod", "native"],
+    ["annual", "screen", "identity"],
+    ["eod", "screen", "identity"],
+    ["annual", "native", "identity"],
+    ["eod", "native", "identity"],
+    ["annual", "screen", "notes"],
+    ["eod", "screen", "notes"],
+    ["annual", "native", "notes"],
+    ["eod", "native", "notes"],
   ] as const)(
-    "retains local watchlist search through %s research and %s Back, then saves the full draft",
-    async (start, back) => {
+    "retains local watchlist search through %s research and %s Back in %s scope, then saves the full draft",
+    async (start, back, scope) => {
       const native = back === "native" ? nativeBackFixture() : null;
       const { workspace, api } = fixture({
         ...payload,
@@ -1309,10 +1313,23 @@ describe("managed workspace screen", () => {
             (node.props as React.ComponentProps<"input">).id ===
             "managed-watchlist-search",
         ) as React.ReactElement<React.ComponentProps<"input">>;
+      const searchScope = (screen: React.ReactNode) =>
+        editorElements(screen).find(
+          (node) =>
+            (node.props as React.ComponentProps<"select">).id ===
+            "managed-watchlist-search-scope",
+        ) as React.ReactElement<React.ComponentProps<"select">>;
+      expect(searchScope(first).props.value).toBe("identity");
+      if (scope === "notes")
+        searchScope(first).props.onChange!({
+          target: { value: scope },
+        } as React.ChangeEvent<HTMLSelectElement>);
+      const query = scope === "notes" ? "private research" : "OTHER";
       searchInput(first).props.onChange!({
-        target: { value: "OTHER" },
+        target: { value: query },
       } as React.ChangeEvent<HTMLInputElement>);
-      expect(searchInput(first).props.value).toBe("OTHER");
+      expect(searchInput(first).props.value).toBe(query);
+      expect(searchScope(first).props.value).toBe(scope);
       const opener = editorElements(first).find(
         (node) =>
           node.type === "button" &&
@@ -1388,10 +1405,14 @@ describe("managed workspace screen", () => {
       expect(api.annualReport).not.toHaveBeenCalled();
       expect(api.eodHistory).not.toHaveBeenCalled();
       expect(api.save).not.toHaveBeenCalled();
+      expect(api.search).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
       expect(api.load).toHaveBeenCalledOnce();
       expect(api.status).toHaveBeenCalledOnce();
       const returnedEditor = editorElements(render());
-      expect(searchInput(render()).props.value).toBe("OTHER");
+      expect(searchInput(render()).props.value).toBe(query);
+      expect(searchScope(render()).props.value).toBe(scope);
       expect(
         returnedEditor
           .filter(
@@ -1426,7 +1447,8 @@ describe("managed workspace screen", () => {
       expect(vi.mocked(api.save).mock.calls[0]![0].payload.memberships).toEqual(
         draft!.memberships,
       );
-      expect(searchInput(render()).props.value).toBe("OTHER");
+      expect(searchInput(render()).props.value).toBe(query);
+      expect(searchScope(render()).props.value).toBe(scope);
       expect(api.load).toHaveBeenCalledOnce();
       expect(api.status).toHaveBeenCalledOnce();
       if (native) {
@@ -1435,6 +1457,109 @@ describe("managed workspace screen", () => {
         expect(native.adapter.exitApp).not.toHaveBeenCalled();
         expect(origin.focus).toHaveBeenCalledOnce();
       }
+    },
+  );
+  it.each(["Use saved version", "Keep my draft"] as const)(
+    "recomputes note-search results from the complete payload after %s",
+    async (choice) => {
+      const initial: MainWatchlistPayload = {
+        ...payload,
+        memberships: [
+          payload.memberships[0]!,
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            symbol: "OTHER",
+            note: "Second exact note",
+          },
+        ],
+      };
+      const { workspace, api } = fixture(initial);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      workspace.note("listing-one", "Café 東京 thesis draft");
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      mounted.direct = true;
+      const render = () => {
+        mounted.refIndex = 0;
+        mounted.screenStateIndex = 0;
+        return ManagedWorkspaceScreen({ workspace });
+      };
+      const field = (id: string) =>
+        editorElements(render()).find(
+          (node) => (node.props as { id?: string }).id === id,
+        ) as React.ReactElement<{
+          value: string;
+          onChange: (event: { target: { value: string } }) => void;
+        }>;
+      const matches = () =>
+        editorElements(render())
+          .map(
+            (node) =>
+              (node.props as { "data-watchlist-selection"?: string })[
+                "data-watchlist-selection"
+              ],
+          )
+          .filter(Boolean);
+      field("managed-watchlist-search-scope").props.onChange({
+        target: { value: "notes" },
+      });
+      field("managed-watchlist-search").props.onChange({
+        target: { value: "CAFÉ" },
+      });
+      expect(matches()).toEqual(["listing-one"]);
+      vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+      await workspace.coordinator.save();
+      const latest: MainWatchlistPayload = {
+        ...initial,
+        memberships: [
+          { ...initial.memberships[0]!, note: "Revised first note" },
+          { ...initial.memberships[1]!, note: "Café saved on another device" },
+        ],
+      };
+      vi.mocked(api.load).mockResolvedValueOnce({
+        version: 3,
+        payload: latest,
+      });
+      await workspace.coordinator.load();
+      expect(matches()).toEqual(["listing-one"]);
+      const button = elements(render()).find(
+        (node) => node.type === "button" && node.props.children === choice,
+      ) as React.ReactElement<React.ComponentProps<"button">>;
+      button.props.onClick!({
+        currentTarget: { ownerDocument: { activeElement: null } },
+      } as React.MouseEvent<HTMLButtonElement>);
+      expect(matches()).toEqual([
+        choice === "Use saved version" ? "listing-two" : "listing-one",
+      ]);
+      expect(field("managed-watchlist-search-scope").props.value).toBe("notes");
+      expect(field("managed-watchlist-search").props.value).toBe("CAFÉ");
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(
+        choice === "Use saved version" ? latest : draft,
+      );
+      expect(
+        editorElements(render()).find((node) => node.type === ManagedNoteEditor)
+          ?.props,
+      ).toMatchObject({
+        listingId: "listing-one",
+        note:
+          choice === "Use saved version"
+            ? "Revised first note"
+            : "Café 東京 thesis draft",
+      });
+      expect(api.save).toHaveBeenCalledOnce();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(draft);
+      expect(api.load).toHaveBeenCalledTimes(2);
+      expect(api.search).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.economicCalendar).not.toHaveBeenCalled();
+      workspace.coordinator.retire();
+      expect(editorElements(render())).toEqual([]);
+      expect(workspace.coordinator.getSnapshot().draft).toBeNull();
     },
   );
   it("renders one company section and reuses both loaded packets through repeated button returns", async () => {
