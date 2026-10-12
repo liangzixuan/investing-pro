@@ -202,8 +202,8 @@ signed-out Brave context at the canonical origin.
 
 The [product roadmap](PRODUCT_ROADMAP.md) continues to guide later increments.
 Physical installation or use of Android 1.24 remains optional and unverified.
-The entry work has local source and presentation acceptance; hosted checks and
-delivery remain open. Actual sign-in widget rendering is not established by these
+The entry work passed all six hosted PR checks and merged October 12. Actual-main
+checks and delivery remain open. Actual sign-in widget rendering is not established by these
 checks. The presentation overhaul adds no broader market-data
 coverage and does not complete M1, M2 or M3.
 
@@ -219,8 +219,11 @@ keyboard targets; both now remain mounted when data becomes unavailable.
 Actual-component Brave checks passed shared-date, missing-history, precision,
 retained-provenance and keyboard behavior at desktop and narrow widths. Final
 React transitions preserved results/disclosure focus without retaining cleared
-data or taking focus from another control. Hosted checks and delivery remain
-separate; see [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
+data or taking focus from another control. The existing Android Markets journey
+now asserts shared dates, exact values, retained provenance, late-response
+rejection and clearing on navigation using its existing invented responses.
+Execution of those native assertions, hosted checks and delivery remain separate;
+see [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The October 10 owner report remains limited to the requested Android 1.19 and
 Brave checklist on Pixel 10 Pro XL/Android 17, without per-step device logs or

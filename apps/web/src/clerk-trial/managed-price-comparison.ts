@@ -59,15 +59,15 @@ export function deriveManagedPriceComparison(
   const sharedDates = rows[0]!.response.rows
     .map((row) => row.date)
     .filter((date) => dates.every((loaded) => loaded.has(date)));
-  const firstDate = sharedDates[0];
-  const lastDate = sharedDates.at(-1);
-  if (sharedDates.length < 2 || !firstDate || !lastDate)
+  if (sharedDates.length < 2)
     return {
       status: "insufficient_history",
       sharedDateCount: sharedDates.length,
-      firstDate: firstDate ?? null,
+      firstDate: sharedDates[0] ?? null,
       rows,
     };
+  const firstDate = sharedDates[0]!;
+  const lastDate = sharedDates.at(-1)!;
   return {
     status: "available",
     sharedDateCount: sharedDates.length,

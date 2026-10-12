@@ -212,6 +212,15 @@ and the Markets board: ordered loading, Cancel and late-response rejection, row
 selection and return to the mounted watchlist draft.
 These are fixture results, not live-provider or physical-device results.
 
+The Markets journey also asserts the three-listing shared-date comparison. It
+checks exact raw endpoints, percentage changes and original completion times
+after the existing three loads. A partial refresh leaves one shared date, so
+the table disappears while the retained histories keep their provenance.
+Cancellation and late replies cannot restore old comparison values; leaving
+and returning to Markets clears them without an extra price request. These
+assertions reuse the existing invented responses and require a successful
+emulator run for their source revision.
+
 The selected company-visit regression extends direct switching: it loads both
 sections, returns to the same rows and annual provenance without another read,
 then checks native Back and an unloaded new visit. Separate screenshots show the
