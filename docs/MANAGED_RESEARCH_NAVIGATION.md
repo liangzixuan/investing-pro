@@ -88,6 +88,32 @@ the original opener. If that control disappears, Back focuses the current view's
 navigation control or the visible Discover heading. There is no persistent cache,
 automatic load, prefetch, save or source request on resume.
 
+## Keyboard bypass
+
+The managed workspace's first keyboard stop is **Skip to workspace content**.
+The link becomes visible on focus and moves focus to the current content after
+the shared navigation, search and session controls. The next Tab reaches that
+content's controls. Markets, Discover, My Watchlist, research and pending or
+invalid company links share the same content landmark, including empty states.
+
+Activation focuses and scrolls the existing landmark without changing the URL,
+Clerk fragment, history, selected view, draft or request counts. The link is
+absent during sign-out and session retirement; a retained action cannot focus a
+missing, detached or hidden target. It adds no automatic focus on view changes.
+Company-section, Back and watchlist-recovery focus keep their existing owners.
+
+There is one main landmark. In an active workspace it encloses the working
+content, with the repeated controls and retained session warning outside it.
+Entry and workspace-creation states retain their own main landmark and one page
+h1. The disconnected trial keeps its existing composition.
+
+Focused tests cover landmark composition, empty and pending views, unchanged
+drafts and requests, and stale-action guards. Actual-component Brave checks with
+invented data cover keyboard entry and continuation, empty and company-route
+states, query/fragment preservation, conflict recovery and retirement at desktop
+and narrow widths. See [Current work](CURRENT_WORK.md) for validation and delivery
+status; these checks do not establish screen-reader or physical-device acceptance.
+
 ## Capture a watchlist note
 
 The company visit shows **My Watchlist note** for its exact listing. When that

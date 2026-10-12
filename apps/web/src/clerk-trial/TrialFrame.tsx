@@ -11,8 +11,9 @@ export function TrialFrame({
   compact?: boolean;
 }) {
   const compactManaged = managed && compact;
+  const Container = compactManaged ? "div" : "main";
   return (
-    <main
+    <Container
       className={`clerk-trial${managed ? " managed-frame" : ""}${compactManaged ? " managed-frame-active" : ""}`}
     >
       <header
@@ -46,6 +47,6 @@ export function TrialFrame({
       </header>
       {children}
       <ThirdPartyNotices />
-    </main>
+    </Container>
   );
 }

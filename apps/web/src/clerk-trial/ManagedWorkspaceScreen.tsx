@@ -86,7 +86,9 @@ function SessionWorkspace(props: SessionProps) {
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
     />
   ) : (
-    <p role="status">Loading your workspace…</p>
+    <main className="managed-workspace-content">
+      <p role="status">Loading your workspace…</p>
+    </main>
   );
 }
 
@@ -354,6 +356,7 @@ export function ManagedWorkspaceScreen({
     discovery: typeof discovery;
     opener: HTMLButtonElement;
   } | null>(null);
+  const workspaceContent = useRef<HTMLElement | null>(null);
   useLayoutEffect(() => {
     const request = recoveryFocus.current;
     recoveryFocus.current = null;
@@ -435,6 +438,28 @@ export function ManagedWorkspaceScreen({
   };
   return (
     <div className="managed-workspace">
+      {!retired && (
+        <a
+          className="managed-skip-link"
+          href="#managed-workspace-content"
+          onClick={(event) => {
+            event.preventDefault();
+            const phase = coordinator.getSnapshot().phase;
+            const content = workspaceContent.current;
+            if (
+              phase === "retired" ||
+              phase === "signing_out" ||
+              !content?.isConnected ||
+              content.getClientRects().length === 0
+            )
+              return;
+            content.focus({ preventScroll: true });
+            content.scrollIntoView({ block: "start", behavior: "instant" });
+          }}
+        >
+          Skip to workspace content
+        </a>
+      )}
       <aside className="managed-sidebar">
         <p className="managed-brand" aria-hidden="true">
           Investment
@@ -506,7 +531,12 @@ export function ManagedWorkspaceScreen({
             {saved.message}
           </p>
         </header>
-        <div className="managed-workspace-content">
+        <main
+          className="managed-workspace-content"
+          id="managed-workspace-content"
+          ref={workspaceContent}
+          tabIndex={-1}
+        >
           {retired ? null : (
             <>
               {backUnavailable && (
@@ -931,7 +961,7 @@ export function ManagedWorkspaceScreen({
             Other signed-in devices keep their own sessions. Signing out clears
             this screen, including unsaved changes.
           </p>
-        </div>
+        </main>
       </div>
     </div>
   );
