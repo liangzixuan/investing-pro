@@ -261,11 +261,11 @@ public class ManagedWorkspaceInstrumentedTest {
             assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.read(appContext, outputs[0]));
             assertExportDraftAndReads(documentTimeOrigin);
             WatchlistTestDocuments.clear(appContext);
-            click("#fixture-export-unicode");
+            startInvalidExportProbe("unicode", 1);
             picker.saveToInventedRoot();
             assertInvalidExportRefused(appContext, 1);
             WatchlistTestDocuments.clear(appContext);
-            click("#fixture-export-oversize");
+            startInvalidExportProbe("oversize", 2);
             picker.saveToInventedRoot();
             assertInvalidExportRefused(appContext, 2);
             assertExportDraftAndReads(documentTimeOrigin);
@@ -294,9 +294,44 @@ public class ManagedWorkspaceInstrumentedTest {
         }
     }
 
+    private void startInvalidExportProbe(String kind, int sequence) throws Exception {
+        JSONObject before = new JSONObject(readFixtureString(
+            "JSON.stringify(JSON.parse(document.querySelector('#fixture-export-protocol').textContent).invalidProbe)"));
+        assertEquals(sequence - 1, before.getInt("sequence"));
+        assertEquals(sequence == 1 ? "idle" : "settled", before.getString("phase"));
+        assertTrue(before.isNull("failure"));
+        assertFalse(before.getBoolean("cleanupFailed"));
+        AtomicReference<android.webkit.WebView> page = new AtomicReference<>();
+        scenario.onActivity(activity -> page.set(activity.getBridge().getWebView()));
+        click("#fixture-export-" + kind);
+        // Read the retained WebView on its UI thread even after DocumentsUI pauses this Activity.
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> result = new AtomicReference<>();
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> page.get().evaluateJavascript(
+            "JSON.stringify(JSON.parse(document.querySelector('#fixture-export-protocol').textContent).invalidProbe)",
+            value -> { result.set(value); returned.countDown(); }));
+        assertTrue("Invalid export probe start diagnostic must return", returned.await(2, TimeUnit.SECONDS));
+        Object decoded = new org.json.JSONTokener(result.get()).nextValue();
+        assertTrue(decoded instanceof String);
+        JSONObject started = new JSONObject((String) decoded);
+        Log.i("ManagedExportProbe", started.toString());
+        assertEquals("The actual click must start the current probe", sequence, started.getInt("sequence"));
+        assertEquals(kind, started.getString("kind"));
+        assertEquals("The current probe must await the real picker: " + started, "choosing", started.getString("phase"));
+        assertTrue(started.isNull("failure"));
+    }
+
     private void assertInvalidExportRefused(android.content.Context context, int count) throws Exception {
-        awaitPage("invalid native text refused before stream write",
-            "JSON.parse(document.querySelector('#fixture-export-protocol').textContent).invalidRefused === " + count);
+        try {
+            awaitPage("invalid native text refused and cleanup settled before the next probe",
+                "(() => { const state = JSON.parse(document.querySelector('#fixture-export-protocol').textContent);" +
+                " const probe = state.invalidProbe; return state.invalidRefused === " + count +
+                " && probe.sequence === " + count + " && probe.kind === " + JSONObject.quote(count == 1 ? "unicode" : "oversize") +
+                " && probe.phase === 'settled' && probe.failure === null && probe.cleanupFailed === false; })()");
+        } catch (AssertionError failure) {
+            throw new AssertionError(failure.getMessage() + "; invalidProbe=" + readFixtureString(
+                "JSON.stringify(JSON.parse(document.querySelector('#fixture-export-protocol').textContent).invalidProbe)"), failure);
+        }
         WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
         assertEquals(1, outputs.length);
         assertEquals(0, outputs[0].size);

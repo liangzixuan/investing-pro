@@ -160,6 +160,7 @@
 }
 
 .clerk-trial.managed-frame .managed-watchlist-price-readout {
+  position: relative;
   display: grid;
   gap: 4px;
   min-width: 0;
