@@ -606,15 +606,21 @@
 .managed-frame .managed-price-comparison h3 {
   margin-bottom: 8px;
 }
-.managed-frame .managed-price-comparison-order {
+.managed-frame .managed-price-comparison-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.managed-frame .managed-price-comparison-order,
+.managed-frame .managed-price-comparison-date {
   display: grid;
   gap: 6px;
   width: 100%;
-  max-width: 24rem;
-  margin: 12px 0;
   font-size: 13px;
 }
-.managed-frame .managed-price-comparison-order select {
+.managed-frame .managed-price-comparison-order select,
+.managed-frame .managed-price-comparison-date select {
   min-width: 0;
   width: 100%;
   min-height: 44px;
@@ -624,9 +630,13 @@
   font-size: 14px;
 }
 .managed-frame .managed-price-comparison-help,
+.managed-frame .managed-price-comparison-reset,
 .managed-frame .managed-price-comparison-scroll > [role="status"] {
   color: var(--managed-muted);
   font-size: 13px;
+}
+.managed-frame .managed-price-comparison-reset:empty {
+  margin: 0;
 }
 .managed-frame .managed-price-comparison-scroll {
   max-width: 100%;
