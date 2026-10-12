@@ -68,6 +68,18 @@ import org.junit.runner.RunWith;
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
+    private static final String WATCHLIST_COMPARISON_EXISTING_NOTE = "Latest ONE research note";
+    private static final String WATCHLIST_COMPARISON_NOTE = WATCHLIST_COMPARISON_EXISTING_NOTE + " " +
+        "Observed raw-close watchlist comparison: 2026-09-17 to 2026-09-18; " +
+        "2 shared observed dates in this interval, 3 across the loaded histories. " +
+        "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 2026-09-17 USD 100 to 2026-09-18 USD 110; " +
+        "raw close change +$10 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; " +
+        "original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. " +
+        "ONE (One Company; One Class A; Class A; XNAS, US): 2026-09-17 USD 100 to 2026-09-18 USD 95; " +
+        "raw close change -$5 (-5.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; " +
+        "original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. " +
+        "Raw closes are not adjusted for splits or dividends and are not live quotes. Missing dates are not filled. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
     private static final String FILINGS_NOTE = NOTE + " " +
         "Observed SEC filing reference: ZERO (XNAS); CIK 0000000001; Form 8-K; accession 0000000001-26-000026; " +
         "filed 2026-09-19; report date unavailable; filing index https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm. " +
@@ -936,8 +948,11 @@ public class ManagedWorkspaceInstrumentedTest {
         String start = scope + " .managed-price-comparison-date:first-child select";
         String end = scope + " .managed-price-comparison-date:last-child select";
         awaitPage("comparison starts without a selected pair or reads",
-            "Array.from(document.querySelectorAll('.managed-watchlist-comparison select')).every(e => e.value === '' && !e.disabled)" +
-            " && document.querySelectorAll('.managed-watchlist-comparison select').length === 4" +
+            "Array.from(document.querySelectorAll('.managed-watchlist-comparison-listing select, .managed-watchlist-comparison .managed-price-comparison-date select')).every(e => e.value === '' && !e.disabled)" +
+            " && document.querySelectorAll('.managed-watchlist-comparison-listing select, .managed-watchlist-comparison .managed-price-comparison-date select').length === 4" +
+            " && document.querySelector('#managed-watchlist-comparison-note-destination')?.value === ''" +
+            " && document.querySelector('label[for=managed-watchlist-comparison-note-destination]')?.textContent === 'Add comparison to'" +
+            " && document.querySelector('.managed-watchlist-comparison-note-action > button')?.getAttribute('aria-disabled') === 'true'" +
             " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Choose two distinct watchlist listings to compare.'" +
             " && " + DIAGNOSTICS + ".eod === 0");
         chooseNativeSelectOption(first, "listing-zero", "ZERO · Zero Company · Class A · XNAS — not loaded");
@@ -966,6 +981,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("blank end withholds comparison numbers without reading",
             "document.querySelector('.managed-watchlist-comparison table') === null" +
             " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
+            " && document.querySelector('.managed-watchlist-comparison-note-action > button')?.getAttribute('aria-disabled') === 'true'" +
             " && document.querySelector('.managed-watchlist-comparison [role=region]')?.tabIndex === -1");
         assertWatchlistComparisonDraft(false);
         chooseNativeSelectOption(end, "2026-09-18", "2026-09-18");
@@ -989,6 +1005,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scope + " .managed-price-comparison-status, " + scope + " [role=region]", 2);
         assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
         assertWatchlistComparisonDraft(true);
+        appendWatchlistComparisonToOneNote();
         selectWorkspaceView("Discover");
         selectWorkspaceView("My Watchlist");
         awaitPage("top-level exit retires pair and loaded histories without automatic reads",
@@ -996,7 +1013,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-watchlist-comparison table') === null" +
             " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-provenance') === null" +
             " && document.querySelector('#managed-watchlist-selected-price > strong')?.textContent === 'Price not loaded'");
-        assertWatchlistComparisonDraft(true);
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
         assertFixtureBoundary();
         assertRootHistory();
         assertEquals("Comparison controls preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
@@ -1025,8 +1042,12 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertWatchlistComparisonDraft(boolean reordered) throws Exception {
+        assertWatchlistComparisonDraft(reordered, "Invented second note");
+    }
+
+    private void assertWatchlistComparisonDraft(boolean reordered, String oneNote) throws Exception {
         String zero = "{listingId:'listing-zero',symbol:'ZERO',note:" + JSONObject.quote(NOTE) + "}";
-        String one = "{listingId:'listing-one',symbol:'ONE',note:'Invented second note'}";
+        String one = "{listingId:'listing-one',symbol:'ONE',note:" + JSONObject.quote(oneNote) + "}";
         String expected = reordered ? "[" + one + "," + zero + "]" : "[" + zero + "," + one + "]";
         awaitPage("comparison preserves full draft and exactly two explicit price requests",
             "JSON.stringify(" + DRAFT + ".memberships) === JSON.stringify(" + expected + ")" +
@@ -1034,6 +1055,42 @@ public class ManagedWorkspaceInstrumentedTest {
             " && (() => { const d = " + DIAGNOSTICS + "; return d.eod === 2 && d.eodAborted === 0 && d.eodLateResolved === 0" +
             " && d.load === 1 && d.status === 1 && d.save === 0 && d.search === 0 && d.resolve === 0" +
             " && d.marketsEod === 0 && d.marketsResolve === 1 && d.annual === 0 && d.filings === 0 && d.calendar === 0; })()");
+    }
+
+    private void appendWatchlistComparisonToOneNote() throws Exception {
+        String destination = "#managed-watchlist-comparison-note-destination";
+        awaitPage("note destination requires an explicit current pair choice",
+            "document.querySelector(" + JSONObject.quote(destination) + ")?.value === ''" +
+            " && Array.from(document.querySelector(" + JSONObject.quote(destination) + ").options).map(o => o.value).join('|') === '|listing-zero|listing-one'" +
+            " && document.querySelector('.managed-watchlist-comparison-note-action > button')?.getAttribute('aria-disabled') === 'true'");
+        chooseNativeSelectOption(destination, "listing-one", "ONE · One Company · Class A · XNAS");
+        assertWatchlistComparisonDraft(true);
+        click("[data-watchlist-selection='listing-one']");
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", "Invented second note", WATCHLIST_COMPARISON_EXISTING_NOTE);
+        click("[data-watchlist-selection='listing-zero']");
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_EXISTING_NOTE);
+        awaitPage("destination remains ONE while ZERO owns the visible editor",
+            "document.querySelector(" + JSONObject.quote(destination) + ")?.value === 'listing-one'" +
+            " && document.querySelector('#managed-note-1')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('.managed-watchlist-comparison-note-action > button')?.getAttribute('aria-disabled') === 'false'");
+        click(".managed-watchlist-comparison-note-action > button");
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
+        awaitPage("comparison appends to the latest chosen note without selecting its editor",
+            "document.querySelector('#managed-note-1')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('.managed-watchlist-comparison-note-status')?.textContent === 'Comparison added to the ONE (Class A, XNAS) note draft. Review and save all changes in My Watchlist.'");
+        chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
+        typeIntoInput("managed-watchlist-search", "Observed raw-close watchlist comparison");
+        awaitPage("note search retrieves the appended comparison while ZERO stays selected",
+            "document.querySelector('#managed-watchlist-search')?.value === 'Observed raw-close watchlist comparison'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join('|') === 'ONE'" +
+            " && document.querySelector('#managed-note-1')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE));
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
+        click("button[aria-label='Clear watchlist search']");
     }
 
     @Test
