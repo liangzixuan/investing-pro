@@ -6,6 +6,7 @@ import { TrialSessionScreen } from "./TrialScreen";
 import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 import { TrialFrame } from "./TrialFrame";
 import { ManagedEntry } from "./ManagedEntry";
+import { browserWatchlistExportAdapter } from "./browser-watchlist-export";
 import {
   managedCompanyHref,
   parseManagedCompanyRoute,
@@ -98,7 +99,12 @@ function ClerkSession({
       <Screen
         key={`${session.user.id}:${session.id}`}
         apiOrigin={apiOrigin}
-        {...(managed ? { warnOnBrowserLeave: true } : {})}
+        {...(managed
+          ? {
+              warnOnBrowserLeave: true,
+              exportDelivery: browserWatchlistExportAdapter,
+            }
+          : {})}
         session={{
           userId: session.user.id,
           sessionId: session.id,

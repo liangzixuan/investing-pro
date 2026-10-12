@@ -112,6 +112,7 @@ jobs:
                   "switchingResearchPanelsPreservesDraftAndDiscardsLateAnnual",
                   "companyNoteDraftReviewSaveAndReloadPreservesIdentity",
                   "annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource",
+                  "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",
                   "companyLinkDirectEntryAndBackPreserveDraft",
                   "watchlistReplayReviewAndFailedReadPreserveDraft",
@@ -133,15 +134,32 @@ jobs:
                   executed.add((case.get("classname"), case.get("name")))
           required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
           if not required.issubset(executed):
-              raise SystemExit("The twenty-two required native tests did not all execute.")
+              raise SystemExit("The twenty-three required native tests did not all execute.")
           apk_root = Path("apps/web/android/app/build/outputs/apk")
           fixture_prefix = "assets/managed-workspace/"
+          test_providers = (
+              "local.investment.personal.SavedWatchlistTestDocumentsProvider",
+              "local.investment.personal.SavedWatchlistTestObservationProvider",
+          )
+          test_authorities = (
+              "local.investment.personal.test.watchlist-export",
+              "local.investment.personal.test.watchlist-export-observer",
+          )
+          provider_descriptors = [("L" + provider.replace(".", "/") + ";").encode("utf-8") for provider in test_providers]
+          def manifest_contains(contents, marker):
+              return any((marker + "\0").encode(encoding) in contents for encoding in ("utf-8", "utf-16le"))
+          def dex_files(archive):
+              return [archive.read(name) for name in archive.namelist() if "/" not in name and name.startswith("classes") and name.endswith(".dex")]
           with ZipFile(apk_root / "debug/app-debug.apk") as app:
               if any(name.startswith(fixture_prefix) for name in app.namelist()):
                   raise SystemExit("Synthetic managed fixture entered the app APK.")
+              if any(manifest_contains(app.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or any(descriptor in contents for descriptor in provider_descriptors for contents in dex_files(app)):
+                  raise SystemExit("Synthetic export provider entered the app APK.")
           with ZipFile(apk_root / "androidTest/debug/app-debug-androidTest.apk") as tests:
               if fixture_prefix + "index.html" not in tests.namelist():
                   raise SystemExit("Synthetic managed fixture is missing from the test APK.")
+              if not all(manifest_contains(tests.read("AndroidManifest.xml"), marker) for marker in test_providers + test_authorities) or not all(any(descriptor in contents for contents in dex_files(tests)) for descriptor in provider_descriptors):
+                  raise SystemExit("Synthetic export provider is missing from the test APK.")
           print(f"Verified {len(executed)} native tests with no failures, errors or skips.")
           PY
 

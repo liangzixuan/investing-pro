@@ -256,6 +256,26 @@ repeat reliability. Android 1.11 passed separate signed-package and delivery
 review; physical use remains unperformed. [Current work](CURRENT_WORK.md) records
 the exact release and limits.
 
+The saved-watchlist export increment adds the
+`savedWatchlistExportUsesSystemPickerAndPreservesDraft` journey to the required
+native case set. It uses the real system document picker with an invented
+DocumentsProvider declared only in the test APK. A separate test-only provider
+offers fixed-cache metadata and reset calls restricted to the target app's UID.
+The destination is test cache; no owner file, Downloads permission or cloud
+account is involved. The runtime app must contain neither provider nor their
+manifest declarations. Exact
+UTF-8 file bytes, picker cancellation, pending-operation retirement and
+recreation require separate assertions from the frontend adapter tests.
+
+The production `InvestmentWatchlistExport` plugin is a separate, bounded text
+output capability. Its chooser receives only an operation ID and version; the
+chosen URI stays native. The managed client checks the current saved version
+and session before handing text to the one-use write operation. No note text
+is restored after Activity recreation, and ordinary stop/resume while the picker
+is open retains the operation. Authentication and broad storage permissions are
+unchanged. See [saved-watchlist export](APPWRITE_WATCHLIST.md#export-the-saved-watchlist)
+for user behavior and [Current work](CURRENT_WORK.md) for executed evidence.
+
 Each run retains its Android test results and HTML report. The workflow rejects
 missing or skipped required tests. A failing emulator job prevents the source checks from accepting that revision for an
 Appwrite release. Read the test report when a run fails; a successful build

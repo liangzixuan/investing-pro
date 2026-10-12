@@ -7,6 +7,8 @@ import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
 import "../../src/clerk-trial/trial.css";
 import { createFixture } from "./fixture";
+import { createNativeExportFixture } from "./native-export-fixture";
+import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 
 if (
   Capacitor.getPlatform() !== "android" ||
@@ -30,13 +32,16 @@ if (
   scenario !== "raw-close-comparison" &&
   scenario !== "bea-agenda" &&
   scenario !== "bea-session-retirement" &&
-  scenario !== "markets-selected-price"
+  scenario !== "markets-selected-price" &&
+  scenario !== "watchlist-export"
 )
   throw new Error("Unknown invented Android test scenario");
 // Fixed test input before the router mounts; no navigation or account bypass.
 if (scenario === "company-direct-entry")
   history.replaceState(null, "", "/?company=listing-zero&section=annual");
 const fixture = await createFixture(scenario ?? "default");
+const nativeExport =
+  scenario === "watchlist-export" ? createNativeExportFixture() : null;
 
 /** Own the real session model so diagnostics can observe invented drafts without a production bridge. */
 function FixtureSession() {
@@ -60,12 +65,19 @@ function FixtureSession() {
     <>
       <TrialFrame managed compact>
         {workspace ? (
-          <ManagedWorkspaceRouter workspace={workspace} androidBack={App} />
+          <ManagedWorkspaceRouter
+            workspace={workspace}
+            androidBack={App}
+            {...(nativeExport ? { exportDelivery: nativeExport.delivery } : {})}
+          />
         ) : (
           <p role="status">Loading your workspace…</p>
         )}
       </TrialFrame>
       {workspace && <FixtureDraftDiagnostics workspace={workspace} />}
+      {workspace && nativeExport && (
+        <nativeExport.Controls workspace={workspace} />
+      )}
     </>
   );
 }
@@ -81,6 +93,13 @@ function FixtureDraftDiagnostics({
   );
   return (
     <aside aria-label="Invented draft diagnostics">
+      {nativeExport && (
+        <pre id="fixture-export-document">
+          {JSON.stringify(
+            draft.saved ? formatManagedWatchlistExport(draft.saved) : null,
+          )}
+        </pre>
+      )}
       <pre
         id="fixture-workspace-draft"
         style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}

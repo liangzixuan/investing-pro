@@ -165,6 +165,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("bea-agenda");
         if (testName.getMethodName().equals("beaSessionExpiryClearsAgendaAndFencesLateResponse"))
             selectFixtureScenario("bea-session-retirement");
+        if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
+            selectFixtureScenario("watchlist-export");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
 
         scenario = ActivityScenario.launch(MainActivity.class);
@@ -191,6 +193,163 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) assertCompanyHistory("listing-zero", "annual", true);
         else assertRootHistory();
         Log.i("ManagedFixture", "source=" + expectedSourceSha + ", files=" + copiedFiles + ", bytes=" + copiedBytes);
+    }
+
+    @Test
+    public void savedWatchlistExportUsesSystemPickerAndPreservesDraft() throws Exception {
+        android.content.Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
+        android.content.Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        WatchlistTestDocuments.clear(appContext);
+        android.content.pm.ProviderInfo provider = testContext.getPackageManager().resolveContentProvider(
+            SavedWatchlistTestDocumentsProvider.AUTHORITY, 0);
+        assertNotNull("The invented destination must exist only in the test package", provider);
+        assertEquals(testContext.getPackageName(), provider.packageName);
+        android.content.pm.ProviderInfo observer = testContext.getPackageManager().resolveContentProvider(
+            SavedWatchlistTestObservationProvider.AUTHORITY, 0);
+        assertNotNull(observer);
+        assertEquals(testContext.getPackageName(), observer.packageName);
+        android.content.pm.PackageInfo appPackage = appContext.getPackageManager().getPackageInfo(
+            appContext.getPackageName(), android.content.pm.PackageManager.GET_PROVIDERS);
+        if (appPackage.providers != null) for (android.content.pm.ProviderInfo item : appPackage.providers) {
+            assertNotEquals("Runtime APK must not declare the invented provider", provider.authority, item.authority);
+            assertNotEquals("Runtime APK must not declare the test observer", observer.authority, item.authority);
+        }
+        scenario.onActivity(activity -> {
+            com.getcapacitor.Plugin plugin = activity.getBridge().getPlugin("InvestmentWatchlistExport").getInstance();
+            assertTrue(plugin instanceof InvestmentWatchlistExportPlugin);
+            assertNull("Exports must never enter saved Activity options", ((InvestmentWatchlistExportPlugin) plugin).saveInstanceState());
+        });
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-watchlist-search", "ZERO");
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", "Invented saved note: café 東京 📈", "Unsaved export draft");
+        closeSoftKeyboard();
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        String expectedText = readExportFixtureText();
+        assertTrue(expectedText.contains("Invented saved note: café 東京 📈"));
+        assertTrue(expectedText.contains("Invented second note"));
+        assertFalse(expectedText.contains("Unsaved export draft"));
+        WatchlistSystemPicker picker = new WatchlistSystemPicker();
+        try {
+            click("#managed-watchlist-export");
+            picker.cancel();
+            awaitPage("cancelled export returns to the same draft", "document.querySelector('#managed-watchlist-export-status')?.textContent.includes('cancelled')");
+            assertEquals(0, WatchlistTestDocuments.outputs(appContext).length);
+            assertExportDraftAndReads(documentTimeOrigin);
+            click("#managed-watchlist-export");
+            picker.saveToInventedRoot();
+            awaitPage("native writer completed", "document.querySelector('#managed-watchlist-export-status')?.textContent === 'Exported saved version 1.'");
+            WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(appContext);
+            assertEquals(1, outputs.length);
+            assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.read(appContext, outputs[0]));
+            assertEquals("Investment-watchlist-v1.txt", outputs[0].name);
+            click("#fixture-export-replay");
+            awaitPage("consumed handle and duplicate chooser refused",
+                "JSON.parse(document.querySelector('#fixture-export-protocol').textContent).replayRefused === 1 && " +
+                "JSON.parse(document.querySelector('#fixture-export-protocol').textContent).duplicateRefused === 2");
+            assertArrayEquals(expectedText.getBytes(StandardCharsets.UTF_8), WatchlistTestDocuments.read(appContext, outputs[0]));
+            assertExportDraftAndReads(documentTimeOrigin);
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-export-unicode");
+            picker.saveToInventedRoot();
+            assertInvalidExportRefused(appContext, 1);
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-export-oversize");
+            picker.saveToInventedRoot();
+            assertInvalidExportRefused(appContext, 2);
+            assertExportDraftAndReads(documentTimeOrigin);
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-export-retire");
+            click("#managed-watchlist-export");
+            picker.saveToInventedRoot();
+            awaitPage("retired session fences late picker response", DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null");
+            outputs = WatchlistTestDocuments.outputs(appContext);
+            assertEquals("The picker may create an empty destination before the retired callback", 1, outputs.length);
+            assertEquals("Retirement must prevent the text write", 0, outputs[0].size);
+            assertFixtureBoundary();
+            WatchlistTestDocuments.clear(appContext);
+            click("#fixture-export-choose-only");
+            picker.saveToInventedRoot();
+            awaitPage("one unconsumed handle awaits recreation",
+                "JSON.parse(document.querySelector('#fixture-export-choice').textContent)?.handle?.length === 36");
+            JSONObject choice = new JSONObject(readFixtureString(
+                "document.querySelector('#fixture-export-choice').textContent"));
+            assertRecreatedExportHandleRefused(choice);
+            outputs = WatchlistTestDocuments.outputs(appContext);
+            assertEquals(1, outputs.length);
+            assertEquals("Recreation must discard an unconsumed handle", 0, outputs[0].size);
+        } finally {
+            WatchlistTestDocuments.clear(appContext);
+        }
+    }
+
+    private void assertInvalidExportRefused(android.content.Context context, int count) throws Exception {
+        awaitPage("invalid native text refused before stream write",
+            "JSON.parse(document.querySelector('#fixture-export-protocol').textContent).invalidRefused === " + count);
+        WatchlistTestDocuments.Output[] outputs = WatchlistTestDocuments.outputs(context);
+        assertEquals(1, outputs.length);
+        assertEquals(0, outputs[0].size);
+    }
+
+    private void assertExportDraftAndReads(double documentTimeOrigin) throws Exception {
+        awaitPage("export preserves dirty filtered draft and all request counts",
+            DRAFT + ".dirty === true && " + DRAFT + ".baseVersion === 1 && " +
+            DRAFT + ".memberships[0].note === 'Unsaved export draft' && " + DRAFT + ".memberships.length === 2 && " +
+            "document.querySelector('#managed-watchlist-search')?.value === 'ZERO' && " +
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0 && " +
+            DIAGNOSTICS + ".status === 1 && " + DIAGNOSTICS + ".search === 0 && " +
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
+        assertEquals("Same Activity picker return preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String readExportFixtureText() throws Exception {
+        return readFixtureString("JSON.parse(document.querySelector('#fixture-export-document').textContent).text");
+    }
+
+    private String readFixtureString(String expression) throws Exception {
+        CountDownLatch returned = new CountDownLatch(1);
+        AtomicReference<String> result = new AtomicReference<>();
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            expression,
+            value -> { result.set(value); returned.countDown(); }));
+        assertTrue("Saved export diagnostic must return", returned.await(2, TimeUnit.SECONDS));
+        Object decoded = new org.json.JSONTokener(result.get()).nextValue();
+        assertTrue(decoded instanceof String);
+        return (String) decoded;
+    }
+
+    /** A direct native refusal probe after a real picker supplied the now-retired handle. */
+    private void assertRecreatedExportHandleRefused(JSONObject choice) throws Exception {
+        AtomicReference<com.getcapacitor.Plugin> previous = new AtomicReference<>();
+        scenario.onActivity(activity -> {
+            previous.set(activity.getBridge().getPlugin("InvestmentWatchlistExport").getInstance());
+            assertNull(((InvestmentWatchlistExportPlugin) previous.get()).saveInstanceState());
+        });
+        scenario.recreate();
+        CompletableFuture<String> result = new CompletableFuture<>();
+        com.getcapacitor.JSObject options = new com.getcapacitor.JSObject()
+            .put("operationId", choice.getString("operationId"))
+            .put("handle", choice.getString("handle")).put("text", "Must not be written");
+        com.getcapacitor.PluginCall probe = new com.getcapacitor.PluginCall(
+            null, "InvestmentWatchlistExport", "invented-recreation-probe", "write", options) {
+            @Override public void reject(String message, String code) { result.complete(code); }
+            @Override public void resolve(com.getcapacitor.JSObject value) { result.complete("unexpected_write"); }
+        };
+        scenario.onActivity(activity -> {
+            InvestmentWatchlistExportPlugin current = (InvestmentWatchlistExportPlugin)
+                activity.getBridge().getPlugin("InvestmentWatchlistExport").getInstance();
+            assertNotSame(previous.get(), current);
+            assertNull(current.saveInstanceState());
+            assertNull(activity.getBridge().getPlugin("InvestmentAuth"));
+            current.write(probe);
+            activity.getBridge().setServerBasePath(fixtureDirectory.getAbsolutePath());
+        });
+        assertEquals("invalid_handle", result.get(2, TimeUnit.SECONDS));
+        awaitPage("recreated fixture loaded without restoring export",
+            "document.querySelector('#fixture-export-choice')?.textContent === 'null' && " +
+            DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0");
     }
 
     @Test
@@ -2618,7 +2777,8 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement"));
+            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
+            scenarioName.equals("watchlist-export"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

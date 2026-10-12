@@ -1,6 +1,6 @@
 import { registerPlugin } from "@capacitor/core";
 import { App } from "@capacitor/app";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ClerkTrialConfig } from "./config";
 import { validateTrialConfig } from "./config";
 import { NativeTrialSessionStore } from "./native-session";
@@ -9,6 +9,10 @@ import { TrialFrame } from "./TrialFrame";
 import { TrialSessionScreen } from "./TrialScreen";
 import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 import { ManagedEntry, ManagedSessionNotice } from "./ManagedEntry";
+import {
+  createNativeWatchlistExportAdapter,
+  type InvestmentWatchlistExportPlugin,
+} from "./native-watchlist-export";
 
 export function NativeTrialApp({ config }: { config: ClerkTrialConfig }) {
   const checked = validateTrialConfig(config);
@@ -58,6 +62,17 @@ function NativeSession({
     store.getSnapshot,
   );
   const session = store.session();
+  const exportDelivery = useMemo(
+    () =>
+      managed
+        ? createNativeWatchlistExportAdapter(
+            registerPlugin<InvestmentWatchlistExportPlugin>(
+              "InvestmentWatchlistExport",
+            ),
+          )
+        : undefined,
+    [managed],
+  );
   const signInMessage =
     state.message ||
     (state.auth.status === "loading"
@@ -94,6 +109,7 @@ function NativeSession({
               apiOrigin={apiOrigin}
               session={session}
               androidBack={App}
+              {...(exportDelivery ? { exportDelivery } : {})}
             />
           ) : (
             <TrialSessionScreen

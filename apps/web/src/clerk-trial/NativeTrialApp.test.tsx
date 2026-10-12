@@ -14,6 +14,7 @@ import type {
 } from "./native-session";
 import type { TrialSession } from "./session";
 import type { AndroidBackAdapter } from "../mobile/android-back";
+import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 
 // Controlled hook calls inspect composition and cleanup; the real session store runs below.
 const hooks = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ const hooks = vi.hoisted(() => ({
   effects: [] as Array<() => (() => void) | void>,
   register: vi.fn(),
   androidBack: { addListener: vi.fn(), exitApp: vi.fn() },
+  memo: null as { value: unknown } | null,
 }));
 vi.mock("react", async (original) => ({
   ...(await original()),
@@ -35,6 +37,10 @@ vi.mock("react", async (original) => ({
   },
   useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) =>
     getSnapshot(),
+  useMemo: (create: () => unknown) => {
+    if (!hooks.memo) hooks.memo = { value: create() };
+    return hooks.memo.value;
+  },
 }));
 vi.mock("@capacitor/core", () => ({ registerPlugin: hooks.register }));
 vi.mock("@capacitor/app", () => ({ App: hooks.androidBack }));
@@ -72,6 +78,7 @@ let cleanup: (() => void) | void;
 beforeEach(() => {
   hooks.state = null;
   hooks.effects = [];
+  hooks.memo = null;
   hooks.register.mockReset();
 });
 afterEach(() => {
@@ -107,7 +114,10 @@ async function mount(
       .mockRejectedValue(new Error("synthetic unavailable")),
     ...overrides,
   };
-  hooks.register.mockReturnValue(plugin);
+  const exportPlugin = { choose: vi.fn(), write: vi.fn(), cancel: vi.fn() };
+  hooks.register.mockImplementation((name: string) =>
+    name === "InvestmentAuth" ? plugin : exportPlugin,
+  );
   const loading = NativeTrialApp({ config });
   const loadingHtml = renderToStaticMarkup(loading);
   expect(loadingHtml).toContain("Checking the installed session");
@@ -133,6 +143,7 @@ async function mount(
     frame,
     plugin,
     remove,
+    exportPlugin,
     emit: (value: NativeAuthState) => emit(value),
   };
 }
@@ -143,6 +154,7 @@ function findScreen(node: ReactNode):
       apiOrigin: string;
       androidBack?: AndroidBackAdapter;
       warnOnBrowserLeave?: boolean;
+      exportDelivery?: WatchlistExportDeliveryAdapter;
     }>
   | undefined {
   const children: ReactNode[] = [];
@@ -160,6 +172,7 @@ function findScreen(node: ReactNode):
         apiOrigin: string;
         androidBack?: AndroidBackAdapter;
         warnOnBrowserLeave?: boolean;
+        exportDelivery?: WatchlistExportDeliveryAdapter;
       }>;
     }
     const found = findScreen(child.props.children);
@@ -202,7 +215,7 @@ describe("native shared workspace composition", () => {
   ] as const)(
     "selects the existing screen and owns one listener %#",
     async (config, screenType) => {
-      const { frame, plugin, remove } = await mount(config);
+      const { frame, plugin, remove, exportPlugin } = await mount(config);
       const screen = findScreen(frame());
       expect(screen?.type).toBe(screenType);
       expect(screen?.key).toBe("1");
@@ -212,7 +225,19 @@ describe("native shared workspace composition", () => {
       expect(screen?.props.androidBack).toBe(
         config.environment === "production" ? hooks.androidBack : undefined,
       );
-      expect(hooks.register).toHaveBeenCalledExactlyOnceWith("InvestmentAuth");
+      expect(hooks.register.mock.calls).toEqual(
+        config.environment === "production"
+          ? [["InvestmentAuth"], ["InvestmentWatchlistExport"]]
+          : [["InvestmentAuth"]],
+      );
+      expect(typeof screen?.props.exportDelivery?.deliver).toBe(
+        config.environment === "production" ? "function" : "undefined",
+      );
+      expect(findScreen(frame())?.props.exportDelivery).toBe(
+        screen?.props.exportDelivery,
+      );
+      for (const method of Object.values(exportPlugin))
+        expect(method).not.toHaveBeenCalled();
       expect(plugin.addListener).toHaveBeenCalledTimes(1);
       expect(plugin.getState).toHaveBeenCalledTimes(1);
       const html = renderToStaticMarkup(frame());
