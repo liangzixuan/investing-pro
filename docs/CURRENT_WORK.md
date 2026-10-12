@@ -170,6 +170,26 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+A local keyboard-bypass increment adds **Skip to workspace content** before the
+managed workspace controls. It focuses the existing content landmark while
+preserving company URLs, Clerk fragments, drafts and request behavior. Active,
+entry and workspace-creation compositions retain one main landmark and one h1.
+Existing research, Back and watchlist-recovery focus remain unchanged. The
+[navigation guide](MANAGED_RESEARCH_NAVIGATION.md#keyboard-bypass) describes the
+scope. Seventy-eight screen checks and 34 unchanged adapter/session checks pass,
+along with web types, scoped lint/format and unchanged source boundaries.
+Independent source review resolved a focus-outline cascade issue and found no
+remaining defect. Actual-component Brave checks with invented data passed at
+1440, 390 and 320 pixels: the first Tab reveals a 44-pixel skip control, Enter
+focuses the content, and the next Tab reaches its controls. Empty Discover,
+pending, resolved and invalid company views preserve query and fragment without
+extra requests. A conflict keeps its draft and request counts; Keep my draft
+still focuses the watchlist heading. Retirement clears the draft and removes the
+link. No document overflow or browser console error was observed. Runtime
+history length was not observed; source and handler tests establish no navigation
+calls. Hosted acceptance and delivery remain open. This work adds no
+screen-reader, native execution or physical-device acceptance claim.
+
 [PR77](https://github.com/liangzixuan/investing-pro/pull/77), merged October 12,
 restores keyboard position after a successful watchlist
 recovery choice. Choosing **Use saved version** or **Keep my draft** removes that

@@ -37,6 +37,34 @@
 .clerk-trial.managed-frame-active {
   padding: 0;
 }
+.clerk-trial.managed-frame .managed-skip-link {
+  position: fixed;
+  z-index: 30;
+  top: 12px;
+  left: 12px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  color: #101426;
+  background: var(--managed-action);
+  border-radius: 7px;
+  font-weight: 600;
+}
+.clerk-trial.managed-frame .managed-skip-link:focus {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 16px;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+}
 .managed-frame-active > .managed-header-compact {
   position: absolute;
   width: 1px;
@@ -103,6 +131,9 @@
   :is(button, input, textarea, select, summary, a, [tabindex]):focus-visible {
   outline: 3px solid #adb7ff;
   outline-offset: 3px;
+}
+.clerk-trial.managed-frame .managed-workspace-content:focus-visible {
+  outline-offset: -3px;
 }
 .clerk-trial.managed-frame :is(input, textarea, select) {
   color: var(--managed-ink);

@@ -8,9 +8,13 @@ import {
 } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
-import { ManagedWorkspaceScreen } from "./ManagedWorkspaceScreen";
+import {
+  ManagedSessionScreen,
+  ManagedWorkspaceScreen,
+} from "./ManagedWorkspaceScreen";
 import { TrialApiError } from "./api";
 import { TrialFrame } from "./TrialFrame";
+import { ManagedEntry, ManagedSessionNotice } from "./ManagedEntry";
 import { WorkspaceSearch } from "../features/workspace/WorkspaceSearch";
 import type { AndroidBackAdapter } from "../mobile/android-back";
 import {
@@ -2039,7 +2043,245 @@ describe("managed workspace screen", () => {
     expect(managed).toContain("Software licenses");
     expect(demo).toContain("Synthetic data only");
     expect(demo).toContain("isolated trial");
+    for (const html of [managed, demo]) {
+      expect(html.match(/<main[ >]/gu)).toHaveLength(1);
+      expect(html.match(/<h1[ >]/gu)).toHaveLength(1);
+      expect(html).not.toContain("managed-skip-link");
+    }
   });
+
+  it("places the active content landmark beyond shared controls with the skip link first", () => {
+    const { workspace } = fixture();
+    const html = renderToStaticMarkup(
+      <TrialFrame managed compact>
+        <ManagedSessionNotice>
+          A new session is active. The earlier server sign-out remains
+          unconfirmed.
+        </ManagedSessionNotice>
+        <ManagedWorkspaceScreen workspace={workspace} />
+      </TrialFrame>,
+    );
+    expect(html.match(/<main[ >]/gu)).toHaveLength(1);
+    expect(html.match(/<h1[ >]/gu)).toHaveLength(1);
+    expect(html).toContain("earlier server sign-out remains unconfirmed");
+    const content = html.match(/<main\b[\s\S]*?<\/main>/u)![0];
+    expect(content).toContain('id="managed-workspace-content"');
+    expect(content).toContain('tabindex="-1"');
+    expect(content).toContain('id="managed-discover-heading"');
+    expect(content).not.toContain('aria-label="Workspace"');
+    expect(content).not.toContain('role="search"');
+    expect(content).not.toContain('id="managed-signout-open"');
+    expect(content).not.toContain("Software licenses");
+    expect(
+      html.match(/<(?:a|button|input|select|textarea)\b[^>]*>/u)?.[0],
+    ).toBe('<a class="managed-skip-link" href="#managed-workspace-content">');
+    expect(html).toContain("Skip to workspace content</a>");
+  });
+
+  it("keeps one main and one h1 during managed entry and workspace creation", () => {
+    const { api } = fixture();
+    const entry = renderToStaticMarkup(
+      <TrialFrame managed>
+        <ManagedEntry
+          title="Sign in on this device"
+          message="Session unavailable."
+        >
+          <button>Sign in with Clerk</button>
+        </ManagedEntry>
+      </TrialFrame>,
+    );
+    const loading = renderToStaticMarkup(
+      <TrialFrame managed compact>
+        <ManagedSessionScreen
+          api={api}
+          apiOrigin="https://api.example.invalid"
+          session={{
+            userId: "invented-loading-user",
+            sessionId: "invented-loading-session",
+            getToken: vi.fn(),
+            signOut: vi.fn(),
+          }}
+        />
+      </TrialFrame>,
+    );
+    for (const html of [entry, loading]) {
+      expect(html.match(/<main[ >]/gu)).toHaveLength(1);
+      expect(html.match(/<h1[ >]/gu)).toHaveLength(1);
+      expect(html).not.toContain("managed-skip-link");
+    }
+    expect(entry).toContain("Session unavailable.");
+    expect(loading).toContain('<p role="status">Loading your workspace…</p>');
+    expect(api.load).not.toHaveBeenCalled();
+    expect(api.status).not.toHaveBeenCalled();
+  });
+
+  it.each(["markets", "discover", "watchlist", "pending company"] as const)(
+    "provides a content target for %s without a data load",
+    async (view) => {
+      const { workspace, api } = fixture();
+      if (view === "pending company")
+        await workspace.setCompanyRoute({
+          kind: "company",
+          listingId: "invented-pending-listing",
+          section: "eod",
+        });
+      else workspace.setView(view);
+      const html = renderToStaticMarkup(
+        <TrialFrame managed compact>
+          <ManagedWorkspaceScreen workspace={workspace} />
+        </TrialFrame>,
+      );
+      expect(html.match(/<main[ >]/gu)).toHaveLength(1);
+      expect(html).toContain(
+        '<main class="managed-workspace-content" id="managed-workspace-content" tabindex="-1">',
+      );
+      expect(html).toContain("Skip to workspace content</a>");
+      expect(api.load).not.toHaveBeenCalled();
+      expect(api.status).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.annualReport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("bypasses into the same current content target without changing a draft, requests or navigation", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-one", "Keep this unsaved draft");
+    const navigation: ManagedCompanyNavigation = {
+      hasCompanyRoute: () => false,
+      invalid: false,
+      returnFocus: 0,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(),
+      back: vi.fn(),
+    };
+    const content = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      focus: vi.fn(),
+      scrollIntoView: vi.fn(),
+    };
+    const requestCounts = () =>
+      (
+        [
+          "load",
+          "save",
+          "status",
+          "search",
+          "resolve",
+          "annualReport",
+          "eodHistory",
+          "economicCalendar",
+        ] as const
+      ).map((name) => vi.mocked(api[name]).mock.calls.length);
+    let previousRef: React.RefObject<HTMLElement | null> | undefined;
+    for (const view of [
+      "discover",
+      "watchlist",
+      "research",
+      "invalid-link",
+    ] as const) {
+      if (view === "research")
+        workspace.openWatchlistAnnual(
+          workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+        );
+      else if (view === "invalid-link") workspace.closeResearch();
+      else workspace.setView(view);
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const nodes = elements(
+        ManagedWorkspaceScreen({
+          workspace,
+          navigation: { ...navigation, invalid: view === "invalid-link" },
+        }),
+      );
+      mounted.direct = false;
+      const main = nodes.find(
+        (node) => node.type === "main",
+      ) as React.ReactElement<React.ComponentProps<"main">>;
+      const ref = main.props.ref as React.RefObject<HTMLElement | null>;
+      if (previousRef) expect(ref).toBe(previousRef);
+      previousRef = ref;
+      ref.current = content as unknown as HTMLElement;
+      const skip = nodes.find(
+        (node) =>
+          node.type === "a" &&
+          (node.props as React.ComponentProps<"a">).className ===
+            "managed-skip-link",
+      ) as React.ReactElement<React.ComponentProps<"a">>;
+      const preventDefault = vi.fn();
+      const saved = workspace.coordinator.getSnapshot(),
+        discovery = workspace.getSnapshot();
+      const counts = requestCounts();
+      expect(content.focus).toHaveBeenCalledTimes(0);
+      skip.props.onClick!({
+        preventDefault,
+      } as unknown as React.MouseEvent<HTMLAnchorElement>);
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(content.focus).toHaveBeenCalledExactlyOnceWith({
+        preventScroll: true,
+      });
+      expect(content.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+        block: "start",
+        behavior: "instant",
+      });
+      expect(workspace.coordinator.getSnapshot()).toBe(saved);
+      expect(workspace.getSnapshot()).toBe(discovery);
+      expect(requestCounts()).toEqual(counts);
+      for (const name of ["open", "section", "view", "back"] as const)
+        expect(navigation[name]).not.toHaveBeenCalled();
+      content.focus.mockClear();
+      content.scrollIntoView.mockClear();
+    }
+  });
+
+  it.each([
+    "missing",
+    "disconnected",
+    "hidden",
+    "retired",
+    "signing out",
+  ] as const)(
+    "does not use a retained skip action when its target is %s",
+    async (condition) => {
+      const { workspace, html } = fixture();
+      const content = {
+        isConnected: condition !== "disconnected",
+        getClientRects: () => (condition === "hidden" ? [] : [{}]),
+        focus: vi.fn(),
+        scrollIntoView: vi.fn(),
+      };
+      mounted.direct = true;
+      const nodes = elements(ManagedWorkspaceScreen({ workspace }));
+      mounted.direct = false;
+      const main = nodes.find(
+        (node) => node.type === "main",
+      ) as React.ReactElement<React.ComponentProps<"main">>;
+      (main.props.ref as React.RefObject<HTMLElement | null>).current =
+        condition === "missing" ? null : (content as unknown as HTMLElement);
+      const skip = nodes.find(
+        (node) => node.type === "a",
+      ) as React.ReactElement<React.ComponentProps<"a">>;
+      if (condition === "retired") workspace.coordinator.retire();
+      const signingOut =
+        condition === "signing out"
+          ? workspace.coordinator.signOut()
+          : undefined;
+      const preventDefault = vi.fn();
+      skip.props.onClick!({
+        preventDefault,
+      } as unknown as React.MouseEvent<HTMLAnchorElement>);
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(content.focus).not.toHaveBeenCalled();
+      expect(content.scrollIntoView).not.toHaveBeenCalled();
+      if (condition === "retired" || condition === "signing out")
+        expect(html()).not.toContain("managed-skip-link");
+      await signingOut;
+    },
+  );
 
   it("shows finite access failure without rendering saved data", async () => {
     const { workspace, api, html } = fixture();
