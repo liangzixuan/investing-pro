@@ -7,7 +7,13 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The active local increment adds an explicit comparison-to-note action. Choose
+The active local design refinement makes the workspace footer compact. Software
+licenses follow the content in the same column. Session scope appears beside
+the existing sign-out review, whose draft warnings and behavior are unchanged.
+The duplicate bottom warning and sidebar slogan are removed. Affected existing
+tests pass; rendered review, source integration and delivery remain open.
+
+The preceding local increment adds an explicit comparison-to-note action. Choose
 one of the two current listings, append both listings' exact dated evidence to
 its latest note, then review and Save the complete draft. The selected editor,
 other notes and source request counts remain unchanged. Focused formatter,

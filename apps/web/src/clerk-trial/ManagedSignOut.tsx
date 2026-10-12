@@ -97,6 +97,7 @@ export function ManagedSignOut<P>({
                 ? "Your changes have not been confirmed as saved. Signing out discards this local draft. It does not change the saved watchlist."
                 : "There are no unconfirmed local changes. Signing out clears this screen and leaves the saved watchlist intact."}
           </p>
+          <p>Other signed-in devices keep their own sessions.</p>
           <div className="trial-actions">
             <button id="managed-signout-stay" ref={stayButton} onClick={stay}>
               {pending
