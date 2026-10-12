@@ -2777,7 +2777,8 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement"));
+            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
+            scenarioName.equals("watchlist-export"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);
