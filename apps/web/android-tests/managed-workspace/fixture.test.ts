@@ -718,7 +718,7 @@ describe("Android managed fixture startup", () => {
       };
       if (invalid === "source")
         payload.memberships[0]!.note = priceNoteDraft.replace(
-          "+10.0000%",
+          "+7.5000%",
           "+9.0000%",
         );
       if (invalid === "other-note")

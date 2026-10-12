@@ -473,7 +473,7 @@ describe("managed close history panel", () => {
   });
 });
 
-it("offers the company action with the displayed response, exact start and current-selection guard", async () => {
+it("offers the company action with the displayed response, both exact endpoints and current-selection guard", async () => {
   focusHooks.enabled = true;
   const response = eodResponse();
   const read = vi.fn<ManagedApi["eodHistory"]>().mockResolvedValue(response);
@@ -498,6 +498,7 @@ it("offers the company action with the displayed response, exact start and curre
   const isCurrent = () => true;
   const action = chart.props.renderAction!(
     response.rows[0]!,
+    response.rows.at(-1)!,
     isCurrent,
   ) as React.ReactElement<React.ComponentProps<typeof ManagedPriceNoteAction>>;
   expect(action.type).toBe(ManagedPriceNoteAction);
@@ -505,13 +506,21 @@ it("offers the company action with the displayed response, exact start and curre
   expect(noteActions.getAction).toHaveBeenCalledWith(
     response,
     response.rows[0],
+    response.rows.at(-1),
   );
   expect(noteActions.append).not.toHaveBeenCalled();
   expect(action.props.onAppend()).toEqual({
     appended: true,
     message: "Draft changed",
   });
-  expect(noteActions.append).toHaveBeenCalledWith(response, response.rows[0]);
+  expect(noteActions.append).toHaveBeenCalledWith(
+    response,
+    response.rows[0],
+    response.rows.at(-1),
+  );
+  expect(action.key).toBe(
+    `${response.rows[0]!.date}:${response.rows.at(-1)!.date}`,
+  );
   expect(read).toHaveBeenCalledOnce();
   focusHooks.index = 0;
   const plain = all(Panel({ model })).find(

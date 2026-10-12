@@ -3,9 +3,56 @@ import { eodResponse } from "./eod-history-fixture";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 
 const expected =
-  "Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
+  "Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 to 2026-09-19 USD 110.000000000000000003; raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Evidence dates are unchanged; this action does not refresh sources.";
 
 describe("managed price comparison note excerpt", () => {
+  it("serializes a past endpoint with its exact decimals and unchanged original provenance", () => {
+    const response = {
+      ...eodResponse(),
+      rows: [
+        { date: "2026-09-17", close: "100" },
+        { date: "2026-09-18", close: "110" },
+        { date: "2026-09-19", close: "90" },
+      ],
+    };
+    const before = JSON.stringify(response);
+    const text = priceComparisonNoteExcerpt(
+      response,
+      response.rows[0]!,
+      response.rows[1]!,
+      false,
+    )!;
+    expect(text).toContain(
+      "2026-09-17 USD 100 to 2026-09-18 USD 110; raw close change +$10 (+10.0000%).",
+    );
+    expect(text).toContain(`completed ${response.completedAt}`);
+    expect(text).not.toContain("latest loaded");
+    expect(text).not.toContain("USD 90");
+    expect(JSON.stringify(response)).toBe(before);
+  });
+
+  it.each(["copied end", "foreign end", "same date", "reversed"])(
+    "rejects %s without formatting a different interval",
+    (boundary) => {
+      const response = eodResponse();
+      const start = response.rows[0]!;
+      const end = response.rows.at(-1)!;
+      const chosenEnd =
+        boundary === "copied end"
+          ? { ...end }
+          : boundary === "foreign end"
+            ? { date: "2026-09-21", close: "120" }
+            : start;
+      expect(
+        priceComparisonNoteExcerpt(
+          response,
+          boundary === "reversed" ? end : start,
+          chosenEnd,
+          false,
+        ),
+      ).toBeNull();
+    },
+  );
   it("preserves the exact selected endpoints, source provenance and raw-price qualification", () => {
     const response = {
       ...eodResponse(),
@@ -16,23 +63,28 @@ describe("managed price comparison note excerpt", () => {
       ],
     };
     const first = response.rows[0]!;
-    expect(priceComparisonNoteExcerpt(response, first, false)).toBe(expected);
-    expect(priceComparisonNoteExcerpt(response, first, true)).toBe(
+    expect(
+      priceComparisonNoteExcerpt(response, first, response.rows.at(-1)!, false),
+    ).toBe(expected);
+    expect(
+      priceComparisonNoteExcerpt(response, first, response.rows.at(-1)!, true),
+    ).toBe(
       expected.replace(
         "Evidence dates are unchanged;",
         "Retained previous history; newer prices were not confirmed. Evidence dates are unchanged;",
       ),
     );
-    expect(priceComparisonNoteExcerpt(response, first, false)).not.toMatch(
-      /[\r\n]/u,
-    );
+    expect(
+      priceComparisonNoteExcerpt(response, first, response.rows.at(-1)!, false),
+    ).not.toMatch(/[\r\n]/u);
     const middle = priceComparisonNoteExcerpt(
       response,
       response.rows[1]!,
+      response.rows.at(-1)!,
       false,
     )!;
     expect(middle).toContain(
-      "2026-09-18 USD 107.500000000000000002 to latest loaded 2026-09-19 USD 110.000000000000000003; raw close change +$2.500000000000000001 (+2.3256%).",
+      "2026-09-18 USD 107.500000000000000002 to 2026-09-19 USD 110.000000000000000003; raw close change +$2.500000000000000001 (+2.3256%).",
     );
   });
 
@@ -61,10 +113,11 @@ describe("managed price comparison note excerpt", () => {
       const text = priceComparisonNoteExcerpt(
         response,
         response.rows[0]!,
+        response.rows.at(-1)!,
         false,
       )!;
       expect(text).toContain(
-        `2026-09-18 USD ${start} to latest loaded 2026-09-19 USD ${end}`,
+        `2026-09-18 USD ${start} to 2026-09-19 USD ${end}`,
       );
       expect(text).toContain(`raw close change ${change}.`);
     },
@@ -74,16 +127,36 @@ describe("managed price comparison note excerpt", () => {
     const response = eodResponse();
     const first = response.rows[0]!;
     expect(
-      priceComparisonNoteExcerpt(response, { ...first }, false),
+      priceComparisonNoteExcerpt(
+        response,
+        { ...first },
+        response.rows.at(-1)!,
+        false,
+      ),
     ).toBeNull();
     expect(
-      priceComparisonNoteExcerpt(response, response.rows.at(-1)!, false),
+      priceComparisonNoteExcerpt(
+        response,
+        response.rows.at(-1)!,
+        response.rows.at(-1)!,
+        false,
+      ),
     ).toBeNull();
     expect(
-      priceComparisonNoteExcerpt({ ...response, rows: [first] }, first, false),
+      priceComparisonNoteExcerpt(
+        { ...response, rows: [first] },
+        first,
+        { ...response, rows: [first] }.rows.at(-1)!,
+        false,
+      ),
     ).toBeNull();
     expect(
-      priceComparisonNoteExcerpt({ ...response, rows: [] }, first, false),
+      priceComparisonNoteExcerpt(
+        { ...response, rows: [] },
+        first,
+        { ...response, rows: [] }.rows.at(-1)!,
+        false,
+      ),
     ).toBeNull();
   });
 });

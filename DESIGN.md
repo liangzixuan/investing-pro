@@ -91,6 +91,12 @@ Raw close changes retain their signs, comparison dates and unadjusted-price
 explanation. Color supplements that text. “Not loaded”, unavailable and a retained
 previous result are separate states. No value is invented to fill an empty view.
 
+The single-listing comparison uses labelled Start and End date selectors beside
+the loaded chart. Keep the two controls compact on wide screens and stacked on
+narrow screens. Offer observed dates only, preserve keyboard focus when a choice
+changes, and identify the selected ending close separately from the latest quote.
+Both exact endpoint values remain visible with the signed change.
+
 The implemented price range remains one month. Omit the generated concept's
 unsupported 3M, 1Y and all-time controls. Its sample companies, prices and chart
 coordinates are visual examples only.

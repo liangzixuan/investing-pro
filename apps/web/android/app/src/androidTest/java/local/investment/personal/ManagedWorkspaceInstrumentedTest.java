@@ -71,7 +71,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private static final String SIGNOUT_NOTE = "Sign-out review draft";
     private static final String COMPANY_NOTE = "Company draft captured in research";
     private static final String MARKETS_PRICE_NOTE =
-        "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to latest loaded 2026-09-19 USD 20.5; " +
+        "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to 2026-09-19 USD 20.5; " +
         "raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; " +
         "original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. " +
         "Raw closes are not adjusted for splits or dividends and are not live quotes. " +
@@ -81,8 +81,8 @@ public class ManagedWorkspaceInstrumentedTest {
         "Use at most 2,000 characters. Remove embedded line breaks and unsupported characters.";
     private static final String PRICE_NOTE = "Price research draft " +
         "Observed raw-close comparison: ZERO (XNAS); 2026-09-17 USD 100.000000000000000001 " +
-        "to latest loaded 2026-09-19 USD 110.000000000000000003; " +
-        "raw close change +$10.000000000000000002 (+10.0000%). Source: Tiingo; " +
+        "to 2026-09-18 USD 107.500000000000000002; " +
+        "raw close change +$7.500000000000000001 (+7.5000%). Source: Tiingo; " +
         "requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; " +
         "completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. " +
         "Evidence dates are unchanged; this action does not refresh sources.";
@@ -1507,6 +1507,23 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("earlier exact comparison unchanged through capture", earlier);
         Log.i("ManagedComparison", "phase=earlier-long-decimal, reads=1; " + pageDiagnostic());
 
+        chooseComparisonEndDate(scope, "2026-09-18");
+        String pastInterval = rawCloseComparison(scope, "2026-09-17", "100.000000000000000001",
+            "2026-09-18", "107.500000000000000002", "Raw close change: +$7.500000000000000001 (+7.5000%)");
+        awaitPage("past endpoint compares only the two chosen observations", pastInterval);
+        assertMarketsDetail("ALFA", "2026-09-17|100.000000000000000001;2026-09-18|107.500000000000000002;2026-09-19|110.000000000000000003", false);
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+        chooseComparisonDate(scope, "2026-09-18");
+        awaitPage("a later start clears the invalid ending date without inventing another interval",
+            "document.querySelector('.managed-market-detail .managed-raw-close-comparison-start-select')?.value === '2026-09-18'" +
+            " && document.querySelector('.managed-market-detail .managed-raw-close-comparison-end-select')?.value === ''" +
+            " && document.querySelector('.managed-market-detail .managed-raw-close-comparison-result')?.textContent === ''");
+        chooseComparisonEndDate(scope, "2026-09-19");
+        awaitPage("an explicit ending date restores an ordered interval",
+            rawCloseComparison(scope, "2026-09-18", "107.500000000000000002",
+                "2026-09-19", "110.000000000000000003", "Raw close change: +$2.500000000000000001 (+2.3256%)"));
+        assertMarketsDraftAndCounts(2, 1, 0, 0);
+
         click("button[aria-label='Select BETA on company board']");
         awaitPage("unloaded listing has no previous listing comparison",
             "document.querySelector('.managed-market-detail .managed-raw-close-comparison') === null");
@@ -1572,29 +1589,38 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertEmptyComparison(String scope, String symbol, String dates) throws Exception {
         awaitPage("comparison starts empty for " + symbol,
             "(() => { const panel = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ");" +
-            " const select = panel?.querySelector('select'); return select && !select.disabled && select.value === ''" +
+            " const select = panel?.querySelector('.managed-raw-close-comparison-start-select');" +
+            " const end = panel?.querySelector('.managed-raw-close-comparison-end-select');" +
+            " return select && !select.disabled && select.value === '' && end && !end.disabled" +
+            " && end.value === Array.from(end.options).at(-1)?.value && end.value !== ''" +
+            " && Array.from(panel.querySelectorAll('label')).find(label => label.htmlFor === end.id)?.textContent === " + JSONObject.quote(symbol + " comparison end date") +
             " && panel.querySelector('label')?.textContent === " + JSONObject.quote(symbol + " comparison start date") +
             " && panel.querySelector('label')?.htmlFor === select.id" +
             " && Array.from(select.options).map(o => o.value).join('|') === " + JSONObject.quote(dates) +
             " && panel.querySelector('.managed-raw-close-comparison-result')?.textContent === ''; })()");
     }
 
-    private String rawCloseComparison(String scope, String date, String start, String latestDate, String latest, String change) {
+    private String rawCloseComparison(String scope, String date, String start, String endDate, String end, String change) {
         return "(() => { const panel = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison") + ");" +
-            " return panel?.querySelector('select')?.value === " + JSONObject.quote(date) +
+            " return panel?.querySelector('.managed-raw-close-comparison-start-select')?.value === " + JSONObject.quote(date) +
+            " && panel.querySelector('.managed-raw-close-comparison-end-select')?.value === " + JSONObject.quote(endDate) +
             " && panel.querySelector('.managed-raw-close-comparison-start-date')?.textContent === " + JSONObject.quote(date) +
             " && panel.querySelector('.managed-raw-close-comparison-start-date')?.dateTime === " + JSONObject.quote(date) +
             " && panel.querySelector('.managed-raw-close-comparison-start-close')?.textContent === " + JSONObject.quote(start) +
-            " && panel.querySelector('.managed-raw-close-comparison-latest-date')?.textContent === " + JSONObject.quote(latestDate) +
-            " && panel.querySelector('.managed-raw-close-comparison-latest-date')?.dateTime === " + JSONObject.quote(latestDate) +
-            " && panel.querySelector('.managed-raw-close-comparison-latest-close')?.textContent === " + JSONObject.quote(latest) +
+            " && panel.querySelector('.managed-raw-close-comparison-end-date')?.textContent === " + JSONObject.quote(endDate) +
+            " && panel.querySelector('.managed-raw-close-comparison-end-date')?.dateTime === " + JSONObject.quote(endDate) +
+            " && panel.querySelector('.managed-raw-close-comparison-end-close')?.textContent === " + JSONObject.quote(end) +
             " && panel.querySelector('.managed-raw-close-comparison-change')?.textContent === " + JSONObject.quote(change) +
             " && panel.querySelector('.managed-raw-close-comparison-result')?.getAttribute('role') === 'status'" +
             " && panel.textContent.includes('Raw closes are not adjusted for splits or dividends.'); })()";
     }
 
     private void chooseComparisonDate(String scope, String date) throws Exception {
-        chooseComparisonOption(scope + " .managed-raw-close-comparison select", date, date);
+        chooseComparisonOption(scope + " .managed-raw-close-comparison-start-select", date, date);
+    }
+
+    private void chooseComparisonEndDate(String scope, String date) throws Exception {
+        chooseComparisonOption(scope + " .managed-raw-close-comparison-end-select", date, date);
     }
 
     private void chooseComparisonOption(String selector, String optionValue, String label) throws Exception {
@@ -1847,14 +1873,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("no append before choosing an observed date", "document.querySelector(" + JSONObject.quote(add) + ") === null");
         assertPriceNoteCounts(1, 0, 1);
         chooseComparisonDate(scope, "2026-09-17");
+        chooseComparisonEndDate(scope, "2026-09-18");
         String exactComparison = rawCloseComparison(scope, "2026-09-17", "100.000000000000000001",
-            "2026-09-19", "110.000000000000000003", "Raw close change: +$10.000000000000000002 (+10.0000%)");
+            "2026-09-18", "107.500000000000000002", "Raw close change: +$7.500000000000000001 (+7.5000%)");
         awaitPage("selected earlier date exposes the explicit draft action",
             exactComparison + " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false" +
+            " && Array.from(document.querySelectorAll('.managed-eod-quote dd')).map(item => item.textContent).join('|') === '110.000000000000000003|2026-09-19'" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.textContent === 'Add comparison to note draft'");
         retainAnnualNoteFrame("priceComparisonNoteSource", comparison,
-            comparison + " > label, " + comparison + " > select, " + comparison + " > p, " +
-            comparison + " > .managed-raw-close-comparison-result, " + add, 5);
+            comparison + " label, " + comparison + " select, " + comparison + " > p, " +
+            comparison + " > .managed-raw-close-comparison-result, " + add, 7);
         awaitPage("comparison remains exact through source capture", exactComparison);
         assertPriceNoteCounts(1, 0, 1);
         Log.i("ManagedPriceNote", "phase=selected-exact-comparison, eod=1, save=0; " + pageDiagnostic());

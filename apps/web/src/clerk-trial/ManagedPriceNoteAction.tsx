@@ -8,10 +8,12 @@ export interface ManagedPriceNoteActions {
   getAction: (
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
+    end: ManagedEodCloseDto,
   ) => { canAppend: boolean; reason: string | null };
   append: (
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
+    end: ManagedEodCloseDto,
   ) => { appended: boolean; message: string };
 }
 
@@ -35,7 +37,7 @@ export function ManagedPriceNoteAction({
         onClick={() => {
           if (!isCurrent()) {
             setMessage(
-              "The displayed price comparison changed. Choose a starting date again.",
+              "The displayed price comparison changed. Choose the comparison dates again.",
             );
             return;
           }

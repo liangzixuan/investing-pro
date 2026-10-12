@@ -60,33 +60,37 @@ Formatter content must remain text under the [ECharts security guidance](https:/
 
 ## Compare an earlier observed close
 
-PR 46 adds a comparison to the shared Markets and company Price chart. Choose a
-starting date from the earlier observations in the loaded history.
-The latest loaded observation is the fixed endpoint. Both dates and their original
+The shared Markets and company Price chart compares two observed dates from the
+loaded history. Choose a starting date and an ending date after it. Both dates and their original
 raw USD decimal closes remain visible beside the signed USD change and percentage.
 The existing market-analytics module calculates the difference with exact decimals
 and rounds percentages to four places. A nonzero change that rounds to zero says
 it is less than 0.0001% higher or lower. This is raw price change, unadjusted for
 splits or dividends, rather than total return or a live quote.
 
-The choice starts empty. Histories with fewer than two observations explain why
-comparison is unavailable. The selector contains only observed earlier dates; it
-does not interpolate prices or assume that the requested month is fully covered.
-The date selector and full exact-value table support keyboard use.
+Start is initially empty and End is initially the latest loaded date. Choosing a
+Start after or equal to the selected End clears End and asks for a new ending
+date. End offers only dates after Start. Histories with fewer than two observations
+explain why comparison is unavailable. Both selectors contain only observed dates;
+they do not interpolate prices or assume that the requested month is fully covered.
+The date selectors and full exact-value table support keyboard use. The separate
+latest-price readout continues to show the last loaded observation when a past
+ending date is selected.
 
 Comparison makes no request and changes no saved data. Refreshing, Cancel and
-supported failures keep a choice only while the same previous history remains
+supported failures keep both choices only while the same previous history remains
 rendered, with its original provenance notice. A successful replacement resets
-the choice even when the new rows have equal values. Selecting another listing
-or retiring the chart also resets it. Switching from company Price to Annual
-unmounts the chart: returning retains the loaded prices but starts a new choice.
+both choices even when the new rows have equal values. Selecting another listing
+or retiring the chart also resets them. Switching from company Price to Annual
+unmounts the chart: returning retains the loaded prices but resets Start and End.
 
 The endpoint/date/change readout follows the established
 [date and price range pattern](https://www.tradingview.com/support/solutions/43000516996-date-and-price-range-drawing-tools/),
-using a starting-date selector for this bounded history. The comparison is
-delivered on the website and in signed Android 1.11, with isolated browser and
+using accessible date selectors for this bounded history. The original fixed-end
+comparison was delivered on the website and in signed Android 1.11, with isolated browser and
 sixteen-case native acceptance; [Current work](CURRENT_WORK.md) records the
-original native failure, accepted rerun and live/physical limits.
+original native failure, accepted rerun and live/physical limits. The new selectable
+ending date has separate source and delivery status there.
 
 On October 6, one explicit live AAPL load supported a bounded earlier-date
 comparison check. Selecting another listing reset the choice. Opening company
@@ -111,9 +115,11 @@ proposal that exceeds the note's 2,000-character limit is refused without
 truncation. Other notes and ordering stay in the same draft.
 
 While a price request is pending, wait for it to finish or use Cancel before
-appending. The action checks the current date choice, admitted response, company
+appending. The action checks both current date choices, admitted response, company
 visit, exact membership and existing draft-edit rules. A callback from an old
-choice, replaced history or closed visit cannot append. Markets keeps its
+choice, replaced history or closed visit cannot append. Both endpoint objects must
+belong to that response in increasing order. The excerpt names the selected ending
+date; it does not label a past endpoint as the latest loaded price. Markets keeps its
 read-only comparison.
 
 PR 48 delivers this flow on the website and in signed Android

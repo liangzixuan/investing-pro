@@ -598,7 +598,14 @@ describe("managed workspace screen", () => {
         payload.memberships[0]!,
       ],
     });
-    const prices = eodResponse();
+    const prices = {
+      ...eodResponse(),
+      rows: [
+        { date: "2026-09-17", close: "100" },
+        { date: "2026-09-18", close: "110" },
+        { date: "2026-09-19", close: "90" },
+      ],
+    };
     vi.mocked(api.eodHistory).mockResolvedValue(prices);
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -618,15 +625,20 @@ describe("managed workspace screen", () => {
       >;
     };
     const captured = company().props.priceNoteActions;
-    expect(captured.getAction(prices, prices.rows[0]!).canAppend).toBe(true);
+    expect(
+      captured.getAction(prices, prices.rows[0]!, prices.rows[1]!).canAppend,
+    ).toBe(true);
     company().props.onNote("x".repeat(2000));
     expect(
-      company().props.priceNoteActions.getAction(prices, prices.rows[0]!)
-        .canAppend,
+      company().props.priceNoteActions.getAction(
+        prices,
+        prices.rows[0]!,
+        prices.rows[1]!,
+      ).canAppend,
     ).toBe(false);
     company().props.onNote("  Latest Cafe\u0301 thesis  ");
     const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
-    expect(captured.append(prices, prices.rows[0]!)).toEqual({
+    expect(captured.append(prices, prices.rows[0]!, prices.rows[1]!)).toEqual({
       appended: true,
       message:
         "Price comparison added to the note draft. Review and save all changes in My Watchlist.",
@@ -635,7 +647,11 @@ describe("managed workspace screen", () => {
       workspace.coordinator.getSnapshot().draft!.memberships[0]!.note;
     expect(note.startsWith("  Latest Cafe\u0301 thesis   ")).toBe(true);
     expect(note).toContain(prices.rows[0]!.close);
-    expect(note).toContain(prices.rows.at(-1)!.close);
+    expect(note).toContain(
+      "2026-09-17 USD 100 to 2026-09-18 USD 110; raw close change +$10 (+10.0000%).",
+    );
+    expect(note).not.toContain("USD 90");
+    expect(workspace.eod.getSnapshot().response).toBe(prices);
     expect(note).toContain(prices.completedAt);
     expect(workspace.coordinator.getSnapshot().draft!.memberships[1]).toEqual(
       other,
@@ -670,15 +686,21 @@ describe("managed workspace screen", () => {
     const actions = company.props.priceNoteActions;
     const draft = workspace.coordinator.getSnapshot().draft;
     workspace.switchToAnnual();
-    expect(actions.append(prices, prices.rows[0]!).appended).toBe(false);
+    expect(
+      actions.append(prices, prices.rows[0]!, prices.rows.at(-1)!).appended,
+    ).toBe(false);
     workspace.switchToEod();
     await workspace.eod.load();
-    expect(actions.append(prices, prices.rows[0]!).appended).toBe(false);
+    expect(
+      actions.append(prices, prices.rows[0]!, prices.rows.at(-1)!).appended,
+    ).toBe(false);
     workspace.closeResearch();
     workspace.openWatchlistEod(member);
     vi.mocked(api.eodHistory).mockResolvedValueOnce(next);
     await workspace.eod.load();
-    expect(actions.append(next, next.rows[0]!).appended).toBe(false);
+    expect(
+      actions.append(next, next.rows[0]!, next.rows.at(-1)!).appended,
+    ).toBe(false);
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(api.save).not.toHaveBeenCalled();
   });
