@@ -1133,14 +1133,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("valid empty response replaces earlier rows without claiming complete history",
             "document.querySelector('.managed-filings-empty')?.textContent === 'No matching filings were observed in the checked source object.'" +
             " && document.querySelector('.managed-filings-count')?.textContent === '0 of 0 loaded filings · Page 1 of 1'" +
-            " && document.querySelector('#managed-filings-form')?.value === ''" +
-            " && document.querySelector('#managed-filings-form')?.disabled === false" +
-            " && document.querySelectorAll('#managed-filings-form option').length === 1" +
-            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms from page one.'" +
-            " && document.activeElement === document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')" +
             " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
             " && document.querySelector('.managed-filings-warning') === null" +
             " && document.querySelector('.managed-filings-results')?.textContent.includes('Older continuation files were not loaded')");
+        awaitPage("empty response resets the enabled filter to All forms with a notice",
+            "document.querySelector('#managed-filings-form')?.value === ''" +
+            " && document.querySelector('#managed-filings-form')?.disabled === false" +
+            " && document.querySelectorAll('#managed-filings-form option').length === 1" +
+            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms from page one.'");
+        awaitPage("completed empty response leaves Refresh available",
+            "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
