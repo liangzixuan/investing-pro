@@ -26,6 +26,7 @@ import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
@@ -1852,6 +1853,149 @@ describe("managed workspace screen", () => {
     expect(output).toContain('aria-live="polite"');
   });
 
+  it("reviews every raw draft change outside local search and retains it through research", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const raw = `  Hidden draft Café 😀\n${"x".repeat(2001)}  `;
+    workspace.note("listing-one", raw);
+    const retained = workspace.coordinator.getSnapshot().draft;
+    mounted.direct = true;
+    const render = () => {
+      mounted.refIndex = 0;
+      mounted.screenStateIndex = 0;
+      return ManagedWorkspaceScreen({ workspace });
+    };
+    const searchInput = () =>
+      editorElements(render()).find(
+        (node) =>
+          (node.props as React.ComponentProps<"input">).id ===
+          "managed-watchlist-search",
+      ) as React.ReactElement<React.ComponentProps<"input">>;
+    searchInput().props.onChange!({
+      target: { value: "no matching listing" },
+    } as React.ChangeEvent<HTMLInputElement>);
+    expect(
+      editorElements(render()).filter(
+        (node) =>
+          (node.props as { "data-watchlist-selection"?: string })[
+            "data-watchlist-selection"
+          ],
+      ),
+    ).toHaveLength(0);
+    const review = () =>
+      elements(render()).find(
+        (node) => node.type === ManagedUnsavedWatchlistReview,
+      ) as
+        | React.ReactElement<
+            React.ComponentProps<typeof ManagedUnsavedWatchlistReview>
+          >
+        | undefined;
+    const output = renderToStaticMarkup(review());
+    expect(output).toContain("1 changed listing");
+    expect(output).toContain("Private research note");
+    expect(output).toContain(raw);
+    expect(review()!.props.state.draft).toBe(retained);
+    workspace.openWatchlistAnnual(retained!.memberships[0]!);
+    expect(workspace.getSnapshot().research).not.toBeNull();
+    expect(renderToStaticMarkup(review())).toBe(output);
+    workspace.closeResearch();
+    expect(searchInput().props.value).toBe("no matching listing");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(retained);
+    expect(renderToStaticMarkup(review())).toBe(output);
+    workspace.coordinator.retire();
+    expect(review()).toBeUndefined();
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(api.load).toHaveBeenCalledOnce();
+    expect(api.status).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("compares real payloads after undo, rejected save and confirmed save without a reload", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-one", "Changed note");
+    workspace.note("listing-one", "Private research note");
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
+    expect(html()).toContain(
+      "No differences from last confirmed saved version 1.",
+    );
+    workspace.note("listing-one", "Changed note");
+    const retained = structuredClone(workspace.coordinator.getSnapshot().draft);
+    vi.mocked(api.save).mockRejectedValueOnce(
+      new TrialApiError("invalid_request"),
+    );
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(retained);
+    expect(html()).toContain("Review unsaved changes · 1 changed listing");
+    expect(html()).toContain("Private research note");
+    const save = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+    vi.mocked(api.save).mockReturnValueOnce(save.promise);
+    const saving = workspace.coordinator.save();
+    const pending = html();
+    expect(pending).toContain('id="managed-unsaved-review-summary"');
+    expect(pending).toContain(
+      "Saving the watchlist. This review updates when the save settles.",
+    );
+    expect(pending).not.toContain("data-managed-review-listing-id");
+    save.resolve({ version: 2, payload: retained!, replayed: false });
+    await saving;
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      dirty: false,
+      latestLoaded: false,
+    });
+    expect(html()).toContain(
+      "No differences from last confirmed saved version 2.",
+    );
+    expect(html()).not.toContain("data-managed-review-listing-id");
+    expect(api.save).toHaveBeenCalledTimes(2);
+    expect(api.load).toHaveBeenCalledOnce();
+    expect(api.status).toHaveBeenCalledOnce();
+    expect(api.search).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+  });
+
+  it.each(["conflict", "unavailable", "replayed"] as const)(
+    "defers the ordinary comparison to real %s save recovery",
+    async (outcome) => {
+      const { workspace, api, html } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.note("listing-one", "Retained recovery draft");
+      if (outcome === "replayed") {
+        vi.mocked(api.save).mockImplementationOnce((command) =>
+          Promise.resolve({
+            version: 2,
+            payload: command.payload,
+            replayed: true,
+          }),
+        );
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(outcome));
+      }
+      await workspace.coordinator.save();
+      const output = html();
+      expect(output).toContain('id="managed-unsaved-review-summary"');
+      expect(output).toContain(
+        "Finish save recovery above before reviewing further changes.",
+      );
+      expect(output).not.toContain("data-managed-review-listing-id");
+      expect(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+      ).toBe("Retained recovery draft");
+      expect(api.save).toHaveBeenCalledOnce();
+      expect(api.load).toHaveBeenCalledOnce();
+      expect(api.status).toHaveBeenCalledOnce();
+    },
+  );
+
   it("clears private notes, query and controls immediately on retirement", async () => {
     const { workspace, html } = fixture();
     await workspace.coordinator.load();
@@ -1864,6 +2008,7 @@ describe("managed workspace screen", () => {
     expect(output).not.toContain("managed-note-reading");
     expect(output).not.toContain("Find a company");
     expect(output).not.toContain("Save watchlist");
+    expect(output).not.toContain("managed-unsaved-review");
     expect(output).toContain("local watchlist data has been cleared");
   });
 
@@ -2070,6 +2215,12 @@ describe("managed workspace screen", () => {
       expect(reviewed).toContain("New saved note");
       expect(reviewed).toContain("Retained draft note");
       expect(reviewed).toContain("Order differs");
+      expect(reviewed.match(/data-managed-review-listing-id=/gu)).toHaveLength(
+        2,
+      );
+      expect(reviewed).toContain(
+        "Finish save recovery above before reviewing further changes.",
+      );
       expect(reviewed.indexOf("Review saved version 3")).toBeLessThan(
         reviewed.indexOf("Use saved version"),
       );

@@ -80,6 +80,28 @@ selection retention, filtered removal and focus cancellation, correction,
 research return and full-payload saves. Actual browser and native execution
 status is recorded in [Current work](CURRENT_WORK.md).
 
+## Review unsaved changes
+
+**Review unsaved changes** compares the complete current draft with the last
+confirmed saved version. Open it beside Save to inspect added or removed listings,
+changed notes, order and listing identities. Search and selection do not limit
+the comparison. Notes appear in full, including text that needs correction before
+saving. Both catalog digests remain visible when the catalogs differ.
+
+The review reads the current draft without changing it or sending a request.
+It does not predict the normalized payload of a future Save or claim that the
+loaded version is the latest copy on another device. Existing validation, catalog
+review and explicit Save still apply. Undoing every edit shows no differences even
+if the screen still marks the draft as unsaved.
+
+The disclosure stays open through a save and reports the returned saved version
+when differences clear. Its summary remains mounted so keyboard focus can stay
+there. Loading or saving temporarily withholds the comparison. During a conflict
+or uncertain save, the existing recovery controls explain the next action.
+Research and Back preserve the disclosure within the mounted workspace; session
+retirement clears its private content. See [Current work](CURRENT_WORK.md) for
+verification and delivery status.
+
 ## Export the saved watchlist
 
 **Export saved watchlist** creates a readable UTF-8 text copy of the confirmed

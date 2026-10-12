@@ -190,6 +190,22 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+The active unsaved-change review increment adds an optional **Review unsaved
+changes** disclosure beside Save. It compares the complete current draft with
+the last confirmed saved version, including listings hidden by search, exact
+notes, order and identity changes. The shared entry presentation also serves
+the existing recovery review. It adds no request or save and keeps the summary
+mounted through pending saves and zero differences. The 106 focused checks, web
+types, scoped lint/format and source boundaries passed. Independent source review
+found no remaining defect. Invented-data Brave checks covered desktop, 390 and
+320 pixels, raw invalid notes outside the filter, save success and rejection,
+focus retention, undone edits, research return, recovery, empty and unloaded
+states, catalog differences and session retirement. No document overflow or
+console warnings/errors were observed. The existing Android note journey now
+checks this disclosure; its execution remains pending. No live account or
+provider request was used for these checks.
+See [unsaved-change review](APPWRITE_WATCHLIST.md#review-unsaved-changes).
+
 The saved-watchlist export increment adds **Export saved watchlist** to My
 Watchlist. It produces a readable UTF-8 file containing every listing, its full
 identity and exact notes from the last confirmed saved version. Filtering,
@@ -205,13 +221,15 @@ Independent source reviews found no remaining defect. Invented-data Brave checks
 recorded 31 observations at desktop, 390 and 320 pixels, with no document overflow
 or console errors. All captured export documents match the expected saved text;
 the actual downloaded file remains unverified. Android picker execution is also
-pending: local instrumentation compilation needs existing test dependencies that
-are unavailable in the offline cache. Both test providers belong only to the
-instrumentation APK; the packaging guard checks their isolation and passed 22
+pending. The fixture registration omission was corrected in PR86. Its next
+hosted attempt was blocked by a Pixel Launcher crash dialog, visible over both
+the first unchanged test and the export test. A fresh Android attempt is running
+on unchanged source; the original failures remain retained. Both test providers
+belong only to the instrumentation APK; the packaging guard checks their isolation and passed 22
 archive models. These models do not establish actual APK isolation or native
 execution. See [saved-watchlist export](APPWRITE_WATCHLIST.md#export-the-saved-watchlist).
 
-The active Annual trend increment adds an initially collapsed **Reported annual
+The accepted Annual trend increment adds an initially collapsed **Reported annual
 trend** to the managed financial overview. It charts Revenue or Net income across
 two or three admitted periods from one named basis and filing. Exact tables,
 original dates and unavailable explanations remain visible. Stable basis and
@@ -233,9 +251,12 @@ provider calls. [PR85](https://github.com/liangzixuan/investing-pro/pull/85) pas
 the original Android, Linux, parser, custody and dependency checks. Windows CI
 exceeded a five-second deadline in an unchanged durable-vault test. Its timeout
 now matches the other durable tests at 30 seconds, with all assertions unchanged;
-the affected ten tests passed locally. Fresh current-head checks are in progress
-before source acceptance. CodeScene's separate complexity advisory was reviewed
-without a correctness finding. See the
+the affected ten tests passed locally. All five applicable workflows and six
+Actions jobs passed for `f1031fb8143f006820b1cfe3c74b90ec6620f702`, including
+Windows and Android. PR85 merged as `1131ec8009c092a0f485905ad8bd8f08ba2a685f`
+on October 12 at 07:29:13 UTC. CodeScene's separate complexity advisory retains
+its failed result and was reviewed without a correctness finding. Actual-main
+and live delivery remain separate. See the
 [trend contract](MANAGED_SEC_ANNUAL.md#optional-reported-annual-trend).
 
 The accepted comparison-ordering increment adds Board order, Highest raw change
