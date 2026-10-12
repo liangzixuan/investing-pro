@@ -649,6 +649,20 @@ export function ManagedWorkspaceScreen({
                         end,
                       ),
                   }}
+                  filingsNoteActions={{
+                    getAction: (response, filing) =>
+                      workspace.getFilingsNoteAction(
+                        discovery.research!.selection,
+                        response,
+                        filing,
+                      ),
+                    append: (response, filing) =>
+                      workspace.appendFilingReferenceToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                        filing,
+                      ),
+                  }}
                   onReview={() => {
                     if (
                       workspace.getSnapshot().research?.selection !==

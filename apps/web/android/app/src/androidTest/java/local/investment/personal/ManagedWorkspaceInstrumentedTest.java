@@ -68,6 +68,14 @@ import org.junit.runner.RunWith;
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
     private static final String NOTE = "Draft survives native Back";
+    private static final String FILINGS_NOTE = NOTE + " " +
+        "Observed SEC filing reference: ZERO (XNAS); CIK 0000000001; Form 8-K; accession 0000000001-26-000026; " +
+        "filed 2026-09-19; report date unavailable; filing index https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm. " +
+        "Source: SEC Submissions; requested window 2026-06-23 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; " +
+        "retrieved 2026-09-20T00:00:01.000Z; completed 2026-09-20T00:00:02.000Z. " +
+        "Only the current recent-filings object was checked; older continuation files were not loaded; " +
+        "complete window coverage is not established. The source lists older continuation files. " +
+        "Filing contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String SIGNOUT_NOTE = "Sign-out review draft";
     private static final String COMPANY_NOTE = "Company draft captured in research";
     private static final String MARKETS_PRICE_NOTE =
@@ -1104,9 +1112,83 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("late filings cannot recreate a closed visit", "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-filings-results') === null");
         assertFilingsDraftAndCounts(5, 2, 2);
         assertReturnedRootHistory("listing-zero", "filings");
-        assertEquals("Filings journey preserves its document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
         Log.i("ManagedFilings", "phase=pages-cancel-failure-empty-back-late; " + pageDiagnostic());
+        click(ANNUAL);
+        click(".managed-company-sections button[aria-label='Filings section for ZERO']");
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        awaitPage("reopened Filings requires one fresh explicit read", loaded +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25");
+        assertFilingsDraftAndCounts(6, 2, 2);
+        click(".managed-filings-pagination > button:last-child");
+        String add = ".managed-filings-list button[aria-label='Add Form 8-K filing 0000000001-26-000026 reference to note draft']";
+        awaitPage("page two exposes the exact observed row's draft action",
+            "document.querySelector('.managed-filings-count')?.textContent.includes('Page 2 of 2')" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.getAttribute('aria-disabled') === 'false'" +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.textContent === 'Add reference to note draft'");
+        retainAnnualNoteFrame("companyFilingsNoteSource", ".managed-filings-list > li", ".managed-filings-list > li", 1);
+        click(add);
+        awaitPage("explicit append preserves the complete reference and focused row action",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(FILINGS_NOTE) +
+            " && document.querySelector('.managed-filings-note-status')?.textContent === " +
+            JSONObject.quote("Filing reference added to the note draft. Review and save all changes in My Watchlist.") +
+            " && document.querySelector(" + JSONObject.quote(add) + ")?.getAttribute('aria-disabled') === 'true'" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(add) + ")");
+        assertFilingsNoteDraft(1, true);
+        assertFilingsNoteCounts(0, 1);
+        click(add);
+        awaitPage("a second activation cannot append an identical paragraph",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(FILINGS_NOTE) +
+            " && document.querySelector('.managed-filings-note-status')?.textContent === " +
+            JSONObject.quote("This exact filing reference is already in the note draft.") +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(add) + ")");
+        // Exact textarea bytes are checked; this frame shows only the visible controls.
+        retainAnnualNoteFrame("companyFilingsNoteDraft", "#managed-research-note-heading",
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
+        assertFilingsNoteDraft(1, true);
+        assertFilingsNoteCounts(0, 1);
+        assertFixtureBoundary();
+        click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
+        awaitPage("Review returns to the complete unsaved watchlist",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')");
+        assertFilingsNoteDraft(1, true);
+        assertFilingsNoteCounts(0, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        awaitPage("only explicit Save acknowledges the filing note", DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')");
+        assertFilingsNoteDraft(2, false);
+        assertFilingsNoteCounts(1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("reload restores the exact reordered filing note", DIAGNOSTICS + ".load === 2 && document.querySelector('#managed-note-1')?.disabled === false");
+        assertFilingsNoteDraft(2, false);
+        assertFilingsNoteCounts(1, 2);
+        assertEquals("Filings journey preserves its document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertExactHistory(1, "https://localhost/", "https://localhost/");
+        assertFixtureBoundary(0, 1);
+        Log.i("ManagedFilings", "phase=reference-appended-reviewed-saved-reloaded; " + pageDiagnostic());
+    }
+
+    private void assertFilingsNoteDraft(int version, boolean dirty) throws Exception {
+        awaitPage("filing note keeps both complete notes, order and save version",
+            DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty +
+            " && " + DRAFT + ".memberships?.length === 2" +
+            " && " + DRAFT + ".memberships[0]?.listingId === 'listing-one'" +
+            " && " + DRAFT + ".memberships[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships[1]?.listingId === 'listing-zero'" +
+            " && " + DRAFT + ".memberships[1]?.note === " + JSONObject.quote(FILINGS_NOTE) +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
+            " && Array.from(document.querySelectorAll('[aria-labelledby=managed-watchlist-heading] button')).find(button => button.textContent === 'Save watchlist')?.disabled === " + !dirty);
+    }
+
+    private void assertFilingsNoteCounts(int saves, int loads) throws Exception {
+        awaitPage("filing append and save have only explicit requests",
+            DIAGNOSTICS + ".filings === 6 && " + DIAGNOSTICS + ".filingsAborted === 2 && " + DIAGNOSTICS + ".filingsLateResolved === 2" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".save === " + saves + " && " + DIAGNOSTICS + ".load === " + loads +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
     }
 
     private void assertFilingsDraftAndCounts(int reads, int aborted, int late) throws Exception {
@@ -3140,6 +3222,10 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertFixtureBoundary(int expectedResolves) throws Exception {
+        assertFixtureBoundary(expectedResolves, 0);
+    }
+
+    private void assertFixtureBoundary(int expectedResolves, int expectedSaves) throws Exception {
         awaitPage("test-only source, origin and disconnected boundaries",
             "location.origin === 'https://localhost' && location.hash === ''" +
             " && document.querySelector('meta[name=investment-build-sha]')?.content === " + JSONObject.quote(expectedSourceSha) +
@@ -3147,7 +3233,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content === " + JSONObject.quote(CSP) +
             " && window.Capacitor?.getPlatform() === 'android'" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === " + expectedResolves);
+            " && " + DIAGNOSTICS + ".save === " + expectedSaves + " && " + DIAGNOSTICS + ".resolve === " + expectedResolves);
     }
 
     private void assertRootHistory() throws Exception {

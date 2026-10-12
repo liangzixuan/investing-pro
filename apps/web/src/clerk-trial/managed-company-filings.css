@@ -75,8 +75,26 @@
   gap: 8px;
   margin-block: 16px;
 }
+.clerk-trial.managed-frame .managed-filings-note-action {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-filings-note-action button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
+.clerk-trial.managed-frame .managed-filings-note-action p {
+  margin: 4px 0 0;
+  color: var(--managed-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-note-action p:empty {
+  display: none;
+}
 .clerk-trial.managed-frame
-  .managed-filings-pagination
+  :is(.managed-filings-pagination, .managed-filings-note-action)
   button[aria-disabled="true"] {
   background: transparent;
   border-color: var(--managed-line);

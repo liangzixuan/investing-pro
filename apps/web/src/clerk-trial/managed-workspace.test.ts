@@ -1,4 +1,5 @@
 import { filingsResponse } from "./sec-filings-fixture";
+import { filingReferenceNoteExcerpt } from "./managed-filings-note";
 import { describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -3560,6 +3561,302 @@ describe("Annual evidence appended to the existing shared note", () => {
       expect(api.save).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("filing references appended to the shared note", () => {
+  async function noteFixture() {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(second), note: "Other class thesis" },
+        { ...listingMembership(result), note: "Initial prose" },
+      ],
+    });
+    const { workspace, api } = setup;
+    await ready(workspace);
+    workspace.openDiscoveryAnnual(result);
+    workspace.switchToFilings();
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValue(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    const response = workspace.filings.getSnapshot().response!;
+    const row = response.issuer.filings[1]!;
+    const append = () =>
+      workspace.appendFilingReferenceToResearchNote(selection, response, row);
+    return { ...setup, selection, response, row, append };
+  }
+  it("appends to the latest raw prose, preserves the same-CIK other class/order and saves/reloads only explicitly", async () => {
+    const { workspace, api, selection, response, row, append, saved } =
+      await noteFixture();
+    const prose = "  Updated Cafe\u0301 thesis  ";
+    workspace.noteResearch(selection, prose);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const excerpt = filingReferenceNoteExcerpt(response, row, false)!;
+    expect(append()).toEqual({
+      appended: true,
+      message:
+        "Filing reference added to the note draft. Review and save all changes in My Watchlist.",
+    });
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft).toEqual({
+      ...before,
+      memberships: [
+        before.memberships[0],
+        { ...before.memberships[1], note: prose + " " + excerpt },
+      ],
+    });
+    expect(workspace.coordinator.getSnapshot().baseVersion).toBe(1);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships[1]!.note).toBe(
+      normalizeWatchlistNote(prose + " " + excerpt),
+    );
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(saved().payload);
+  });
+  it("refuses an identical paragraph, permits removal/readd and keeps a distinct dated observation", async () => {
+    const { workspace, api, selection, response, row, append } =
+      await noteFixture();
+    expect(append().appended).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(append()).toEqual({
+      appended: false,
+      message: "This exact filing reference is already in the note draft.",
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.noteResearch(
+      selection,
+      `Accession mentioned in my prose: ${row.accessionNumber}.`,
+    );
+    expect(append().appended).toBe(true);
+    const replacement = {
+      ...filingsResponse(2, "available", selection),
+      completedAt: "2026-10-12T00:00:02.000Z",
+    };
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(replacement);
+    await workspace.filings.load();
+    const next = workspace.filings.getSnapshot().response!;
+    expect(
+      workspace.appendFilingReferenceToResearchNote(
+        selection,
+        next,
+        next.issuer.filings[1]!,
+      ).appended,
+    ).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toContain(response.completedAt);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toContain(next.completedAt);
+  });
+  it.each([
+    "copied selection",
+    "copied response",
+    "copied row",
+    "other listing",
+    "closed visit",
+    "reopened visit",
+    "Annual section",
+    "equal replacement",
+    "catalog change",
+    "retirement",
+  ])("rejects captured controls after %s", async (boundary) => {
+    const setup = await noteFixture();
+    const { workspace, api } = setup;
+    let { selection, response, row } = setup;
+    if (boundary === "copied selection") selection = { ...selection };
+    else if (boundary === "copied response") response = { ...response };
+    else if (boundary === "copied row") row = { ...row };
+    else if (boundary === "other listing")
+      workspace.openDiscoveryAnnual(second);
+    else if (boundary === "closed visit") workspace.closeResearch();
+    else if (boundary === "reopened visit") {
+      workspace.closeResearch();
+      workspace.openDiscoveryAnnual(result);
+      workspace.switchToFilings();
+      await workspace.filings.load();
+    } else if (boundary === "Annual section") workspace.switchToAnnual();
+    else if (boundary === "equal replacement") await workspace.filings.load();
+    else if (boundary === "catalog change") {
+      vi.mocked(api.status).mockResolvedValueOnce({
+        snapshot: { ...snapshot, snapshotSha256: nextDigest },
+      });
+      await workspace.refreshCatalog();
+    } else workspace.coordinator.retire();
+    const before = workspace.coordinator.getSnapshot().draft;
+    const reads = vi.mocked(api.recentFilings).mock.calls.length;
+    expect(
+      workspace.getFilingsNoteAction(selection, response, row).canAppend,
+    ).toBe(false);
+    expect(
+      workspace.appendFilingReferenceToResearchNote(selection, response, row)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.recentFilings).toHaveBeenCalledTimes(reads);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it("blocks pending refresh, then appends the retained packet after Cancel and fences its late replacement", async () => {
+    const { workspace, api, response, append } = await noteFixture();
+    const held = deferred<Awaited<ReturnType<ManagedApi["recentFilings"]>>>();
+    vi.mocked(api.recentFilings).mockReturnValueOnce(held.promise);
+    const pending = workspace.filings.load();
+    expect(append().appended).toBe(false);
+    workspace.filings.cancel();
+    expect(append().appended).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(draft!.memberships[1]!.note).toContain(
+      "Retained previous filings response; newer filings were not confirmed.",
+    );
+    expect(draft!.memberships[1]!.note).toContain(response.issuer.fetchedAt);
+    held.resolve(filingsResponse(0));
+    await pending;
+    expect(workspace.filings.getSnapshot().response).toBe(response);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it.each([
+    "transient",
+    "upstream_unavailable",
+    "rate_limited",
+    "valid empty",
+    "not_covered",
+    "invalid_response",
+    "malformed",
+    "mismatched identity",
+  ] as const)("respects the model's %s replacement policy", async (kind) => {
+    const { workspace, api, selection, response, append } = await noteFixture();
+    if (kind === "transient")
+      vi.mocked(api.recentFilings).mockRejectedValueOnce(
+        new TrialApiError("unavailable"),
+      );
+    else if (kind === "malformed")
+      vi.mocked(api.recentFilings).mockResolvedValueOnce({
+        ...response,
+        completedAt: "invalid",
+      });
+    else if (kind === "mismatched identity")
+      vi.mocked(api.recentFilings).mockResolvedValueOnce({
+        ...response,
+        security: { ...response.security, shareClassId: "other-class" },
+      });
+    else
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(
+        filingsResponse(
+          0,
+          kind === "valid empty" ? "available" : kind,
+          selection,
+        ),
+      );
+    await workspace.filings.load();
+    const retained = [
+      "transient",
+      "upstream_unavailable",
+      "rate_limited",
+    ].includes(kind);
+    expect(append().appended).toBe(retained);
+    if (retained)
+      expect(
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+      ).toContain("Retained previous filings response");
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it.each(["missing member", "changed identity", "stale draft catalog"])(
+    "blocks %s",
+    async (boundary) => {
+      const { workspace, selection, response, row, append } =
+        await noteFixture();
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      workspace.coordinator.replaceDraft({
+        ...draft,
+        snapshotSha256:
+          boundary === "stale draft catalog" ? nextDigest : digest,
+        memberships:
+          boundary === "missing member"
+            ? [draft.memberships[0]!]
+            : draft.memberships.map((member, i) =>
+                i === 1 && boundary === "changed identity"
+                  ? { ...member, shareClassId: "different-class" }
+                  : member,
+              ),
+      });
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.getFilingsNoteAction(selection, response, row).canAppend,
+      ).toBe(false);
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    },
+  );
+  it.each(["loading", "saving", "conflict", "commit_unknown"] as const)(
+    "does not bypass %s",
+    async (boundary) => {
+      const { workspace, api, append } = await noteFixture();
+      workspace.note(result.listingId, "Changed thesis");
+      const held = deferred<never>();
+      let pending: Promise<void> | null = null;
+      if (boundary === "loading") {
+        vi.mocked(api.load).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.load();
+      } else if (boundary === "saving") {
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.save();
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(boundary));
+        await workspace.coordinator.save();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      const saves = vi.mocked(api.save).mock.calls.length;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).toHaveBeenCalledTimes(saves);
+      if (pending) {
+        held.reject(new TrialApiError("unavailable"));
+        await pending;
+      }
+    },
+  );
+  it.each(["😀", "e\u0301"])(
+    "allows exactly 2,000 normalized codepoints and atomically rejects overflow with %s",
+    async (unit) => {
+      const { workspace, response, row, selection, append } =
+        await noteFixture();
+      const excerpt = filingReferenceNoteExcerpt(response, row, false)!;
+      const room = 2000 - [...excerpt].length - 1;
+      workspace.noteResearch(selection, unit.repeat(room + 1));
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      workspace.noteResearch(selection, unit.repeat(room));
+      expect(append().appended).toBe(true);
+      expect(
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+      ).toBe(unit.repeat(room) + " " + excerpt);
+    },
+  );
+  it.each([
+    "private\nline",
+    "invisible\u200btext",
+    "bad\ud800text",
+    "x".repeat(2001),
+  ])("preserves an invalid latest note on refusal", async (note) => {
+    const { workspace, selection, api, append } = await noteFixture();
+    workspace.noteResearch(selection, note);
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(append().appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.save).not.toHaveBeenCalled();
+  });
 });
 
 describe("workspace SEC filings integration", () => {

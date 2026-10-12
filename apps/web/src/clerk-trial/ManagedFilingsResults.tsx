@@ -1,12 +1,19 @@
 import { useState } from "react";
 import type { ManagedSecFilingsResponseDto } from "@research-cockpit/contracts";
+import {
+  ManagedFilingsNoteAction,
+  type ManagedFilingsNoteActions,
+} from "./ManagedFilingsNoteAction";
+import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
 
 const PAGE_SIZE = 25;
 
 export function ManagedFilingsResults({
   response,
+  noteActions,
 }: {
   response: ManagedSecFilingsResponseDto;
+  noteActions?: ManagedFilingsNoteActions;
 }) {
   const [paging, setPaging] = useState({ response, page: 0 });
 
@@ -21,13 +28,14 @@ export function ManagedFilingsResults({
   const available = issuer.status === "available";
 
   return (
-    <div
-      className="managed-filings-results"
-      role="region"
-      aria-label="SEC filings results"
-      tabIndex={0}
-    >
+    <ManagedFilingsResultsRegion response={response}>
       <FilingsSource response={response} />
+      {noteActions && (
+        <p id="managed-filings-note-scope" className="managed-filings-scope">
+          Add a filing reference and its original source dates to your existing
+          note draft. Nothing is saved here.
+        </p>
+      )}
       {available && (
         <>
           <p className="managed-filings-count" role="status">
@@ -60,6 +68,13 @@ export function ManagedFilingsResults({
                       <dd>{filing.reportDate ?? "Not reported"}</dd>
                     </div>
                   </dl>
+                  {noteActions && (
+                    <ManagedFilingsNoteAction
+                      response={response}
+                      filing={filing}
+                      actions={noteActions}
+                    />
+                  )}
                 </li>
               ))}
           </ol>
@@ -88,7 +103,7 @@ export function ManagedFilingsResults({
           Next filings page
         </button>
       </nav>
-    </div>
+    </ManagedFilingsResultsRegion>
   );
 }
 

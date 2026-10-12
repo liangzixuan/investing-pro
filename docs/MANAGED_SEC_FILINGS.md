@@ -44,7 +44,33 @@ not-covered replacement replaces it. An invalid or mismatched packet clears old
 content. Switching sections cancels local work; returning retains accepted data.
 Back, a different or invalid catalog identity and session retirement close the
 visit and reject late responses. The shared watchlist draft retains its existing
-owner, validation and explicit Save action. Filings adds no note action or save.
+owner, validation and explicit Save action.
+
+## Add a reference to a note
+
+Each observed row offers **Add reference to note draft**. It appends the exact
+listing, CIK, form, accession, filed date, available report date and index link
+to the company's existing note. The paragraph keeps the original request window
+and source timestamps, plus incomplete-coverage, truncation and retained-result
+qualifications. It does not fetch filing contents or infer their significance.
+
+The action uses the current admitted response and row. It is unavailable during
+a request or while the watchlist cannot be edited. A retained result after Cancel
+or a transient failure can be added with its original dates and a notice that
+newer filings were not confirmed. Changing the response, visit, listing or session
+invalidates old row actions. A company must already belong to the current draft.
+
+Existing text, other notes, ordering and the saved version stay intact. The full
+candidate must meet the existing 2,000-character note limit; nothing is truncated
+or repaired. An identical complete generated paragraph already in the note is
+refused. This is an exact-text check, not a general duplicate-filing detector.
+Review the draft and use **Save watchlist** to persist it. Adding a reference
+performs no source request or save.
+
+Unavailable row actions remain keyboard-focusable and explain the reason. If a
+replacement removes the focused row, the existing results region receives focus
+only when focus otherwise falls to the document body. Paging, the note editor and
+another control that already received focus keep their position.
 
 ## Managed boundary
 

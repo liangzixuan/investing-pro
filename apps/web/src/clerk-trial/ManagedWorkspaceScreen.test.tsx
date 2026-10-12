@@ -32,6 +32,8 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import { filingsResponse } from "./sec-filings-fixture";
+import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -703,6 +705,56 @@ describe("managed workspace screen", () => {
       actions.append(next, next.rows[0]!, next.rows.at(-1)!).appended,
     ).toBe(false);
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it("wires Filings through the real company panel and fences captured actions after the visit changes", async () => {
+    const { workspace, api, html } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    workspace.switchToFilings();
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValue(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    const response = workspace.filings.getSnapshot().response!;
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const panel = elements(ManagedCompanyResearch(company.props)).find(
+      (element) => element.type === ManagedCompanyFilings,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedCompanyFilings>>;
+    expect(panel.props.noteActions).toBe(company.props.filingsNoteActions);
+    const actions = panel.props.noteActions!;
+    const row = response.issuer.filings[1]!;
+    workspace.noteResearch(selection, "Latest thesis");
+    expect(actions.getAction(response, row).canAppend).toBe(true);
+    expect(html()).toContain("Add reference to note draft");
+    expect(actions.append(response, row).appended).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toContain("Latest thesis Observed SEC filing reference:");
+    expect(actions.getAction(response, row).reason).toContain(
+      "already in the note draft",
+    );
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(draft!.memberships[0]!);
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    const next = workspace.filings.getSnapshot().response!;
+    expect(actions.append(next, next.issuer.filings[1]!).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
     expect(api.save).not.toHaveBeenCalled();
   });
   it("updates comparative Annual action capacity after typing and appends to the latest shared draft without saving", async () => {

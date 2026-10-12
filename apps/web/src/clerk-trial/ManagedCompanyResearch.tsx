@@ -11,6 +11,7 @@ import { ManagedEodHistory } from "./ManagedEodHistory";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import type { ManagedAnnualNoteActions } from "./ManagedAnnualNoteAction";
 import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
+import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 
 export function ManagedCompanyResearch({
   research,
@@ -25,6 +26,7 @@ export function ManagedCompanyResearch({
   onReview,
   annualNoteActions,
   priceNoteActions,
+  filingsNoteActions,
 }: {
   research: ManagedResearchVisit;
   annual: AnnualModel;
@@ -38,6 +40,7 @@ export function ManagedCompanyResearch({
   onReview: () => void;
   annualNoteActions: ManagedAnnualNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
+  filingsNoteActions: ManagedFilingsNoteActions;
 }) {
   const labels = { eod: "Price", annual: "Annual", filings: "Filings" };
   const listing = research.selection.listing;
@@ -89,7 +92,10 @@ export function ManagedCompanyResearch({
             ) : research.section === "eod" ? (
               <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
             ) : research.section === "filings" ? (
-              <ManagedCompanyFilings model={filings} />
+              <ManagedCompanyFilings
+                model={filings}
+                noteActions={filingsNoteActions}
+              />
             ) : null}
           </div>
         </div>
