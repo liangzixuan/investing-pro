@@ -80,6 +80,43 @@ selection retention, filtered removal and focus cancellation, correction,
 research return and full-payload saves. Actual browser and native execution
 status is recorded in [Current work](CURRENT_WORK.md).
 
+## Export the saved watchlist
+
+**Export saved watchlist** creates a readable UTF-8 text copy of the confirmed
+saved version currently loaded in My Watchlist. The file includes the watchlist
+name, version, catalog snapshot, full membership order, complete listing
+identities and saved notes. Existing dates and source links in notes stay exact.
+An empty saved watchlist can also be exported. The version is the loaded copy;
+another device may have saved a newer version since it was loaded.
+
+Search, selection and unsaved edits do not limit or change the export. The control
+identifies the saved version and membership count and explains that unsaved
+changes are excluded. Exporting makes no catalog, provider, load or save request.
+It does not validate, alter or save the draft, even when that draft has an invalid
+note. The file is a readable research copy; importing or restoring it is outside
+this feature.
+
+Load a confirmed saved version before exporting. Loading, saving, reconciliation,
+unresolved conflict, uncertain saves and sign-out prevent a new export. A pending
+export also blocks a second export. Replacing the saved version, leaving My
+Watchlist or retiring the session cancels an operation that has not reached its
+file-writing handoff. Draft edits alone leave the captured saved copy unchanged.
+
+The browser reports **Download requested** because it cannot confirm the final
+file write. Android uses the system **Save as** picker and reports the result of
+writing to the selected destination. The picker may offer local or cloud storage.
+Returning from that picker in the same Activity preserves the pending operation;
+session retirement or Activity recreation invalidates it. Cancellation or a write
+failure can leave an empty or partial destination file. Completed files remain
+external copies after sign-out.
+
+The Android adapter accepts only this bounded text output and a one-use handle
+for the chosen destination. It exposes no file read, directory listing or general
+path-writing API. Notes are never placed in picker arguments, activity-restoration
+state or persistent URI grants. The existing authentication plugin and storage
+schema are unchanged. [Current work](CURRENT_WORK.md) records verification and
+delivery status separately.
+
 ## Conflicts and retries
 
 Each save carries the version the user edited and a stable command key. A first

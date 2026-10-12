@@ -190,6 +190,27 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+The saved-watchlist export increment adds **Export saved watchlist** to My
+Watchlist. It produces a readable UTF-8 file containing every listing, its full
+identity and exact notes from the last confirmed saved version. Filtering,
+selection and unsaved edits do not change the exported copy. The browser requests
+a download; Android uses the system destination picker. Loading, recovery and
+session boundaries prevent an obsolete pending export from starting a write.
+
+The formatter and browser/controller checks passed independent source review.
+Focused tests cover complete saved data, Unicode, bounded output, draft retention,
+cancellation and late results. Web types, scoped lint/format, source boundaries
+and native runtime compilation passed after three fixture typing repairs.
+Independent source reviews found no remaining defect. Invented-data Brave checks
+recorded 31 observations at desktop, 390 and 320 pixels, with no document overflow
+or console errors. All captured export documents match the expected saved text;
+the actual downloaded file remains unverified. Android picker execution is also
+pending: local instrumentation compilation needs existing test dependencies that
+are unavailable in the offline cache. Both test providers belong only to the
+instrumentation APK; the packaging guard checks their isolation and passed 22
+archive models. These models do not establish actual APK isolation or native
+execution. See [saved-watchlist export](APPWRITE_WATCHLIST.md#export-the-saved-watchlist).
+
 The active Annual trend increment adds an initially collapsed **Reported annual
 trend** to the managed financial overview. It charts Revenue or Net income across
 two or three admitted periods from one named basis and filing. Exact tables,
@@ -208,8 +229,13 @@ retained refresh dates, failure, cancellation and late-response rejection.
 Explicit note append and Back preserved the draft; retirement cleared it and
 the chart. No document overflow or console warnings/errors were observed.
 These checks used invented data and excluded Save/reload, live accounts and
-provider calls. Native Annual assertions are prepared; their hosted execution
-and source acceptance remain pending. See the
+provider calls. [PR85](https://github.com/liangzixuan/investing-pro/pull/85) passed
+the original Android, Linux, parser, custody and dependency checks. Windows CI
+exceeded a five-second deadline in an unchanged durable-vault test. Its timeout
+now matches the other durable tests at 30 seconds, with all assertions unchanged;
+the affected ten tests passed locally. Fresh current-head checks are in progress
+before source acceptance. CodeScene's separate complexity advisory was reviewed
+without a correctness finding. See the
 [trend contract](MANAGED_SEC_ANNUAL.md#optional-reported-annual-trend).
 
 The accepted comparison-ordering increment adds Board order, Highest raw change

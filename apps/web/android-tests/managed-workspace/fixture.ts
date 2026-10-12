@@ -171,7 +171,8 @@ export async function createFixture(
     | "raw-close-comparison"
     | "bea-agenda"
     | "bea-session-retirement"
-    | "markets-selected-price" = "default",
+    | "markets-selected-price"
+    | "watchlist-export" = "default",
 ) {
   const annual = await response(
     scenario === "annual-note"
@@ -372,6 +373,18 @@ export async function createFixture(
     return Promise.reject(new Error(`Unexpected fixture operation: ${key}`));
   };
   let savedWatchlist = { version: 1, payload: structuredClone(payload) };
+  if (scenario === "watchlist-export")
+    savedWatchlist = {
+      ...savedWatchlist,
+      payload: {
+        ...savedWatchlist.payload,
+        memberships: savedWatchlist.payload.memberships.map((member, index) =>
+          index === 0
+            ? { ...member, note: "Invented saved note: café 東京 📈" }
+            : member,
+        ),
+      },
+    };
   const signOutPayload: MainWatchlistPayload = {
     ...payload,
     memberships: [

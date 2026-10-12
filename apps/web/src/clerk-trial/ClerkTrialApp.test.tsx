@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ClerkTrialApp } from "./ClerkTrialApp";
 import type { TrialSession } from "./session";
+import { browserWatchlistExportAdapter } from "./browser-watchlist-export";
+import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 
 const sdk = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -140,9 +142,11 @@ describe("official Clerk browser adapter", () => {
       session: TrialSession;
       apiOrigin: string;
       warnOnBrowserLeave?: boolean;
+      exportDelivery?: WatchlistExportDeliveryAdapter;
     };
     expect(props.apiOrigin).toBe(config.apiOrigin);
     expect(props.warnOnBrowserLeave).toBeUndefined();
+    expect(props.exportDelivery).toBeUndefined();
     expect(await props.session.getToken()).toBe("synthetic-token");
     await props.session.signOut();
     expect(getToken).toHaveBeenCalledTimes(1);
@@ -210,8 +214,10 @@ describe("official Clerk browser adapter", () => {
     const props = sdk.managed.mock.calls[0]?.[0] as {
       session: TrialSession;
       warnOnBrowserLeave?: boolean;
+      exportDelivery?: WatchlistExportDeliveryAdapter;
     };
     expect(props.warnOnBrowserLeave).toBe(true);
+    expect(props.exportDelivery).toBe(browserWatchlistExportAdapter);
     expect(props.session).toMatchObject({
       userId: "user_owner",
       sessionId: "session_owner",

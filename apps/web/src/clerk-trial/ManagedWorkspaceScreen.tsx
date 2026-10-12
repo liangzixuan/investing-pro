@@ -34,6 +34,8 @@ import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
+import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
+import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 import { ManagedIcon } from "./ManagedIcon";
 import { bindManagedBrowserUnload } from "./managed-browser-unload";
 import {
@@ -49,6 +51,7 @@ interface SessionProps {
   marketsCohort?: readonly ManagedEodIdentity[];
   priceCoverage?: readonly ManagedEodIdentity[];
   warnOnBrowserLeave?: boolean;
+  exportDelivery?: WatchlistExportDeliveryAdapter;
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -92,6 +95,9 @@ function SessionWorkspace(props: SessionProps) {
     <ManagedWorkspaceRouter
       workspace={workspace}
       {...(initial.androidBack ? { androidBack: initial.androidBack } : {})}
+      {...(initial.exportDelivery
+        ? { exportDelivery: initial.exportDelivery }
+        : {})}
     />
   ) : (
     <main className="managed-workspace-content">
@@ -103,6 +109,7 @@ function SessionWorkspace(props: SessionProps) {
 export function ManagedWorkspaceRouter(props: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
+  exportDelivery?: WatchlistExportDeliveryAdapter;
 }) {
   return (
     <BrowserRouter>
@@ -114,6 +121,7 @@ export function ManagedWorkspaceRouter(props: {
 function RoutedWorkspace(props: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
+  exportDelivery?: WatchlistExportDeliveryAdapter;
 }) {
   const navigation = useManagedCompanyNavigation(props.workspace);
   return <ManagedWorkspaceScreen {...props} navigation={navigation} />;
@@ -263,10 +271,12 @@ export function ManagedWorkspaceScreen({
   workspace,
   androidBack,
   navigation,
+  exportDelivery,
 }: {
   workspace: ManagedWorkspace;
   androidBack?: AndroidBackAdapter;
   navigation?: ManagedCompanyNavigation;
+  exportDelivery?: WatchlistExportDeliveryAdapter;
 }) {
   const panelOrigin = useRef<HTMLButtonElement | null>(null);
   const discoverHeading = useRef<HTMLHeadingElement | null>(null);
@@ -802,6 +812,13 @@ export function ManagedWorkspaceScreen({
                     ? "Load your watchlist to begin."
                     : `Version ${saved.baseVersion} · ${saved.dirty ? "Unsaved changes" : "Saved"}`}
                 </p>
+                <ManagedWatchlistExport
+                  workspace={workspace}
+                  delivery={exportDelivery}
+                  routeActive={() =>
+                    !navigation?.invalid && !hasCompanyRoute?.()
+                  }
+                />
                 {saved.uncertain && (
                   <div className="trial-review">
                     <p>

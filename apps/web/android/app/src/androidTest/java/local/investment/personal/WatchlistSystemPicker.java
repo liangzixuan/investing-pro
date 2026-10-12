@@ -1,0 +1,94 @@
+package local.investment.personal;
+
+import static org.junit.Assert.*;
+
+import android.accessibilityservice.AccessibilityServiceInfo;
+import android.app.UiAutomation;
+import android.os.SystemClock;
+import android.view.accessibility.AccessibilityNodeInfo;
+import androidx.test.platform.app.InstrumentationRegistry;
+import java.util.function.Predicate;
+
+/** Uses the actual external DocumentsUI accessibility surface, not an Activity-result mock. */
+final class WatchlistSystemPicker {
+    private static final long TIMEOUT_MS = 10_000;
+    private final UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+
+    WatchlistSystemPicker() {
+        AccessibilityServiceInfo info = automation.getServiceInfo();
+        info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        automation.setServiceInfo(info);
+    }
+
+    void awaitOpen() throws Exception {
+        await(node -> node.getViewIdResourceName() != null
+            && node.getViewIdResourceName().endsWith(":id/container_save"));
+    }
+
+    void cancel() throws Exception {
+        awaitOpen();
+        assertTrue("System picker Back must dispatch", automation.performGlobalAction(
+            android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));
+    }
+
+    void saveToInventedRoot() throws Exception {
+        awaitOpen();
+        // The emulator uses the platform English locale. Resolve every node afresh.
+        AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
+            || "Show roots".contentEquals(string(node.getContentDescription())));
+        if (!isRootsList(navigation)) click(navigation);
+        click(await(node -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText()))
+            && hasAncestor(node, ":id/roots_list")));
+        await(node -> string(node.getViewIdResourceName()).endsWith(":id/toolbar")
+            && find(node, child -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(child.getText())), 0) != null);
+        AccessibilityNodeInfo save = await(node -> "android:id/button1".equals(node.getViewIdResourceName())
+            && node.isEnabled() && hasAncestor(node, ":id/container_save"));
+        assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
+        click(save);
+    }
+
+    private AccessibilityNodeInfo await(Predicate<AccessibilityNodeInfo> predicate) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        do {
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            if (root != null && string(root.getPackageName()).endsWith(".documentsui")) {
+                AccessibilityNodeInfo result = find(root, predicate, 0);
+                if (result != null && result.isVisibleToUser()) return result;
+            }
+            Thread.sleep(50);
+        } while (SystemClock.uptimeMillis() < deadline);
+        throw new AssertionError("Expected control not found in the actual DocumentsUI window");
+    }
+
+    private static AccessibilityNodeInfo find(AccessibilityNodeInfo node,
+        Predicate<AccessibilityNodeInfo> predicate, int depth) {
+        if (depth > 48) throw new AssertionError("Unexpected system picker hierarchy depth");
+        if (predicate.test(node)) return node;
+        for (int index = 0; index < node.getChildCount(); index++) {
+            AccessibilityNodeInfo child = node.getChild(index);
+            if (child == null) continue;
+            AccessibilityNodeInfo match = find(child, predicate, depth + 1);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
+    private static void click(AccessibilityNodeInfo node) {
+        while (node != null && !node.isClickable()) node = node.getParent();
+        assertNotNull("System control has no clickable parent", node);
+        assertTrue("System control must be enabled", node.isEnabled());
+        assertTrue("System control action must dispatch", node.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+    }
+
+    private static String string(CharSequence value) { return value == null ? "" : value.toString(); }
+
+    private static boolean isRootsList(AccessibilityNodeInfo node) {
+        return node.isVisibleToUser() && string(node.getViewIdResourceName()).endsWith(":id/roots_list");
+    }
+
+    private static boolean hasAncestor(AccessibilityNodeInfo node, String idSuffix) {
+        for (int depth = 0; node != null && depth < 48; depth++, node = node.getParent())
+            if (string(node.getViewIdResourceName()).endsWith(idSuffix)) return true;
+        return false;
+    }
+}
