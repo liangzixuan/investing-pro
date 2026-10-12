@@ -1,0 +1,134 @@
+.clerk-trial.managed-frame .managed-annual-report .managed-annual-overview {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+}
+.managed-frame .managed-annual-summary {
+  margin: 12px 0;
+}
+.managed-frame .managed-annual-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.managed-frame .managed-annual-toolbar h3,
+.managed-frame .managed-annual-toolbar .trial-actions {
+  margin: 0;
+}
+.managed-frame .managed-annual-scope,
+.managed-frame .managed-annual-status {
+  font-size: 13px;
+  margin: 8px 0;
+}
+.managed-frame .managed-annual-scope {
+  color: var(--managed-muted);
+}
+.managed-frame .managed-annual-summary p {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-annual-summary p,
+.managed-frame .managed-annual-basis-help,
+.managed-frame .managed-annual-unavailable {
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.clerk-trial.managed-frame
+  .managed-annual-financial-region
+  > .sec-filing-context {
+  padding: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--managed-line);
+  border-radius: 0;
+  background: transparent;
+  min-width: 0;
+}
+.clerk-trial.managed-frame
+  .managed-annual-financial-region
+  > .sec-filing-context
+  > h4 {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-annual-financial-region {
+  min-width: 0;
+}
+.clerk-trial.managed-frame
+  .managed-annual-overview
+  .managed-annual-financial-region:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: -3px;
+}
+.managed-frame .managed-annual-financials table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .managed-annual-financials caption {
+  text-align: left;
+  padding-bottom: 10px;
+  color: var(--managed-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.managed-frame .managed-annual-financials caption span,
+.managed-frame .managed-annual-financials th span,
+.managed-frame .managed-annual-financials th small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-annual-financials :is(th, td) {
+  border: 0;
+  border-bottom: 1px solid var(--managed-line);
+  padding: 12px 8px;
+  text-align: right;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-annual-financials th:first-child {
+  text-align: left;
+}
+.managed-frame .managed-annual-financials thead th {
+  color: var(--managed-muted);
+  font-weight: 500;
+}
+.managed-frame .managed-annual-financials td {
+  color: var(--managed-ink);
+}
+.managed-frame .managed-annual-values tbody tr:first-child {
+  background: var(--managed-surface-raised);
+}
+.managed-frame .managed-annual-margin-change {
+  font-size: 13px;
+}
+.managed-frame .managed-annual-provenance {
+  margin-top: 20px;
+  border-top: 1px solid var(--managed-line);
+}
+.managed-frame .managed-annual-provenance > summary {
+  padding: 14px 0;
+  color: var(--managed-muted);
+  cursor: pointer;
+  min-height: 44px;
+}
+@media (max-width: 480px) {
+  .managed-frame .managed-annual-financials :is(th, td) {
+    padding: 10px 4px;
+    font-size: 12px;
+  }
+}
+
+.clerk-trial.managed-frame .managed-annual-provenance .sec-quarterly-caveat {
+  color: var(--managed-muted);
+  background: transparent;
+  border-color: var(--managed-line);
+}

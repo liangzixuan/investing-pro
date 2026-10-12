@@ -170,7 +170,28 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-A local **Search My Watchlist** increment filters the current draft by a
+The financial-first Annual overview is locally accepted for the managed company page.
+Exact current/prior/history figures and dated changes lead each named revenue
+basis, with source and validation details below. Current-use restrictions,
+missing values and retained-report notices remain visible. It reuses the existing
+admitted evidence and calculations; the local profile keeps its presentation.
+Affected tests, web types, scoped lint/format and source boundaries passed.
+Independent review and actual-component Brave checks with invented data passed
+at 1440, 390 and 320 pixels. Financial metrics appear in the first desktop view;
+one-to-three-period tables, long exact values and basis names fit without
+horizontal overflow. Keyboard disclosures, explicit note append and Back with
+the complete draft, refresh failure/Cancel, late-response rejection and session
+retirement passed without console errors. Focus on the results region and after
+Cancel was observed; focus retention across asynchronous replacement remains
+source-backed, not a separately observed transition. Browser Save/reload, live
+accounts and provider requests were excluded. Existing Android assertions have
+been adapted and source-reviewed; hosted native execution for this layout and
+release acceptance remain pending.
+See the [financial overview](MANAGED_SEC_ANNUAL.md#financial-overview).
+
+[PR81](https://github.com/liangzixuan/investing-pro/pull/81) merged as
+`90092c86eb7b79ef27b1689409f57874dba53a32` on October 12 at 03:15:14 UTC after all
+six hosted checks passed. **Search My Watchlist** filters the current draft by a
 normalized phrase within symbol, company, share class or exchange. It shows
 matching and total counts while retaining the exact selected listing and raw
 note, even outside the results. Correction reveals the first invalid note across
@@ -190,7 +211,8 @@ invented listings passed at 1440, 390 and 320 pixels. Filtering retained hidden
 notes and exact selection; one save preserved the complete twelve-member payload.
 Research Back, hidden-invalid-note correction, filtered removal, keyboard Clear,
 both recovery choices and session retirement passed. No document overflow or
-console error was observed. Hosted native execution and delivery remain pending.
+console error was observed. The PR's hosted Android check passed; actual-main
+acceptance and delivery remain separate.
 No new provider request, storage contract, live account, screen-reader or
 physical-device acceptance is claimed.
 

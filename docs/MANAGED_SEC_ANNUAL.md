@@ -48,6 +48,45 @@ GOOGL as distinct listings for the same Alphabet issuer. The caller cannot send
 an arbitrary CIK or source URL. This is limited annual filing and reported-fact
 coverage, with source dates and availability shown by the existing renderer.
 
+## Financial overview
+
+The managed Annual view leads with reported financial results. Each eligible
+revenue basis has a table of exact USD revenue, net income and available net
+margin across up to three admitted periods, newest first. Dated reported changes
+follow without repeating the current amounts. Eligible bases lead, with missing
+or rejected bases separately visible below. The local research profile retains
+its existing evidence-first presentation and basis order.
+
+Exact filed and completed dates, current-use status and retained previous-report
+notices stay visible. Numerical ages and policy limits remain in the source
+details. An eligible historical current pair can remain readable when its
+comparison and history are unavailable under the
+original age policy. No older filing or alternative basis fills a missing value.
+The filing link, period inputs and complete **Source and validation details**
+disclosure preserve the original evidence and calculation context.
+
+One labelled keyboard-focusable region contains all named bases. Tables fit the
+available width; exact amounts and dates wrap within their cells on narrow
+screens. The region remains mounted when a refresh reorders, replaces or withholds
+figures. Replacement updates values, dates, evidence and action bindings; the
+note action resets its response-specific feedback. Explicit appending, whole-note
+validation, Save and session retirement retain their existing behavior. This
+presentation adds no field, provider request, calculation or persistent state.
+
+Local tests and independent review cover the financial layout, unavailable states,
+original evidence, explicit note actions and refresh/retirement behavior. Invented-data
+Brave checks passed at 1440, 390 and 320 pixels, including one-to-three-period tables,
+long exact values, separate bases, keyboard disclosures, note append and Back,
+retained failure/Cancel, late-response rejection and session retirement. Figures
+appear in the first desktop view; narrow tables fit without horizontal overflow.
+
+Focus on the results region and after Cancel was observed. Retention of that focus
+across asynchronous response replacement is supported by source structure, not a
+separately observed browser transition. Browser Save/reload and live account/provider
+calls were excluded. Native selectors are adapted and source-reviewed, but hosted
+native execution for this layout and release acceptance remain pending in
+[Current work](CURRENT_WORK.md).
+
 ## Reported annual comparison
 
 PR 55 delivers comparison for each eligible named annual revenue basis on the

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import "./managed-annual-overview.css";
 import { SecAnnualEvidenceResult } from "../features/research/SecAnnualEvidenceResult";
 import type { ManagedAnnualReport as AnnualReportModel } from "./managed-annual-report";
 import {
@@ -37,42 +38,40 @@ export function ManagedAnnualReport({
       aria-labelledby="managed-annual-heading"
       aria-busy={state.running}
     >
-      <h3 id="managed-annual-heading" ref={heading} tabIndex={-1}>
-        Annual report
-      </h3>
-      <p>
-        Observed SEC annual revenue, net income and net margin in USD. Revenue
-        concepts stay separate. This view covers the observed report in current
-        submissions; it does not provide complete filing history or prices.
-      </p>
-      <div className="trial-actions">
-        <button
-          ref={loadButton}
-          disabled={state.running || state.catalogChanged}
-          onClick={() => void model.load()}
-        >
-          {state.running
-            ? state.response
-              ? "Refreshing annual report…"
-              : "Loading annual report…"
-            : state.response
-              ? "Refresh annual report"
-              : "Load annual report"}
-        </button>
-        {state.running && (
+      <div className="managed-annual-toolbar">
+        <h3 id="managed-annual-heading" ref={heading} tabIndex={-1}>
+          Annual report
+        </h3>
+        <div className="trial-actions">
           <button
-            className="trial-secondary"
-            onClick={(event) => {
-              restoreLoadFocus.current =
-                document.activeElement === event.currentTarget;
-              model.cancel();
-            }}
+            ref={loadButton}
+            disabled={state.running || state.catalogChanged}
+            onClick={() => void model.load()}
           >
-            Cancel annual report
+            {annualLoadLabel(state.running, state.response !== null)}
           </button>
-        )}
+          {state.running && (
+            <button
+              className="trial-secondary"
+              onClick={(event) => {
+                restoreLoadFocus.current =
+                  document.activeElement === event.currentTarget;
+                model.cancel();
+              }}
+            >
+              Cancel annual report
+            </button>
+          )}
+        </div>
       </div>
-      <p role={state.error ? "alert" : "status"} aria-live="polite">
+      <p className="managed-annual-scope">
+        Observed SEC revenue, net income and margin for each reported basis.
+      </p>
+      <p
+        className="managed-annual-status"
+        role={state.error ? "alert" : "status"}
+        aria-live="polite"
+      >
         {state.message}
       </p>
       {state.showingPrevious && state.response && (
@@ -82,18 +81,14 @@ export function ManagedAnnualReport({
           confirmed newer evidence. Source and observation times are unchanged.
         </p>
       )}
-      <p className="managed-annual-help">
-        Loading leaves your watchlist unchanged. Cancel stops this screen's
-        pending load and keeps any previous report shown here. A request already
-        admitted by the service may finish there.
-      </p>
       {state.response && (
         <SecAnnualEvidenceResult
-          key={state.response.evidence.generation.sha256}
           response={state.response}
+          appearance="financial"
           renderPairAction={(pair) =>
             noteActions && state.response ? (
               <ManagedAnnualNoteAction
+                key={state.response.evidence.generation.sha256}
                 pair={pair}
                 action={noteActions.getAction(state.response, pair)}
                 onAppend={() => noteActions.append(state.response!, pair)}
@@ -102,6 +97,17 @@ export function ManagedAnnualReport({
           }
         />
       )}
+      <p className="managed-annual-help">
+        Loading leaves your watchlist unchanged. Cancel stops this screen's
+        pending load and keeps any previous report shown here. A request already
+        admitted by the service may finish there.
+      </p>
     </section>
   );
+}
+
+function annualLoadLabel(running: boolean, hasResponse: boolean) {
+  if (running)
+    return hasResponse ? "Refreshing annual report…" : "Loading annual report…";
+  return hasResponse ? "Refresh annual report" : "Load annual report";
 }
