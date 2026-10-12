@@ -7,7 +7,21 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The active local increment adds an explicit comparison-to-note action. Choose
+The active local design refinement makes the workspace footer compact. Software
+licenses follow the content in the same column. Session scope appears beside
+the existing sign-out review, whose draft warnings and behavior are unchanged.
+The duplicate bottom warning and sidebar slogan are removed. Affected existing
+web tests pass. Independent browser review accepts 20 direct observations and two
+phone screenshots: all three workspace views fit at 1440, 390 and 320 pixels,
+license scrolling works locally, and Keep editing preserves the exact draft and
+returns focus to Sign out. Authentication and loading-state appearance remain
+outside that review. A Chrome desktop supplement also passes. The original native
+run passed 23 of 25 cases: both sign-out captures still expected four elements,
+while the added session paragraph makes five. The scoped test correction updates
+that count and preserves every visibility, focus and draft assertion. Its hosted
+execution, source integration and delivery remain open.
+
+The preceding local increment adds an explicit comparison-to-note action. Choose
 one of the two current listings, append both listings' exact dated evidence to
 its latest note, then review and Save the complete draft. The selected editor,
 other notes and source request counts remain unchanged. Focused formatter,
@@ -15,11 +29,13 @@ component and workspace checks pass, including refusal during selected refresh,
 pending navigation, recovery and retired selection states. Independent source
 review closed a pending-navigation guard gap. All 5,946 web tests, fresh types,
 scoped lint and boundary checks pass. Actual-component browser checks cover exact
-whole-draft Save/reload, refusals, retained sources and retirement; the screenshot
-supplement remains pending. The existing native comparison journey now checks
+whole-draft Save/reload, refusals, retained sources and retirement. The Chrome
+supplement accepts product appearance and focus at desktop, 390 and 320 pixels.
+The existing native comparison journey now checks
 append to the chosen member while preserving the selected editor. Its source
-syntax and independent review pass; hosted native execution, CI, source
-integration and delivery remain open. The
+syntax and independent review pass. All 25 original hosted native cases and the
+APK isolation gate pass; independent artifact review is clear. Remaining CI,
+source integration and delivery remain open. The
 [watchlist guide](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note)
 records the contract.
 
@@ -36,8 +52,8 @@ probe during keyboard dismissal. The reviewed test correction preserves exact
 mixed-case search text and checks native readiness before one Back press; all
 original draft, source and navigation assertions remain. A subsequent filtered
 search probe now checks the full raw draft independently of the visible choices.
-PR95 head `429e94b` is awaiting its original hosted native and CI results; no
-current native acceptance, main integration or delivery is claimed.
+PR95 head `429e94b` passed all applicable CI checks and all 25 native cases, with
+independent artifact review. Main integration and delivery remain open.
 
 The preceding local increment adds a comparison of two explicitly chosen watchlist
 listings using their already-loaded histories. It starts with no selected pair,

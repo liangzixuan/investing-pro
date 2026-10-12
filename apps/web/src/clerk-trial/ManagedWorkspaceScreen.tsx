@@ -35,6 +35,7 @@ import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
 import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
+import { ThirdPartyNotices } from "./ThirdPartyNotices";
 import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
 import { ManagedIcon } from "./ManagedIcon";
@@ -101,9 +102,12 @@ function SessionWorkspace(props: SessionProps) {
         : {})}
     />
   ) : (
-    <main className="managed-workspace-content">
-      <p role="status">Loading your workspace…</p>
-    </main>
+    <div className="managed-workspace-main">
+      <main className="managed-workspace-content">
+        <p role="status">Loading your workspace…</p>
+      </main>
+      <ThirdPartyNotices />
+    </div>
   );
 }
 
@@ -516,7 +520,6 @@ export function ManagedWorkspaceScreen({
             ))}
           </nav>
         )}
-        <p className="managed-sidebar-caption">Your research workspace</p>
       </aside>
       <div className="managed-workspace-main">
         <header className="managed-workspace-toolbar">
@@ -1037,11 +1040,8 @@ export function ManagedWorkspaceScreen({
               </section>
             </>
           )}
-          <p className="trial-session-help">
-            Other signed-in devices keep their own sessions. Signing out clears
-            this screen, including unsaved changes.
-          </p>
         </main>
+        <ThirdPartyNotices />
       </div>
     </div>
   );

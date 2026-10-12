@@ -71,6 +71,12 @@ quiet surfaces and clear labels. Selected navigation has a surface change and
 an accent indicator; selected research sections retain a visible border and fill
 through hover. Keep the 3px focus outline distinct from resting borders.
 
+Keep one compact software-license footer aligned with the active workspace
+content, outside its main landmark. Use a single separator and the existing
+44px disclosure button. Place session scope beside the existing sign-out review;
+retain its unsaved-change and pending-save warnings. Avoid a second bottom
+warning strip or a decorative sidebar slogan.
+
 ## Typography and financial evidence
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,

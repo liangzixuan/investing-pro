@@ -46,7 +46,7 @@ export function TrialFrame({
           ))}
       </header>
       {children}
-      <ThirdPartyNotices />
+      {!compactManaged && <ThirdPartyNotices />}
     </Container>
   );
 }
