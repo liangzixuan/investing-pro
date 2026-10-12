@@ -114,9 +114,14 @@ describe("managed close history panel", () => {
     focusHooks.effect!();
     expect(focus).toHaveBeenCalledOnce();
   });
-  it.each([false, true])(
-    "shows Markets provenance and original dates until company refresh (previous: %s)",
-    async (showingPrevious) => {
+  it.each([
+    ["markets", false],
+    ["markets", true],
+    ["watchlist", false],
+    ["watchlist", true],
+  ] as const)(
+    "shows %s provenance and original dates until company refresh (previous: %s)",
+    async (origin, showingPrevious) => {
       const response = eodResponse();
       const read = vi
         .fn<ManagedApi["eodHistory"]>()
@@ -125,7 +130,7 @@ describe("managed close history panel", () => {
         eodSelection.listing,
       ]);
       model.open(
-        { ...eodSelection, origin: "markets", cik: null },
+        { ...eodSelection, origin, cik: null },
         {
           response,
           showingPrevious,
@@ -135,7 +140,7 @@ describe("managed close history panel", () => {
       const carried = html();
       expect(carried).toContain('class="managed-eod-origin"');
       expect(carried).toContain(
-        "Showing history loaded in Markets. Original dates and request times are unchanged.",
+        `Showing history loaded in ${origin === "watchlist" ? "My Watchlist" : "Markets"}. Original dates and request times are unchanged.`,
       );
       expect(carried.includes('class="managed-eod-previous"')).toBe(
         showingPrevious,
@@ -149,7 +154,7 @@ describe("managed close history panel", () => {
       expect(read).not.toHaveBeenCalled();
       await model.load();
       const refreshed = html();
-      expect(model.getSnapshot().selection?.origin).toBe("markets");
+      expect(model.getSnapshot().selection?.origin).toBe(origin);
       expect(refreshed).not.toContain('class="managed-eod-origin"');
       expect(refreshed).not.toContain('class="managed-eod-previous"');
       expect(refreshed).toMatch(/<td(?:\s[^>]*)?>100\.25<\/td>/u);

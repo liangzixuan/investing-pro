@@ -7,6 +7,24 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
+The next local increment adds dated prices to the current watchlist draft and
+reuses its checked history in company Price. Coverage remains AAPL, GOOG and
+GOOGL. Loading stays explicit; note edits, search, ordering and Save send no price
+request. Full identity and catalog changes retire a row; ordinary copies retain
+its history. Navigation cancels pending work, shared cooldown survives view
+changes, and session retirement clears prices with the draft. The
+[watchlist guide](APPWRITE_WATCHLIST.md#dated-prices-in-the-watchlist) records the
+contract. The full web suite passes 5,784 tests, with types and scoped lint.
+Independent integration review found and resolved a pending-request gap on
+invalid company navigation. Rendered and native acceptance, source integration
+and delivery are still open for this increment.
+
+PR89 through PR92 have merged into main. They add selectable shared-date Markets
+comparisons, recent SEC filings, filing references in research notes and exact
+form filtering. Their reviewed source, browser and native evidence is accepted.
+The main source tree matches the final reviewed tree; actual-main CI is being
+reconciled separately. These changes are outside the live release below.
+
 Release `2b3c252a6aee4d1eb21c3a6967416a7c381d9e2d`, tree
 `6f396d33eb3f55858dbae20244c6d9b61697bb42`, is live on the website. It adds
 shared-date raw-price comparisons, Precision Desk entry states and keyboard focus

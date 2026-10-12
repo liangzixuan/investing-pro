@@ -906,12 +906,35 @@ public class ManagedWorkspaceInstrumentedTest {
         click("button[aria-label='Move ZERO down']");
         awaitPage("EOD draft reordered", "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
         typeIntoInput("managed-note-1", NOTE);
+        awaitPage("watchlist price waits for an explicit read",
+            "document.querySelector('[data-watchlist-price-load]')?.textContent === 'Load ZERO price'" +
+            " && document.querySelector('#managed-watchlist-selected-price > strong')?.textContent === 'Price not loaded'" +
+            " && " + DIAGNOSTICS + ".eod === 0");
+        click("[data-watchlist-price-load]");
+        assertEodDraftAndCounts(1, 0, 0);
+        click(".managed-watchlist-price-source > summary");
+        assertWatchlistDatedPrice();
+        click("button[aria-label='Move ZERO up']");
+        awaitPage("loaded price follows its exact reordered draft member",
+            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ZERO'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('#managed-watchlist-selected-price > strong')?.textContent === '$101.5'" +
+            " && " + DIAGNOSTICS + ".eod === 1");
+        click("button[aria-label='Move ZERO down']");
+        typeIntoInput("managed-watchlist-search", "ZERO");
+        awaitPage("local search preserves loaded price and the complete draft",
+            "document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelectorAll('[data-watchlist-selection]').length === 1" +
+            " && document.querySelector('[data-watchlist-selection]')?.getAttribute('data-watchlist-selection') === 'listing-zero'" +
+            " && " + DRAFT + ".memberships?.length === 2 && " + DIAGNOSTICS + ".eod === 1");
+        click("button[aria-label='Clear watchlist search']");
+        assertEodDraftAndCounts(1, 0, 0);
+        assertWatchlistDatedPrice();
         click("button[aria-label='EOD close history for saved ZERO']");
-        awaitPage("EOD opens without fetching",
-            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'");
-        assertEodState(0, 0, 0, false, false);
-
-        clickEodAction("Load one-month close history");
+        awaitPage("EOD reuses the exact watchlist history without fetching",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO' && document.querySelector('#managed-eod-heading')?.textContent === 'EOD close history'" +
+            " && document.querySelector('.managed-eod-origin')?.textContent === 'Showing history loaded in My Watchlist. Original dates and request times are unchanged.'" +
+            " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.textContent === 'Refresh close history'");
         assertEodState(1, 0, 0, false, true);
         String initialHistory =
             "document.querySelector('.managed-eod-history caption')?.textContent === 'One-month raw closing prices in USD'" +
@@ -999,6 +1022,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
             " && document.querySelector('.managed-eod-previous') === null" +
+            " && document.querySelector('.managed-eod-origin') === null" +
             " && document.querySelector('.managed-eod-history [role=alert]') === null" +
             " && document.querySelector('.managed-eod-history [role=status]')?.textContent === 'One-month raw closing prices loaded.'" +
             " && document.querySelector('.managed-eod-history .trial-actions button:first-child')?.textContent === 'Refresh close history'" +
@@ -1021,6 +1045,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-eod-tooltip') === null" +
             " && document.activeElement === document.querySelector(\"button[aria-label='EOD close history for saved ZERO']\")");
         assertEodDraftAndCounts(4, 1, 1);
+        assertWatchlistDatedPrice();
         assertReturnedRootHistory("listing-zero", "price");
         pressBack();
         awaitPage("root Back leaves both detail panels closed",
@@ -2989,6 +3014,25 @@ public class ManagedWorkspaceInstrumentedTest {
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[contains(concat(' ',normalize-space(@class),' '),' managed-eod-history ')]//button[normalize-space(.)='" + label + "']"))
             .perform(webClick());
+    }
+
+    private void assertWatchlistDatedPrice() throws Exception {
+        awaitPage("watchlist retains its own exact close, change and original request dates",
+            "(() => { const row = document.querySelector('[data-watchlist-selection=\"listing-zero\"]');" +
+            " const selected = document.querySelector('#managed-watchlist-selected-price');" +
+            " const readouts = [row?.querySelector('.managed-watchlist-price-readout'), selected];" +
+            " return row?.querySelector(':scope > strong')?.textContent === 'ZERO'" +
+            " && row?.getAttribute('aria-pressed') === 'true'" +
+            " && readouts.every(value => value?.querySelector(':scope > strong')?.textContent === '$101.5'" +
+            " && value?.querySelector('small')?.textContent === 'USD raw close · 2026-09-19'" +
+            " && value?.querySelector('.managed-market-change > strong')?.textContent === 'Raw close change: +$1.25 (+1.2469%)'" +
+            " && Array.from(value.querySelectorAll('time')).map(time => time.textContent).join('|') === '2026-09-18|2026-09-19')" +
+            " && document.querySelector('[data-watchlist-price-load]')?.textContent === 'Refresh ZERO price'" +
+            " && document.querySelector('[data-watchlist-price-load]')?.disabled === false" +
+            " && document.querySelector('.managed-watchlist-price-source')?.open === true" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-price-source dd')).map(value => value.textContent).join('|') === '2026-08-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
+            " && document.querySelector('.managed-watchlist-price-source')?.textContent.includes('Data provided by Tiingo.')" +
+            " && document.querySelector('.managed-watchlist-prices .managed-eod-previous') === null; })()");
     }
 
     private void assertEodState(int reads, int aborted, int late, boolean pending, boolean rows) throws Exception {

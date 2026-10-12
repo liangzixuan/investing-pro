@@ -1,6 +1,6 @@
 # Personal market platform roadmap
 
-Updated October 9, 2026. This document defines the durable product goals and
+Updated October 12, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
@@ -54,14 +54,14 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
-The next company-page outcome is [recent SEC filings](MANAGED_SEC_FILINGS.md):
+Accepted source now includes [recent SEC filings](MANAGED_SEC_FILINGS.md):
 one explicit metadata read for a fixed 90-date window, original filing links and
 local paging. It reuses existing SEC access and preserves per-visit data and
 watchlist drafts. This advances M2 and the filing-update part of M3; broader news,
 complete historical filing coverage and monitoring remain separate work. Exact
 source and delivery acceptance stays in [Current work](CURRENT_WORK.md).
 
-The next layer connects an observed filing to the existing research note. An
+An observed filing connects to the existing research note. An
 explicit row action retains the filing identity, source dates and coverage limits
 without another request. The user reviews and saves the complete watchlist draft.
 This advances M2's evidence-to-thesis workflow without adding a document reader,
@@ -71,6 +71,13 @@ A local form filter makes that loaded list easier to scan. Exact forms and
 amendments stay distinct, counts describe only observed rows, and all source
 dates and coverage limits remain visible. Filtering sends no request and keeps
 the existing filing-to-note and explicit Save workflow.
+
+The next increment adds [dated prices to the current watchlist draft](APPWRITE_WATCHLIST.md#dated-prices-in-the-watchlist).
+Each selected load uses existing coverage and shows the raw close, observation
+date and change between the final two observed dates. Company Price can reuse
+that checked history without another request. Notes, ordering, explicit Save and
+session boundaries remain intact. This connects the personal scan to company
+research without adding coverage, rankings, automatic reads or persistent prices.
 
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com

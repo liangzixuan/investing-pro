@@ -44,6 +44,36 @@ application-layer encryption. Keep the accepted vault and its recovery material
 unchanged. Only invented records are allowed in the initial cloud proof; owner
 migration follows a reviewed privacy, credential and recovery design.
 
+## Dated prices in the watchlist
+
+Select a listing and choose **Load SYMBOL price** to request its one-month raw
+close history. Each loaded row shows its exact latest USD close, that observation's
+date and the change between its last two observed dates. One observation has no
+comparison. Listings may have different dates; this view does not rank returns.
+The selected listing's source disclosure retains the original request window and
+start/completion times. These are Tiingo raw closes, without split or dividend
+adjustment, rather than live quotes.
+
+Price coverage remains AAPL, GOOG and GOOGL with their full admitted listing
+identities. Other listings show an unavailable explanation and send no request.
+Only one watchlist price request can be pending. **Cancel SYMBOL price** names
+that request even if another listing is selected. A canceled or recoverably failed
+refresh can retain the previous history with its original dates and a notice.
+
+Prices follow the complete current draft, including unsaved additions and
+removals. Search, note edits, reordering, Save and recovery choices never load
+prices. Copies that preserve identity retain loaded history; removing or replacing
+a listing discards it. New reads are blocked while the draft cannot be edited.
+Saved watchlist contents still include only membership, notes and order.
+
+**EOD close history** opens the checked loaded history in company Price without
+another request. A company Refresh updates that visit only. Returning preserves
+the watchlist's original history and full draft. Entering research cancels a
+pending watchlist request; changing top-level views clears watchlist prices.
+Catalog invalidation and session retirement clear them too. The shared request
+cooldown survives view changes; no action retries automatically. Prices are held
+only in the mounted session and are never written into the saved watchlist.
+
 ## Search the current watchlist draft
 
 **Search My Watchlist** filters the loaded draft by symbol, company name, share
