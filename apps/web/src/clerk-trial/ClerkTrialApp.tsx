@@ -5,6 +5,7 @@ import type { ClerkTrialConfig } from "./config";
 import { TrialSessionScreen } from "./TrialScreen";
 import { ManagedSessionScreen } from "./ManagedWorkspaceScreen";
 import { TrialFrame } from "./TrialFrame";
+import { ManagedEntry } from "./ManagedEntry";
 import {
   managedCompanyHref,
   parseManagedCompanyRoute,
@@ -43,7 +44,15 @@ function ClerkSession({
   if (!auth.isLoaded || !current.isLoaded)
     return (
       <TrialFrame managed={managed}>
-        <p role="status">Checking your session…</p>
+        {managed ? (
+          <ManagedEntry
+            title="Opening Investment"
+            message="Checking your session…"
+            busy
+          />
+        ) : (
+          <p role="status">Checking your session…</p>
+        )}
       </TrialFrame>
     );
   if (
@@ -53,13 +62,17 @@ function ClerkSession({
   ) {
     return (
       <TrialFrame managed={managed}>
-        <div className="trial-sign-in">
-          {managed ? (
-            <ManagedSignIn />
-          ) : (
+        {managed ? (
+          <ManagedEntry title="Sign in to your workspace">
+            <div className="managed-sign-in">
+              <ManagedSignIn />
+            </div>
+          </ManagedEntry>
+        ) : (
+          <div className="trial-sign-in">
             <SignIn routing="hash" fallbackRedirectUrl="/" />
-          )}
-        </div>
+          </div>
+        )}
       </TrialFrame>
     );
   }
@@ -67,7 +80,15 @@ function ClerkSession({
   if (auth.sessionId !== session.id || auth.userId !== session.user.id) {
     return (
       <TrialFrame managed={managed}>
-        <p role="status">Checking your session…</p>
+        {managed ? (
+          <ManagedEntry
+            title="Opening Investment"
+            message="Checking your session…"
+            busy
+          />
+        ) : (
+          <p role="status">Checking your session…</p>
+        )}
       </TrialFrame>
     );
   }

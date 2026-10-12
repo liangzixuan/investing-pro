@@ -79,7 +79,11 @@ afterEach(() => {
   cleanup = undefined;
 });
 
-async function mount(config: ClerkTrialConfig, state = signedIn) {
+async function mount(
+  config: ClerkTrialConfig,
+  state = signedIn,
+  overrides: Partial<InvestmentAuthPlugin> = {},
+) {
   let emit!: (state: NativeAuthState) => void;
   const remove = vi.fn<() => Promise<void>>().mockResolvedValue();
   const plugin: InvestmentAuthPlugin = {
@@ -101,14 +105,20 @@ async function mount(config: ClerkTrialConfig, state = signedIn) {
     signOut: vi
       .fn<InvestmentAuthPlugin["signOut"]>()
       .mockRejectedValue(new Error("synthetic unavailable")),
+    ...overrides,
   };
   hooks.register.mockReturnValue(plugin);
   const loading = NativeTrialApp({ config });
   const loadingHtml = renderToStaticMarkup(loading);
   expect(loadingHtml).toContain("Checking the installed session");
   expect(loadingHtml.match(/<h1[ >]/g)).toHaveLength(1);
-  if (config.environment === "production")
+  if (config.environment === "production") {
     expect(loadingHtml).toContain("<h1>Your markets and research</h1>");
+    expect(loadingHtml).toContain("Opening Investment</h2>");
+    expect(loadingHtml).toContain('data-busy="true"');
+  } else {
+    expect(loadingHtml).not.toContain("managed-entry");
+  }
   cleanup = hooks.effects[0]!();
   await Promise.resolve();
   await Promise.resolve();
@@ -157,6 +167,34 @@ function findScreen(node: ReactNode):
   }
 }
 
+function signInButton(
+  node: ReactNode,
+):
+  | ReactElement<{ disabled: boolean; onClick: () => void; children: string }>
+  | undefined {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement<{ children?: ReactNode }>(child)) continue;
+    if (child.type === "button")
+      return child as ReactElement<{
+        disabled: boolean;
+        onClick: () => void;
+        children: string;
+      }>;
+    const found = signInButton(child.props.children);
+    if (found) return found;
+  }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => {
+    resolve = yes;
+    reject = no;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("native shared workspace composition", () => {
   it.each([
     [production, ManagedSessionScreen],
@@ -183,6 +221,8 @@ describe("native shared workspace composition", () => {
         expect(html).toContain("<h1>Investment</h1>");
         expect(html).not.toContain("Discover companies");
       }
+      expect(html).not.toContain("managed-entry");
+      expect(html).not.toContain("managed-session-notice");
       expect(html.includes("Synthetic data only.")).toBe(
         config.environment === "development",
       );
@@ -216,6 +256,10 @@ describe("native shared workspace composition", () => {
     const previous = findScreen(frame())!;
     const pending = previous.props.session.signOut();
     expect(findScreen(frame())).toBeUndefined();
+    expect(signInButton(frame())?.props.disabled).toBe(true);
+    expect(renderToStaticMarkup(frame())).toContain(
+      "Signing out this installed session…",
+    );
     await expect(pending).rejects.toMatchObject({ code: "unauthenticated" });
     const html = renderToStaticMarkup(frame());
     expect(html).toContain("Sign in again");
@@ -223,6 +267,14 @@ describe("native shared workspace composition", () => {
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).not.toContain("Managed workspace fixture");
     expect(html).not.toContain("join the trial");
+    expect(html).toContain('data-tone="warning"');
+    expect(html).toContain(
+      "Signed out on this phone; server sign-out could not be confirmed. You can start a new sign-in. This will not confirm that the earlier session ended.",
+    );
+    expect(signInButton(frame())?.props.disabled).toBe(false);
+    await expect(previous.props.session.getToken()).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
   });
 
   it("uses production sign-in copy without trial data claims", async () => {
@@ -238,6 +290,135 @@ describe("native shared workspace composition", () => {
     expect(html.match(/<h1[ >]/g)).toHaveLength(1);
     expect(html).toContain("Discover companies");
     expect(html).not.toContain("Synthetic data only.");
+    expect(html).toContain("Sign in on this device</h2>");
+    expect(html).toContain('data-tone="neutral"');
+    expect(html).toContain('data-busy="false"');
+    expect(signInButton(frame())?.props.disabled).toBe(false);
     expect(findScreen(frame())).toBeUndefined();
+  });
+
+  it("keeps native entry disabled until the installed session check completes", async () => {
+    const request = deferred<NativeAuthState>();
+    const { frame, plugin } = await mount(production, signedIn, {
+      getState: () => request.promise,
+    });
+    expect(renderToStaticMarkup(frame())).toContain(
+      "Checking the installed session…",
+    );
+    expect(renderToStaticMarkup(frame())).toContain('data-busy="true"');
+    expect(signInButton(frame())?.props.disabled).toBe(true);
+    expect(findScreen(frame())).toBeUndefined();
+    expect(plugin.signIn).not.toHaveBeenCalled();
+    request.resolve({
+      status: "signedOut",
+      userId: null,
+      sessionId: null,
+      generation: 1,
+    });
+    await Promise.resolve();
+    expect(renderToStaticMarkup(frame())).toContain(
+      "Sign in to open your shared watchlist.",
+    );
+    expect(signInButton(frame())?.props.disabled).toBe(false);
+  });
+
+  it("keeps unavailable and failed sign-in messages visible with one retry control", async () => {
+    const request = deferred<NativeAuthState>();
+    const { frame, plugin } = await mount(production, signedIn, {
+      getState: vi.fn().mockRejectedValue(new Error("synthetic unavailable")),
+      signIn: vi.fn().mockReturnValue(request.promise),
+    });
+    const unavailable = renderToStaticMarkup(frame());
+    expect(unavailable).toContain(
+      "The installed sign-in service is unavailable.",
+    );
+    expect(unavailable).toContain('data-tone="warning"');
+    expect(unavailable.match(/<button[ >]/g)).toHaveLength(1);
+    const control = signInButton(frame())!;
+    expect(control.props.disabled).toBe(false);
+    control.props.onClick();
+    expect(plugin.signIn).toHaveBeenCalledTimes(1);
+    expect(signInButton(frame())?.props.disabled).toBe(true);
+    expect(renderToStaticMarkup(frame())).toContain("Opening secure sign-in…");
+    expect(findScreen(frame())).toBeUndefined();
+    request.reject(new Error("synthetic canceled"));
+    await Promise.resolve();
+    const failed = renderToStaticMarkup(frame());
+    expect(failed).toContain("Sign-in did not complete. You can try again.");
+    expect(failed).toContain('data-tone="warning"');
+    expect(failed).toContain('data-busy="false"');
+    expect(signInButton(frame())?.props.disabled).toBe(false);
+    expect(findScreen(frame())).toBeUndefined();
+  });
+
+  it.each([1, 2])(
+    "preserves the earlier sign-out warning after recovery generation %s",
+    async (generation) => {
+      const { frame, plugin } = await mount(production, signedIn, {
+        signIn: vi.fn().mockResolvedValue({ ...signedIn, generation }),
+      });
+      const previous = findScreen(frame())!;
+      await expect(previous.props.session.signOut()).rejects.toMatchObject({
+        code: "unauthenticated",
+      });
+      signInButton(frame())!.props.onClick();
+      expect(signInButton(frame())?.props.disabled).toBe(true);
+      await Promise.resolve();
+      const html = renderToStaticMarkup(frame());
+      expect(html.match(/<h1[ >]/g)).toHaveLength(1);
+      if (generation === 1) {
+        expect(findScreen(frame())).toBeUndefined();
+        expect(html).toContain(
+          "No new session was confirmed. The earlier server sign-out remains unconfirmed.",
+        );
+        expect(html).toContain('data-tone="warning"');
+        expect(signInButton(frame())?.props.children).toBe("Sign in again");
+      } else {
+        expect(findScreen(frame())?.key).toBe("2");
+        expect(html).toContain('<div class="managed-session-notice">');
+        expect(html).toContain(
+          '<p role="status">A new session is active. The earlier server sign-out remains unconfirmed.</p>',
+        );
+        expect(html).not.toContain("managed-entry");
+        expect(signInButton(frame())).toBeUndefined();
+      }
+      await expect(previous.props.session.getToken()).rejects.toMatchObject({
+        code: "unauthenticated",
+      });
+      expect(plugin.getToken).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns to warning entry when a native update cannot be verified", async () => {
+    const { frame, emit } = await mount(production);
+    const previous = findScreen(frame())!;
+    emit({ ...signedIn, userId: "invalid identity", generation: 2 });
+    const html = renderToStaticMarkup(frame());
+    expect(html).toContain("The installed session could not be verified.");
+    expect(html).toContain('data-tone="warning"');
+    expect(html).toContain("<h1>Your markets and research</h1>");
+    expect(findScreen(frame())).toBeUndefined();
+    await expect(previous.props.session.getToken()).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+  });
+
+  it("cannot admit a late sign-in after the native adapter is retired", async () => {
+    const request = deferred<NativeAuthState>();
+    const { frame, remove } = await mount(
+      production,
+      { status: "signedOut", userId: null, sessionId: null, generation: 1 },
+      { signIn: () => request.promise },
+    );
+    signInButton(frame())!.props.onClick();
+    cleanup?.();
+    cleanup = undefined;
+    expect(remove).toHaveBeenCalledTimes(1);
+    request.resolve({ ...signedIn, generation: 2 });
+    await Promise.resolve();
+    expect(findScreen(frame())).toBeUndefined();
+    expect(renderToStaticMarkup(frame())).not.toContain(
+      "Managed workspace fixture",
+    );
   });
 });
