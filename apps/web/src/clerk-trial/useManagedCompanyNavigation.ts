@@ -30,7 +30,7 @@ export interface ManagedCompanyNavigation {
   invalid: boolean;
   returnFocus: number;
   open: (action: () => void) => void;
-  section: (section: "annual" | "eod") => void;
+  section: (section: "annual" | "eod" | "filings") => void;
   view: (view: WorkspaceView) => boolean;
   back: () => void;
   hasCompanyRoute: () => boolean;
@@ -156,10 +156,12 @@ export function useManagedCompanyNavigation(
   );
 
   const section = useCallback(
-    (next: "annual" | "eod") => {
+    (next: "annual" | "eod" | "filings") => {
       if (pendingNavigation.current) return;
       if (next === "annual") workspace.switchToAnnual();
-      else workspace.switchToEod();
+      else if (next === "eod") workspace.switchToEod();
+      else if (next === "filings") workspace.switchToFilings();
+      else return;
       const current = workspace.getSnapshot().research;
       if (!current) return;
       const href = managedCompanyHref(

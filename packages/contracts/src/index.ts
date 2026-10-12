@@ -1064,3 +1064,4 @@ export * from "./managed-economic-calendar";
 export * from "./personal-monetary-announcements";
 export * from "./managed-workspace";
 export * from "./managed-eod-history";
+export * from "./managed-sec-filings";

@@ -76,9 +76,9 @@ PR 36 delivers this comparison on the managed website and in signed Android
 Each read model can retain its last validated response during explicit refresh
 and its defined recoverable failures. The panel marks that response as previous
 and preserves its original provenance. ManagedWorkspace owns one company visit
-with a captured selection and active Price or Annual section. Switching cancels
+with a captured selection and active Price, Annual or Filings section. Switching cancels
 pending work and retains validated results; returning reuses the initialized
-model. Closing or invalidating the visit clears both models. No persistent cache
+model. Closing or invalidating the visit clears all three models. No persistent cache
 is added.
 
 Markets-to-company navigation settles board cancellation before capturing the
@@ -142,8 +142,11 @@ canonical full payloads and command receipts with optimistic versions. An unknow
 commit outcome does not authorize a new write; explicit receipt reconciliation
 retains the original command key. Clients receive no table or row write grant.
 
-Annual and EOD services reuse existing providers and shared validation. Their
-separate [Annual admission](../apps/api/src/managed-sec-annual-admission.ts) and
+Annual, Filings and EOD services reuse existing providers and shared validation.
+Annual and Filings reserve the same SEC admission row; Filings permits one fixed
+Submissions read for its entry-time 90-date window. Its strict response decoder
+checks listing/CIK, chronology, counts and reconstructed SEC links before display. Their
+separate [SEC admission](../apps/api/src/managed-sec-admission.ts) and
 [EOD admission](../apps/api/src/managed-eod-admission.ts) grant source work only
 after a timely acknowledged shared reservation. Provider work has server deadlines
 because a browser cancellation is not proven to cancel the remote Appwrite request.

@@ -8,6 +8,8 @@ import {
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_SEC_FILINGS_PATH,
+  MANAGED_SEC_FILINGS_LIMITS,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
@@ -21,16 +23,22 @@ import {
 } from "./appwrite-watchlist-repository";
 import { createClerkTrialAuth } from "./clerk-trial-auth";
 import { validateClerkTrialFunctionConfiguration } from "./clerk-trial-config";
-import { validateManagedSecAnnualConfiguration } from "./managed-sec-annual-config";
+import { validateManagedSecConfiguration } from "./managed-sec-config";
 import {
-  createManagedSecAnnualAdmission,
+  createManagedSecAdmission,
   MANAGED_SEC_ADMISSION_LIMITS,
-} from "./managed-sec-annual-admission";
+  type ManagedSecAdmissionOperation,
+} from "./managed-sec-admission";
 import {
   createManagedSecAnnualService,
   awaitManagedSecAnnual,
   ManagedSecAnnualServiceError,
 } from "./managed-sec-annual-service";
+import {
+  createManagedSecFilingsService,
+  awaitManagedSecFilings,
+  ManagedSecFilingsServiceError,
+} from "./managed-sec-filings-service";
 import {
   validateManagedEodConfiguration,
   MANAGED_EOD_BUDGET,
@@ -84,7 +92,7 @@ export interface ManagedWorkspaceFunctionContext {
 }
 
 declare const __MANAGED_WORKSPACE_SERVER_CONFIG__: unknown;
-declare const __MANAGED_SEC_ANNUAL_CONFIG__: unknown;
+declare const __MANAGED_SEC_CONFIG__: unknown;
 declare const __MANAGED_EOD_CONFIG__: unknown;
 const PATHS: readonly string[] = [
   MANAGED_CATALOG_STATUS_PATH,
@@ -92,6 +100,7 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
 ];
@@ -139,9 +148,11 @@ export function bridgeManagedWorkspaceRequest(
       ? MANAGED_WATCHLIST_LIMITS.envelopeBytes
       : req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH
         ? MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS.requestBytes
-        : req.path === MANAGED_EOD_HISTORY_PATH
-          ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
-          : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
+        : req.path === MANAGED_SEC_FILINGS_PATH
+          ? MANAGED_SEC_FILINGS_LIMITS.requestBytes
+          : req.path === MANAGED_EOD_HISTORY_PATH
+            ? MANAGED_EOD_HISTORY_LIMITS.requestBytes
+            : MANAGED_CATALOG_RESOLVE_LIMITS.requestBytes;
   if (req.bodyBinary.byteLength > maximum)
     throw new BridgeFailure(413, "payload_too_large");
   if (req.method !== "POST" && req.bodyBinary.byteLength !== 0)
@@ -166,12 +177,11 @@ export function bridgeManagedWorkspaceRequest(
 /** Managed web/native admission; execution authority stays scoped per operation. */
 export function createManagedWorkspaceFunction(
   input: unknown,
-  annualInput: unknown,
+  secInput: unknown,
   eodInput: unknown,
 ) {
   const checked = validateClerkTrialFunctionConfiguration(input);
-  const annualConfiguration =
-    validateManagedSecAnnualConfiguration(annualInput);
+  const secConfiguration = validateManagedSecConfiguration(secInput);
   const eodConfiguration = validateManagedEodConfiguration(eodInput);
   if (checked.environment !== "production")
     throw new Error("Managed function requires production configuration");
@@ -200,10 +210,11 @@ export function createManagedWorkspaceFunction(
     headers["access-control-allow-origin"] = origin;
     let dispatchedWrite = false;
     const annual = req.path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH;
+    const filings = req.path === MANAGED_SEC_FILINGS_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
     const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH;
     const sourceController =
-      annual || eod || calendar ? new AbortController() : undefined;
+      annual || filings || eod || calendar ? new AbortController() : undefined;
     const sourceTimer =
       sourceController === undefined
         ? undefined
@@ -219,6 +230,39 @@ export function createManagedWorkspaceFunction(
         : bridged;
       // Copy the supplied authority before auth awaits; it is never user authority.
       const executionKey = req.headers["x-appwrite-key"];
+      const openSecAdmission = (
+        signal: AbortSignal,
+        remainingMs: number,
+      ): ManagedSecAdmissionOperation => {
+        if (!executionKey) throw new Error("Execution authority unavailable");
+        const transport = createAppwriteTransport({
+          endpoint: "https://nyc.cloud.appwrite.io/v1",
+          signal,
+          limits: {
+            timeoutMs: remainingMs,
+            mutationWindowMs: remainingMs,
+            requestTimeoutMs: remainingMs,
+            maxRequests: MANAGED_SEC_ADMISSION_LIMITS.maxRequests,
+          },
+        });
+        try {
+          transport.client
+            .setProject("6abac57a0007b7c1a671")
+            .setKey(executionKey);
+          return {
+            admission: createManagedSecAdmission({
+              store: appwriteWatchlistStore(new TablesDB(transport.client)),
+              databaseId: "investment_managed_watchlist_v1",
+              tableId: "sec_annual_budget",
+              rowId: "observed-annual-v1",
+            }),
+            close: () => transport.close(),
+          };
+        } catch {
+          void transport.close().catch(() => undefined);
+          throw new Error("Managed SEC storage unavailable");
+        }
+      };
       const handle = createManagedWorkspaceHandler({
         auth:
           request.headers.get("origin") === MANAGED_WORKSPACE_NATIVE_ORIGIN
@@ -229,43 +273,22 @@ export function createManagedWorkspaceFunction(
           ? {}
           : {
               annual: createManagedSecAnnualService({
-                configuration: annualConfiguration,
+                configuration: secConfiguration,
                 catalog: getManagedWorkspaceCatalog(),
                 enteredAt,
                 startedAt,
-                openAdmission(signal, remainingMs) {
-                  if (!executionKey)
-                    throw new Error("Execution authority unavailable");
-                  const transport = createAppwriteTransport({
-                    endpoint: "https://nyc.cloud.appwrite.io/v1",
-                    signal,
-                    limits: {
-                      timeoutMs: remainingMs,
-                      mutationWindowMs: remainingMs,
-                      requestTimeoutMs: remainingMs,
-                      maxRequests: MANAGED_SEC_ADMISSION_LIMITS.maxRequests,
-                    },
-                  });
-                  try {
-                    transport.client
-                      .setProject("6abac57a0007b7c1a671")
-                      .setKey(executionKey);
-                    return {
-                      admission: createManagedSecAnnualAdmission({
-                        store: appwriteWatchlistStore(
-                          new TablesDB(transport.client),
-                        ),
-                        databaseId: "investment_managed_watchlist_v1",
-                        tableId: "sec_annual_budget",
-                        rowId: "observed-annual-v1",
-                      }),
-                      close: () => transport.close(),
-                    };
-                  } catch {
-                    void transport.close().catch(() => undefined);
-                    throw new Error("Managed annual storage unavailable");
-                  }
-                },
+                openAdmission: openSecAdmission,
+              }),
+            }),
+        ...(!filings
+          ? {}
+          : {
+              filings: createManagedSecFilingsService({
+                configuration: secConfiguration,
+                catalog: getManagedWorkspaceCatalog(),
+                enteredAt,
+                startedAt,
+                openAdmission: openSecAdmission,
               }),
             }),
         ...(!calendar
@@ -349,7 +372,9 @@ export function createManagedWorkspaceFunction(
             )
           : eod
             ? awaitManagedEod(handle(request), sourceController.signal)
-            : awaitManagedSecAnnual(handle(request), sourceController.signal)
+            : filings
+              ? awaitManagedSecFilings(handle(request), sourceController.signal)
+              : awaitManagedSecAnnual(handle(request), sourceController.signal)
         : handle(request));
       const body = await response.text();
       if (
@@ -361,7 +386,9 @@ export function createManagedWorkspaceFunction(
           ? new ManagedEconomicCalendarServiceError("request_timeout")
           : eod
             ? new ManagedEodServiceError("request_timeout")
-            : new ManagedSecAnnualServiceError("request_timeout");
+            : filings
+              ? new ManagedSecFilingsServiceError("request_timeout")
+              : new ManagedSecAnnualServiceError("request_timeout");
       return res.text(
         body,
         response.status,
@@ -374,6 +401,7 @@ export function createManagedWorkspaceFunction(
             error instanceof BridgeFailure
               ? error.code
               : error instanceof ManagedSecAnnualServiceError ||
+                  error instanceof ManagedSecFilingsServiceError ||
                   error instanceof ManagedEodServiceError ||
                   error instanceof ManagedEconomicCalendarServiceError
                 ? error.code
@@ -384,6 +412,7 @@ export function createManagedWorkspaceFunction(
         error instanceof BridgeFailure
           ? error.status
           : (error instanceof ManagedSecAnnualServiceError ||
+                error instanceof ManagedSecFilingsServiceError ||
                 error instanceof ManagedEodServiceError ||
                 error instanceof ManagedEconomicCalendarServiceError) &&
               error.code === "request_timeout"
@@ -403,7 +432,7 @@ export default async function main(context: ManagedWorkspaceFunctionContext) {
   const enteredAt = new Date().toISOString();
   return createManagedWorkspaceFunction(
     __MANAGED_WORKSPACE_SERVER_CONFIG__,
-    __MANAGED_SEC_ANNUAL_CONFIG__,
+    __MANAGED_SEC_CONFIG__,
     __MANAGED_EOD_CONFIG__,
   )(context, Object.freeze({ startedAt, enteredAt }));
 }

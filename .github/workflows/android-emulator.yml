@@ -110,6 +110,7 @@ jobs:
                   "rawCloseComparisonUsesObservedDatesAndPreservesDraft",
                   "eodLoadCancelAndBackPreserveDraftAndDiscardLateResult",
                   "switchingResearchPanelsPreservesDraftAndDiscardsLateAnnual",
+                  "companyFilingsPagingCancelAndBackPreserveDraft",
                   "companyNoteDraftReviewSaveAndReloadPreservesIdentity",
                   "annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
@@ -134,7 +135,7 @@ jobs:
                   executed.add((case.get("classname"), case.get("name")))
           required = {(class_name, method) for class_name, methods in expected_tests.items() for method in methods}
           if not required.issubset(executed):
-              raise SystemExit("The twenty-three required native tests did not all execute.")
+              raise SystemExit("The twenty-four required native tests did not all execute.")
           apk_root = Path("apps/web/android/app/build/outputs/apk")
           fixture_prefix = "assets/managed-workspace/"
           test_providers = (

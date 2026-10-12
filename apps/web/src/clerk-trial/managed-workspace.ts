@@ -1,3 +1,4 @@
+import type { ManagedResearchSelection } from "./managed-research-selection";
 import {
   encodeMainWatchlistPayload,
   isMainWatchlistPayload,
@@ -19,16 +20,15 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
-import {
-  ManagedAnnualReport,
-  type AnnualReportSelection,
-} from "./managed-annual-report";
+import { ManagedAnnualReport } from "./managed-annual-report";
 import {
   ManagedEodHistory,
   type ManagedEodHistorySeed,
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
+import { ManagedCompanyFilings } from "./managed-company-filings";
+import { ManagedSecAccess } from "./managed-sec-access";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
@@ -46,8 +46,8 @@ export interface CatalogReview {
   readonly results: readonly ResolvedListing[];
 }
 export interface ManagedResearchVisit {
-  readonly selection: AnnualReportSelection;
-  readonly section: "annual" | "eod";
+  readonly selection: ManagedResearchSelection;
+  readonly section: "annual" | "eod" | "filings";
 }
 export interface ResearchWatchlistState {
   readonly member: WatchlistMembership | null;
@@ -57,7 +57,7 @@ export interface ResearchWatchlistState {
 }
 export interface CompanyRouteState {
   readonly listingId: string;
-  readonly section: "annual" | "eod";
+  readonly section: "annual" | "eod" | "filings";
   readonly status:
     "waiting_catalog" | "resolving" | "unavailable" | "error" | "open";
   readonly message: string;
@@ -162,6 +162,8 @@ export function listingMembership(
 export class ManagedWorkspace {
   readonly coordinator: SaveCoordinator<MainWatchlistPayload>;
   readonly annual: ManagedAnnualReport;
+  readonly filings: ManagedCompanyFilings;
+  private readonly secAccess = new ManagedSecAccess();
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
   readonly agenda: ManagedBeaReleaseAgenda;
@@ -202,7 +204,16 @@ export class ManagedWorkspace {
     this.annual = new ManagedAnnualReport(
       (request, signal) => api.annualReport(request, signal),
       (error) => this.coordinator.readError(error),
+      this.secAccess,
     );
+    this.filings = new ManagedCompanyFilings(
+      (request, signal) => api.recentFilings(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+    );
+    this.filings.subscribe(() => {
+      if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();
+    });
     this.agenda = new ManagedBeaReleaseAgenda(
       (signal) => api.economicCalendar(signal),
       (error) => this.coordinator.readError(error),
@@ -261,6 +272,8 @@ export class ManagedWorkspace {
     this.retired = true;
     this.closeResearch();
     this.annual.retire();
+    this.filings.retire();
+    this.secAccess.retire();
     this.eod.retire();
     this.markets.retire();
     this.agenda.retire();
@@ -487,7 +500,7 @@ export class ManagedWorkspace {
       "eod",
     );
   }
-  openMarketResearch(kind: "annual" | "eod", listingId?: string) {
+  openMarketResearch(kind: "annual" | "eod" | "filings", listingId?: string) {
     const requested = this.markets.selection(listingId);
     if (
       this.retired ||
@@ -525,7 +538,9 @@ export class ManagedWorkspace {
     if (
       !route ||
       !isManagedCompanyListingId(route.listingId) ||
-      (route.section !== "annual" && route.section !== "eod")
+      (route.section !== "annual" &&
+        route.section !== "eod" &&
+        route.section !== "filings")
     ) {
       this.closeResearch();
       return;
@@ -668,7 +683,7 @@ export class ManagedWorkspace {
     }
   }
   private openResearch(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     section: ManagedResearchVisit["section"],
     companyRoute: CompanyRouteState | null = null,
     priceSeed?: ManagedEodHistorySeed,
@@ -676,6 +691,7 @@ export class ManagedWorkspace {
     this.clearResearch();
     if (section === "eod" || priceSeed) this.eod.open(selection, priceSeed);
     if (section === "annual") this.annual.open(selection);
+    if (section === "filings") this.filings.open(selection);
     const captured = this[section].getSnapshot().selection;
     if (captured)
       this.update({
@@ -695,10 +711,11 @@ export class ManagedWorkspace {
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
     this.annual.close();
+    this.filings.close();
     this.eod.close();
     return hadResearch;
   }
-  private canSwitchResearch(selection: AnnualReportSelection | null) {
+  private canSwitchResearch(selection: ManagedResearchSelection | null) {
     if (
       this.retired ||
       !selection ||
@@ -727,6 +744,9 @@ export class ManagedWorkspace {
       )
     );
   }
+  switchToFilings() {
+    this.switchResearch("filings");
+  }
   switchToAnnual() {
     this.switchResearch("annual");
   }
@@ -738,6 +758,7 @@ export class ManagedWorkspace {
     if (!research) return;
     if (
       !this.canSwitchResearch(research.selection) ||
+      this.filings.getSnapshot().catalogChanged ||
       this.annual.getSnapshot().catalogChanged ||
       this.eod.getSnapshot().catalogChanged
     ) {
@@ -751,7 +772,7 @@ export class ManagedWorkspace {
     this.update({ research: Object.freeze({ ...research, section }) });
   }
   getResearchWatchlist(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
   ): ResearchWatchlistState {
     const blocked = (
       reason: string,
@@ -768,6 +789,7 @@ export class ManagedWorkspace {
       );
     if (
       !this.canSwitchResearch(selection) ||
+      this.filings.getSnapshot().catalogChanged ||
       this.annual.getSnapshot().catalogChanged ||
       this.eod.getSnapshot().catalogChanged
     )
@@ -806,7 +828,7 @@ export class ManagedWorkspace {
       reason: null,
     };
   }
-  addResearchToWatchlist(selection: AnnualReportSelection) {
+  addResearchToWatchlist(selection: ManagedResearchSelection) {
     if (!this.getResearchWatchlist(selection).canAdd) return;
     const draft = this.coordinator.getSnapshot().draft!;
     this.edit([
@@ -814,12 +836,12 @@ export class ManagedWorkspace {
       { ...listingIdentity(selection.listing), note: "" },
     ]);
   }
-  noteResearch(selection: AnnualReportSelection, note: string) {
+  noteResearch(selection: ManagedResearchSelection, note: string) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
     this.note(selection.listing.listingId, note);
   }
   private annualNoteProposal(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: PersonalSecAnnualEvidenceResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { note: string | null; reason: string | null } {
@@ -863,7 +885,7 @@ export class ManagedWorkspace {
     return { note, reason: null };
   }
   getAnnualNoteAction(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: PersonalSecAnnualEvidenceResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { canAppend: boolean; reason: string | null } {
@@ -871,7 +893,7 @@ export class ManagedWorkspace {
     return { canAppend: proposal.note !== null, reason: proposal.reason };
   }
   appendAnnualToResearchNote(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: PersonalSecAnnualEvidenceResponseDto,
     pair: PersonalSecAnnualPairDto,
   ): { appended: boolean; message: string } {
@@ -886,7 +908,7 @@ export class ManagedWorkspace {
     };
   }
   private priceNoteProposal(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
     end: ManagedEodCloseDto,
@@ -934,7 +956,7 @@ export class ManagedWorkspace {
     return { note, reason: null };
   }
   getPriceNoteAction(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
     end: ManagedEodCloseDto,
@@ -943,7 +965,7 @@ export class ManagedWorkspace {
     return { canAppend: proposal.note !== null, reason: proposal.reason };
   }
   appendPriceComparisonToResearchNote(
-    selection: AnnualReportSelection,
+    selection: ManagedResearchSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
     end: ManagedEodCloseDto,

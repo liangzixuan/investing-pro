@@ -1,23 +1,20 @@
-import type {
-  PersonalSecAnnualEvidenceResponseDto,
-  WatchlistMembership,
-} from "@research-cockpit/contracts";
+import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import {
-  ManagedAnnualCooldownError,
+  ManagedSecCooldownError,
   ManagedAnnualReportError,
   ManagedCatalogChangedError,
   type ManagedApi,
 } from "./managed-api";
 
-export interface AnnualReportSelection {
-  readonly catalogSnapshotSha256: `sha256:${string}`;
-  readonly listing: Omit<WatchlistMembership, "note">;
-  readonly cik: string | null;
-  readonly origin: "discover" | "watchlist" | "markets" | "route";
-}
+import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  ManagedSecAccess,
+  managedSecCooldownMessage,
+} from "./managed-sec-access";
+
 export interface ManagedAnnualReportState {
-  readonly selection: AnnualReportSelection | null;
+  readonly selection: ManagedResearchSelection | null;
   readonly response: PersonalSecAnnualEvidenceResponseDto | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
@@ -37,7 +34,7 @@ const empty = (): ManagedAnnualReportState => ({
 
 function matchesSelection(
   response: PersonalSecAnnualEvidenceResponseDto,
-  selected: AnnualReportSelection,
+  selected: ManagedResearchSelection,
 ) {
   const security = response.security;
   const listing = selected.listing;
@@ -76,11 +73,11 @@ export class ManagedAnnualReport {
   private readonly listeners = new Set<() => void>();
   private operation: AbortController | null = null;
   private retired = false;
-  private nextAllowedAt: string | null = null;
 
   constructor(
     private readonly loadReport: ManagedApi["annualReport"],
     private readonly readError: (error: TrialApiError) => void,
+    private readonly access = new ManagedSecAccess(),
   ) {}
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => {
@@ -91,7 +88,7 @@ export class ManagedAnnualReport {
     this.state = { ...this.state, ...next };
     for (const listener of this.listeners) listener();
   }
-  open(selection: AnnualReportSelection) {
+  open(selection: ManagedResearchSelection) {
     if (this.retired) return;
     this.close();
     this.update({
@@ -110,7 +107,6 @@ export class ManagedAnnualReport {
   }
   retire() {
     this.retired = true;
-    this.nextAllowedAt = null;
     this.close();
   }
   cancel() {
@@ -135,10 +131,14 @@ export class ManagedAnnualReport {
       this.state.catalogChanged
     )
       return;
-    if (this.nextAllowedAt && Date.now() < Date.parse(this.nextAllowedAt)) {
+    const nextAllowedAt = this.access.getNextAllowedAt();
+    if (nextAllowedAt) {
       this.update({
         showingPrevious: this.state.response !== null,
-        message: this.cooldownMessage(this.nextAllowedAt),
+        message: managedSecCooldownMessage(
+          nextAllowedAt,
+          this.state.response !== null,
+        ),
         error: false,
       });
       return;
@@ -186,12 +186,24 @@ export class ManagedAnnualReport {
       ) {
         this.readError(error);
         this.retire();
-      } else if (error instanceof ManagedAnnualCooldownError) {
-        this.nextAllowedAt = error.nextAllowedAt;
-        this.update({
-          showingPrevious: this.state.response !== null,
-          message: this.cooldownMessage(error.nextAllowedAt),
-        });
+      } else if (error instanceof ManagedSecCooldownError) {
+        try {
+          const deadline = this.access.recordCooldown(error, operation.signal);
+          this.update({
+            showingPrevious: this.state.response !== null,
+            message: managedSecCooldownMessage(
+              deadline,
+              this.state.response !== null,
+            ),
+          });
+        } catch {
+          this.update({
+            response: null,
+            showingPrevious: false,
+            error: true,
+            message: errorMessage(new TrialApiError("invalid_response"), false),
+          });
+        }
       } else {
         const showingPrevious =
           this.state.response !== null &&
@@ -212,10 +224,5 @@ export class ManagedAnnualReport {
         this.update({ running: false });
       }
     }
-  }
-  private cooldownMessage(nextAllowedAt: string) {
-    return this.state.response
-      ? `Refresh deferred. Annual report requests are shared across your devices. Refresh again after ${nextAllowedAt}.`
-      : `Annual report requests are shared across your devices. Load again after ${nextAllowedAt}.`;
   }
 }

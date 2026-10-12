@@ -9,10 +9,11 @@ import {
 } from "@research-cockpit/personal-security-master";
 
 import {
-  ManagedSecAnnualAdmissionError,
-  type ManagedSecAnnualAdmission,
-} from "./managed-sec-annual-admission";
-import type { ManagedSecAnnualConfiguration } from "./managed-sec-annual-config";
+  ManagedSecAdmissionError,
+  type ManagedSecAdmissionOperation,
+} from "./managed-sec-admission";
+import { MANAGED_SEC_ISSUERS } from "./managed-sec-issuers";
+import type { ManagedSecConfiguration } from "./managed-sec-config";
 import { createSecPersonalAnnualEvidenceProvider } from "./personal-sec-annual-evidence-provider";
 import type { PersonalSecRequestScheduler } from "./personal-sec-request-scheduler";
 import type { WatchlistPrincipal } from "./watchlist-repository";
@@ -40,10 +41,6 @@ export interface ManagedSecAnnualService {
   ): Promise<PersonalSecAnnualEvidenceResponseDto>;
   assertActive(signal: AbortSignal): void;
 }
-export interface ManagedSecAnnualAdmissionOperation {
-  readonly admission: ManagedSecAnnualAdmission;
-  close(): Promise<void>;
-}
 
 /** Retires an await without granting any later completion authority. */
 export async function awaitManagedSecAnnual<T>(
@@ -65,14 +62,14 @@ export async function awaitManagedSecAnnual<T>(
 
 /** The entry timestamps are captured before bridge/auth, never refreshed here. */
 export function createManagedSecAnnualService(options: {
-  readonly configuration: Readonly<ManagedSecAnnualConfiguration> | null;
+  readonly configuration: Readonly<ManagedSecConfiguration> | null;
   readonly catalog: ManagedSecurityMasterCatalog;
   readonly enteredAt: string;
   readonly startedAt: number;
   readonly openAdmission: (
     signal: AbortSignal,
     remainingMs: number,
-  ) => ManagedSecAnnualAdmissionOperation;
+  ) => ManagedSecAdmissionOperation;
   readonly monotonic?: () => number;
   readonly now?: () => Date;
   readonly fetch?: typeof globalThis.fetch;
@@ -106,7 +103,7 @@ export function createManagedSecAnnualService(options: {
       if (
         listing === null ||
         listing.symbol !== request.symbol ||
-        !["0000320193", "0001652044", "0000789019"].includes(listing.cik)
+        !MANAGED_SEC_ISSUERS.includes(listing.cik)
       )
         throw new ManagedSecAnnualServiceError("invalid_request");
       if (options.configuration === null)
@@ -126,7 +123,7 @@ export function createManagedSecAnnualService(options: {
         remaining,
       );
       admissionTimer.unref();
-      let operation: ManagedSecAnnualAdmissionOperation | undefined;
+      let operation: ManagedSecAdmissionOperation | undefined;
       try {
         active(admissionSignal, 2_000);
         operation = options.openAdmission(admissionSignal, remaining);
@@ -140,7 +137,7 @@ export function createManagedSecAnnualService(options: {
         );
       } catch (error) {
         if (
-          error instanceof ManagedSecAnnualAdmissionError &&
+          error instanceof ManagedSecAdmissionError &&
           error.code === "rate_limited"
         )
           throw new ManagedSecAnnualServiceError(

@@ -13,7 +13,7 @@ import * as configModule from "./clerk-trial-config";
 import * as transportModule from "./appwrite-transport";
 import * as repositoryModule from "./appwrite-watchlist-repository";
 import * as catalogModule from "./managed-workspace-catalog";
-import * as annualAdmissionModule from "./managed-sec-annual-admission";
+import * as secAdmissionModule from "./managed-sec-admission";
 import * as eodAdmissionModule from "./managed-eod-admission";
 import * as beaProviderModule from "./bea-release-provider";
 import * as annualServiceModule from "./managed-sec-annual-service";
@@ -800,7 +800,7 @@ describe("managed annual composed function", () => {
         return validate(input);
       });
       vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
-      vi.stubGlobal("__MANAGED_SEC_ANNUAL_CONFIG__", annualConfig);
+      vi.stubGlobal("__MANAGED_SEC_CONFIG__", annualConfig);
       const f = memoryRepository();
       expect(await main(writeContext(path, annualCommand()))).toMatchObject({
         status: 408,
@@ -842,13 +842,13 @@ describe("managed annual composed function", () => {
       const reserve = vi
         .fn()
         .mockRejectedValue(
-          new annualAdmissionModule.ManagedSecAnnualAdmissionError(
+          new secAdmissionModule.ManagedSecAdmissionError(
             "rate_limited",
             "2026-10-01T12:00:20.000Z",
           ),
         );
       const admission = vi
-        .spyOn(annualAdmissionModule, "createManagedSecAnnualAdmission")
+        .spyOn(secAdmissionModule, "createManagedSecAdmission")
         .mockReturnValue({ reserve });
       const run = createManagedWorkspaceFunction(
           configuration(),
@@ -919,10 +919,9 @@ describe("managed annual composed function", () => {
       version: 2,
       nextAllowedAt: new Date(Date.now() + 20_000).toISOString(),
     });
-    vi.spyOn(
-      annualAdmissionModule,
-      "createManagedSecAnnualAdmission",
-    ).mockReturnValue({ reserve });
+    vi.spyOn(secAdmissionModule, "createManagedSecAdmission").mockReturnValue({
+      reserve,
+    });
     const accession = "0000320193-25-000042";
     const fact = {
       start: "2024-10-01",
@@ -1215,7 +1214,7 @@ describe("managed EOD composed function", () => {
         return validate(input);
       });
       vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
-      vi.stubGlobal("__MANAGED_SEC_ANNUAL_CONFIG__", null);
+      vi.stubGlobal("__MANAGED_SEC_CONFIG__", null);
       vi.stubGlobal("__MANAGED_EOD_CONFIG__", eodConfig);
       vi.stubEnv(MANAGED_EOD_TOKEN_ENVIRONMENT_KEY, "invented-token");
       const f = memoryRepository();
@@ -1341,7 +1340,7 @@ describe("managed BEA calendar composed function", () => {
       return validate(input);
     });
     vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
-    vi.stubGlobal("__MANAGED_SEC_ANNUAL_CONFIG__", null);
+    vi.stubGlobal("__MANAGED_SEC_CONFIG__", null);
     const f = memoryRepository();
     expect(await main(context({ path }))).toMatchObject({
       status: 408,
@@ -1478,4 +1477,244 @@ describe("managed BEA calendar composed function", () => {
       expect(f.transport).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("managed company filings composed function", () => {
+  const path = "/v1/managed/sec-filings";
+  const secConfig = { userAgent: "Invented SEC fixture fixture@example.test" };
+  function filingsCommand() {
+    const catalog = catalogModule.createManagedCatalogService();
+    const selected = catalog
+      .search("AAPL")!
+      .results.find((row) => row.symbol === "AAPL")!;
+    return {
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256: catalog.status().snapshot.snapshotSha256,
+      listingId: selected.listingId,
+      symbol: selected.symbol,
+    };
+  }
+  it("rejects extra query, oversized bytes and wrong method without source or storage", async () => {
+    const authenticate = vi.fn<authModule.ClerkTrialAuth>();
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(authenticate);
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(
+      configuration(),
+      secConfig,
+      null,
+    );
+    expect(
+      await run(
+        context({ method: "POST", path, bodyBinary: Buffer.alloc(4097) }),
+      ),
+    ).toMatchObject({ status: 413 });
+    expect(
+      await run(context({ method: "POST", path, queryString: "cik=1" })),
+    ).toMatchObject({ status: 400 });
+    expect(await run(context({ method: "GET", path }))).toMatchObject({
+      status: 405,
+    });
+    expect(authenticate).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "uses the existing SEC row for signed %s requests",
+    async (origin) => {
+      const f = memoryRepository();
+      const reserve = vi
+        .fn()
+        .mockRejectedValue(
+          new secAdmissionModule.ManagedSecAdmissionError(
+            "rate_limited",
+            "2026-10-12T12:00:20.000Z",
+          ),
+        );
+      const admission = vi
+        .spyOn(secAdmissionModule, "createManagedSecAdmission")
+        .mockReturnValue({ reserve });
+      const run = createManagedWorkspaceFunction(
+        configuration(),
+        secConfig,
+        null,
+      );
+      const c = writeContext(path, filingsCommand());
+      const result = await run({
+        ...c,
+        req: {
+          ...c.req,
+          headers: {
+            ...c.req.headers,
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        },
+      });
+      expect(result).toMatchObject({
+        status: 429,
+        body: {
+          error: "rate_limited",
+          nextAllowedAt: "2026-10-12T12:00:20.000Z",
+        },
+      });
+      expect(admission).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          databaseId: "investment_managed_watchlist_v1",
+          tableId: "sec_annual_budget",
+          rowId: "observed-annual-v1",
+        }),
+      );
+      expect(f.transport.mock.calls[0]![0].limits).toMatchObject({
+        maxRequests: 6,
+      });
+      expect(reserve).toHaveBeenCalledTimes(1);
+      expect(f.repository).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      const transport = f.transport.mock.results[0]!.value as ReturnType<
+        typeof transportModule.createAppwriteTransport
+      >;
+      expect(transport.snapshot().closed).toBe(true);
+    },
+  );
+  it("composes one fixed Submissions read with the original UTC entry window", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T00:00:00.000Z"));
+    const f = memoryRepository();
+    const reserve = vi.fn().mockResolvedValue({
+      version: 2,
+      nextAllowedAt: "2026-10-12T00:00:10.000Z",
+    });
+    vi.spyOn(secAdmissionModule, "createManagedSecAdmission").mockReturnValue({
+      reserve,
+    });
+    const accession = "0000320193-26-000042";
+    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+      Response.json({
+        cik: "0000320193",
+        filings: {
+          recent: {
+            accessionNumber: [accession],
+            form: ["8-K"],
+            filingDate: ["2026-10-11"],
+            reportDate: [""],
+          },
+          files: [{ name: "ignored-older.json" }],
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const run = createManagedWorkspaceFunction(
+      configuration(),
+      secConfig,
+      null,
+    );
+    const enteredAt = "2026-10-11T23:59:59.000Z";
+    const result = await run(writeContext(path, filingsCommand()), {
+      startedAt: performance.now(),
+      enteredAt,
+    });
+    expect(result).toMatchObject({
+      status: 200,
+      body: {
+        security: { symbol: "AAPL", cik: "0000320193" },
+        window: {
+          lookbackDays: 90,
+          fromDate: "2026-07-14",
+          throughDate: "2026-10-11",
+        },
+        requestStartedAt: enteredAt,
+        issuer: {
+          status: "available",
+          matchingFilings: 1,
+          truncated: false,
+          olderHistoryAvailable: true,
+          filings: [
+            {
+              accessionNumber: accession,
+              form: "8-K",
+              reportDate: null,
+              sourceUrl: `https://www.sec.gov/Archives/edgar/data/320193/${accession}-index.htm`,
+            },
+          ],
+        },
+      },
+    });
+    expect(fetch).toHaveBeenCalledExactlyOnceWith(
+      "https://data.sec.gov/submissions/CIK0000320193.json",
+      expect.objectContaining({
+        method: "GET",
+        credentials: "omit",
+        redirect: "error",
+        cache: "no-store",
+      }),
+    );
+    expect(reserve).toHaveBeenCalledExactlyOnceWith(
+      { userId: "clerk-18eee2905fe941fd6272a0203ecfe2" },
+      enteredAt,
+      expect.any(AbortSignal),
+    );
+    expect(f.repository).not.toHaveBeenCalled();
+  });
+  it.each([2_000, 10_000])(
+    "counts %ims before default-entry authentication/storage/source",
+    async (delay) => {
+      let elapsed = 0;
+      vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+      const validate = configModule.validateClerkTrialFunctionConfiguration;
+      vi.spyOn(
+        configModule,
+        "validateClerkTrialFunctionConfiguration",
+      ).mockImplementation((input) => {
+        elapsed += delay;
+        return validate(input);
+      });
+      vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
+      vi.stubGlobal("__MANAGED_SEC_CONFIG__", secConfig);
+      const f = memoryRepository();
+      expect(await main(writeContext(path, filingsCommand()))).toMatchObject({
+        status: 408,
+        body: { error: "request_timeout" },
+      });
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    },
+  );
+  it("expires pending auth and refuses its late completion without any source read", async () => {
+    vi.useFakeTimers();
+    let release!: (
+      value: Awaited<ReturnType<authModule.ClerkTrialAuth>>,
+    ) => void;
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(
+      configuration(),
+      secConfig,
+      null,
+    );
+    const pending = run(writeContext(path, filingsCommand()));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    release({ status: "allowed", principal: { userId: SUBJECT } });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("keeps explicit null SEC configuration disabled after authentication", async () => {
+    const f = memoryRepository();
+    const run = createManagedWorkspaceFunction(configuration(), null, null);
+    expect(await run(writeContext(path, filingsCommand()))).toMatchObject({
+      status: 503,
+      body: { error: "not_configured" },
+    });
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
 });

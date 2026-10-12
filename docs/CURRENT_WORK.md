@@ -190,7 +190,16 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The active shared-interval increment adds Start and End to the three-listing
+The next outcome is [recent company filings](MANAGED_SEC_FILINGS.md): an explicit
+Filings section for the admitted SEC cohort, with dated forms, original index
+links and 25-row local pages. It reuses the existing bounded Submissions provider
+and shares Annual's admission budget and checked cooldown. Focused contracts,
+service, client and integrated API/native-fixture tests pass, along with types,
+scoped lint, formatting and source boundaries. The native fixture build fits its
+unchanged asset limit. Independent source review is complete; actual browser and
+native execution remain pending. No live read or release is accepted.
+
+The shared-interval candidate in draft PR89 adds Start and End to the three-listing
 Markets comparison. It ranks all three listings over the selected common dates,
 keeps interval counts separate from full-history overlap and preserves each
 original request's provenance. Retained histories keep the interval; a new
@@ -201,8 +210,10 @@ existing native Markets journey now exercises both date selectors while keeping
 the original two-date fixture and request/draft checks. Initial actual-component
 Brave checks at desktop and 390 pixels covered exact ranking, gaps, invalid dates,
 retained failure/Cancel, replacement notices and focus, company navigation and
-draft retirement. The remaining browser scenarios, native execution and hosted
-source acceptance remain pending.
+draft retirement. All five applicable Actions checks and CodeScene passed. The
+Android retry passed all 23 cases and APK isolation; the original export-picker
+failure remains recorded. The remaining browser scenarios are pending, so the
+PR remains in draft.
 See [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The Price comparison increment in draft PR88 lets the researcher select both observed

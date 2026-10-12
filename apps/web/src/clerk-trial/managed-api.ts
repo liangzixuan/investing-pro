@@ -1,4 +1,12 @@
 import {
+  MANAGED_SEC_FILINGS_PATH,
+  MANAGED_SEC_FILINGS_LIMITS,
+  parseManagedSecFilingsRequest,
+  parseManagedSecFilingsResponse,
+  parseManagedSecFilingsError,
+  type ManagedSecFilingsRequestDto,
+  type ManagedSecFilingsResponseDto,
+  type ManagedSecFilingsErrorCode,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   parseManagedEconomicCalendar,
@@ -43,6 +51,10 @@ import { TrialApiError, validateApiOrigin, type TrialErrorCode } from "./api";
 import type { TrialSession } from "./session";
 
 export interface ManagedApi {
+  recentFilings: (
+    request: ManagedSecFilingsRequestDto,
+    signal: AbortSignal,
+  ) => Promise<ManagedSecFilingsResponseDto>;
   economicCalendar: (
     signal: AbortSignal,
   ) => Promise<PersonalEconomicCalendarDto>;
@@ -82,9 +94,15 @@ export class ManagedAnnualReportError extends Error {
   }
 }
 
-export class ManagedAnnualCooldownError extends Error {
+export class ManagedSecCooldownError extends Error {
   constructor(readonly nextAllowedAt: string) {
     super("rate_limited");
+  }
+}
+
+export class ManagedSecFilingsError extends Error {
+  constructor(readonly code: ManagedSecFilingsErrorCode) {
+    super(code);
   }
 }
 
@@ -100,25 +118,29 @@ export class ManagedEodCooldownError extends Error {
   }
 }
 
-type RequestKind = "watchlist" | "resolve" | "annual" | "eod" | "calendar";
+type RequestKind =
+  "watchlist" | "resolve" | "annual" | "eod" | "calendar" | "filings";
 
-function annualCooldown(value: unknown): never {
-  if (
-    value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    Object.keys(value).length === 2 &&
-    "error" in value &&
-    value.error === "rate_limited" &&
-    "nextAllowedAt" in value &&
-    typeof value.nextAllowedAt === "string" &&
-    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(
-      value.nextAllowedAt,
-    ) &&
-    Number.isFinite(Date.parse(value.nextAllowedAt)) &&
-    new Date(value.nextAllowedAt).toISOString() === value.nextAllowedAt
-  )
-    throw new ManagedAnnualCooldownError(value.nextAllowedAt);
+function secCooldown(value: unknown): never {
+  const error = parseManagedSecFilingsError(value);
+  if (error?.error === "rate_limited")
+    throw new ManagedSecCooldownError(error.nextAllowedAt);
+  throw new TrialApiError("invalid_response");
+}
+
+function filingsError(status: number, value: unknown): never {
+  const error = parseManagedSecFilingsError(value);
+  if (!error) throw new TrialApiError("invalid_response");
+  if (status === 429) secCooldown(value);
+  if (status === 409 && error.error === "catalog_changed")
+    throw new ManagedCatalogChangedError();
+  const allowed: Record<number, readonly string[]> = {
+    400: ["invalid_request"],
+    408: ["request_timeout"],
+    503: ["not_configured", "unavailable"],
+  };
+  if (error.error !== "rate_limited" && allowed[status]?.includes(error.error))
+    throw new ManagedSecFilingsError(error.error);
   throw new TrialApiError("invalid_response");
 }
 
@@ -172,6 +194,7 @@ function responseError(
   value: unknown,
   kind: RequestKind,
 ): never {
+  if (kind === "filings") filingsError(status, value);
   if (kind === "calendar") {
     if (
       value &&
@@ -206,7 +229,7 @@ function responseError(
       throw new ManagedEodHistoryError(error.error);
     throw new TrialApiError("invalid_response");
   }
-  if (kind === "annual" && status === 429) annualCooldown(value);
+  if (kind === "annual" && status === 429) secCooldown(value);
   if (
     !value ||
     typeof value !== "object" ||
@@ -321,8 +344,9 @@ export function createManagedApi(
       if (
         error instanceof TrialApiError ||
         error instanceof ManagedCatalogChangedError ||
-        error instanceof ManagedAnnualCooldownError ||
+        error instanceof ManagedSecCooldownError ||
         error instanceof ManagedAnnualReportError ||
+        error instanceof ManagedSecFilingsError ||
         error instanceof ManagedEodHistoryError ||
         error instanceof ManagedEodCooldownError
       )
@@ -337,6 +361,18 @@ export function createManagedApi(
     }
   }
   return {
+    recentFilings: async (input, signal) => {
+      const captured = parseManagedSecFilingsRequest(input);
+      if (!captured) throw new TrialApiError("invalid_request");
+      return request(
+        MANAGED_SEC_FILINGS_PATH,
+        signal,
+        MANAGED_SEC_FILINGS_LIMITS.responseBytes,
+        (value) => parseManagedSecFilingsResponse(value, captured),
+        requestBody(captured, MANAGED_SEC_FILINGS_LIMITS.requestBytes),
+        "filings",
+      );
+    },
     economicCalendar: (signal) =>
       request(
         MANAGED_ECONOMIC_CALENDAR_PATH,

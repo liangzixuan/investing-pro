@@ -7,7 +7,7 @@ export const MANAGED_SEC_ADMISSION_LIMITS = Object.freeze({
   transactionTtlSeconds: 60,
   maxRequests: 6,
 });
-export type ManagedSecAnnualAdmissionStore = Pick<
+export type ManagedSecAdmissionStore = Pick<
   AppwriteWatchlistStore,
   | "getRow"
   | "createTransaction"
@@ -15,21 +15,25 @@ export type ManagedSecAnnualAdmissionStore = Pick<
   | "updateRow"
   | "updateTransaction"
 >;
-export class ManagedSecAnnualAdmissionError extends Error {
+export class ManagedSecAdmissionError extends Error {
   constructor(
     readonly code: "rate_limited" | "unavailable",
     readonly nextAllowedAt?: string,
   ) {
     super(code);
-    this.name = "ManagedSecAnnualAdmissionError";
+    this.name = "ManagedSecAdmissionError";
   }
 }
-export interface ManagedSecAnnualAdmission {
+export interface ManagedSecAdmission {
   reserve(
     principal: WatchlistPrincipal,
     enteredAt: string,
     signal: AbortSignal,
   ): Promise<Readonly<{ version: number; nextAllowedAt: string }>>;
+}
+export interface ManagedSecAdmissionOperation {
+  readonly admission: ManagedSecAdmission;
+  close(): Promise<void>;
 }
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,35}$/u;
 const ROW_KEYS = [
@@ -68,24 +72,24 @@ function metadataTime(value: unknown): number {
 }
 
 /** One pre-provisioned private row. Only an acknowledged, timely CAS grants work. */
-export function createManagedSecAnnualAdmission(options: {
-  readonly store: ManagedSecAnnualAdmissionStore;
+export function createManagedSecAdmission(options: {
+  readonly store: ManagedSecAdmissionStore;
   readonly databaseId: string;
   readonly tableId: string;
   readonly rowId: string;
   readonly now?: () => Date;
-}): ManagedSecAnnualAdmission {
+}): ManagedSecAdmission {
   const { store, databaseId, tableId, rowId } = options;
   const now = options.now ?? (() => new Date());
   if (![databaseId, tableId, rowId].every((id) => ID.test(id)))
-    throw new ManagedSecAnnualAdmissionError("unavailable");
+    throw new ManagedSecAdmissionError("unavailable");
   const location = { databaseId, tableId, rowId };
   return {
     async reserve(principal, enteredAt, signal) {
       let transactionId: string | undefined;
       let commitStarted = false;
       const fail: () => never = () => {
-        throw new ManagedSecAnnualAdmissionError("unavailable");
+        throw new ManagedSecAdmissionError("unavailable");
       };
       const entry = utc(enteredAt) ? Date.parse(enteredAt) : NaN;
       const active = () => {
@@ -144,10 +148,7 @@ export function createManagedSecAnnualAdmission(options: {
         )
           fail();
         if (entry < next)
-          throw new ManagedSecAnnualAdmissionError(
-            "rate_limited",
-            row.nextAllowedAt,
-          );
+          throw new ManagedSecAdmissionError("rate_limited", row.nextAllowedAt);
         const version = row.version;
         const nextAllowedAt = new Date(
           entry + MANAGED_SEC_ADMISSION_LIMITS.spacingMs,
@@ -200,8 +201,8 @@ export function createManagedSecAnnualAdmission(options: {
             /* Pending transaction expires; no permit is returned. */
           }
         }
-        if (error instanceof ManagedSecAnnualAdmissionError) throw error;
-        throw new ManagedSecAnnualAdmissionError("unavailable");
+        if (error instanceof ManagedSecAdmissionError) throw error;
+        throw new ManagedSecAdmissionError("unavailable");
       }
     },
   };

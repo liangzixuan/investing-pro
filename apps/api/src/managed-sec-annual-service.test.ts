@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PersonalSecAnnualEvidenceRequestDto } from "@research-cockpit/contracts";
 
-import { ManagedSecAnnualAdmissionError } from "./managed-sec-annual-admission";
+import { ManagedSecAdmissionError } from "./managed-sec-admission";
 import { createManagedSecAnnualService } from "./managed-sec-annual-service";
 import {
   createManagedCatalogService,
@@ -201,10 +201,7 @@ describe("managed annual evidence service", () => {
     expect(f.fetch).not.toHaveBeenCalled();
   });
   it.each([
-    new ManagedSecAnnualAdmissionError(
-      "rate_limited",
-      "2026-10-01T12:00:20.000Z",
-    ),
+    new ManagedSecAdmissionError("rate_limited", "2026-10-01T12:00:20.000Z"),
     new Error("Unknown commit"),
   ])(
     "never dispatches SEC after denied or uncertain admission",
@@ -215,7 +212,7 @@ describe("managed annual evidence service", () => {
         f.service.load(command(), PRINCIPAL, new AbortController().signal),
       ).rejects.toMatchObject({
         code:
-          error instanceof ManagedSecAnnualAdmissionError
+          error instanceof ManagedSecAdmissionError
             ? "rate_limited"
             : "unavailable",
       });

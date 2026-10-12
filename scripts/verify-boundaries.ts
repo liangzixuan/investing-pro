@@ -6833,6 +6833,11 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "personal-sec-quarter-operation",
     "personal-sec-primary-document",
     "personal-sec-source-json",
+    "managed-sec-admission",
+    "managed-sec-config",
+    "managed-sec-issuers",
+    "managed-sec-annual-service",
+    "managed-sec-filings-service",
     "personal-sec-quarter-assessment-company-facts",
   ]) {
     if (
@@ -6855,6 +6860,8 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
   const secProviderPath = "apps/api/src/personal-sec-financial-provider.ts";
   const managedAnnualPath = "apps/api/src/managed-sec-annual-service.ts";
   const managedAnnual = await readFile(join(root, managedAnnualPath), "utf8");
+  const managedFilingsPath = "apps/api/src/managed-sec-filings-service.ts";
+  const managedFilings = await readFile(join(root, managedFilingsPath), "utf8");
   const managedEodPath = "apps/api/src/managed-eod-service.ts";
   const managedEod = await readFile(join(root, managedEodPath), "utf8");
   const managedEodMutations = [
@@ -6939,6 +6946,43 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
     found.push(
       "scripts/verify-boundaries.ts: managed annual service capability classifier regressed",
     );
+  const managedFilingsMutations = [
+    managedFilings.replace(
+      "data.sec.gov/submissions",
+      "unreviewed.example/submissions",
+    ),
+    managedFilings.replace("fetch(input, init)", "fetch(unreviewedUrl, init)"),
+    managedFilings.replace("used ||", "false ||"),
+    managedFilings.replace(
+      'typeof input !== "string"',
+      'typeof input === "string"',
+    ),
+    managedFilings.replace(
+      "[...headers].length === 2",
+      "[...headers].length >= 2",
+    ),
+    managedFilings.replace(
+      'init.redirect === "error"',
+      'init.redirect === "follow"',
+    ),
+    managedFilings.replace(
+      'init.credentials === "omit"',
+      'init.credentials === "include"',
+    ),
+    `${managedFilings}\nvoid globalThis.fetch(unreviewedUrl);`,
+    `${managedFilings}\nconst extra = "https://unreviewed.example/source";`,
+  ];
+  if (
+    managedSecFilingsServiceCapabilityViolation(managedFilings) !== null ||
+    managedFilingsMutations.some(
+      (changed) =>
+        changed === managedFilings ||
+        managedSecFilingsServiceCapabilityViolation(changed) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed filings service capability classifier regressed",
+    );
   const compositionPath = "apps/api/src/workspace-composition-root.ts";
   const contractsPath = "packages/contracts/src/index.ts";
   const tokenEnvironmentLiteral = ["PERSONAL_MARKET_DATA", "TIINGO_TOKEN"].join(
@@ -6967,6 +7011,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== managedAnnualPath &&
+        path !== managedFilingsPath &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         personalMarketDataUsesGlobalFetch(source)
@@ -6993,6 +7038,7 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         path !== "apps/api/src/personal-sec-quarterly-evidence-provider.ts" &&
         path !== "apps/api/src/personal-sec-annual-evidence-provider.ts" &&
         path !== managedAnnualPath &&
+        path !== managedFilingsPath &&
         path !== "apps/api/src/personal-sec-filing-context-provider.ts" &&
         path !== "apps/api/src/personal-sec-quarter-assessment-provider.ts" &&
         content.includes("data.sec.gov/submissions")
@@ -7000,6 +7046,10 @@ async function personalMarketDataRepositoryBoundaryViolations(): Promise<
         found.push(
           `${path}: only the reviewed SEC filings provider may embed the submissions transport endpoint`,
         );
+      }
+      if (path === managedFilingsPath) {
+        const issue = managedSecFilingsServiceCapabilityViolation(content);
+        if (issue !== null) found.push(`${path}: ${issue}`);
       }
       if (path === managedAnnualPath) {
         const issue = managedSecAnnualServiceCapabilityViolation(content);
@@ -9323,6 +9373,77 @@ function managedSecAnnualServiceCapabilityViolation(
     : null;
 }
 
+function managedSecFilingsServiceCapabilityViolation(
+  content: string,
+): string | null {
+  const compact = content.replace(/\s+/gu, "").replace(/,(?=[})])/gu, "");
+  if (
+    [
+      'if(used||typeofinput!=="string"||input!==url||!validRequest(init,contact))',
+      'init?.method==="GET"',
+      'init.redirect==="error"',
+      'init.credentials==="omit"',
+      'init.cache==="no-store"',
+      'init.referrerPolicy==="no-referrer"',
+      "validHeaders(init.headers,contact)",
+      "[...headers].length===2",
+      'headers.get("user-agent")===contact',
+      'headers.get("accept")==="application/json"',
+      "init.body===undefined",
+      "init.signal?.aborted===false",
+      "awaitreserve(options,clock,principal,signal)",
+      "provider.loadFilings([target.listing.cik],target.window.fromDate,target.window.throughDate,combined)",
+    ].some((part) => !compact.includes(part))
+  )
+    return "managed filings must preserve its one-use request guard, admission and fixed single-issuer window";
+  const source = ts.createSourceFile(
+    "managed-filings.ts",
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const urls = new Set(["`https://data.sec.gov/submissions/CIK${cik}.json`"]);
+  let invalid = false;
+  let transports = 0;
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isTemplateExpression(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.head.text) &&
+      !urls.delete(node.getText(source).replace(/\s+/gu, ""))
+    )
+      invalid = true;
+    if (
+      ts.isStringLiteralLike(node) &&
+      /(?:https?|wss?):\/\//iu.test(node.text)
+    )
+      invalid = true;
+    if (ts.isCallExpression(node)) {
+      const callee = node.expression.getText(source);
+      if (callee === "fetch") {
+        transports++;
+        if (
+          node.arguments.length !== 2 ||
+          node.arguments[0]?.getText(source) !== "input" ||
+          node.arguments[1]?.getText(source) !== "init"
+        )
+          invalid = true;
+      } else if (
+        namedBoundaryPropertyAccess(
+          node.expression,
+          new Set(["fetch", "#fetch"]),
+        ) !== null
+      )
+        invalid = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return invalid || urls.size !== 0 || transports !== 1
+    ? "managed filings service must retain its single SEC Submissions endpoint and sole guarded fetch sink"
+    : null;
+}
+
 function personalSecQuarterlyEvidenceProviderViolation(
   content: string,
 ): string | null {
@@ -10380,6 +10501,9 @@ function personalMarketDataWebViolation(content: string): boolean {
         specifier.includes("bea-release-provider") ||
         specifier.includes("fed-monetary-announcements-provider") ||
         specifier === "@rgrove/parse-xml" ||
+        /managed-sec-(?:admission|config|issuers|annual-service|filings-service)(?:\.|$)/u.test(
+          specifier,
+        ) ||
         personalSecPrivateRuntimeImport(specifier) ||
         /(?:^|[/@-])tiingo(?:[/@-]|$)/iu.test(specifier),
     )
@@ -10860,6 +10984,13 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/managed-sec-filings-service.ts",
+      [
+        "lookupPersonalSecurityMasterListing",
+        "type ManagedSecurityMasterCatalog",
+      ],
+    ],
+    [
       "apps/api/src/managed-eod-service.ts",
       [
         "lookupPersonalSecurityMasterListing",
@@ -11022,6 +11153,43 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
   )
     found.push(
       "scripts/verify-boundaries.ts: managed annual security-master import classifier regressed",
+    );
+  const managedFilingsPath = "apps/api/src/managed-sec-filings-service.ts";
+  const managedFilingsSource = await cycle2kText(managedFilingsPath, found);
+  const managedFilingsImports = [
+    managedFilingsSource.replace(
+      "lookupPersonalSecurityMasterListing,",
+      "lookupPersonalSecurityMasterListing, searchPersonalSecurityMaster,",
+    ),
+    managedFilingsSource.replace(
+      "type ManagedSecurityMasterCatalog",
+      "ManagedSecurityMasterCatalog",
+    ),
+    `${managedFilingsSource}\nimport * as unreviewed from "@research-cockpit/personal-security-master";`,
+  ];
+  if (
+    personalSecurityMasterApiImportViolation(
+      managedFilingsPath,
+      managedFilingsSource,
+      allowedApiImporters,
+    ) !== null ||
+    personalSecurityMasterApiImportViolation(
+      "apps/api/src/managed-sec-filings-service-neighbor.ts",
+      managedFilingsSource,
+      allowedApiImporters,
+    ) === null ||
+    managedFilingsImports.some(
+      (changed) =>
+        changed === managedFilingsSource ||
+        personalSecurityMasterApiImportViolation(
+          managedFilingsPath,
+          changed,
+          allowedApiImporters,
+        ) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: managed filings security-master import classifier regressed",
     );
   const managedEodPath = "apps/api/src/managed-eod-service.ts";
   const managedEodSource = await cycle2kText(managedEodPath, found);

@@ -1108,6 +1108,9 @@ describe("Android managed fixture startup", () => {
         save: 0,
         resolve: 0,
         annual: 0,
+        filings: 0,
+        filingsAborted: 0,
+        filingsLateResolved: 0,
         aborted: 0,
         lateResolved: 0,
         token: 0,
@@ -1404,5 +1407,103 @@ describe("Android managed fixture startup", () => {
       token: 0,
       signOut: 0,
     });
+  });
+});
+
+describe("bounded invented company filings journey", () => {
+  it("uses the real company models for explicit load, cancel, failure, empty replacement and Back", async () => {
+    const fixture = await createFixture("company-filings");
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-zero", "Filings research draft");
+    workspace.move("listing-zero", 1);
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+    workspace.openWatchlistAnnual(member);
+    workspace.switchToFilings();
+    expect(fixture.getSnapshot().filings).toBe(0);
+    await workspace.filings.load();
+    const accepted = workspace.filings.getSnapshot().response!;
+    expect(accepted.issuer.filings).toHaveLength(26);
+    expect(accepted.issuer.filings[25]!.accessionNumber).toBe(
+      "0000000001-26-000026",
+    );
+    expect(accepted.window).toEqual({
+      lookbackDays: 90,
+      fromDate: "2026-06-23",
+      throughDate: "2026-09-20",
+    });
+    const held = workspace.filings.load();
+    expect(() => fixture.settleCancelledFilings()).toThrow("Only an aborted");
+    workspace.switchToAnnual();
+    fixture.settleCancelledFilings();
+    await held;
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot()).toMatchObject({
+      response: accepted,
+      showingPrevious: true,
+    });
+    await workspace.filings.load();
+    expect(workspace.filings.getSnapshot()).toMatchObject({
+      response: accepted,
+      showingPrevious: true,
+      error: true,
+    });
+    await workspace.filings.load();
+    expect(workspace.filings.getSnapshot()).toMatchObject({
+      showingPrevious: false,
+      response: { issuer: { status: "available", filings: [] } },
+    });
+    const last = workspace.filings.load();
+    workspace.closeResearch();
+    fixture.settleCancelledFilings();
+    await last;
+    expect(workspace.filings.getSnapshot().response).toBeNull();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft,
+      dirty: true,
+      baseVersion: 1,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      filings: 5,
+      filingsAborted: 2,
+      filingsLateResolved: 2,
+      annual: 0,
+      eod: 0,
+      save: 0,
+      token: 0,
+      signOut: 0,
+    });
+    workspace.coordinator.retire();
+  });
+  it("refuses the scenario and identity outside its fixed invented Filings contract", async () => {
+    const request = {
+      schemaVersion: "1.0.0" as const,
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    const signal = new AbortController().signal;
+    const other = await createFixture();
+    expect(() => other.api.recentFilings(request, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    const fixture = await createFixture("company-filings");
+    for (const changed of [
+      { ...request, symbol: "OTHER" },
+      { ...request, listingId: "listing-one" },
+      { ...request, sourceUrl: "https://example.invalid" },
+    ]) {
+      expect(() => fixture.api.recentFilings(changed, signal)).toThrow(
+        "Unexpected invented company filings request",
+      );
+    }
+    expect(fixture.getSnapshot().filings).toBe(0);
   });
 });

@@ -1,3 +1,4 @@
+import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -15,12 +16,9 @@ import {
 import type { PersonalSecAnnualResolutionInput } from "@research-cockpit/contracts";
 import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
 import { ManagedAnnualReport as Panel } from "./ManagedAnnualReport";
+import { ManagedAnnualReport } from "./managed-annual-report";
 import {
-  ManagedAnnualReport,
-  type AnnualReportSelection,
-} from "./managed-annual-report";
-import {
-  ManagedAnnualCooldownError,
+  ManagedSecCooldownError,
   ManagedAnnualReportError,
   ManagedCatalogChangedError,
   type ManagedApi,
@@ -81,7 +79,7 @@ function buttons(node: React.ReactNode): React.ReactElement<ControlProps>[] {
   ];
 }
 
-const selection: AnnualReportSelection = {
+const selection: ManagedResearchSelection = {
   catalogSnapshotSha256: request().catalogSnapshotSha256,
   origin: "discover",
   cik: "0000000001",
@@ -336,7 +334,7 @@ describe("managed annual refresh", () => {
     load
       .mockResolvedValueOnce(old)
       .mockRejectedValueOnce(
-        new ManagedAnnualCooldownError("2026-10-01T00:00:20.000Z"),
+        new ManagedSecCooldownError("2026-10-01T00:00:20.000Z"),
       )
       .mockResolvedValueOnce(await laterResponse());
     model.open(selection);
@@ -623,7 +621,7 @@ describe("managed annual read", () => {
     vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"));
     const { model, load } = fixture();
     load.mockRejectedValueOnce(
-      new ManagedAnnualCooldownError("2026-10-01T00:00:20.000Z"),
+      new ManagedSecCooldownError("2026-10-01T00:00:20.000Z"),
     );
     model.open(selection);
     await model.load();

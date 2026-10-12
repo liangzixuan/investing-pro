@@ -174,6 +174,7 @@ function fixture() {
     }),
     save: vi.fn(),
     search: vi.fn(),
+    recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
     annualReport: vi.fn(),
     eodHistory: vi
       .fn<ManagedApi["eodHistory"]>()
@@ -225,38 +226,42 @@ function direct(search = "?company=listing-zero&section=price") {
 }
 
 describe("managed company URL navigation", () => {
-  it("resolves a cold link after catalog readiness without source loads and replaces it on Back", async () => {
-    direct();
-    const f = fixture();
-    f.render();
-    expect(f.workspace.getSnapshot().companyRoute?.status).toBe(
-      "waiting_catalog",
-    );
-    await f.ready();
-    await settle();
-    let nav = f.render();
-    expect(f.api.resolve).toHaveBeenCalledTimes(1);
-    expect(f.workspace.getSnapshot().research?.selection).toMatchObject({
-      origin: "route",
-      cik: null,
-      listing: { listingId: "listing-zero" },
-    });
-    expect(f.api.eodHistory).not.toHaveBeenCalled();
-    expect(f.api.annualReport).not.toHaveBeenCalled();
-    expect(f.api.save).not.toHaveBeenCalled();
-    nav.back();
-    f.render();
-    expect(mount.navigate).toHaveBeenLastCalledWith("/", {
-      replace: true,
-      state: null,
-    });
-    expect(mount.cursor).toBe(0);
-    expect(mount.entries).toHaveLength(1);
-    expect(f.workspace.getSnapshot().view).toBe("markets");
-    expect(f.workspace.getSnapshot().research).toBeNull();
-    nav = f.render();
-    expect(nav.returnFocus).toBe(1);
-  });
+  it.each(["price", "annual", "filings"])(
+    "resolves a cold %s link after catalog readiness without source loads and replaces it on Back",
+    async (section) => {
+      direct(`?company=listing-zero&section=${section}`);
+      const f = fixture();
+      f.render();
+      expect(f.workspace.getSnapshot().companyRoute?.status).toBe(
+        "waiting_catalog",
+      );
+      await f.ready();
+      await settle();
+      let nav = f.render();
+      expect(f.api.resolve).toHaveBeenCalledTimes(1);
+      expect(f.workspace.getSnapshot().research?.selection).toMatchObject({
+        origin: "route",
+        cik: null,
+        listing: { listingId: "listing-zero" },
+      });
+      expect(f.api.eodHistory).not.toHaveBeenCalled();
+      expect(f.api.annualReport).not.toHaveBeenCalled();
+      expect(f.api.recentFilings).not.toHaveBeenCalled();
+      expect(f.api.save).not.toHaveBeenCalled();
+      nav.back();
+      f.render();
+      expect(mount.navigate).toHaveBeenLastCalledWith("/", {
+        replace: true,
+        state: null,
+      });
+      expect(mount.cursor).toBe(0);
+      expect(mount.entries).toHaveLength(1);
+      expect(f.workspace.getSnapshot().view).toBe("markets");
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      nav = f.render();
+      expect(nav.returnFocus).toBe(1);
+    },
+  );
 
   it("pushes an in-app visit once, replaces section changes, and keeps loaded results and the draft", async () => {
     const f = fixture();
@@ -271,6 +276,10 @@ describe("managed company URL navigation", () => {
     f.workspace.noteResearch(selection, "Unsent invented note");
     nav.section("annual");
     nav = f.render();
+    nav.section("filings");
+    nav = f.render();
+    expect(f.workspace.getSnapshot().research?.section).toBe("filings");
+    expect(f.api.recentFilings).not.toHaveBeenCalled();
     nav.section("eod");
     nav = f.render();
     expect(mount.entries).toHaveLength(2);

@@ -2,9 +2,15 @@ import { AppwriteException } from "node-appwrite";
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  createManagedSecAnnualAdmission,
-  type ManagedSecAnnualAdmissionStore,
-} from "./managed-sec-annual-admission";
+  createManagedSecAdmission,
+  type ManagedSecAdmissionStore,
+} from "./managed-sec-admission";
+import { createManagedSecAnnualService } from "./managed-sec-annual-service";
+import { createManagedSecFilingsService } from "./managed-sec-filings-service";
+import {
+  createManagedCatalogService,
+  getManagedWorkspaceCatalog,
+} from "./managed-workspace-catalog";
 
 const ENTRY = "2026-10-01T12:00:00.000Z";
 const principal = { userId: "synthetic_sec_principal_01" };
@@ -29,52 +35,55 @@ function fixture() {
   };
   const transactions = new Map<string, { maximum?: number; next?: string }>();
   let count = 0;
-  const store: ManagedSecAnnualAdmissionStore = {
+  const store: ManagedSecAdmissionStore = {
     getRow: vi.fn(() => Promise.resolve(structuredClone(row))),
     createTransaction: vi.fn(() => {
       const $id = `tx-${++count}`;
       transactions.set($id, {});
       return Promise.resolve({ $id, status: "pending" });
     }),
-    incrementRowColumn: vi.fn<
-      ManagedSecAnnualAdmissionStore["incrementRowColumn"]
-    >((input) => {
-      transactions.get(input.transactionId)!.maximum = input.max;
-      return Promise.resolve({});
-    }),
-    updateRow: vi.fn<ManagedSecAnnualAdmissionStore["updateRow"]>((input) => {
+    incrementRowColumn: vi.fn<ManagedSecAdmissionStore["incrementRowColumn"]>(
+      (input) => {
+        transactions.get(input.transactionId)!.maximum = input.max;
+        return Promise.resolve({});
+      },
+    ),
+    updateRow: vi.fn<ManagedSecAdmissionStore["updateRow"]>((input) => {
       transactions.get(input.transactionId)!.next = input.data
         .nextAllowedAt as string;
       return Promise.resolve({});
     }),
-    updateTransaction: vi.fn<
-      ManagedSecAnnualAdmissionStore["updateTransaction"]
-    >((input) => {
-      const pending = transactions.get(input.transactionId)!;
-      if (input.rollback)
+    updateTransaction: vi.fn<ManagedSecAdmissionStore["updateTransaction"]>(
+      (input) => {
+        const pending = transactions.get(input.transactionId)!;
+        if (input.rollback)
+          return Promise.resolve({
+            $id: input.transactionId,
+            status: "rolled_back",
+          });
+        if (Number(row.version) + 1 > pending.maximum!)
+          return Promise.reject(
+            new AppwriteException(
+              "Synthetic conflict",
+              409,
+              "transaction_conflict",
+            ),
+          );
+        row = {
+          ...row,
+          version: Number(row.version) + 1,
+          nextAllowedAt: pending.next,
+          $updatedAt: new Date(clock).toISOString(),
+        };
         return Promise.resolve({
           $id: input.transactionId,
-          status: "rolled_back",
+          status: "committed",
         });
-      if (Number(row.version) + 1 > pending.maximum!)
-        return Promise.reject(
-          new AppwriteException(
-            "Synthetic conflict",
-            409,
-            "transaction_conflict",
-          ),
-        );
-      row = {
-        ...row,
-        version: Number(row.version) + 1,
-        nextAllowedAt: pending.next,
-        $updatedAt: new Date(clock).toISOString(),
-      };
-      return Promise.resolve({ $id: input.transactionId, status: "committed" });
-    }),
+      },
+    ),
   };
   const make = () =>
-    createManagedSecAnnualAdmission({
+    createManagedSecAdmission({
       ...location,
       store,
       now: () => new Date(clock),
@@ -93,7 +102,130 @@ function fixture() {
 }
 const signal = () => new AbortController().signal;
 
+function serviceContenders(f: ReturnType<typeof fixture>) {
+  const listing = createManagedCatalogService().search("AAPL")!.results[0]!;
+  const request = {
+    schemaVersion: "1.0.0" as const,
+    catalogSnapshotSha256: getManagedWorkspaceCatalog().snapshotSha256,
+    listingId: listing.listingId,
+    symbol: listing.symbol,
+  };
+  const source = (url: string | URL | Request) =>
+    (typeof url === "string"
+      ? url
+      : url instanceof URL
+        ? url.href
+        : url.url
+    ).includes("companyfacts")
+      ? { cik: 320193, facts: {} }
+      : {
+          cik: 320193,
+          filings: {
+            recent: {
+              accessionNumber: [],
+              form: [],
+              filingDate: [],
+              reportDate: [],
+              acceptanceDateTime: [],
+            },
+            files: [],
+          },
+        };
+  const annualFetch = vi.fn<typeof fetch>((input) =>
+    Promise.resolve(Response.json(source(input))),
+  );
+  const filingsFetch = vi.fn<typeof fetch>((input) =>
+    Promise.resolve(Response.json(source(input))),
+  );
+  const options = {
+    configuration: {
+      userAgent: "Shared admission fixture fixture@example.test",
+    },
+    catalog: getManagedWorkspaceCatalog(),
+    enteredAt: ENTRY,
+    startedAt: 0,
+    monotonic: () => 0,
+    now: () => new Date(ENTRY),
+    openAdmission: () => ({
+      admission: f.make(),
+      close: () => Promise.resolve(),
+    }),
+    scheduler: { wait: () => Promise.resolve() },
+  };
+  return {
+    annualFetch,
+    filingsFetch,
+    annual: () =>
+      createManagedSecAnnualService({ ...options, fetch: annualFetch }).load(
+        request,
+        principal,
+        signal(),
+      ),
+    filings: () =>
+      createManagedSecFilingsService({ ...options, fetch: filingsFetch }).load(
+        request,
+        principal,
+        signal(),
+      ),
+  };
+}
+
 describe("managed SEC shared admission", () => {
+  it.each(["annual", "filings"] as const)(
+    "admits one actual Annual/Filings contender when %s starts first",
+    async (first) => {
+      const f = fixture(),
+        services = serviceContenders(f);
+      const order =
+        first === "annual"
+          ? [services.annual, services.filings]
+          : [services.filings, services.annual];
+      const results = await Promise.allSettled(order.map((start) => start()));
+      expect(
+        results.filter((result) => result.status === "fulfilled"),
+      ).toHaveLength(1);
+      expect(
+        results.filter((result) => result.status === "rejected"),
+      ).toHaveLength(1);
+      expect(f.row()).toMatchObject({
+        version: 2,
+        nextAllowedAt: "2026-10-01T12:00:20.000Z",
+      });
+      expect([
+        services.annualFetch.mock.calls.length,
+        services.filingsFetch.mock.calls.length,
+      ]).toEqual(first === "annual" ? [2, 0] : [0, 1]);
+      expect(f.store.getRow).toHaveBeenCalledTimes(2);
+    },
+  );
+  it.each(["missing", "uncertain_commit"] as const)(
+    "both actual services make zero SEC reads after %s admission",
+    async (failure) => {
+      const f = fixture();
+      if (failure === "missing")
+        vi.mocked(f.store.getRow).mockRejectedValue(
+          new AppwriteException("Missing", 404),
+        );
+      else {
+        const commit = f.store.updateTransaction;
+        f.store.updateTransaction = async (input) => {
+          await commit(input);
+          throw new Error("Lost commit acknowledgment");
+        };
+      }
+      const services = serviceContenders(f);
+      const results = await Promise.allSettled([
+        services.annual(),
+        services.filings(),
+      ]);
+      expect(results.every((result) => result.status === "rejected")).toBe(
+        true,
+      );
+      expect(services.annualFetch).not.toHaveBeenCalled();
+      expect(services.filingsFetch).not.toHaveBeenCalled();
+      expect(f.store.getRow).toHaveBeenCalledTimes(2);
+    },
+  );
   it("uses five typed calls, preserves the version guard, and shares cooldown across instances", async () => {
     const f = fixture();
     await expect(f.make().reserve(principal, ENTRY, signal())).resolves.toEqual(
@@ -140,7 +272,7 @@ describe("managed SEC shared admission", () => {
     const f = fixture(),
       original = f.store.updateTransaction;
     f.store.updateTransaction = vi.fn<
-      ManagedSecAnnualAdmissionStore["updateTransaction"]
+      ManagedSecAdmissionStore["updateTransaction"]
     >(async (input) => {
       await original(input);
       throw new Error("Synthetic acknowledgment loss");
@@ -205,7 +337,7 @@ describe("managed SEC shared admission", () => {
     const f = fixture(),
       original = f.store.updateTransaction;
     f.store.updateTransaction = vi.fn<
-      ManagedSecAnnualAdmissionStore["updateTransaction"]
+      ManagedSecAdmissionStore["updateTransaction"]
     >(async (input) => {
       const answer = await original(input);
       f.clock(Date.parse(ENTRY) + 2_000);
