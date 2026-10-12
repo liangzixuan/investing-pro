@@ -159,6 +159,115 @@
   margin-block: 20px 24px;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-price-readout {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-readout > strong {
+  color: var(--managed-ink, #f2f3f5);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-market-change {
+  display: grid;
+  gap: 3px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-market-change
+  strong {
+  color: inherit;
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-market-change[data-direction="up"] {
+  color: var(--managed-positive, #65d99a);
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-market-change[data-direction="down"] {
+  color: var(--managed-negative, #ff9096);
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-market-change-basis,
+.clerk-trial.managed-frame .managed-watchlist-price-readout small {
+  color: var(--managed-muted, #aeb4c0);
+  font-size: 0.8125rem;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-price-readout
+  .managed-watchlist-price-previous {
+  color: #ffbd80;
+  font-size: 0.8125rem;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-prices {
+  min-width: 0;
+  margin-top: 20px;
+  padding-block: 16px;
+  border-block: 1px solid var(--managed-line, #2c2f36);
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-prices h4 {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-prices button,
+.clerk-trial.managed-frame .managed-watchlist-price-source summary {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-status,
+.clerk-trial.managed-frame .managed-watchlist-price-help,
+.clerk-trial.managed-frame .managed-watchlist-price-source,
+.clerk-trial.managed-frame .managed-watchlist-price-pending {
+  color: var(--managed-muted, #aeb4c0);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-status[role="alert"] {
+  color: #ffbd80;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-source summary {
+  align-content: center;
+  cursor: pointer;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-pending {
+  padding-block: 8px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-help {
+  margin-bottom: 0;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-note label {
   display: block;
   margin-bottom: 10px;

@@ -12,6 +12,16 @@ import {
 } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import {
+  ManagedWatchlistPriceReadout,
+  ManagedWatchlistPrices,
+  watchlistPriceRow,
+} from "./ManagedWatchlistPrices";
+import type {
+  ManagedWatchlistPriceHandle,
+  ManagedWatchlistPriceRow,
+  ManagedWatchlistPricesState,
+} from "./managed-watchlist-prices";
 import "./managed-watchlist.css";
 
 export interface ManagedWatchlistEditorHandle {
@@ -22,6 +32,8 @@ export interface ManagedWatchlistEditorProps {
   memberships: readonly WatchlistMembership[];
   editable: boolean;
   active: boolean;
+  prices: ManagedWatchlistPricesState;
+  onLoadPrice: (handle: ManagedWatchlistPriceHandle) => void;
   canOpenAnnual: (member: WatchlistMembership) => boolean;
   canOpenEod: (member: WatchlistMembership) => boolean;
   onNote: (listingId: string, note: string) => void;
@@ -144,11 +156,14 @@ function WatchlistChoice({
   member,
   selected,
   onSelect,
+  price,
 }: {
   member: WatchlistMembership;
   selected: boolean;
   onSelect: () => void;
+  price: ManagedWatchlistPriceRow | undefined;
 }) {
+  const priceId = `managed-watchlist-price-${member.listingId}`;
   return (
     <li>
       <button
@@ -158,6 +173,7 @@ function WatchlistChoice({
         aria-label={`Edit research note for ${member.symbol}, ${member.shareClassName}, ${member.exchangeMic}`}
         aria-pressed={selected}
         aria-controls="managed-watchlist-selected-note"
+        aria-describedby={priceId}
         onClick={onSelect}
       >
         <strong>{member.symbol}</strong>
@@ -166,6 +182,7 @@ function WatchlistChoice({
           {member.shareClassName} · {member.exchangeMic} ·{" "}
           {member.instrumentType === "adr" ? "ADR" : "Common stock"}
         </small>
+        <ManagedWatchlistPriceReadout row={price} id={priceId} />
         {normalizeWatchlistNote(member.note) === null && (
           <span className="managed-watchlist-invalid">
             Note needs correction
@@ -184,6 +201,7 @@ function WatchlistChoices({
   onQuery,
   onClear,
   onSelect,
+  prices,
 }: {
   matches: readonly WatchlistMembership[];
   total: number;
@@ -192,6 +210,7 @@ function WatchlistChoices({
   onQuery: (query: string) => void;
   onClear: () => void;
   onSelect: (listingId: string) => void;
+  prices: ManagedWatchlistPricesState;
 }) {
   return (
     <div className="managed-watchlist-choices">
@@ -242,6 +261,7 @@ function WatchlistChoices({
             member={member}
             selected={selectedId === member.listingId}
             onSelect={() => onSelect(member.listingId)}
+            price={watchlistPriceRow(prices, member)}
           />
         ))}
       </ol>
@@ -358,6 +378,13 @@ function WatchlistDetail({
           </button>
         </div>
       )}
+      <ManagedWatchlistPrices
+        selected={selected}
+        state={props.prices}
+        active={props.active}
+        identityReady={props.canOpenEod(selected)}
+        onLoad={props.onLoadPrice}
+      />
       <div className="trial-actions managed-watchlist-research-actions">
         <button
           type="button"
@@ -488,6 +515,7 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
         matches={matches}
         total={memberships.length}
         selectedId={selected?.listingId}
+        prices={props.prices}
         query={query}
         onQuery={changeQuery}
         onClear={clearQuery}

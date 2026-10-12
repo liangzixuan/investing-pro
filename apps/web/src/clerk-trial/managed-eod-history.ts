@@ -35,7 +35,7 @@ export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
   readonly available: boolean;
   readonly response: ManagedEodHistoryResponseDto | null;
-  readonly responseOrigin: "markets" | "company" | null;
+  readonly responseOrigin: "markets" | "watchlist" | "company" | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
   readonly catalogChanged: boolean;
@@ -54,6 +54,30 @@ const empty = (): ManagedEodHistoryState => ({
   error: false,
 });
 
+/** Revalidate and own a handoff packet without changing its source dates. */
+export function captureManagedEodHistorySeed(
+  selection: EodHistorySelection,
+  seed: ManagedEodHistorySeed,
+): ManagedEodHistorySeed | null {
+  if (
+    (selection.origin !== "markets" && selection.origin !== "watchlist") ||
+    typeof seed.showingPrevious !== "boolean"
+  )
+    return null;
+  const response = parseManagedEodHistoryResponse(seed.response, {
+    catalogSnapshotSha256: selection.catalogSnapshotSha256,
+    listingId: selection.listing.listingId,
+    range: "1m",
+  });
+  return response &&
+    membershipMatchesResult(
+      { ...selection.listing, note: "" },
+      response.security,
+    )
+    ? Object.freeze({ response, showingPrevious: seed.showingPrevious })
+    : null;
+}
+
 /** Session-only reads; a recoverable refresh keeps the last validated history. */
 export class ManagedEodHistory {
   private state = empty();
@@ -67,6 +91,7 @@ export class ManagedEodHistory {
     private readonly readError: (error: TrialApiError) => void,
     private readonly access = new ManagedEodAccess(read),
     priceCoverage: readonly ManagedEodIdentity[] = MANAGED_PRICE_COVERAGE,
+    private readonly requestOrigin: "company" | "watchlist" = "company",
   ) {
     this.priceCoverage = Object.freeze(
       priceCoverage.map((entry) => Object.freeze({ ...entry })),
@@ -96,35 +121,24 @@ export class ManagedEodHistory {
       });
       return;
     }
-    const parsed =
-      seed &&
-      captured.origin === "markets" &&
-      typeof seed.showingPrevious === "boolean"
-        ? parseManagedEodHistoryResponse(seed.response, {
-            catalogSnapshotSha256: captured.catalogSnapshotSha256,
-            listingId: captured.listing.listingId,
-            range: "1m",
-          })
-        : null;
-    const response =
-      parsed &&
-      membershipMatchesResult(
-        { ...captured.listing, note: "" },
-        parsed.security,
-      )
-        ? parsed
-        : null;
+    const admitted = seed ? captureManagedEodHistorySeed(captured, seed) : null;
+    const response = admitted?.response ?? null;
+    const source = captured.origin === "watchlist" ? "watchlist" : "Markets";
     this.update({
       selection: captured,
       available: true,
       response,
-      responseOrigin: response ? "markets" : null,
-      showingPrevious: response !== null && seed?.showingPrevious === true,
+      responseOrigin: response
+        ? captured.origin === "watchlist"
+          ? "watchlist"
+          : "markets"
+        : null,
+      showingPrevious: admitted?.showingPrevious ?? false,
       error: seed !== undefined && response === null,
       message: response
-        ? "Loaded Markets history is available in this company visit."
+        ? `Loaded ${source} history is available in this company visit.`
         : seed !== undefined
-          ? "The loaded Markets history could not be reused. Load one month of raw closing prices when you are ready."
+          ? `The loaded ${source} history could not be reused. Load one month of raw closing prices when you are ready.`
           : "Load one month of raw closing prices when you are ready.",
     });
   }
@@ -190,7 +204,7 @@ export class ManagedEodHistory {
       if (!current()) return;
       this.update({
         response,
-        responseOrigin: "company",
+        responseOrigin: this.requestOrigin,
         showingPrevious: false,
         message: "One-month raw closing prices loaded.",
       });

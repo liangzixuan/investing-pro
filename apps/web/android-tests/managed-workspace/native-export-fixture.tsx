@@ -7,6 +7,96 @@ import {
 import type { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { MANAGED_WATCHLIST_EXPORT_MAX_BYTES } from "../../src/clerk-trial/managed-watchlist-export-document";
 
+type InvalidProbeKind = "unicode" | "oversize";
+type InvalidProbeFailure =
+  "choose_rejected" | "choose_cancelled" | "write_succeeded" | "write_rejected";
+interface InvalidProbeState {
+  sequence: number;
+  kind: InvalidProbeKind | null;
+  phase: "idle" | "choosing" | "writing" | "cancelling" | "settled";
+  failure: InvalidProbeFailure | null;
+  cleanupFailed: boolean;
+}
+const initialInvalidProbe: InvalidProbeState = {
+  sequence: 0,
+  kind: null,
+  phase: "idle",
+  failure: null,
+  cleanupFailed: false,
+};
+
+async function attemptInvalidWrite(
+  plugin: InvestmentWatchlistExportPlugin,
+  operationId: string,
+  kind: InvalidProbeKind,
+  writing: () => void,
+): Promise<InvalidProbeFailure | null> {
+  let result;
+  try {
+    result = await plugin.choose({ operationId, version: 1 });
+  } catch {
+    return "choose_rejected";
+  }
+  if (result.status !== "chosen") return "choose_cancelled";
+  writing();
+  const text =
+    kind === "unicode"
+      ? "\ud800"
+      : "é".repeat(MANAGED_WATCHLIST_EXPORT_MAX_BYTES / 2 + 1);
+  try {
+    await plugin.write({ operationId, handle: result.handle, text });
+    return "write_succeeded";
+  } catch (error) {
+    return error instanceof Object &&
+      "code" in error &&
+      error.code === "write_failed"
+      ? null
+      : "write_rejected";
+  }
+}
+
+/** Metadata-only readiness for the test probes, including their awaited cleanup. */
+export function createInvalidExportProbe(
+  plugin: InvestmentWatchlistExportPlugin,
+  publish: (state: InvalidProbeState, refused: boolean) => void,
+) {
+  let state = initialInvalidProbe;
+  let running = false;
+  const update = (change: Partial<InvalidProbeState>, refused = false) => {
+    state = { ...state, ...change };
+    publish(state, refused);
+  };
+  return {
+    async run(kind: InvalidProbeKind) {
+      if (running) return;
+      running = true;
+      const operationId = crypto.randomUUID();
+      update({
+        sequence: state.sequence + 1,
+        kind,
+        phase: "choosing",
+        failure: null,
+        cleanupFailed: false,
+      });
+      const failure = await attemptInvalidWrite(plugin, operationId, kind, () =>
+        update({ phase: "writing" }),
+      );
+      update({ phase: "cancelling", failure });
+      let cleanupFailed = false;
+      try {
+        await plugin.cancel({ operationId });
+      } catch {
+        cleanupFailed = true;
+      }
+      running = false;
+      update(
+        { phase: "settled", cleanupFailed },
+        failure === null && !cleanupFailed,
+      );
+    },
+  };
+}
+
 /** Test-APK-only probes of the real bridge. No destination URI is exposed. */
 export function createNativeExportFixture() {
   const plugin = registerPlugin<InvestmentWatchlistExportPlugin>(
@@ -19,6 +109,7 @@ export function createNativeExportFixture() {
     duplicateRefused: 0,
     replayRefused: 0,
     invalidRefused: 0,
+    invalidProbe: initialInvalidProbe,
     choice: null as { operationId: string; handle: string } | null,
   };
   const listeners = new Set<() => void>();
@@ -45,18 +136,14 @@ export function createNativeExportFixture() {
     },
     cancel: (options) => plugin.cancel(options),
   });
-  async function invalidWrite(text: string) {
-    const operationId = crypto.randomUUID();
-    const result = await plugin.choose({ operationId, version: 1 });
-    if (result.status !== "chosen") throw new Error("Fixture picker cancelled");
-    try {
-      await plugin.write({ operationId, handle: result.handle, text });
-    } catch {
-      increment("invalidRefused");
-    } finally {
-      await plugin.cancel({ operationId });
-    }
-  }
+  const invalidProbe = createInvalidExportProbe(plugin, (probe, refused) => {
+    state = {
+      ...state,
+      invalidProbe: probe,
+      invalidRefused: state.invalidRefused + Number(refused),
+    };
+    listeners.forEach((listener) => listener());
+  });
   async function chooseWithoutWrite() {
     const operationId = crypto.randomUUID();
     const result = await plugin.choose({ operationId, version: 1 });
@@ -72,6 +159,9 @@ export function createNativeExportFixture() {
       },
       () => state,
     );
+    const invalidRunning =
+      diagnostics.invalidProbe.phase !== "idle" &&
+      diagnostics.invalidProbe.phase !== "settled";
     return (
       <aside aria-label="Invented native export probes">
         <pre id="fixture-export-protocol">{JSON.stringify(diagnostics)}</pre>
@@ -97,17 +187,15 @@ export function createNativeExportFixture() {
         </button>
         <button
           id="fixture-export-unicode"
-          onClick={() => void invalidWrite("\ud800")}
+          disabled={invalidRunning}
+          onClick={() => void invalidProbe.run("unicode")}
         >
           Test malformed invented Unicode
         </button>
         <button
           id="fixture-export-oversize"
-          onClick={() =>
-            void invalidWrite(
-              "é".repeat(MANAGED_WATCHLIST_EXPORT_MAX_BYTES / 2 + 1),
-            )
-          }
+          disabled={invalidRunning}
+          onClick={() => void invalidProbe.run("oversize")}
         >
           Test oversized invented output
         </button>

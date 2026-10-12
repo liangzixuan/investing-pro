@@ -7,6 +7,8 @@ import {
   type ManagedWatchlistEditorProps,
 } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedEodHistory } from "./managed-eod-history";
+import { eodResponse, eodSelection } from "./eod-history-fixture";
 
 // Exercise the actual selection and commit-time focus guards with an invented DOM.
 const hooks = vi.hoisted(() => ({
@@ -110,6 +112,14 @@ function fixture() {
     ],
     editable: true,
     active: true,
+    prices: {
+      active: true,
+      canRead: true,
+      rows: [],
+      pending: null,
+      catalogChanged: false,
+    },
+    onLoadPrice: vi.fn(),
     canOpenAnnual: () => true,
     canOpenEod: () => true,
     onNote: vi.fn(),
@@ -219,6 +229,54 @@ function fixture() {
 }
 
 describe("ManagedWatchlistEditor", () => {
+  it("keeps exact price readouts with their identity while search and note selection make no load", () => {
+    const f = fixture();
+    const first = f.props.memberships[0]!;
+    const model = new ManagedEodHistory(vi.fn(), vi.fn(), undefined, [first]);
+    model.open(
+      { ...eodSelection, origin: "watchlist", listing: first },
+      {
+        response: { ...eodResponse(), security: first },
+        showingPrevious: true,
+      },
+    );
+    const handle = Symbol("first");
+    const prices = {
+      active: true,
+      canRead: true,
+      rows: [{ handle, listing: first, history: model.getSnapshot() }],
+      pending: null,
+      catalogChanged: false,
+    };
+    const output = f.render({ prices });
+    const choice = output.find(
+      (entry) => entry.props["data-watchlist-selection"] === first.listingId,
+    )!;
+    expect(choice.props["aria-describedby"]).toBe(
+      "managed-watchlist-price-one",
+    );
+    expect(
+      output.some((entry) => entry.props.id === "managed-watchlist-price-one"),
+    ).toBe(true);
+    const searched = f.search("BETA");
+    expect(choices(searched)).toEqual(["two"]);
+    expect(
+      searched.some(
+        (entry) => entry.props.id === "managed-watchlist-selected-price",
+      ),
+    ).toBe(true);
+    expect(
+      searched.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(first.note);
+    f.click("Edit research note for BETA, Class A, XNAS");
+    const second = f.render();
+    expect(
+      second.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(f.props.memberships[1]!.note);
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onNote).not.toHaveBeenCalled();
+  });
+
   it("selects one exact listing without copying or changing its shared draft", () => {
     const f = fixture();
     f.click("Edit research note for BETA, Class A, XNAS");

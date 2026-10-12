@@ -1696,6 +1696,50 @@ describe("Markets price handoff", () => {
     },
   );
 
+  it("shares a watchlist price deadline with company and Markets reads across view changes", async () => {
+    const { workspace, api } = await marketFixture();
+    workspace.setView("watchlist");
+    const draft = workspace.coordinator.getSnapshot().draft;
+    const row = workspace.watchlistPrices.getSnapshot().rows[0]!;
+    const clock = vi.spyOn(Date, "now");
+    const now = Date.now();
+    clock.mockReturnValue(now);
+    const deadline = new Date(now + 60_000).toISOString();
+    try {
+      vi.mocked(api.eodHistory).mockRejectedValueOnce(
+        new ManagedEodCooldownError(deadline),
+      );
+      await workspace.loadWatchlistPrice(row.handle);
+      expect(
+        workspace.watchlistPrices.getSnapshot().rows[0]!.history.message,
+      ).toContain(deadline);
+      workspace.openWatchlistEod(draft!.memberships[0]!);
+      await workspace.eod.load();
+      expect(workspace.eod.getSnapshot().message).toContain(deadline);
+      workspace.closeResearch();
+      workspace.setView("markets");
+      await workspace.markets.loadSelected();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      workspace.setView("watchlist");
+      const replacement = workspace.watchlistPrices.getSnapshot().rows[0]!;
+      expect(replacement.handle).not.toBe(row.handle);
+      await workspace.loadWatchlistPrice(replacement.handle);
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      clock.mockReturnValue(now + 60_001);
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      await workspace.loadWatchlistPrice(replacement.handle);
+      expect(api.eodHistory).toHaveBeenCalledTimes(2);
+      expect(
+        workspace.watchlistPrices.getSnapshot().rows[0]!.history.response
+          ?.security,
+      ).toEqual(replacement.listing);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.save).not.toHaveBeenCalled();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it("preserves the shared checked cooldown through Annual-first entry and replaces only company prices on Refresh", async () => {
     const { workspace, api } = await marketFixture();
     await workspace.markets.loadSelected();
@@ -3953,5 +3997,217 @@ describe("workspace SEC filings integration", () => {
     expect(workspace.filings.getSnapshot().selection).toBeNull();
     expect(workspace.annual.getSnapshot().selection).toBeNull();
     expect(workspace.eod.getSnapshot().selection).toBeNull();
+  });
+});
+
+describe("watchlist price workspace composition", () => {
+  const initial = (): MainWatchlistPayload => ({
+    ...empty,
+    memberships: [
+      { ...eodSelection.listing, note: "Original ZERO thesis" },
+      { ...listingMembership(result), note: "Other company note" },
+    ],
+  });
+  async function watchlistReady() {
+    const value = fixture(initial());
+    await ready(value.workspace);
+    value.workspace.setView("watchlist");
+    return value;
+  }
+
+  it("keeps price rows through note, order and Save copies, then hands off a checked retained history", async () => {
+    const { workspace, api, saved } = await watchlistReady();
+    const row = workspace.watchlistPrices.getSnapshot().rows[0]!;
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(eodResponse());
+    await workspace.loadWatchlistPrice(row.handle);
+    const loaded =
+      workspace.watchlistPrices.getSnapshot().rows[0]!.history.response;
+    workspace.note(row.listing.listingId, "Edited thesis remains exact");
+    workspace.move(row.listing.listingId, 1);
+    await workspace.coordinator.save();
+    const currentRow = workspace.watchlistPrices.getSnapshot().rows[1]!;
+    expect(currentRow.handle).toBe(row.handle);
+    expect(currentRow.history.response).toBe(loaded);
+    expect(workspace.watchlistPrices.getSnapshot().canRead).toBe(true);
+    expect(saved().payload.memberships.map((member) => member.note)).toEqual([
+      "Other company note",
+      "Edited thesis remains exact",
+    ]);
+    expect(api.eodHistory).toHaveBeenCalledTimes(1);
+    const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+    vi.mocked(api.eodHistory).mockReturnValueOnce(held.promise);
+    const pending = workspace.loadWatchlistPrice(row.handle);
+    const before = structuredClone(workspace.coordinator.getSnapshot().draft);
+    workspace.openWatchlistEod(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    expect(vi.mocked(api.eodHistory).mock.calls[1]![1].aborted).toBe(true);
+    expect(workspace.eod.getSnapshot()).toMatchObject({
+      response: loaded,
+      responseOrigin: "watchlist",
+      showingPrevious: true,
+    });
+    expect(workspace.eod.getSnapshot().response).not.toBe(loaded);
+    expect(workspace.watchlistPrices.getSnapshot().canRead).toBe(false);
+    const companyPacket = {
+      ...eodResponse(),
+      rows: [{ date: "2026-09-19", close: "105" }],
+    };
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(companyPacket);
+    await workspace.eod.load();
+    expect(workspace.eod.getSnapshot()).toMatchObject({
+      response: companyPacket,
+      responseOrigin: "company",
+    });
+    workspace.closeResearch();
+    expect(
+      workspace.watchlistPrices.getSnapshot().rows[1]!.history.response,
+    ).toBe(loaded);
+    expect(workspace.watchlistPrices.getSnapshot().canRead).toBe(true);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(before);
+    held.reject(new TrialApiError("unauthenticated"));
+    await pending;
+    expect(workspace.coordinator.getSnapshot().phase).not.toBe("retired");
+    expect(api.eodHistory).toHaveBeenCalledTimes(3);
+    expect(api.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles recovery choices before publishing, preserving only matching row lifetimes", async () => {
+    const { workspace, api } = await watchlistReady();
+    const row = workspace.watchlistPrices.getSnapshot().rows[0]!;
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(eodResponse());
+    await workspace.loadWatchlistPrice(row.handle);
+    const loaded =
+      workspace.watchlistPrices.getSnapshot().rows[0]!.history.response;
+    workspace.note(row.listing.listingId, "Unsaved recovery draft");
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    expect(workspace.watchlistPrices.getSnapshot().canRead).toBe(false);
+    await workspace.loadWatchlistPrice(row.handle);
+    expect(api.eodHistory).toHaveBeenCalledTimes(1);
+    await workspace.coordinator.load();
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.coordinator.keepDraft();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(workspace.watchlistPrices.getSnapshot().canRead).toBe(true);
+    expect(
+      workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+    ).toBe(loaded);
+    workspace.coordinator.useSaved();
+    expect(workspace.watchlistPrices.getSnapshot().rows[0]!.handle).toBe(
+      row.handle,
+    );
+    expect(
+      workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+    ).toBe(loaded);
+    vi.mocked(api.load).mockResolvedValueOnce({
+      version: 4,
+      payload: { ...initial(), memberships: [initial().memberships[1]!] },
+    });
+    await workspace.coordinator.load();
+    workspace.coordinator.useSaved();
+    expect(
+      workspace.watchlistPrices
+        .getSnapshot()
+        .rows.map((entry) => entry.listing.listingId),
+    ).toEqual(["listing-one"]);
+    workspace.coordinator.replaceDraft(initial());
+    const replacement = workspace.watchlistPrices.getSnapshot().rows[0]!;
+    expect(replacement.handle).not.toBe(row.handle);
+    expect(replacement.history.response).toBeNull();
+    await workspace.loadWatchlistPrice(row.handle);
+    expect(api.eodHistory).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["annual", "route", "invalid route", "top-level exit"] as const)(
+    "cancels watchlist work on %s and rejects its late completion",
+    async (destination) => {
+      const { workspace, api } = await watchlistReady();
+      const row = workspace.watchlistPrices.getSnapshot().rows[0]!;
+      vi.mocked(api.eodHistory).mockResolvedValueOnce(eodResponse());
+      await workspace.loadWatchlistPrice(row.handle);
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(api.eodHistory).mockReturnValueOnce(held.promise);
+      const pending = workspace.loadWatchlistPrice(row.handle);
+      const cancel = workspace.watchlistPrices.getSnapshot().pending!.cancel;
+      if (destination === "annual")
+        workspace.openWatchlistAnnual(
+          workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+        );
+      else if (destination === "route")
+        await workspace.setCompanyRoute({
+          kind: "company",
+          listingId: "listing-one",
+          section: "eod",
+        });
+      else if (destination === "invalid route")
+        await workspace.setCompanyRoute(null);
+      else workspace.setView("discover");
+      expect(vi.mocked(api.eodHistory).mock.calls[1]![1].aborted).toBe(true);
+      held.resolve({
+        ...eodResponse(),
+        rows: [{ date: "2026-09-19", close: "999" }],
+      });
+      await pending;
+      cancel();
+      workspace.closeResearch();
+      if (destination === "top-level exit") {
+        expect(workspace.watchlistPrices.getSnapshot().rows).toEqual([]);
+        workspace.setView("watchlist");
+        expect(
+          workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+        ).toBeNull();
+        expect(
+          workspace.watchlistPrices.getSnapshot().rows[0]!.handle,
+        ).not.toBe(row.handle);
+      } else
+        expect(
+          workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+        ).toEqual(eodResponse());
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(initial());
+      expect(api.eodHistory).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("invalidates every watchlist price row when one row reports a catalog change", async () => {
+    const { workspace, api } = await watchlistReady();
+    const rows = workspace.watchlistPrices.getSnapshot().rows;
+    expect(rows).toHaveLength(2);
+    vi.mocked(api.eodHistory).mockRejectedValueOnce(
+      new ManagedCatalogChangedError(),
+    );
+    await workspace.loadWatchlistPrice(rows[0]!.handle);
+    expect(workspace.getSnapshot().snapshot).toBeNull();
+    expect(workspace.watchlistPrices.getSnapshot().rows).toEqual([]);
+    await workspace.loadWatchlistPrice(rows[1]!.handle);
+    expect(api.eodHistory).toHaveBeenCalledTimes(1);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(initial());
+    await workspace.refreshCatalog();
+    expect(workspace.watchlistPrices.getSnapshot().rows[0]!.handle).not.toBe(
+      rows[0]!.handle,
+    );
+  });
+
+  it("retires all price rows on current authentication loss without retaining the draft", async () => {
+    const { workspace, api } = await watchlistReady();
+    const row = workspace.watchlistPrices.getSnapshot().rows[0]!;
+    vi.mocked(api.eodHistory).mockRejectedValueOnce(
+      new TrialApiError("unauthenticated"),
+    );
+    await workspace.loadWatchlistPrice(row.handle);
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(workspace.watchlistPrices.getSnapshot()).toMatchObject({
+      active: false,
+      rows: [],
+      pending: null,
+      canRead: false,
+    });
+    await workspace.loadWatchlistPrice(row.handle);
+    expect(api.eodHistory).toHaveBeenCalledTimes(1);
   });
 });

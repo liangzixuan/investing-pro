@@ -369,6 +369,11 @@ export function ManagedWorkspaceScreen({
     coordinator.getSnapshot,
     coordinator.getSnapshot,
   );
+  const watchlistPrices = useSyncExternalStore(
+    workspace.watchlistPrices.subscribe,
+    workspace.watchlistPrices.getSnapshot,
+    workspace.watchlistPrices.getSnapshot,
+  );
   const recoveryFocus = useRef<{
     workspace: ManagedWorkspace;
     saved: typeof saved;
@@ -913,6 +918,11 @@ export function ManagedWorkspaceScreen({
                     <ManagedWatchlistEditor
                       ref={watchlistEditor}
                       memberships={saved.draft.memberships}
+                      prices={watchlistPrices}
+                      onLoadPrice={(handle) => {
+                        if (!navigation?.invalid)
+                          void workspace.loadWatchlistPrice(handle);
+                      }}
                       editable={editable}
                       active={
                         discovery.view === "watchlist" &&

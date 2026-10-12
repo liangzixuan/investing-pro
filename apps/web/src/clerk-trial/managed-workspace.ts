@@ -34,6 +34,10 @@ import { ManagedCompanyFilings } from "./managed-company-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
+import {
+  ManagedWatchlistPrices,
+  type ManagedWatchlistPriceHandle,
+} from "./managed-watchlist-prices";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import {
@@ -169,6 +173,7 @@ export class ManagedWorkspace {
   private readonly secAccess = new ManagedSecAccess();
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
+  readonly watchlistPrices: ManagedWatchlistPrices;
   readonly agenda: ManagedBeaReleaseAgenda;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
@@ -237,6 +242,16 @@ export class ManagedWorkspace {
       () => this.invalidateCatalog(),
       options.marketsCohort,
     );
+    this.watchlistPrices = new ManagedWatchlistPrices(
+      (request, signal) => api.eodHistory(request, signal),
+      (error) => this.coordinator.readError(error),
+      eodAccess,
+      options.priceCoverage,
+    );
+    this.watchlistPrices.subscribe(() => {
+      if (this.watchlistPrices.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
+    });
     this.annual.subscribe(() => {
       if (this.annual.getSnapshot().catalogChanged) this.invalidateCatalog();
     });
@@ -245,6 +260,7 @@ export class ManagedWorkspace {
     });
     this.coordinator.subscribe(() => {
       const saved = this.coordinator.getSnapshot();
+      this.syncWatchlistPrices();
       const selection = this.state.research?.selection;
       if (
         selection?.origin === "watchlist" &&
@@ -269,7 +285,27 @@ export class ManagedWorkspace {
   };
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.syncWatchlistPrices();
     for (const listener of this.listeners) listener();
+  }
+  private syncWatchlistPrices() {
+    if (this.retired || this.state.view !== "watchlist") {
+      this.watchlistPrices.leave();
+      return;
+    }
+    const draft = this.coordinator.getSnapshot().draft;
+    const digest = this.state.snapshot?.snapshotSha256 ?? null;
+    const canRead =
+      this.canEdit() &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      digest !== null &&
+      draft?.snapshotSha256 === digest;
+    this.watchlistPrices.enter(draft, digest, canRead);
+  }
+  loadWatchlistPrice(handle: ManagedWatchlistPriceHandle) {
+    this.syncWatchlistPrices();
+    return this.watchlistPrices.load(handle);
   }
   private clear() {
     this.retired = true;
@@ -279,6 +315,7 @@ export class ManagedWorkspace {
     this.secAccess.retire();
     this.eod.retire();
     this.markets.retire();
+    this.watchlistPrices.retire();
     this.agenda.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
@@ -349,10 +386,12 @@ export class ManagedWorkspace {
   }
   private invalidateCatalog() {
     if (this.retired || !this.state.snapshot) return;
+    this.state = { ...this.state, snapshot: null };
     this.searchOperation?.abort();
     this.searchOperation = null;
     this.cancelReview();
     this.markets.leave();
+    this.watchlistPrices.leave();
     this.closeResearch();
     this.update({
       snapshot: null,
@@ -493,6 +532,14 @@ export class ManagedWorkspace {
   }
   openWatchlistEod(member: WatchlistMembership) {
     if (!this.canOpenWatchlistEod(member) || !this.state.snapshot) return;
+    this.watchlistPrices.cancel();
+    if (!this.canOpenWatchlistEod(member) || !this.state.snapshot) return;
+    const row = this.watchlistPrices
+      .getSnapshot()
+      .rows.find((entry) => membershipMatchesResult(member, entry.listing));
+    const seed = row
+      ? (this.watchlistPrices.seed(row.handle) ?? undefined)
+      : undefined;
     this.openResearch(
       {
         catalogSnapshotSha256: this.state.snapshot.snapshotSha256,
@@ -501,6 +548,8 @@ export class ManagedWorkspace {
         origin: "watchlist",
       },
       "eod",
+      null,
+      seed,
     );
   }
   openMarketResearch(kind: "annual" | "eod" | "filings", listingId?: string) {
@@ -538,6 +587,7 @@ export class ManagedWorkspace {
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (this.retired) return;
+    this.watchlistPrices.cancel();
     if (
       !route ||
       !isManagedCompanyListingId(route.listingId) ||
@@ -691,6 +741,7 @@ export class ManagedWorkspace {
     companyRoute: CompanyRouteState | null = null,
     priceSeed?: ManagedEodHistorySeed,
   ) {
+    this.watchlistPrices.cancel();
     this.clearResearch();
     if (section === "eod" || priceSeed) this.eod.open(selection, priceSeed);
     if (section === "annual") this.annual.open(selection);
