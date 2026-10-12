@@ -251,7 +251,10 @@ function deferred<T>() {
   });
   return { promise, resolve, reject };
 }
-function fixture(initial = payload) {
+function fixture(
+  initial = payload,
+  priceCoverage = [eodSelection.listing, ...payload.memberships],
+) {
   const api: ManagedApi = {
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
@@ -264,12 +267,17 @@ function fixture(initial = payload) {
     search: vi.fn(),
     resolve: vi.fn(),
   };
-  const workspace = new ManagedWorkspace(api, {
-    userId: "synthetic-user",
-    sessionId: "synthetic-session",
-    getToken: vi.fn(),
-    signOut: vi.fn(),
-  });
+  const workspace = new ManagedWorkspace(
+    api,
+    {
+      userId: "synthetic-user",
+      sessionId: "synthetic-session",
+      getToken: vi.fn(),
+      signOut: vi.fn(),
+    },
+    undefined,
+    { priceCoverage },
+  );
   workspace.setView("discover");
   return {
     workspace,
@@ -542,6 +550,45 @@ describe("managed workspace screen", () => {
     expect(html()).not.toContain("bea-release-agenda");
     expect(workspace.agenda.getSnapshot().agenda).toBeNull();
   });
+  it("keeps Annual, the shared note and Back usable for a listing outside declared price coverage", async () => {
+    const { workspace, api, html } = fixture(payload, []);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistEod(member);
+    const selected = workspace.getSnapshot().research!.selection;
+    const unavailable = html();
+    expect(unavailable).toContain(
+      "Price history is not available for this listing in this workspace.",
+    );
+    expect(unavailable).toContain('aria-label="Annual section for DEMO"');
+    expect(unavailable).toContain("Back to workspace");
+    expect(unavailable).toContain("Private research note");
+    expect(unavailable).not.toContain("Load one-month close history");
+    expect(unavailable).not.toContain("Tiingo");
+    await workspace.eod.load();
+    workspace.noteResearch(
+      selected,
+      "Updated unsupported-price company thesis",
+    );
+    workspace.switchToAnnual();
+    expect(html()).toContain("Load annual report");
+    expect(workspace.getSnapshot().research!.selection).toBe(selected);
+    workspace.switchToEod();
+    expect(html()).toContain("Updated unsupported-price company thesis");
+    expect(workspace.eod.getSnapshot().available).toBe(false);
+    workspace.closeResearch();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("Updated unsupported-price company thesis");
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("binds the Price action to the captured visit and latest shared note without saving or loading", async () => {
     const { workspace, api } = fixture({
       ...payload,

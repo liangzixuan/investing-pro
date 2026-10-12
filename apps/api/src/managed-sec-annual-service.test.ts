@@ -109,15 +109,29 @@ afterEach(() => {
 });
 
 describe("managed annual evidence service", () => {
-  it.each(["AAPL", "GOOG", "GOOGL"])(
-    "preserves %s identity and derives its issuer before two fixed source reads",
-    async (symbol) => {
+  it.each([
+    { symbol: "AAPL", cik: "0000320193" },
+    { symbol: "GOOG", cik: "0001652044" },
+    { symbol: "GOOGL", cik: "0001652044" },
+    { symbol: "MSFT", cik: "0000789019" },
+  ])(
+    "preserves $symbol identity and derives its issuer before two fixed source reads",
+    async ({ symbol, cik }) => {
       const f = fixture(),
         request = command(symbol),
         signal = new AbortController().signal;
       const result = await f.service.load(request, PRINCIPAL, signal);
-      const cik = symbol === "AAPL" ? "0000320193" : "0001652044";
-      expect(result.security).toMatchObject({
+      const listing = createManagedCatalogService()
+        .search(symbol)!
+        .results.find(
+          (candidate) => candidate.listingId === request.listingId,
+        )!;
+      expect(result.security).toEqual({
+        country: listing.country,
+        exchangeMic: listing.exchangeMic,
+        issuerName: listing.issuerName,
+        issuerId: listing.issuerId,
+        securityName: listing.securityName,
         symbol,
         listingId: request.listingId,
         cik,
@@ -145,6 +159,16 @@ describe("managed annual evidence service", () => {
         });
     },
   );
+  it("refuses a caller-supplied issuer before storage or SEC reads", async () => {
+    const f = fixture();
+    const request = { ...command(), cik: "0000000001" };
+    await expect(
+      f.service.load(request, PRINCIPAL, new AbortController().signal),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(f.openAdmission).not.toHaveBeenCalled();
+    expect(f.reserve).not.toHaveBeenCalled();
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
   it.each([
     { catalogSnapshotSha256: `sha256:${"a".repeat(64)}` },
     { symbol: "GOOG" },

@@ -22,6 +22,11 @@ are not adjusted for splits or dividends. Markets coverage remains limited to AA
 and GOOGL. An explicit Load or Refresh for one selected listing preserves the
 other board histories. Selection alone makes no price request.
 
+Discover and Annual cover AAPL, GOOG, GOOGL and MSFT using the fixed reviewed
+catalog. Price coverage remains the three Markets listings. For an unsupported
+Price identity, the company page explains availability and keeps Annual and note
+editing usable without offering a provider request.
+
 Annual reports compare eligible adjacent periods from the same filing, including
 reported net margins and their change in percentage points. Each named revenue
 basis keeps its own inputs and unavailable values. Up to three admitted periods

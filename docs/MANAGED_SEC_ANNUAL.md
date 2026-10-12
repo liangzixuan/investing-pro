@@ -43,10 +43,17 @@ tests exercise this interaction with invented data; they do not accept a live
 SEC request or a production sign-in.
 
 The server admits the exact listing ID, symbol and current catalog digest before
-resolving the issuer. The reviewed cohort maps AAPL to Apple and keeps GOOG and
-GOOGL as distinct listings for the same Alphabet issuer. The caller cannot send
+resolving the issuer. The reviewed cohort maps AAPL to Apple, MSFT to Microsoft
+and keeps GOOG and GOOGL as distinct listings for the same Alphabet issuer. The caller cannot send
 an arbitrary CIK or source URL. This is limited annual filing and reported-fact
 coverage, with source dates and availability shown by the existing renderer.
+
+Annual coverage is separate from Price coverage. Microsoft has no admitted Price
+mapping in this workspace. Its Price section explains that history is unavailable
+and offers no provider load, chart or Price evidence action. Annual, the shared
+note draft and Back remain available. Existing price mappings keep their exact
+listing identities. Catalog admission neither enables a price feed nor changes
+the three-listing Markets board.
 
 ## Financial overview
 
@@ -82,9 +89,10 @@ appear in the first desktop view; narrow tables fit without horizontal overflow.
 
 Focus on the results region and after Cancel was observed. Retention of that focus
 across asynchronous response replacement is supported by source structure, not a
-separately observed browser transition. Browser Save/reload and live account/provider
-calls were excluded. Native selectors are adapted and source-reviewed, but hosted
-native execution for this layout and release acceptance remain pending in
+separately observed browser transition. Live account/provider calls were excluded.
+A later invented-data browser check verified Annual note Save and reload while
+Price was unavailable. Native execution for the financial layout passed its
+exact-head hosted check; release acceptance remains separate in
 [Current work](CURRENT_WORK.md).
 
 ## Reported annual comparison

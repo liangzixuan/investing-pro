@@ -4,8 +4,9 @@ import { lookupPersonalSecurityMasterListing } from "@research-cockpit/personal-
 import * as securityMaster from "@research-cockpit/personal-security-master";
 import { describe, expect, it, vi } from "vitest";
 
-import manifest from "./managed-catalog/2026-09-30.manifest.json";
-import snapshot from "./managed-catalog/2026-09-30.snapshot.json";
+import manifest from "./managed-catalog/2026-10-12.manifest.json";
+import snapshot from "./managed-catalog/2026-10-12.snapshot.json";
+import { MANAGED_EOD_MAPPING_CANDIDATES } from "./managed-eod-config";
 import {
   createManagedCatalogService,
   getManagedWorkspaceCatalog,
@@ -106,10 +107,10 @@ describe("fixed managed catalog", () => {
     expect(catalog.snapshotSha256).toBe(digest);
     expect(getManagedWorkspaceCatalog()).toBe(catalog);
     expect(catalog.coverage).toMatchObject({
-      activeListings: 3,
-      issuers: 2,
+      activeListings: 4,
+      issuers: 3,
       sourceRecords: 6,
-      quarantinedSourceRecords: 3,
+      quarantinedSourceRecords: 2,
       basis: "reviewed_snapshot_only",
     });
   });
@@ -138,7 +139,7 @@ describe("fixed managed catalog", () => {
 
   it("keeps exclusions, source dates and limited coverage visible", () => {
     const service = createManagedCatalogService();
-    for (const symbol of ["MSFT", "BRK-B", "TSM"])
+    for (const symbol of ["BRK-B", "TSM"])
       expect(service.search(symbol)?.results).toEqual([]);
     const receipt = service.status().snapshot;
     expect(receipt.excludedCandidates).toEqual(manifest.excludedCandidates);
@@ -149,6 +150,73 @@ describe("fixed managed catalog", () => {
     expect(receipt.coverage.eligibleSecurityBand).toBe("under_1000");
     expect(receipt).not.toHaveProperty("sourcePolicyCompatibility");
     expect(receipt).not.toHaveProperty("providerMappings");
+  });
+
+  it("admits one Microsoft common-stock listing with exact lookup and dated filing evidence", () => {
+    const service = createManagedCatalogService();
+    const result = service.search("MSFT")!;
+    expect(result.results).toHaveLength(1);
+    const listing = result.results[0]!;
+    expect(listing).toMatchObject({
+      country: "US",
+      exchangeMic: "XNAS",
+      instrumentType: "common_stock",
+      issuerName: "MICROSOFT CORP",
+      securityName: "Common stock, $0.00000625 par value per share",
+      shareClassName: "Common stock, $0.00000625 par value per share",
+      symbol: "MSFT",
+    });
+    expect(
+      service.search("Microsoft")?.results.map((entry) => entry.listingId),
+    ).toEqual([listing.listingId]);
+    expect(listing.cik).toBe("0000789019");
+    const identity = Object.fromEntries(
+      Object.entries(listing).filter(
+        ([key]) => !["cik", "matchKind", "matchedValue"].includes(key),
+      ),
+    );
+    expect(Object.keys(identity)).toHaveLength(11);
+    const catalog = getManagedWorkspaceCatalog();
+    expect(
+      lookupPersonalSecurityMasterListing(catalog, listing.listingId),
+    ).toMatchObject({ ...identity, cik: "0000789019" });
+    expect(
+      service.resolve({
+        snapshotSha256: catalog.snapshotSha256,
+        listingIds: [listing.listingId],
+      })?.results,
+    ).toEqual([{ listingId: listing.listingId, listing: identity }]);
+    expect(service.status().snapshot.sources).toContainEqual({
+      label: "Microsoft annual filing",
+      url: "https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm",
+      issuerName: "MICROSOFT CORPORATION",
+      filingDate: "2026-07-29",
+    });
+    expect(service.status().snapshot.excludedCandidates).not.toContainEqual(
+      expect.objectContaining({ symbol: "MSFT" }),
+    );
+  });
+
+  it("preserves every existing price identity while catalog coverage grows", () => {
+    const service = createManagedCatalogService();
+    expect(
+      MANAGED_EOD_MAPPING_CANDIDATES.map(
+        (entry) => entry.security.symbol,
+      ).sort(),
+    ).toEqual(["AAPL", "GOOG", "GOOGL"]);
+    for (const mapping of MANAGED_EOD_MAPPING_CANDIDATES) {
+      const resolved = service.resolve({
+        snapshotSha256: service.status().snapshot.snapshotSha256,
+        listingIds: [mapping.security.listingId],
+      })!.results[0]!.listing;
+      expect(resolved).toEqual(mapping.security);
+      expect(
+        lookupPersonalSecurityMasterListing(
+          getManagedWorkspaceCatalog(),
+          mapping.security.listingId,
+        ),
+      ).toMatchObject({ ...mapping.security, cik: mapping.cik });
+    }
   });
 
   it.each(["", " ", "---", "\u0000", "x".repeat(129)])(
@@ -167,6 +235,6 @@ describe("fixed managed catalog", () => {
     expect(() => {
       Object.assign(service.status().snapshot.coverage, { activeListings: 99 });
     }).toThrow(TypeError);
-    expect(service.status().snapshot.coverage.activeListings).toBe(3);
+    expect(service.status().snapshot.coverage.activeListings).toBe(4);
   });
 });

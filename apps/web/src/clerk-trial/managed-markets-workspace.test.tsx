@@ -22,6 +22,7 @@ async function fixture(
   const { api, session, marketsCohort } = invented;
   const workspace = new ManagedWorkspace(api, session, undefined, {
     marketsCohort,
+    priceCoverage: invented.priceCoverage,
   });
   const read = vi.spyOn(api, "eodHistory").mockImplementation((request) =>
     Promise.resolve({

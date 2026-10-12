@@ -191,7 +191,7 @@ function ownedProductionHostnameSpan(
 
 function competitorText(relativePath: string, content: string): string {
   const fixedCatalog =
-    relativePath === "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
+    relativePath === "apps/api/src/managed-catalog/2026-10-12.snapshot.json";
   const fixedAndroidConfig =
     relativePath ===
     "apps/web/android/app/src/main/assets/capacitor.config.json";
@@ -309,7 +309,7 @@ function verifyOwnedProductionDomainTextClassifier(): void {
       throw new Error("Unowned copied Android package text was admitted");
   if (!matchesForbiddenText(`${copiedAndroidPath}.old`, copiedAndroidIdentity))
     throw new Error("Unselected copied Android package path was admitted");
-  const catalogPath = "apps/api/src/managed-catalog/2026-09-30.snapshot.json";
+  const catalogPath = "apps/api/src/managed-catalog/2026-10-12.snapshot.json";
   const repository = "https://github.com/liangzixuan/investing-pro";
   const canonicalReference = JSON.stringify({ sourceUri: repository });
   if (matchesForbiddenText(catalogPath, canonicalReference))

@@ -47,6 +47,7 @@ interface SessionProps {
   api?: ManagedApi;
   androidBack?: AndroidBackAdapter;
   marketsCohort?: readonly ManagedEodIdentity[];
+  priceCoverage?: readonly ManagedEodIdentity[];
   warnOnBrowserLeave?: boolean;
 }
 
@@ -67,7 +68,14 @@ function SessionWorkspace(props: SessionProps) {
       initial.api ?? createManagedApi(initial.apiOrigin, initial.session),
       initial.session,
       undefined,
-      initial.marketsCohort ? { marketsCohort: initial.marketsCohort } : {},
+      {
+        ...(initial.marketsCohort
+          ? { marketsCohort: initial.marketsCohort }
+          : {}),
+        ...(initial.priceCoverage
+          ? { priceCoverage: initial.priceCoverage }
+          : {}),
+      },
     );
     const unbindBrowserLeave = initial.warnOnBrowserLeave
       ? bindManagedBrowserUnload(current.coordinator, window)

@@ -17,8 +17,8 @@ import {
   type ManagedSecurityMasterCatalog,
 } from "@research-cockpit/personal-security-master";
 
-import manifest from "./managed-catalog/2026-09-30.manifest.json";
-import snapshot from "./managed-catalog/2026-09-30.snapshot.json";
+import manifest from "./managed-catalog/2026-10-12.manifest.json";
+import snapshot from "./managed-catalog/2026-10-12.snapshot.json";
 
 export interface ManagedCatalogService {
   status(): ManagedCatalogStatusDto;
@@ -36,7 +36,7 @@ let admittedCatalog: ManagedSecurityMasterCatalog | undefined;
 export function getManagedWorkspaceCatalog(): ManagedSecurityMasterCatalog {
   admittedCatalog ??= admitManagedSecurityMasterSnapshot({
     expectedSha256:
-      "sha256:0ff96ab386a9f1ce4ecab834706aa8da6d9b8ee9efd97f9f79908d616b43a3e4",
+      "sha256:fe3655c4c449ef306e62cd33b7bba37dd4c1f4945fdcf0dc304982abb4ac1d3f",
     // The checked JSON has canonical key order; formatting is not identity.
     snapshot: new TextEncoder().encode(`${JSON.stringify(snapshot)}\n`),
   });

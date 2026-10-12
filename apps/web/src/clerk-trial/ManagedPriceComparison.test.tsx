@@ -9,10 +9,8 @@ import {
   deriveManagedPriceComparison,
   type ManagedPriceComparisonState,
 } from "./managed-price-comparison";
-import {
-  MANAGED_MARKETS_COHORT,
-  type ManagedMarketsRow,
-} from "./managed-markets";
+import type { ManagedMarketsRow } from "./managed-markets";
+import { MANAGED_PRICE_COVERAGE } from "./managed-price-coverage";
 import { eodResponse } from "./eod-history-fixture";
 
 const close = (date: string, value: string): ManagedEodCloseDto => ({
@@ -48,7 +46,7 @@ function loadedRow(
   index: number,
   prices = histories[index]!,
 ): ManagedMarketsRow {
-  const listing = MANAGED_MARKETS_COHORT[index]!;
+  const listing = MANAGED_PRICE_COVERAGE[index]!;
   const initial = eodResponse();
   const response = parseManagedEodHistoryResponse(
     { ...initial, security: listing, rows: prices },

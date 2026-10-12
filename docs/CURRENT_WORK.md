@@ -170,7 +170,35 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The financial-first Annual overview is locally accepted for the managed company page.
+The active MSFT increment adds a fourth Discover listing and a third Annual
+issuer. Its common-stock identity is bound to the reviewed SEC cover, unique
+OpenFIGI result and dated MIC relationship. Existing AAPL, GOOG and GOOGL
+identities and price mappings remain unchanged. The catalog keeps its source
+dates and separate limitations; it does not add MSFT price coverage.
+
+For a listing without price coverage, Price explains that history is unavailable
+before starting a request. Annual and the existing note draft remain usable.
+The shared coverage check compares the complete listing identity, so a reused
+symbol cannot authorize a different security. Leaving research cancels pending
+work, and late responses cannot replace a newly selected listing.
+
+Local verification passed 556 affected frontend tests and 393 API tests, types,
+scoped lint and formatting. Independent source reviews found no remaining
+product defect. Actual-component Brave checks with invented data passed at
+1440, 390 and 320 pixels, including unavailable and mismatched Price identities,
+Annual note append/Save/reload, navigation cancellation, late-response rejection
+and session retirement. No overflow or console errors were observed. The first
+boundary run caught a package import in an Annual test. The test now uses the
+local catalog API, all 19 Annual tests pass again, and the unchanged dependency
+rule passes. Hosted checks and live delivery are separate.
+See the [catalog](MANAGED_SECURITY_CATALOG.md),
+[Annual](MANAGED_SEC_ANNUAL.md) and
+[research navigation](MANAGED_RESEARCH_NAVIGATION.md) guides.
+
+[PR82](https://github.com/liangzixuan/investing-pro/pull/82) merged as
+`636cbaf91de922817aad74232e7688a2fae5daf0` on October 12 at 04:10:29 UTC after
+all seven hosted checks passed, including both CI platforms and Android.
+The Annual overview leads with financial results on the managed company page.
 Exact current/prior/history figures and dated changes lead each named revenue
 basis, with source and validation details below. Current-use restrictions,
 missing values and retained-report notices remain visible. It reuses the existing
@@ -183,10 +211,9 @@ horizontal overflow. Keyboard disclosures, explicit note append and Back with
 the complete draft, refresh failure/Cancel, late-response rejection and session
 retirement passed without console errors. Focus on the results region and after
 Cancel was observed; focus retention across asynchronous replacement remains
-source-backed, not a separately observed transition. Browser Save/reload, live
-accounts and provider requests were excluded. Existing Android assertions have
-been adapted and source-reviewed; hosted native execution for this layout and
-release acceptance remain pending.
+source-backed, not a separately observed transition. That browser review excluded
+Save/reload, live accounts and provider requests. The adapted Android assertions
+passed hosted execution. Source acceptance and live delivery remain separate.
 See the [financial overview](MANAGED_SEC_ANNUAL.md#financial-overview).
 
 [PR81](https://github.com/liangzixuan/investing-pro/pull/81) merged as
