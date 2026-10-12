@@ -1187,6 +1187,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
+        assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
         awaitPage("Review returns to the complete unsaved watchlist",
             "document.querySelector('.managed-company-visit') === null" +
@@ -1206,7 +1207,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFilingsNoteCounts(1, 2);
         assertEquals("Filings journey preserves its document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertExactHistory(1, "https://localhost/", "https://localhost/");
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
         Log.i("ManagedFilings", "phase=reference-appended-reviewed-saved-reloaded; " + pageDiagnostic());
     }
 
@@ -3261,6 +3262,10 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertFixtureBoundary(int expectedResolves) throws Exception {
+        assertFixtureBoundary(expectedResolves, 0);
+    }
+
+    private void assertFixtureBoundary(int expectedResolves, int expectedSaves) throws Exception {
         awaitPage("test-only source, origin and disconnected boundaries",
             "location.origin === 'https://localhost' && location.hash === ''" +
             " && document.querySelector('meta[name=investment-build-sha]')?.content === " + JSONObject.quote(expectedSourceSha) +
@@ -3268,7 +3273,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('meta[http-equiv=Content-Security-Policy]')?.content === " + JSONObject.quote(CSP) +
             " && window.Capacitor?.getPlatform() === 'android'" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0" +
-            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".resolve === " + expectedResolves);
+            " && " + DIAGNOSTICS + ".save === " + expectedSaves + " && " + DIAGNOSTICS + ".resolve === " + expectedResolves);
     }
 
     private void assertRootHistory() throws Exception {
