@@ -676,7 +676,7 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> scrolled.countDown()));
         assertTrue("Sign-out review did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const targets=Array.from(document.querySelectorAll('#managed-signout-review h2, #managed-signout-review p, #managed-signout-review button'));" +
-            " const v=visualViewport; return v && targets.length === 4 && targets.every(e=>{const r=e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
+            " const v=visualViewport; return v && targets.length === 5 && targets.every(e=>{const r=e.getBoundingClientRect(); return r.width > 0 && r.height > 0" +
             " && r.left >= v.offsetLeft && r.right <= v.offsetLeft+v.width && r.top >= v.offsetTop && r.bottom <= v.offsetTop+v.height;});})()";
         awaitPage("entire sign-out explanation and both actions visible before capture", visible);
         retainScreenshot(name);
