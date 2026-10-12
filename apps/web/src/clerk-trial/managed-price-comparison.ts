@@ -73,13 +73,19 @@ export function deriveManagedPriceComparison(
     sharedDateCount: sharedDates.length,
     firstDate,
     lastDate,
-    rows: rows.map((row) => {
-      const first = row.response.rows.find((item) => item.date === firstDate)!;
-      const last = row.response.rows.find((item) => item.date === lastDate)!;
-      const change = calculatePersonalRawCloseChange({ rows: [first, last] });
-      if (change.status !== "available")
-        throw new Error("Two shared observations are required.");
-      return { ...row, firstClose: first.close, lastClose: last.close, change };
-    }),
+    rows: rows.map((row) => compareLoadedRow(row, firstDate, lastDate)),
   };
+}
+
+function compareLoadedRow(
+  row: LoadedRow,
+  firstDate: string,
+  lastDate: string,
+): ComparedRow {
+  const first = row.response.rows.find((item) => item.date === firstDate)!;
+  const last = row.response.rows.find((item) => item.date === lastDate)!;
+  const change = calculatePersonalRawCloseChange({ rows: [first, last] });
+  if (change.status !== "available")
+    throw new Error("Two shared observations are required.");
+  return { ...row, firstClose: first.close, lastClose: last.close, change };
 }

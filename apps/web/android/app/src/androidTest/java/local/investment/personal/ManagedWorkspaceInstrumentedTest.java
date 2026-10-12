@@ -1424,10 +1424,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertNotNull(id.get());
         String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
         assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
-        // Use Espresso's bounded native-key rollback when a tap becomes a long press.
-        touchInput(actualId, androidx.test.espresso.action.ViewActions.pressKey(KeyEvent.KEYCODE_ESCAPE));
-        // Select an Android option after a real touch opens WebView's native select dialog.
+        // Escape rollback can close the select dialog opened by a delayed tap.
+        touchInput(actualId);
+        // Wait for WebView's native dialog instead of searching the Activity root.
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
+            .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
             .perform(androidx.test.espresso.action.ViewActions.click());
         awaitPage("native comparison date selected",
             "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(date));

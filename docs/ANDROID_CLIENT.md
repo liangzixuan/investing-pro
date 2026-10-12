@@ -240,7 +240,11 @@ successful emulator run before native acceptance.
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,
 retained history and reset behavior without extra price reads or saves. The
-accepted PR 46 main attempt 2 passed all sixteen required cases and retained 33
+option lookup waits for the native dialog. Its select tap omits the generic
+Escape rollback, which can dismiss a picker opened by a delayed tap; the exact
+selected value and resulting comparison remain required.
+
+The accepted PR 46 main attempt 2 passed all sixteen required cases and retained 33
 PNGs, 30 managed captures and 13 source markers. Two comparison frames received
 scoped visual review. The first attempt's picker interaction failure remains
 recorded with unknown cause; passing the unchanged rerun does not establish
