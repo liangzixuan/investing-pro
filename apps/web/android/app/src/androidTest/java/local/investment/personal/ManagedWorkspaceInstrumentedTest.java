@@ -1547,10 +1547,28 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedCompanyNote", "phase=invalid-retained, save=0; " + pageDiagnostic());
         // Touch the recovery action, then verify its focus without tapping the textarea.
         selectWatchlistNote(0);
+        typeIntoInput("managed-watchlist-search", "zero");
+        awaitPage("local search hides the invalid choice without changing the complete draft",
+            "document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO'" +
+            " && document.querySelector('#managed-note-0')?.value === ''" +
+            " && document.querySelector('#managed-note-2') === null" +
+            " && document.querySelector('button[aria-label=\"Move ZERO up\"]')?.disabled === true" +
+            " && document.querySelector('button[aria-label=\"Move ZERO down\"]')?.disabled === true" +
+            " && document.querySelector('#managed-watchlist-order-help')?.textContent === 'Clear search to change the full watchlist order.'" +
+            " && document.querySelector('#managed-watchlist-note-help + .trial-actions > button:first-child')?.disabled === true" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ZERO,ONE,ALFA'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === ''" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+        assertCompanyNoteCounts(0, 1);
         touchInput("managed-note-validation-focus");
         awaitPage("recovery action focuses the exact invalid listing",
             "document.activeElement === document.querySelector('#managed-note-2')" +
-            " && document.activeElement?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'");
+            " && document.activeElement?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && document.querySelector('#managed-watchlist-search')?.value === ''" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'");
         replaceFocusedInput("managed-note-2", INVALID_COMPANY_NOTE, COMPANY_NOTE);
         assertCorrectedCompanyNote();
         // This frame covers the guidance and enabled Save; exact note bytes are asserted separately.
@@ -1560,10 +1578,30 @@ public class ManagedWorkspaceInstrumentedTest {
         Log.i("ManagedCompanyNote", "phase=corrected-unsaved, save=0; " + pageDiagnostic());
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);
+        typeIntoInput("managed-watchlist-search", "alfa");
+        awaitPage("filtered Save retains the exact selected note at its full-draft index",
+            "document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'" +
+            " && document.querySelector('#managed-note-2')?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
+            " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
+            " && document.querySelector('#managed-watchlist-note-help + .trial-actions > button:first-child')?.disabled === false");
+        assertCompanyNoteCounts(0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
         awaitPage("existing full-list Save completes the one invented versioned write",
             DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')");
+        awaitPage("saving filtered listings preserves search and all three saved draft memberships",
+            "document.querySelector('#managed-watchlist-search')?.value === 'alfa'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ZERO,ONE,ALFA'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === ''" +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE));
+        click("button[aria-label='Clear watchlist search']");
+        awaitPage("clearing local search restores choices and focuses its persistent input",
+            "document.querySelector('#managed-watchlist-search')?.value === ''" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'" +
+            " && document.activeElement === document.querySelector('#managed-watchlist-search')");
         assertCompanyNoteDraft(2, false);
         assertCompanyNoteCounts(1, 1);
         onWebView().withElement(findElement(Locator.XPATH,

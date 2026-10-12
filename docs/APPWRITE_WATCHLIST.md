@@ -44,6 +44,42 @@ application-layer encryption. Keep the accepted vault and its recovery material
 unchanged. Only invented records are allowed in the initial cloud proof; owner
 migration follows a reviewed privacy, credential and recovery design.
 
+## Search the current watchlist draft
+
+**Search My Watchlist** filters the loaded draft by symbol, company name, share
+class or exchange. It matches a case-insensitive phrase within one field after
+trimming and collapsing whitespace. For example, `Class C` distinguishes that
+share class from `Class A`; `nova class c` does not combine separate fields.
+Notes and internal identifiers are excluded. The count shows matching listings
+and the full draft total, in the draft's existing order. An empty search shows all
+memberships. Use Discover to find and add a company that is not in the draft.
+
+Typing never changes the selected listing or its note. If the selection falls
+outside the results, its exact identity and note remain visible with an
+explanation. **Show selected listing** clears the search; it and **Clear** return
+keyboard focus to the search field. Selecting another result is explicit.
+
+While a nonempty search is active, the two reorder controls are disabled. Clear
+the search to change the full watchlist order. Removing a matching selection
+selects and focuses the next match, or the previous match at the end. Removing a
+selection outside the results chooses the first match. If no matches remain but
+the draft still has memberships, focus moves to the search field and the next
+full-draft membership remains selected, falling back to the previous membership
+at the end. Removing the final membership focuses the empty-watchlist message.
+A later selection, search, view or focus change cancels pending focus movement.
+
+**Go to first invalid note** searches the complete draft, clears the
+filter and reveals the first invalid raw note. It preserves the existing visible,
+editable and session checks. Search and selection survive research and Back in
+the same mounted workspace; session retirement clears them. Search sends no
+request and does not save. **Save watchlist** still validates and saves every
+membership and note in the full draft, including entries outside the results.
+
+Focused tests cover identity phrases, distinct share classes, raw note and
+selection retention, filtered removal and focus cancellation, correction,
+research return and full-payload saves. Actual browser and native execution
+status is recorded in [Current work](CURRENT_WORK.md).
+
 ## Conflicts and retries
 
 Each save carries the version the user edited and a stable command key. A first

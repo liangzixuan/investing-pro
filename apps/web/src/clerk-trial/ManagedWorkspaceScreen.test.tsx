@@ -309,7 +309,26 @@ function editorElements(node: React.ReactNode) {
   mounted.editorEffects = [];
   mounted.editorDirect = true;
   try {
-    return elements(ManagedWatchlistEditor(child.props));
+    const expand = (node: React.ReactNode): ReturnType<typeof elements> => {
+      if (!React.isValidElement<{ children?: React.ReactNode }>(node))
+        return [];
+      const rendered =
+        typeof node.type === "function" && node.type !== ManagedNoteEditor
+          ? expand(
+              (
+                node.type as (props: {
+                  children?: React.ReactNode;
+                }) => React.ReactNode
+              )(node.props),
+            )
+          : [];
+      return [
+        node,
+        ...rendered,
+        ...React.Children.toArray(node.props.children).flatMap(expand),
+      ];
+    };
+    return expand(ManagedWatchlistEditor(child.props));
   } finally {
     mounted.editorDirect = false;
   }
@@ -1116,7 +1135,7 @@ describe("managed workspace screen", () => {
     ["annual", "native"],
     ["eod", "native"],
   ] as const)(
-    "switches from %s without a request and restores the original opener with %s Back",
+    "retains local watchlist search through %s research and %s Back, then saves the full draft",
     async (start, back) => {
       const native = back === "native" ? nativeBackFixture() : null;
       const { workspace, api } = fixture({
@@ -1158,6 +1177,16 @@ describe("managed workspace screen", () => {
           ] === "listing-one",
       ) as React.ReactElement<React.ComponentProps<"button">>;
       choice.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
+      const searchInput = (screen: React.ReactNode) =>
+        editorElements(screen).find(
+          (node) =>
+            (node.props as React.ComponentProps<"input">).id ===
+            "managed-watchlist-search",
+        ) as React.ReactElement<React.ComponentProps<"input">>;
+      searchInput(first).props.onChange!({
+        target: { value: "OTHER" },
+      } as React.ChangeEvent<HTMLInputElement>);
+      expect(searchInput(first).props.value).toBe("OTHER");
       const opener = editorElements(first).find(
         (node) =>
           node.type === "button" &&
@@ -1233,6 +1262,45 @@ describe("managed workspace screen", () => {
       expect(api.annualReport).not.toHaveBeenCalled();
       expect(api.eodHistory).not.toHaveBeenCalled();
       expect(api.save).not.toHaveBeenCalled();
+      expect(api.load).toHaveBeenCalledOnce();
+      expect(api.status).toHaveBeenCalledOnce();
+      const returnedEditor = editorElements(render());
+      expect(searchInput(render()).props.value).toBe("OTHER");
+      expect(
+        returnedEditor
+          .filter(
+            (node) =>
+              (node.props as { "data-watchlist-selection"?: string })[
+                "data-watchlist-selection"
+              ],
+          )
+          .map(
+            (node) =>
+              (node.props as { "data-watchlist-selection": string })[
+                "data-watchlist-selection"
+              ],
+          ),
+      ).toEqual(["listing-two"]);
+      expect(
+        returnedEditor.find((node) => node.type === ManagedNoteEditor)?.props,
+      ).toMatchObject({
+        listingId: "listing-one",
+        id: "managed-note-1",
+        note: "Keep the navigation draft",
+      });
+      vi.mocked(api.save).mockImplementation((command) =>
+        Promise.resolve({
+          version: 2,
+          payload: command.payload,
+          replayed: false,
+        }),
+      );
+      await workspace.coordinator.save();
+      expect(api.save).toHaveBeenCalledOnce();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload.memberships).toEqual(
+        draft!.memberships,
+      );
+      expect(searchInput(render()).props.value).toBe("OTHER");
       expect(api.load).toHaveBeenCalledOnce();
       expect(api.status).toHaveBeenCalledOnce();
       if (native) {
