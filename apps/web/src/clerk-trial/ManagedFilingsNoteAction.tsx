@@ -15,6 +15,12 @@ export interface ManagedFilingsNoteActions {
   ) => { appended: boolean; message: string };
 }
 
+interface FilingNoteFeedback {
+  response: ManagedSecFilingsResponseDto;
+  message: string;
+  refusal: ReturnType<ManagedFilingsNoteActions["getAction"]> | null;
+}
+
 export function ManagedFilingsNoteAction({
   response,
   filing,
@@ -25,8 +31,17 @@ export function ManagedFilingsNoteAction({
   actions: ManagedFilingsNoteActions;
 }) {
   const helpId = useId();
-  const [feedback, setFeedback] = useState({ response, message: "" });
+  const [feedback, setFeedback] = useState<FilingNoteFeedback>({
+    response,
+    message: "",
+    refusal: null,
+  });
   const action = actions.getAction(response, filing);
+  const currentFeedback =
+    feedback.response === response &&
+    (feedback.refusal === null ||
+      (feedback.refusal.canAppend === action.canAppend &&
+        feedback.refusal.reason === action.reason));
   return (
     <div className="managed-filings-note-action">
       <button
@@ -36,12 +51,18 @@ export function ManagedFilingsNoteAction({
         aria-describedby={`managed-filings-note-scope ${helpId}`}
         onClick={() => {
           const current = actions.getAction(response, filing);
+          const result = current.canAppend
+            ? actions.append(response, filing)
+            : {
+                appended: false,
+                message:
+                  current.reason ??
+                  "This filing reference cannot be added now.",
+              };
           setFeedback({
             response,
-            message: current.canAppend
-              ? actions.append(response, filing).message
-              : (current.reason ??
-                "This filing reference cannot be added now."),
+            message: result.message,
+            refusal: result.appended ? null : current,
           });
         }}
       >
@@ -53,7 +74,7 @@ export function ManagedFilingsNoteAction({
         role="status"
         aria-live="polite"
       >
-        {feedback.response === response ? feedback.message : ""}
+        {currentFeedback ? feedback.message : ""}
       </p>
     </div>
   );
