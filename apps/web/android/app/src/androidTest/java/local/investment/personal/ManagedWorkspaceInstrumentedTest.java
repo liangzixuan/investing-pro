@@ -1746,6 +1746,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
         assertCompanyNoteCounts(0, 1);
+        click("#managed-unsaved-review-summary");
+        awaitPage("unsaved review includes the complete invalid note outside search results",
+            "(() => { const review = document.querySelector('#managed-unsaved-review');" +
+            " const entry = review?.querySelector('[data-managed-review-listing-id=listing-alfa]');" +
+            " const sides = entry?.querySelectorAll('.managed-version-side');" +
+            " return review?.open === true && sides?.length === 2" +
+            " && sides[0].querySelector('h5')?.textContent === 'Last confirmed saved version 1'" +
+            " && sides[0].textContent.includes('Not in this version')" +
+            " && sides[1].querySelector('h5')?.textContent === 'Current draft'" +
+            " && sides[1].querySelector('.trial-saved-note')?.textContent === " + JSONObject.quote(INVALID_COMPANY_NOTE) +
+            " && document.querySelector('#managed-watchlist-search')?.value === 'zero'; })()");
+        assertCompanyNoteCounts(0, 1);
         touchInput("managed-note-validation-focus");
         awaitPage("recovery action focuses the exact invalid listing",
             "document.activeElement === document.querySelector('#managed-note-2')" +
@@ -1754,6 +1766,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'");
         replaceFocusedInput("managed-note-2", INVALID_COMPANY_NOTE, COMPANY_NOTE);
         assertCorrectedCompanyNote();
+        awaitPage("open unsaved review follows the corrected full draft without saving",
+            "document.querySelector('#managed-unsaved-review')?.open === true" +
+            " && document.querySelector('#managed-unsaved-review [data-managed-review-listing-id=listing-alfa] .trial-saved-note')?.textContent === " + JSONObject.quote(COMPANY_NOTE));
         // This frame covers the guidance and enabled Save; exact note bytes are asserted separately.
         retainAnnualNoteFrame("companyNoteCorrectedSave", "#managed-watchlist-note-help",
             "#managed-watchlist-note-help, #managed-watchlist-note-help + .trial-actions > button:first-child", 2);
@@ -1780,6 +1795,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === ''" +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE));
+        awaitPage("confirmed Save clears differences while retaining the open review",
+            "document.querySelector('#managed-unsaved-review')?.open === true" +
+            " && document.querySelector('#managed-unsaved-review')?.textContent.includes('No differences from last confirmed saved version 2.')" +
+            " && document.querySelectorAll('#managed-unsaved-review [data-managed-review-listing-id]').length === 0");
+        assertCompanyNoteCounts(1, 1);
         click("button[aria-label='Clear watchlist search']");
         awaitPage("clearing local search restores choices and focuses its persistent input",
             "document.querySelector('#managed-watchlist-search')?.value === ''" +

@@ -33,6 +33,7 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
+import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import { ManagedSignOut } from "./ManagedSignOut";
 import { ManagedWatchlistExport } from "./ManagedWatchlistExport";
 import type { WatchlistExportDeliveryAdapter } from "./watchlist-export-delivery";
@@ -970,6 +971,7 @@ export function ManagedWorkspaceScreen({
                         {saveIssue}
                       </p>
                     )}
+                    <ManagedUnsavedWatchlistReview state={saved} />
                   </>
                 )}
                 {discovery.review && (
