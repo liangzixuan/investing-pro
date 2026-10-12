@@ -212,7 +212,7 @@ provider calls. Native Annual assertions are prepared; their hosted execution
 and source acceptance remain pending. See the
 [trend contract](MANAGED_SEC_ANNUAL.md#optional-reported-annual-trend).
 
-The active comparison-ordering increment adds Board order, Highest raw change
+The accepted comparison-ordering increment adds Board order, Highest raw change
 and Lowest raw change to the complete three-listing shared-date comparison.
 Ordering uses exact endpoint ratios before display rounding. Exact ties retain
 symbol, exchange and listing-ID order in both directions. The table and its source
@@ -230,8 +230,11 @@ The results region kept keyboard focus through refresh and unavailable states;
 the narrow table supports arrow-key scrolling without document overflow.
 No console errors were observed. Native picker keyboard selection was not
 established by these browser checks. The existing invented Android journey now
-exercises all three choices and their request/draft invariants; execution and
-hosted acceptance remain pending. See the
+exercises all three choices and their request/draft invariants. All seven hosted
+checks passed for `a31c7226a06cf4d9e9ce066476b4aca18db93696`, including both CI
+platforms and Android. [PR84](https://github.com/liangzixuan/investing-pro/pull/84)
+merged as `a968e4d9c8fa82850bab15c8a498746ed6bf99fc` on October 12 at 06:18:12 UTC.
+Actual-main and live delivery remain separate. See the
 [comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The accepted MSFT increment adds a fourth Discover listing and a third Annual
