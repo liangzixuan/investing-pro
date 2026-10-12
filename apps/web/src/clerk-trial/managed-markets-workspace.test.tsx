@@ -77,6 +77,10 @@ describe("Markets and mounted workspace", () => {
     expect(unloaded).toContain('aria-label="Board Annual report for ALFA"');
     expect(unloaded).toContain("not live quotes or adjusted returns");
     expect(unloaded).not.toContain("managed-market-change");
+    expect(unloaded).toContain("Compare raw price changes");
+    expect(renderedText(unloaded)).toContain(
+      "Comparison unavailable. Load price histories for all three board listings.",
+    );
     await workspace.markets.load();
     expect(read.mock.calls.map(([request]) => request.listingId)).toEqual(
       marketsCohort.map((row) => row.listingId),
@@ -86,6 +90,8 @@ describe("Markets and mounted workspace", () => {
     expect(loaded).toContain("Source and request dates");
     expect(loaded).toContain("2026-09-19");
     expect(loaded).toContain("101.5");
+    expect(loaded).toContain('<table class="managed-price-comparison-values">');
+    expect(loaded).toContain("2 shared observed dates");
     expect(renderedText(loaded)).toContain(
       "Raw close change: +$1.25 (+1.2469%)",
     );
@@ -132,6 +138,10 @@ describe("Markets and mounted workspace", () => {
     const loaded = workspace.markets.getSnapshot().rows[2]!.response;
     expect(loaded).not.toBeNull();
     expect(html()).toContain("Refresh BETB price");
+    expect(html()).not.toContain(
+      '<table class="managed-price-comparison-values">',
+    );
+    expect(html()).toContain("Comparison unavailable.");
     untouched.forEach((row, index) =>
       expect(workspace.markets.getSnapshot().rows[index]).toBe(row),
     );
@@ -418,8 +428,73 @@ describe("Markets and mounted workspace", () => {
     },
   );
 
+  it("recomputes the complete comparison from retained and replaced board rows without additional requests", async () => {
+    const { workspace, read, save, html, marketsCohort } = await fixture(() => [
+      { date: "2026-09-11", close: "10" },
+      { date: "2026-09-14", close: "12" },
+      { date: "2026-09-18", close: "15" },
+    ]);
+    await workspace.markets.load();
+    expect(html()).toContain("3 shared observed dates");
+    expect(read).toHaveBeenCalledTimes(3);
+    workspace.markets.select(marketsCohort[1].listingId);
+    let finish!: (value: ReturnType<typeof eodResponse>) => void;
+    read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = workspace.markets.loadSelected();
+    const retained = html();
+    expect(renderedText(retained)).toContain(
+      "Previous history retained for BETA.",
+    );
+    expect(retained).toContain("3 shared observed dates");
+    expect(retained).toContain("2026-09-20T00:00:01.000Z");
+    expect(read).toHaveBeenCalledTimes(4);
+    workspace.markets.cancel();
+    expect(read.mock.calls[3]![1].aborted).toBe(true);
+    finish({ ...eodResponse(), security: marketsCohort[1] });
+    await pending;
+    expect(renderedText(html())).toContain(
+      "Previous history retained for BETA.",
+    );
+    const replacement = {
+      ...eodResponse(),
+      security: marketsCohort[1],
+      window: { startDate: "2026-08-21", endDate: "2026-09-21" },
+      requestStartedAt: "2026-09-21T00:00:00.000Z",
+      completedAt: "2026-09-21T00:00:01.000Z",
+      rows: [
+        { date: "2026-09-14", close: "20" },
+        { date: "2026-09-18", close: "18" },
+      ],
+    };
+    read.mockResolvedValueOnce(replacement);
+    await workspace.markets.loadSelected();
+    const replaced = html();
+    expect(replaced).toContain("2 shared observed dates");
+    expect(replaced).toContain("2026-09-21T00:00:01.000Z");
+    expect(replaced).not.toContain("Previous history retained for BETA.");
+    expect(replaced).toContain("-10.0000%");
+    expect(replaced).toContain("25.0000%");
+    expect(read).toHaveBeenCalledTimes(5);
+    read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    await workspace.markets.loadSelected();
+    expect(html()).not.toContain(
+      '<table class="managed-price-comparison-values">',
+    );
+    expect(html()).toContain("Comparison unavailable.");
+    expect(read).toHaveBeenCalledTimes(6);
+    workspace.setView("watchlist");
+    expect(html()).not.toContain("Compare raw price changes");
+    expect(read).toHaveBeenCalledTimes(6);
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it("a panel catalog refusal clears board prices and prevents reopening until catalog recovery", async () => {
-    const { workspace, read, marketsCohort } = await fixture();
+    const { workspace, read, html, marketsCohort } = await fixture();
     await workspace.markets.load();
     workspace.openMarketResearch("eod", marketsCohort[0].listingId);
     read.mockRejectedValueOnce(new ManagedCatalogChangedError());
@@ -427,6 +502,7 @@ describe("Markets and mounted workspace", () => {
     expect(workspace.eod.getSnapshot().selection).toBeNull();
     expect(workspace.markets.getSnapshot().rows).toEqual([]);
     expect(workspace.getSnapshot().snapshot).toBeNull();
+    expect(html()).not.toContain("Compare raw price changes");
     workspace.switchToAnnual();
     expect(workspace.annual.getSnapshot().selection).toBeNull();
     await workspace.refreshCatalog();
@@ -503,6 +579,7 @@ describe("Markets and mounted workspace", () => {
     expect(html()).not.toContain("101.5");
     expect(html()).not.toContain("Alfa Company");
     expect(html()).not.toContain("managed-market-change");
+    expect(html()).not.toContain("Compare raw price changes");
     expect(read).toHaveBeenCalledTimes(4);
   });
 });

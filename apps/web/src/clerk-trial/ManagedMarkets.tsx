@@ -9,6 +9,7 @@ import {
 import type { ManagedEodCloseDto } from "@research-cockpit/contracts";
 import { calculatePersonalRawCloseChange } from "@research-cockpit/personal-market-analytics";
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
+import { ManagedPriceComparison } from "./ManagedPriceComparison";
 import type {
   ManagedMarkets as Model,
   ManagedMarketsRow,
@@ -407,6 +408,7 @@ export function ManagedMarkets({
           />
         )}
       </div>
+      <ManagedPriceComparison state={state} />
     </section>
   );
 }

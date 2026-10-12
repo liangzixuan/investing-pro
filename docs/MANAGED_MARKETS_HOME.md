@@ -91,6 +91,35 @@ two refreshes. Previous-history notices apply to the comparison too. Clearing
 the response clears the comparison. This feature adds no provider request,
 persistent price storage or new response state.
 
+## Compare the three listings
+
+The next increment compares raw price changes across all three loaded histories,
+in board order. It uses the earliest and latest dates observed in every history,
+with at least two shared observations. The table shows those common dates, their
+observation count, each listing's original USD endpoint closes and a four-place
+percentage calculated by the existing exact-decimal module. A nonzero change
+that rounds to zero retains its higher/lower description. GOOG and GOOGL remain
+separate share classes of the same issuer.
+
+All three histories are required; a missing response never silently reduces the
+cohort. Fewer than two shared dates produces an explanation without numeric
+comparison. Dates are not filled or interpolated, and the shared span is not
+necessarily a complete month. Prices remain unadjusted for splits or dividends;
+the table supplies neither total return nor a performance ranking.
+
+The comparison derives from the currently displayed responses and adds no
+request, cache, selection or saved state. Each row retains its requested window,
+original completion time and previous-history notice. Independently refreshed
+rows can have different request times even though the comparison dates match.
+A validated replacement recomputes the shared dates and values; a cleared
+response withholds the comparison. Existing navigation, catalog and session
+retirement clear the source responses and their derived comparison together.
+The table scrolls within its own labelled region on narrow screens; keyboard
+users can focus that region and use the arrow keys. The results region and
+coverage disclosure remain mounted when a refresh leaves the comparison
+unavailable, preserving focus while replacing values with an explanation.
+Delivery and verification remain in [Current work](CURRENT_WORK.md).
+
 ## Requests and lifetime
 
 Markets is the initial managed view. Entry resolves catalog metadata only; price

@@ -1031,6 +1031,7 @@ public class ManagedWorkspaceInstrumentedTest {
         clickMarketsAction("Load board prices");
         assertMarketsRows(false);
         assertMarketsRawChanges(false);
+        assertMarketsSharedComparison(false);
         assertMarketsDraftAndCounts(2, 3, 0, 0);
         awaitPage("three loaded rows keep distinct share classes",
             "Array.from(document.querySelectorAll('.managed-market-identity small')).map(e => e.textContent).join('|') === 'Common Stock · XNAS|Class A · XNAS|Class C · XNAS'" +
@@ -1056,9 +1057,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelectorAll('.managed-market-rows .managed-eod-previous').length === 2" +
             " && Array.from(document.querySelectorAll('.managed-market-rows .managed-eod-previous')).every(e => e.textContent === 'Previous history · completed 2026-09-20T00:00:01.000Z. This refresh has not confirmed newer prices.')" +
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === 'BETA,BETB'");
+        assertMarketsSharedComparison(true);
         clickMarketsAction("Cancel board prices");
         assertMarketsDraftAndCounts(2, 5, 1, 0);
         assertMarketsRawChanges(true);
+        assertMarketsSharedComparison(true);
         awaitPage("Cancel restores focus after the load action is enabled",
             "document.activeElement === document.querySelector('.managed-markets .trial-actions button:first-child')" +
             " && document.activeElement.disabled === false" +
@@ -1080,6 +1083,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsDraftAndCounts(2, 5, 1, 1);
         assertMarketsRows(true);
         assertMarketsRawChanges(true);
+        assertMarketsSharedComparison(true);
         assertMarketsDetail("BETA", "2026-09-18|20.75;2026-09-19|20.5", true);
         awaitPage("late board values cannot replace the retained response",
             "!document.querySelector('.managed-markets')?.textContent.includes('998.25')" +
@@ -1144,7 +1148,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertReturnedRootHistory("listing-beta-a", "price");
         selectWorkspaceView("Discover");
         awaitPage("leaving Markets retires all its price views",
-            "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null");
+            "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null" +
+            " && document.querySelector('.managed-price-comparison') === null");
         selectWorkspaceView("Markets");
         awaitPage("returning Markets resolves fresh identities but remains unloaded",
             DIAGNOSTICS + ".marketsResolve === 3" +
@@ -1153,7 +1158,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-market-change') === null" +
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
-            " && document.querySelector('.managed-markets .managed-eod-previous') === null");
+            " && document.querySelector('.managed-markets .managed-eod-previous') === null" +
+            " && document.querySelector('.managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-price-comparison-provenance') === null" +
+            " && document.querySelector('.managed-price-comparison [role=status]')?.textContent.includes('Comparison unavailable.')" +
+            " && !document.querySelector('.managed-price-comparison')?.textContent.includes('2026-09-')");
         assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         selectWorkspaceView("My Watchlist");
         awaitPage("the final watchlist draft is visible and unchanged",
@@ -1408,17 +1417,34 @@ public class ManagedWorkspaceInstrumentedTest {
     private void chooseComparisonDate(String scope, String date) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> id = new AtomicReference<>();
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")?.id",
-            value -> { id.set(value); returned.countDown(); }));
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            assertTrue("Comparison WebView must accept focus", webView.requestFocus());
+            webView.evaluateJavascript(
+                "(() => { const select = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ");" +
+                " if (!(select instanceof HTMLSelectElement) || select.disabled || !select.id) return null;" +
+                " select.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+                " select.focus({preventScroll:true}); return select.id; })()",
+                value -> { id.set(value); returned.countDown(); });
+        });
         assertTrue("Comparison select id was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         assertNotNull(id.get());
         String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
         assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
-        // Use Espresso's bounded native-key rollback when a tap becomes a long press.
-        touchInput(actualId, androidx.test.espresso.action.ViewActions.pressKey(KeyEvent.KEYCODE_ESCAPE));
-        // Select an Android option after a real touch opens WebView's native select dialog.
+        awaitPage("exact enabled comparison select has DOM focus",
+            "(() => { const select = document.getElementById(" + JSONObject.quote(actualId) + ");" +
+            " return select instanceof HTMLSelectElement && !select.disabled && document.activeElement === select" +
+            " && select === document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")" +
+            " && [...select.options].some(option => option.value === " + JSONObject.quote(date) + " && !option.disabled); })()");
+        // Native Space opens the picker without a tap becoming a long press under load.
+        onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
+            if (noViewFoundException != null) throw noViewFoundException;
+            assertTrue("Comparison WebView must have focus", view.hasFocus());
+            assertTrue("Comparison window must have focus", view.hasWindowFocus());
+        }).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        // Wait for WebView's native dialog instead of searching the Activity root.
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
+            .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
             .perform(androidx.test.espresso.action.ViewActions.click());
         awaitPage("native comparison date selected",
             "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(date));
@@ -2072,6 +2098,33 @@ public class ManagedWorkspaceInstrumentedTest {
             " const value = p.querySelector('strong')?.textContent;" +
             " return e.querySelector('.managed-market-identity strong').textContent + '|' + value + '|' + p.querySelector('.managed-market-change-basis')?.textContent;" +
             " }).join(';') === " + JSONObject.quote(expected));
+    }
+
+    private void assertMarketsSharedComparison(boolean refreshedFirst) throws Exception {
+        String originalCoverage = "2026-08-20 to 2026-09-20|2026-09-18 to 2026-09-19|2 / " +
+            (refreshedFirst ? "1" : "0") + "|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z";
+        String firstCoverage = refreshedFirst
+            ? "2026-08-21 to 2026-09-21|2026-09-19 to 2026-09-20|2 / 1|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z"
+            : originalCoverage;
+        String expectedCoverage = "ALFA · XNAS|Alfa Company · Common Stock|" + firstCoverage + "|false;" +
+            "BETA · XNAS|Beta Company · Class A|" + originalCoverage + "|" + refreshedFirst + ";" +
+            "BETB · XNAS|Beta Company · Class C|" + originalCoverage + "|" + refreshedFirst;
+        String output = refreshedFirst
+            ? "comparison.querySelector('.managed-price-comparison-values') === null" +
+                " && comparison.querySelector('[role=status]')?.textContent === 'Comparison needs at least two dates observed for every listing. 1 shared observed date is loaded. Shared date: 2026-09-19.'" +
+                " && comparison.querySelector('.managed-eod-previous')?.textContent === 'Previous history retained for BETA, BETB. Those original requests remain in this comparison.'"
+            : "comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates'" +
+                " && Array.from(comparison.querySelectorAll('tbody tr')).map(tr => tr.querySelector('th strong')?.textContent + '|' + Array.from(tr.querySelectorAll('td')).map(e => e.textContent).join('|')).join(';') === 'ALFA|10.25|10.5|+2.4390%;BETA|20.75|20.5|-1.2048%;BETB|30.5|30.5|0.0000%'" +
+                " && Array.from(comparison.querySelectorAll('tbody th time')).map(e => e.textContent).join('|') === '2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z'" +
+                " && comparison.querySelector('.managed-eod-previous') === null";
+        awaitPage("complete-board shared observations and original per-listing request provenance",
+            "(() => { const comparison = document.querySelector('.managed-price-comparison'); if (!comparison) return false;" +
+            " return " + output +
+            " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance > section')).map(section =>" +
+            " section.querySelector('h4')?.textContent + '|' + section.querySelector('p')?.textContent + '|' +" +
+            " Array.from(section.querySelectorAll('dd')).map(e => e.textContent).join('|') + '|' +" +
+            " (section.querySelector('.managed-eod-previous') !== null)).join(';') === " + JSONObject.quote(expectedCoverage) +
+            "; })()");
     }
 
     private void assertMarketsDetail(String symbol, String rows, boolean previous) throws Exception {
