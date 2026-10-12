@@ -196,8 +196,10 @@ links and 25-row local pages. It reuses the existing bounded Submissions provide
 and shares Annual's admission budget and checked cooldown. Focused contracts,
 service, client and integrated API/native-fixture tests pass, along with types,
 scoped lint, formatting and source boundaries. The native fixture build fits its
-unchanged asset limit. Independent source review is complete; actual browser and
-native execution remain pending. No live read or release is accepted.
+unchanged asset limit. Independent source review is complete. The revised parent
+passed all seven applicable Actions jobs and all 24 native cases, including APK
+isolation; CodeScene retains its reviewed advisory failure. Actual browser
+acceptance remains pending. No live read or release is accepted.
 
 The following local increment adds a filing reference to the existing note draft.
 It preserves the observed row's identity, original dates and coverage limits,
@@ -207,8 +209,25 @@ and fixture tests, web types, scoped lint/format, Java syntax and source boundar
 pass. Independent source review found no remaining issue, and the native fixture
 build fits the unchanged asset limit. The existing Android Filings
 case now includes append, duplicate prevention, Review, Save and reload after its
-original cancellation and Back checks. Browser and native execution for this
-increment remain pending. No source request, live account or delivery is accepted.
+original cancellation and Back checks. Its first hosted run completed those
+product assertions but failed a final helper that still expected zero saves.
+The reviewed test correction keeps the zero-save check before Review and expects
+the one explicit save after reload. The revised source passed all five applicable
+Actions jobs and all 24 native cases, including APK isolation, on their original
+attempts. CodeScene retains its reviewed advisory failure. Browser acceptance
+remains pending. No live source request, account or delivery is accepted.
+
+The next local layer adds a native **Form** select above the loaded filing rows.
+It filters exact forms before paging and distinguishes matching rows from the
+complete loaded count. Retained packets keep the form and page; a replacement
+resets them and explains an actual reset. The control stays enabled for an empty
+or unavailable response. Section or visit remounts start at All forms. Note
+actions keep their original row identities and explicit Save behavior.
+The 120 affected frontend tests, web types, scoped lint/format, Java syntax and
+unchanged source boundaries pass. Independent frontend review found no remaining
+issue. The extended native journey uses the existing system-picker helper and
+preserves request, draft, note and save assertions. The native fixture bundle fits
+the unchanged asset cap. Actual browser and native acceptance remain pending.
 
 The shared-interval candidate in draft PR89 adds Start and End to the three-listing
 Markets comparison. It ranks all three listings over the selected common dates,

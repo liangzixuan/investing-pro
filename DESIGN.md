@@ -151,6 +151,11 @@ note draft. Explain draft-only scope once above the list and show refusal or
 confirmation beside the row. Keep unavailable actions focusable with a visible
 outline. A removed focused row may return focus to the stable results region;
 never pull focus from the note editor or another control.
+Keep a labelled native Form select above the local filing count and rows. Use a
+44px control that wraps within narrow layouts. State filtered counts against the
+loaded packet; keep original source coverage and truncation beside their data.
+An empty packet keeps the selector visible with All forms, avoiding a disappearing
+keyboard target. Use the native picker rather than a custom menu.
 
 At 760px and below, use a single-column workspace and three fixed bottom
 destinations in the same order. Reserve bottom space including the safe-area

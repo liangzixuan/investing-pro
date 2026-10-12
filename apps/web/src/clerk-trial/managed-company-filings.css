@@ -18,6 +18,40 @@
 .clerk-trial.managed-frame .managed-filings-results {
   min-width: 0;
 }
+.clerk-trial.managed-frame .managed-filings-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  margin-block: 16px;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-filings-filter label {
+  color: var(--managed-muted);
+  font-size: 0.8rem;
+}
+.clerk-trial.managed-frame .managed-filings-form-select {
+  min-height: 44px;
+  min-width: 0;
+  width: min(100%, 24rem);
+  max-width: 100%;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  font: inherit;
+}
+.clerk-trial.managed-frame .managed-filings-filter p {
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-filings-filter-reset {
+  color: var(--managed-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-filter-reset:empty {
+  display: none;
+}
 .clerk-trial.managed-frame
   .managed-company-filings
   .managed-filings-results:focus-visible {

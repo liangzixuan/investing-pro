@@ -18,6 +18,21 @@ SEC filing-index link. An absent report date remains unavailable. The page does
 not infer a document title, filing contents, materiality or investment meaning.
 Previous and next pages move through 25 local rows without another request.
 
+Use **Form** to narrow the loaded rows. **All forms** restores the complete loaded
+list; exact forms and amendments remain separate choices. The count compares the
+filtered rows with all rows in this packet. It does not describe every filing in
+the requested window or replace the source's truncation count. This follows the
+form-filtering convention in [SEC company search](https://www.sec.gov/edgar/browse/),
+adapted here to the already loaded metadata.
+
+Changing the form returns to page one without another request. A pending refresh,
+Cancel or failure retaining the same packet also retains the filter and page.
+A new response resets both and announces an actual reset. Empty and unavailable
+packets leave the Form control enabled with only All forms and an explanation.
+The filter belongs to the mounted results view: switching sections or closing
+the visit clears it. Filing-note actions still use the original observed rows,
+and filtering never changes or saves the complete note draft.
+
 The result retains its original inclusive window, request start, completion and
 source retrieval time. A failed source attempt has a checked time rather than a
 claimed successful retrieval. A successful response with no matching filings is
