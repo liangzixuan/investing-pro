@@ -13,6 +13,8 @@ import {
   type ManagedEodCloseDto,
   type ManagedEodHistoryResponseDto,
   type ManagedEodIdentity,
+  type ManagedSecFilingsResponseDto,
+  type PersonalSecRecentFilingDto,
   type PersonalSecAnnualEvidenceResponseDto,
   type PersonalSecAnnualPairDto,
   type PersonalSecurityMasterSearchResultDto,
@@ -27,6 +29,7 @@ import {
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
+import { filingReferenceNoteExcerpt } from "./managed-filings-note";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
 import { ManagedEodAccess } from "./managed-eod-access";
@@ -978,6 +981,82 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Price comparison added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private filingsNoteProposal(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding a filing reference.",
+      };
+    const filings = this.filings.getSnapshot();
+    if (
+      this.state.research?.section !== "filings" ||
+      filings.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose a filing from the current Filings result before adding it.",
+      };
+    if (filings.running)
+      return {
+        note: null,
+        reason: "Wait for the filings request to finish or cancel it.",
+      };
+    const excerpt = filingReferenceNoteExcerpt(
+      response,
+      filing,
+      filings.showingPrevious,
+    );
+    if (excerpt === null)
+      return {
+        note: null,
+        reason: "Choose a filing from the observed Filings result.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason: "This exact filing reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getFilingsNoteAction(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.filingsNoteProposal(selection, response, filing);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendFilingReferenceToResearchNote(
+    selection: ManagedResearchSelection,
+    response: ManagedSecFilingsResponseDto,
+    filing: PersonalSecRecentFilingDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.filingsNoteProposal(selection, response, filing);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Filing reference added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 
 import { ManagedFilingsResults } from "./ManagedFilingsResults";
+import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 
 import {
   type ManagedCompanyFilingsState,
@@ -15,7 +16,13 @@ function loadLabel(running: boolean, hasResponse: boolean) {
   return hasResponse ? "Refresh filings" : "Load filings";
 }
 
-export function ManagedCompanyFilings({ model }: { model: FilingsModel }) {
+export function ManagedCompanyFilings({
+  model,
+  noteActions,
+}: {
+  model: FilingsModel;
+  noteActions?: ManagedFilingsNoteActions;
+}) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -90,7 +97,12 @@ export function ManagedCompanyFilings({ model }: { model: FilingsModel }) {
       </p>
 
       <PreviousFilingsAttempt state={state} />
-      {state.response && <ManagedFilingsResults response={state.response} />}
+      {state.response && (
+        <ManagedFilingsResults
+          response={state.response}
+          {...(noteActions ? { noteActions } : {})}
+        />
+      )}
 
       <p className="managed-filings-scope">
         Loading and paging leave your watchlist and notes unchanged. Cancel

@@ -146,6 +146,11 @@ restores focus after the origin is visible; route and Android Back behavior stay
 with their existing owners. Filings uses a compact dated list with original SEC
 links, local page controls and a stable results region. Keep source coverage and
 previous-result notices beside the data; use the same 44px section controls.
+Each filing has a quiet 44px action that adds its dated reference to the existing
+note draft. Explain draft-only scope once above the list and show refusal or
+confirmation beside the row. Keep unavailable actions focusable with a visible
+outline. A removed focused row may return focus to the stable results region;
+never pull focus from the note editor or another control.
 
 At 760px and below, use a single-column workspace and three fixed bottom
 destinations in the same order. Reserve bottom space including the safe-area

@@ -212,6 +212,16 @@ and the Markets board: ordered loading, Cancel and late-response rejection, row
 selection and return to the mounted watchlist draft.
 These are fixture results, not live-provider or physical-device results.
 
+The Filings journey uses fixed invented SEC metadata. It checks 25-row local
+paging, retained provenance through cancellation and failure, empty replacement,
+native Back and rejection of late results. After those zero-write checks, a new
+visit explicitly loads a fresh packet and adds its page-two reference to the
+existing reordered note draft. A second activation must leave the exact note
+unchanged. Review, explicit Save and reload must preserve both complete notes,
+listing order and version while adding no source read. This extends the existing
+case and requires its own successful emulator run; source and fixture tests alone
+do not establish native acceptance.
+
 The Markets journey also asserts the three-listing shared-date comparison. It
 checks exact raw endpoints, percentage changes and original completion times
 after the existing three loads. A partial refresh leaves one shared date, so

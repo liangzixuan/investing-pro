@@ -61,6 +61,12 @@ watchlist drafts. This advances M2 and the filing-update part of M3; broader new
 complete historical filing coverage and monitoring remain separate work. Exact
 source and delivery acceptance stays in [Current work](CURRENT_WORK.md).
 
+The next layer connects an observed filing to the existing research note. An
+explicit row action retains the filing identity, source dates and coverage limits
+without another request. The user reviews and saves the complete watchlist draft.
+This advances M2's evidence-to-thesis workflow without adding a document reader,
+alerts or automatic monitoring.
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data

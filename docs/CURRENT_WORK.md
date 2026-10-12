@@ -199,6 +199,17 @@ scoped lint, formatting and source boundaries. The native fixture build fits its
 unchanged asset limit. Independent source review is complete; actual browser and
 native execution remain pending. No live read or release is accepted.
 
+The following local increment adds a filing reference to the existing note draft.
+It preserves the observed row's identity, original dates and coverage limits,
+blocks stale or pending actions and refuses an exact duplicate paragraph. Existing
+text, order and explicit whole-watchlist Save remain unchanged. Focused frontend
+and fixture tests, web types, scoped lint/format, Java syntax and source boundaries
+pass. Independent source review found no remaining issue, and the native fixture
+build fits the unchanged asset limit. The existing Android Filings
+case now includes append, duplicate prevention, Review, Save and reload after its
+original cancellation and Back checks. Browser and native execution for this
+increment remain pending. No source request, live account or delivery is accepted.
+
 The shared-interval candidate in draft PR89 adds Start and End to the three-listing
 Markets comparison. It ranks all three listings over the selected common dates,
 keeps interval counts separate from full-history overlap and preserves each

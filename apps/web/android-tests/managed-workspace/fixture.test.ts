@@ -7,6 +7,7 @@ import {
 import {
   annualNoteDraft,
   createFixture,
+  filingsNoteDraft,
   marketsPriceNoteDraft,
   priceNoteDraft,
   recoveryNoteDraft,
@@ -1411,6 +1412,187 @@ describe("Android managed fixture startup", () => {
 });
 
 describe("bounded invented company filings journey", () => {
+  async function readyForNote() {
+    const fixture = await createFixture("company-filings");
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-zero", "Draft survives native Back");
+    workspace.move("listing-zero", 1);
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+    workspace.openWatchlistAnnual(member);
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    const held = workspace.filings.load();
+    workspace.switchToAnnual();
+    fixture.settleCancelledFilings();
+    await held;
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    await workspace.filings.load();
+    const last = workspace.filings.load();
+    workspace.closeResearch();
+    fixture.settleCancelledFilings();
+    await last;
+    workspace.openWatchlistAnnual(member);
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    return { fixture, workspace };
+  }
+
+  it("appends the exact last-row reference, rejects a duplicate, then saves and reloads the full reordered draft", async () => {
+    const { fixture, workspace } = await readyForNote();
+    const selection = workspace.getSnapshot().research!.selection;
+    const response = workspace.filings.getSnapshot().response!;
+    const filing = response.issuer.filings[25]!;
+    expect(workspace.getFilingsNoteAction(selection, response, filing)).toEqual(
+      {
+        canAppend: true,
+        reason: null,
+      },
+    );
+    expect(
+      workspace.appendFilingReferenceToResearchNote(
+        selection,
+        response,
+        filing,
+      ),
+    ).toMatchObject({ appended: true });
+    const expected = structuredClone(
+      workspace.coordinator.getSnapshot().draft!,
+    );
+    expect(
+      expected.memberships.map((member) => [member.listingId, member.note]),
+    ).toEqual([
+      ["listing-one", "Invented second note"],
+      ["listing-zero", filingsNoteDraft],
+    ]);
+    expect(
+      workspace.appendFilingReferenceToResearchNote(
+        selection,
+        response,
+        filing,
+      ),
+    ).toEqual({
+      appended: false,
+      message: "This exact filing reference is already in the note draft.",
+    });
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: expected,
+      baseVersion: 1,
+      dirty: true,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      filings: 6,
+      filingsAborted: 2,
+      filingsLateResolved: 2,
+      annual: 0,
+      eod: 0,
+      calendar: 0,
+      save: 0,
+      load: 1,
+    });
+    workspace.closeResearch();
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: expected,
+      baseVersion: 2,
+      dirty: false,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: expected,
+      baseVersion: 2,
+      dirty: false,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      filings: 6,
+      filingsAborted: 2,
+      filingsLateResolved: 2,
+      annual: 0,
+      eod: 0,
+      calendar: 0,
+      save: 1,
+      load: 2,
+      token: 0,
+      signOut: 0,
+    });
+    workspace.coordinator.retire();
+  });
+
+  it("refuses altered filing provenance, unrelated notes, ordering, versions and extra reads in the native fixture", async () => {
+    const { fixture, workspace } = await readyForNote();
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    const payload = {
+      ...draft,
+      memberships: draft.memberships.map((member, index) =>
+        index === 1 ? { ...member, note: filingsNoteDraft } : { ...member },
+      ),
+    };
+    const command = {
+      expectedVersion: 1,
+      idempotencyKey: "12345678-1234-4123-8123-123456789012",
+      payload,
+    };
+    const signal = new AbortController().signal;
+    const missingDate = structuredClone(command);
+    missingDate.payload.memberships[1]!.note = filingsNoteDraft.replace(
+      "2026-09-19",
+      "2026-09-20",
+    );
+    const changedOther = structuredClone(command);
+    changedOther.payload.memberships[0]!.note = "Overwritten unrelated note";
+    const reordered = structuredClone(command);
+    reordered.payload.memberships.reverse();
+    for (const changed of [
+      missingDate,
+      changedOther,
+      reordered,
+      { ...command, expectedVersion: 2 },
+    ]) {
+      await expect(fixture.api.save(changed, signal)).rejects.toThrow(
+        "Unexpected fixture operation: save",
+      );
+    }
+    const cancelled = new AbortController();
+    cancelled.abort();
+    await expect(fixture.api.save(command, cancelled.signal)).rejects.toThrow(
+      "Unexpected fixture operation: save",
+    );
+    expect(fixture.getSnapshot().save).toBe(5);
+    const unchanged = await fixture.api.load(signal);
+    expect(unchanged.version).toBe(1);
+    expect(
+      unchanged.payload.memberships.some(
+        (member) => member.note === filingsNoteDraft,
+      ),
+    ).toBe(false);
+    await fixture.api.save(command, signal);
+    await expect(fixture.api.save(command, signal)).rejects.toThrow(
+      "Unexpected fixture operation: save",
+    );
+    expect(() =>
+      fixture.api.recentFilings(
+        {
+          schemaVersion: "1.0.0",
+          catalogSnapshotSha256: fixtureDigest,
+          listingId: "listing-zero",
+          symbol: "ZERO",
+        },
+        signal,
+      ),
+    ).toThrow("Unexpected invented company filings request");
+    expect((await fixture.api.load(signal)).payload).toEqual(payload);
+    expect(fixture.getSnapshot()).toMatchObject({ save: 7, filings: 6 });
+    workspace.coordinator.retire();
+  });
+
   it("uses the real company models for explicit load, cancel, failure, empty replacement and Back", async () => {
     const fixture = await createFixture("company-filings");
     const workspace = new ManagedWorkspace(

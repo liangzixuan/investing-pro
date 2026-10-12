@@ -32,6 +32,8 @@ import { inventedFilingsPacket } from "./filings-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const signOutNoteDraft = "Sign-out review draft";
+export const filingsNoteDraft =
+  "Draft survives native Back Observed SEC filing reference: ZERO (XNAS); CIK 0000000001; Form 8-K; accession 0000000001-26-000026; filed 2026-09-19; report date unavailable; filing index https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm. Source: SEC Submissions; requested window 2026-06-23 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; retrieved 2026-09-20T00:00:01.000Z; completed 2026-09-20T00:00:02.000Z. Only the current recent-filings object was checked; older continuation files were not loaded; complete window coverage is not established. The source lists older continuation files. Filing contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
 export const annualNoteDraft =
   "Annual research draft Observed Annual report: ZERO (XNAS); 10-K 2025-01-01 to 2025-12-31; Revenues revenue USD 1000; NetIncomeLoss USD 100; net margin 10%. Same-filing annual comparison: prior 2024-01-01 to 2024-12-31; Revenues revenue USD 800 to 1000, change USD 200 (25%); NetIncomeLoss USD -80 to 100, change USD 180 (Unavailable: prior value is negative). Reported net margin -10% to 10%, change 20 percentage points. Period length, accounting changes and restatements are unadjusted; not as-originally-filed history or organic growth. Additional same-filing annual period: 2023-01-01 to 2023-12-31; Revenues revenue USD 640; NetIncomeLoss USD 32; net margin 5%. Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%). Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
 export const priceNoteDraft =
@@ -428,11 +430,11 @@ export async function createFixture(
         request?.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO" ||
-        state.filings >= 5
+        state.filings >= 6
       )
         throw new Error("Unexpected invented company filings request");
       count("filings");
-      if (state.filings === 1)
+      if (state.filings === 1 || state.filings === 6)
         return Promise.resolve(inventedFilingsPacket(identity));
       if (state.filings === 3)
         return Promise.reject(new TrialApiError("unavailable"));
@@ -630,40 +632,53 @@ export async function createFixture(
       const expected = {
         ...payload,
         memberships:
-          scenario === "markets-price-handoff"
+          scenario === "company-filings"
             ? [
                 payload.memberships[1]!,
-                {
-                  ...payload.memberships[0]!,
-                  note: "Draft survives native Back",
-                },
-                { ...marketsCohort[1], note: marketsPriceNoteDraft },
+                { ...payload.memberships[0]!, note: filingsNoteDraft },
               ]
-            : scenario === "annual-note" || scenario === "price-comparison-note"
-              ? payload.memberships.map((member, index) =>
-                  index === 0
-                    ? {
-                        ...member,
-                        note:
-                          scenario === "annual-note"
-                            ? annualNoteDraft
-                            : priceNoteDraft,
-                      }
-                    : member,
-                )
-              : [
-                  ...payload.memberships,
+            : scenario === "markets-price-handoff"
+              ? [
+                  payload.memberships[1]!,
                   {
-                    ...marketsCohort[0],
-                    note: "Company draft captured in research",
+                    ...payload.memberships[0]!,
+                    note: "Draft survives native Back",
                   },
-                ],
+                  { ...marketsCohort[1], note: marketsPriceNoteDraft },
+                ]
+              : scenario === "annual-note" ||
+                  scenario === "price-comparison-note"
+                ? payload.memberships.map((member, index) =>
+                    index === 0
+                      ? {
+                          ...member,
+                          note:
+                            scenario === "annual-note"
+                              ? annualNoteDraft
+                              : priceNoteDraft,
+                        }
+                      : member,
+                  )
+                : [
+                    ...payload.memberships,
+                    {
+                      ...marketsCohort[0],
+                      note: "Company draft captured in research",
+                    },
+                  ],
       };
       // One invented full-list save only. Other cases still require zero writes.
       if (
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
         (scenario === "price-comparison-note" && state.eod !== 1) ||
+        (scenario === "company-filings" &&
+          (state.filings !== 6 ||
+            state.filingsAborted !== 2 ||
+            state.filingsLateResolved !== 2 ||
+            state.annual !== 0 ||
+            state.eod !== 0 ||
+            state.calendar !== 0)) ||
         (scenario === "markets-price-handoff" &&
           (state.marketsResolve !== 3 ||
             state.marketsEod !== 5 ||
