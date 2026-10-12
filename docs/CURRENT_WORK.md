@@ -190,7 +190,29 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The active comparison-ordering increment adds Board order, Highest raw change
+The active Annual trend increment adds an initially collapsed **Reported annual
+trend** to the managed financial overview. It charts Revenue or Net income across
+two or three admitted periods from one named basis and filing. Exact tables,
+original dates and unavailable explanations remain visible. Stable basis and
+metric selectors retain their choices and keyboard focus through replacements;
+leaving the Annual view resets these presentation choices.
+
+Local verification passed 29 projection tests and 69 affected component/report
+tests, web types, scoped lint/format and source boundaries. Independent source
+reviews found no remaining defect. The original boundary failure came from a
+test matcher; its replacement passed all 11 chart tests and the unchanged guard.
+Actual-component Brave checks recorded 31 observations at 1440, 390 and 320
+pixels. They covered signed and zero amounts, exact tooltips, distinct bases,
+missing or restricted history, unsafe coordinates, focus through replacements,
+retained refresh dates, failure, cancellation and late-response rejection.
+Explicit note append and Back preserved the draft; retirement cleared it and
+the chart. No document overflow or console warnings/errors were observed.
+These checks used invented data and excluded Save/reload, live accounts and
+provider calls. Native Annual assertions are prepared; their hosted execution
+and source acceptance remain pending. See the
+[trend contract](MANAGED_SEC_ANNUAL.md#optional-reported-annual-trend).
+
+The accepted comparison-ordering increment adds Board order, Highest raw change
 and Lowest raw change to the complete three-listing shared-date comparison.
 Ordering uses exact endpoint ratios before display rounding. Exact ties retain
 symbol, exchange and listing-ID order in both directions. The table and its source
@@ -208,8 +230,11 @@ The results region kept keyboard focus through refresh and unavailable states;
 the narrow table supports arrow-key scrolling without document overflow.
 No console errors were observed. Native picker keyboard selection was not
 established by these browser checks. The existing invented Android journey now
-exercises all three choices and their request/draft invariants; execution and
-hosted acceptance remain pending. See the
+exercises all three choices and their request/draft invariants. All seven hosted
+checks passed for `a31c7226a06cf4d9e9ce066476b4aca18db93696`, including both CI
+platforms and Android. [PR84](https://github.com/liangzixuan/investing-pro/pull/84)
+merged as `a968e4d9c8fa82850bab15c8a498746ed6bf99fc` on October 12 at 06:18:12 UTC.
+Actual-main and live delivery remain separate. See the
 [comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The accepted MSFT increment adds a fourth Discover listing and a third Annual

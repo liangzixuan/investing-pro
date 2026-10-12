@@ -1784,6 +1784,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).slice(0,2).map(e => e.children.length).join(',') === '2,2'" +
             " && document.querySelector('.managed-annual-provenance')?.open === false");
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualTrendPresentation();
+        awaitPage("trend presentation preserves the exact report and draft", exactReport +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualNoteCounts(1, 0, 1);
         click(history + " > summary");
         awaitPage("three adjacent annual periods retain exact dates, values and original inputs",
             "document.querySelector(" + JSONObject.quote(history) + ")?.open === true" +
@@ -1998,6 +2002,41 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_NOTE) +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
+    }
+
+    private void assertAnnualTrendPresentation() throws Exception {
+        String controls = "document.querySelector('[data-annual-trend-basis]')?.disabled === false" +
+            " && document.querySelector('[data-annual-trend-metric]')?.disabled === false";
+        awaitPage("annual trend starts collapsed with explicit basis and metric choices",
+            "document.querySelector('.managed-annual-trend')?.open === false" +
+            " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-metric]')?.value === 'revenue'" +
+            " && Array.from(document.querySelectorAll('[data-annual-trend-basis] option')).map(e => e.value).join(',') === 'RevenueFromContractWithCustomerExcludingAssessedTax,Revenues,SalesRevenueNet'" +
+            " && document.querySelector('.managed-annual-trend-canvas') === null && " + controls);
+        click(".managed-annual-trend > summary");
+        awaitPage("opening trend renders only the admitted three-period revenue basis",
+            "document.querySelector('.managed-annual-trend')?.open === true" +
+            " && document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Revenue in USD across 3 reported annual periods')" +
+            " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
+        chooseComparisonOption("[data-annual-trend-metric]", "net_income", "Net income");
+        awaitPage("native metric choice renders the same periods for signed net income",
+            "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
+            " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
+        chooseComparisonOption("[data-annual-trend-basis]", "SalesRevenueNet", "SalesRevenueNet");
+        awaitPage("missing basis removes the old chart and preserves both selectors",
+            "document.querySelector('.managed-annual-trend-canvas') === null" +
+            " && document.querySelector('.managed-annual-trend [role=status]')?.textContent.includes('no valid current annual pair')" +
+            " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income' && " + controls);
+        chooseComparisonOption("[data-annual-trend-basis]", "Revenues", "Revenues");
+        awaitPage("returning to the admitted basis keeps the chosen metric",
+            "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
+            " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
+        click(".managed-annual-trend > summary");
+        awaitPage("closing trend removes its canvas without resetting controls",
+            "document.querySelector('.managed-annual-trend')?.open === false" +
+            " && document.querySelector('.managed-annual-trend-canvas') === null" +
+            " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income'");
     }
 
     private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {

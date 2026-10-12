@@ -283,6 +283,12 @@ describe("managed annual refresh", () => {
         'aria-label="Reported annual comparison Revenues"',
       );
       expect(html()).toContain("Prior: 2024-01-01 to 2024-12-31.");
+      expect(html()).toContain(
+        '<details class="managed-annual-trend"><summary>Reported annual trend</summary>',
+      );
+      expect(html()).toContain("data-annual-trend-basis");
+      expect(html()).toContain("data-annual-trend-metric");
+      expect(html()).not.toContain("managed-annual-trend-canvas");
       held.reject(error);
       await pending;
       expect(model.getSnapshot()).toMatchObject({
@@ -294,6 +300,8 @@ describe("managed annual refresh", () => {
       expect(JSON.stringify(model.getSnapshot().response)).toBe(oldBytes);
       expect(html()).toContain(message);
       expect(html()).toContain("This refresh has not confirmed newer evidence");
+      expect(html()).toContain("Reported annual trend");
+      expect(html()).toContain("2 periods · filing");
       expect(load).toHaveBeenCalledTimes(2);
       await model.load();
       expect(load).toHaveBeenCalledTimes(3);
@@ -313,6 +321,10 @@ describe("managed annual refresh", () => {
         'aria-label="Reported annual comparison Revenues"',
       );
       expect(html()).toContain("Reported annual comparison unavailable.");
+      expect(html()).toContain("Reported annual trend");
+      expect(html()).toContain("at least two adjacent annual periods");
+      expect(html()).not.toContain("2 periods · filing");
+      expect(html()).not.toContain("managed-annual-trend-canvas");
     },
   );
 
@@ -362,6 +374,8 @@ describe("managed annual refresh", () => {
       expect(model.getSnapshot().showingPrevious).toBe(true);
       expect(html()).toContain("refresh cancelled");
       expect(html()).toContain(old.evidence.generation.sha256);
+      expect(html()).toContain("Reported annual trend");
+      expect(html()).toContain("at least two adjacent annual periods");
       await model.load();
       if (late === "success") held.resolve(old);
       else
@@ -379,6 +393,10 @@ describe("managed annual refresh", () => {
       });
       expect(readError).not.toHaveBeenCalled();
       expect(load).toHaveBeenCalledTimes(3);
+      expect(html()).toContain(next.evidence.generation.sha256);
+      expect(html()).not.toContain(old.evidence.generation.sha256);
+      expect(html()).toContain("Reported annual trend");
+      expect(html()).not.toContain("managed-annual-trend-canvas");
     },
   );
 
@@ -406,6 +424,7 @@ describe("managed annual refresh", () => {
     });
     expect(html()).not.toContain(old.evidence.generation.sha256);
     expect(html()).not.toContain("Showing the previous report");
+    expect(html()).not.toContain("managed-annual-trend");
   });
 
   it("clears previous evidence when a newer response has the wrong identity", async () => {

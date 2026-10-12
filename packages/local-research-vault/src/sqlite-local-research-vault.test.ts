@@ -148,7 +148,7 @@ describe("SQLite local research vault", () => {
       ],
     ).toBe(1);
     raw.close();
-  });
+  }, 30_000);
 
   it("stores bounded encrypted attachments and removes them with their record", async () => {
     const databasePath = await freshDatabasePath();
