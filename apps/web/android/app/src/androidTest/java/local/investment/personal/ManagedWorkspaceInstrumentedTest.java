@@ -143,6 +143,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Fixture index is absent", new File(fixtureDirectory, "index.html").isFile());
         if (testName.getMethodName().equals("catalogStartupFailureRecoversWithoutReloadOrDraftLoss"))
             selectFixtureScenario("catalog-startup-recovery");
+        if (testName.getMethodName().equals("companyFilingsPagingCancelAndBackPreserveDraft"))
+            selectFixtureScenario("company-filings");
         boolean coldCompanyLink = testName.getMethodName().equals("companyLinkDirectEntryAndBackPreserveDraft");
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
@@ -1026,6 +1028,99 @@ public class ManagedWorkspaceInstrumentedTest {
         assertReturnedRootHistory("listing-zero", "price");
         assertFixtureBoundary();
         Log.i("ManagedEod", "phase=late-discarded-back-root, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+    }
+
+    @Test
+    public void companyFilingsPagingCancelAndBackPreserveDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareDraftAndOpenAnnual();
+        click(".managed-company-sections button[aria-label='Filings section for ZERO']");
+        awaitPage("Filings opens unloaded with heading focus and no source request",
+            "document.activeElement?.id === 'managed-filings-heading'" +
+            " && document.querySelector('#managed-filings-heading')?.textContent === 'SEC filings'" +
+            " && document.querySelector('.managed-filings-results') === null" +
+            " && document.querySelector('.managed-filings-toolbar .trial-actions > button')?.textContent === 'Load filings'");
+        assertFilingsDraftAndCounts(0, 0, 0);
+        assertCompanyHistory("listing-zero", "filings", false);
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 filings')" +
+            " && document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
+            " && document.querySelector('.managed-filings-period')?.textContent.includes('CIK 0000000001')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Request started 2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && document.querySelector('.managed-filings-source a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json'";
+        awaitPage("explicit load shows exact dates, identity and original SEC index link", loaded +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.textContent.includes('Form 10-Q')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-list > li:first-child dd')).map(e => e.textContent).join('|') === '2026-09-19|2026-06-30'");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        retainAnnualNoteFrame("companyFilingsFirstRow", ".managed-filings-list > li:first-child", ".managed-filings-list > li:first-child", 1);
+        click(".managed-filings-pagination > button:last-child");
+        awaitPage("local page two keeps focus and exposes the last exact accession", loaded +
+            " && document.querySelector('.managed-filings-count')?.textContent.includes('Page 2 of 2')" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 1" +
+            " && document.querySelector('.managed-filings-list a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm'" +
+            " && document.querySelector('.managed-filings-list')?.textContent.includes('Not reported')" +
+            " && document.querySelector('.managed-filings-pagination > button:last-child')?.getAttribute('aria-disabled') === 'true'" +
+            " && document.activeElement === document.querySelector('.managed-filings-pagination > button:last-child')");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        retainAnnualNoteFrame("companyFilingsPageTwo", ".managed-filings-count", ".managed-filings-count, .managed-filings-list > li, .managed-filings-pagination", 3);
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        awaitPage("refresh retains the original packet and offers Cancel", loaded +
+            " && document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'" +
+            " && document.querySelector('.managed-filings-toolbar .trial-actions > button:last-child')?.textContent === 'Cancel filings'" +
+            " && document.querySelector('.managed-filings-warning')?.textContent.includes('previous filings response')");
+        click(".managed-company-sections button[aria-label='Annual section for ZERO']");
+        awaitPage("switching cancels filings and focuses unloaded Annual",
+            "document.activeElement?.id === 'managed-annual-heading' && document.querySelector('.managed-company-filings') === null");
+        assertFilingsDraftAndCounts(2, 1, 0);
+        click("#settle-cancelled-filings");
+        assertFilingsDraftAndCounts(2, 1, 1);
+        click(".managed-company-sections button[aria-label='Filings section for ZERO']");
+        awaitPage("return retains accepted filings after late completion", loaded +
+            " && document.activeElement?.id === 'managed-filings-heading'");
+        assertFilingsDraftAndCounts(2, 1, 1);
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        awaitPage("failed explicit refresh retains original provenance", loaded +
+            " && document.querySelector('.managed-filings-status')?.getAttribute('role') === 'alert'" +
+            " && document.querySelector('.managed-filings-warning')?.textContent.includes('previous filings response')");
+        assertFilingsDraftAndCounts(3, 1, 1);
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        awaitPage("valid empty response replaces earlier rows without claiming complete history",
+            "document.querySelector('.managed-filings-count')?.textContent === 'No matching filings were observed in the checked source object.'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
+            " && document.querySelector('.managed-filings-warning') === null" +
+            " && document.querySelector('.managed-filings-results')?.textContent.includes('Older continuation files were not loaded')");
+        assertFilingsDraftAndCounts(4, 1, 1);
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
+        assertCompanyHistory("listing-zero", "filings", false);
+        pressBack();
+        assertClosedDraft(true);
+        assertFilingsDraftAndCounts(5, 2, 1);
+        click("#settle-cancelled-filings");
+        awaitPage("late filings cannot recreate a closed visit", "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-filings-results') === null");
+        assertFilingsDraftAndCounts(5, 2, 2);
+        assertReturnedRootHistory("listing-zero", "filings");
+        assertEquals("Filings journey preserves its document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+        Log.i("ManagedFilings", "phase=pages-cancel-failure-empty-back-late; " + pageDiagnostic());
+    }
+
+    private void assertFilingsDraftAndCounts(int reads, int aborted, int late) throws Exception {
+        awaitPage("filings counts and complete draft stay in their owners",
+            DIAGNOSTICS + ".filings === " + reads + " && " + DIAGNOSTICS + ".filingsAborted === " + aborted +
+            " && " + DIAGNOSTICS + ".filingsLateResolved === " + late +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".load === 1" +
+            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true" +
+            " && " + DRAFT + ".memberships?.length === 2" +
+            " && " + DRAFT + ".memberships[0]?.listingId === 'listing-one'" +
+            " && " + DRAFT + ".memberships[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships[1]?.listingId === 'listing-zero'" +
+            " && " + DRAFT + ".memberships[1]?.note === " + JSONObject.quote(NOTE));
     }
 
     @Test
@@ -2667,7 +2762,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && (document.querySelector('.managed-company-visit') === null || (" +
             "document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
             " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
-            " && document.querySelectorAll('.managed-company-sections button').length === 2" +
+            " && document.querySelectorAll('.managed-company-sections button').length === 3" +
             " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
             " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
@@ -2707,10 +2802,10 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Company section controls did not scroll into view", sectionsScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String sectionsVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
             "'.managed-company-sections button, #managed-eod-heading')); const v = visualViewport;" +
-            " return v && targets.length === 3 && targets.every(e => { const r = e.getBoundingClientRect();" +
+            " return v && targets.length === 4 && targets.every(e => { const r = e.getBoundingClientRect();" +
             " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("both section controls and active Price heading fully visible", sectionsVisible);
+        awaitPage("all three section controls and active Price heading fully visible", sectionsVisible);
         awaitPage("retained Price evidence before section controls capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchCompanySections");
@@ -2863,7 +2958,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
-            scenarioName.equals("watchlist-export"));
+            scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);
@@ -3070,7 +3165,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private String companyUrl(String listing, String section) {
         assertTrue("Only fixed invented company IDs", listing.matches("listing-(zero|alfa|beta-a|beta-c)"));
-        assertTrue("Only supported public sections", section.equals("price") || section.equals("annual"));
+        assertTrue("Only supported public sections", section.equals("price") || section.equals("annual") || section.equals("filings"));
         return "https://localhost/?company=" + listing + "&section=" + section;
     }
 

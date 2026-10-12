@@ -1,5 +1,8 @@
+import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  MANAGED_SEC_FILINGS_LIMITS,
+  MANAGED_SEC_FILINGS_PATH,
   MANAGED_CATALOG_LIMITS,
   MANAGED_WATCHLIST_LIMITS,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
@@ -13,8 +16,9 @@ import { TrialApiError } from "./api";
 import {
   createManagedApi,
   ManagedCatalogChangedError,
-  ManagedAnnualCooldownError,
+  ManagedSecCooldownError,
   ManagedAnnualReportError,
+  ManagedSecFilingsError,
   ManagedEodHistoryError,
   ManagedEodCooldownError,
 } from "./managed-api";
@@ -800,7 +804,7 @@ describe("managed annual transport", () => {
     );
     await expect(
       api.annualReport(annualRequest(), abort.signal),
-    ).rejects.toEqual(new ManagedAnnualCooldownError(nextAllowedAt));
+    ).rejects.toEqual(new ManagedSecCooldownError(nextAllowedAt));
     for (const body of [
       { error: "rate_limited" },
       { error: "rate_limited", nextAllowedAt, ownerId: "not-public" },
@@ -854,5 +858,118 @@ describe("managed annual transport", () => {
     ).rejects.toMatchObject({ code: "invalid_request" });
     expect(session.getToken).not.toHaveBeenCalled();
     expect(fetcher).not.toHaveBeenCalled();
+  });
+});
+
+const filingsRequest = {
+  schemaVersion: "1.0.0" as const,
+  catalogSnapshotSha256: filingsSelection.catalogSnapshotSha256,
+  listingId: filingsSelection.listing.listingId,
+  symbol: filingsSelection.listing.symbol,
+};
+describe("managed company filings transport", () => {
+  it("posts only the captured identity and strictly decodes an owned bounded packet", async () => {
+    const { api, fetcher, abort } = fixture();
+    const raw = filingsResponse();
+    fetcher.mockResolvedValue(Response.json(raw));
+    expect(fetcher).not.toHaveBeenCalled();
+    const result = await api.recentFilings(filingsRequest, abort.signal);
+    expect(fetcher).toHaveBeenCalledOnce();
+    const [url, options] = fetcher.mock.calls[0]!;
+    expect(url).toBe(origin + MANAGED_SEC_FILINGS_PATH);
+    expect(options).toMatchObject({
+      method: "POST",
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+      body: JSON.stringify(filingsRequest),
+      headers: {
+        Authorization: "Bearer synthetic-token",
+        "Content-Type": "application/json",
+      },
+    });
+    expect(result).toEqual(raw);
+    expect(result).not.toBe(raw);
+    expect(Object.isFrozen(result.issuer.filings)).toBe(true);
+  });
+  it("refuses caller-supplied dates or CIK without sending a request", async () => {
+    const { api, fetcher, abort } = fixture();
+    await expect(
+      api.recentFilings(
+        { ...filingsRequest, cik: "0000000001" } as typeof filingsRequest,
+        abort.signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+  it.each([
+    [408, "request_timeout"],
+    [503, "not_configured"],
+    [503, "unavailable"],
+  ] as const)(
+    "checks HTTP %s %s as a bounded service failure",
+    async (status, error) => {
+      const { api, fetcher, abort } = fixture();
+      fetcher.mockResolvedValue(Response.json({ error }, { status }));
+      await expect(
+        api.recentFilings(filingsRequest, abort.signal),
+      ).rejects.toEqual(new ManagedSecFilingsError(error));
+    },
+  );
+  it("distinguishes checked admission cooldown from upstream rate limiting and catalog change", async () => {
+    const { api, fetcher, abort } = fixture();
+    const nextAllowedAt = "2026-10-12T01:00:00.000Z";
+    fetcher
+      .mockResolvedValueOnce(
+        Response.json(
+          { error: "rate_limited", nextAllowedAt },
+          { status: 429 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json(filingsResponse(0, "rate_limited")))
+      .mockResolvedValueOnce(
+        Response.json({ error: "catalog_changed" }, { status: 409 }),
+      );
+    await expect(
+      api.recentFilings(filingsRequest, abort.signal),
+    ).rejects.toEqual(new ManagedSecCooldownError(nextAllowedAt));
+    expect(
+      (await api.recentFilings(filingsRequest, abort.signal)).issuer.status,
+    ).toBe("rate_limited");
+    await expect(
+      api.recentFilings(filingsRequest, abort.signal),
+    ).rejects.toBeInstanceOf(ManagedCatalogChangedError);
+  });
+  it.each([
+    { error: "rate_limited" },
+    { error: "rate_limited", nextAllowedAt: "tomorrow" },
+    { error: "unavailable", nextAllowedAt: "2026-10-12T01:00:00.000Z" },
+  ])("refuses malformed cooldown %s", async (body) => {
+    const { api, fetcher, abort } = fixture();
+    fetcher.mockResolvedValue(Response.json(body, { status: 429 }));
+    await expect(
+      api.recentFilings(filingsRequest, abort.signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+  });
+  it("cancels streamed content at the Filings response ceiling", async () => {
+    const { api, fetcher, abort } = fixture();
+    const cancel = vi.fn();
+    fetcher.mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new Uint8Array(MANAGED_SEC_FILINGS_LIMITS.responseBytes + 1),
+            );
+          },
+          cancel,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await expect(
+      api.recentFilings(filingsRequest, abort.signal),
+    ).rejects.toMatchObject({ code: "invalid_response" });
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });

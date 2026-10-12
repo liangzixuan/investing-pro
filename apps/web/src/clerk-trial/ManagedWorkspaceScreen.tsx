@@ -599,6 +599,7 @@ export function ManagedWorkspaceScreen({
                 <ManagedCompanyResearch
                   research={discovery.research}
                   annual={workspace.annual}
+                  filings={workspace.filings}
                   eod={workspace.eod}
                   onBack={() => {
                     if (
@@ -666,7 +667,8 @@ export function ManagedWorkspaceScreen({
                       return;
                     if (navigation) navigation.section(section);
                     else if (section === "annual") workspace.switchToAnnual();
-                    else workspace.switchToEod();
+                    else if (section === "eod") workspace.switchToEod();
+                    else if (section === "filings") workspace.switchToFilings();
                   }}
                 />
               )}

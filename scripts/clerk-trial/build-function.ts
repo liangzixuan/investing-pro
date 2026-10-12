@@ -3,19 +3,19 @@ import { resolve } from "node:path";
 import { build } from "tsup";
 
 import { validateClerkTrialFunctionConfiguration } from "../../apps/api/src/clerk-trial-config";
-import { validateManagedSecAnnualConfiguration } from "../../apps/api/src/managed-sec-annual-config";
+import { validateManagedSecConfiguration } from "../../apps/api/src/managed-sec-config";
 import { validateManagedEodConfiguration } from "../../apps/api/src/managed-eod-config";
 
 const surface = process.argv[2];
 const configPath = process.argv[3];
-const annualConfigPath = process.argv[4];
+const secConfigPath = process.argv[4];
 const eodConfigPath = process.argv[5];
 if (
   (surface !== "demo" && surface !== "managed") ||
   !configPath ||
   (surface === "demo"
     ? process.argv.length !== 4
-    : process.argv.length !== 6 || !annualConfigPath || !eodConfigPath)
+    : process.argv.length !== 6 || !secConfigPath || !eodConfigPath)
 )
   throw new Error(
     "Pass demo and its server configuration, or managed and separate server, SEC and EOD configuration paths.",
@@ -26,10 +26,10 @@ const { environment, auth, allowedOrigins } =
   );
 if (surface === "managed" && environment !== "production")
   throw new Error("The managed workspace requires the production profile.");
-const annualConfiguration =
+const secConfiguration =
   surface === "managed"
-    ? validateManagedSecAnnualConfiguration(
-        JSON.parse(await readFile(annualConfigPath!, "utf8")) as unknown,
+    ? validateManagedSecConfiguration(
+        JSON.parse(await readFile(secConfigPath!, "utf8")) as unknown,
       )
     : null;
 const eodConfiguration =
@@ -64,7 +64,7 @@ await build({
   define: {
     ...(surface === "managed"
       ? {
-          __MANAGED_SEC_ANNUAL_CONFIG__: JSON.stringify(annualConfiguration),
+          __MANAGED_SEC_CONFIG__: JSON.stringify(secConfiguration),
           __MANAGED_EOD_CONFIG__: JSON.stringify(eodConfiguration),
         }
       : {}),

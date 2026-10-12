@@ -10,6 +10,11 @@ import {
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS,
+  MANAGED_SEC_FILINGS_PATH,
+  MANAGED_SEC_FILINGS_LIMITS,
+  parseManagedSecFilingsRequest,
+  parseManagedSecFilingsResponse,
+  parseManagedSecFilingsError,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
@@ -36,6 +41,10 @@ import {
   type ManagedSecAnnualService,
 } from "./managed-sec-annual-service";
 import {
+  ManagedSecFilingsServiceError,
+  type ManagedSecFilingsService,
+} from "./managed-sec-filings-service";
+import {
   ManagedEodServiceError,
   type ManagedEodService,
 } from "./managed-eod-service";
@@ -58,6 +67,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly auth: ClerkTrialAuth;
   readonly catalog: ManagedCatalogService;
   readonly annual?: ManagedSecAnnualService;
+  readonly filings?: ManagedSecFilingsService;
   readonly eod?: ManagedEodService;
   readonly calendar?: ManagedEconomicCalendarService;
   readonly openRepository: (
@@ -81,6 +91,7 @@ const PATHS: readonly string[] = [
   MANAGED_CATALOG_RESOLVE_PATH,
   MANAGED_WATCHLIST_PATH,
   MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+  MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
 ];
@@ -134,6 +145,7 @@ function methods(path: string): readonly string[] {
   if (path === MANAGED_WATCHLIST_PATH) return ["GET", "POST"];
   return path === MANAGED_CATALOG_RESOLVE_PATH ||
     path === MANAGED_SEC_ANNUAL_EVIDENCE_PATH ||
+    path === MANAGED_SEC_FILINGS_PATH ||
     path === MANAGED_EOD_HISTORY_PATH
     ? ["POST"]
     : ["GET"];
@@ -150,6 +162,7 @@ function admitRoute(request: Request) {
         MANAGED_WATCHLIST_PATH,
         MANAGED_CATALOG_RESOLVE_PATH,
         MANAGED_SEC_ANNUAL_EVIDENCE_PATH,
+        MANAGED_SEC_FILINGS_PATH,
         MANAGED_EOD_HISTORY_PATH,
       ] as readonly string[]
     ).includes(url.pathname)
@@ -322,8 +335,21 @@ function errorResponse(
     status = code === "request_timeout" ? 408 : 503;
   } else if (
     error instanceof ManagedSecAnnualServiceError ||
+    error instanceof ManagedSecFilingsServiceError ||
     error instanceof ManagedEodServiceError
   ) {
+    if (
+      error instanceof ManagedSecFilingsServiceError &&
+      parseManagedSecFilingsError(
+        error.code === "rate_limited"
+          ? { error: error.code, nextAllowedAt: error.nextAllowedAt }
+          : { error: error.code },
+      ) === null
+    )
+      return new Response(JSON.stringify({ error: "unavailable" }), {
+        status: 503,
+        headers,
+      });
     if (
       error instanceof ManagedEodServiceError &&
       parseManagedEodError(
@@ -460,6 +486,28 @@ export function createManagedWorkspaceHandler(
           headers,
         );
         options.annual.assertActive(request.signal);
+        return response;
+      }
+      if (route.path === MANAGED_SEC_FILINGS_PATH) {
+        const command = parseManagedSecFilingsRequest(
+          await readJson(request, MANAGED_SEC_FILINGS_LIMITS.requestBytes),
+        );
+        if (command === null) throw new RequestFailure(400, "invalid_request");
+        requireActiveRequest(request);
+        if (options.filings === undefined)
+          throw new ManagedSecFilingsServiceError("not_configured");
+        const result = await options.filings.load(
+          command,
+          auth.principal,
+          request.signal,
+        );
+        options.filings.assertActive(request.signal);
+        response = jsonResponse(
+          parseManagedSecFilingsResponse(result, command),
+          MANAGED_SEC_FILINGS_LIMITS.responseBytes,
+          headers,
+        );
+        options.filings.assertActive(request.signal);
         return response;
       }
       if (

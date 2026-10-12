@@ -162,6 +162,7 @@ function fixture(initial = payload) {
   const api: ManagedApi = {
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
+    recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
     annualReport: vi.fn(),
     status: vi.fn(),
     search: vi.fn(),

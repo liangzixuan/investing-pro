@@ -5,6 +5,7 @@ import type {
   PersonalSecurityMasterSearchResultDto,
   PersonalSecAnnualEvidenceResponseDto,
   PersonalEconomicCalendarDto,
+  ManagedSecFilingsResponseDto,
 } from "@research-cockpit/contracts";
 import {
   encodeMainWatchlistPayload,
@@ -12,6 +13,7 @@ import {
   parseManagedEodHistoryResponse,
   parseManagedWatchlistCommand,
   parseManagedEconomicCalendar,
+  parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
 } from "@research-cockpit/contracts";
 import {
@@ -26,6 +28,7 @@ import {
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
+import { inventedFilingsPacket } from "./filings-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const signOutNoteDraft = "Sign-out review draft";
@@ -164,6 +167,7 @@ export async function createFixture(
     | "company-direct-entry"
     | "annual-note"
     | "price-comparison-note"
+    | "company-filings"
     | "markets-price-handoff"
     | "watchlist-recovery"
     | "signout-save-review"
@@ -325,6 +329,9 @@ export async function createFixture(
     save: 0,
     resolve: 0,
     annual: 0,
+    filings: 0,
+    filingsAborted: 0,
+    filingsLateResolved: 0,
     aborted: 0,
     lateResolved: 0,
     token: 0,
@@ -360,6 +367,8 @@ export async function createFixture(
   let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
     null;
   let rejectRefresh: ((error: unknown) => void) | null = null;
+  let pendingFilings: ((value: ManagedSecFilingsResponseDto) => void) | null =
+    null;
   let releaseCatalog: (() => void) | null = null;
   let pendingEod: ((value: ManagedEodHistoryResponseDto) => void) | null = null;
   let pendingCalendar: ((value: PersonalEconomicCalendarDto) => void) | null =
@@ -410,6 +419,33 @@ export async function createFixture(
     ],
   };
   const api: ManagedApi = {
+    recentFilings: (input, signal) => {
+      const request = parseManagedSecFilingsRequest(input);
+      if (
+        scenario !== "company-filings" ||
+        signal.aborted ||
+        pendingFilings ||
+        request?.catalogSnapshotSha256 !== digest ||
+        request.listingId !== "listing-zero" ||
+        request.symbol !== "ZERO" ||
+        state.filings >= 5
+      )
+        throw new Error("Unexpected invented company filings request");
+      count("filings");
+      if (state.filings === 1)
+        return Promise.resolve(inventedFilingsPacket(identity));
+      if (state.filings === 3)
+        return Promise.reject(new TrialApiError("unavailable"));
+      if (state.filings === 4)
+        return Promise.resolve(inventedFilingsPacket(identity, true));
+      signal.addEventListener("abort", () => count("filingsAborted"), {
+        once: true,
+      });
+      // Ignore abort deliberately: the real model must discard this completion.
+      return new Promise((resolve) => {
+        pendingFilings = resolve;
+      });
+    },
     load: (signal) => {
       count("load");
       if (scenario === "watchlist-recovery") {
@@ -875,6 +911,17 @@ export async function createFixture(
     session,
     marketsCohort,
     priceCoverage: [identity, ...marketsCohort],
+    settleCancelledFilings: () => {
+      if (
+        !pendingFilings ||
+        state.filingsAborted !== state.filingsLateResolved + 1
+      )
+        throw new Error("Only an aborted invented filings read may settle");
+      const resolve = pendingFilings;
+      pendingFilings = null;
+      resolve(inventedFilingsPacket(identity));
+      void Promise.resolve().then(() => count("filingsLateResolved"));
+    },
     settleCancelledCalendar: () => {
       if (
         !pendingCalendar ||

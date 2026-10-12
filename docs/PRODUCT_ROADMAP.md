@@ -54,6 +54,13 @@ provider value as independently filing-verified or silently relax a calculation.
 
 ## Current managed baseline and next selection
 
+The next company-page outcome is [recent SEC filings](MANAGED_SEC_FILINGS.md):
+one explicit metadata read for a fixed 90-date window, original filing links and
+local paging. It reuses existing SEC access and preserves per-visit data and
+watchlist drafts. This advances M2 and the filing-update part of M3; broader news,
+complete historical filing coverage and monitoring remain separate work. Exact
+source and delivery acceptance stays in [Current work](CURRENT_WORK.md).
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data

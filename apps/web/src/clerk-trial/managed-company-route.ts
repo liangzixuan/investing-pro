@@ -3,7 +3,7 @@ import { parseWorkspaceRoute } from "../features/workspace/workspace-route";
 export interface ManagedCompanyRoute {
   readonly kind: "company";
   readonly listingId: string;
-  readonly section: "annual" | "eod";
+  readonly section: "annual" | "eod" | "filings";
 }
 export type ParsedManagedCompanyRoute =
   | ManagedCompanyRoute
@@ -33,14 +33,14 @@ export function parseManagedCompanyRoute(
     sections.length !== 1 ||
     listingId === undefined ||
     !isManagedCompanyListingId(listingId) ||
-    (section !== "price" && section !== "annual") ||
+    (section !== "price" && section !== "annual" && section !== "filings") ||
     [...parameters.keys()].some((key) => key !== "company" && key !== "section")
   )
     return { kind: "invalid" };
   return {
     kind: "company",
     listingId,
-    section: section === "price" ? "eod" : "annual",
+    section: section === "price" ? "eod" : section,
   };
 }
 
@@ -50,8 +50,8 @@ export function managedCompanyHref(
 ): string {
   if (
     !isManagedCompanyListingId(listingId) ||
-    (section !== "annual" && section !== "eod")
+    (section !== "annual" && section !== "eod" && section !== "filings")
   )
     throw new Error("Invalid company destination.");
-  return `/?${new URLSearchParams({ company: listingId, section: section === "eod" ? "price" : "annual" })}`;
+  return `/?${new URLSearchParams({ company: listingId, section: section === "eod" ? "price" : section })}`;
 }

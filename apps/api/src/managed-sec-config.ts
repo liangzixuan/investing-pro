@@ -1,13 +1,13 @@
 import { isPersonalSecUserAgent } from "./personal-sec-quarterly-evidence-provider";
 
-export interface ManagedSecAnnualConfiguration {
+export interface ManagedSecConfiguration {
   readonly userAgent: string;
 }
 
-/** A separate server input; null explicitly closes annual-source admission. */
-export function validateManagedSecAnnualConfiguration(
+/** A separate server input; null closes both managed SEC research routes. */
+export function validateManagedSecConfiguration(
   input: unknown,
-): Readonly<ManagedSecAnnualConfiguration> | null {
+): Readonly<ManagedSecConfiguration> | null {
   if (input === null) return null;
   if (
     typeof input !== "object" ||

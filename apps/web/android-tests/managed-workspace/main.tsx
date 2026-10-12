@@ -25,6 +25,7 @@ if (
   scenario !== "company-direct-entry" &&
   scenario !== "annual-note" &&
   scenario !== "price-comparison-note" &&
+  scenario !== "company-filings" &&
   scenario !== "markets-price-handoff" &&
   scenario !== "watchlist-recovery" &&
   scenario !== "signout-save-review" &&
@@ -170,6 +171,15 @@ function Fixture() {
             onClick={fixture.settleCancelledCalendar}
           >
             Settle cancelled invented calendar response
+          </button>
+        )}
+        {scenario === "company-filings" && (
+          <button
+            id="settle-cancelled-filings"
+            disabled={state.filingsAborted !== state.filingsLateResolved + 1}
+            onClick={fixture.settleCancelledFilings}
+          >
+            Settle cancelled invented filings response
           </button>
         )}
         {scenario === "watchlist-recovery" && (

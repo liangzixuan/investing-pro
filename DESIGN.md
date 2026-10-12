@@ -139,11 +139,13 @@ and fitted tables at 390 and 320 pixels, including long exact amounts and basis
 names. [Current work](docs/CURRENT_WORK.md) records behavioral limits and pending
 native and release acceptance.
 
-Company research shows Price/Annual content beside the watchlist note on wide
+Company research shows Price, Annual or Filings beside the watchlist note on wide
 screens. Below 1150px the note follows that content in reading order. Opening
 research hides the origin view while preserving its mounted state. Returning
 restores focus after the origin is visible; route and Android Back behavior stay
-with their existing owners.
+with their existing owners. Filings uses a compact dated list with original SEC
+links, local page controls and a stable results region. Keep source coverage and
+previous-result notices beside the data; use the same 44px section controls.
 
 At 760px and below, use a single-column workspace and three fixed bottom
 destinations in the same order. Reserve bottom space including the safe-area

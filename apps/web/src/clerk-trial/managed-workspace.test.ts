@@ -1,3 +1,4 @@
+import { filingsResponse } from "./sec-filings-fixture";
 import { describe, expect, it, vi } from "vitest";
 import type {
   MainWatchlistPayload,
@@ -6,7 +7,7 @@ import type {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import {
-  ManagedAnnualCooldownError,
+  ManagedSecCooldownError,
   ManagedCatalogChangedError,
   ManagedEodCooldownError,
   ManagedEodHistoryError,
@@ -106,6 +107,7 @@ function fixture(initial = empty) {
   const api: ManagedApi = {
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
+    recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
     annualReport: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     search: vi.fn<ManagedApi["search"]>().mockResolvedValue({
@@ -2079,7 +2081,7 @@ describe("company research visits", () => {
         const nextAllowedAt = new Date(Date.now() + 60_000).toISOString();
         held.reject(
           section === "annual"
-            ? new ManagedAnnualCooldownError(nextAllowedAt)
+            ? new ManagedSecCooldownError(nextAllowedAt)
             : new ManagedEodCooldownError(nextAllowedAt),
         );
       }
@@ -2462,7 +2464,7 @@ describe("company research visits", () => {
         const nextAllowedAt = "2026-10-03T00:00:20.000Z";
         if (panel === "annual")
           vi.mocked(api.annualReport).mockRejectedValueOnce(
-            new ManagedAnnualCooldownError(nextAllowedAt),
+            new ManagedSecCooldownError(nextAllowedAt),
           );
         else
           vi.mocked(api.eodHistory).mockRejectedValueOnce(
@@ -3558,4 +3560,101 @@ describe("Annual evidence appended to the existing shared note", () => {
       expect(api.save).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("workspace SEC filings integration", () => {
+  it("keeps all three research sections explicit and retains filings and the full draft through section switches", async () => {
+    const { workspace, api } = fixture();
+    await ready(workspace);
+    workspace.add(result);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const selection = workspace.getSnapshot().research!.selection;
+    workspace.noteResearch(selection, "Unsent complete note");
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.switchToFilings();
+    expect(workspace.getSnapshot().research?.section).toBe("filings");
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(26, "available", selection),
+    );
+    await workspace.filings.load();
+    const response = workspace.filings.getSnapshot().response;
+    const held = deferred<Awaited<ReturnType<ManagedApi["recentFilings"]>>>();
+    vi.mocked(api.recentFilings).mockReturnValueOnce(held.promise);
+    const pending = workspace.filings.load();
+    workspace.switchToEod();
+    expect(vi.mocked(api.recentFilings).mock.calls[1]![1].aborted).toBe(true);
+    held.resolve(filingsResponse(0, "available", selection));
+    await pending;
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot().response).toBe(response);
+    expect(workspace.filings.getSnapshot().showingPrevious).toBe(true);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    workspace.closeResearch();
+    expect(workspace.filings.getSnapshot().response).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+  });
+  it.each(["annual", "filings"] as const)(
+    "shares a checked %s deadline with the other SEC section without blocking Price",
+    async (origin) => {
+      const { workspace, api } = fixture();
+      await ready(workspace);
+      workspace.add(result);
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+      const deadline = new Date(Date.now() + 60_000).toISOString();
+      if (origin === "annual") {
+        vi.mocked(api.annualReport).mockRejectedValueOnce(
+          new ManagedSecCooldownError(deadline),
+        );
+        await workspace.annual.load();
+        workspace.switchToFilings();
+        await workspace.filings.load();
+        expect(api.recentFilings).not.toHaveBeenCalled();
+        expect(workspace.filings.getSnapshot().message).toContain(deadline);
+      } else {
+        workspace.switchToFilings();
+        vi.mocked(api.recentFilings).mockRejectedValueOnce(
+          new ManagedSecCooldownError(deadline),
+        );
+        await workspace.filings.load();
+        workspace.switchToAnnual();
+        await workspace.annual.load();
+        expect(api.annualReport).not.toHaveBeenCalled();
+        expect(workspace.annual.getSnapshot().message).toContain(deadline);
+      }
+      workspace.switchToEod();
+      vi.mocked(api.eodHistory).mockRejectedValueOnce(
+        new TrialApiError("unavailable"),
+      );
+      await workspace.eod.load();
+      expect(api.eodHistory).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+  it("retires all sections on current Filings authentication loss and fences the late response", async () => {
+    const { workspace, api } = fixture();
+    await ready(workspace);
+    workspace.add(result);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    workspace.switchToFilings();
+    vi.mocked(api.recentFilings).mockRejectedValueOnce(
+      new TrialApiError("unauthenticated"),
+    );
+    await workspace.filings.load();
+    expect(workspace.coordinator.getSnapshot().phase).toBe("retired");
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.filings.getSnapshot().selection).toBeNull();
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    expect(workspace.eod.getSnapshot().selection).toBeNull();
+  });
 });

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { validateManagedSecAnnualConfiguration } from "./managed-sec-annual-config";
+import { validateManagedSecConfiguration } from "./managed-sec-config";
 
 test("managed SEC configuration copies its validated server contact", () => {
   const input = { userAgent: "Investment test operator@example.invalid" };
-  const checked = validateManagedSecAnnualConfiguration(input);
+  const checked = validateManagedSecConfiguration(input);
   input.userAgent = "changed";
   assert.deepEqual(checked, {
     userAgent: "Investment test operator@example.invalid",
@@ -13,8 +13,8 @@ test("managed SEC configuration copies its validated server contact", () => {
   assert.equal(Object.isFrozen(checked), true);
 });
 
-test("null explicitly leaves the annual source unconfigured", () => {
-  assert.equal(validateManagedSecAnnualConfiguration(null), null);
+test("null explicitly leaves both managed SEC routes unconfigured", () => {
+  assert.equal(validateManagedSecConfiguration(null), null);
 });
 
 test("managed SEC configuration rejects omitted, injected and malformed input", () => {
@@ -34,7 +34,7 @@ test("managed SEC configuration rejects omitted, injected and malformed input", 
       userAgent: "Investment operator@example.invalid",
     }),
   ])
-    assert.throws(() => validateManagedSecAnnualConfiguration(input));
+    assert.throws(() => validateManagedSecConfiguration(input));
 });
 
 test("managed SEC configuration never evaluates a contact accessor", () => {
@@ -45,6 +45,6 @@ test("managed SEC configuration never evaluates a contact accessor", () => {
       return "Investment operator@example.invalid";
     },
   });
-  assert.throws(() => validateManagedSecAnnualConfiguration(input));
+  assert.throws(() => validateManagedSecConfiguration(input));
   assert.equal(reads, 0);
 });

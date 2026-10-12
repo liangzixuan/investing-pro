@@ -20,6 +20,10 @@ import {
   type ManagedEconomicCalendarService,
 } from "./managed-economic-calendar-service";
 import {
+  ManagedSecFilingsServiceError,
+  type ManagedSecFilingsService,
+} from "./managed-sec-filings-service";
+import {
   ManagedSecAnnualServiceError,
   type ManagedSecAnnualService,
 } from "./managed-sec-annual-service";
@@ -1523,5 +1527,195 @@ describe("managed economic calendar request boundary", () => {
     expect(response.status).toBe(408);
     expect(await response.json()).toEqual({ error: "request_timeout" });
     expect(f.assertActive).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("managed company filings POST boundary", () => {
+  const path = "/v1/managed/sec-filings";
+  function setup() {
+    const f = fixture();
+    const row = f.searchDto.results[0]!;
+    const security = {
+      cik: row.cik,
+      country: row.country,
+      exchangeMic: row.exchangeMic,
+      instrumentType: row.instrumentType,
+      issuerId: row.issuerId,
+      issuerName: row.issuerName,
+      listingId: row.listingId,
+      securityId: row.securityId,
+      securityName: row.securityName,
+      shareClassId: row.shareClassId,
+      shareClassName: row.shareClassName,
+      symbol: row.symbol,
+    };
+    const command = {
+      schemaVersion: "1.0.0" as const,
+      catalogSnapshotSha256: f.statusDto.snapshot.snapshotSha256,
+      listingId: security.listingId,
+      symbol: security.symbol,
+    };
+    const packet: contracts.ManagedSecFilingsResponseDto = {
+      schemaVersion: command.schemaVersion,
+      catalogSnapshotSha256: command.catalogSnapshotSha256,
+      security,
+      window: {
+        lookbackDays: 90,
+        fromDate: "2026-06-23",
+        throughDate: "2026-09-20",
+      },
+      requestStartedAt: "2026-09-20T00:00:00.000Z",
+      completedAt: "2026-09-20T00:00:02.000Z",
+      issuer: {
+        cik: security.cik,
+        status: "available",
+        fetchedAt: "2026-09-20T00:00:01.000Z",
+        sourceUrl: "https://data.sec.gov/submissions/CIK0000000001.json",
+        olderHistoryAvailable: false,
+        matchingFilings: 0,
+        truncated: false,
+        filings: [],
+      },
+    };
+    const load = vi
+      .fn<ManagedSecFilingsService["load"]>()
+      .mockResolvedValue(packet);
+    const assertActive = vi.fn<ManagedSecFilingsService["assertActive"]>();
+    const handler = createManagedWorkspaceHandler({
+      auth: f.auth,
+      catalog: { status: f.status, search: f.search, resolve: f.resolve },
+      openRepository: f.openRepository,
+      filings: { load, assertActive },
+    });
+    const post = (
+      body: unknown = command,
+      headers: Record<string, string> = {},
+    ) =>
+      new Request(`https://managed.invalid${path}`, {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify(body),
+      });
+    return { ...f, handler, load, assertActive, post, command, packet };
+  }
+  it("authenticates before body/service and never opens a watchlist repository", async () => {
+    const f = setup();
+    f.auth.mockResolvedValue({ status: "unauthenticated" });
+    expect((await f.handler(f.post({ invalid: true }))).status).toBe(401);
+    expect(f.load).not.toHaveBeenCalled();
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it("admits exactly the requested identity and returns an explicit available-empty packet", async () => {
+    const f = setup();
+    const result = await f.handler(f.post());
+    expect(result.status).toBe(200);
+    expect(await result.json()).toEqual(f.packet);
+    expect(f.load).toHaveBeenCalledExactlyOnceWith(
+      f.command,
+      OWNER,
+      expect.any(AbortSignal),
+    );
+    expect(f.assertActive).toHaveBeenCalledTimes(2);
+    expect(f.openRepository).not.toHaveBeenCalled();
+  });
+  it.each(["cik", "fromDate", "sourceUrl", "limit"])(
+    "refuses caller-controlled %s",
+    async (key) => {
+      const f = setup();
+      expect(
+        (await f.handler(f.post({ ...f.command, [key]: "unadmitted" }))).status,
+      ).toBe(400);
+      expect(f.load).not.toHaveBeenCalled();
+    },
+  );
+  it("admits exact native POST preflight but rejects wrong method, query and oversized body", async () => {
+    const f = setup();
+    expect(
+      (
+        await f.handler(
+          request(path, {
+            method: "OPTIONS",
+            origin: NATIVE_ORIGIN,
+            headers: {
+              "access-control-request-method": "POST",
+              "access-control-request-headers": "Authorization, Content-Type",
+            },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect((await f.handler(request(path))).status).toBe(405);
+    expect(
+      (await f.handler(request(`${path}?cik=1`, { method: "POST" }))).status,
+    ).toBe(400);
+    expect(f.auth).not.toHaveBeenCalled();
+    expect(
+      (await f.handler(f.post({ ...f.command, symbol: "A".repeat(4096) })))
+        .status,
+    ).toBe(413);
+    expect(f.load).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["not_configured", 503],
+    ["catalog_changed", 409],
+    ["request_timeout", 408],
+    ["invalid_request", 400],
+    ["unavailable", 503],
+  ] as const)("keeps %s outside commit uncertainty", async (code, status) => {
+    const f = setup();
+    f.load.mockRejectedValue(new ManagedSecFilingsServiceError(code));
+    const result = await f.handler(f.post());
+    expect(result.status).toBe(status);
+    expect(await result.json()).toEqual({ error: code });
+  });
+  it("forwards only a validated local SEC deadline", async () => {
+    const f = setup();
+    f.load.mockRejectedValue(
+      new ManagedSecFilingsServiceError(
+        "rate_limited",
+        "2026-09-20T00:00:20.000Z",
+      ),
+    );
+    const result = await f.handler(f.post());
+    expect(result.status).toBe(429);
+    expect(await result.json()).toEqual({
+      error: "rate_limited",
+      nextAllowedAt: "2026-09-20T00:00:20.000Z",
+    });
+    expect(result.headers.get("cache-control")).toBe("no-store");
+    expect(result.headers.get("access-control-allow-origin")).toBe(ORIGIN);
+    f.load.mockRejectedValue(
+      new ManagedSecFilingsServiceError("rate_limited", "not-a-date"),
+    );
+    expect((await f.handler(f.post())).status).toBe(503);
+  });
+  it("refuses mismatched responses and rechecks liveness after serializing", async () => {
+    const f = setup();
+    f.load.mockResolvedValue({
+      ...f.packet,
+      security: { ...f.packet.security, symbol: "OTHER" },
+    });
+    expect((await f.handler(f.post())).status).toBe(503);
+    f.load.mockResolvedValue(f.packet);
+    f.assertActive
+      .mockReset()
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new ManagedSecFilingsServiceError("request_timeout");
+      });
+    expect((await f.handler(f.post())).status).toBe(408);
+  });
+  it("caps serialized output even when an injected service/decoder violates the packet bound", async () => {
+    const f = setup();
+    vi.spyOn(contracts, "parseManagedSecFilingsResponse").mockReturnValue({
+      ...f.packet,
+      oversized: "x".repeat(524288),
+    } as contracts.ManagedSecFilingsResponseDto);
+    expect((await f.handler(f.post())).status).toBe(503);
+    expect(f.openRepository).not.toHaveBeenCalled();
   });
 });

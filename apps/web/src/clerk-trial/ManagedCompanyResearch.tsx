@@ -1,3 +1,5 @@
+import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
   ManagedResearchVisit,
   ResearchWatchlistState,
@@ -13,6 +15,7 @@ import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
 export function ManagedCompanyResearch({
   research,
   annual,
+  filings,
   eod,
   onSection,
   onBack,
@@ -25,6 +28,7 @@ export function ManagedCompanyResearch({
 }: {
   research: ManagedResearchVisit;
   annual: AnnualModel;
+  filings: FilingsModel;
   eod: EodModel;
   onSection: (section: ManagedResearchVisit["section"]) => void;
   onBack: () => void;
@@ -35,6 +39,7 @@ export function ManagedCompanyResearch({
   annualNoteActions: ManagedAnnualNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
 }) {
+  const labels = { eod: "Price", annual: "Annual", filings: "Filings" };
   const listing = research.selection.listing;
   return (
     <section
@@ -62,16 +67,16 @@ export function ManagedCompanyResearch({
             className="managed-company-sections"
             aria-label="Company research sections"
           >
-            {(["eod", "annual"] as const).map((section) => (
+            {(["eod", "annual", "filings"] as const).map((section) => (
               <button
                 key={section}
                 className="trial-secondary"
-                aria-label={`${section === "eod" ? "Price" : "Annual"} section for ${listing.symbol}`}
+                aria-label={`${labels[section]} section for ${listing.symbol}`}
                 aria-pressed={research.section === section}
                 aria-controls="managed-company-content"
                 onClick={() => onSection(section)}
               >
-                {section === "eod" ? "Price" : "Annual"}
+                {labels[section]}
               </button>
             ))}
           </nav>
@@ -81,9 +86,11 @@ export function ManagedCompanyResearch({
                 model={annual}
                 noteActions={annualNoteActions}
               />
-            ) : (
+            ) : research.section === "eod" ? (
               <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
-            )}
+            ) : research.section === "filings" ? (
+              <ManagedCompanyFilings model={filings} />
+            ) : null}
           </div>
         </div>
         <aside className="managed-research-aside" aria-label="Research note">

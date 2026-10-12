@@ -1,0 +1,91 @@
+.clerk-trial.managed-frame .managed-filings-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.clerk-trial.managed-frame .managed-filings-toolbar h3 {
+  margin: 0;
+}
+.clerk-trial.managed-frame
+  :is(.managed-filings-scope, .managed-filings-source) {
+  color: var(--managed-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-results {
+  min-width: 0;
+}
+.clerk-trial.managed-frame
+  .managed-company-filings
+  .managed-filings-results:focus-visible {
+  outline-offset: -3px;
+}
+.clerk-trial.managed-frame .managed-filings-warning {
+  padding: 12px;
+  border-left: 3px solid #dba75c;
+  background: #2b251b;
+  color: #f5d49b;
+}
+.clerk-trial.managed-frame
+  :is(.managed-filings-period, .managed-filings-status) {
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-filings-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--managed-line);
+}
+.clerk-trial.managed-frame .managed-filings-list a {
+  display: inline-block;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-accession {
+  display: block;
+  color: var(--managed-muted);
+  font-size: 0.8rem;
+}
+.clerk-trial.managed-frame .managed-filings-list dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  font-size: 0.85rem;
+}
+.clerk-trial.managed-frame .managed-filings-list dt {
+  color: var(--managed-muted);
+}
+.clerk-trial.managed-frame .managed-filings-list dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.clerk-trial.managed-frame .managed-filings-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block: 16px;
+}
+.clerk-trial.managed-frame
+  .managed-filings-pagination
+  button[aria-disabled="true"] {
+  background: transparent;
+  border-color: var(--managed-line);
+  color: var(--managed-muted);
+  cursor: default;
+}
+@media (max-width: 760px) {
+  .clerk-trial.managed-frame .managed-filings-list li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}

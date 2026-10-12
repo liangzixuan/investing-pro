@@ -56,6 +56,7 @@ describe("managed session browser warning lifetime", () => {
         search: vi.fn(),
         resolve: vi.fn(),
         eodHistory: vi.fn(),
+        recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
         annualReport: vi.fn(),
       };
       const session = {
