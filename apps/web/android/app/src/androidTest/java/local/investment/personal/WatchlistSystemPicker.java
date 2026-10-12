@@ -6,6 +6,7 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.app.UiAutomation;
 import android.os.SystemClock;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.util.function.Predicate;
 
@@ -16,7 +17,8 @@ final class WatchlistSystemPicker {
 
     WatchlistSystemPicker() {
         AccessibilityServiceInfo info = automation.getServiceInfo();
-        info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        info.flags |= AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
+            | AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
         automation.setServiceInfo(info);
     }
 
@@ -29,6 +31,7 @@ final class WatchlistSystemPicker {
         awaitOpen();
         assertTrue("System picker Back must dispatch", automation.performGlobalAction(
             android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));
+        awaitReturnToApp();
     }
 
     void saveToInventedRoot() throws Exception {
@@ -45,6 +48,23 @@ final class WatchlistSystemPicker {
             && node.isEnabled() && hasAncestor(node, ":id/container_save"));
         assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
         click(save);
+        awaitReturnToApp();
+    }
+
+    /** A dispatched picker action does not mean its destination or Activity result is ready. */
+    private void awaitReturnToApp() throws InterruptedException {
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        do {
+            AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+            if (root != null && "local.investment.personal".contentEquals(string(root.getPackageName()))
+                && root.isVisibleToUser()) {
+                AccessibilityWindowInfo window = root.getWindow();
+                if (window != null && window.getType() == AccessibilityWindowInfo.TYPE_APPLICATION
+                    && window.isActive() && window.isFocused()) return;
+            }
+            Thread.sleep(50);
+        } while (SystemClock.uptimeMillis() < deadline);
+        throw new AssertionError("The target app did not regain the active focused window after the system picker");
     }
 
     private AccessibilityNodeInfo await(Predicate<AccessibilityNodeInfo> predicate) throws Exception {
