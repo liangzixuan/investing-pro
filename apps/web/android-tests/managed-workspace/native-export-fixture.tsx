@@ -10,11 +10,13 @@ import { MANAGED_WATCHLIST_EXPORT_MAX_BYTES } from "../../src/clerk-trial/manage
 type InvalidProbeKind = "unicode" | "oversize";
 type InvalidProbeFailure =
   "choose_rejected" | "choose_cancelled" | "write_succeeded" | "write_rejected";
+type ChooseRejectionCode = "busy" | "invalid_input" | "unavailable" | "unknown";
 interface InvalidProbeState {
   sequence: number;
   kind: InvalidProbeKind | null;
   phase: "idle" | "choosing" | "writing" | "cancelling" | "settled";
   failure: InvalidProbeFailure | null;
+  chooseRejectionCode: ChooseRejectionCode | null;
   cleanupFailed: boolean;
 }
 const initialInvalidProbe: InvalidProbeState = {
@@ -22,6 +24,7 @@ const initialInvalidProbe: InvalidProbeState = {
   kind: null,
   phase: "idle",
   failure: null,
+  chooseRejectionCode: null,
   cleanupFailed: false,
 };
 
@@ -30,14 +33,24 @@ async function attemptInvalidWrite(
   operationId: string,
   kind: InvalidProbeKind,
   writing: () => void,
-): Promise<InvalidProbeFailure | null> {
+): Promise<{
+  failure: InvalidProbeFailure | null;
+  chooseRejectionCode?: ChooseRejectionCode;
+}> {
   let result;
   try {
     result = await plugin.choose({ operationId, version: 1 });
-  } catch {
-    return "choose_rejected";
+  } catch (error) {
+    const code = error instanceof Object && "code" in error ? error.code : null;
+    return {
+      failure: "choose_rejected",
+      chooseRejectionCode:
+        code === "busy" || code === "invalid_input" || code === "unavailable"
+          ? code
+          : "unknown",
+    };
   }
-  if (result.status !== "chosen") return "choose_cancelled";
+  if (result.status !== "chosen") return { failure: "choose_cancelled" };
   writing();
   const text =
     kind === "unicode"
@@ -45,13 +58,16 @@ async function attemptInvalidWrite(
       : "é".repeat(MANAGED_WATCHLIST_EXPORT_MAX_BYTES / 2 + 1);
   try {
     await plugin.write({ operationId, handle: result.handle, text });
-    return "write_succeeded";
+    return { failure: "write_succeeded" };
   } catch (error) {
-    return error instanceof Object &&
-      "code" in error &&
-      error.code === "write_failed"
-      ? null
-      : "write_rejected";
+    return {
+      failure:
+        error instanceof Object &&
+        "code" in error &&
+        error.code === "write_failed"
+          ? null
+          : "write_rejected",
+    };
   }
 }
 
@@ -76,12 +92,13 @@ export function createInvalidExportProbe(
         kind,
         phase: "choosing",
         failure: null,
+        chooseRejectionCode: null,
         cleanupFailed: false,
       });
-      const failure = await attemptInvalidWrite(plugin, operationId, kind, () =>
+      const outcome = await attemptInvalidWrite(plugin, operationId, kind, () =>
         update({ phase: "writing" }),
       );
-      update({ phase: "cancelling", failure });
+      update({ phase: "cancelling", ...outcome });
       let cleanupFailed = false;
       try {
         await plugin.cancel({ operationId });
@@ -91,7 +108,7 @@ export function createInvalidExportProbe(
       running = false;
       update(
         { phase: "settled", cleanupFailed },
-        failure === null && !cleanupFailed,
+        outcome.failure === null && !cleanupFailed,
       );
     },
   };

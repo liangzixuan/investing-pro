@@ -44,6 +44,7 @@ describe("native invalid-export fixture handshake", () => {
             kind,
             phase: "choosing",
             failure: null,
+            chooseRejectionCode: null,
             cleanupFailed: false,
           },
           false,
@@ -59,6 +60,7 @@ describe("native invalid-export fixture handshake", () => {
           kind,
           phase: "cancelling",
           failure: null,
+          chooseRejectionCode: null,
           cleanupFailed: false,
         },
         false,
@@ -90,6 +92,7 @@ describe("native invalid-export fixture handshake", () => {
           kind,
           phase: "settled",
           failure: null,
+          chooseRejectionCode: null,
           cleanupFailed: false,
         },
         true,
@@ -124,6 +127,7 @@ describe("native invalid-export fixture handshake", () => {
           kind: "unicode",
           phase: "settled",
           failure,
+          chooseRejectionCode: failure === "choose_rejected" ? "unknown" : null,
           cleanupFailed: false,
         },
         false,
@@ -133,6 +137,44 @@ describe("native invalid-export fixture handshake", () => {
         expect(f.plugin.write).not.toHaveBeenCalled();
       expect(JSON.stringify(f.publish.mock.calls)).not.toContain(
         "Private error text",
+      );
+    },
+  );
+
+  it.each(["busy", "invalid_input", "unavailable", "private-code"])(
+    "retains only the bounded choose rejection code for %s",
+    async (code) => {
+      const f = fixture();
+      f.plugin.choose.mockRejectedValueOnce({
+        code,
+        message: "Private error text",
+        handle: "private-handle",
+      });
+      await f.probe.run("unicode");
+      expect(f.publish).toHaveBeenLastCalledWith(
+        {
+          sequence: 1,
+          kind: "unicode",
+          phase: "settled",
+          failure: "choose_rejected",
+          chooseRejectionCode: code === "private-code" ? "unknown" : code,
+          cleanupFailed: false,
+        },
+        false,
+      );
+      expect(f.plugin.write).not.toHaveBeenCalled();
+      expect(JSON.stringify(f.publish.mock.calls)).not.toMatch(
+        /Private|private/,
+      );
+      await f.probe.run("oversize");
+      expect(f.publish).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sequence: 2,
+          phase: "settled",
+          failure: null,
+          chooseRejectionCode: null,
+        }),
+        true,
       );
     },
   );
@@ -147,6 +189,7 @@ describe("native invalid-export fixture handshake", () => {
         kind: "unicode",
         phase: "settled",
         failure: null,
+        chooseRejectionCode: null,
         cleanupFailed: true,
       },
       false,
@@ -158,6 +201,7 @@ describe("native invalid-export fixture handshake", () => {
         kind: "oversize",
         phase: "settled",
         failure: null,
+        chooseRejectionCode: null,
         cleanupFailed: false,
       },
       true,
