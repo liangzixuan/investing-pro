@@ -26,6 +26,7 @@ import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import {
   ManagedWatchlistEditor,
@@ -325,7 +326,9 @@ function editorElements(node: React.ReactNode) {
       if (!React.isValidElement<{ children?: React.ReactNode }>(node))
         return [];
       const rendered =
-        typeof node.type === "function" && node.type !== ManagedNoteEditor
+        typeof node.type === "function" &&
+        node.type !== ManagedNoteEditor &&
+        node.type !== ManagedWatchlistComparison
           ? expand(
               (
                 node.type as (props: {

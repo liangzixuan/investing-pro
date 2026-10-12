@@ -34,6 +34,7 @@ if (
   scenario !== "bea-agenda" &&
   scenario !== "bea-session-retirement" &&
   scenario !== "markets-selected-price" &&
+  scenario !== "watchlist-comparison" &&
   scenario !== "watchlist-export"
 )
   throw new Error("Unknown invented Android test scenario");

@@ -16,6 +16,7 @@ import java.nio.charset.CodingErrorAction
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -111,7 +112,7 @@ class InvestmentWatchlistExportPlugin : Plugin() {
             return
         }
         writingOperation = document.operationId
-        writeJob = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 writeText(document.uri, text)
                 if (!destroyed) call.resolve(JSObject().put("status", "written"))
@@ -124,6 +125,8 @@ class InvestmentWatchlistExportPlugin : Plugin() {
                 writeJob = null
             }
         }
+        writeJob = job
+        job.start()
     }
 
     private suspend fun writeText(uri: Uri, text: String) = withContext(Dispatchers.IO) {

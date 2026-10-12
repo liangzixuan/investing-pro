@@ -157,6 +157,8 @@ public class ManagedWorkspaceInstrumentedTest {
         if (coldCompanyLink) selectFixtureScenario("company-direct-entry");
         if (testName.getMethodName().equals("selectedMarketPriceLoadRefreshAndCancelPreserveDraft"))
             selectFixtureScenario("markets-selected-price");
+        if (testName.getMethodName().equals("watchlistComparisonUsesLoadedSharedDatesAndPreservesDraft"))
+            selectFixtureScenario("watchlist-comparison");
         if (testName.getMethodName().equals("marketsLoadCancelAndNavigationPreserveDraft"))
             selectFixtureScenario("markets-price-handoff");
         if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
@@ -925,6 +927,116 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void watchlistComparisonUsesLoadedSharedDatesAndPreservesDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        String scope = ".managed-watchlist-comparison";
+        String first = scope + " .managed-watchlist-comparison-listing:first-child select";
+        String second = scope + " .managed-watchlist-comparison-listing:last-child select";
+        String start = scope + " .managed-price-comparison-date:first-child select";
+        String end = scope + " .managed-price-comparison-date:last-child select";
+        awaitPage("comparison starts without a selected pair or reads",
+            "Array.from(document.querySelectorAll('.managed-watchlist-comparison select')).every(e => e.value === '' && !e.disabled)" +
+            " && document.querySelectorAll('.managed-watchlist-comparison select').length === 4" +
+            " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Choose two distinct watchlist listings to compare.'" +
+            " && " + DIAGNOSTICS + ".eod === 0");
+        chooseNativeSelectOption(first, "listing-zero", "ZERO · Zero Company · Class A · XNAS — not loaded");
+        chooseNativeSelectOption(second, "listing-one", "ONE · One Company · Class A · XNAS — not loaded");
+        awaitPage("selection alone does not load either history",
+            "document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Comparison unavailable. Load both selected histories using their Dated price controls.'" +
+            " && document.querySelector('.managed-watchlist-comparison table') === null && " + DIAGNOSTICS + ".eod === 0");
+        typeIntoInput("managed-note-0", NOTE);
+        click("[data-watchlist-price-load]");
+        awaitPage("first explicit watchlist read alone cannot produce a pair",
+            DIAGNOSTICS + ".eod === 1 && document.querySelector('.managed-watchlist-comparison table') === null" +
+            " && document.querySelector('[data-watchlist-price-load]')?.disabled === false");
+        click("[data-watchlist-selection='listing-one']");
+        awaitPage("second exact member owns the next explicit read",
+            "document.querySelector('[data-watchlist-price-load]')?.textContent === 'Load ONE price'");
+        click("[data-watchlist-price-load]");
+        assertWatchlistPair("2026-09-19", "90", "120", "-$10 (-10.0000%)", "+$20 (+20.0000%)", 3);
+        assertWatchlistComparisonDraft(false);
+        awaitPage("native comparison controls have labels and touch targets",
+            "Array.from(document.querySelectorAll('.managed-watchlist-comparison select')).every(e => e.id && document.querySelector('label[for=\"' + e.id + '\"]') && e.getBoundingClientRect().height >= 44)" +
+            " && document.querySelector(" + JSONObject.quote(start) + ")?.value === '2026-09-17'" +
+            " && Array.from(document.querySelector(" + JSONObject.quote(end) + ").options).map(e => e.value).join('|') === '|2026-09-18|2026-09-19'");
+        chooseNativeSelectOption(end, "2026-09-18", "2026-09-18");
+        assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        chooseNativeSelectOption(end, "", "Choose an observed date");
+        awaitPage("blank end withholds comparison numbers without reading",
+            "document.querySelector('.managed-watchlist-comparison table') === null" +
+            " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
+            " && document.querySelector('.managed-watchlist-comparison [role=region]')?.tabIndex === -1");
+        assertWatchlistComparisonDraft(false);
+        chooseNativeSelectOption(end, "2026-09-18", "2026-09-18");
+        assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        click("[data-watchlist-selection='listing-zero']");
+        click("button[aria-label='Move ZERO down']");
+        typeIntoInput("managed-watchlist-search", "ONE");
+        awaitPage("comparison choices retain both full-draft listings through search",
+            "document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-comparison-listing select')).every(e => Array.from(e.options).map(o => o.value).join('|') === '|listing-one|listing-zero')");
+        assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        assertWatchlistComparisonDraft(true);
+        click("button[aria-label='Clear watchlist search']");
+        click(".managed-watchlist-comparison .managed-price-comparison-source > summary");
+        awaitPage("both original histories retain exact coverage and request dates",
+            "(() => { const sections = document.querySelectorAll('.managed-watchlist-comparison .managed-price-comparison-provenance > section');" +
+            " return sections.length === 2 && Array.from(sections).map(e => e.querySelector('h4')?.textContent).join('|') === 'ZERO · XNAS|ONE · XNAS'" +
+            " && Array.from(sections).every(e => Array.from(e.querySelectorAll('dd')).map(d => d.textContent).join('|') === '2026-08-20 to 2026-09-20|2026-09-17 to 2026-09-19|3 / 0|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'); })()");
+        click(".managed-watchlist-comparison .managed-price-comparison-source > summary");
+        retainAnnualNoteFrame("watchlistSharedPriceComparison", scope + " [role=region]",
+            scope + " .managed-price-comparison-status, " + scope + " [role=region]", 2);
+        assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        assertWatchlistComparisonDraft(true);
+        selectWorkspaceView("Discover");
+        selectWorkspaceView("My Watchlist");
+        awaitPage("top-level exit retires pair and loaded histories without automatic reads",
+            "Array.from(document.querySelectorAll('.managed-watchlist-comparison select')).every(e => e.value === '')" +
+            " && document.querySelector('.managed-watchlist-comparison table') === null" +
+            " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-provenance') === null" +
+            " && document.querySelector('#managed-watchlist-selected-price > strong')?.textContent === 'Price not loaded'");
+        assertWatchlistComparisonDraft(true);
+        assertFixtureBoundary();
+        assertRootHistory();
+        assertEquals("Comparison controls preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        Log.i("ManagedWatchlistComparison", "phase=two-explicit-reads-shared-interval-draft-preserved-retired; " + pageDiagnostic());
+    }
+
+    private void assertWatchlistPair(String end, String zeroClose, String oneClose,
+            String zeroChange, String oneChange, int count) throws Exception {
+        awaitPage("exact shared watchlist comparison through " + end,
+            "(() => { const c = document.querySelector('.managed-watchlist-comparison'); const rows = c?.querySelectorAll('tbody tr');" +
+            " if (!rows || rows.length !== 2) return false;" +
+            " return c.querySelector('.managed-price-comparison-status')?.textContent === " +
+                JSONObject.quote("2026-09-17 to " + end + " · " + count + " shared observed dates in this interval · 3 across the loaded histories") +
+            " && c.querySelector('[role=region]')?.getAttribute('aria-label') === 'Watchlist raw price comparison results'" +
+            " && c.querySelector('[role=region]')?.tabIndex === 0" +
+            " && Array.from(rows).map(r => r.cells[0].querySelector('strong')?.textContent).join('|') === 'ZERO|ONE'" +
+            " && rows[0].cells[0].textContent.includes('Zero Company · Class A · XNAS')" +
+            " && rows[1].cells[0].textContent.includes('One Company · Class A · XNAS')" +
+            " && Array.from(rows).every(r => r.cells[0].querySelector('time')?.dateTime === '2026-09-20T00:00:01.000Z')" +
+            " && Array.from(rows).every(r => r.cells[1].textContent === '100')" +
+            " && rows[0].cells[2].textContent === " + JSONObject.quote(zeroClose) +
+            " && rows[1].cells[2].textContent === " + JSONObject.quote(oneClose) +
+            " && rows[0].querySelector('.managed-market-change > strong')?.textContent === " + JSONObject.quote("Raw close change: " + zeroChange) +
+            " && rows[1].querySelector('.managed-market-change > strong')?.textContent === " + JSONObject.quote("Raw close change: " + oneChange) +
+            " && Array.from(c.querySelectorAll('.managed-market-change-basis')).every(e => e.textContent.includes('2026-09-17 to ' + " + JSONObject.quote(end) + ")); })()");
+    }
+
+    private void assertWatchlistComparisonDraft(boolean reordered) throws Exception {
+        String zero = "{listingId:'listing-zero',symbol:'ZERO',note:" + JSONObject.quote(NOTE) + "}";
+        String one = "{listingId:'listing-one',symbol:'ONE',note:'Invented second note'}";
+        String expected = reordered ? "[" + one + "," + zero + "]" : "[" + zero + "," + one + "]";
+        awaitPage("comparison preserves full draft and exactly two explicit price requests",
+            "JSON.stringify(" + DRAFT + ".memberships) === JSON.stringify(" + expected + ")" +
+            " && " + DRAFT + ".dirty === true && " + DRAFT + ".baseVersion === 1" +
+            " && (() => { const d = " + DIAGNOSTICS + "; return d.eod === 2 && d.eodAborted === 0 && d.eodLateResolved === 0" +
+            " && d.load === 1 && d.status === 1 && d.save === 0 && d.search === 0 && d.resolve === 0" +
+            " && d.marketsEod === 0 && d.marketsResolve === 1 && d.annual === 0 && d.filings === 0 && d.calendar === 0; })()");
+    }
+
+    @Test
     public void eodLoadCancelAndBackPreserveDraftAndDiscardLateResult() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         AtomicReference<WeakReference<MainActivity>> originalActivity = new AtomicReference<>();
@@ -1471,37 +1583,37 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsRawChanges(false);
         assertMarketsSharedComparison(false);
         awaitPage("both visible shared date controls are at least 44 pixels high",
-            "document.querySelector('.managed-price-comparison-start-select')?.getBoundingClientRect().height >= 44" +
-            " && document.querySelector('.managed-price-comparison-end-select')?.getBoundingClientRect().height >= 44");
-        chooseNativeSelectOption(".managed-price-comparison-start-select", "", "Choose an observed date");
+            "document.querySelector('.managed-markets .managed-price-comparison-start-select')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-end-select')?.getBoundingClientRect().height >= 44");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-start-select", "", "Choose an observed date");
         assertMarketsComparisonDates("", "2026-09-19", "|2026-09-18", "|2026-09-19");
         awaitPage("an empty shared Start withholds figures without replacing End",
-            "document.querySelector('.managed-price-comparison-values') === null" +
-            " && document.querySelector('.managed-price-comparison-status')?.textContent === 'Choose a starting date before the ending date.'" +
-            " && document.querySelectorAll('.managed-price-comparison-provenance > section').length === 3");
+            "document.querySelector('.managed-markets .managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-status')?.textContent === 'Choose a starting date before the ending date.'" +
+            " && document.querySelectorAll('.managed-markets .managed-price-comparison-provenance > section').length === 3");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseNativeSelectOption(".managed-price-comparison-start-select", "2026-09-18", "2026-09-18");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-start-select", "2026-09-18", "2026-09-18");
         assertMarketsSharedComparison(false);
-        chooseNativeSelectOption(".managed-price-comparison-end-select", "", "Choose an observed date");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-end-select", "", "Choose an observed date");
         assertMarketsComparisonDates("2026-09-18", "", "|2026-09-18", "|2026-09-19");
         awaitPage("an empty shared End withholds figures and keeps the original coverage",
-            "document.querySelector('.managed-price-comparison-values') === null" +
-            " && document.querySelector('.managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
-            " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
-            " && Array.from(document.querySelectorAll('.managed-price-comparison-provenance section dd:nth-of-type(3)')).map(e => e.textContent).join('|') === '2 / 0|2 / 0|2 / 0'");
+            "document.querySelector('.managed-markets .managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-order select')?.value === 'board'" +
+            " && Array.from(document.querySelectorAll('.managed-markets .managed-price-comparison-provenance section dd:nth-of-type(3)')).map(e => e.textContent).join('|') === '2 / 0|2 / 0|2 / 0'");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseNativeSelectOption(".managed-price-comparison-end-select", "2026-09-19", "2026-09-19");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-end-select", "2026-09-19", "2026-09-19");
         assertMarketsSharedComparison(false);
-        chooseNativeSelectOption(".managed-price-comparison-order select", "highest", "Highest raw change");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-order select", "highest", "Highest raw change");
         assertMarketsComparisonOrder("highest", "ALFA,BETB,BETA",
             "ALFA|10.25|10.5|+2.4390%;BETB|30.5|30.5|0.0000%;BETA|20.75|20.5|-1.2048%");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseNativeSelectOption(".managed-price-comparison-order select", "board", "Board order");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-order select", "board", "Board order");
         assertMarketsSharedComparison(false);
         awaitPage("explicit board order restores the original comparison",
-            "document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
-            " && document.querySelector('.managed-price-comparison th[aria-sort]')?.getAttribute('aria-sort') === 'none'");
-        chooseNativeSelectOption(".managed-price-comparison-order select", "lowest", "Lowest raw change");
+            "document.querySelector('.managed-markets .managed-price-comparison-order select')?.value === 'board'" +
+            " && document.querySelector('.managed-markets .managed-price-comparison th[aria-sort]')?.getAttribute('aria-sort') === 'none'");
+        chooseNativeSelectOption(".managed-markets .managed-price-comparison-order select", "lowest", "Lowest raw change");
         assertMarketsComparisonOrder("lowest", "BETA,BETB,ALFA",
             "BETA|20.75|20.5|-1.2048%;BETB|30.5|30.5|0.0000%;ALFA|10.25|10.5|+2.4390%");
         assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
@@ -1532,8 +1644,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-market-rows > li')).filter(e => e.querySelector('.managed-eod-previous')).map(e => e.querySelector('.managed-market-identity strong').textContent).join(',') === 'BETA,BETB'");
         assertMarketsSharedComparison(true);
         awaitPage("unavailable comparison retains the enabled order preference",
-            "document.querySelector('.managed-price-comparison-order select')?.value === 'lowest'" +
-            " && document.querySelector('.managed-price-comparison-order select')?.disabled === false");
+            "document.querySelector('.managed-markets .managed-price-comparison-order select')?.value === 'lowest'" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-order select')?.disabled === false");
         clickMarketsAction("Cancel board prices");
         assertMarketsDraftAndCounts(2, 5, 1, 0);
         assertMarketsRawChanges(true);
@@ -1623,11 +1735,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsRawChanges(true);
         assertReturnedRootHistory("listing-beta-a", "price");
         awaitPage("company Back retains the mounted comparison order",
-            "document.querySelector('.managed-price-comparison-order select')?.value === 'lowest'");
+            "document.querySelector('.managed-markets .managed-price-comparison-order select')?.value === 'lowest'");
         selectWorkspaceView("Discover");
         awaitPage("leaving Markets retires all its price views",
             "document.querySelector('.managed-markets') === null && document.querySelector('.managed-eod-chart') === null" +
-            " && document.querySelector('.managed-price-comparison') === null");
+            " && document.querySelector('.managed-markets .managed-price-comparison') === null");
         selectWorkspaceView("Markets");
         awaitPage("returning Markets resolves fresh identities but remains unloaded",
             DIAGNOSTICS + ".marketsResolve === 3" +
@@ -1637,12 +1749,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-market-detail table') === null" +
             " && document.querySelector('.managed-market-detail canvas') === null" +
             " && document.querySelector('.managed-markets .managed-eod-previous') === null" +
-            " && document.querySelector('.managed-price-comparison-values') === null" +
-            " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
-            " && document.querySelector('.managed-price-comparison-order select')?.disabled === false" +
-            " && document.querySelector('.managed-price-comparison-provenance') === null" +
-            " && document.querySelector('.managed-price-comparison-status')?.textContent.includes('Comparison unavailable.')" +
-            " && !document.querySelector('.managed-price-comparison')?.textContent.includes('2026-09-')");
+            " && document.querySelector('.managed-markets .managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-order select')?.value === 'board'" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-order select')?.disabled === false" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-provenance') === null" +
+            " && document.querySelector('.managed-markets .managed-price-comparison-status')?.textContent.includes('Comparison unavailable.')" +
+            " && !document.querySelector('.managed-markets .managed-price-comparison')?.textContent.includes('2026-09-')");
         assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         selectWorkspaceView("My Watchlist");
         awaitPage("the final watchlist draft is visible and unchanged",
@@ -2746,7 +2858,7 @@ public class ManagedWorkspaceInstrumentedTest {
                 " && Array.from(comparison.querySelectorAll('tbody th time')).map(e => e.textContent).join('|') === '2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z'" +
                 " && comparison.querySelector('.managed-eod-previous') === null";
         awaitPage("complete-board shared observations and original per-listing request provenance",
-            "(() => { const comparison = document.querySelector('.managed-price-comparison'); if (!comparison) return false;" +
+            "(() => { const comparison = document.querySelector('.managed-markets .managed-price-comparison'); if (!comparison) return false;" +
             " return " + output +
             " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance > section')).map(section =>" +
             " section.querySelector('h4')?.textContent + '|' + section.querySelector('p')?.textContent + '|' +" +
@@ -2759,8 +2871,8 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private void assertMarketsComparisonDates(String start, String end, String startOptions, String endOptions) throws Exception {
         awaitPage("shared native date controls stay labelled and mounted with exact observed options",
-            "(() => { const first = document.querySelector('.managed-price-comparison-start-select');" +
-            " const last = document.querySelector('.managed-price-comparison-end-select');" +
+            "(() => { const first = document.querySelector('.managed-markets .managed-price-comparison-start-select');" +
+            " const last = document.querySelector('.managed-markets .managed-price-comparison-end-select');" +
             " return first instanceof HTMLSelectElement && last instanceof HTMLSelectElement" +
             " && !first.disabled && !last.disabled && first.value === " + JSONObject.quote(start) +
             " && last.value === " + JSONObject.quote(end) +
@@ -2777,7 +2889,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "BETA · XNAS|Beta Company · Class A|" + coverage + "|false;" +
             "BETB · XNAS|Beta Company · Class C|" + coverage + "|false";
         awaitPage("native comparison order preserves exact values and original per-listing evidence: " + order,
-            "(() => { const comparison = document.querySelector('.managed-price-comparison'); if (!comparison) return false;" +
+            "(() => { const comparison = document.querySelector('.managed-markets .managed-price-comparison'); if (!comparison) return false;" +
             " const select = comparison.querySelector('.managed-price-comparison-order select');" +
             " return select instanceof HTMLSelectElement && !select.disabled && select.value === " + JSONObject.quote(order) +
             " && select.labels[0]?.querySelector('span')?.textContent === 'Comparison order'" +
@@ -3161,7 +3273,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
-            scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings"));
+            scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

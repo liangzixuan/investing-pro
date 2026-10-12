@@ -79,6 +79,13 @@ that checked history without another request. Notes, ordering, explicit Save and
 session boundaries remain intact. This connects the personal scan to company
 research without adding coverage, rankings, automatic reads or persistent prices.
 
+The next local comparison slice lets the owner choose two draft listings and
+compare their loaded raw closes over shared observed dates. It advances personal
+comparison sets without loading an unrelated third company. The exact endpoints,
+observation counts and original request dates remain inspectable; choices and
+intervals send no additional request. Acceptance and delivery remain recorded
+separately in Current work.
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data

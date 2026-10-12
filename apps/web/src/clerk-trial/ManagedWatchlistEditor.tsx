@@ -12,6 +12,7 @@ import {
 } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import {
   ManagedWatchlistPriceReadout,
   ManagedWatchlistPrices,
@@ -544,6 +545,11 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
           listing.
         </p>
       )}
+      <ManagedWatchlistComparison
+        memberships={memberships}
+        prices={props.prices}
+        active={active}
+      />
     </div>
   );
 }
