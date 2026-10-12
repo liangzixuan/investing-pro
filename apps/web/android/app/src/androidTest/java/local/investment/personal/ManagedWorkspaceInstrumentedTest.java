@@ -946,7 +946,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && report.textContent.includes(wanted.sources.companyFacts.fetchedAt)" +
             " && report.textContent.includes(wanted.sources.submissions.fetchedAt)" +
             " && !report.textContent.includes(generations.initial.sha256)" +
-            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === '2000,300,15'" +
+            " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '2000,300,15%'" +
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
             " && document.querySelector('.managed-eod-history') === null; })()";
         awaitPage("explicit fresh Annual replaces only the discarded request", loadedAnnual);
@@ -1731,68 +1731,87 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteCounts(0, 0, 1);
         click(".managed-annual-report .trial-actions button:first-child");
         String basis = "section[aria-label='Annual revenue basis Revenues']";
+        String amounts = basis + " .managed-annual-values";
+        String history = basis + " > div > details:first-of-type";
         String add = basis + " button[aria-label='Add Revenues annual evidence to note draft']";
         String exactReport =
             "(() => { const report = document.querySelector('.sec-quarterly-comparison');" +
             " const generation = JSON.parse(document.querySelector('#fixture-report-generations').textContent).initial;" +
             " return report !== null && report.textContent.includes(generation.sha256)" +
-            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === '1000,100,10'" +
-            " && document.querySelector(" + JSONObject.quote(basis + " > div > p") + ")?.textContent === '2025-01-01 to 2025-12-31'" +
+            " && report.textContent.includes(generation.cutoffAt) && report.textContent.includes(generation.completedAt)" +
+            " && report.textContent.includes(generation.sources.companyFacts.fetchedAt) && report.textContent.includes(generation.sources.submissions.fetchedAt)" +
+            " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '1000,100,10%'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(amounts + " thead th:nth-child(2) time") + ")).map(e => e.dateTime).join(',') === '2025-01-01,2025-12-31'" +
+            " && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
+            " && document.querySelector('.managed-annual-summary .managed-annual-age')?.textContent === 'Within current-use limits at this load.'" +
+            " && document.querySelector('.managed-annual-financial-region')?.getAttribute('aria-label') === 'Annual financial results'" +
+            " && document.querySelector('.managed-annual-financial-region')?.tabIndex === 0" +
             " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
         awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
-        String comparison = basis + " .sec-annual-comparison";
+        String comparison = basis + " .managed-annual-changes[aria-label='Reported annual comparison Revenues']";
         awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
             "document.querySelector(" + JSONObject.quote(comparison) + ")?.getAttribute('aria-label') === 'Reported annual comparison Revenues'" +
-            " && document.querySelector(" + JSONObject.quote(comparison + " > p") + ")?.textContent === 'Prior: 2024-01-01 to 2024-12-31. Current: 2025-01-01 to 2025-12-31.'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(comparison + " > dl dd") + ")).map(e => e.textContent).join(',') === '800,1000,200,25%,-80,100,180,Unavailable: prior value is negative,-10%,10%,20 percentage points'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(comparison + " > dl:nth-of-type(3) dt") + ")).map(e => e.textContent).join(',') === 'Net margin prior · %,Net margin current · %,Net margin change · percentage points'" +
-            " && document.querySelector(" + JSONObject.quote(comparison + " .sec-quarterly-caveat") + ")?.textContent.includes('No adjustment for period length, accounting changes or restatements')" +
-            " && document.querySelector(" + JSONObject.quote(comparison + " > details > ol") + ")?.children.length === 4");
+            " && document.querySelector(" + JSONObject.quote(comparison + " > caption > span") + ")?.textContent === 'Prior: 2024-01-01 to 2024-12-31. Current: 2025-01-01 to 2025-12-31.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(comparison + " tbody tr") + ")).map(tr => Array.from(tr.cells).map(e => e.textContent).join('|')).join(';') === 'Revenue|200|25%;Net income|180|Unavailable: prior value is negative'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(amounts + " tbody td") + ")).map(e => e.textContent).join(',') === '1000,800,640,100,-80,32,10%,-10%,5%'" +
+            " && document.querySelector(" + JSONObject.quote(basis + " .managed-annual-margin-change") + ")?.textContent === 'Net margin change · 20 percentage points'" +
+            " && document.querySelector('.managed-annual-summary .managed-annual-basis-help')?.textContent.includes('Period length, accounting changes and restatements are unadjusted.')" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).slice(0,2).map(e => e.children.length).join(',') === '2,2'" +
+            " && document.querySelector('.managed-annual-provenance')?.open === false");
         assertAnnualNoteCounts(1, 0, 1);
-        String history = basis + " .sec-annual-history";
         click(history + " > summary");
         awaitPage("three adjacent annual periods retain exact dates, values and original inputs",
             "document.querySelector(" + JSONObject.quote(history) + ")?.open === true" +
-            " && document.querySelector(" + JSONObject.quote(history + " > summary") + ")?.textContent === 'Read reported annual history · 3 periods'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > h5") + ")).map(e => e.textContent).join(',') === '2025-01-01 to 2025-12-31,2024-01-01 to 2024-12-31,2023-01-01 to 2023-12-31'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > dl dd") + ")).map(e => e.textContent).join(',') === '1000,100,10%,800,-80,-10%,640,32,5%'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > ol > li > details > ol") + ")).map(e => e.children.length).join(',') === '2,2,2'" +
+            " && document.querySelector(" + JSONObject.quote(history + " > summary") + ")?.textContent === 'Inspect annual history inputs · Revenues'" +
+            " && document.querySelector(" + JSONObject.quote(amounts + " > caption") + ")?.textContent === 'Reported annual amounts · 3 periods · newest first'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(amounts + " thead th[scope=col]") + ")).slice(1).map(th => Array.from(th.querySelectorAll('time')).map(e => e.dateTime).join(' to ')).join(',') === '2025-01-01 to 2025-12-31,2024-01-01 to 2024-12-31,2023-01-01 to 2023-12-31'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > h5") + ")).map(e => e.textContent).join(',') === '2025-01-01 to 2025-12-31,2024-01-01 to 2024-12-31,2023-01-01 to 2023-12-31'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).map(e => e.children.length).join(',') === '2,2,2'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol > li > details > summary") + ")).map(e => e.textContent).join(';') === 'Revenues · 2025-01-01 to 2025-12-31 · 1000 USD;NetIncomeLoss · 2025-01-01 to 2025-12-31 · 100 USD;Revenues · 2024-01-01 to 2024-12-31 · 800 USD;NetIncomeLoss · 2024-01-01 to 2024-12-31 · -80 USD;Revenues · 2023-01-01 to 2023-12-31 · 640 USD;NetIncomeLoss · 2023-01-01 to 2023-12-31 · 32 USD'" +
             " && document.querySelector(" + JSONObject.quote(history) + ")?.textContent.includes('0000000001-26-000001')" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
         assertAnnualNoteCounts(1, 0, 1);
-        retainAnnualNoteFrame("annualEvidenceHistorySummary", history + " > summary", history + " > summary", 1);
-        retainAnnualNoteFrame("annualEvidenceHistoryCurrent", history + " > ol > li:nth-child(1)", history + " > ol > li:nth-child(1)", 1);
-        retainAnnualNoteFrame("annualEvidenceHistoryPrior", history + " > ol > li:nth-child(2)", history + " > ol > li:nth-child(2)", 1);
-        retainAnnualNoteFrame("annualEvidenceHistoryEarlier", history + " > ol > li:nth-child(3)", history + " > ol > li:nth-child(3)", 1);
-        String earlierComparison = history + " > .sec-annual-earlier-comparison";
+        retainAnnualNoteFrame("annualEvidenceHistorySummary", ".managed-annual-summary", ".managed-annual-summary", 1);
+        retainAnnualNoteFrame("annualEvidenceHistoryCurrent", amounts + " thead th:nth-child(2)", amounts + " thead th:nth-child(2), " + amounts + " tbody td:nth-of-type(1)", 4);
+        retainAnnualNoteFrame("annualEvidenceHistoryPrior", amounts + " thead th:nth-child(3)", amounts + " thead th:nth-child(3), " + amounts + " tbody td:nth-of-type(2)", 4);
+        retainAnnualNoteFrame("annualEvidenceHistoryEarlier", amounts + " thead th:nth-child(4)", amounts + " thead th:nth-child(4), " + amounts + " tbody td:nth-of-type(3)", 4);
+        String earlierComparison = basis + " .managed-annual-changes[aria-label='Earlier reported annual comparison Revenues']";
         awaitPage("earlier adjacent amounts use original dates and exact signed changes",
             "document.querySelector(" + JSONObject.quote(earlierComparison) + ")?.getAttribute('aria-label') === 'Earlier reported annual comparison Revenues'" +
-            " && document.querySelector(" + JSONObject.quote(earlierComparison + " > p:first-of-type") + ")?.textContent === 'Prior: 2023-01-01 to 2023-12-31. Current: 2024-01-01 to 2024-12-31.'" +
-            " && Array.from(document.querySelectorAll(" + JSONObject.quote(earlierComparison + " > dl dd") + ")).map(e => e.textContent).join(',') === '640,800,160,25%,32,-80,-112,-350%'" +
-            " && document.querySelector(" + JSONObject.quote(earlierComparison + " > details > ol") + ")?.children.length === 4" +
+            " && document.querySelector(" + JSONObject.quote(earlierComparison + " > caption > span") + ")?.textContent === 'Prior: 2023-01-01 to 2023-12-31. Current: 2024-01-01 to 2024-12-31.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(earlierComparison + " tbody tr") + ")).map(tr => Array.from(tr.cells).map(e => e.textContent).join('|')).join(';') === 'Revenue|160|25%;Net income|-112|-350%'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).slice(1).map(e => e.children.length).join(',') === '2,2'" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
-        retainAnnualNoteFrame("annualEvidenceEarlierComparisonRevenue", earlierComparison + " > h5",
-            earlierComparison + " > h5, " + earlierComparison + " > p:first-of-type, " + earlierComparison + " > dl:first-of-type", 3);
-        retainAnnualNoteFrame("annualEvidenceEarlierComparisonIncome", earlierComparison + " > dl:nth-of-type(2)",
-            earlierComparison + " > dl:nth-of-type(2)", 1);
+        retainAnnualNoteFrame("annualEvidenceEarlierComparisonRevenue", earlierComparison + " thead th:last-child",
+            earlierComparison + " thead th:not(:first-child), " + earlierComparison + " tbody tr:first-child td", 4);
+        retainAnnualNoteFrame("annualEvidenceEarlierComparisonIncome", earlierComparison + " tbody tr:nth-child(2) td:last-child",
+            earlierComparison + " tbody tr:nth-child(2) td", 2);
         assertAnnualNoteCounts(1, 0, 1);
         click(history + " > summary");
-        awaitPage("closing annual history preserves the draft and selected report",
+        awaitPage("closing annual inputs preserves visible financials, draft and selected report",
             "document.querySelector(" + JSONObject.quote(history) + ")?.open === false" +
+            " && document.querySelector(" + JSONObject.quote(amounts) + ") !== null" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
-        // Each source region fits the native viewport; the note action follows the comparison.
+        // Capture the period columns and comparison cells within the fitted tables.
         retainAnnualNoteFrame("annualEvidenceNoteSource", basis + " > h4",
-            basis + " > h4, " + basis + " > div > p:first-child, " + basis + " > div > dl", 3);
+            basis + " > h4, " + amounts + " thead th:nth-child(2), " + amounts + " tbody td:first-of-type", 5);
         awaitPage("source pair remains unchanged through capture", exactReport);
-        retainAnnualNoteFrame("annualEvidenceComparisonSource", comparison + " > h5",
-            comparison + " > h5, " + comparison + " > p:first-of-type, " + comparison + " > dl:first-of-type", 3);
-        retainAnnualNoteFrame("annualEvidenceComparisonIncome", comparison + " > dl:nth-of-type(2)",
-            comparison + " > dl:nth-of-type(2)", 1);
-        retainAnnualNoteFrame("annualEvidenceComparisonMargin", comparison + " > dl:nth-of-type(3)",
-            comparison + " > dl:nth-of-type(3)", 1);
-        retainAnnualNoteFrame("annualEvidenceComparisonDisclosure", comparison + " > p.sec-quarterly-caveat",
-            comparison + " > p.sec-quarterly-caveat", 1);
+        retainAnnualNoteFrame("annualEvidenceComparisonSource", comparison + " thead th:last-child",
+            comparison + " thead th:not(:first-child), " + comparison + " tbody tr:first-child td", 4);
+        retainAnnualNoteFrame("annualEvidenceComparisonIncome", comparison + " tbody tr:nth-child(2) td:last-child",
+            comparison + " tbody tr:nth-child(2) td", 2);
+        retainAnnualNoteFrame("annualEvidenceComparisonMargin", basis + " .managed-annual-margin-change",
+            basis + " .managed-annual-margin-change", 1);
+        click(".managed-annual-provenance > summary");
+        awaitPage("financial methodology remains inspectable without another read",
+            "document.querySelector('.managed-annual-provenance')?.open === true" +
+            " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Percentage change is (current − prior) ÷ prior × 100')" +
+            " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Margin change subtracts the unrounded ratios')" +
+            " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('unusual items in NetIncomeLoss')");
+        retainAnnualNoteFrame("annualEvidenceComparisonDisclosure", ".managed-annual-provenance > p.sec-quarterly-caveat:last-of-type",
+            ".managed-annual-provenance > p.sec-quarterly-caveat:last-of-type", 1);
+        click(".managed-annual-provenance > summary");
         retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
         awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
@@ -2587,8 +2606,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && report.textContent.includes(wanted.sources.companyFacts.fetchedAt)" +
             " && report.textContent.includes(wanted.sources.submissions.fetchedAt)" +
             " && !report.textContent.includes(other.sha256)" +
-            " && Array.from(report.querySelectorAll('.sec-quarterly-value')).map(e => e.textContent).join(',') === " +
-                JSONObject.quote(recovered ? "2000,300,15" : "1000,100,10") +
+            " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === " +
+                JSONObject.quote(recovered ? "2000,300,15%" : "1000,100,10%") +
             " && panel.textContent.includes('Showing the previous report') === " + previous +
             " && panel.getAttribute('aria-busy') === '" + running + "'" +
             " && " + DIAGNOSTICS + ".annual === " + annualCalls +

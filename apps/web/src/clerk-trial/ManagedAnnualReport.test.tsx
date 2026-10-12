@@ -164,7 +164,10 @@ describe("managed annual refresh", () => {
         React.ComponentProps<typeof SecAnnualEvidenceResult>
       >;
       expect(result.props.response).toBe(report);
-      expect(result.key).toContain(report.evidence.generation.sha256.slice(7));
+      expect(result.key).not.toContain(
+        report.evidence.generation.sha256.slice(7),
+      );
+      expect(result.props.appearance).toBe("financial");
       const pair = report.evidence.resolution.bases.flatMap(
         (basis) => basis.pairs,
       )[0]!;
@@ -172,14 +175,16 @@ describe("managed annual refresh", () => {
         React.ComponentProps<typeof ManagedAnnualNoteAction>
       >;
       expect(action.type).toBe(ManagedAnnualNoteAction);
+      expect(action.key).toBe(report.evidence.generation.sha256);
       expect(action.props.pair).toBe(pair);
       expect(getAction).toHaveBeenLastCalledWith(report, pair);
-      return { action, pair, key: result.key };
+      return { action, pair, key: action.key, resultKey: result.key };
     };
     const captured = actionFor(old);
     await model.load();
     const current = actionFor(next);
     expect(current.key).not.toBe(captured.key);
+    expect(current.resultKey).toBe(captured.resultKey);
     captured.action.props.onAppend();
     expect(append).toHaveBeenLastCalledWith(old, captured.pair);
     current.action.props.onAppend();
@@ -273,7 +278,7 @@ describe("managed annual refresh", () => {
         "Showing the previous report, completed 2026-09-20T00:00:02.000Z",
       );
       expect(html()).toContain(old.evidence.generation.sha256);
-      expect(html()).toContain(">1000</dd>");
+      expect(html()).toContain("<td>1000</td>");
       expect(html()).toContain(
         'aria-label="Reported annual comparison Revenues"',
       );
@@ -299,8 +304,10 @@ describe("managed annual refresh", () => {
       });
       expect(html()).toContain(next.evidence.generation.sha256);
       expect(html()).toContain("2026-09-21T00:00:02.000Z");
-      expect(html()).toContain(">2000</dd>");
+      expect(html()).toContain("<td>2000</td>");
       expect(html()).not.toContain(old.evidence.generation.sha256);
+      expect(html()).not.toContain("<td>1000</td>");
+      expect(html()).not.toContain("2026-09-20T00:00:02.000Z");
       expect(html()).not.toContain("Showing the previous report");
       expect(html()).not.toContain(
         'aria-label="Reported annual comparison Revenues"',

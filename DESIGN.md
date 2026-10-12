@@ -107,6 +107,24 @@ chart. My Watchlist pairs ordered listing selection with one note editor and its
 research, move and remove actions. Selection is presentation state; the shared
 watchlist draft owns every note and membership.
 
+The managed Annual report leads with compact financial tables for each named
+revenue basis. Show exact periods, USD amounts, margins and dated reported changes
+before technical validation details. Keep unavailable and current-use restrictions
+beside the figures, and the filing link and source dates easy to find. Collapse
+scan counts and observation records in an accessible disclosure. Use muted text
+for routine methodology and amber for actual restrictions or previous results.
+Tables fit the available width within a stable, labelled keyboard region; wrap
+long exact values and dates within cells, keeping labels and note text readable.
+Eligible bases lead inside that one region so refreshing their order cannot move
+the focused region. Keep the Annual
+heading and load action compact enough for figures to appear in the first desktop
+view. The local Annual layout stays separate.
+
+Scoped invented-data Brave checks verified the Annual hierarchy at 1440 pixels
+and fitted tables at 390 and 320 pixels, including long exact amounts and basis
+names. [Current work](docs/CURRENT_WORK.md) records behavioral limits and pending
+native and release acceptance.
+
 Company research shows Price/Annual content beside the watchlist note on wide
 screens. Below 1150px the note follows that content in reading order. Opening
 research hides the origin view while preserving its mounted state. Returning

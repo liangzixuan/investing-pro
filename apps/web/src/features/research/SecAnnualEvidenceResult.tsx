@@ -5,6 +5,10 @@ import type {
 } from "@research-cockpit/contracts";
 import type { ReactNode } from "react";
 import {
+  SecAnnualFinancials,
+  AnnualOverviewSummary,
+} from "./SecAnnualFinancials";
+import {
   comparePersonalSecAnnualEvidence,
   resolvePersonalSecAnnualHistory,
   type PersonalSecAnnualComparison,
@@ -73,61 +77,78 @@ const reasons: Readonly<Record<string, string>> = {
 export function SecAnnualEvidenceResult({
   response,
   renderPairAction,
+  appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
+  readonly appearance?: "evidence" | "financial";
 }) {
-  const evidence = response.evidence;
-  const { target, completeness, coverage, resolution, generation } = evidence;
+  if (appearance === "financial")
+    return (
+      <div className="sec-quarterly-comparison managed-annual-overview">
+        <AnnualOverviewSummary
+          response={response}
+          targetMessage={
+            response.evidence.target.status === "unresolved"
+              ? reason(response.evidence.target.reason)
+              : null
+          }
+          completenessMessage={
+            response.evidence.completeness.status === "complete"
+              ? null
+              : reason(response.evidence.completeness.reason)
+          }
+        />
+        <div
+          className="managed-annual-financial-region"
+          role="region"
+          aria-label="Annual financial results"
+          tabIndex={0}
+        >
+          <AnnualBases
+            response={response}
+            renderPairAction={renderPairAction}
+            financial
+          />
+        </div>
+        <details className="managed-annual-provenance">
+          <summary>Source and validation details</summary>
+          <p className="sec-quarterly-message">
+            Observed SEC annual revenue, net income and net margin in USD.
+            Revenue concepts stay separate. This view covers the observed report
+            in current submissions; it does not provide complete filing history
+            or prices.
+          </p>
+          <AnnualEvidenceContext response={response} />
+          <AnnualComparisonMethodology />
+          <AnnualEvidenceSources response={response} />
+        </details>
+      </div>
+    );
   return (
     <div className="sec-quarterly-comparison">
+      <AnnualEvidenceContext response={response} />
+      <AnnualBases response={response} renderPairAction={renderPairAction} />
+      <AnnualEvidenceSources response={response} />
+    </div>
+  );
+}
+
+function AnnualEvidenceContext({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  const evidence = response.evidence;
+  const { target, coverage, resolution } = evidence;
+  return (
+    <>
       <h3>{response.security.symbol} · Observed annual report</h3>
       <p className="sec-quarterly-message">
         {response.security.issuerName} · {response.security.exchangeMic} ·{" "}
         {response.security.securityName} · CIK {evidence.cik}
       </p>
-      <dl className="sec-quarterly-comparison-coordinates">
-        <div>
-          <dt>Observed report</dt>
-          <dd>
-            {target.status === "target"
-              ? `${target.form} · period ending ${target.reportDate}`
-              : reason(target.reason)}
-          </dd>
-        </div>
-        <div>
-          <dt>Complete selected evidence</dt>
-          <dd>
-            {completeness.status === "complete"
-              ? "Complete for the four requested USD concepts"
-              : `Unavailable. ${reason(completeness.reason)}`}
-          </dd>
-        </div>
-        <div>
-          <dt>Annual pair validity</dt>
-          <dd>
-            {resolution.selectedReportPairEligible
-              ? "At least one same-report annual pair is valid"
-              : "No valid annual pair for the observed report"}
-          </dd>
-        </div>
-        <div>
-          <dt>Current-use age policy</dt>
-          <dd>
-            {resolution.currentTargetEligible
-              ? "Valid pair within the 485-day report / seven-day source limits"
-              : "Unavailable under the current-use policy"}
-          </dd>
-        </div>
-        <div>
-          <dt>Load cutoff</dt>
-          <dd>{generation.cutoffAt}</dd>
-        </div>
-        <div>
-          <dt>Completed</dt>
-          <dd>{generation.completedAt}</dd>
-        </div>
-      </dl>
+      <AnnualReportCoordinates response={response} />
       {target.status === "target" ? (
         <p className="sec-quarterly-message">
           Filed {target.filedDate} · Accepted{" "}
@@ -182,117 +203,260 @@ export function SecAnnualEvidenceResult({
           fetched.
         </p>
       ) : null}
-      {resolution.bases.map((basis) => (
+    </>
+  );
+}
+
+function AnnualReportCoordinates({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  const { target, completeness, resolution, generation } = response.evidence;
+  return (
+    <dl className="sec-quarterly-comparison-coordinates">
+      <div>
+        <dt>Observed report</dt>
+        <dd>
+          {target.status === "target"
+            ? `${target.form} · period ending ${target.reportDate}`
+            : reason(target.reason)}
+        </dd>
+      </div>
+      <div>
+        <dt>Complete selected evidence</dt>
+        <dd>
+          {completeness.status === "complete"
+            ? "Complete for the four requested USD concepts"
+            : `Unavailable. ${reason(completeness.reason)}`}
+        </dd>
+      </div>
+      <div>
+        <dt>Annual pair validity</dt>
+        <dd>
+          {resolution.selectedReportPairEligible
+            ? "At least one same-report annual pair is valid"
+            : "No valid annual pair for the observed report"}
+        </dd>
+      </div>
+      <div>
+        <dt>Current-use age policy</dt>
+        <dd>
+          {resolution.currentTargetEligible
+            ? "Valid pair within the 485-day report / seven-day source limits"
+            : "Unavailable under the current-use policy"}
+        </dd>
+      </div>
+      <div>
+        <dt>Load cutoff</dt>
+        <dd>{generation.cutoffAt}</dd>
+      </div>
+      <div>
+        <dt>Completed</dt>
+        <dd>{generation.completedAt}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function AnnualBases({
+  response,
+  renderPairAction,
+  financial = false,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly renderPairAction:
+    ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
+  readonly financial?: boolean;
+}) {
+  const evidence = response.evidence;
+  const { resolution } = evidence;
+  const bases = financial
+    ? [...resolution.bases].sort(
+        (left, right) =>
+          Number(right.status === "eligible") -
+          Number(left.status === "eligible"),
+      )
+    : resolution.bases;
+  return (
+    <>
+      {bases.map((basis) => (
         <section
           className="sec-filing-context"
           key={basis.concept}
           aria-label={`Annual revenue basis ${basis.concept}`}
         >
           <h4>{basis.concept}</h4>
-          <p className="sec-quarterly-message">
-            {basis.status === "eligible"
-              ? "Valid annual pair"
-              : basis.status === "missing"
-                ? "Unknown: this revenue basis is missing for the observed report."
-                : basis.status === "withheld"
-                  ? "Annual values withheld because complete selected evidence is unavailable."
-                  : "Unknown: this revenue basis cannot form a valid annual pair."}
-          </p>
-          {basis.pairs.map((pair) => (
-            <AnnualPair
-              key={JSON.stringify([pair.startDate, pair.endDate])}
-              pair={pair}
-              observations={evidence.observations}
-              comparison={
-                pair.status === "eligible"
-                  ? comparePersonalSecAnnualEvidence(evidence, pair.concept)
-                  : null
-              }
-              history={
-                pair.status === "eligible"
-                  ? resolvePersonalSecAnnualHistory(evidence, pair.concept)
-                  : null
-              }
-              action={
-                pair.status === "eligible" ? renderPairAction?.(pair) : null
-              }
-            />
-          ))}
+          {(!financial || basis.status !== "eligible") && (
+            <AnnualBasisStatus status={basis.status} />
+          )}
+          {renderPairs(basis.pairs, evidence, renderPairAction, financial)}
         </section>
       ))}
-      <details className="sec-quarterly-row-details sec-filing-context">
-        <summary>
-          Inspect selected-report evidence ({evidence.observations.length}{" "}
-          observations)
-        </summary>
-        <p className="sec-quarterly-message">
-          All returned observations for this accession, including comparative
-          years and other periods, appear below in retained order. Filing-focus
-          labels are not the observation's fiscal year. Exact USD values are
-          unscaled.
-        </p>
-        <ol>
-          {evidence.observations.map((row) => (
-            <li key={row.id}>
-              <ObservationDetails row={row} />
-            </li>
-          ))}
-        </ol>
-        <dl className="sec-quarterly-comparison-coordinates">
-          <div>
-            <dt>Definition version</dt>
-            <dd>{generation.definitionVersion}</dd>
-          </div>
-          <div>
-            <dt>Source generation</dt>
-            <dd>{generation.sha256}</dd>
-          </div>
-        </dl>
-        {(["companyFacts", "submissions"] as const).map((name) => (
-          <div className="sec-quarterly-message" key={name}>
-            <strong>
-              {name === "companyFacts"
-                ? "Company Facts"
-                : "Current submissions"}
-            </strong>
-            <dl className="sec-quarterly-row-details">
-              <dt>Source status</dt>
-              <dd>{sourceStatuses[generation.sources[name].status]}</dd>
-              <dt>Source</dt>
-              <dd>{generation.sources[name].sourceUrl}</dd>
-              <dt>Captured</dt>
-              <dd>
-                {generation.sources[name].fetchedAt ??
-                  "No complete body captured"}
-              </dd>
-              <dt>Body bytes</dt>
-              <dd>{generation.sources[name].bytes ?? "Unknown"}</dd>
-              <dt>Body SHA-256</dt>
-              <dd>{generation.sources[name].sha256 ?? "Unavailable"}</dd>
-            </dl>
-          </div>
-        ))}
-      </details>
-    </div>
+    </>
   );
 }
 
-function AnnualPair({
-  pair,
-  observations,
-  action,
-  comparison,
-  history,
+function AnnualBasisStatus({
+  status,
 }: {
+  readonly status: PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number]["status"];
+}) {
+  return (
+    <p className="sec-quarterly-message">
+      {status === "eligible"
+        ? "Valid annual pair"
+        : status === "missing"
+          ? "Unknown: this revenue basis is missing for the observed report."
+          : status === "withheld"
+            ? "Annual values withheld because complete selected evidence is unavailable."
+            : "Unknown: this revenue basis cannot form a valid annual pair."}
+    </p>
+  );
+}
+
+function renderPairs(
+  pairs: readonly PersonalSecAnnualPairDto[],
+  evidence: PersonalSecAnnualEvidenceResponseDto["evidence"],
+  renderPairAction: ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined,
+  financial: boolean,
+) {
+  return pairs.map((pair) => (
+    <AnnualPair
+      key={JSON.stringify([pair.startDate, pair.endDate])}
+      pair={pair}
+      financial={financial}
+      observations={evidence.observations}
+      comparison={
+        pair.status === "eligible"
+          ? comparePersonalSecAnnualEvidence(evidence, pair.concept)
+          : null
+      }
+      history={
+        pair.status === "eligible"
+          ? resolvePersonalSecAnnualHistory(evidence, pair.concept)
+          : null
+      }
+      action={pair.status === "eligible" ? renderPairAction?.(pair) : null}
+    />
+  ));
+}
+
+function AnnualEvidenceSources({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  const evidence = response.evidence;
+  const { generation } = evidence;
+  return (
+    <details className="sec-quarterly-row-details sec-filing-context">
+      <summary>
+        Inspect selected-report evidence ({evidence.observations.length}{" "}
+        observations)
+      </summary>
+      <p className="sec-quarterly-message">
+        All returned observations for this accession, including comparative
+        years and other periods, appear below in retained order. Filing-focus
+        labels are not the observation's fiscal year. Exact USD values are
+        unscaled.
+      </p>
+      <ol>
+        {evidence.observations.map((row) => (
+          <li key={row.id}>
+            <ObservationDetails row={row} />
+          </li>
+        ))}
+      </ol>
+      <dl className="sec-quarterly-comparison-coordinates">
+        <div>
+          <dt>Definition version</dt>
+          <dd>{generation.definitionVersion}</dd>
+        </div>
+        <div>
+          <dt>Source generation</dt>
+          <dd>{generation.sha256}</dd>
+        </div>
+      </dl>
+      {(["companyFacts", "submissions"] as const).map((name) => (
+        <div className="sec-quarterly-message" key={name}>
+          <strong>
+            {name === "companyFacts" ? "Company Facts" : "Current submissions"}
+          </strong>
+          <dl className="sec-quarterly-row-details">
+            <dt>Source status</dt>
+            <dd>{sourceStatuses[generation.sources[name].status]}</dd>
+            <dt>Source</dt>
+            <dd>{generation.sources[name].sourceUrl}</dd>
+            <dt>Captured</dt>
+            <dd>
+              {generation.sources[name].fetchedAt ??
+                "No complete body captured"}
+            </dd>
+            <dt>Body bytes</dt>
+            <dd>{generation.sources[name].bytes ?? "Unknown"}</dd>
+            <dt>Body SHA-256</dt>
+            <dd>{generation.sources[name].sha256 ?? "Unavailable"}</dd>
+          </dl>
+        </div>
+      ))}
+    </details>
+  );
+}
+
+interface AnnualPairProps {
+  readonly financial?: boolean;
   readonly pair: PersonalSecAnnualPairDto;
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
   readonly action: ReactNode;
   readonly comparison: PersonalSecAnnualComparison | null;
   readonly history: PersonalSecAnnualHistory | null;
-}) {
-  const ids = [...pair.revenueObservationIds, ...pair.incomeObservationIds];
+}
+
+function AnnualPair(props: AnnualPairProps) {
+  const { pair, financial = false, comparison, history, action } = props;
   return (
     <div>
+      {financial && pair.status === "eligible" ? (
+        <SecAnnualFinancials
+          pair={pair}
+          comparison={comparison}
+          history={history}
+          comparisonMessage={
+            comparison?.status === "unavailable"
+              ? comparisonMessages[comparison.reason]
+              : null
+          }
+          historyMessage={
+            history?.status === "available" && history.stoppedReason
+              ? comparisonMessages[history.stoppedReason]
+              : null
+          }
+        />
+      ) : (
+        <AnnualPairValues {...props} />
+      )}
+      {action}
+      {financial && (
+        <AnnualHistoryInputs
+          history={history}
+          pair={pair}
+          observations={props.observations}
+        />
+      )}
+      <AnnualPairInputs pair={pair} observations={props.observations} />
+    </div>
+  );
+}
+
+function AnnualPairValues({
+  pair,
+  observations,
+  comparison,
+  history,
+}: AnnualPairProps) {
+  return (
+    <>
       <p className="sec-quarterly-message">
         {pair.startDate ?? "Start date unknown"} to {pair.endDate}
       </p>
@@ -320,30 +484,71 @@ function AnnualPair({
       {history?.status === "available" ? (
         <AnnualHistory history={history} observations={observations} />
       ) : null}
-      {action}
-      <details className="sec-quarterly-row-details">
-        <summary>
-          Inspect annual pair inputs · {pair.concept} · {pair.endDate}
-        </summary>
-        {pair.subordinateReasons.length === 0 ? null : (
-          <ul>
-            {pair.subordinateReasons.map((item) => (
-              <li key={item}>{reason(item)}</li>
-            ))}
-          </ul>
-        )}
-        <ol>
-          {ids.map((id) => {
-            const row = observations.find((item) => item.id === id);
-            return row === undefined ? null : (
-              <li key={id}>
-                <ObservationDetails row={row} />
-              </li>
-            );
-          })}
-        </ol>
-      </details>
-    </div>
+    </>
+  );
+}
+
+function AnnualHistoryInputs({
+  history,
+  pair,
+  observations,
+}: Pick<AnnualPairProps, "history" | "pair" | "observations">) {
+  return (
+    <>
+      {history?.status === "available" && (
+        <details className="sec-quarterly-row-details">
+          <summary>Inspect annual history inputs · {pair.concept}</summary>
+          {history.periods.map((period) => (
+            <section key={period.endDate}>
+              <h5>
+                {period.startDate} to {period.endDate}
+              </h5>
+              <ol>
+                {period.observationIds.map((id) => {
+                  const row = observations.find((item) => item.id === id);
+                  return row ? (
+                    <li key={id}>
+                      <ObservationDetails row={row} />
+                    </li>
+                  ) : null;
+                })}
+              </ol>
+            </section>
+          ))}
+        </details>
+      )}
+    </>
+  );
+}
+
+function AnnualPairInputs({
+  pair,
+  observations,
+}: Pick<AnnualPairProps, "pair" | "observations">) {
+  const ids = [...pair.revenueObservationIds, ...pair.incomeObservationIds];
+  return (
+    <details className="sec-quarterly-row-details">
+      <summary>
+        Inspect annual pair inputs · {pair.concept} · {pair.endDate}
+      </summary>
+      {pair.subordinateReasons.length === 0 ? null : (
+        <ul>
+          {pair.subordinateReasons.map((item) => (
+            <li key={item}>{reason(item)}</li>
+          ))}
+        </ul>
+      )}
+      <ol>
+        {ids.map((id) => {
+          const row = observations.find((item) => item.id === id);
+          return row === undefined ? null : (
+            <li key={id}>
+              <ObservationDetails row={row} />
+            </li>
+          );
+        })}
+      </ol>
+    </details>
   );
 }
 
@@ -547,18 +752,7 @@ function AnnualComparison({
           <dd>{annualMarginChangeText(comparison.netMargin)}</dd>
         </div>
       </dl>
-      <p className="sec-quarterly-caveat">
-        Amounts are exact, unscaled USD. Percentage change is (current − prior)
-        ÷ prior × 100, rounded half up to two decimal places, and requires a
-        positive prior value. Net margin is NetIncomeLoss ÷ the named revenue
-        basis × 100 and requires positive revenue. Margin change subtracts the
-        unrounded ratios and is rounded once to two decimal places, in
-        percentage points. These reported amounts include any unusual items in
-        NetIncomeLoss. Consecutive annual periods can differ in length. No
-        adjustment for period length, accounting changes or restatements is
-        made. These are comparatives reported in the same filing, not an
-        as-originally-filed history or organic growth.
-      </p>
+      <AnnualComparisonMethodology />
       <details className="sec-quarterly-row-details">
         <summary>
           Inspect annual comparison inputs · {comparison.concept}
@@ -579,6 +773,23 @@ function AnnualComparison({
         </ol>
       </details>
     </section>
+  );
+}
+
+function AnnualComparisonMethodology() {
+  return (
+    <p className="sec-quarterly-caveat">
+      Amounts are exact, unscaled USD. Percentage change is (current − prior) ÷
+      prior × 100, rounded half up to two decimal places, and requires a
+      positive prior value. Net margin is NetIncomeLoss ÷ the named revenue
+      basis × 100 and requires positive revenue. Margin change subtracts the
+      unrounded ratios and is rounded once to two decimal places, in percentage
+      points. These reported amounts include any unusual items in NetIncomeLoss.
+      Consecutive annual periods can differ in length. No adjustment for period
+      length, accounting changes or restatements is made. These are comparatives
+      reported in the same filing, not an as-originally-filed history or organic
+      growth.
+    </p>
   );
 }
 
