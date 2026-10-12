@@ -2273,7 +2273,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'");
-        assertCompanyNoteDraft(1, true);
+        awaitPage("filtered note search preserves the complete draft and unrelated notes",
+            DRAFT + ".memberships.map(member => member.listingId + ':' + member.symbol).join('|') === 'listing-zero:ZERO|listing-one:ONE|listing-alfa:ALFA'" +
+            " && " + DRAFT + ".memberships[0].note === ''" +
+            " && " + DRAFT + ".memberships[1].note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships[2].note === " + JSONObject.quote(COMPANY_NOTE) +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes')");
         assertCompanyNoteCounts(0, 1);
         click("button[aria-label='Clear watchlist search']");
         awaitPage("Clear preserves Research notes and the selected draft while restoring all choices",
