@@ -8,7 +8,7 @@ export const MANAGED_EOD_BUDGET = Object.freeze({
   rowId: "managed-eod-v1",
 });
 export const MANAGED_EOD_MAPPING_SNAPSHOT =
-  "sha256:0ff96ab386a9f1ce4ecab834706aa8da6d9b8ee9efd97f9f79908d616b43a3e4" as const;
+  "sha256:fe3655c4c449ef306e62cd33b7bba37dd4c1f4945fdcf0dc304982abb4ac1d3f" as const;
 export type ManagedEodSymbol = "AAPL" | "GOOG" | "GOOGL";
 export interface ManagedEodConfiguration {
   readonly enabledSymbols: readonly ManagedEodSymbol[];

@@ -44,27 +44,44 @@ issuer/security/share-class/listing identifiers remain distinct from ticker,
 CIK and provider identifiers. The same assignments must be retained when a
 catalog is refreshed.
 
-## Reviewed September 30 cohort
+## Reviewed October 12 cohort
 
-The fixed managed cohort contains AAPL, GOOG and GOOGL: three listings for two
-issuers. GOOG and GOOGL retain separate securities, share classes and listings.
-This is a small reviewed cohort, with no price data or whole-market claim.
+The fixed managed cohort contains AAPL, GOOG, GOOGL and MSFT: four listings for
+three issuers. GOOG and GOOGL retain separate securities, share classes and
+listings. This is a small reviewed cohort, with no price data or whole-market
+claim. The original three complete identities and provider mappings are retained;
+only Microsoft's internal identifiers are new. Saved records keep their existing
+identity, note and reconciliation rules.
 
-Its original canonical snapshot digest is
-`sha256:0ff96ab386a9f1ce4ecab834706aa8da6d9b8ee9efd97f9f79908d616b43a3e4`.
-The API's formatted JSON asset reconstructs those exact canonical bytes before
-admission. Its adjacent manifest identifies public sources, issuer filing dates,
-exclusions and the retained preparation review. Full original source bodies and
-failed attempts remain outside Git. Stable opaque identity assignments must be
-reused on a later refresh.
+The API reconstructs canonical bytes from its selected snapshot asset and checks
+the exact digest before admission. The adjacent manifest identifies public
+sources, issuer filing dates, exclusions and the retained preparation review.
+Full original source bodies and failed attempts remain outside Git. Stable opaque
+identity assignments must be reused on a later refresh.
 
-MSFT and TSM are excluded because their selected filings exceeded the acquisition
-byte limit. BRK-B is excluded because the exact mapping returned no identifier.
-The second, separately reviewed XNGS mapping batch supplied the three admitted
-listings; the first operating-MIC batch returned no matches. This does not prove
-how OpenFIGI expands operating MICs. The ISO MIC facts are a limited unofficial
-projection with attribution to the official registry. The snapshot's policy
-deadline is an application review deadline, not a source licence expiry.
+Microsoft's complete annual filing cover, filed July 29, identifies its common
+stock by title and filing context. Two debt securities also display MSFT; those
+contexts are excluded from the common-stock projection. The reviewed title is a
+displayed string. No transformed XBRL par-value or exchange value is asserted.
+One separately reviewed XNGS mapping returned a unique common-stock result,
+joined through the dated MIC relationship to XNAS.
+
+The composed source retains the September 30 candidate, venue and existing
+listing evidence, with Microsoft's complete cover and mapping acquired October 12. Assembly time does not refresh older sources. Filing acceptance dates stay
+separate from acquisition dates. The ISO MIC facts are a limited unofficial
+projection with attribution to the official registry. The policy declaration
+retains its original review date and scope; its deadline is an application review
+deadline, not a source licence expiry.
+
+TSM remains excluded because its original selected filing exceeded the acquisition
+limit. BRK-B remains excluded because its exact mapping returned no identifier.
+Earlier failed acquisitions remain retained; no partial filing was admitted.
+The separate mapping batches do not establish how OpenFIGI expands operating MICs.
+
+Catalog and Annual admission do not enable Price coverage. The existing AAPL,
+GOOG and GOOGL Price identities and three-row Markets board remain unchanged.
+Microsoft's Price view explains that coverage is unavailable and makes no price
+request; Annual and the shared note remain usable.
 
 The managed read handler provides authenticated `GET /v1/managed/catalog` and
 `GET /v1/managed/catalog/search?q=...`, using the same fixed catalog. Its compact

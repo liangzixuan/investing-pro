@@ -76,6 +76,44 @@ function buttons(node: React.ReactNode): React.ReactElement<ButtonProps>[] {
 }
 
 describe("managed close history panel", () => {
+  it("keeps the focusable heading and plain unavailable explanation without price controls or claims", async () => {
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, []);
+    const noteActions = { getAction: vi.fn(), append: vi.fn() };
+    model.open(
+      { ...eodSelection, origin: "markets" },
+      { response: eodResponse(), showingPrevious: true },
+    );
+    const output = renderToStaticMarkup(
+      <Panel model={model} noteActions={noteActions} />,
+    );
+    expect(output).toContain('id="managed-eod-heading" tabindex="-1"');
+    expect(output).toContain("EOD close history");
+    expect(output).toContain(
+      "Price history is not available for this listing in this workspace.",
+    );
+    for (const omitted of [
+      "<button",
+      "<table",
+      "Tiingo",
+      "Load",
+      "Refresh",
+      "Source and request dates",
+      "managed-eod-previous",
+      "managed-eod-origin",
+    ])
+      expect(output).not.toContain(omitted);
+    expect(noteActions.getAction).not.toHaveBeenCalled();
+    expect(noteActions.append).not.toHaveBeenCalled();
+    await model.load();
+    expect(read).not.toHaveBeenCalled();
+    focusHooks.enabled = true;
+    Panel({ model });
+    const focus = vi.fn();
+    focusHooks.refs[0]!.current = { focus };
+    focusHooks.effect!();
+    expect(focus).toHaveBeenCalledOnce();
+  });
   it.each([false, true])(
     "shows Markets provenance and original dates until company refresh (previous: %s)",
     async (showingPrevious) => {
@@ -83,7 +121,9 @@ describe("managed close history panel", () => {
       const read = vi
         .fn<ManagedApi["eodHistory"]>()
         .mockResolvedValue(response);
-      const model = new ManagedEodHistory(read, vi.fn());
+      const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+        eodSelection.listing,
+      ]);
       model.open(
         { ...eodSelection, origin: "markets", cik: null },
         {
@@ -120,7 +160,9 @@ describe("managed close history panel", () => {
 
   it("keeps a rejected seed unloaded without a Markets provenance claim", () => {
     const read = vi.fn<ManagedApi["eodHistory"]>();
-    const model = new ManagedEodHistory(read, vi.fn());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
     model.open(
       { ...eodSelection, origin: "markets" },
       {
@@ -145,7 +187,9 @@ describe("managed close history panel", () => {
     const read = vi
       .fn<ManagedApi["eodHistory"]>()
       .mockResolvedValue(eodResponse());
-    const model = new ManagedEodHistory(read, vi.fn());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
     const render = () => {
       focusHooks.index = 0;
       return buttons(Panel({ model }));
@@ -172,7 +216,9 @@ describe("managed close history panel", () => {
     const read = vi
       .fn<ManagedApi["eodHistory"]>()
       .mockRejectedValue(new ManagedCatalogChangedError());
-    const model = new ManagedEodHistory(read, vi.fn());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
     model.open(eodSelection);
     await model.load();
     const html = renderToStaticMarkup(<Panel model={model} />);
@@ -199,7 +245,9 @@ describe("managed close history panel", () => {
           }),
       );
       if (loaded) read.mockResolvedValueOnce(eodResponse());
-      const model = new ManagedEodHistory(read, vi.fn());
+      const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+        eodSelection.listing,
+      ]);
       model.open(eodSelection);
       if (loaded) await model.load();
       const pending = model.load();
@@ -250,7 +298,9 @@ describe("managed close history panel", () => {
     const read = vi
       .fn<ManagedApi["eodHistory"]>()
       .mockResolvedValue(eodResponse());
-    const model = new ManagedEodHistory(read, vi.fn());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
     const html = () => renderToStaticMarkup(<Panel model={model} />);
     expect(html()).toBe("");
     model.open(eodSelection);
@@ -323,7 +373,9 @@ describe("managed close history panel", () => {
         .fn<ManagedApi["eodHistory"]>()
         .mockResolvedValueOnce(previous)
         .mockRejectedValueOnce(error);
-      const model = new ManagedEodHistory(read, vi.fn());
+      const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+        eodSelection.listing,
+      ]);
       const html = () => renderToStaticMarkup(<Panel model={model} />);
       const expectPrevious = () => {
         const output = html();
@@ -405,7 +457,9 @@ describe("managed close history panel", () => {
     const read = vi
       .fn<ManagedApi["eodHistory"]>()
       .mockRejectedValue(new ManagedEodHistoryError("unavailable"));
-    const model = new ManagedEodHistory(read, vi.fn());
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+      eodSelection.listing,
+    ]);
     model.open(eodSelection);
     await model.load();
     const output = renderToStaticMarkup(<Panel model={model} />);
@@ -423,7 +477,9 @@ it("offers the company action with the displayed response, exact start and curre
   focusHooks.enabled = true;
   const response = eodResponse();
   const read = vi.fn<ManagedApi["eodHistory"]>().mockResolvedValue(response);
-  const model = new ManagedEodHistory(read, vi.fn());
+  const model = new ManagedEodHistory(read, vi.fn(), undefined, [
+    eodSelection.listing,
+  ]);
   model.open(eodSelection);
   await model.load();
   const noteActions = {

@@ -16,10 +16,11 @@ import {
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedEodHistory } from "./managed-eod-history";
 import {
-  MANAGED_MARKETS_COHORT,
   ManagedMarkets,
   type ManagedMarketsCohortEntry,
 } from "./managed-markets";
+
+import { MANAGED_PRICE_COVERAGE } from "./managed-price-coverage";
 
 const digest = eodSelection.catalogSnapshotSha256;
 const cohort: readonly ManagedMarketsCohortEntry[] = [
@@ -118,19 +119,19 @@ afterEach(() => vi.useRealTimers());
 
 describe("ManagedMarkets", () => {
   it("declares three distinct production listings with separate Alphabet share classes", () => {
-    expect(MANAGED_MARKETS_COHORT.map((listing) => listing.symbol)).toEqual([
+    expect(MANAGED_PRICE_COVERAGE.map((listing) => listing.symbol)).toEqual([
       "AAPL",
       "GOOG",
       "GOOGL",
     ]);
     expect(
-      new Set(MANAGED_MARKETS_COHORT.map((listing) => listing.listingId)).size,
+      new Set(MANAGED_PRICE_COVERAGE.map((listing) => listing.listingId)).size,
     ).toBe(3);
-    expect(MANAGED_MARKETS_COHORT[1]!.issuerId).toBe(
-      MANAGED_MARKETS_COHORT[2]!.issuerId,
+    expect(MANAGED_PRICE_COVERAGE[1]!.issuerId).toBe(
+      MANAGED_PRICE_COVERAGE[2]!.issuerId,
     );
-    expect(MANAGED_MARKETS_COHORT[1]!.shareClassId).not.toBe(
-      MANAGED_MARKETS_COHORT[2]!.shareClassId,
+    expect(MANAGED_PRICE_COVERAGE[1]!.shareClassId).not.toBe(
+      MANAGED_PRICE_COVERAGE[2]!.shareClassId,
     );
   });
 
@@ -484,7 +485,7 @@ describe("ManagedMarkets", () => {
     expect(model.getSnapshot().message).toContain(
       "Select PAIR, then choose Refresh PAIR price",
     );
-    const panel = new ManagedEodHistory(read, vi.fn(), access);
+    const panel = new ManagedEodHistory(read, vi.fn(), access, cohort);
     panel.open(eodSelection);
     await panel.load();
     await model.load();
@@ -707,7 +708,7 @@ describe("ManagedMarkets", () => {
       showingPrevious: true,
       error: false,
     });
-    const panel = new ManagedEodHistory(read, vi.fn(), access);
+    const panel = new ManagedEodHistory(read, vi.fn(), access, cohort);
     panel.open(eodSelection);
     await panel.load();
     expect(read).toHaveBeenCalledTimes(4);

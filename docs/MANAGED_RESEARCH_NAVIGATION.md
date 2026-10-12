@@ -6,6 +6,14 @@ without sending another request. Back returns to the original Markets, Discover
 or watchlist control and preserves the mounted workspace draft. A direct link
 falls back to Markets.
 
+Each section has its own coverage. The Price section checks the complete captured
+listing against the three declared price identities before showing Load or
+accepting a retained history. An unsupported identity shows a plain unavailable
+explanation, keeps its focusable heading and makes no Price request. Annual and
+the shared note remain usable. A matching ticker alone cannot enable coverage.
+Changing to an unsupported identity clears prior prices and cancels pending work;
+late completion cannot replace its unavailable state.
+
 This is a bounded step toward the company workflow in the
 [product roadmap](PRODUCT_ROADMAP.md). It adds no key statistics, valuation or
 peers. Bookmarkable visits are delivered through PR 38 on the website and in

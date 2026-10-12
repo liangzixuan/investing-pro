@@ -2,6 +2,7 @@ import {
   membershipMatchesResult,
   parseManagedEodHistoryResponse,
   type ManagedEodHistoryResponseDto,
+  type ManagedEodIdentity,
 } from "@research-cockpit/contracts";
 import type { TrialApiError } from "./api";
 import {
@@ -17,6 +18,11 @@ import {
   type ManagedEodAccessSelection,
 } from "./managed-eod-access";
 
+import {
+  MANAGED_PRICE_COVERAGE,
+  hasManagedPriceCoverage,
+} from "./managed-price-coverage";
+
 export interface EodHistorySelection extends ManagedEodAccessSelection {
   readonly cik: string | null;
   readonly origin: "discover" | "watchlist" | "markets" | "route";
@@ -27,6 +33,7 @@ export interface ManagedEodHistorySeed {
 }
 export interface ManagedEodHistoryState {
   readonly selection: EodHistorySelection | null;
+  readonly available: boolean;
   readonly response: ManagedEodHistoryResponseDto | null;
   readonly responseOrigin: "markets" | "company" | null;
   readonly showingPrevious: boolean;
@@ -37,6 +44,7 @@ export interface ManagedEodHistoryState {
 }
 const empty = (): ManagedEodHistoryState => ({
   selection: null,
+  available: false,
   response: null,
   responseOrigin: null,
   showingPrevious: false,
@@ -52,12 +60,18 @@ export class ManagedEodHistory {
   private readonly listeners = new Set<() => void>();
   private operation: AbortController | null = null;
   private retired = false;
+  private readonly priceCoverage: readonly ManagedEodIdentity[];
 
   constructor(
     read: ManagedApi["eodHistory"],
     private readonly readError: (error: TrialApiError) => void,
     private readonly access = new ManagedEodAccess(read),
-  ) {}
+    priceCoverage: readonly ManagedEodIdentity[] = MANAGED_PRICE_COVERAGE,
+  ) {
+    this.priceCoverage = Object.freeze(
+      priceCoverage.map((entry) => Object.freeze({ ...entry })),
+    );
+  }
   getSnapshot = (): ManagedEodHistoryState => this.state;
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -74,6 +88,14 @@ export class ManagedEodHistory {
       ...selection,
       listing: Object.freeze({ ...selection.listing }),
     });
+    if (!hasManagedPriceCoverage(captured.listing, this.priceCoverage)) {
+      this.update({
+        selection: captured,
+        message:
+          "Price history is not available for this listing in this workspace.",
+      });
+      return;
+    }
     const parsed =
       seed &&
       captured.origin === "markets" &&
@@ -94,6 +116,7 @@ export class ManagedEodHistory {
         : null;
     this.update({
       selection: captured,
+      available: true,
       response,
       responseOrigin: response ? "markets" : null,
       showingPrevious: response !== null && seed?.showingPrevious === true,
@@ -133,6 +156,7 @@ export class ManagedEodHistory {
     if (
       this.retired ||
       !selection ||
+      !this.state.available ||
       this.operation ||
       this.state.catalogChanged
     )

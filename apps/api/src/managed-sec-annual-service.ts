@@ -106,7 +106,7 @@ export function createManagedSecAnnualService(options: {
       if (
         listing === null ||
         listing.symbol !== request.symbol ||
-        !["0000320193", "0001652044"].includes(listing.cik)
+        !["0000320193", "0001652044", "0000789019"].includes(listing.cik)
       )
         throw new ManagedSecAnnualServiceError("invalid_request");
       if (options.configuration === null)

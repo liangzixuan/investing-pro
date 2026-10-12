@@ -182,7 +182,10 @@ export class ManagedWorkspace {
     private readonly api: ManagedApi,
     session: TrialSession,
     newKey?: () => string,
-    options: { marketsCohort?: readonly ManagedEodIdentity[] } = {},
+    options: {
+      marketsCohort?: readonly ManagedEodIdentity[];
+      priceCoverage?: readonly ManagedEodIdentity[];
+    } = {},
   ) {
     this.coordinator = new SaveCoordinator<MainWatchlistPayload>(
       {
@@ -211,6 +214,7 @@ export class ManagedWorkspace {
       (request, signal) => api.eodHistory(request, signal),
       (error) => this.coordinator.readError(error),
       eodAccess,
+      options.priceCoverage,
     );
     this.markets = new ManagedMarkets(
       api,

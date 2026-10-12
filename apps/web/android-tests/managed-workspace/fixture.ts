@@ -861,6 +861,7 @@ export async function createFixture(
     api,
     session,
     marketsCohort,
+    priceCoverage: [identity, ...marketsCohort],
     settleCancelledCalendar: () => {
       if (
         !pendingCalendar ||

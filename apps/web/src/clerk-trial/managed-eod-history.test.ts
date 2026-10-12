@@ -13,6 +13,7 @@ import {
 } from "./managed-eod-history";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { eodRequest, eodResponse, eodSelection } from "./eod-history-fixture";
+import { MANAGED_PRICE_COVERAGE } from "./managed-price-coverage";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -26,11 +27,130 @@ function deferred<T>() {
 function fixture() {
   const read = vi.fn<ManagedApi["eodHistory"]>();
   const readError = vi.fn();
-  const model = new ManagedEodHistory(read, readError);
+  const model = new ManagedEodHistory(read, readError, undefined, [
+    eodSelection.listing,
+  ]);
   model.open(eodSelection);
   return { read, readError, model };
 }
 afterEach(() => vi.useRealTimers());
+describe("declared company price coverage", () => {
+  it("defaults to the exact production identities, without admitting an invented listing", async () => {
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn());
+    model.open(eodSelection);
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      available: false,
+      response: null,
+      running: false,
+      error: false,
+    });
+    expect(read).not.toHaveBeenCalled();
+    for (const listing of MANAGED_PRICE_COVERAGE) {
+      model.open({ ...eodSelection, listing });
+      expect(model.getSnapshot().available).toBe(true);
+    }
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it.each(
+    Object.keys(eodSelection.listing) as (keyof typeof eodSelection.listing)[],
+  )(
+    "refuses a selection with a different declared %s, including same-symbol mismatches",
+    async (field) => {
+      const { model, read } = fixture();
+      model.open({
+        ...eodSelection,
+        listing: { ...eodSelection.listing, [field]: "other" },
+      });
+      await model.load();
+      expect(model.getSnapshot()).toMatchObject({
+        available: false,
+        response: null,
+        running: false,
+      });
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("captures explicit coverage without widening it when the caller mutates its array or identity", async () => {
+    const declared = { ...eodSelection.listing };
+    const coverage = [declared];
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, coverage);
+    declared.shareClassId = "other-class";
+    coverage.push({ ...eodSelection.listing, listingId: "new-listing" });
+    model.open(eodSelection);
+    expect(model.getSnapshot().available).toBe(true);
+    model.open({ ...eodSelection, listing: declared });
+    await model.load();
+    expect(model.getSnapshot().available).toBe(false);
+    model.open({ ...eodSelection, listing: coverage[1]! });
+    await model.load();
+    expect(model.getSnapshot().available).toBe(false);
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("rejects a valid unsupported Markets seed before offering a load", async () => {
+    const read = vi.fn<ManagedApi["eodHistory"]>();
+    const model = new ManagedEodHistory(read, vi.fn(), undefined, []);
+    model.open(
+      { ...eodSelection, origin: "markets" },
+      { response: eodResponse(), showingPrevious: true },
+    );
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      available: false,
+      response: null,
+      responseOrigin: null,
+      showingPrevious: false,
+      error: false,
+    });
+    expect(model.getSnapshot().message).not.toContain("Load");
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it.each(["success", "authentication failure", "cooldown"])(
+    "clears retained prices and fences pending %s when switching to an unsupported identity",
+    async (settlement) => {
+      const { model, read, readError } = fixture();
+      const held = deferred<ReturnType<typeof eodResponse>>();
+      read
+        .mockResolvedValueOnce(eodResponse())
+        .mockReturnValueOnce(held.promise)
+        .mockResolvedValueOnce(eodResponse());
+      await model.load();
+      const pending = model.load();
+      model.open({
+        ...eodSelection,
+        listing: { ...eodSelection.listing, shareClassId: "undeclared-class" },
+      });
+      expect(read.mock.calls[1]![1].aborted).toBe(true);
+      const current = model.getSnapshot();
+      expect(current).toMatchObject({
+        available: false,
+        response: null,
+        responseOrigin: null,
+        showingPrevious: false,
+        running: false,
+      });
+      await model.load();
+      if (settlement === "success") held.resolve(eodResponse());
+      else if (settlement === "cooldown")
+        held.reject(new ManagedEodCooldownError("2099-10-04T00:01:00.000Z"));
+      else held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(model.getSnapshot()).toBe(current);
+      expect(readError).not.toHaveBeenCalled();
+      expect(read).toHaveBeenCalledTimes(2);
+      model.open(eodSelection);
+      await model.load();
+      expect(model.getSnapshot().response).toEqual(eodResponse());
+      expect(read).toHaveBeenCalledTimes(3);
+    },
+  );
+});
 describe("session-only managed EOD history", () => {
   it("honors a shared board cooldown through panel close and retirement", async () => {
     vi.useFakeTimers();
@@ -43,7 +163,9 @@ describe("session-only managed EOD history", () => {
     await expect(
       access.request(eodSelection, new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
-    const model = new ManagedEodHistory(read, vi.fn(), access);
+    const model = new ManagedEodHistory(read, vi.fn(), access, [
+      eodSelection.listing,
+    ]);
     model.open({ ...eodSelection, origin: "markets" });
     await model.load();
     expect(model.getSnapshot().message).toContain(nextAllowedAt);
@@ -59,7 +181,9 @@ describe("session-only managed EOD history", () => {
   it("shares a panel cooldown with board requests and fences cancelled cooldowns", async () => {
     const read = vi.fn<ManagedApi["eodHistory"]>();
     const access = new ManagedEodAccess(read);
-    const model = new ManagedEodHistory(read, vi.fn(), access);
+    const model = new ManagedEodHistory(read, vi.fn(), access, [
+      eodSelection.listing,
+    ]);
     model.open(eodSelection);
     const held = deferred<ReturnType<typeof eodResponse>>();
     read.mockReturnValueOnce(held.promise);
@@ -639,7 +763,9 @@ describe("Markets history handoff", () => {
         .mockReturnValueOnce(held.promise);
       const readError = vi.fn();
       const access = new ManagedEodAccess(read);
-      const model = new ManagedEodHistory(read, readError, access);
+      const model = new ManagedEodHistory(read, readError, access, [
+        eodSelection.listing,
+      ]);
       model.open(selection, {
         response: eodResponse(),
         showingPrevious: false,
@@ -689,7 +815,9 @@ describe("Markets history handoff", () => {
     await expect(
       access.request(selection, new AbortController().signal),
     ).rejects.toMatchObject({ nextAllowedAt });
-    const model = new ManagedEodHistory(read, vi.fn(), access);
+    const model = new ManagedEodHistory(read, vi.fn(), access, [
+      eodSelection.listing,
+    ]);
     model.open(selection, { response: eodResponse(), showingPrevious: true });
     const retained = model.getSnapshot().response;
     await model.load();

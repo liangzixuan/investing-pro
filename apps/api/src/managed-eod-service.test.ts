@@ -7,7 +7,10 @@ import {
   MANAGED_EOD_MAPPING_CANDIDATES,
   type ManagedEodConfiguration,
 } from "./managed-eod-config";
-import { getManagedWorkspaceCatalog } from "./managed-workspace-catalog";
+import {
+  createManagedCatalogService,
+  getManagedWorkspaceCatalog,
+} from "./managed-workspace-catalog";
 
 const ENTRY = "2026-10-02T12:00:00.000Z",
   TOKEN = "invented-EOD-token";
@@ -165,6 +168,33 @@ describe("managed EOD history service", () => {
       f.make().load(command("GOOG"), PRINCIPAL, new AbortController().signal),
     ).rejects.toMatchObject({ code: "unsupported_listing" });
     expect(f.openAdmission).not.toHaveBeenCalled();
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
+  it("keeps catalog-admitted MSFT outside EOD coverage before reservation or provider reads", async () => {
+    const catalog = createManagedCatalogService();
+    const listing = catalog
+      .search("MSFT")!
+      .results.find((result) => result.symbol === "MSFT");
+    expect(listing).toBeDefined();
+    expect(
+      MANAGED_EOD_MAPPING_CANDIDATES.some(
+        (candidate) => candidate.security.symbol === "MSFT",
+      ),
+    ).toBe(false);
+    const f = fixture();
+    await expect(
+      f.make().load(
+        {
+          catalogSnapshotSha256: catalog.status().snapshot.snapshotSha256,
+          listingId: listing!.listingId,
+          range: "1m",
+        },
+        PRINCIPAL,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "unsupported_listing" });
+    expect(f.openAdmission).not.toHaveBeenCalled();
+    expect(f.reserve).not.toHaveBeenCalled();
     expect(f.fetch).not.toHaveBeenCalled();
   });
   it.each([

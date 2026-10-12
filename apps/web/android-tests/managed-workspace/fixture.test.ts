@@ -22,7 +22,12 @@ const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 describe("bounded invented BEA journeys", () => {
   it("retains dated results and the complete dirty draft through failures, cancellation and navigation", async () => {
     const fixture = await createFixture("bea-agenda");
-    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.setView("watchlist");
@@ -73,7 +78,12 @@ describe("bounded invented BEA journeys", () => {
 
   it("clears the retained calendar when catalog auth expires, then rejects the late response", async () => {
     const fixture = await createFixture("bea-session-retirement");
-    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.note("listing-zero", "Retire this draft");
@@ -118,7 +128,10 @@ describe("bounded invented sign-out save scenarios", () => {
       fixture.api,
       fixture.session,
       undefined,
-      { marketsCohort: fixture.marketsCohort },
+      {
+        marketsCohort: fixture.marketsCohort,
+        priceCoverage: fixture.priceCoverage,
+      },
     );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -327,7 +340,12 @@ async function prepareMarketsHandoffFixture() {
 describe("Android managed fixture startup", () => {
   it("uses the real coordinator to reconcile once and retain its draft through a failed repeat read", async () => {
     const fixture = await createFixture("watchlist-recovery");
-    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.setView("watchlist");

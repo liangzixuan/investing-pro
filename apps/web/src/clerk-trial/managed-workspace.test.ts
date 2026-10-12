@@ -146,6 +146,13 @@ function fixture(initial = empty) {
     api,
     session,
     () => `synthetic-command-${++keys}`,
+    {
+      priceCoverage: [
+        eodSelection.listing,
+        listingMembership(result),
+        listingMembership(second),
+      ],
+    },
   );
   workspace.setView("discover");
   return { workspace, api, session, saved: () => structuredClone(stored) };
@@ -277,7 +284,13 @@ describe("managed workspace composition", () => {
     expect(saved().payload.memberships[0]?.shareClassId).toBe("class-two");
     workspace.remove(second.listingId);
     await workspace.coordinator.save();
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      priceCoverage: [
+        eodSelection.listing,
+        listingMembership(result),
+        listingMembership(second),
+      ],
+    });
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
     expect(saved().payload.memberships).toHaveLength(1);
@@ -1137,7 +1150,13 @@ describe("company research watchlist draft", () => {
       initial.memberships[0],
       { ...listingMembership(result), note: "Shared workspace note" },
     ]);
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      priceCoverage: [
+        eodSelection.listing,
+        listingMembership(result),
+        listingMembership(second),
+      ],
+    });
     await reopened.coordinator.load();
     await reopened.refreshCatalog();
     reopened.openWatchlistAnnual(
@@ -1388,6 +1407,7 @@ describe("company research watchlist draft", () => {
     });
     const workspace = new ManagedWorkspace(api, session, undefined, {
       marketsCohort: cohort,
+      priceCoverage: cohort,
     });
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
@@ -1529,6 +1549,7 @@ describe("Markets price handoff", () => {
       undefined,
       {
         marketsCohort: cohort,
+        priceCoverage: cohort,
       },
     );
     await workspace.coordinator.load();
@@ -2822,7 +2843,13 @@ describe("Price comparison appended to the existing shared note", () => {
     expect(saved().payload.memberships[1]?.note).toBe(
       normalizeWatchlistNote(expected),
     );
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      priceCoverage: [
+        eodSelection.listing,
+        listingMembership(result),
+        listingMembership(second),
+      ],
+    });
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
     expect(
@@ -3180,7 +3207,13 @@ describe("Annual evidence appended to the existing shared note", () => {
     expect(saved().payload.memberships[1]?.note).toBe(
       normalizeWatchlistNote(expected),
     );
-    const reopened = new ManagedWorkspace(api, session);
+    const reopened = new ManagedWorkspace(api, session, undefined, {
+      priceCoverage: [
+        eodSelection.listing,
+        listingMembership(result),
+        listingMembership(second),
+      ],
+    });
     await reopened.coordinator.load();
     expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
     expect(
