@@ -104,18 +104,24 @@ watchlist. Broader comparison sets, ranking and charting are outside this slice.
 
 ## Search the current watchlist draft
 
-**Search My Watchlist** filters the loaded draft by symbol, company name, share
-class or exchange. It matches a case-insensitive phrase within one field after
-trimming and collapsing whitespace. For example, `Class C` distinguishes that
-share class from `Class A`; `nova class c` does not combine separate fields.
-Notes and internal identifiers are excluded. The count shows matching listings
-and the full draft total, in the draft's existing order. An empty search shows all
-memberships. Use Discover to find and add a company that is not in the draft.
+**Search My Watchlist** filters the current draft. **Search in** defaults to
+**Listing identity**, which searches symbol, company name, share class or exchange.
+Choose **Research notes** to find a phrase in a complete current note, including
+unsaved text or text that needs correction. It does not search saved history or
+remote records, and matching never changes the note itself.
 
-Typing never changes the selected listing or its note. If the selection falls
-outside the results, its exact identity and note remain visible with an
-explanation. **Show selected listing** clears the search; it and **Clear** return
-keyboard focus to the search field. Selecting another result is explicit.
+Both scopes match a case-insensitive phrase after trimming and collapsing
+whitespace. Identity search matches within one field: `Class C` distinguishes that
+share class from `Class A`, while `nova class c` does not combine separate fields.
+Internal identifiers are excluded. The count shows matching listings and the full
+draft total in the draft's existing order. An empty query shows all memberships.
+Use Discover to find and add a company that is not in the draft.
+
+Typing or changing scope never changes the selected listing. If the selection
+falls outside the results, including after editing its note, its exact identity
+and editor remain visible with an explanation. **Show selected listing** and
+**Clear** clear the query, retain the scope and return keyboard focus to the search
+field. Selecting another result is explicit.
 
 While a nonempty search is active, the two reorder controls are disabled. Clear
 the search to change the full watchlist order. Removing a matching selection
@@ -124,16 +130,16 @@ selection outside the results chooses the first match. If no matches remain but
 the draft still has memberships, focus moves to the search field and the next
 full-draft membership remains selected, falling back to the previous membership
 at the end. Removing the final membership focuses the empty-watchlist message.
-A later selection, search, view or focus change cancels pending focus movement.
+A later selection, query, scope, view or focus change cancels pending focus movement.
 
 **Go to first invalid note** searches the complete draft, clears the
 filter and reveals the first invalid raw note. It preserves the existing visible,
-editable and session checks. Search and selection survive research and Back in
-the same mounted workspace; session retirement clears them. Search sends no
+editable and session checks. Query, scope and selection survive research and Back
+in the same mounted workspace; session retirement clears them. Search sends no
 request and does not save. **Save watchlist** still validates and saves every
 membership and note in the full draft, including entries outside the results.
 
-Focused tests cover identity phrases, distinct share classes, raw note and
+Focused tests cover identity and note phrases, distinct share classes, raw note and
 selection retention, filtered removal and focus cancellation, correction,
 research return and full-payload saves. Actual browser and native execution
 status is recorded in [Current work](CURRENT_WORK.md).

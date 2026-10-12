@@ -98,6 +98,9 @@ const choices = (output: ReturnType<typeof elements>) =>
 const searchValue = (output: ReturnType<typeof elements>) =>
   output.find((entry) => entry.props.id === "managed-watchlist-search")?.props
     .value;
+const scopeValue = (output: ReturnType<typeof elements>) =>
+  output.find((entry) => entry.props.id === "managed-watchlist-search-scope")
+    ?.props.value;
 function textContent(node: React.ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(textContent).join("");
@@ -213,6 +216,16 @@ function fixture() {
     });
     return render();
   };
+  const scope = (value: string) => {
+    const select = current.find(
+      (entry) => entry.props.id === "managed-watchlist-search-scope",
+    );
+    expect(select?.type).toBe("select");
+    (select!.props.onChange as (event: { target: { value: string } }) => void)({
+      target: { value },
+    });
+    return render();
+  };
   render();
   commit();
   return {
@@ -225,6 +238,7 @@ function fixture() {
     searchFocus,
     searchField,
     search,
+    scope,
     render,
     commit,
     click,
@@ -381,6 +395,219 @@ describe("ManagedWatchlistEditor", () => {
     expect(f.props.onNote).not.toHaveBeenCalled();
   });
 
+  it("searches complete raw notes only in the labelled notes scope without rewriting them", () => {
+    const f = fixture();
+    const memberships = [
+      {
+        ...member("one", "NOVA", "Private\n\tRESEARCH — 東京 🧭"),
+        issuerName: "Nova Group",
+      },
+      {
+        ...member("two", "NOVC", "  private research café  "),
+        issuerName: "Nova Group",
+        shareClassName: "Class C",
+      },
+      member("three", "LONG", `${"x".repeat(4_000)} final needle`),
+      member("four", "EMPTY", ""),
+    ];
+    const original = structuredClone(memberships);
+    const initial = f.render({ memberships });
+    expect(scopeValue(initial)).toBe("identity");
+    expect(
+      initial.find(
+        (entry) => entry.props.htmlFor === "managed-watchlist-search-scope",
+      )?.props.children,
+    ).toBe("Search in");
+    expect(choices(f.search("  PRIVATE   research "))).toEqual([]);
+    const notes = f.scope("notes");
+    expect(searchValue(notes)).toBe("  PRIVATE   research ");
+    expect(choices(notes)).toEqual(["one", "two"]);
+    expect(
+      textContent(
+        notes.find(
+          (entry) => entry.props.id === "managed-watchlist-search-help",
+        ),
+      ),
+    ).toBe(
+      "Complete research notes, including unsaved changes. Searches this draft only.",
+    );
+    for (const [query, expected] of [
+      ["東京 🧭", ["one"]],
+      ["CAFÉ", ["two"]],
+      ["final needle", ["three"]],
+      ["Nova Group", []],
+      ["Class C", []],
+      ["XNAs", []],
+      ["private café", []],
+      ["  \t ", ["one", "two", "three", "four"]],
+    ] as const)
+      expect(choices(f.search(query))).toEqual(expected);
+    expect(memberships).toEqual(original);
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("keeps the selected note mounted when typing removes its note match", () => {
+    const f = fixture();
+    f.scope("notes");
+    const before = f
+      .search("Keep first")
+      .find((entry) => entry.type === ManagedNoteEditor)!;
+    const page = { activeElement: f.field, body: {} };
+    vi.stubGlobal("document", page);
+    const changed = "Revised unsaved note — 東京 🧭";
+    (before.props.onChange as (note: string) => void)(changed);
+    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith("one", changed);
+    const memberships = [
+      { ...f.props.memberships[0]!, note: changed },
+      f.props.memberships[1]!,
+    ];
+    const output = f.render({ memberships });
+    f.commit();
+    const after = output.find((entry) => entry.type === ManagedNoteEditor)!;
+    expect(after.type).toBe(before.type);
+    expect(after.key).toBe(before.key);
+    expect(after.props).toMatchObject({
+      id: "managed-note-0",
+      listingId: "one",
+      note: changed,
+    });
+    expect(choices(output)).toEqual([]);
+    expect(
+      textContent(
+        output.find(
+          (entry) => entry.props.className === "managed-watchlist-no-matches",
+        ),
+      ),
+    ).toBe("No research notes match this search.");
+    expect(
+      output.some((entry) =>
+        textContent(entry).includes("Selected ALFA is outside this search."),
+      ),
+    ).toBe(true);
+    expect(page.activeElement).toBe(f.field);
+    expect(f.focus).not.toHaveBeenCalled();
+    expect(f.searchFocus).not.toHaveBeenCalled();
+    expect(f.selectionFocus).not.toHaveBeenCalled();
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+  });
+
+  it.each(["Clear", "Show selected listing"])(
+    "%s clears only the query in notes scope",
+    (action) => {
+      const f = fixture();
+      f.scope("notes");
+      const output = f.search("no match");
+      const button = output.find(
+        (entry) => entry.type === "button" && textContent(entry) === action,
+      )!;
+      (button.props.onClick as () => void)();
+      const cleared = f.render();
+      expect(scopeValue(cleared)).toBe("notes");
+      expect(searchValue(cleared)).toBe("");
+      expect(choices(cleared)).toEqual(["one", "two"]);
+      expect(f.field.dataset.managedNoteListingId).toBe("one");
+      expect(f.searchFocus).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("reveals a hidden invalid raw note without resetting notes scope", () => {
+    const f = fixture();
+    f.scope("notes");
+    expect(choices(f.search("Keep first draft"))).toEqual(["one"]);
+    f.ref.current!.focusFirstInvalidNote();
+    const output = f.render();
+    f.commit();
+    expect(scopeValue(output)).toBe("notes");
+    expect(searchValue(output)).toBe("");
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+    expect(f.field.value).toBe("Second\nnote is invalid");
+    expect(f.focus).toHaveBeenCalledOnce();
+    expect(f.props.onNote).not.toHaveBeenCalled();
+  });
+
+  it("lets a new scope consume pending correction focus", () => {
+    const f = fixture();
+    f.ref.current!.focusFirstInvalidNote();
+    f.scope("notes");
+    f.commit();
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+    expect(f.focus).not.toHaveBeenCalled();
+    f.render();
+    f.commit();
+    expect(f.focus).not.toHaveBeenCalled();
+  });
+
+  it("keeps scope and query through edit locks and inactive visits, but resets a new editor", () => {
+    const f = fixture();
+    f.render({ editable: false });
+    f.search("Second");
+    expect(choices(f.scope("notes"))).toEqual(["two"]);
+    f.click("Edit research note for BETA, Class A, XNAS");
+    f.render({ active: false });
+    f.scope("identity");
+    f.search("ALFA");
+    const returned = f.render({ active: true });
+    expect(scopeValue(returned)).toBe("notes");
+    expect(searchValue(returned)).toBe("Second");
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+    expect(scopeValue(f.scope("unexpected"))).toBe("notes");
+    expect(choices(f.render())).toEqual(["two"]);
+    hooks.state = [];
+    hooks.refs = [];
+    const fresh = fixture().render();
+    expect(scopeValue(fresh)).toBe("identity");
+    expect(searchValue(fresh)).toBe("");
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("removes note matches in draft order and returns focus to search after the last match", () => {
+    const f = fixture();
+    const hidden = member("hidden", "HIDDEN", "Preserve\nraw note 東京");
+    const memberships = [
+      member("one", "ALFA", "research phrase"),
+      hidden,
+      member("two", "BETA", "RESEARCH phrase"),
+    ];
+    f.render({ memberships });
+    f.scope("notes");
+    f.search("research phrase");
+    f.click("Remove ALFA");
+    const afterFirst = f.render({ memberships: [hidden, memberships[2]!] });
+    f.commit();
+    expect(choices(afterFirst)).toEqual(["two"]);
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+    expect(f.selectionFocus).toHaveBeenCalledOnce();
+    f.click("Remove BETA");
+    const afterLast = f.render({ memberships: [hidden] });
+    f.commit();
+    expect(choices(afterLast)).toEqual([]);
+    expect(scopeValue(afterLast)).toBe("notes");
+    expect(searchValue(afterLast)).toBe("research phrase");
+    expect(f.field.value).toBe(hidden.note);
+    expect(f.searchFocus).toHaveBeenCalledOnce();
+    expect(f.props.onRemove).toHaveBeenNthCalledWith(1, "one");
+    expect(f.props.onRemove).toHaveBeenNthCalledWith(2, "two");
+    expect(f.props.onNote).not.toHaveBeenCalled();
+  });
+
   it("keeps the exact selected raw note and full index outside a filter, including no results", () => {
     const f = fixture();
     f.click("Edit research note for BETA, Class A, XNAS");
@@ -518,6 +745,7 @@ describe("ManagedWatchlistEditor", () => {
   it.each([
     "failed",
     "query",
+    "scope",
     "selection",
     "inactive",
     "disabled",
@@ -531,6 +759,7 @@ describe("ManagedWatchlistEditor", () => {
       vi.stubGlobal("document", page);
       f.click("Remove ALFA");
       if (change === "query") f.search("BETA");
+      if (change === "scope") f.scope("notes");
       if (change === "selection")
         f.click("Edit research note for BETA, Class A, XNAS");
       if (change === "other focus") page.activeElement = {};

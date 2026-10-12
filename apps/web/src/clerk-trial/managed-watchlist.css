@@ -28,6 +28,16 @@
   gap: 8px;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-search-scope {
+  margin-bottom: 16px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search-scope select {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-search input {
   min-width: 0;
   width: 100%;

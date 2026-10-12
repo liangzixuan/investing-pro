@@ -129,6 +129,13 @@ chart. My Watchlist pairs ordered listing selection with one note editor and its
 research, move and remove actions. Selection is presentation state; the shared
 watchlist draft owns every note and membership.
 
+Keep the labelled Search in native selector beside Search My Watchlist, with
+Listing identity as the default and Research notes as the alternative. Both
+controls search the current draft. Stack them naturally at narrow widths and
+retain the 44px height and visible focus treatment. Filtering never replaces the
+selected editor; if its note stops matching, keep the editor and explain that the
+selection is outside the results. Clear removes the query and retains the scope.
+
 The managed Annual report leads with compact financial tables for each named
 revenue basis. Show exact periods, USD amounts, margins and dated reported changes
 before technical validation details. Keep unavailable and current-use restrictions

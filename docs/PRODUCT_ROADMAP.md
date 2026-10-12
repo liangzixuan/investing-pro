@@ -86,6 +86,12 @@ observation counts and original request dates remain inspectable; choices and
 intervals send no additional request. Acceptance and delivery remain recorded
 separately in Current work.
 
+The next retrieval slice adds an explicit Research notes scope to local watchlist
+search. It helps the owner return to a thesis by a remembered phrase in the current
+draft. It uses existing notes, preserves the selected editor and saves the complete
+draft explicitly. Saved-history search, alerts and thesis monitoring remain later
+capabilities.
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data
