@@ -382,6 +382,14 @@
   padding: 24px 20px;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-comparison table {
+  table-layout: auto;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-comparison th[scope="row"] time {
+  white-space: nowrap;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-comparison-pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
