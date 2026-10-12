@@ -402,6 +402,35 @@
   min-height: 44px;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-comparison-note-action {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 16px 0;
+  font-size: 13px;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-comparison-note-action
+  :is(select, button) {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-comparison-note-action p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame
+  .managed-watchlist-comparison-note-action
+  [aria-disabled="true"] {
+  color: var(--managed-muted, #aeb4c0);
+  background: transparent;
+  cursor: default;
+}
+
 .clerk-trial.managed-frame
   .managed-watchlist-comparison
   .managed-market-change {

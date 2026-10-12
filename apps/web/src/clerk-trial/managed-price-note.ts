@@ -2,7 +2,24 @@ import type {
   ManagedEodCloseDto,
   ManagedEodHistoryResponseDto,
 } from "@research-cockpit/contracts";
-import { calculatePersonalRawCloseChange } from "@research-cockpit/personal-market-analytics";
+import {
+  calculatePersonalRawCloseChange,
+  type PersonalRawCloseChangeResult,
+} from "@research-cockpit/personal-market-analytics";
+
+export function rawCloseChangeNoteText(
+  change: Extract<PersonalRawCloseChangeResult, { status: "available" }>,
+): string {
+  const money =
+    change.direction === "down"
+      ? `-$${change.change.slice(1)}`
+      : `${change.direction === "up" ? "+" : ""}$${change.change}`;
+  const percent =
+    change.changePercent === "0.0000" && change.direction !== "unchanged"
+      ? `less than 0.0001% ${change.direction === "up" ? "higher" : "lower"}`
+      : `${change.direction === "up" ? "+" : ""}${change.changePercent}%`;
+  return `raw close change ${money} (${percent})`;
+}
 
 /** Formats a comparison from the already admitted history; never loads or saves. */
 export function priceComparisonNoteExcerpt(
@@ -16,16 +33,8 @@ export function priceComparisonNoteExcerpt(
   if (index < 0 || endIndex <= index) return null;
   const change = calculatePersonalRawCloseChange({ rows: [start, end] });
   if (change.status !== "available") return null;
-  const money =
-    change.direction === "down"
-      ? `-$${change.change.slice(1)}`
-      : `${change.direction === "up" ? "+" : ""}$${change.change}`;
-  const percent =
-    change.changePercent === "0.0000" && change.direction !== "unchanged"
-      ? `less than 0.0001% ${change.direction === "up" ? "higher" : "lower"}`
-      : `${change.direction === "up" ? "+" : ""}${change.changePercent}%`;
   return [
-    `Observed raw-close comparison: ${response.security.symbol} (${response.security.exchangeMic}); ${start.date} USD ${start.close} to ${end.date} USD ${end.close}; raw close change ${money} (${percent}).`,
+    `Observed raw-close comparison: ${response.security.symbol} (${response.security.exchangeMic}); ${start.date} USD ${start.close} to ${end.date} USD ${end.close}; ${rawCloseChangeNoteText(change)}.`,
     `Source: Tiingo; requested window ${response.window.startDate} to ${response.window.endDate}; original request started ${response.requestStartedAt}; completed ${response.completedAt}.`,
     "Raw closes are not adjusted for splits or dividends and are not live quotes.",
     ...(showingPrevious

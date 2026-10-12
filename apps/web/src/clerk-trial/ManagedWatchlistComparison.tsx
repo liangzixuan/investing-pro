@@ -1,9 +1,19 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   membershipMatchesResult,
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { RawCloseChange } from "./RawCloseChange";
+import {
+  ManagedWatchlistComparisonNoteAction,
+  type ManagedWatchlistComparisonNoteActions,
+} from "./ManagedWatchlistComparisonNoteAction";
 import {
   changeManagedWatchlistComparisonInterval,
   createManagedWatchlistComparisonSelection,
@@ -22,12 +32,16 @@ interface Props {
   memberships: readonly WatchlistMembership[];
   prices: ManagedWatchlistPricesState;
   active?: boolean;
+  editable: boolean;
+  comparisonNoteActions: ManagedWatchlistComparisonNoteActions;
 }
 
 export function ManagedWatchlistComparison({
   memberships,
   prices,
   active = true,
+  editable,
+  comparisonNoteActions,
 }: Props) {
   const [selection, setSelection] = useState(
     createManagedWatchlistComparisonSelection,
@@ -44,6 +58,14 @@ export function ManagedWatchlistComparison({
       memberships={memberships}
       prices={prices}
       projection={projection}
+      noteAction={
+        <ManagedWatchlistComparisonNoteAction
+          selection={captured}
+          active={active}
+          editable={editable}
+          actions={comparisonNoteActions}
+        />
+      }
       onPair={(side, row) => {
         if (!latest.current.active || latest.current.selection !== captured)
           return;
@@ -80,7 +102,9 @@ export function ManagedWatchlistComparisonView({
   projection,
   onPair,
   onDate,
-}: Omit<Props, "active"> & {
+  noteAction,
+}: Pick<Props, "memberships" | "prices"> & {
+  noteAction?: ReactNode;
   projection: Projection;
   onPair: (side: Side, row: ManagedWatchlistPriceRow | null) => void;
   onDate: (field: keyof ManagedPriceComparisonInterval, date: string) => void;
@@ -153,6 +177,7 @@ export function ManagedWatchlistComparisonView({
         dates do not imply a full-month return. Each request can have different
         dates; completion is not a live market update.
       </p>
+      {noteAction}
       <Coverage projection={projection} />
     </section>
   );
@@ -165,7 +190,7 @@ function ListingChoice({
   prices,
   selected,
   onChange,
-}: Omit<Props, "active"> & {
+}: Pick<Props, "memberships" | "prices"> & {
   id: string;
   side: Side;
   selected: ManagedWatchlistPriceRow | null;

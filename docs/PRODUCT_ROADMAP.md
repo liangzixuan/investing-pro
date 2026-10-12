@@ -92,6 +92,12 @@ draft. It uses existing notes, preserves the selected editor and saves the compl
 draft explicitly. Saved-history search, alerts and thesis monitoring remain later
 capabilities.
 
+The next evidence slice records a chosen watchlist comparison in one explicitly
+selected member's research note. It retains both exact listings, endpoints,
+changes and original source dates, then uses the existing note search, draft
+review and explicit Save workflow. This advances comparison-to-thesis work
+without persisting comparison selections or adding automatic monitoring.
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data

@@ -118,6 +118,10 @@ function fixture() {
     ],
     editable: true,
     active: true,
+    comparisonNoteActions: {
+      getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
+      append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
+    },
     prices: {
       active: true,
       canRead: true,
@@ -256,6 +260,10 @@ describe("ManagedWatchlistEditor", () => {
     expect(comparison.props.memberships).toBe(f.props.memberships);
     expect(comparison.props.prices).toBe(f.props.prices);
     expect(comparison.props.active).toBe(true);
+    expect(comparison.props.editable).toBe(true);
+    expect(comparison.props.comparisonNoteActions).toBe(
+      f.props.comparisonNoteActions,
+    );
     const locked = f.render({ editable: false });
     expect(
       locked.find((entry) => entry.type === ManagedWatchlistComparison)?.props,
@@ -263,6 +271,8 @@ describe("ManagedWatchlistEditor", () => {
       memberships: f.props.memberships,
       prices: f.props.prices,
       active: true,
+      editable: false,
+      comparisonNoteActions: f.props.comparisonNoteActions,
     });
     const hidden = f.render({ active: false });
     expect(
@@ -270,6 +280,7 @@ describe("ManagedWatchlistEditor", () => {
         .active,
     ).toBe(false);
     expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.comparisonNoteActions.append).not.toHaveBeenCalled();
     expect(f.props.onNote).not.toHaveBeenCalled();
     expect(f.props.onMove).not.toHaveBeenCalled();
     expect(f.props.onRemove).not.toHaveBeenCalled();

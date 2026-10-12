@@ -919,6 +919,30 @@ export function ManagedWorkspaceScreen({
                       ref={watchlistEditor}
                       memberships={saved.draft.memberships}
                       prices={watchlistPrices}
+                      comparisonNoteActions={{
+                        getAction: (selection, destination) =>
+                          navigation?.invalid || navigation?.hasCompanyRoute()
+                            ? {
+                                canAppend: false,
+                                reason:
+                                  "Return to My Watchlist before adding comparison evidence.",
+                              }
+                            : workspace.getWatchlistComparisonNoteAction(
+                                selection,
+                                destination,
+                              ),
+                        append: (selection, destination) =>
+                          navigation?.invalid || navigation?.hasCompanyRoute()
+                            ? {
+                                appended: false,
+                                message:
+                                  "Return to My Watchlist before adding comparison evidence.",
+                              }
+                            : workspace.appendWatchlistComparisonToNote(
+                                selection,
+                                destination,
+                              ),
+                      }}
                       onLoadPrice={(handle) => {
                         if (!navigation?.invalid)
                           void workspace.loadWatchlistPrice(handle);
@@ -928,7 +952,8 @@ export function ManagedWorkspaceScreen({
                         discovery.view === "watchlist" &&
                         !discovery.research &&
                         !discovery.companyRoute &&
-                        !navigation?.invalid
+                        !navigation?.invalid &&
+                        !navigation?.hasCompanyRoute()
                       }
                       canOpenAnnual={(member) =>
                         workspace.canOpenWatchlistAnnual(member)
