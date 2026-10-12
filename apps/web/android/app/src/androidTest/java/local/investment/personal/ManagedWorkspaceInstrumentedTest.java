@@ -1077,7 +1077,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-list a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && document.querySelector('.managed-filings-pagination > button:last-child')?.getAttribute('aria-disabled') === 'true'");
         assertFilingsDraftAndCounts(1, 0, 0);
-        retainAnnualNoteFrame("companyFilingsFormFilter", "#managed-filings-form",
+        retainAnnualNoteFrame("companyFilingsFormFilter", "label[for=managed-filings-form]",
             "label[for=managed-filings-form], #managed-filings-form, .managed-filings-count, .managed-filings-list > li", 4);
         chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
         awaitPage("second exact form retains all twenty-five matching filings",
