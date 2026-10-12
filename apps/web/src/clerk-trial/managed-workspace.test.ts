@@ -1599,6 +1599,7 @@ describe("Markets price handoff", () => {
           selection,
           carried,
           carried.rows[0]!,
+          carried.rows.at(-1)!,
         ),
       ).toMatchObject({ appended: true });
       expect(api.save).not.toHaveBeenCalled();
@@ -2812,7 +2813,14 @@ describe("Price comparison appended to the existing shared note", () => {
   it("uses latest raw prose, preserves the other note/order and saves and reloads only explicitly", async () => {
     const { workspace, api, session, saved, selection, response, start } =
       await noteFixture();
-    expect(workspace.getPriceNoteAction(selection, response, start)).toEqual({
+    expect(
+      workspace.getPriceNoteAction(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ),
+    ).toEqual({
       canAppend: true,
       reason: null,
     });
@@ -2820,9 +2828,21 @@ describe("Price comparison appended to the existing shared note", () => {
     workspace.note(zero.listingId, latest);
     const before = workspace.coordinator.getSnapshot().draft!;
     const expected =
-      latest + " " + priceComparisonNoteExcerpt(response, start, false)!;
+      latest +
+      " " +
+      priceComparisonNoteExcerpt(
+        response,
+        start,
+        response.rows.at(-1)!,
+        false,
+      )!;
     expect(
-      workspace.appendPriceComparisonToResearchNote(selection, response, start),
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ),
     ).toEqual({
       appended: true,
       message:
@@ -2857,6 +2877,52 @@ describe("Price comparison appended to the existing shared note", () => {
     ).toEqual([second.listingId, zero.listingId]);
   });
 
+  it("appends a past interval, keeps the latest quote and preserves the complete draft through Back", async () => {
+    const { workspace, api, selection } = await noteFixture();
+    const response = {
+      ...eodResponse(),
+      rows: [
+        { date: "2026-09-17", close: "100" },
+        { date: "2026-09-18", close: "110" },
+        { date: "2026-09-19", close: "90" },
+      ],
+    };
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(response);
+    await workspace.eod.load();
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const start = response.rows[0]!;
+    const end = response.rows[1]!;
+    expect(
+      workspace.getPriceNoteAction(selection, response, start, end).canAppend,
+    ).toBe(true);
+    expect(
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        end,
+      ).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships).toEqual([
+      before.memberships[0],
+      {
+        ...before.memberships[1],
+        note: `Original thesis ${priceComparisonNoteExcerpt(response, start, end, false)}`,
+      },
+    ]);
+    expect(draft.memberships[1]!.note).toContain(
+      "2026-09-17 USD 100 to 2026-09-18 USD 110; raw close change +$10 (+10.0000%).",
+    );
+    expect(workspace.eod.getSnapshot().response).toBe(response);
+    expect(response.rows.at(-1)).toEqual({ date: "2026-09-19", close: "90" });
+    workspace.closeResearch();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.eodHistory).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("supports a Price section first opened from Annual without requiring the two model selections to be the same object", async () => {
     const { workspace, api, response, start } = await noteFixture();
     workspace.openDiscoveryAnnual(zero);
@@ -2865,8 +2931,12 @@ describe("Price comparison appended to the existing shared note", () => {
     await workspace.eod.load();
     expect(workspace.eod.getSnapshot().selection).not.toBe(selection);
     expect(
-      workspace.appendPriceComparisonToResearchNote(selection, response, start)
-        .appended,
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ).appended,
     ).toBe(true);
     expect(api.annualReport).not.toHaveBeenCalled();
     expect(api.save).not.toHaveBeenCalled();
@@ -2876,6 +2946,10 @@ describe("Price comparison appended to the existing shared note", () => {
     "copied selection",
     "copied response",
     "copied row",
+    "copied end",
+    "foreign end",
+    "equal endpoints",
+    "reversed endpoints",
     "latest row",
     "reopened visit",
     "other listing",
@@ -2890,11 +2964,17 @@ describe("Price comparison appended to the existing shared note", () => {
       const setup = await noteFixture();
       const { workspace, api, response } = setup;
       let { selection, start } = setup;
+      let end = response.rows.at(-1)!;
       let capturedResponse = response;
       if (boundary === "copied selection") selection = { ...selection };
       else if (boundary === "copied response")
         capturedResponse = { ...response };
       else if (boundary === "copied row") start = { ...start };
+      else if (boundary === "copied end") end = { ...end };
+      else if (boundary === "foreign end")
+        end = { date: "2026-09-21", close: "120" };
+      else if (boundary === "equal endpoints") end = start;
+      else if (boundary === "reversed endpoints") [start, end] = [end, start];
       else if (boundary === "latest row") start = response.rows.at(-1)!;
       else if (boundary === "reopened visit") {
         workspace.closeResearch();
@@ -2916,7 +2996,7 @@ describe("Price comparison appended to the existing shared note", () => {
       const before = workspace.coordinator.getSnapshot().draft;
       const reads = vi.mocked(api.eodHistory).mock.calls.length;
       expect(
-        workspace.getPriceNoteAction(selection, capturedResponse, start)
+        workspace.getPriceNoteAction(selection, capturedResponse, start, end)
           .canAppend,
       ).toBe(false);
       expect(
@@ -2924,6 +3004,7 @@ describe("Price comparison appended to the existing shared note", () => {
           selection,
           capturedResponse,
           start,
+          end,
         ).appended,
       ).toBe(false);
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
@@ -2940,7 +3021,12 @@ describe("Price comparison appended to the existing shared note", () => {
     const loading = workspace.eod.load();
     const before = workspace.coordinator.getSnapshot().draft;
     expect(
-      workspace.appendPriceComparisonToResearchNote(selection, response, start),
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ),
     ).toEqual({
       appended: false,
       message: "Wait for the close history request to finish or cancel it.",
@@ -2948,12 +3034,22 @@ describe("Price comparison appended to the existing shared note", () => {
     expect(workspace.coordinator.getSnapshot().draft).toBe(before);
     workspace.eod.cancel();
     expect(
-      workspace.appendPriceComparisonToResearchNote(selection, response, start)
-        .appended,
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ).appended,
     ).toBe(true);
     const appended = workspace.coordinator.getSnapshot().draft;
     expect(appended?.memberships[1]?.note).toBe(
-      "Original thesis " + priceComparisonNoteExcerpt(response, start, true),
+      "Original thesis " +
+        priceComparisonNoteExcerpt(
+          response,
+          start,
+          response.rows.at(-1)!,
+          true,
+        ),
     );
     held.resolve(eodResponse());
     await loading;
@@ -2990,15 +3086,25 @@ describe("Price comparison appended to the existing shared note", () => {
     const before = workspace.coordinator.getSnapshot().draft;
     const retained = boundary === "transient" || boundary === "cooldown";
     expect(
-      workspace.appendPriceComparisonToResearchNote(selection, response, start)
-        .appended,
+      workspace.appendPriceComparisonToResearchNote(
+        selection,
+        response,
+        start,
+        response.rows.at(-1)!,
+      ).appended,
     ).toBe(retained);
     if (retained) {
       expect(workspace.eod.getSnapshot().response).toBe(response);
       expect(
         workspace.coordinator.getSnapshot().draft?.memberships[1]?.note,
       ).toBe(
-        "Original thesis " + priceComparisonNoteExcerpt(response, start, true),
+        "Original thesis " +
+          priceComparisonNoteExcerpt(
+            response,
+            start,
+            response.rows.at(-1)!,
+            true,
+          ),
       );
     } else expect(workspace.coordinator.getSnapshot().draft).toBe(before);
     expect(api.eodHistory).toHaveBeenCalledTimes(2);
@@ -3031,6 +3137,7 @@ describe("Price comparison appended to the existing shared note", () => {
           selection,
           response,
           start,
+          response.rows.at(-1)!,
         ).appended,
       ).toBe(false);
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
@@ -3060,13 +3167,19 @@ describe("Price comparison appended to the existing shared note", () => {
       const before = workspace.coordinator.getSnapshot().draft;
       const saves = vi.mocked(api.save).mock.calls.length;
       expect(
-        workspace.getPriceNoteAction(selection, response, start).canAppend,
+        workspace.getPriceNoteAction(
+          selection,
+          response,
+          start,
+          response.rows.at(-1)!,
+        ).canAppend,
       ).toBe(false);
       expect(
         workspace.appendPriceComparisonToResearchNote(
           selection,
           response,
           start,
+          response.rows.at(-1)!,
         ).appended,
       ).toBe(false);
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
@@ -3083,7 +3196,12 @@ describe("Price comparison appended to the existing shared note", () => {
     "allows exactly 2,000 normalized codepoints with %s and rejects overflow atomically",
     async (unit) => {
       const { workspace, selection, response, start } = await noteFixture();
-      const excerpt = priceComparisonNoteExcerpt(response, start, false)!;
+      const excerpt = priceComparisonNoteExcerpt(
+        response,
+        start,
+        response.rows.at(-1)!,
+        false,
+      )!;
       const room = 2000 - [...excerpt].length - 1;
       workspace.note(zero.listingId, unit.repeat(room + 1));
       const before = workspace.coordinator.getSnapshot().draft;
@@ -3092,6 +3210,7 @@ describe("Price comparison appended to the existing shared note", () => {
           selection,
           response,
           start,
+          response.rows.at(-1)!,
         ).appended,
       ).toBe(false);
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
@@ -3101,6 +3220,7 @@ describe("Price comparison appended to the existing shared note", () => {
           selection,
           response,
           start,
+          response.rows.at(-1)!,
         ).appended,
       ).toBe(true);
       const text =
@@ -3122,12 +3242,20 @@ describe("Price comparison appended to the existing shared note", () => {
           selection,
           response,
           start,
+          response.rows.at(-1)!,
         ).appended,
       ).toBe(note === "");
       if (note === "")
         expect(
           workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
-        ).toBe(priceComparisonNoteExcerpt(response, start, false));
+        ).toBe(
+          priceComparisonNoteExcerpt(
+            response,
+            start,
+            response.rows.at(-1)!,
+            false,
+          ),
+        );
       else expect(workspace.coordinator.getSnapshot().draft).toBe(before);
       expect(api.save).not.toHaveBeenCalled();
     },

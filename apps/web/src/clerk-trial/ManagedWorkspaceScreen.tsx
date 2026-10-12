@@ -633,17 +633,19 @@ export function ManagedWorkspaceScreen({
                       ),
                   }}
                   priceNoteActions={{
-                    getAction: (response, start) =>
+                    getAction: (response, start, end) =>
                       workspace.getPriceNoteAction(
                         discovery.research!.selection,
                         response,
                         start,
+                        end,
                       ),
-                    append: (response, start) =>
+                    append: (response, start, end) =>
                       workspace.appendPriceComparisonToResearchNote(
                         discovery.research!.selection,
                         response,
                         start,
+                        end,
                       ),
                   }}
                   onReview={() => {

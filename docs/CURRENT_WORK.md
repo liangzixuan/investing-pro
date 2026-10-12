@@ -190,6 +190,19 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+The active Price comparison increment lets the researcher select both observed
+endpoints within the loaded one-month history. Company Price appends that exact
+interval and its original provenance to the existing note draft; Markets retains
+a read-only comparison. It adds no source request or saved state. The 393 affected
+frontend/model tests, 49 native-fixture tests, web types, scoped lint/format, Java
+syntax and source boundaries passed. Independent frontend and native-source
+reviews found no remaining defect. Actual-component Brave checks covered desktop,
+390 and 320 pixels, past intervals, exact long decimals, tiny positive and negative
+changes, sparse histories, note provenance, cancellation, late responses, selector
+focus across replacement, section return and retirement. Hosted source and native
+checks remain separate from this local evidence.
+See [observed-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close).
+
 The active unsaved-change review increment adds an optional **Review unsaved
 changes** disclosure beside Save. It compares the complete current draft with
 the last confirmed saved version, including listings hidden by search, exact
@@ -201,9 +214,12 @@ found no remaining defect. Invented-data Brave checks covered desktop, 390 and
 320 pixels, raw invalid notes outside the filter, save success and rejection,
 focus retention, undone edits, research return, recovery, empty and unloaded
 states, catalog differences and session retirement. No document overflow or
-console warnings/errors were observed. The existing Android note journey now
-checks this disclosure; its execution remains pending. No live account or
-provider request was used for these checks.
+console warnings/errors were observed. PR87 head `fb42057` passed all five
+applicable Actions jobs. Its Android retry passed all 23 named cases, including
+the note-review journey, and actual APK isolation. The original attempt's delayed
+native input failure remains retained; no source or assertion changed for the
+retry. CodeScene's reviewed advisory remains recorded. No live account or provider
+request was used for these checks. Parent export acceptance remains separate.
 See [unsaved-change review](APPWRITE_WATCHLIST.md#review-unsaved-changes).
 
 The saved-watchlist export increment adds **Export saved watchlist** to My
@@ -220,14 +236,15 @@ and native runtime compilation passed after three fixture typing repairs.
 Independent source reviews found no remaining defect. Invented-data Brave checks
 recorded 31 observations at desktop, 390 and 320 pixels, with no document overflow
 or console errors. All captured export documents match the expected saved text;
-the actual downloaded file remains unverified. Android picker execution is also
-pending. The fixture registration omission was corrected in PR86. Its next
-hosted attempt was blocked by a Pixel Launcher crash dialog, visible over both
-the first unchanged test and the export test. A fresh Android attempt is running
-on unchanged source; the original failures remain retained. Both test providers
-belong only to the instrumentation APK; the packaging guard checks their isolation and passed 22
-archive models. These models do not establish actual APK isolation or native
-execution. See [saved-watchlist export](APPWRITE_WATCHLIST.md#export-the-saved-watchlist).
+the actual downloaded file remains unverified. PR86 head `321bd61` passed all five
+required Actions jobs. Its original Android attempt passed all 23 named cases,
+including the system-picker export, and the actual APK-isolation gate. Both test
+providers belong only to the instrumentation APK. The prior fixture-registration,
+launcher-crash and picker-return failures remain retained. The final test-only
+repair waits for the visible, active and focused app window after native Save or
+Back; it changes no product behavior or assertions. CodeScene complexity
+advisories retain their reviewed disposition. Browser file receipt remains a
+separate acceptance step. See [saved-watchlist export](APPWRITE_WATCHLIST.md#export-the-saved-watchlist).
 
 The accepted Annual trend increment adds an initially collapsed **Reported annual
 trend** to the managed financial overview. It charts Revenue or Net income across

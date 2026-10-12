@@ -49,7 +49,11 @@ export function CloseHistoryChart({
   rows: readonly ManagedEodCloseDto[];
   symbol: string;
   renderAction?:
-    | ((start: ManagedEodCloseDto, isCurrent: () => boolean) => ReactNode)
+    | ((
+        start: ManagedEodCloseDto,
+        end: ManagedEodCloseDto,
+        isCurrent: () => boolean,
+      ) => ReactNode)
     | undefined;
   appearance?: "precision-desk";
   actions?: ReactNode;

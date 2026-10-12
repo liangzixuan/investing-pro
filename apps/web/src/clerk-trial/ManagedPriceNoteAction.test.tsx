@@ -96,7 +96,7 @@ describe("Price comparison note action", () => {
     captured.props.onClick();
     expect(onAppend).not.toHaveBeenCalled();
     expect(renderToStaticMarkup(render())).toContain(
-      "The displayed price comparison changed. Choose a starting date again.",
+      "The displayed price comparison changed. Choose the comparison dates again.",
     );
   });
 });

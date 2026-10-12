@@ -7,7 +7,8 @@ import { RawCloseComparison } from "./RawCloseComparison";
 interface Selection {
   rows: readonly ManagedEodCloseDto[];
   symbol: string;
-  date: string;
+  startDate: string;
+  endDate: string;
 }
 
 const hooks = vi.hoisted(() => ({
@@ -31,9 +32,9 @@ vi.mock("react", async (original) => {
       if (hooks.direct) hooks.layout = effect;
       else actual.useLayoutEffect(effect, dependencies);
     },
-    useState: (initial: Selection) => {
+    useState: (initial: Selection | (() => Selection)) => {
       if (!hooks.direct) return actual.useState(initial);
-      hooks.selection ??= initial;
+      hooks.selection ??= typeof initial === "function" ? initial() : initial;
       return [
         hooks.selection,
         (next: React.SetStateAction<Selection>) => {
@@ -77,9 +78,19 @@ function render(
   }
   return result;
 }
-function selectFrom(element: Element): Select {
-  const select = React.Children.toArray(element.props.children).find(
-    (child) => React.isValidElement(child) && child.type === "select",
+function selectFrom(
+  element: Element,
+  endpoint: "start" | "end" = "start",
+): Select {
+  function all(node: React.ReactNode): Element[] {
+    if (!React.isValidElement<{ children?: React.ReactNode }>(node)) return [];
+    return [node, ...React.Children.toArray(node.props.children).flatMap(all)];
+  }
+  const select = all(element).find(
+    (child) =>
+      child.type === "select" &&
+      (child as Select).props.className ===
+        `managed-raw-close-comparison-${endpoint}-select`,
   );
   if (!React.isValidElement(select)) throw new Error("Expected date select");
   return select as Select;
@@ -94,14 +105,100 @@ function html(history = rows, symbol = "ALFA") {
 }
 
 describe("raw close comparison", () => {
+  it("compares a past interval and a later decline without changing the loaded observations", () => {
+    const history = Object.freeze([
+      Object.freeze({ date: "2026-09-17", close: "100" }),
+      Object.freeze({ date: "2026-09-18", close: "110" }),
+      Object.freeze({ date: "2026-09-19", close: "90" }),
+    ]);
+    const before = JSON.stringify(history);
+    choose(selectFrom(render(history)), history[0]!.date);
+    choose(selectFrom(render(history), "end"), history[1]!.date);
+    const past = html(history);
+    expect(past).toContain("Raw close change: +$10 (+10.0000%)");
+    expect(past).toContain(
+      'class="managed-raw-close-comparison-end-date" dateTime="2026-09-18"',
+    );
+    expect(past).not.toContain("latest loaded");
+    choose(selectFrom(render(history), "end"), history[2]!.date);
+    choose(selectFrom(render(history)), history[1]!.date);
+    expect(html(history)).toContain("Raw close change: -$20 (-18.1818%)");
+    expect(JSON.stringify(history)).toBe(before);
+  });
+
+  it("clears an invalidated End and requires an explicit later choice while keeping both control IDs", () => {
+    const first = render();
+    const ids = [selectFrom(first).props.id, selectFrom(first, "end").props.id];
+    choose(selectFrom(first), rows[0]!.date);
+    choose(selectFrom(render(), "end"), rows[1]!.date);
+    choose(selectFrom(render()), rows[1]!.date);
+    const cleared = render();
+    expect(selectFrom(cleared, "end").props.value).toBe("");
+    expect([
+      selectFrom(cleared).props.id,
+      selectFrom(cleared, "end").props.id,
+    ]).toEqual(ids);
+    expect(renderToStaticMarkup(cleared)).toContain(
+      "Choose an ending date after the starting date.",
+    );
+    expect(renderToStaticMarkup(cleared)).not.toContain("Raw close change:");
+    expect(renderToStaticMarkup(selectFrom(cleared, "end"))).not.toContain(
+      '<option value="2026-09-18"',
+    );
+    choose(selectFrom(cleared, "end"), rows[2]!.date);
+    expect(html()).toContain("Raw close change:");
+  });
+
+  it.each(["", "2026-09-17", "2026-09-18", "2026-09-20", "not-a-date"])(
+    "rejects a missing, reversed or unobserved End: %s",
+    (value) => {
+      choose(selectFrom(render()), rows[1]!.date);
+      choose(selectFrom(render(), "end"), value);
+      expect(selectFrom(render(), "end").props.value).toBe("");
+      expect(html()).not.toContain("Raw close change:");
+    },
+  );
+
+  it("retires an End's captured action even after reselecting the same endpoint", () => {
+    const captured: Array<{
+      end: ManagedEodCloseDto;
+      isCurrent: () => boolean;
+    }> = [];
+    const action = (
+      _start: ManagedEodCloseDto,
+      end: ManagedEodCloseDto,
+      isCurrent: () => boolean,
+    ) => {
+      captured.push({ end, isCurrent });
+      return null;
+    };
+    choose(selectFrom(render()), rows[0]!.date);
+    render(rows, "ALFA", action);
+    const first = captured.at(-1)!;
+    expect(first.isCurrent()).toBe(true);
+    choose(selectFrom(render(), "end"), rows[1]!.date);
+    render(rows, "ALFA", action);
+    expect(first.isCurrent()).toBe(false);
+    expect(captured.at(-1)!.end).toBe(rows[1]);
+    choose(selectFrom(render(), "end"), rows[2]!.date);
+    render(rows, "ALFA", action);
+    expect(first.isCurrent()).toBe(false);
+    expect(captured.at(-1)!.isCurrent()).toBe(true);
+  });
+
   it("offers the action only for a committed available selection and retires an earlier choice even after choosing its date again", () => {
     const captured: Array<{
       start: ManagedEodCloseDto;
+      end: ManagedEodCloseDto;
       isCurrent: () => boolean;
     }> = [];
     const action = vi.fn(
-      (start: ManagedEodCloseDto, isCurrent: () => boolean) => {
-        captured.push({ start, isCurrent });
+      (
+        start: ManagedEodCloseDto,
+        end: ManagedEodCloseDto,
+        isCurrent: () => boolean,
+      ) => {
+        captured.push({ start, end, isCurrent });
         return <button>Use selected comparison</button>;
       },
     );
@@ -110,6 +207,7 @@ describe("raw close comparison", () => {
     render(rows, "ALFA", action, false);
     const first = captured.at(-1)!;
     expect(first.start).toBe(rows[0]);
+    expect(first.end).toBe(rows[2]);
     expect(first.isCurrent()).toBe(false);
     hooks.cleanup?.();
     hooks.cleanup = hooks.layout?.();
@@ -131,7 +229,11 @@ describe("raw close comparison", () => {
     (scope) => {
       let active!: () => boolean;
       const action = vi.fn(
-        (_start: ManagedEodCloseDto, isCurrent: () => boolean) => {
+        (
+          _start: ManagedEodCloseDto,
+          _end: ManagedEodCloseDto,
+          isCurrent: () => boolean,
+        ) => {
           active = isCurrent;
           return null;
         },
@@ -153,25 +255,38 @@ describe("raw close comparison", () => {
     },
   );
 
-  it("starts blank with a labelled native select containing only prior observed dates", () => {
+  it("starts with a blank Start and latest End, both labelled and restricted to observed dates", () => {
     const element = render();
     const select = selectFrom(element);
     const markup = renderToStaticMarkup(element);
     expect(select.props.value).toBe("");
     expect(select.props.disabled).toBe(false);
+    const endSelect = selectFrom(element, "end");
+    expect(endSelect.props.value).toBe(rows[2]!.date);
+    expect(endSelect.props.disabled).toBe(false);
+    expect(markup).toContain(">ALFA comparison end date</label>");
+    expect(markup).toContain(`for="${endSelect.props.id}"`);
+    expect(endSelect.props["aria-describedby"]).toBe(
+      select.props["aria-describedby"],
+    );
     expect(select.props["aria-label"]).toBeUndefined();
     expect(markup).toContain(">ALFA comparison start date</label>");
     expect(markup).toContain(`for="${select.props.id}"`);
     expect(markup).toContain(`id="${select.props["aria-describedby"]}"`);
     expect(markup).toContain(
-      "Compare an earlier observed date with the latest loaded close.",
+      "Compare two observed dates from the loaded history.",
     );
     expect(markup).toContain(
       '<option value="" selected="">Choose an observed date</option>',
     );
     expect(markup).toContain('<option value="2026-09-17">2026-09-17</option>');
     expect(markup).toContain('<option value="2026-09-18">2026-09-18</option>');
-    expect(markup).not.toContain('<option value="2026-09-19">');
+    expect(renderToStaticMarkup(select)).not.toContain(
+      '<option value="2026-09-19"',
+    );
+    expect(renderToStaticMarkup(endSelect)).not.toContain(
+      '<option value="2026-09-17"',
+    );
     expect(markup).not.toContain("Starting raw close (USD)");
     expect(markup).toContain(
       "Raw closes are not adjusted for splits or dividends.",
@@ -183,6 +298,8 @@ describe("raw close comparison", () => {
     ({ history }) => {
       const element = render(history);
       expect(selectFrom(element).props.disabled).toBe(true);
+      expect(selectFrom(element, "end").props.disabled).toBe(true);
+      expect(selectFrom(element, "end").props.value).toBe("");
       const markup = renderToStaticMarkup(element);
       expect(markup).toContain(
         "Comparison unavailable: two dated closes needed.",
@@ -199,7 +316,7 @@ describe("raw close comparison", () => {
     expect(markup).toMatch(/datetime="2026-09-19">2026-09-19<\/time>/iu);
     expect(markup).toContain("100.000000000000000001");
     expect(markup).toContain("110.000000000000000003");
-    expect(markup).toContain("Latest loaded raw close (USD)");
+    expect(markup).toContain("Ending raw close (USD)");
     expect(markup).toContain(
       "Raw close change: +$10.000000000000000002 (+10.0000%)",
     );
@@ -260,17 +377,21 @@ describe("raw close comparison", () => {
 
   it("keeps the choice while the same rows remain visible during a retained-history state", () => {
     choose(selectFrom(render()), rows[0]!.date);
+    choose(selectFrom(render(), "end"), rows[1]!.date);
     expect(selectFrom(render()).props.value).toBe(rows[0]!.date);
+    expect(selectFrom(render(), "end").props.value).toBe(rows[1]!.date);
     expect(html()).toContain(
-      "Raw close change: +$10.000000000000000002 (+10.0000%)",
+      "Raw close change: +$7.500000000000000001 (+7.5000%)",
     );
   });
 
   it("clears immediately for a replacement response even when every row value is equal", () => {
     choose(selectFrom(render()), rows[0]!.date);
+    choose(selectFrom(render(), "end"), rows[1]!.date);
     const replacement = rows.map((row) => ({ ...row }));
     const firstRender = render(replacement);
     expect(selectFrom(firstRender).props.value).toBe("");
+    expect(selectFrom(firstRender, "end").props.value).toBe(rows[2]!.date);
     expect(renderToStaticMarkup(firstRender)).not.toContain(
       "Raw close change:",
     );
@@ -280,8 +401,10 @@ describe("raw close comparison", () => {
 
   it("clears on a symbol change even if the same rows object is reused", () => {
     choose(selectFrom(render()), rows[0]!.date);
+    choose(selectFrom(render(), "end"), rows[1]!.date);
     const firstRender = render(rows, "BETA");
     expect(selectFrom(firstRender).props.value).toBe("");
+    expect(selectFrom(firstRender, "end").props.value).toBe(rows[2]!.date);
     expect(renderToStaticMarkup(firstRender)).not.toContain(
       "Raw close change:",
     );
@@ -297,10 +420,15 @@ describe("raw close comparison", () => {
 
   it("ignores a retired select callback without altering the replacement history's choice", () => {
     const retired = selectFrom(render());
+    const retiredEnd = selectFrom(render(), "end");
     const replacement = rows.map((row) => ({ ...row }));
     choose(selectFrom(render(replacement)), rows[1]!.date);
     choose(retired, rows[0]!.date);
+    choose(retiredEnd, rows[1]!.date);
     expect(selectFrom(render(replacement)).props.value).toBe(rows[1]!.date);
+    expect(selectFrom(render(replacement), "end").props.value).toBe(
+      rows[2]!.date,
+    );
     expect(html(replacement)).toContain(
       "Raw close change: +$2.500000000000000001 (+2.3256%)",
     );
@@ -316,8 +444,8 @@ describe("raw close comparison", () => {
     const selectIds = [...markup.matchAll(/<select id="([^"]+)"/gu)].map(
       (match) => match[1],
     );
-    expect(selectIds).toHaveLength(2);
-    expect(new Set(selectIds).size).toBe(2);
+    expect(selectIds).toHaveLength(4);
+    expect(new Set(selectIds).size).toBe(4);
     for (const id of selectIds) expect(markup).toContain(`for="${id}"`);
     expect(markup).not.toContain("Raw close change:");
   });

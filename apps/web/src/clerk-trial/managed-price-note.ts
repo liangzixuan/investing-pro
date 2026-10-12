@@ -8,12 +8,13 @@ import { calculatePersonalRawCloseChange } from "@research-cockpit/personal-mark
 export function priceComparisonNoteExcerpt(
   response: ManagedEodHistoryResponseDto,
   start: ManagedEodCloseDto,
+  end: ManagedEodCloseDto,
   showingPrevious: boolean,
 ): string | null {
   const index = response.rows.indexOf(start);
-  const latest = response.rows.at(-1);
-  if (index < 0 || index >= response.rows.length - 1 || !latest) return null;
-  const change = calculatePersonalRawCloseChange({ rows: [start, latest] });
+  const endIndex = response.rows.indexOf(end);
+  if (index < 0 || endIndex <= index) return null;
+  const change = calculatePersonalRawCloseChange({ rows: [start, end] });
   if (change.status !== "available") return null;
   const money =
     change.direction === "down"
@@ -24,7 +25,7 @@ export function priceComparisonNoteExcerpt(
       ? `less than 0.0001% ${change.direction === "up" ? "higher" : "lower"}`
       : `${change.direction === "up" ? "+" : ""}${change.changePercent}%`;
   return [
-    `Observed raw-close comparison: ${response.security.symbol} (${response.security.exchangeMic}); ${start.date} USD ${start.close} to latest loaded ${latest.date} USD ${latest.close}; raw close change ${money} (${percent}).`,
+    `Observed raw-close comparison: ${response.security.symbol} (${response.security.exchangeMic}); ${start.date} USD ${start.close} to ${end.date} USD ${end.close}; raw close change ${money} (${percent}).`,
     `Source: Tiingo; requested window ${response.window.startDate} to ${response.window.endDate}; original request started ${response.requestStartedAt}; completed ${response.completedAt}.`,
     "Raw closes are not adjusted for splits or dividends and are not live quotes.",
     ...(showingPrevious

@@ -889,6 +889,7 @@ export class ManagedWorkspace {
     selection: AnnualReportSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
+    end: ManagedEodCloseDto,
   ): { note: string | null; reason: string | null } {
     const watchlist = this.getResearchWatchlist(selection);
     if (!watchlist.canEdit || !watchlist.member)
@@ -913,13 +914,14 @@ export class ManagedWorkspace {
     const excerpt = priceComparisonNoteExcerpt(
       response,
       start,
+      end,
       eod.showingPrevious,
     );
     if (excerpt === null)
       return {
         note: null,
         reason:
-          "Choose an earlier observed date from the loaded close history.",
+          "Choose two observed dates in increasing order from the loaded close history.",
       };
     const note =
       watchlist.member.note + (watchlist.member.note ? " " : "") + excerpt;
@@ -935,16 +937,18 @@ export class ManagedWorkspace {
     selection: AnnualReportSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
+    end: ManagedEodCloseDto,
   ): { canAppend: boolean; reason: string | null } {
-    const proposal = this.priceNoteProposal(selection, response, start);
+    const proposal = this.priceNoteProposal(selection, response, start, end);
     return { canAppend: proposal.note !== null, reason: proposal.reason };
   }
   appendPriceComparisonToResearchNote(
     selection: AnnualReportSelection,
     response: ManagedEodHistoryResponseDto,
     start: ManagedEodCloseDto,
+    end: ManagedEodCloseDto,
   ): { appended: boolean; message: string } {
-    const proposal = this.priceNoteProposal(selection, response, start);
+    const proposal = this.priceNoteProposal(selection, response, start, end);
     if (proposal.note === null)
       return { appended: false, message: proposal.reason! };
     this.noteResearch(selection, proposal.note);

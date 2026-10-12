@@ -824,6 +824,18 @@
 .managed-frame .managed-raw-close-comparison :is(p, dt) {
   color: var(--managed-muted);
 }
+.managed-frame .managed-raw-close-comparison-dates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 12px;
+}
+.managed-frame .managed-raw-close-comparison-dates > div {
+  min-width: 0;
+}
+.managed-frame .managed-raw-close-comparison-dates select {
+  width: 100%;
+  min-height: 44px;
+}
 .managed-frame .managed-eod-chart table {
   font-size: 13px;
 }

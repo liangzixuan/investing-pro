@@ -116,12 +116,14 @@ export function ManagedEodHistory({
                 symbol={response.security.symbol}
                 renderAction={
                   noteActions
-                    ? (start, isCurrent) => (
+                    ? (start, end, isCurrent) => (
                         <ManagedPriceNoteAction
-                          key={start.date}
-                          action={noteActions.getAction(response, start)}
+                          key={`${start.date}:${end.date}`}
+                          action={noteActions.getAction(response, start, end)}
                           isCurrent={isCurrent}
-                          onAppend={() => noteActions.append(response, start)}
+                          onAppend={() =>
+                            noteActions.append(response, start, end)
+                          }
                         />
                       )
                     : undefined
