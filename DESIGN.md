@@ -117,6 +117,14 @@ on desktop and stack controls on narrow screens. Retain full identities and
 original source dates beside the results. Comparison controls use the same 44px
 targets and focus treatment as other research controls.
 
+Place the labelled **Add comparison to** native selector and quiet **Add
+comparison to note draft** action outside the results' horizontal scroll. Start
+with an empty destination and name both available listings by symbol, company,
+share class and exchange. Retain 44px targets and visible focus at narrow widths.
+Explain refusal beside the action and announce completion without moving focus
+or selecting a different note editor. Appending changes one draft note; review
+and Save remain explicit.
+
 ## Composition and navigation
 
 On desktop, place Markets, Discover and My Watchlist in a left rail, with global

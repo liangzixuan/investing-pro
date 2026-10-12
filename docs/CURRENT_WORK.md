@@ -7,7 +7,23 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The active local increment adds a Research notes scope to Search My Watchlist.
+The active local increment adds an explicit comparison-to-note action. Choose
+one of the two current listings, append both listings' exact dated evidence to
+its latest note, then review and Save the complete draft. The selected editor,
+other notes and source request counts remain unchanged. Focused formatter,
+component and workspace checks pass, including refusal during selected refresh,
+pending navigation, recovery and retired selection states. Independent source
+review closed a pending-navigation guard gap. All 5,946 web tests, fresh types,
+scoped lint and boundary checks pass. Actual-component browser checks cover exact
+whole-draft Save/reload, refusals, retained sources and retirement; the screenshot
+supplement remains pending. The existing native comparison journey now checks
+append to the chosen member while preserving the selected editor. Its source
+syntax and independent review pass; hosted native execution, CI, source
+integration and delivery remain open. The
+[watchlist guide](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note)
+records the contract.
+
+The preceding local increment adds a Research notes scope to Search My Watchlist.
 It searches complete current draft notes while retaining the selected editor,
 explicit Save and existing recovery behavior. Listing identity remains the default
 scope. All 41 editor and 91 workspace composition tests, fresh web types, scoped
@@ -18,8 +34,10 @@ the reviewed Android export lifecycle repair. The original hosted native run
 failed a search-input probe after keyboard capitalization and a Filings Back
 probe during keyboard dismissal. The reviewed test correction preserves exact
 mixed-case search text and checks native readiness before one Back press; all
-original draft, source and navigation assertions remain. Current hosted native
-acceptance, source integration and delivery remain open.
+original draft, source and navigation assertions remain. A subsequent filtered
+search probe now checks the full raw draft independently of the visible choices.
+PR95 head `429e94b` is awaiting its original hosted native and CI results; no
+current native acceptance, main integration or delivery is claimed.
 
 The preceding local increment adds a comparison of two explicitly chosen watchlist
 listings using their already-loaded histories. It starts with no selected pair,
@@ -32,8 +50,9 @@ inside narrow scrolling results. The original Android comparison run passed all
 25 required cases. The subsequent CSS candidate failed an existing export chooser
 probe; its exact rejection cause remains unknown. Source review found an export
 job assignment race, and the reviewed repair publishes the job before starting it.
-Its focused checks pass; current hosted CI/native acceptance, source integration
-and delivery remain open. The
+Its focused checks and all 25 current hosted native cases pass, including APK
+isolation. All applicable CI checks passed, and PR94 merged into main after
+owner approval. Delivery remains open. The
 [comparison guide](APPWRITE_WATCHLIST.md#compare-two-watchlist-listings) records the
 contract.
 
@@ -53,8 +72,8 @@ widths. The original Android run passed the price journey but failed a later
 export picker probe. Its cause remains unproven; the reviewed test repair awaits
 cleanup and records probe readiness while preserving original assertions.
 The repaired price source passed all 24 native cases and applicable CI checks,
-with independent browser, source and artifact review. Source integration and
-delivery remain open.
+with independent browser, source and artifact review. PR93 merged into main
+after owner approval; delivery remains open.
 
 PR89 through PR92 have merged into main. They add selectable shared-date Markets
 comparisons, recent SEC filings, filing references in research notes and exact

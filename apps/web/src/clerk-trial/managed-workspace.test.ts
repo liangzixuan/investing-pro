@@ -4007,6 +4007,337 @@ describe("workspace SEC filings integration", () => {
   });
 });
 
+describe("watchlist comparison note composition", () => {
+  async function loadedPair() {
+    const payload: MainWatchlistPayload = {
+      ...empty,
+      memberships: [
+        { ...eodSelection.listing, note: "First stays exact" },
+        { ...listingMembership(result), note: "Second café  東京 📈" },
+        { ...listingMembership(second), note: "Hidden third stays exact" },
+      ],
+    };
+    const value = fixture(payload);
+    await ready(value.workspace);
+    value.workspace.setView("watchlist");
+    const rows = value.workspace.watchlistPrices.getSnapshot().rows;
+    for (const [index, closes] of [
+      [0, ["100", "110", "90"]],
+      [1, ["100", "95", "120"]],
+    ] as const) {
+      const { note: _note, ...security } = payload.memberships[index]!;
+      void _note;
+      vi.mocked(value.api.eodHistory).mockResolvedValueOnce({
+        ...eodResponse(),
+        security,
+        rows: closes.map((close, day) => ({
+          date: `2026-09-${17 + day}`,
+          close,
+        })),
+      });
+      await value.workspace.loadWatchlistPrice(rows[index]!.handle);
+      expect(
+        value.workspace.watchlistPrices.getSnapshot().rows[index]!.history
+          .response,
+      ).not.toBeNull();
+    }
+    const prices = value.workspace.watchlistPrices.getSnapshot();
+    let selection = createManagedWatchlistComparisonSelection();
+    for (const [side, row] of [
+      ["left", prices.rows[0]!],
+      ["right", prices.rows[1]!],
+    ] as const)
+      selection = selectManagedWatchlistComparisonRow(
+        selection,
+        selection,
+        prices,
+        side,
+        row,
+      );
+    selection = changeManagedWatchlistComparisonInterval(
+      selection,
+      selection,
+      prices,
+      "startDate",
+      "2026-09-18",
+    );
+    return {
+      ...value,
+      payload,
+      prices,
+      selection,
+      destination: prices.rows[1]!.listing,
+    };
+  }
+
+  it("appends to one explicitly named latest note and saves the whole ordered draft only on request", async () => {
+    const { workspace, api, saved, payload, prices, selection, destination } =
+      await loadedPair();
+    expect(
+      workspace.getWatchlistComparisonNoteAction(selection, null).canAppend,
+    ).toBe(false);
+    expect(
+      workspace.getWatchlistComparisonNoteAction(selection, destination),
+    ).toEqual({ canAppend: true, reason: null });
+    workspace.note(destination.listingId, "Latest café  東京 📈 text");
+    workspace.move(destination.listingId, -1);
+    const result = workspace.appendWatchlistComparisonToNote(
+      selection,
+      destination,
+    );
+    expect(result.appended).toBe(true);
+    expect(result.message).toContain("DEMO (Class A, XNAS)");
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships.map((member) => member.listingId)).toEqual([
+      destination.listingId,
+      payload.memberships[0]!.listingId,
+      payload.memberships[2]!.listingId,
+    ]);
+    expect(draft.memberships[0]!.note).toMatch(/^Latest café {2}東京 📈 text /);
+    for (const text of [
+      "2026-09-18",
+      "2026-09-19",
+      "110",
+      "90",
+      "95",
+      "120",
+      "-18.1818%",
+      "+26.3158%",
+      "Tiingo",
+    ])
+      expect(draft.memberships[0]!.note).toContain(text);
+    expect(draft.memberships.slice(1)).toEqual([
+      payload.memberships[0],
+      payload.memberships[2],
+    ]);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.eodHistory).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.search).toHaveBeenCalledTimes(1);
+    expect(
+      reconcileManagedWatchlistComparison(
+        selection,
+        workspace.watchlistPrices.getSnapshot(),
+      ),
+    ).toBe(selection);
+    expect(
+      workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+    ).toBe(prices.rows[1]!.history.response);
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledTimes(1);
+    expect(saved().payload).toEqual(draft);
+  });
+
+  it.each([
+    "missing",
+    "third",
+    "issuer",
+    "security",
+    "class",
+    "exchange",
+  ] as const)(
+    "refuses a %s destination without changing either note",
+    async (kind) => {
+      const { workspace, selection, destination, payload } = await loadedPair();
+      const candidate =
+        kind === "missing"
+          ? null
+          : kind === "third"
+            ? payload.memberships[2]!
+            : {
+                ...destination,
+                ...(kind === "issuer" ? { issuerId: "retired-issuer" } : {}),
+                ...(kind === "security"
+                  ? { securityId: "retired-security" }
+                  : {}),
+                ...(kind === "class"
+                  ? { shareClassName: "Retired class" }
+                  : {}),
+                ...(kind === "exchange" ? { exchangeMic: "XNYS" } : {}),
+              };
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.getWatchlistComparisonNoteAction(selection, candidate)
+          .canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendWatchlistComparisonToNote(selection, candidate)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    },
+  );
+
+  it("enforces the complete Unicode note bound without normalizing existing raw text", async () => {
+    const { workspace, selection, destination } = await loadedPair();
+    workspace.note(destination.listingId, "");
+    expect(
+      workspace.appendWatchlistComparisonToNote(selection, destination)
+        .appended,
+    ).toBe(true);
+    const excerpt =
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
+    const remaining = 2_000 - [...excerpt].length - 1;
+    expect(remaining).toBeGreaterThan(5);
+    const exact = "📈".repeat(remaining - 4) + "  東京";
+    workspace.note(destination.listingId, exact);
+    expect(
+      workspace.appendWatchlistComparisonToNote(selection, destination)
+        .appended,
+    ).toBe(true);
+    const complete =
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
+    expect([...complete]).toHaveLength(2_000);
+    expect(complete).toBe(exact + " " + excerpt);
+    workspace.note(destination.listingId, exact + "x");
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendWatchlistComparisonToNote(selection, destination)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    workspace.note(destination.listingId, "Invalid\nraw note");
+    expect(
+      workspace.appendWatchlistComparisonToNote(selection, destination)
+        .appended,
+    ).toBe(false);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toBe("Invalid\nraw note");
+  });
+
+  it.each(["failure", "cancel"] as const)(
+    "refuses a refresh and preserves %s history with its qualification",
+    async (outcome) => {
+      const { workspace, api, selection, destination, prices } =
+        await loadedPair();
+      const held = deferred<Awaited<ReturnType<ManagedApi["eodHistory"]>>>();
+      vi.mocked(api.eodHistory).mockReturnValueOnce(held.promise);
+      const pending = workspace.loadWatchlistPrice(prices.rows[0]!.handle);
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendWatchlistComparisonToNote(selection, destination)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      if (outcome === "cancel") {
+        workspace.watchlistPrices.cancel();
+        held.resolve({
+          ...eodResponse(),
+          rows: [{ date: "2026-09-19", close: "999" }],
+        });
+      } else held.reject(new TrialApiError("unavailable"));
+      await pending;
+      expect(
+        workspace.appendWatchlistComparisonToNote(selection, destination)
+          .appended,
+      ).toBe(true);
+      const note =
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
+      expect(note).toContain("Retained previous history");
+      expect(note).not.toContain("999");
+      expect(
+        workspace.watchlistPrices.getSnapshot().rows[0]!.history.response,
+      ).toBe(prices.rows[0]!.history.response);
+      expect(api.eodHistory).toHaveBeenCalledTimes(3);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects a replaced equal-valued response and accepts its newly captured interval", async () => {
+    const { workspace, api, selection, destination, prices } =
+      await loadedPair();
+    vi.mocked(api.eodHistory).mockResolvedValueOnce(
+      structuredClone(prices.rows[0]!.history.response!),
+    );
+    await workspace.loadWatchlistPrice(prices.rows[0]!.handle);
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendWatchlistComparisonToNote(selection, destination)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    const current = reconcileManagedWatchlistComparison(
+      selection,
+      workspace.watchlistPrices.getSnapshot(),
+    );
+    expect(current).not.toBe(selection);
+    expect(
+      workspace.appendWatchlistComparisonToNote(current, destination).appended,
+    ).toBe(true);
+  });
+
+  it.each([
+    "view",
+    "company",
+    "catalog",
+    "remove-readd",
+    "retire",
+    "conflict",
+    "uncertain",
+    "pending-save",
+  ] as const)(
+    "refuses stale comparison appends across %s",
+    async (boundary) => {
+      const { workspace, api, selection, destination, payload } =
+        await loadedPair();
+      let finish: (() => Promise<void>) | undefined;
+      if (boundary === "view") workspace.setView("markets");
+      if (boundary === "company") {
+        workspace.openWatchlistEod(
+          workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+        );
+        expect(workspace.getSnapshot().research).not.toBeNull();
+      }
+      if (boundary === "catalog") {
+        vi.mocked(api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      }
+      if (boundary === "remove-readd") {
+        workspace.remove(destination.listingId);
+        workspace.coordinator.replaceDraft(payload);
+      }
+      if (boundary === "retire") workspace.coordinator.retire();
+      if (boundary === "conflict" || boundary === "uncertain") {
+        workspace.note(destination.listingId, "Boundary retains draft");
+        vi.mocked(api.save).mockRejectedValueOnce(
+          new TrialApiError(
+            boundary === "conflict" ? "conflict" : "unavailable",
+          ),
+        );
+        await workspace.coordinator.save();
+      }
+      if (boundary === "pending-save") {
+        workspace.note(destination.listingId, "Pending retains draft");
+        const held = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        const pending = workspace.coordinator.save();
+        finish = async () => {
+          held.reject(new TrialApiError("unavailable"));
+          await pending;
+        };
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.getWatchlistComparisonNoteAction(selection, destination)
+          .canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendWatchlistComparisonToNote(selection, destination)
+          .appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.eodHistory).toHaveBeenCalledTimes(2);
+      await finish?.();
+    },
+  );
+});
+
 describe("watchlist price workspace composition", () => {
   const initial = (): MainWatchlistPayload => ({
     ...empty,

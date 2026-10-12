@@ -27,6 +27,10 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import {
+  createManagedWatchlistComparisonSelection,
+  selectManagedWatchlistComparisonRow,
+} from "./managed-watchlist-comparison";
 import { ManagedUnsavedWatchlistReview } from "./ManagedUnsavedWatchlistReview";
 import {
   ManagedWatchlistEditor,
@@ -1167,6 +1171,105 @@ describe("managed workspace screen", () => {
     mounted.direct = false;
     expect(html()).toContain("Edited from the watchlist row");
   });
+
+  it.each(["ready", "invalid", "pending", "becomes-pending"] as const)(
+    "wires pair evidence to the current full draft with navigation %s",
+    async (route) => {
+      const invalid = route === "invalid";
+      let pending = route === "pending";
+      const refused = route !== "ready";
+      const initial = {
+        ...payload,
+        memberships: [
+          { ...eodSelection.listing, note: "First remains unchanged" },
+          { ...payload.memberships[0]!, note: "Second raw café  東京" },
+        ],
+      };
+      const { workspace, api } = fixture(initial, initial.memberships);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      for (const row of workspace.watchlistPrices.getSnapshot().rows) {
+        const member = initial.memberships.find(
+          (item) => item.listingId === row.listing.listingId,
+        )!;
+        const { note: _note, ...security } = member;
+        void _note;
+        vi.mocked(api.eodHistory).mockResolvedValueOnce({
+          ...eodResponse(),
+          security,
+        });
+        await workspace.loadWatchlistPrice(row.handle);
+        expect(
+          workspace.watchlistPrices
+            .getSnapshot()
+            .rows.find((item) => item.handle === row.handle)!.history.response,
+        ).not.toBeNull();
+      }
+      const prices = workspace.watchlistPrices.getSnapshot();
+      let selection = createManagedWatchlistComparisonSelection();
+      for (const [side, row] of [
+        ["left", prices.rows[0]!],
+        ["right", prices.rows[1]!],
+      ] as const)
+        selection = selectManagedWatchlistComparisonRow(
+          selection,
+          selection,
+          prices,
+          side,
+          row,
+        );
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid,
+        returnFocus: 0,
+        open: vi.fn(),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const editor = watchlistEditor(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      )!;
+      const actions = editor.props.comparisonNoteActions;
+      const destination = prices.rows[1]!.listing;
+      expect(actions.getAction(selection, destination).canAppend).toBe(
+        !invalid && !pending,
+      );
+      if (route === "becomes-pending") pending = true;
+      workspace.note(destination.listingId, "Latest raw café  東京");
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(actions.getAction(selection, destination).canAppend).toBe(
+        !refused,
+      );
+      expect(actions.append(selection, destination).appended).toBe(!refused);
+      const after = workspace.coordinator.getSnapshot().draft!;
+      if (refused) expect(after).toBe(before);
+      else {
+        expect(after.memberships[0]).toEqual(initial.memberships[0]);
+        expect(after.memberships[1]!.note).toMatch(/^Latest raw café {2}東京 /);
+        expect(after.memberships[1]!.note).toContain("Tiingo");
+        vi.mocked(api.save).mockImplementationOnce((command) =>
+          Promise.resolve({
+            version: command.expectedVersion + 1,
+            payload: command.payload,
+            replayed: false,
+          }),
+        );
+        expect(api.save).not.toHaveBeenCalled();
+        await workspace.coordinator.save();
+        expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(after);
+      }
+      expect(api.eodHistory).toHaveBeenCalledTimes(2);
+      expect(api.search).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.economicCalendar).not.toHaveBeenCalled();
+    },
+  );
 
   it("adds from a captured discovery visit and fences old note and review controls", async () => {
     const { workspace, api, html } = fixture({ ...payload, memberships: [] });

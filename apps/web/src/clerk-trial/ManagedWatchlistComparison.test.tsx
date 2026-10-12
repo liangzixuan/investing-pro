@@ -9,6 +9,7 @@ import {
   ManagedWatchlistComparison,
   ManagedWatchlistComparisonView,
 } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistComparisonNoteAction } from "./ManagedWatchlistComparisonNoteAction";
 import {
   changeManagedWatchlistComparisonInterval,
   createManagedWatchlistComparisonSelection,
@@ -84,6 +85,10 @@ afterEach(() => {
 });
 
 const dates = ["2026-09-17", "2026-09-18", "2026-09-19"];
+const noteActions = () => ({
+  getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
+  append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
+});
 const closes = (values: readonly string[]): ManagedEodCloseDto[] =>
   values.map((close, index) => ({ date: dates[index]!, close }));
 function priceRow(
@@ -184,6 +189,8 @@ describe("watchlist pair presentation", () => {
       <ManagedWatchlistComparison
         memberships={f.memberships}
         prices={f.prices}
+        editable
+        comparisonNoteActions={noteActions()}
       />,
     );
     expect(text(html)).toContain("Choose two distinct watchlist listings");
@@ -198,7 +205,7 @@ describe("watchlist pair presentation", () => {
     expect(html).toContain(
       'aria-label="Watchlist raw price comparison results"',
     );
-    expect(html.match(/<select /gu) ?? []).toHaveLength(4);
+    expect(html.match(/<select /gu) ?? []).toHaveLength(5);
     expect(html.match(/<summary>/gu) ?? []).toHaveLength(1);
   });
 
@@ -344,6 +351,8 @@ function harness() {
     memberships: f.memberships,
     prices: f.prices,
     active: true,
+    editable: true,
+    comparisonNoteActions: noteActions(),
   };
   let view: ViewProps;
   const render = (changes: Partial<typeof props> = {}) => {
@@ -365,6 +374,33 @@ function harness() {
 }
 
 describe("watchlist comparison selection lifetime", () => {
+  it("keeps the note action outside the scroll region with current capture and editability", () => {
+    const h = harness();
+    const view = h.pair();
+    const action = view.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedWatchlistComparisonNoteAction>
+    >;
+    expect(action.type).toBe(ManagedWatchlistComparisonNoteAction);
+    expect(action.props.selection).toBe(view.projection.selection);
+    expect(action.props.active).toBe(true);
+    expect(action.props.editable).toBe(true);
+    const rendered = renderToStaticMarkup(
+      <ManagedWatchlistComparisonView
+        {...view}
+        noteAction={<div data-note-action />}
+      />,
+    );
+    expect(rendered.indexOf("data-note-action")).toBeGreaterThan(
+      rendered.indexOf("Raw closes are not adjusted"),
+    );
+    const locked = h.render({ editable: false, active: false });
+    expect((locked.noteAction as typeof action).props).toMatchObject({
+      active: false,
+      editable: false,
+    });
+    expect((locked.noteAction as typeof action).type).toBe(action.type);
+  });
+
   it("changes only local pair/dates, preserving the full draft and captured sources", () => {
     const h = harness();
     const before = JSON.stringify(h.memberships);

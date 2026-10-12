@@ -29,6 +29,8 @@ import {
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
+import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
+import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
 import { ManagedCompanyFilings } from "./managed-company-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
@@ -1032,6 +1034,89 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Price comparison added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private watchlistComparisonNoteProposal(
+    selection: ManagedWatchlistComparisonSelection,
+    destination: ManagedEodIdentity | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const draft = this.coordinator.getSnapshot().draft;
+    const prices = this.watchlistPrices.getSnapshot();
+    if (
+      !this.canEdit() ||
+      !draft ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      !prices.canRead ||
+      this.state.snapshot?.snapshotSha256 !== draft.snapshotSha256
+    )
+      return {
+        note: null,
+        member: null,
+        reason:
+          "Return to an editable watchlist before adding comparison evidence.",
+      };
+    const evidence = getManagedWatchlistComparisonNoteEvidence(
+      selection,
+      prices,
+    );
+    if (evidence.excerpt === null)
+      return { note: null, member: null, reason: evidence.reason! };
+    const member = destination
+      ? draft.memberships.find((item) =>
+          membershipMatchesResult(item, destination),
+        )
+      : null;
+    const paired =
+      destination &&
+      [selection.left, selection.right].some(
+        (source) =>
+          source &&
+          membershipMatchesResult({ ...destination, note: "" }, source.listing),
+      );
+    if (!member || !paired)
+      return {
+        note: null,
+        member: null,
+        reason: "Choose one of these two listings as the note destination.",
+      };
+    const note = member.note + (member.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        member: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, member, reason: null };
+  }
+  getWatchlistComparisonNoteAction(
+    selection: ManagedWatchlistComparisonSelection,
+    destination: ManagedEodIdentity | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.watchlistComparisonNoteProposal(
+      selection,
+      destination,
+    );
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendWatchlistComparisonToNote(
+    selection: ManagedWatchlistComparisonSelection,
+    destination: ManagedEodIdentity | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.watchlistComparisonNoteProposal(
+      selection,
+      destination,
+    );
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
   private filingsNoteProposal(

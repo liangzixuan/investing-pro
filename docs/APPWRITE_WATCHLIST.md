@@ -98,9 +98,32 @@ requires selecting its new row again. Catalog replacement, top-level navigation
 and session retirement discard retired selections with their histories. Opening
 company research retains the mounted comparison for the return journey.
 
-The comparison is read-only and remains available while Save or recovery blocks
-new price reads. Comparison choices are session state; they are not saved in the
-watchlist. Broader comparison sets, ranking and charting are outside this slice.
+The comparison remains available while Save or recovery blocks new price reads.
+Comparison choices are session state; they are not saved in the watchlist.
+Broader comparison sets, ranking and charting are outside this slice.
+
+### Keep a comparison in a research note
+
+Choose one of the current pair in **Add comparison to**, then choose **Add
+comparison to note draft**. The destination starts empty and names the symbol,
+company, share class and exchange. The action appends both listings' exact
+endpoints, changes, shared observation counts and original source dates to that
+member's latest note. It preserves existing note text and every other note,
+keeps the selected editor and sends no source request or Save.
+
+The excerpt identifies raw USD closes, missing-date limits and any retained
+previous history. A selected refresh blocks the action until it finishes or is
+canceled. A failed or canceled refresh may leave qualified previous evidence
+available. Replacing a pair member or its source history clears the destination;
+changing only the interval retains the destination and uses the new dates.
+
+Both the comparison and destination are checked again when the action runs.
+Retired selections, pending navigation, catalog changes and blocked edits refuse
+the append. If the complete resulting note fails the existing 2,000-code-point
+note contract, the action leaves it unchanged and explains why. It never truncates
+evidence. Review the draft, use Research notes search to find its text, and choose
+**Save watchlist** to save the complete draft explicitly. Save keeps its existing
+note normalization and recovery rules.
 
 ## Search the current watchlist draft
 

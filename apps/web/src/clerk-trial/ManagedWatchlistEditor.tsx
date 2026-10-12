@@ -13,6 +13,7 @@ import {
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import type { ManagedWatchlistComparisonNoteActions } from "./ManagedWatchlistComparisonNoteAction";
 import {
   ManagedWatchlistPriceReadout,
   ManagedWatchlistPrices,
@@ -34,6 +35,7 @@ export interface ManagedWatchlistEditorProps {
   editable: boolean;
   active: boolean;
   prices: ManagedWatchlistPricesState;
+  comparisonNoteActions: ManagedWatchlistComparisonNoteActions;
   onLoadPrice: (handle: ManagedWatchlistPriceHandle) => void;
   canOpenAnnual: (member: WatchlistMembership) => boolean;
   canOpenEod: (member: WatchlistMembership) => boolean;
@@ -585,6 +587,8 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
         memberships={memberships}
         prices={props.prices}
         active={active}
+        editable={editable}
+        comparisonNoteActions={props.comparisonNoteActions}
       />
     </div>
   );
