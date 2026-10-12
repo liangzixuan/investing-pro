@@ -170,7 +170,8 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-[PR77](https://github.com/liangzixuan/investing-pro/pull/77) restores keyboard position after a successful watchlist
+[PR77](https://github.com/liangzixuan/investing-pro/pull/77), merged October 12,
+restores keyboard position after a successful watchlist
 recovery choice. Choosing **Use saved version** or **Keep my draft** removes that
 review; focus should move once to the visible My Watchlist heading. A stale choice,
 inactive view, session retirement or a user moving focus elsewhere must not pull
@@ -181,10 +182,10 @@ resolved a pending-navigation timing edge. Actual-component Brave checks with
 invented data passed at 1440 and 390 pixels, covering both choices, replay recovery,
 an empty saved result, the next Tab stop and unchanged request counts. No browser
 console errors or document overflow were observed. Source review and local browser
-checks are complete; hosted checks and delivery remain separate. The accepted
+checks and all PR checks passed; actual-main checks and delivery remain separate. The accepted
 release above remains the deployed baseline.
 
-The next design increment brings the managed entry, loading and native recovery
+[PR78](https://github.com/liangzixuan/investing-pro/pull/78) brings the managed entry, loading and native recovery
 states into Precision Desk. It uses one shared presentation section and a distinct
 retained-session warning while preserving authentication, session ownership,
 redirects and complete status messages. The browser form retains Clerk's existing
@@ -205,6 +206,21 @@ The entry work has local source and presentation acceptance; hosted checks and
 delivery remain open. Actual sign-in widget rendering is not established by these
 checks. The presentation overhaul adds no broader market-data
 coverage and does not complete M1, M2 or M3.
+
+The next product increment compares the three loaded Markets listings across
+their earliest and latest shared observed dates, in board order. It reuses raw
+USD closes and the existing exact-decimal calculation, with complete-cohort and
+insufficient-history explanations. Each response keeps its original request
+dates and retained-history status. This is a derived view with no additional
+request, saved state, ranking or adjusted-return claim. Local acceptance includes
+35 component/workspace tests, the unchanged 68 model tests, web types, scoped
+lint/format and source boundaries. Independent review caught two removable
+keyboard targets; both now remain mounted when data becomes unavailable.
+Actual-component Brave checks passed shared-date, missing-history, precision,
+retained-provenance and keyboard behavior at desktop and narrow widths. Final
+React transitions preserved results/disclosure focus without retaining cleared
+data or taking focus from another control. Hosted checks and delivery remain
+separate; see [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The October 10 owner report remains limited to the requested Android 1.19 and
 Brave checklist on Pixel 10 Pro XL/Android 17, without per-step device logs or
