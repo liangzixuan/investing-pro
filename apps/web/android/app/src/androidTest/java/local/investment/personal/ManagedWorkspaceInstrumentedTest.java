@@ -2802,10 +2802,10 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Company section controls did not scroll into view", sectionsScrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String sectionsVisible = "(() => { const targets = Array.from(document.querySelectorAll(" +
             "'.managed-company-sections button, #managed-eod-heading')); const v = visualViewport;" +
-            " return v && targets.length === 3 && targets.every(e => { const r = e.getBoundingClientRect();" +
+            " return v && targets.length === 4 && targets.every(e => { const r = e.getBoundingClientRect();" +
             " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
             " && r.top >= v.offsetTop && r.bottom <= v.offsetTop + v.height; }); })()";
-        awaitPage("both section controls and active Price heading fully visible", sectionsVisible);
+        awaitPage("all three section controls and active Price heading fully visible", sectionsVisible);
         awaitPage("retained Price evidence before section controls capture", loadedEod);
         assertResearchSwitchDraftAndCounts(2, 1, 1);
         retainScreenshot("researchCompanySections");
