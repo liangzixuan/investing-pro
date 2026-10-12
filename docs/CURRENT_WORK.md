@@ -170,6 +170,28 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+The active comparison-ordering increment adds Board order, Highest raw change
+and Lowest raw change to the complete three-listing shared-date comparison.
+Ordering uses exact endpoint ratios before display rounding. Exact ties retain
+symbol, exchange and listing-ID order in both directions. The table and its source
+details share the selected order; the board, chart selection and note draft stay
+unchanged. Missing history still withholds the complete comparison.
+
+The labelled order selector remains available through missing or insufficient
+history, retaining its choice while the view is mounted. Local verification passed
+109 analytics tests and 92 comparison/Markets tests, types and scoped lint/format.
+Independent arithmetic and UI reviews and source boundaries passed. Brave checks
+with invented data at 1440, 390 and 320 pixels confirmed exact tiny-change and tie
+ordering, matching source details, retained request dates, selection and draft
+preservation, company Back, cancellation, late-response rejection and retirement.
+The results region kept keyboard focus through refresh and unavailable states;
+the narrow table supports arrow-key scrolling without document overflow.
+No console errors were observed. Native picker keyboard selection was not
+established by these browser checks. The existing invented Android journey now
+exercises all three choices and their request/draft invariants; execution and
+hosted acceptance remain pending. See the
+[comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
+
 The active MSFT increment adds a fourth Discover listing and a third Annual
 issuer. Its common-stock identity is bound to the reviewed SEC cover, unique
 OpenFIGI result and dated MIC relationship. Existing AAPL, GOOG and GOOGL
@@ -190,7 +212,12 @@ Annual note append/Save/reload, navigation cancellation, late-response rejection
 and session retirement. No overflow or console errors were observed. The first
 boundary run caught a package import in an Annual test. The test now uses the
 local catalog API, all 19 Annual tests pass again, and the unchanged dependency
-rule passes. Hosted checks and live delivery are separate.
+rule passes. Hosted CI then caught a navigation fixture without explicit coverage
+for its invented listing. The fixture now declares that coverage, with all 12
+navigation tests, types and scoped checks passing; production guards are unchanged.
+Fresh hosted checks and live delivery are separate.
+Its source is in [PR83](https://github.com/liangzixuan/investing-pro/pull/83),
+head `d44fc5f0d4b3a8d2785c5a40ceec3e4b8ca3ae69`, awaiting hosted acceptance.
 See the [catalog](MANAGED_SECURITY_CATALOG.md),
 [Annual](MANAGED_SEC_ANNUAL.md) and
 [research navigation](MANAGED_RESEARCH_NAVIGATION.md) guides.

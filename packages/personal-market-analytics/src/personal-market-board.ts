@@ -254,6 +254,37 @@ export function calculatePersonalRawCloseChange(
   }
 }
 
+/** Order raw percentage changes without rounding or dividing either ratio. */
+export function comparePersonalRawCloseChange(
+  left: { readonly firstClose: string; readonly lastClose: string },
+  right: { readonly firstClose: string; readonly lastClose: string },
+): -1 | 0 | 1 {
+  try {
+    const leftValue = record(left, ["firstClose", "lastClose"]);
+    const rightValue = record(right, ["firstClose", "lastClose"]);
+    return compareCloseRatios(
+      positiveDecimal(leftValue.firstClose),
+      positiveDecimal(leftValue.lastClose),
+      positiveDecimal(rightValue.firstClose),
+      positiveDecimal(rightValue.lastClose),
+    );
+  } catch {
+    throw new TypeError("Invalid raw close comparison input.");
+  }
+}
+
+function compareCloseRatios(
+  leftFirst: string,
+  leftLast: string,
+  rightFirst: string,
+  rightLast: string,
+): -1 | 0 | 1 {
+  const comparison = new ExactDecimal(leftLast)
+    .times(rightFirst)
+    .cmp(new ExactDecimal(rightLast).times(leftFirst));
+  return comparison < 0 ? -1 : comparison > 0 ? 1 : 0;
+}
+
 function rank(rows: readonly ComparableRow[]): PersonalMarketBoardRanking {
   const first = rows[0];
   if (rows.length < 2 || first === undefined)
@@ -269,13 +300,12 @@ function rank(rows: readonly ComparableRow[]): PersonalMarketBoardRanking {
   const ordered = (direction: 1 | -1) =>
     [...rows]
       .sort((left, right) => {
-        const comparison = new ExactDecimal(left.latest.adjusted.close)
-          .times(right.previous.adjusted.close)
-          .cmp(
-            new ExactDecimal(right.latest.adjusted.close).times(
-              left.previous.adjusted.close,
-            ),
-          );
+        const comparison = compareCloseRatios(
+          left.previous.adjusted.close,
+          left.latest.adjusted.close,
+          right.previous.adjusted.close,
+          right.latest.adjusted.close,
+        );
         return (
           comparison * direction ||
           compareText(left.identity.symbol, right.identity.symbol) ||

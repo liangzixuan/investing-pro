@@ -1,6 +1,7 @@
 import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
 import {
   calculatePersonalRawCloseChange,
+  comparePersonalRawCloseChange,
   type PersonalRawCloseChangeResult,
 } from "@research-cockpit/personal-market-analytics";
 import type { ManagedMarketsRow, ManagedMarketsState } from "./managed-markets";
@@ -9,6 +10,7 @@ export type ManagedPriceComparisonState = Pick<
   ManagedMarketsState,
   "active" | "rows" | "catalogChanged"
 >;
+export type ManagedPriceComparisonOrder = "board" | "highest" | "lowest";
 
 type LoadedRow = Pick<ManagedMarketsRow, "listing" | "showingPrevious"> & {
   readonly response: ManagedEodHistoryResponseDto;
@@ -37,6 +39,35 @@ export type ManagedPriceComparisonResult =
       readonly lastDate: string;
       readonly rows: readonly ComparedRow[];
     };
+
+/** Reorder only the complete projection; source rows and board selection stay untouched. */
+export function orderManagedPriceComparison(
+  comparison: ManagedPriceComparisonResult,
+  order: ManagedPriceComparisonOrder,
+): ManagedPriceComparisonResult {
+  if (comparison?.status !== "available" || order === "board")
+    return comparison;
+  const direction = order === "highest" ? -1 : 1;
+  return {
+    ...comparison,
+    rows: [...comparison.rows].sort((left, right) => {
+      const change = comparePersonalRawCloseChange(
+        { firstClose: left.firstClose, lastClose: left.lastClose },
+        { firstClose: right.firstClose, lastClose: right.lastClose },
+      );
+      return (
+        change * direction ||
+        compareText(left.listing.symbol, right.listing.symbol) ||
+        compareText(left.listing.exchangeMic, right.listing.exchangeMic) ||
+        compareText(left.listing.listingId, right.listing.listingId)
+      );
+    }),
+  };
+}
+
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
 
 /** Project the board's complete, already validated cohort without retaining another snapshot. */
 export function deriveManagedPriceComparison(
