@@ -222,6 +222,14 @@ listing order and version while adding no source read. This extends the existing
 case and requires its own successful emulator run; source and fixture tests alone
 do not establish native acceptance.
 
+The next Filings extension selects 10-Q, 8-K and All forms through the same native
+Space-key/dialog interaction used by the date and basis controls. It checks exact
+filtered counts and rows without another read, restores the original paging
+journey and resets a retained filter on a new empty response. The existing exact
+note and Save/reload checks remain. The helper's name reflects its shared select
+role; its picker mechanics are unchanged. This extension needs its own emulator
+result before native acceptance.
+
 The Markets journey also asserts the three-listing shared-date comparison. It
 checks exact raw endpoints, percentage changes and original completion times
 after the existing three loads. A partial refresh leaves one shared date, so

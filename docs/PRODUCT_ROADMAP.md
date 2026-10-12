@@ -67,6 +67,11 @@ without another request. The user reviews and saves the complete watchlist draft
 This advances M2's evidence-to-thesis workflow without adding a document reader,
 alerts or automatic monitoring.
 
+A local form filter makes that loaded list easier to scan. Exact forms and
+amendments stay distinct, counts describe only observed rows, and all source
+dates and coverage limits remain visible. Filtering sends no request and keeps
+the existing filing-to-note and explicit Save workflow.
+
 The owner selected [Precision Desk](../DESIGN.md) for the managed presentation,
 using Linear-inspired hierarchy adapted to investment research. Investing.com
 remains a reference for functional breadth. This design change adds no data

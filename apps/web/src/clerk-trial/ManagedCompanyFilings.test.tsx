@@ -5,18 +5,27 @@ import { ManagedFilingsResults } from "./ManagedFilingsResults";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyFilings as Model } from "./managed-company-filings";
 import type { ManagedApi } from "./managed-api";
+import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
-const hooks = vi.hoisted<{ state: unknown }>(() => ({ state: undefined }));
+const hooks = vi.hoisted<{ state: unknown; direct: boolean }>(() => ({
+  state: undefined,
+  direct: false,
+}));
 vi.mock("react", async (original) => {
   const actual = await original<typeof React>();
   return {
     ...actual,
     useState: (initial: unknown) => {
-      hooks.state ??= initial;
+      if (!hooks.direct) return actual.useState(initial);
+      hooks.state ??=
+        typeof initial === "function" ? (initial as () => unknown)() : initial;
       return [
         hooks.state,
         (next: unknown) => {
-          hooks.state = next;
+          hooks.state =
+            typeof next === "function"
+              ? (next as (current: unknown) => unknown)(hooks.state)
+              : next;
         },
       ];
     },
@@ -26,6 +35,9 @@ interface NodeProps {
   children?: React.ReactNode;
   onClick?: () => void;
   "aria-disabled"?: boolean;
+  onChange?: (event: { currentTarget: { value: string } }) => void;
+  value?: string;
+  disabled?: boolean;
 }
 function elements(node: React.ReactNode): React.ReactElement<NodeProps>[] {
   if (!React.isValidElement<NodeProps>(node)) return [];
@@ -34,11 +46,20 @@ function elements(node: React.ReactNode): React.ReactElement<NodeProps>[] {
     ...React.Children.toArray(node.props.children).flatMap(elements),
   ];
 }
-function page(response = filingsResponse()) {
-  const node = ManagedFilingsResults({ response });
+function page(
+  response = filingsResponse(),
+  noteActions?: ManagedFilingsNoteActions,
+) {
+  hooks.direct = true;
+  const node = ManagedFilingsResults({
+    response,
+    ...(noteActions ? { noteActions } : {}),
+  });
+  hooks.direct = false;
   return {
     html: renderToStaticMarkup(node),
     buttons: elements(node).filter((element) => element.type === "button"),
+    select: elements(node).find((element) => element.type === "select")!,
     node,
   };
 }
@@ -46,6 +67,150 @@ afterEach(() => {
   hooks.state = undefined;
 });
 describe("company SEC filings presentation", () => {
+  it("uses an enabled native select and filters exact loaded rows before paging", () => {
+    const response = filingsResponse();
+    let shown = page(response);
+    expect(shown.html).toContain(
+      '<label for="managed-filings-form">Form</label>',
+    );
+    expect(shown.select.props.disabled).toBeUndefined();
+    expect(
+      elements(shown.select)
+        .filter((node) => node.type === "option")
+        .map((node) => node.props.value),
+    ).toEqual(["", "10-Q", "8-K"]);
+    shown.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    shown = page(response);
+    expect(shown.html).toContain("1 of 26 loaded filings · Page 1 of 1");
+    expect(shown.html.match(/<li>/gu)).toHaveLength(1);
+    expect(shown.html).toContain("0000000001-26-000001-index.htm");
+    expect(shown.html).not.toContain("0000000001-26-000002-index.htm");
+    expect(shown.buttons.every((button) => button.props["aria-disabled"])).toBe(
+      true,
+    );
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown = page(response);
+    expect(shown.html).toContain("25 of 26 loaded filings · Page 1 of 1");
+    expect(shown.html.match(/<li>/gu)).toHaveLength(25);
+    expect(shown.html).not.toContain("0000000001-26-000001-index.htm");
+    shown.select.props.onChange!({ currentTarget: { value: "" } });
+    expect(page(response).html).toContain(
+      "26 of 26 loaded filings · Page 1 of 2",
+    );
+  });
+
+  it("keeps form, select and page handlers bound to the current rendered selection", () => {
+    const response = filingsResponse(51);
+    const original = page(response);
+    original.buttons[1]!.props.onClick!();
+    let shown = page(response);
+    expect(shown.html).toContain("Page 2 of 3");
+    shown.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    original.buttons[1]!.props.onClick!();
+    original.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown = page(response);
+    expect(shown.html).toContain("1 of 51 loaded filings · Page 1 of 1");
+    shown.select.props.onChange!({ currentTarget: { value: "10-q" } });
+    expect(page(response).html).toBe(shown.html);
+    const replacement = filingsResponse(51);
+    const reset = page(replacement);
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown.buttons[1]!.props.onClick!();
+    expect(page(replacement).html).toBe(reset.html);
+    expect(reset.select.type).toBe(shown.select.type);
+    expect(reset.select.key).toBe(shown.select.key);
+    expect(reset.node.type).toBe(shown.node.type);
+    expect(reset.html).toContain(
+      "Filings response changed; showing All forms from page one.",
+    );
+  });
+
+  it("shows reset notice for a changed response but never for initial mount or unchanged defaults", () => {
+    const response = filingsResponse();
+    const initial = page(response);
+    expect(initial.html).not.toContain("Filings response changed;");
+    expect(page(filingsResponse()).html).not.toContain(
+      "Filings response changed;",
+    );
+    const before = page(response);
+    before.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    const empty = filingsResponse(0);
+    const after = page(empty);
+    expect(after.html).toContain("0 of 0 loaded filings · Page 1 of 1");
+    expect(after.html).toContain("No matching filings were observed");
+    expect(after.html).toContain(
+      "Filings response changed; showing All forms from page one.",
+    );
+    expect(after.select.props.value).toBe("");
+    expect(after.select.props.disabled).toBeUndefined();
+    expect(
+      elements(after.select).filter((node) => node.type === "option"),
+    ).toHaveLength(1);
+    hooks.state = undefined; // A section/visit remount starts a new presentation state.
+    expect(page(response).html).toBe(initial.html);
+  });
+
+  it("keeps original row and response identity for note actions and never appends through filtering", () => {
+    const response = filingsResponse();
+    const actions: ManagedFilingsNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({ appended: true, message: "Added to draft." })),
+    };
+    page(response, actions).select.props.onChange!({
+      currentTarget: { value: "8-K" },
+    });
+    vi.mocked(actions.getAction).mockClear();
+    const shown = page(response, actions);
+    expect(shown.html.match(/Add reference to note draft/gu)).toHaveLength(25);
+    const calls = vi.mocked(actions.getAction).mock.calls;
+    expect(calls).toHaveLength(25);
+    for (const [index, [packet, row]] of calls.entries()) {
+      expect(packet).toBe(response);
+      expect(row).toBe(response.issuer.filings[index + 1]);
+    }
+    expect(actions.append).not.toHaveBeenCalled();
+  });
+
+  it("preserves choice during pending, Cancel and retained failed refresh without extra reads", async () => {
+    const read = vi
+      .fn<ManagedApi["recentFilings"]>()
+      .mockResolvedValueOnce(filingsResponse(51));
+    const model = new Model(read, vi.fn());
+    model.open(filingsSelection);
+    await model.load();
+    const response = model.getSnapshot().response!;
+    page(response).select.props.onChange!({ currentTarget: { value: "8-K" } });
+    page(response).buttons[1]!.props.onClick!();
+    const selected = page(response).html;
+    expect(selected).toContain("50 of 51 loaded filings · Page 2 of 2");
+    let release!: (value: ReturnType<typeof filingsResponse>) => void;
+    read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = model.load();
+    expect(model.getSnapshot().running).toBe(true);
+    expect(page(model.getSnapshot().response!).html).toBe(selected);
+    model.cancel();
+    expect(page(model.getSnapshot().response!).html).toBe(selected);
+    release(filingsResponse(0));
+    await pending;
+    expect(model.getSnapshot().response).toBe(response);
+    read.mockResolvedValueOnce(filingsResponse(0, "upstream_unavailable"));
+    await model.load();
+    expect(model.getSnapshot().showingPrevious).toBe(true);
+    expect(page(model.getSnapshot().response!).html).toBe(selected);
+    expect(read).toHaveBeenCalledTimes(3);
+    read.mockResolvedValueOnce(filingsResponse(0));
+    await model.load();
+    expect(page(model.getSnapshot().response!).html).toContain(
+      "Filings response changed; showing All forms from page one.",
+    );
+    expect(read).toHaveBeenCalledTimes(4);
+  });
+
   it("shows exact source dates, accession links and 25 local rows with guarded focusable pagination", () => {
     const response = filingsResponse();
     let shown = page(response);
@@ -53,7 +218,7 @@ describe("company SEC filings presentation", () => {
       'aria-label="SEC filings results" tabindex="0"',
     );
     expect(shown.html.match(/<li>/gu)).toHaveLength(25);
-    expect(shown.html).toContain("26 filings · Page 1 of 2");
+    expect(shown.html).toContain("26 of 26 loaded filings · Page 1 of 2");
     expect(shown.html).toContain("Retrieved 2026-10-12T00:00:00.500Z");
     expect(shown.html).toContain("2026-07-15 to 2026-10-12");
     expect(shown.html).toContain("Report date");
@@ -115,7 +280,13 @@ describe("company SEC filings presentation", () => {
         expect(html).toContain("Checked 2026-10-12T00:00:00.500Z");
         expect(html).not.toContain("Retrieved");
         expect(html).toContain("contents were not successfully validated");
+        expect(html).toContain(
+          "Form filtering is unavailable for this response.",
+        );
       }
+      expect(html).toContain('id="managed-filings-form"');
+      expect(html.match(/<option /gu)).toHaveLength(1);
+      expect(html).not.toMatch(/<select[^>]*\sdisabled/gu);
       expect(html).not.toContain("Append");
       expect(read).toHaveBeenCalledOnce();
     }
@@ -139,6 +310,6 @@ describe("company SEC filings presentation", () => {
     expect(html).toContain(
       "Latest source attempt checked 2026-10-12T00:00:00.500Z; completed 2026-10-12T00:00:02.000Z",
     );
-    expect(html).toContain("26 filings");
+    expect(html).toContain("26 of 26 loaded filings");
   });
 });

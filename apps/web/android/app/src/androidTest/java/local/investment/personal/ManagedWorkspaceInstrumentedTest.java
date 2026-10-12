@@ -1051,7 +1051,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFilingsDraftAndCounts(0, 0, 0);
         assertCompanyHistory("listing-zero", "filings", false);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
-        String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 filings')" +
+        String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 of 26 loaded filings')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('CIK 0000000001')" +
             " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
@@ -1063,6 +1063,35 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-list > li:first-child a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && document.querySelector('.managed-filings-list > li:first-child a')?.textContent.includes('Form 10-Q')" +
             " && Array.from(document.querySelectorAll('.managed-filings-list > li:first-child dd')).map(e => e.textContent).join('|') === '2026-09-19|2026-06-30'");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        awaitPage("form choices come only from exact loaded forms",
+            "document.querySelector('#managed-filings-form')?.disabled === false" +
+            " && document.querySelector('#managed-filings-form')?.value === ''" +
+            " && Array.from(document.querySelectorAll('#managed-filings-form option')).map(e => e.value).join('|') === '|10-Q|8-K'" +
+            " && (document.querySelector('.managed-filings-filter-reset')?.textContent ?? '') === ''");
+        chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
+        awaitPage("native form selection shows one observed quarterly filing without losing focus",
+            "document.activeElement?.id === 'managed-filings-form'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '1 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 1" +
+            " && document.querySelector('.managed-filings-list a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-filings-pagination > button:last-child')?.getAttribute('aria-disabled') === 'true'");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        retainAnnualNoteFrame("companyFilingsFormFilter", "label[for=managed-filings-form]",
+            "label[for=managed-filings-form], #managed-filings-form, .managed-filings-count, .managed-filings-list > li", 4);
+        chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
+        awaitPage("second exact form retains all twenty-five matching filings",
+            "document.activeElement?.id === 'managed-filings-form'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000002-index.htm'" +
+            " && document.querySelector('.managed-filings-list > li:last-child a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm'");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        chooseNativeSelectOption("#managed-filings-form", "", "All forms");
+        awaitPage("All forms restores page one from the same loaded packet", loaded +
+            " && document.activeElement?.id === 'managed-filings-form'" +
+            " && document.querySelector('.managed-filings-count')?.textContent.includes('Page 1 of 2')" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25");
         assertFilingsDraftAndCounts(1, 0, 0);
         retainAnnualNoteFrame("companyFilingsFirstRow", ".managed-filings-list > li:first-child", ".managed-filings-list > li:first-child", 1);
         click(".managed-filings-pagination > button:last-child");
@@ -1095,12 +1124,25 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-status')?.getAttribute('role') === 'alert'" +
             " && document.querySelector('.managed-filings-warning')?.textContent.includes('previous filings response')");
         assertFilingsDraftAndCounts(3, 1, 1);
+        chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
+        awaitPage("retained source can be filtered without another read",
+            "document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelector('.managed-filings-warning')?.textContent.includes('previous filings response')");
+        assertFilingsDraftAndCounts(3, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("valid empty response replaces earlier rows without claiming complete history",
-            "document.querySelector('.managed-filings-count')?.textContent === 'No matching filings were observed in the checked source object.'" +
+            "document.querySelector('.managed-filings-empty')?.textContent === 'No matching filings were observed in the checked source object.'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '0 of 0 loaded filings · Page 1 of 1'" +
             " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
             " && document.querySelector('.managed-filings-warning') === null" +
             " && document.querySelector('.managed-filings-results')?.textContent.includes('Older continuation files were not loaded')");
+        awaitPage("empty response resets the enabled filter to All forms with a notice",
+            "document.querySelector('#managed-filings-form')?.value === ''" +
+            " && document.querySelector('#managed-filings-form')?.disabled === false" +
+            " && document.querySelectorAll('#managed-filings-form option').length === 1" +
+            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms from page one.'");
+        awaitPage("completed empty response leaves Refresh available",
+            "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
@@ -1371,16 +1413,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("both visible shared date controls are at least 44 pixels high",
             "document.querySelector('.managed-price-comparison-start-select')?.getBoundingClientRect().height >= 44" +
             " && document.querySelector('.managed-price-comparison-end-select')?.getBoundingClientRect().height >= 44");
-        chooseComparisonOption(".managed-price-comparison-start-select", "", "Choose an observed date");
+        chooseNativeSelectOption(".managed-price-comparison-start-select", "", "Choose an observed date");
         assertMarketsComparisonDates("", "2026-09-19", "|2026-09-18", "|2026-09-19");
         awaitPage("an empty shared Start withholds figures without replacing End",
             "document.querySelector('.managed-price-comparison-values') === null" +
             " && document.querySelector('.managed-price-comparison-status')?.textContent === 'Choose a starting date before the ending date.'" +
             " && document.querySelectorAll('.managed-price-comparison-provenance > section').length === 3");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseComparisonOption(".managed-price-comparison-start-select", "2026-09-18", "2026-09-18");
+        chooseNativeSelectOption(".managed-price-comparison-start-select", "2026-09-18", "2026-09-18");
         assertMarketsSharedComparison(false);
-        chooseComparisonOption(".managed-price-comparison-end-select", "", "Choose an observed date");
+        chooseNativeSelectOption(".managed-price-comparison-end-select", "", "Choose an observed date");
         assertMarketsComparisonDates("2026-09-18", "", "|2026-09-18", "|2026-09-19");
         awaitPage("an empty shared End withholds figures and keeps the original coverage",
             "document.querySelector('.managed-price-comparison-values') === null" +
@@ -1388,18 +1430,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
             " && Array.from(document.querySelectorAll('.managed-price-comparison-provenance section dd:nth-of-type(3)')).map(e => e.textContent).join('|') === '2 / 0|2 / 0|2 / 0'");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseComparisonOption(".managed-price-comparison-end-select", "2026-09-19", "2026-09-19");
+        chooseNativeSelectOption(".managed-price-comparison-end-select", "2026-09-19", "2026-09-19");
         assertMarketsSharedComparison(false);
-        chooseComparisonOption(".managed-price-comparison-order select", "highest", "Highest raw change");
+        chooseNativeSelectOption(".managed-price-comparison-order select", "highest", "Highest raw change");
         assertMarketsComparisonOrder("highest", "ALFA,BETB,BETA",
             "ALFA|10.25|10.5|+2.4390%;BETB|30.5|30.5|0.0000%;BETA|20.75|20.5|-1.2048%");
         assertMarketsDraftAndCounts(2, 3, 0, 0);
-        chooseComparisonOption(".managed-price-comparison-order select", "board", "Board order");
+        chooseNativeSelectOption(".managed-price-comparison-order select", "board", "Board order");
         assertMarketsSharedComparison(false);
         awaitPage("explicit board order restores the original comparison",
             "document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
             " && document.querySelector('.managed-price-comparison th[aria-sort]')?.getAttribute('aria-sort') === 'none'");
-        chooseComparisonOption(".managed-price-comparison-order select", "lowest", "Lowest raw change");
+        chooseNativeSelectOption(".managed-price-comparison-order select", "lowest", "Lowest raw change");
         assertMarketsComparisonOrder("lowest", "BETA,BETB,ALFA",
             "BETA|20.75|20.5|-1.2048%;BETB|30.5|30.5|0.0000%;ALFA|10.25|10.5|+2.4390%");
         assertMarketsDetail("ALFA", "2026-09-18|10.25;2026-09-19|10.5", false);
@@ -1815,19 +1857,19 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void chooseComparisonDate(String scope, String date) throws Exception {
-        chooseComparisonOption(scope + " .managed-raw-close-comparison-start-select", date, date);
+        chooseNativeSelectOption(scope + " .managed-raw-close-comparison-start-select", date, date);
     }
 
     private void chooseComparisonEndDate(String scope, String date) throws Exception {
-        chooseComparisonOption(scope + " .managed-raw-close-comparison-end-select", date, date);
+        chooseNativeSelectOption(scope + " .managed-raw-close-comparison-end-select", date, date);
     }
 
-    private void chooseComparisonOption(String selector, String optionValue, String label) throws Exception {
+    private void chooseNativeSelectOption(String selector, String optionValue, String label) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> id = new AtomicReference<>();
         scenario.onActivity(activity -> {
             WebView webView = activity.getBridge().getWebView();
-            assertTrue("Comparison WebView must accept focus", webView.requestFocus());
+            assertTrue("Select WebView must accept focus", webView.requestFocus());
             webView.evaluateJavascript(
                 "(() => { const select = document.querySelector(" + JSONObject.quote(selector) + ");" +
                 " if (!(select instanceof HTMLSelectElement) || select.disabled || !select.id) return null;" +
@@ -1835,11 +1877,11 @@ public class ManagedWorkspaceInstrumentedTest {
                 " select.focus({preventScroll:true}); return select.id; })()",
                 value -> { id.set(value); returned.countDown(); });
         });
-        assertTrue("Comparison select id was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertTrue("Native select id was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         assertNotNull(id.get());
         String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
-        assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
-        awaitPage("exact enabled comparison select has DOM focus",
+        assertFalse("Native select must have its real labelled id", actualId.isEmpty());
+        awaitPage("exact enabled native select has DOM focus",
             "(() => { const select = document.getElementById(" + JSONObject.quote(actualId) + ");" +
             " return select instanceof HTMLSelectElement && !select.disabled && document.activeElement === select" +
             " && select === document.querySelector(" + JSONObject.quote(selector) + ")" +
@@ -1847,14 +1889,14 @@ public class ManagedWorkspaceInstrumentedTest {
         // Native Space opens the picker without a tap becoming a long press under load.
         onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
             if (noViewFoundException != null) throw noViewFoundException;
-            assertTrue("Comparison WebView must have focus", view.hasFocus());
-            assertTrue("Comparison window must have focus", view.hasWindowFocus());
+            assertTrue("Select WebView must have focus", view.hasFocus());
+            assertTrue("Select window must have focus", view.hasWindowFocus());
         }).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         // Wait for WebView's native dialog instead of searching the Activity root.
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(label))
             .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())
             .perform(androidx.test.espresso.action.ViewActions.click());
-        awaitPage("native comparison option selected",
+        awaitPage("native option selected",
             "document.getElementById(" + JSONObject.quote(actualId) + ")?.value === " + JSONObject.quote(optionValue));
     }
 
@@ -2424,16 +2466,16 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-annual-trend')?.open === true" +
             " && document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Revenue in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
-        chooseComparisonOption("[data-annual-trend-metric]", "net_income", "Net income");
+        chooseNativeSelectOption("[data-annual-trend-metric]", "net_income", "Net income");
         awaitPage("native metric choice renders the same periods for signed net income",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
-        chooseComparisonOption("[data-annual-trend-basis]", "SalesRevenueNet", "SalesRevenueNet");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "SalesRevenueNet", "SalesRevenueNet");
         awaitPage("missing basis removes the old chart and preserves both selectors",
             "document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('.managed-annual-trend [role=status]')?.textContent.includes('no valid current annual pair')" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income' && " + controls);
-        chooseComparisonOption("[data-annual-trend-basis]", "Revenues", "Revenues");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "Revenues", "Revenues");
         awaitPage("returning to the admitted basis keeps the chosen metric",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
