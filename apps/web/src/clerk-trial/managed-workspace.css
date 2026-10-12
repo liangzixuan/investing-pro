@@ -53,29 +53,29 @@
 .managed-frame .trial-header p {
   color: var(--managed-muted);
 }
-.managed-frame h1:not(:where(.managed-sign-in *)) {
+.managed-frame h1 {
   font-size: 32px;
   letter-spacing: -0.035em;
 }
-.managed-frame h2:not(:where(.managed-sign-in *)) {
+.managed-frame h2 {
   color: var(--managed-ink);
   font-size: 28px;
   letter-spacing: -0.025em;
   line-height: 1.25;
 }
-.managed-frame h3:not(:where(.managed-sign-in *)) {
+.managed-frame h3 {
   color: var(--managed-ink);
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-.managed-frame p:not(:where(.managed-sign-in *)) {
+.managed-frame p {
   line-height: 1.55;
 }
-.managed-frame :is(button, input, select):not(:where(.managed-sign-in *)) {
+.managed-frame :is(button, input, select) {
   min-height: 44px;
 }
-.managed-frame button:not(:where(.managed-sign-in *)) {
+.managed-frame button {
   padding: 10px 16px;
   color: #101426;
   background: var(--managed-action);
@@ -85,7 +85,7 @@
   line-height: 1.4;
   font-weight: 600;
 }
-.managed-frame button:not(:where(.managed-sign-in *)):hover:not(:disabled) {
+.managed-frame button:hover:not(:disabled) {
   background: #a4aeff;
   border-color: #a4aeff;
 }
@@ -104,19 +104,18 @@
   outline: 3px solid #adb7ff;
   outline-offset: 3px;
 }
-.clerk-trial.managed-frame
-  :is(input, textarea, select):not(:where(.managed-sign-in *)) {
+.clerk-trial.managed-frame :is(input, textarea, select) {
   color: var(--managed-ink);
   background: var(--managed-surface);
   border: 1px solid var(--managed-field-border);
   border-radius: 7px;
   font: inherit;
 }
-.managed-frame input:not(:where(.managed-sign-in *))::placeholder {
+.managed-frame input::placeholder {
   color: var(--managed-muted);
   opacity: 1;
 }
-.clerk-trial.managed-frame :is(a, summary):not(:where(.managed-sign-in *)) {
+.clerk-trial.managed-frame :is(a, summary) {
   color: var(--managed-action);
 }
 .managed-frame .managed-company-visit h3:focus {

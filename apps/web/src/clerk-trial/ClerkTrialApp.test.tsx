@@ -89,27 +89,10 @@ describe("official Clerk browser adapter", () => {
       expect(html).toContain("Sign in to your workspace</h2>");
       expect(html).toContain('class="managed-sign-in"');
       expect(html).toContain("Official sign-in");
-      expect(sdk.signIn).toHaveBeenCalledTimes(1);
-      const { appearance, ...routeProps } = sdk.signIn.mock
-        .calls[0]?.[0] as Record<string, unknown>;
-      expect(routeProps).toEqual({
+      expect(sdk.signIn).toHaveBeenCalledExactlyOnceWith({
         routing: "hash",
         fallbackRedirectUrl: destination,
         forceRedirectUrl: destination,
-      });
-      expect(appearance).toMatchObject({
-        variables: {
-          colorPrimary: "#8796ff",
-          colorPrimaryForeground: "#101426",
-          colorBackground: "#191b1f",
-          colorForeground: "#f2f3f5",
-          colorInputForeground: "#f2f3f5",
-          colorNeutral: "#f2f3f5",
-        },
-        elements: {
-          rootBox: { width: "100%", maxWidth: "100%" },
-          cardBox: { width: "100%", maxWidth: "100%" },
-        },
       });
       expect(sdk.managed).not.toHaveBeenCalled();
       expect(sdk.screen).not.toHaveBeenCalled();

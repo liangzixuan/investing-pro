@@ -28,28 +28,6 @@ function ManagedSignIn() {
       routing="hash"
       fallbackRedirectUrl={destination}
       forceRedirectUrl={destination}
-      appearance={{
-        variables: {
-          colorPrimary: "#8796ff",
-          colorPrimaryForeground: "#101426",
-          colorBackground: "#191b1f",
-          colorForeground: "#f2f3f5",
-          colorNeutral: "#f2f3f5",
-          colorMuted: "#22252b",
-          colorMutedForeground: "#aeb4c0",
-          colorInput: "#191b1f",
-          colorInputForeground: "#f2f3f5",
-          colorBorder: "#697384",
-          colorDanger: "#ff9096",
-          fontFamily:
-            '"Inter Precision", Inter, ui-sans-serif, system-ui, sans-serif',
-          borderRadius: "0.5rem",
-        },
-        elements: {
-          rootBox: { width: "100%", maxWidth: "100%" },
-          cardBox: { width: "100%", maxWidth: "100%" },
-        },
-      }}
     />
   );
 }

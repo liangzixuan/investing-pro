@@ -187,21 +187,23 @@ release above remains the deployed baseline.
 The next design increment brings the managed entry, loading and native recovery
 states into Precision Desk. It uses one shared presentation section and a distinct
 retained-session warning while preserving authentication, session ownership,
-redirects and complete status messages. The browser form remains Clerk's component
-with its supported appearance settings. All 37 affected adapter/session tests,
+redirects and complete status messages. The browser form retains Clerk's existing
+settings and styles; SDK theme changes are deferred. All 37 affected adapter/session tests,
 web types, scoped lint/format and source boundaries pass. Independent source review
 found no authentication or session regression. Actual presentation-component Brave
 checks covered seven invented states across desktop and narrow widths, with a
 final warning/footer check at 1440, 390 and 320 pixels. The observed controls were
 44 pixels high, with one page h1, visible keyboard focus, complete messages and no
 document overflow or console errors. The browser SDK and real active workspace
-were excluded from that entry fixture. Actual SDK rendering needs a separate
-check before delivery.
+were excluded from that entry fixture. The staging page deliberately does not
+mount Clerk. A future SDK theme change needs separate review in a controlled,
+signed-out Brave context at the canonical origin.
 
 The [product roadmap](PRODUCT_ROADMAP.md) continues to guide later increments.
 Physical installation or use of Android 1.24 remains optional and unverified.
-The entry work has local source and presentation acceptance; hosted checks,
-the actual sign-in widget and delivery remain open. The presentation overhaul adds no broader market-data
+The entry work has local source and presentation acceptance; hosted checks and
+delivery remain open. Actual sign-in widget rendering is not established by these
+checks. The presentation overhaul adds no broader market-data
 coverage and does not complete M1, M2 or M3.
 
 The October 10 owner report remains limited to the requested Android 1.19 and

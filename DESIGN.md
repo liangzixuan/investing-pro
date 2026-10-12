@@ -36,11 +36,11 @@ stays disabled. Unavailable and unconfirmed sign-out states show their complete
 explanation with a distinct warning treatment. Retained session warnings stay
 visible above the active workspace.
 
-The browser form remains Clerk's sign-in component. Supply the managed palette
-through its supported appearance variables and let the SDK own its internal
-control styles. Keep redirects and authentication behavior with the existing
-adapter. Our entry fixture does not establish the SDK widget's rendered result;
-inspect the actual widget separately before release.
+The browser form remains Clerk's sign-in component with its existing settings
+and styles. Keep redirects and authentication behavior with the existing adapter.
+Our entry fixture does not establish the SDK widget's rendered result. Any future
+SDK theme change needs its own rendered review in a controlled, signed-out Brave
+context at the canonical origin; the inert staging page does not mount Clerk.
 
 ## Color and surfaces
 
