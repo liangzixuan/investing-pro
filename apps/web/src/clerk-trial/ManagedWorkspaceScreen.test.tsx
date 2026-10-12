@@ -32,6 +32,7 @@ import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 // Run the screen's actual listener effect explicitly; model and binder stay real.
 const mounted = vi.hoisted(() => ({
   effects: [] as Array<() => (() => void) | void>,
+  layoutEffects: [] as Array<() => void>,
   refs: [] as Array<{ current: unknown }>,
   cleanups: [] as Array<() => void>,
   direct: false,
@@ -59,7 +60,9 @@ vi.mock("react", async (original) => {
     ) =>
       mounted.editorDirect
         ? mounted.editorEffects.push(effect)
-        : actual.useLayoutEffect(effect, dependencies),
+        : mounted.direct
+          ? mounted.layoutEffects.push(effect)
+          : actual.useLayoutEffect(effect, dependencies),
     useImperativeHandle: (
       ref: React.Ref<ManagedWatchlistEditorHandle>,
       create: () => ManagedWatchlistEditorHandle,
@@ -129,6 +132,7 @@ vi.mock("react", async (original) => {
 });
 beforeEach(() => {
   mounted.effects.length = 0;
+  mounted.layoutEffects.length = 0;
   mounted.refs.length = 0;
   mounted.cleanups.length = 0;
   mounted.direct = false;
@@ -324,6 +328,78 @@ function commitReturnFocus(
   beforeCommit?.(screen);
   // The first Screen effect restores focus; native listener registration stays mounted.
   mounted.effects[effectIndex]!();
+}
+
+async function recoveryFocusFixture(navigation?: ManagedCompanyNavigation) {
+  const { workspace, api } = fixture();
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  workspace.setView("watchlist");
+  workspace.note("listing-one", "Keep this recovery draft");
+  vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+  await workspace.coordinator.save();
+  vi.mocked(api.load).mockResolvedValueOnce({
+    version: 2,
+    payload: { ...payload, memberships: [] },
+  });
+  await workspace.coordinator.load();
+
+  const body = {};
+  const document = { body, activeElement: body };
+  const heading = {
+    isConnected: true,
+    ownerDocument: document,
+    getClientRects: vi.fn(() => [{}]),
+    focus: vi.fn(() => {
+      document.activeElement = heading;
+    }),
+  };
+  const panel = {
+    isConnected: true,
+    hidden: false,
+    contains: (target: unknown) => target === heading,
+  };
+  function render(currentNavigation = navigation) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    mounted.layoutEffects.length = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(currentNavigation ? { navigation: currentNavigation } : {}),
+    });
+    mounted.direct = false;
+    for (const node of elements(screen)) {
+      const props = node.props as {
+        id?: string;
+        "aria-labelledby"?: string;
+        ref?: React.RefObject<unknown>;
+      };
+      if (props.id === "managed-watchlist-heading" && props.ref)
+        props.ref.current = heading;
+      if (props["aria-labelledby"] === "managed-watchlist-heading" && props.ref)
+        props.ref.current = panel;
+    }
+    return screen;
+  }
+  function choose(label: "Use saved version" | "Keep my draft") {
+    const screen = render();
+    const button = elements(screen).find(
+      (node) => node.type === "button" && node.props.children === label,
+    ) as React.ReactElement<React.ComponentProps<"button">>;
+    expect(button).toBeDefined();
+    const opener = { ownerDocument: document };
+    document.activeElement = opener;
+    return () =>
+      button.props.onClick!({
+        currentTarget: opener,
+      } as React.MouseEvent<HTMLButtonElement>);
+  }
+  function commit(currentNavigation = navigation) {
+    const screen = render(currentNavigation);
+    for (const effect of mounted.layoutEffects) effect();
+    return screen;
+  }
+  return { workspace, api, heading, panel, document, choose, commit };
 }
 
 async function noteFocusFixture() {
@@ -1687,6 +1763,151 @@ describe("managed workspace screen", () => {
   });
 
   it.each(["Use saved version", "Keep my draft"] as const)(
+    "returns keyboard focus to My Watchlist after %s removes its review",
+    async (choice) => {
+      const f = await recoveryFocusFixture();
+      f.choose(choice)();
+      expect(f.heading.focus).not.toHaveBeenCalled();
+      // The focused recovery choice is removed by this commit.
+      f.document.activeElement = f.document.body;
+      const screen = f.commit();
+      expect(
+        elements(screen).some(
+          (node) => node.type === "button" && node.props.children === choice,
+        ),
+      ).toBe(false);
+      expect(f.heading.focus).toHaveBeenCalledOnce();
+      const title = elements(screen).find(
+        (node) =>
+          (node.props as { id?: string }).id === "managed-watchlist-heading",
+      );
+      expect((title?.props as React.ComponentProps<"h2">).tabIndex).toBe(-1);
+      f.commit();
+      expect(f.heading.focus).toHaveBeenCalledOnce();
+      expect(f.api.save).toHaveBeenCalledOnce();
+      expect(f.api.load).toHaveBeenCalledTimes(2);
+      const result = f.workspace.coordinator.getSnapshot();
+      expect(result.conflict).toBe(false);
+      expect(result.draft?.memberships).toHaveLength(
+        choice === "Use saved version" ? 0 : 1,
+      );
+    },
+  );
+
+  it.each(["pending transition", "arriving valid route"] as const)(
+    "does not restore recovery focus before the parent applies the %s",
+    async (change) => {
+      const hasCompanyRoute = vi.fn(() => false);
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute,
+        invalid: false,
+        returnFocus: 0,
+        open: vi.fn(),
+        section: vi.fn(),
+        view: vi.fn(() => true),
+        back: vi.fn(),
+      };
+      const f = await recoveryFocusFixture(navigation);
+      f.choose("Keep my draft")();
+      f.document.activeElement = f.document.body;
+      // The child commits while the parent route effect has not updated the model.
+      const discovery = f.workspace.getSnapshot();
+      expect(discovery.view).toBe("watchlist");
+      expect(discovery.companyRoute).toBeNull();
+      expect(discovery.research).toBeNull();
+      if (change === "pending transition")
+        hasCompanyRoute.mockReturnValue(true);
+      f.commit(
+        change === "pending transition"
+          ? navigation
+          : { ...navigation, hasCompanyRoute: () => true },
+      );
+      expect(f.workspace.getSnapshot()).toBe(discovery);
+      expect(f.heading.focus).not.toHaveBeenCalled();
+      hasCompanyRoute.mockReturnValue(false);
+      f.commit(navigation);
+      expect(f.heading.focus).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["Use saved version", "Keep my draft"] as const)(
+    "does not queue focus for %s during a pending or failed fresh read",
+    async (choice) => {
+      const f = await recoveryFocusFixture();
+      const choose = f.choose(choice);
+      const read = deferred<Awaited<ReturnType<ManagedApi["load"]>>>();
+      vi.mocked(f.api.load).mockReturnValueOnce(read.promise);
+      const pending = f.workspace.coordinator.load();
+      const loading = f.workspace.coordinator.getSnapshot();
+      choose();
+      expect(f.workspace.coordinator.getSnapshot()).toBe(loading);
+      f.document.activeElement = f.document.body;
+      f.commit();
+      read.reject(new TrialApiError("unavailable"));
+      await pending;
+      const failed = f.workspace.coordinator.getSnapshot();
+      choose();
+      expect(f.workspace.coordinator.getSnapshot()).toBe(failed);
+      f.commit();
+      await f.workspace.coordinator.load();
+      f.commit();
+      expect(f.heading.focus).not.toHaveBeenCalled();
+      expect(f.api.save).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["Use saved version", "Keep my draft"] as const)(
+    "keeps existing focus when %s is invoked without owning it",
+    async (choice) => {
+      const f = await recoveryFocusFixture();
+      const choose = f.choose(choice);
+      f.document.activeElement = {};
+      choose();
+      f.document.activeElement = f.document.body;
+      f.commit();
+      expect(f.heading.focus).not.toHaveBeenCalled();
+      expect(f.workspace.coordinator.getSnapshot().conflict).toBe(false);
+    },
+  );
+
+  it.each([
+    "focus moved",
+    "panel hidden",
+    "heading disconnected",
+    "heading not visible",
+    "view changed and returned",
+    "draft changed",
+    "session retired",
+  ] as const)(
+    "consumes the recovery focus request without stealing focus when %s before commit",
+    async (change) => {
+      const f = await recoveryFocusFixture();
+      f.choose("Keep my draft")();
+      f.document.activeElement = f.document.body;
+      if (change === "focus moved") f.document.activeElement = {};
+      if (change === "panel hidden") f.panel.hidden = true;
+      if (change === "heading disconnected") f.heading.isConnected = false;
+      if (change === "heading not visible")
+        f.heading.getClientRects.mockReturnValue([]);
+      if (change === "view changed and returned") {
+        f.workspace.setView("discover");
+        f.workspace.setView("watchlist");
+      }
+      if (change === "draft changed")
+        f.workspace.note("listing-one", "A newer edit");
+      if (change === "session retired") f.workspace.coordinator.retire();
+      f.commit();
+      expect(f.heading.focus).not.toHaveBeenCalled();
+      f.document.activeElement = f.document.body;
+      f.panel.hidden = false;
+      f.heading.isConnected = true;
+      f.heading.getClientRects.mockReturnValue([{}]);
+      f.commit();
+      expect(f.heading.focus).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["Use saved version", "Keep my draft"] as const)(
     "keeps the draft through failed repeat reads before the explicit %s action",
     async (choice) => {
       const initial: MainWatchlistPayload = {
@@ -1761,10 +1982,12 @@ describe("managed workspace screen", () => {
       const button = elements(ManagedWorkspaceScreen({ workspace })).find(
         (element) =>
           element.type === "button" && element.props.children === choice,
-      ) as React.ReactElement<{ onClick: () => void }>;
+      ) as React.ReactElement<React.ComponentProps<"button">>;
       mounted.direct = false;
       expect(button).toBeDefined();
-      button.props.onClick();
+      button.props.onClick!({
+        currentTarget: { ownerDocument: { activeElement: null } },
+      } as React.MouseEvent<HTMLButtonElement>);
       expect(html()).not.toContain("managed-version-review-heading");
       expect(api.save).toHaveBeenCalledTimes(1);
       const chosen = workspace.coordinator.getSnapshot();

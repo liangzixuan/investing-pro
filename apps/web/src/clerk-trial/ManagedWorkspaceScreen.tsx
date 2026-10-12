@@ -264,6 +264,7 @@ export function ManagedWorkspaceScreen({
   const marketsNavigation = useRef<HTMLButtonElement | null>(null);
   const watchlistPanel = useRef<HTMLElement | null>(null);
   const watchlistEditor = useRef<ManagedWatchlistEditorHandle>(null);
+  const watchlistHeading = useRef<HTMLHeadingElement | null>(null);
   const [backUnavailable, setBackUnavailable] = useState(false);
   const [localReturnFocus, setLocalReturnFocus] = useState(0);
   const routeBack = navigation?.back;
@@ -347,6 +348,69 @@ export function ManagedWorkspaceScreen({
     coordinator.getSnapshot,
     coordinator.getSnapshot,
   );
+  const recoveryFocus = useRef<{
+    workspace: ManagedWorkspace;
+    saved: typeof saved;
+    discovery: typeof discovery;
+    opener: HTMLButtonElement;
+  } | null>(null);
+  useLayoutEffect(() => {
+    const request = recoveryFocus.current;
+    recoveryFocus.current = null;
+    const heading = watchlistHeading.current;
+    const panel = watchlistPanel.current;
+    if (
+      !request ||
+      request.workspace !== workspace ||
+      request.saved !== coordinator.getSnapshot() ||
+      request.discovery !== workspace.getSnapshot() ||
+      saved.phase !== "idle" ||
+      saved.conflict ||
+      discovery.view !== "watchlist" ||
+      discovery.research ||
+      discovery.companyRoute ||
+      hasCompanyRoute?.() ||
+      navigation?.invalid ||
+      !panel?.isConnected ||
+      panel.hidden ||
+      !heading?.isConnected ||
+      !panel.contains(heading) ||
+      heading.getClientRects().length === 0
+    )
+      return;
+    const document = heading.ownerDocument;
+    if (
+      request.opener.ownerDocument === document &&
+      (document.activeElement === request.opener ||
+        document.activeElement === document.body)
+    )
+      heading.focus();
+  }, [
+    coordinator,
+    discovery,
+    hasCompanyRoute,
+    navigation?.invalid,
+    saved,
+    workspace,
+  ]);
+  const chooseWatchlistVersion = (
+    choice: "saved" | "draft",
+    opener: HTMLButtonElement,
+  ) => {
+    recoveryFocus.current = null;
+    const before = coordinator.getSnapshot();
+    const ownedFocus = opener.ownerDocument.activeElement === opener;
+    if (choice === "saved") coordinator.useSaved();
+    else coordinator.keepDraft();
+    const after = coordinator.getSnapshot();
+    if (ownedFocus && before.conflict && after !== before && !after.conflict)
+      recoveryFocus.current = {
+        workspace,
+        saved: after,
+        discovery: workspace.getSnapshot(),
+        opener,
+      };
+  };
   const retired = saved.phase === "retired" || saved.phase === "signing_out";
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
@@ -680,7 +744,13 @@ export function ManagedWorkspaceScreen({
                 ref={watchlistPanel}
               >
                 <div className="trial-toolbar">
-                  <h2 id="managed-watchlist-heading">My Watchlist</h2>
+                  <h2
+                    id="managed-watchlist-heading"
+                    ref={watchlistHeading}
+                    tabIndex={-1}
+                  >
+                    My Watchlist
+                  </h2>
                   <button
                     className="trial-secondary"
                     disabled={busy || saved.uncertain}
@@ -726,13 +796,23 @@ export function ManagedWorkspaceScreen({
                         <div className="trial-actions">
                           <button
                             disabled={busy}
-                            onClick={() => coordinator.useSaved()}
+                            onClick={(event) =>
+                              chooseWatchlistVersion(
+                                "saved",
+                                event.currentTarget,
+                              )
+                            }
                           >
                             Use saved version
                           </button>
                           <button
                             disabled={busy}
-                            onClick={() => coordinator.keepDraft()}
+                            onClick={(event) =>
+                              chooseWatchlistVersion(
+                                "draft",
+                                event.currentTarget,
+                              )
+                            }
                           >
                             Keep my draft
                           </button>
