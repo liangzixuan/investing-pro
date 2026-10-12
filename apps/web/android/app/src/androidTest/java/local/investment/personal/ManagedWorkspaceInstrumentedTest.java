@@ -1319,6 +1319,21 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
         assertCompanyHistory("listing-zero", "filings", false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            android.view.WindowInsets insets = webView.getRootWindowInsets();
+            assertNotNull("Filings Back requires observed native window insets", insets);
+            boolean imeVisible = insets.isVisible(android.view.WindowInsets.Type.ime());
+            Log.i("ManagedBack", "phase=filings-native-ready, activityFocus=" + activity.hasWindowFocus() +
+                ", viewFocus=" + webView.hasFocus() + ", windowFocus=" + webView.hasWindowFocus() +
+                ", imeVisible=" + imeVisible);
+            assertTrue("Filings Activity must have focus before Back", activity.hasWindowFocus());
+            assertTrue("Filings WebView must have focus before Back", webView.hasFocus());
+            assertTrue("Filings window must have focus before Back", webView.hasWindowFocus());
+            assertFalse("Filings Back requires the native keyboard to be hidden", imeVisible);
+        });
         pressBack();
         assertClosedDraft(true);
         assertFilingsDraftAndCounts(5, 2, 1);
@@ -2221,14 +2236,14 @@ public class ManagedWorkspaceInstrumentedTest {
             " && scope.getBoundingClientRect().height >= 44" +
             " && document.querySelector('label[for=managed-watchlist-search-scope]')?.textContent === 'Search in'" +
             " && [...scope.options].map(option => option.value + '|' + option.textContent).join(';') === 'identity|Listing identity;notes|Research notes'; })()");
-        typeIntoInput("managed-watchlist-search", "captured in research");
+        typeIntoInput("managed-watchlist-search", "Captured in research");
         awaitPage("identity search does not silently search note text",
             "document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
             " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0" +
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
         chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
         awaitPage("research-note scope finds the existing unsaved phrase without retargeting the editor",
-            "document.querySelector('#managed-watchlist-search')?.value === 'captured in research'" +
+            "document.querySelector('#managed-watchlist-search')?.value === 'Captured in research'" +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'" +
             " && document.querySelector('#managed-note-2')?.getAttribute('data-managed-note-listing-id') === 'listing-alfa'" +
@@ -2248,7 +2263,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && input.value === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(NOTE) +
             " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
-            " && document.querySelector('#managed-watchlist-search')?.value === 'captured in research'" +
+            " && document.querySelector('#managed-watchlist-search')?.value === 'Captured in research'" +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
             " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0; })()");
         assertCompanyNoteCounts(0, 1);

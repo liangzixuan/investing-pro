@@ -14,8 +14,12 @@ scope. All 41 editor and 91 workspace composition tests, fresh web types, scoped
 lint/format and dependency boundaries pass. Independent source and actual-component
 Brave review are clear, including exact whole-draft Save, recovery, retained
 comparison dates, keyboard focus and 320/390-pixel layouts. The branch includes
-the reviewed Android export lifecycle repair. Hosted native checks, source
-integration and delivery remain open.
+the reviewed Android export lifecycle repair. The original hosted native run
+failed a search-input probe after keyboard capitalization and a Filings Back
+probe during keyboard dismissal. The reviewed test correction preserves exact
+mixed-case search text and checks native readiness before one Back press; all
+original draft, source and navigation assertions remain. Current hosted native
+acceptance, source integration and delivery remain open.
 
 The preceding local increment adds a comparison of two explicitly chosen watchlist
 listings using their already-loaded histories. It starts with no selected pair,
