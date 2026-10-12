@@ -95,6 +95,31 @@ Price was unavailable. Native execution for the financial layout passed its
 exact-head hosted check; release acceptance remains separate in
 [Current work](CURRENT_WORK.md).
 
+## Optional reported annual trend
+
+The managed overview includes an initially collapsed **Reported annual trend**
+disclosure. It plots Revenue or Net income in USD for two or three admitted
+periods from one named revenue basis and filing, oldest first. The exact tables
+remain visible. Selecting a basis or metric makes no request and changes no note,
+board selection or saved state. The local research profile is unchanged.
+
+The summary and both native selectors remain mounted while the loaded Annual view
+is present. The initial basis is the first with a trend, otherwise the first with
+an admitted current pair, including a pair outside current-use limits, otherwise
+the first declared basis. A replacement
+retains the chosen basis and metric even when that basis
+becomes unavailable; it shows the reason and removes the old chart. Closing the
+disclosure disposes its chart. Leaving the Annual view or retiring its response
+resets these presentation choices. A valid two-period history remains usable when
+the third period is refused. One period and a current-use refusal have no trend.
+
+Bars use a zero baseline and preserve admitted negative and zero amounts. Numeric
+coordinates are approximate; tooltips retain exact amount strings and period
+dates, with long values referred to the exact tables. An unsafe coordinate or
+renderer failure withholds only the chart. Resize and reduced-motion changes use
+the same guarded chart lifecycle. Retained-report notices, the original history
+explanation and all note actions remain in their existing scope.
+
 ## Reported annual comparison
 
 PR 55 delivers comparison for each eligible named annual revenue basis on the

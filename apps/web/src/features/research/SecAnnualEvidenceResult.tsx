@@ -4,6 +4,7 @@ import type {
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import type { ReactNode } from "react";
+import { ManagedAnnualTrend } from "./ManagedAnnualTrend";
 import {
   SecAnnualFinancials,
   AnnualOverviewSummary,
@@ -99,6 +100,7 @@ export function SecAnnualEvidenceResult({
               : reason(response.evidence.completeness.reason)
           }
         />
+        <ManagedAnnualTrend response={response} />
         <div
           className="managed-annual-financial-region"
           role="region"

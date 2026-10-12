@@ -190,6 +190,28 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+The active Annual trend increment adds an initially collapsed **Reported annual
+trend** to the managed financial overview. It charts Revenue or Net income across
+two or three admitted periods from one named basis and filing. Exact tables,
+original dates and unavailable explanations remain visible. Stable basis and
+metric selectors retain their choices and keyboard focus through replacements;
+leaving the Annual view resets these presentation choices.
+
+Local verification passed 29 projection tests and 69 affected component/report
+tests, web types, scoped lint/format and source boundaries. Independent source
+reviews found no remaining defect. The original boundary failure came from a
+test matcher; its replacement passed all 11 chart tests and the unchanged guard.
+Actual-component Brave checks recorded 31 observations at 1440, 390 and 320
+pixels. They covered signed and zero amounts, exact tooltips, distinct bases,
+missing or restricted history, unsafe coordinates, focus through replacements,
+retained refresh dates, failure, cancellation and late-response rejection.
+Explicit note append and Back preserved the draft; retirement cleared it and
+the chart. No document overflow or console warnings/errors were observed.
+These checks used invented data and excluded Save/reload, live accounts and
+provider calls. Native Annual assertions are prepared; their hosted execution
+and source acceptance remain pending. See the
+[trend contract](MANAGED_SEC_ANNUAL.md#optional-reported-annual-trend).
+
 The active comparison-ordering increment adds Board order, Highest raw change
 and Lowest raw change to the complete three-listing shared-date comparison.
 Ordering uses exact endpoint ratios before display rounding. Exact ties retain

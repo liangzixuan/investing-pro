@@ -46,6 +46,12 @@ describe("managed annual financial overview", () => {
       expect(visible).not.toContain("Report age at cutoff:");
       expect(visible).not.toContain("485-day");
       expect(visible).not.toContain("Reported annual financials");
+      expect(visible).toContain(
+        '<details class="managed-annual-trend"><summary>Reported annual trend</summary>',
+      );
+      expect(visible).toContain("data-annual-trend-basis");
+      expect(visible).toContain("data-annual-trend-metric");
+      expect(visible).not.toContain("managed-annual-trend-canvas");
       expect(html).toContain(
         '<details class="managed-annual-provenance"><summary>Source and validation details</summary>',
       );
@@ -91,6 +97,7 @@ describe("managed annual financial overview", () => {
     );
     expect(html).not.toContain("managed-annual-overview");
     expect(html).not.toContain("Source and validation details");
+    expect(html).not.toContain("managed-annual-trend");
   });
 
   it("keeps each eligible basis distinct and passes the original pairs to explicit actions", async () => {
