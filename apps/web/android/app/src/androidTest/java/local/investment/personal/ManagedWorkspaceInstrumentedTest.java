@@ -1191,6 +1191,28 @@ public class ManagedWorkspaceInstrumentedTest {
         assertMarketsRows(false);
         assertMarketsRawChanges(false);
         assertMarketsSharedComparison(false);
+        awaitPage("both visible shared date controls are at least 44 pixels high",
+            "document.querySelector('.managed-price-comparison-start-select')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('.managed-price-comparison-end-select')?.getBoundingClientRect().height >= 44");
+        chooseComparisonOption(".managed-price-comparison-start-select", "", "Choose an observed date");
+        assertMarketsComparisonDates("", "2026-09-19", "|2026-09-18", "|2026-09-19");
+        awaitPage("an empty shared Start withholds figures without replacing End",
+            "document.querySelector('.managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-price-comparison-status')?.textContent === 'Choose a starting date before the ending date.'" +
+            " && document.querySelectorAll('.managed-price-comparison-provenance > section').length === 3");
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        chooseComparisonOption(".managed-price-comparison-start-select", "2026-09-18", "2026-09-18");
+        assertMarketsSharedComparison(false);
+        chooseComparisonOption(".managed-price-comparison-end-select", "", "Choose an observed date");
+        assertMarketsComparisonDates("2026-09-18", "", "|2026-09-18", "|2026-09-19");
+        awaitPage("an empty shared End withholds figures and keeps the original coverage",
+            "document.querySelector('.managed-price-comparison-values') === null" +
+            " && document.querySelector('.managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
+            " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
+            " && Array.from(document.querySelectorAll('.managed-price-comparison-provenance section dd:nth-of-type(3)')).map(e => e.textContent).join('|') === '2 / 0|2 / 0|2 / 0'");
+        assertMarketsDraftAndCounts(2, 3, 0, 0);
+        chooseComparisonOption(".managed-price-comparison-end-select", "2026-09-19", "2026-09-19");
+        assertMarketsSharedComparison(false);
         chooseComparisonOption(".managed-price-comparison-order select", "highest", "Highest raw change");
         assertMarketsComparisonOrder("highest", "ALFA,BETB,BETA",
             "ALFA|10.25|10.5|+2.4390%;BETB|30.5|30.5|0.0000%;BETA|20.75|20.5|-1.2048%");
@@ -1340,7 +1362,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-price-comparison-order select')?.value === 'board'" +
             " && document.querySelector('.managed-price-comparison-order select')?.disabled === false" +
             " && document.querySelector('.managed-price-comparison-provenance') === null" +
-            " && document.querySelector('.managed-price-comparison [role=status]')?.textContent.includes('Comparison unavailable.')" +
+            " && document.querySelector('.managed-price-comparison-status')?.textContent.includes('Comparison unavailable.')" +
             " && !document.querySelector('.managed-price-comparison')?.textContent.includes('2026-09-')");
         assertMarketsHandoffDraftAndCounts(3, 1, 0, 1);
         selectWorkspaceView("My Watchlist");
@@ -2438,9 +2460,9 @@ public class ManagedWorkspaceInstrumentedTest {
             "BETB · XNAS|Beta Company · Class C|" + originalCoverage + "|" + refreshedFirst;
         String output = refreshedFirst
             ? "comparison.querySelector('.managed-price-comparison-values') === null" +
-                " && comparison.querySelector('[role=status]')?.textContent === 'Comparison needs at least two dates observed for every listing. 1 shared observed date is loaded. Shared date: 2026-09-19.'" +
+                " && comparison.querySelector('.managed-price-comparison-status')?.textContent === 'Comparison needs at least two dates observed for every listing. 1 shared observed date is loaded. Shared date: 2026-09-19.'" +
                 " && comparison.querySelector('.managed-eod-previous')?.textContent === 'Previous history retained for BETA, BETB. Those original requests remain in this comparison.'"
-            : "comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates'" +
+            : "comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates in this interval · 2 across the loaded histories'" +
                 " && Array.from(comparison.querySelectorAll('tbody tr')).map(tr => tr.querySelector('th strong')?.textContent + '|' + Array.from(tr.querySelectorAll('td')).map(e => e.textContent).join('|')).join(';') === 'ALFA|10.25|10.5|+2.4390%;BETA|20.75|20.5|-1.2048%;BETB|30.5|30.5|0.0000%'" +
                 " && Array.from(comparison.querySelectorAll('tbody th time')).map(e => e.textContent).join('|') === '2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z|2026-09-20T00:00:01.000Z'" +
                 " && comparison.querySelector('.managed-eod-previous') === null";
@@ -2452,6 +2474,21 @@ public class ManagedWorkspaceInstrumentedTest {
             " Array.from(section.querySelectorAll('dd')).map(e => e.textContent).join('|') + '|' +" +
             " (section.querySelector('.managed-eod-previous') !== null)).join(';') === " + JSONObject.quote(expectedCoverage) +
             "; })()");
+        assertMarketsComparisonDates(refreshedFirst ? "" : "2026-09-18", refreshedFirst ? "" : "2026-09-19",
+            refreshedFirst ? "" : "|2026-09-18", refreshedFirst ? "" : "|2026-09-19");
+    }
+
+    private void assertMarketsComparisonDates(String start, String end, String startOptions, String endOptions) throws Exception {
+        awaitPage("shared native date controls stay labelled and mounted with exact observed options",
+            "(() => { const first = document.querySelector('.managed-price-comparison-start-select');" +
+            " const last = document.querySelector('.managed-price-comparison-end-select');" +
+            " return first instanceof HTMLSelectElement && last instanceof HTMLSelectElement" +
+            " && !first.disabled && !last.disabled && first.value === " + JSONObject.quote(start) +
+            " && last.value === " + JSONObject.quote(end) +
+            " && first.labels[0]?.querySelector('span')?.textContent === 'Shared comparison start date'" +
+            " && last.labels[0]?.querySelector('span')?.textContent === 'Shared comparison end date'" +
+            " && [...first.options].map(e => e.value).join('|') === " + JSONObject.quote(startOptions) +
+            " && [...last.options].map(e => e.value).join('|') === " + JSONObject.quote(endOptions) + "; })()");
     }
 
     private void assertMarketsComparisonOrder(String order, String symbols, String expectedRows) throws Exception {
@@ -2466,7 +2503,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " return select instanceof HTMLSelectElement && !select.disabled && select.value === " + JSONObject.quote(order) +
             " && select.labels[0]?.querySelector('span')?.textContent === 'Comparison order'" +
             " && comparison.querySelector('th[aria-sort]')?.getAttribute('aria-sort') === " + JSONObject.quote(sort) +
-            " && comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates'" +
+            " && comparison.querySelector('.managed-price-comparison-window')?.textContent === '2026-09-18 to 2026-09-19 · 2 shared observed dates in this interval · 2 across the loaded histories'" +
             " && Array.from(comparison.querySelectorAll('tbody tr')).map(tr => tr.querySelector('th strong')?.textContent + '|' + Array.from(tr.querySelectorAll('td')).map(e => e.textContent).join('|')).join(';') === " + JSONObject.quote(expectedRows) +
             " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance h4')).map(e => e.textContent.split(' · ')[0]).join(',') === " + JSONObject.quote(symbols) +
             " && Array.from(comparison.querySelectorAll('.managed-price-comparison-provenance > section')).map(section =>" +

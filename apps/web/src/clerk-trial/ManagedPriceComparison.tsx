@@ -1,9 +1,16 @@
 import { useId, useState } from "react";
 import {
+  changeManagedPriceComparisonInterval,
+  createManagedPriceComparisonSelection,
   deriveManagedPriceComparison,
+  deriveManagedPriceComparisonHistory,
   orderManagedPriceComparison,
+  sameManagedPriceComparisonSources,
+  type ManagedPriceComparisonHistory,
+  type ManagedPriceComparisonInterval,
   type ManagedPriceComparisonOrder,
   type ManagedPriceComparisonResult,
+  type ManagedPriceComparisonSelection,
   type ManagedPriceComparisonState,
 } from "./managed-price-comparison";
 
@@ -25,9 +32,35 @@ export function ManagedPriceComparison({
   state: ManagedPriceComparisonState;
 }) {
   const [order, setOrder] = useState<ManagedPriceComparisonOrder>("board");
+  const history = deriveManagedPriceComparisonHistory(state);
+  const [selection, setSelection] = useState(() =>
+    createManagedPriceComparisonSelection(state, history),
+  );
+  const current = sameManagedPriceComparisonSources(selection, state);
+  const displayed = current
+    ? selection
+    : createManagedPriceComparisonSelection(
+        state,
+        history,
+        selection.hadHistory,
+      );
+  if (!current) setSelection(displayed);
   return (
     <ManagedPriceComparisonView
-      state={state}
+      history={history}
+      selection={displayed}
+      onDate={(field, date) =>
+        setSelection((previous) =>
+          sameManagedPriceComparisonSources(previous, state)
+            ? changeManagedPriceComparisonInterval(
+                previous,
+                history,
+                field,
+                date,
+              )
+            : previous,
+        )
+      }
       order={order}
       onOrder={setOrder}
     />
@@ -35,17 +68,21 @@ export function ManagedPriceComparison({
 }
 
 export function ManagedPriceComparisonView({
-  state,
+  history,
+  selection,
+  onDate,
   order,
   onOrder,
 }: {
-  state: ManagedPriceComparisonState;
+  history: ManagedPriceComparisonHistory;
+  selection: ManagedPriceComparisonSelection;
+  onDate: (field: keyof ManagedPriceComparisonInterval, date: string) => void;
   order: ManagedPriceComparisonOrder;
   onOrder: (order: ManagedPriceComparisonOrder) => void;
 }) {
   const id = useId();
   const comparison = orderManagedPriceComparison(
-    deriveManagedPriceComparison(state),
+    deriveManagedPriceComparison(history, selection),
     order,
   );
   if (!comparison) return null;
@@ -55,7 +92,14 @@ export function ManagedPriceComparisonView({
       aria-labelledby={`${id}-heading`}
     >
       <h3 id={`${id}-heading`}>Compare raw price changes</h3>
-      <ComparisonOrder id={`${id}-order`} order={order} onOrder={onOrder} />
+      <ComparisonControls
+        id={id}
+        history={history}
+        selection={selection}
+        onDate={onDate}
+        order={order}
+        onOrder={onOrder}
+      />
       {comparison.status !== "unavailable" &&
         comparison.rows.some((row) => row.showingPrevious) && (
           <p className="managed-eod-previous">
@@ -74,7 +118,10 @@ export function ManagedPriceComparisonView({
             {" to "}
             <time dateTime={comparison.lastDate}>{comparison.lastDate}</time>
             {" · "}
-            {comparison.sharedDateCount} shared observed dates
+            {comparison.intervalDateCount} shared observed dates in this
+            interval
+            {" · "}
+            {comparison.sharedDateCount} across the loaded histories
           </p>
           <p id={`${id}-scroll`} className="managed-price-comparison-help">
             All three listings · {ORDER_LABELS[order]}. Scroll the table
@@ -108,6 +155,90 @@ export function ManagedPriceComparisonView({
       )}
       <ComparisonCoverage comparison={comparison} />
     </section>
+  );
+}
+
+function ComparisonControls({
+  id,
+  history,
+  selection,
+  onDate,
+  order,
+  onOrder,
+}: {
+  id: string;
+  history: ManagedPriceComparisonHistory;
+  selection: ManagedPriceComparisonSelection;
+  onDate: (field: keyof ManagedPriceComparisonInterval, date: string) => void;
+  order: ManagedPriceComparisonOrder;
+  onOrder: (order: ManagedPriceComparisonOrder) => void;
+}) {
+  const dates = history?.status === "loaded" ? history.sharedDates : [];
+  return (
+    <>
+      <div className="managed-price-comparison-controls">
+        <ComparisonDate
+          id={`${id}-start`}
+          label="Shared comparison start date"
+          className="managed-price-comparison-start-select"
+          dates={dates.slice(0, -1)}
+          value={selection.startDate}
+          onChange={(date) => onDate("startDate", date)}
+        />
+        <ComparisonDate
+          id={`${id}-end`}
+          label="Shared comparison end date"
+          className="managed-price-comparison-end-select"
+          dates={dates.slice(1).filter((date) => date > selection.startDate)}
+          value={selection.endDate}
+          onChange={(date) => onDate("endDate", date)}
+        />
+        <ComparisonOrder id={`${id}-order`} order={order} onOrder={onOrder} />
+      </div>
+      <p className="managed-price-comparison-reset" role="status">
+        {selection.resetNotice &&
+          "Loaded histories changed; showing the full shared span."}
+      </p>
+    </>
+  );
+}
+
+function ComparisonDate({
+  id,
+  label,
+  className,
+  dates,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  className: string;
+  dates: readonly string[];
+  value: string;
+  onChange: (date: string) => void;
+}) {
+  return (
+    <label className="managed-price-comparison-date" htmlFor={id}>
+      <span>{label}</span>
+      <select
+        id={id}
+        className={className}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      >
+        <option value="">
+          {dates.length
+            ? "Choose an observed date"
+            : "No shared dates available"}
+        </option>
+        {dates.map((date) => (
+          <option key={date} value={date}>
+            {date}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -148,12 +279,18 @@ function ComparisonStatus({
   comparison: Exclude<ActiveComparison, { status: "available" }>;
 }) {
   return (
-    <p role="status">
+    <p className="managed-price-comparison-status" role="status">
       {comparison.status === "unavailable" ? (
         <>
           Comparison unavailable. Load price histories for all three board
           listings. A missing or cleared history prevents a complete comparison.
         </>
+      ) : comparison.status === "interval_required" ? (
+        comparison.reason === "end_required" ? (
+          "Choose an ending date after the starting date."
+        ) : (
+          "Choose a starting date before the ending date."
+        )
       ) : (
         <>
           Comparison needs at least two dates observed for every listing.{" "}
@@ -186,8 +323,8 @@ function ComparisonTable({
   return (
     <table className="managed-price-comparison-values">
       <caption className="sr-only">
-        Raw USD closes and percentage changes between the earliest and latest
-        dates observed for all three listings
+        Raw USD closes and percentage changes between the selected dates
+        observed for all three listings
       </caption>
       <thead>
         <tr>
@@ -283,11 +420,11 @@ function ComparisonCoverage({ comparison }: { comparison: ActiveComparison }) {
             ))}
           </div>
           <p>
-            Data provided by Tiingo. Change = (last shared raw close − first
-            shared raw close) / first shared raw close × 100, rounded to four
-            decimal places. Omitted observations have dates absent from another
-            listing's loaded history. Missing dates are not filled. This
-            comparison makes no additional price request.
+            Data provided by Tiingo. Change = (ending raw close − starting raw
+            close) / starting raw close × 100, rounded to four decimal places.
+            Omitted observations have dates absent from another listing's loaded
+            history, not dates outside the selected interval. Missing dates are
+            not filled. This comparison makes no additional price request.
           </p>
           <p>
             Ordering uses exact endpoint ratios before rounding. Exact ties use

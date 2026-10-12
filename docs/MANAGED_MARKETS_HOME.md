@@ -94,12 +94,19 @@ persistent price storage or new response state.
 ## Compare the three listings
 
 The comparison shows raw price changes across all three loaded histories,
-initially in board order. It uses the earliest and latest dates observed in every history,
-with at least two shared observations. The table shows those common dates, their
-observation count, each listing's original USD endpoint closes and a four-place
+initially in board order over the full shared span. Start and End offer dates
+observed in every history, with Start strictly before End. Choosing a Start at or
+after End clears End and withholds the figures until an ending date is chosen.
+The table shows the selected dates, each listing's original USD endpoint closes and a four-place
 percentage calculated by the existing exact-decimal module. A nonzero change
 that rounds to zero retains its higher/lower description. GOOG and GOOGL remain
 separate share classes of the same issuer.
+
+The interval's observation count is separate from the full shared-date count.
+Coverage reports each original requested window, observed span, loaded count,
+omitted count and request times. Omitted observations are dates absent from
+another history; dates outside the chosen interval are not omitted. Date choices
+do not alter the selected chart, latest quote or single-listing comparison.
 
 All three histories are required; a missing response never silently reduces the
 cohort. Fewer than two shared dates produces an explanation without numeric
@@ -115,7 +122,7 @@ direction. Highest and lowest include positive, unchanged and negative changes;
 they do not select only gainers or losers. Table rows and their source details
 use the same order, without changing the board or selected chart.
 
-The selector stays available when histories are missing or have fewer than two
+The order selector stays available when histories are missing or have fewer than two
 shared dates. Its choice applies when a complete comparison becomes available;
 unavailable data never becomes zero or a partial ranking. The choice stays in
 memory while the comparison is mounted, including refresh and a company visit,
@@ -123,16 +130,21 @@ and resets when Markets unmounts. It sends no request and changes no watchlist,
 draft, history or saved state.
 
 The comparison derives from the currently displayed responses and adds no
-request, cache, selection or saved state. Each row retains its requested window,
+request, cache or saved state. Each row retains its requested window,
 original completion time and previous-history notice. Independently refreshed
 rows can have different request times even though the comparison dates match.
-A validated replacement recomputes the shared dates and values; a cleared
-response withholds the comparison. Existing navigation, catalog and session
+A validated replacement, including equal-valued data, resets the interval to
+the full shared span and says “Loaded histories changed; showing the full shared
+span.” An explicit date choice clears that notice. Refresh status, Cancel and a
+failed refresh retain the interval while the same response objects remain.
+A missing or cleared response withholds the comparison; loading a complete
+cohort again initializes the full shared span. Existing navigation, catalog and session
 retirement clear the source responses and their derived comparison together.
 The table scrolls within its own labelled region on narrow screens; keyboard
 users can focus that region and use the arrow keys. The results region and
-coverage disclosure and order selector remain mounted when a refresh leaves the comparison
-unavailable, preserving focus while replacing values with an explanation.
+coverage disclosure, Start, End and order selectors remain mounted when a refresh
+leaves the comparison unavailable, preserving focus while replacing values with
+an explanation. Date selectors then contain an empty unavailable option.
 Delivery and verification remain in [Current work](CURRENT_WORK.md).
 
 ## Requests and lifetime

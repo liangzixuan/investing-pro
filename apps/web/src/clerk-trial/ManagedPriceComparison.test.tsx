@@ -10,6 +10,8 @@ import {
 } from "./ManagedPriceComparison";
 import {
   deriveManagedPriceComparison,
+  deriveManagedPriceComparisonHistory,
+  createManagedPriceComparisonSelection,
   orderManagedPriceComparison,
   type ManagedPriceComparisonOrder,
   type ManagedPriceComparisonState,
@@ -86,11 +88,26 @@ const text = (html: string) =>
     .replace(/\s+/gu, " ")
     .trim();
 
+function viewProps(input: ManagedPriceComparisonState) {
+  const history = deriveManagedPriceComparisonHistory(input);
+  return {
+    history,
+    selection: createManagedPriceComparisonSelection(input, history),
+    onDate: () => {
+      throw new Error("Unexpected date event");
+    },
+  };
+}
+function comparisonFor(input: ManagedPriceComparisonState) {
+  const { history, selection } = viewProps(input);
+  return deriveManagedPriceComparison(history, selection);
+}
+
 describe("managed complete-board raw price comparison", () => {
   it("orders the complete shared-date comparison without changing its source or board order", () => {
     const input = state();
     const before = JSON.stringify(input);
-    const comparison = deriveManagedPriceComparison(input);
+    const comparison = comparisonFor(input);
     if (comparison?.status !== "available")
       throw new Error("Expected comparison");
     expect(orderManagedPriceComparison(comparison, "board")).toBe(comparison);
@@ -119,7 +136,7 @@ describe("managed complete-board raw price comparison", () => {
   });
 
   it("ranks unequal exact ratios even when every displayed percentage is zero", () => {
-    const comparison = deriveManagedPriceComparison(
+    const comparison = comparisonFor(
       state([
         loadedRow(0, [
           close("2026-09-11", "1"),
@@ -157,7 +174,7 @@ describe("managed complete-board raw price comparison", () => {
   });
 
   it("keeps exact ties in symbol, venue and listing order in both directions", () => {
-    const comparison = deriveManagedPriceComparison(
+    const comparison = comparisonFor(
       state(
         [2, 1, 0].map((index) =>
           loadedRow(index, [
@@ -211,7 +228,7 @@ describe("managed complete-board raw price comparison", () => {
       let callbacks = 0;
       const html = renderToStaticMarkup(
         <ManagedPriceComparisonView
-          state={state(rows)}
+          {...viewProps(state(rows))}
           order={order}
           onOrder={() => {
             callbacks++;
@@ -248,7 +265,7 @@ describe("managed complete-board raw price comparison", () => {
       ),
     ];
     for (const input of inputs) {
-      const comparison = deriveManagedPriceComparison(input);
+      const comparison = comparisonFor(input);
       for (const order of [
         "board",
         "highest",
@@ -257,7 +274,7 @@ describe("managed complete-board raw price comparison", () => {
         expect(orderManagedPriceComparison(comparison, order)).toBe(comparison);
         const html = renderToStaticMarkup(
           <ManagedPriceComparisonView
-            state={input}
+            {...viewProps(input)}
             order={order}
             onOrder={() => {
               throw new Error("Unexpected order event");
@@ -283,7 +300,7 @@ describe("managed complete-board raw price comparison", () => {
   it("uses the earliest and latest shared observations across shifted dates and gaps", () => {
     const input = state();
     const before = JSON.stringify(input);
-    const result = deriveManagedPriceComparison(input);
+    const result = comparisonFor(input);
     expect(result).toMatchObject({
       status: "available",
       firstDate: "2026-09-11",
@@ -321,7 +338,7 @@ describe("managed complete-board raw price comparison", () => {
     (index) => {
       const rows = [0, 1, 2].map((item) => loadedRow(item));
       rows[index] = { ...rows[index]!, response: null };
-      expect(deriveManagedPriceComparison(state(rows))).toEqual({
+      expect(comparisonFor(state(rows))).toEqual({
         status: "unavailable",
       });
       const html = renderToStaticMarkup(
@@ -341,7 +358,7 @@ describe("managed complete-board raw price comparison", () => {
       const rows = Array.from({ length: count }, (_, index) =>
         loadedRow(index % 3),
       );
-      expect(deriveManagedPriceComparison(state(rows))).toEqual({
+      expect(comparisonFor(state(rows))).toEqual({
         status: "unavailable",
       });
     },
@@ -355,7 +372,7 @@ describe("managed complete-board raw price comparison", () => {
           close(count ? "2026-09-18" : `2026-09-${16 + index}`, "10"),
         ]),
       );
-      expect(deriveManagedPriceComparison(state(rows))).toMatchObject({
+      expect(comparisonFor(state(rows))).toMatchObject({
         status: "insufficient_history",
         sharedDateCount: count,
         firstDate: count ? "2026-09-18" : null,
@@ -391,7 +408,7 @@ describe("managed complete-board raw price comparison", () => {
           close("2026-09-18", last),
         ]),
       );
-      const result = deriveManagedPriceComparison(state(rows));
+      const result = comparisonFor(state(rows));
       if (result?.status !== "available")
         throw new Error("Expected comparison");
       expect(result.rows[0]).toMatchObject({
@@ -492,7 +509,7 @@ describe("managed complete-board raw price comparison", () => {
       ).toHaveLength(1);
       if (input !== complete) {
         expect(html).toMatch(
-          /<div class="managed-price-comparison-scroll"[^>]*><p role="status">/u,
+          /<div class="managed-price-comparison-scroll"[^>]*><p class="managed-price-comparison-status" role="status">/u,
         );
         expect(html).not.toContain("aria-describedby=");
         expect(html).not.toContain("<table");
@@ -513,13 +530,13 @@ describe("managed complete-board raw price comparison", () => {
 
   it("immediately derives replacements and clearing without retaining old results", () => {
     const input = state();
-    const initial = deriveManagedPriceComparison(input);
+    const initial = comparisonFor(input);
     const replacement = loadedRow(0, [
       close("2026-09-14", "10"),
       close("2026-09-18", "10.5"),
     ]);
     const rows = [replacement, ...input.rows.slice(1)];
-    expect(deriveManagedPriceComparison(state(rows))).toMatchObject({
+    expect(comparisonFor(state(rows))).toMatchObject({
       status: "available",
       firstDate: "2026-09-14",
       sharedDateCount: 2,
@@ -538,7 +555,7 @@ describe("managed complete-board raw price comparison", () => {
       sharedDateCount: 3,
     });
     expect(
-      deriveManagedPriceComparison(
+      comparisonFor(
         state([{ ...replacement, response: null }, ...rows.slice(1)]),
       ),
     ).toEqual({ status: "unavailable" });
@@ -551,7 +568,7 @@ describe("managed complete-board raw price comparison", () => {
     "hides the comparison on visit or catalog retirement: %j",
     (retirement) => {
       const input = { ...state(), ...retirement };
-      expect(deriveManagedPriceComparison(input)).toBeNull();
+      expect(comparisonFor(input)).toBeNull();
       expect(
         renderToStaticMarkup(<ManagedPriceComparison state={input} />),
       ).toBe("");

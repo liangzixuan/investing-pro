@@ -97,6 +97,14 @@ narrow screens. Offer observed dates only, preserve keyboard focus when a choice
 changes, and identify the selected ending close separately from the latest quote.
 Both exact endpoint values remain visible with the signed change.
 
+The three-listing comparison places shared Start, End and order controls together.
+Use the full shared span initially, then label the chosen interval and its count
+separately from full-history overlap. Keep all controls, the results region and
+coverage summary mounted through unavailable states and response replacement.
+Explain resets to the full shared span; retain the interval through a failed or
+canceled refresh that keeps the same histories. Stack the controls on narrow
+screens, with the existing 44px target heights and contained table scrolling.
+
 The implemented price range remains one month. Omit the generated concept's
 unsupported 3M, 1Y and all-time controls. Its sample companies, prices and chart
 coordinates are visual examples only.

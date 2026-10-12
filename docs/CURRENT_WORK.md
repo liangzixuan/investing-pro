@@ -190,7 +190,22 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
-The active Price comparison increment lets the researcher select both observed
+The active shared-interval increment adds Start and End to the three-listing
+Markets comparison. It ranks all three listings over the selected common dates,
+keeps interval counts separate from full-history overlap and preserves each
+original request's provenance. Retained histories keep the interval; a new
+response resets it to the full shared span with a notice. Date choices add no
+request or saved state. The 127 affected tests, web types, scoped lint/format and
+Java syntax passed. Independent source review found no remaining defect. The
+existing native Markets journey now exercises both date selectors while keeping
+the original two-date fixture and request/draft checks. Initial actual-component
+Brave checks at desktop and 390 pixels covered exact ranking, gaps, invalid dates,
+retained failure/Cancel, replacement notices and focus, company navigation and
+draft retirement. The remaining browser scenarios, native execution and hosted
+source acceptance remain pending.
+See [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
+
+The Price comparison increment in draft PR88 lets the researcher select both observed
 endpoints within the loaded one-month history. Company Price appends that exact
 interval and its original provenance to the existing note draft; Markets retains
 a read-only comparison. It adds no source request or saved state. The 393 affected
@@ -199,8 +214,10 @@ syntax and source boundaries passed. Independent frontend and native-source
 reviews found no remaining defect. Actual-component Brave checks covered desktop,
 390 and 320 pixels, past intervals, exact long decimals, tiny positive and negative
 changes, sparse histories, note provenance, cancellation, late responses, selector
-focus across replacement, section return and retirement. Hosted source and native
-checks remain separate from this local evidence.
+focus across replacement, section return and retirement. PR88's original Android
+run `38226714512`, attempt 1, passed all 23 cases and the APK-isolation check;
+its synthetic checkout has the candidate's exact tree. All six applicable Actions
+jobs across five workflows and CodeScene passed on their original attempts.
 See [observed-close comparison](MANAGED_EOD_HISTORY.md#compare-an-earlier-observed-close).
 
 The active unsaved-change review increment adds an optional **Review unsaved

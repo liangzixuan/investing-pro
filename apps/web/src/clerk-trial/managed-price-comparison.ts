@@ -1,4 +1,7 @@
-import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
+import {
+  membershipMatchesResult,
+  type ManagedEodHistoryResponseDto,
+} from "@research-cockpit/contracts";
 import {
   calculatePersonalRawCloseChange,
   comparePersonalRawCloseChange,
@@ -11,6 +14,27 @@ export type ManagedPriceComparisonState = Pick<
   "active" | "rows" | "catalogChanged"
 >;
 export type ManagedPriceComparisonOrder = "board" | "highest" | "lowest";
+export interface ManagedPriceComparisonInterval {
+  readonly startDate: string;
+  readonly endDate: string;
+}
+
+export type ManagedPriceComparisonHistory =
+  | null
+  | { readonly status: "unavailable" }
+  | {
+      readonly status: "loaded";
+      readonly rows: readonly LoadedRow[];
+      readonly sharedDates: readonly string[];
+    };
+
+export interface ManagedPriceComparisonSelection extends ManagedPriceComparisonInterval {
+  readonly sources: Pick<ManagedMarketsState, "active" | "catalogChanged"> & {
+    readonly rows: readonly Pick<ManagedMarketsRow, "listing" | "response">[];
+  };
+  readonly hadHistory: boolean;
+  readonly resetNotice: boolean;
+}
 
 type LoadedRow = Pick<ManagedMarketsRow, "listing" | "showingPrevious"> & {
   readonly response: ManagedEodHistoryResponseDto;
@@ -27,6 +51,12 @@ export type ManagedPriceComparisonResult =
   | null
   | { readonly status: "unavailable" }
   | {
+      readonly status: "interval_required";
+      readonly reason: "start_required" | "end_required";
+      readonly sharedDateCount: number;
+      readonly rows: readonly LoadedRow[];
+    }
+  | {
       readonly status: "insufficient_history";
       readonly sharedDateCount: number;
       readonly firstDate: string | null;
@@ -35,6 +65,7 @@ export type ManagedPriceComparisonResult =
   | {
       readonly status: "available";
       readonly sharedDateCount: number;
+      readonly intervalDateCount: number;
       readonly firstDate: string;
       readonly lastDate: string;
       readonly rows: readonly ComparedRow[];
@@ -70,9 +101,9 @@ function compareText(left: string, right: string): number {
 }
 
 /** Project the board's complete, already validated cohort without retaining another snapshot. */
-export function deriveManagedPriceComparison(
+export function deriveManagedPriceComparisonHistory(
   state: ManagedPriceComparisonState,
-): ManagedPriceComparisonResult {
+): ManagedPriceComparisonHistory {
   if (!state.active || state.catalogChanged) return null;
   if (state.rows.length !== 3) return { status: "unavailable" };
   const rows: LoadedRow[] = [];
@@ -90,6 +121,15 @@ export function deriveManagedPriceComparison(
   const sharedDates = rows[0]!.response.rows
     .map((row) => row.date)
     .filter((date) => dates.every((loaded) => loaded.has(date)));
+  return { status: "loaded", rows, sharedDates };
+}
+
+export function deriveManagedPriceComparison(
+  history: ManagedPriceComparisonHistory,
+  interval: ManagedPriceComparisonInterval,
+): ManagedPriceComparisonResult {
+  if (!history || history.status === "unavailable") return history;
+  const { rows, sharedDates } = history;
   if (sharedDates.length < 2)
     return {
       status: "insufficient_history",
@@ -97,14 +137,87 @@ export function deriveManagedPriceComparison(
       firstDate: sharedDates[0] ?? null,
       rows,
     };
-  const firstDate = sharedDates[0]!;
-  const lastDate = sharedDates.at(-1)!;
+  const firstIndex = sharedDates.indexOf(interval.startDate);
+  const lastIndex = sharedDates.indexOf(interval.endDate);
+  if (firstIndex < 0 || lastIndex <= firstIndex)
+    return {
+      status: "interval_required",
+      reason: firstIndex < 0 ? "start_required" : "end_required",
+      sharedDateCount: sharedDates.length,
+      rows,
+    };
+  const firstDate = sharedDates[firstIndex]!;
+  const lastDate = sharedDates[lastIndex]!;
   return {
     status: "available",
     sharedDateCount: sharedDates.length,
+    intervalDateCount: lastIndex - firstIndex + 1,
     firstDate,
     lastDate,
     rows: rows.map((row) => compareLoadedRow(row, firstDate, lastDate)),
+  };
+}
+
+export function createManagedPriceComparisonSelection(
+  state: ManagedPriceComparisonState,
+  history: ManagedPriceComparisonHistory,
+  replaced = false,
+): ManagedPriceComparisonSelection {
+  const dates = history?.status === "loaded" ? history.sharedDates : [];
+  const usable = dates.length >= 2;
+  return {
+    sources: {
+      active: state.active,
+      catalogChanged: state.catalogChanged,
+      rows: state.rows.map(({ listing, response }) => ({ listing, response })),
+    },
+    startDate: usable ? dates[0]! : "",
+    endDate: usable ? dates.at(-1)! : "",
+    hadHistory: history?.status === "loaded",
+    resetNotice: replaced && usable,
+  };
+}
+
+export function sameManagedPriceComparisonSources(
+  selection: ManagedPriceComparisonSelection,
+  state: ManagedPriceComparisonState,
+): boolean {
+  const previous = selection.sources;
+  return (
+    previous.active === state.active &&
+    previous.catalogChanged === state.catalogChanged &&
+    previous.rows.length === state.rows.length &&
+    previous.rows.every((row, index) => {
+      const next = state.rows[index]!;
+      return (
+        row.response === next.response &&
+        membershipMatchesResult({ ...row.listing, note: "" }, next.listing)
+      );
+    })
+  );
+}
+
+export function changeManagedPriceComparisonInterval(
+  selection: ManagedPriceComparisonSelection,
+  history: ManagedPriceComparisonHistory,
+  field: keyof ManagedPriceComparisonInterval,
+  date: string,
+): ManagedPriceComparisonSelection {
+  if (history?.status !== "loaded" || history.sharedDates.length < 2)
+    return selection;
+  const dates = history.sharedDates;
+  const allowed =
+    field === "startDate"
+      ? dates.slice(0, -1)
+      : dates.slice(1).filter((value) => value > selection.startDate);
+  if (date !== "" && !allowed.includes(date)) return selection;
+  if (field === "endDate")
+    return { ...selection, endDate: date, resetNotice: false };
+  return {
+    ...selection,
+    startDate: date,
+    endDate: selection.endDate > date ? selection.endDate : "",
+    resetNotice: false,
   };
 }
 
