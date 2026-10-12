@@ -2762,7 +2762,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && (document.querySelector('.managed-company-visit') === null || (" +
             "document.querySelector('.managed-company-identity strong')?.textContent === 'Zero Company'" +
             " && document.querySelector('.managed-company-identity span')?.textContent === 'Zero Class A · Class A · XNAS'" +
-            " && document.querySelectorAll('.managed-company-sections button').length === 2" +
+            " && document.querySelectorAll('.managed-company-sections button').length === 3" +
             " && document.querySelectorAll('.managed-company-sections button[aria-pressed=true]').length === 1))" +
             " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
