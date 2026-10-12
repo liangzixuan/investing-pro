@@ -1,5 +1,5 @@
 import * as React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import {
   ManagedWatchlistEditor,
@@ -36,6 +36,8 @@ vi.mock("react", async (original) => ({
     }),
 }));
 
+afterEach(() => vi.unstubAllGlobals());
+
 beforeEach(() => {
   hooks.state = [];
   hooks.refs = [];
@@ -69,10 +71,34 @@ function elements(
   if (!React.isValidElement<Record<string, unknown>>(node)) return [];
   return [
     node,
+    ...(typeof node.type === "function" && node.type !== ManagedNoteEditor
+      ? elements(
+          (node.type as (props: Record<string, unknown>) => React.ReactNode)(
+            node.props,
+          ),
+        )
+      : []),
     ...React.Children.toArray(node.props.children as React.ReactNode).flatMap(
       elements,
     ),
   ];
+}
+
+const choices = (output: ReturnType<typeof elements>) =>
+  output.flatMap((entry) =>
+    typeof entry.props["data-watchlist-selection"] === "string"
+      ? [entry.props["data-watchlist-selection"]]
+      : [],
+  );
+const searchValue = (output: ReturnType<typeof elements>) =>
+  output.find((entry) => entry.props.id === "managed-watchlist-search")?.props
+    .value;
+function textContent(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textContent).join("");
+  return React.isValidElement<{ children?: React.ReactNode }>(node)
+    ? textContent(node.props.children)
+    : "";
 }
 
 function fixture() {
@@ -104,6 +130,13 @@ function fixture() {
   };
   const selectionFocus = vi.fn();
   const emptyFocus = vi.fn();
+  const searchFocus = vi.fn();
+  const searchField = {
+    isConnected: true,
+    disabled: false,
+    getClientRects: () => [{}],
+    focus: searchFocus,
+  };
   let current: ReturnType<typeof elements> = [];
   const render = (changes: Partial<ManagedWatchlistEditorProps> = {}) => {
     props = { ...props, ...changes };
@@ -123,18 +156,24 @@ function fixture() {
       querySelector: (selector: string) =>
         selector.startsWith("textarea")
           ? field
-          : {
-              isConnected: true,
-              getClientRects: () => [{}],
-              focus: emptyFocus,
-            },
+          : selector === "[data-watchlist-search]"
+            ? searchField
+            : {
+                isConnected: true,
+                getClientRects: () => [{}],
+                focus: emptyFocus,
+              },
       querySelectorAll: () =>
-        props.memberships.map((entry) => ({
-          dataset: { watchlistSelection: entry.listingId },
-          isConnected: true,
-          getClientRects: () => [{}],
-          focus: selectionFocus,
-        })),
+        current
+          .filter((entry) => entry.props["data-watchlist-selection"])
+          .map((entry) => ({
+            dataset: {
+              watchlistSelection: entry.props["data-watchlist-selection"],
+            },
+            isConnected: true,
+            getClientRects: () => [{}],
+            focus: selectionFocus,
+          })),
     };
     return current;
   };
@@ -152,6 +191,15 @@ function fixture() {
       }) => void
     )({ currentTarget: opener });
   };
+  const search = (value: string) => {
+    const input = current.find(
+      (entry) => entry.props.id === "managed-watchlist-search",
+    )!;
+    (input.props.onChange as (event: { target: { value: string } }) => void)({
+      target: { value },
+    });
+    return render();
+  };
   render();
   commit();
   return {
@@ -161,6 +209,9 @@ function fixture() {
     focus,
     selectionFocus,
     emptyFocus,
+    searchFocus,
+    searchField,
+    search,
     render,
     commit,
     click,
@@ -193,14 +244,240 @@ describe("ManagedWatchlistEditor", () => {
 
   it("reveals the first hidden invalid note, then focuses its current textarea", () => {
     const f = fixture();
+    expect(choices(f.search("ALFA"))).toEqual(["one"]);
     f.ref.current!.focusFirstInvalidNote();
     expect(f.focus).not.toHaveBeenCalled();
-    f.render();
+    const output = f.render();
     f.commit();
+    expect(searchValue(output)).toBe("");
+    expect(choices(output)).toEqual(["one", "two"]);
     expect(f.field.dataset.managedNoteListingId).toBe("two");
     expect(f.field.value).toBe("Second\nnote is invalid");
     expect(f.focus).toHaveBeenCalledOnce();
     expect(f.props.onNote).not.toHaveBeenCalled();
+  });
+
+  it("matches a normalized phrase within each identity field and keeps share classes distinct", () => {
+    const f = fixture();
+    const common = { issuerName: "Nova   Group", exchangeMic: "XNYS" };
+    const memberships = [
+      { ...member("one", "NOVA", "private needle"), ...common },
+      {
+        ...member("two", "NOVC", "second"),
+        ...common,
+        shareClassName: "Class C",
+      },
+      member("three", "ELSE", "third"),
+    ];
+    f.render({ memberships });
+    for (const [query, expected] of [
+      ["  NoVa  GROUP ", ["one", "two"]],
+      ["  class   a ", ["one", "three"]],
+      ["CLASS C", ["two"]],
+      ["novc", ["two"]],
+      [" xnyS ", ["one", "two"]],
+      ["nova class c", []],
+      ["private needle", []],
+      ["ordinary shares", []],
+      ["issuer-one", []],
+    ] as const) {
+      expect(choices(f.search(query))).toEqual(expected);
+    }
+    expect(memberships.map((entry) => entry.note)).toEqual([
+      "private needle",
+      "second",
+      "third",
+    ]);
+    expect(f.props.onNote).not.toHaveBeenCalled();
+  });
+
+  it("keeps the exact selected raw note and full index outside a filter, including no results", () => {
+    const f = fixture();
+    f.click("Edit research note for BETA, Class A, XNAS");
+    for (const query of ["ALFA", "no matches"]) {
+      const output = f.search(query);
+      const note = output.find((entry) => entry.type === ManagedNoteEditor)!;
+      expect(note.props).toMatchObject({
+        listingId: "two",
+        id: "managed-note-1",
+        note: "Second\nnote is invalid",
+      });
+      expect(
+        output.some((entry) =>
+          textContent(entry).includes("Selected BETA is outside this search."),
+        ),
+      ).toBe(true);
+      expect(choices(output)).toEqual(query === "ALFA" ? ["one"] : []);
+      const count = output.find(
+        (entry) => entry.props.id === "managed-watchlist-search-count",
+      )!;
+      expect(textContent(count)).toBe(
+        `${query === "ALFA" ? 1 : 0} of 2 listings`,
+      );
+    }
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+    const show = f
+      .render()
+      .find(
+        (entry) =>
+          entry.type === "button" &&
+          textContent(entry) === "Show selected listing",
+      )!;
+    (show.props.onClick as () => void)();
+    expect(searchValue(f.render())).toBe("");
+    expect(f.searchFocus).toHaveBeenCalledOnce();
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+  });
+
+  it("guards full-order moves while filtered, treats whitespace as empty and clears to the search field", () => {
+    const f = fixture();
+    const output = f.search("ALFA");
+    for (const label of ["Move ALFA up", "Move ALFA down"]) {
+      expect(
+        output.find((entry) => entry.props["aria-label"] === label)?.props
+          .disabled,
+      ).toBe(true);
+      f.click(label);
+    }
+    expect(f.props.onMove).not.toHaveBeenCalled();
+    const whitespace = f.search("  \t ");
+    expect(choices(whitespace)).toEqual(["one", "two"]);
+    expect(
+      whitespace.find((entry) => entry.props["aria-label"] === "Move ALFA down")
+        ?.props.disabled,
+    ).toBe(false);
+    f.click("Move ALFA down");
+    expect(f.props.onMove).toHaveBeenCalledWith("one", 1);
+    f.click("Clear watchlist search");
+    expect(searchValue(f.render())).toBe("");
+    expect(f.searchFocus).toHaveBeenCalledOnce();
+  });
+
+  it("retains query and explicit selection while inactive, then starts a new editor without a query", () => {
+    const f = fixture();
+    f.search("BETA");
+    f.click("Edit research note for BETA, Class A, XNAS");
+    f.render({ active: false });
+    f.commit();
+    const returned = f.render({ active: true });
+    expect(searchValue(returned)).toBe("BETA");
+    expect(f.field.dataset.managedNoteListingId).toBe("two");
+    hooks.state = [];
+    hooks.refs = [];
+    const fresh = fixture();
+    expect(searchValue(fresh.render())).toBe("");
+    expect(fresh.field.dataset.managedNoteListingId).toBe("one");
+  });
+
+  it.each(["first", "middle", "last", "outside"] as const)(
+    "removes the %s selection and focuses the next match, prior match or first match when outside",
+    (position) => {
+      const f = fixture();
+      const memberships = [
+        member("one", "MATCH1", "one"),
+        member("hidden", "OTHER", "keep hidden"),
+        member("two", "MATCH2", "two"),
+        member("three", "MATCH3", "three"),
+      ];
+      f.render({ memberships });
+      const selected = {
+        first: memberships[0]!,
+        middle: memberships[2]!,
+        last: memberships[3]!,
+        outside: memberships[1]!,
+      }[position];
+      f.click(`Edit research note for ${selected.symbol}, Class A, XNAS`);
+      f.search("MATCH");
+      f.click(`Remove ${selected.symbol}`);
+      const output = f.render({
+        memberships: memberships.filter((entry) => entry !== selected),
+      });
+      f.commit();
+      expect(f.field.dataset.managedNoteListingId).toBe(
+        { first: "two", middle: "three", last: "two", outside: "one" }[
+          position
+        ],
+      );
+      expect(f.selectionFocus).toHaveBeenCalledOnce();
+      expect(searchValue(output)).toBe("MATCH");
+      expect(f.props.onRemove).toHaveBeenCalledWith(selected.listingId);
+      expect(f.props.onNote).not.toHaveBeenCalled();
+    },
+  );
+
+  it("focuses the persistent search when the last match is removed and keeps hidden membership bytes", () => {
+    const f = fixture();
+    f.search("ALFA");
+    f.click("Remove ALFA");
+    const output = f.render({ memberships: [f.props.memberships[1]!] });
+    f.commit();
+    expect(choices(output)).toEqual([]);
+    expect(searchValue(output)).toBe("ALFA");
+    expect(f.searchFocus).toHaveBeenCalledOnce();
+    expect(f.emptyFocus).not.toHaveBeenCalled();
+    expect(f.field.value).toBe("Second\nnote is invalid");
+  });
+
+  it.each([
+    "failed",
+    "query",
+    "selection",
+    "inactive",
+    "disabled",
+    "other focus",
+  ] as const)(
+    "consumes removal focus without stealing focus after %s",
+    (change) => {
+      const f = fixture();
+      const origin = {};
+      const page = { activeElement: origin, body: {} };
+      vi.stubGlobal("document", page);
+      f.click("Remove ALFA");
+      if (change === "query") f.search("BETA");
+      if (change === "selection")
+        f.click("Edit research note for BETA, Class A, XNAS");
+      if (change === "other focus") page.activeElement = {};
+      f.render({
+        memberships:
+          change === "failed" ? f.props.memberships : [f.props.memberships[1]!],
+        active: change !== "inactive",
+        editable: change !== "disabled",
+      });
+      f.commit();
+      expect(f.selectionFocus).not.toHaveBeenCalled();
+      page.activeElement = origin;
+      f.render({
+        memberships: [f.props.memberships[1]!],
+        active: true,
+        editable: true,
+      });
+      f.commit();
+      expect(f.selectionFocus).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not reclaim focus for correction after another visible control receives it", () => {
+    const f = fixture();
+    const origin = {};
+    const page = { activeElement: origin, body: {} };
+    vi.stubGlobal("document", page);
+    f.search("ALFA");
+    f.ref.current!.focusFirstInvalidNote();
+    page.activeElement = {};
+    f.render();
+    f.commit();
+    expect(f.focus).not.toHaveBeenCalled();
+    page.activeElement = origin;
+    f.render();
+    f.commit();
+    expect(f.focus).not.toHaveBeenCalled();
   });
 
   it.each([

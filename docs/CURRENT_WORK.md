@@ -170,6 +170,30 @@ without completing M1, M2 or M3.
 
 ## Next acceptance and open limits
 
+A local **Search My Watchlist** increment filters the current draft by a
+normalized phrase within symbol, company, share class or exchange. It shows
+matching and total counts while retaining the exact selected listing and raw
+note, even outside the results. Correction reveals the first invalid note across
+the complete draft; filtered saves still include every membership. Reordering
+requires clearing the search. Removal preserves keyboard position in the
+remaining matches or the stable search/empty target. Research Back retains the
+query, and session retirement clears local presentation state. The
+[watchlist guide](APPWRITE_WATCHLIST.md#search-the-current-watchlist-draft)
+records the matching and focus rules.
+
+All 108 affected editor and workspace checks pass, along with web types, scoped
+lint, formatting, unchanged source boundaries and a command-only component
+complexity check. Independent native source review covers
+the existing company-note journey's added hidden-invalid-note correction and
+filtered full-payload Save assertions. Actual-component Brave checks with twelve
+invented listings passed at 1440, 390 and 320 pixels. Filtering retained hidden
+notes and exact selection; one save preserved the complete twelve-member payload.
+Research Back, hidden-invalid-note correction, filtered removal, keyboard Clear,
+both recovery choices and session retirement passed. No document overflow or
+console error was observed. Hosted native execution and delivery remain pending.
+No new provider request, storage contract, live account, screen-reader or
+physical-device acceptance is claimed.
+
 A local keyboard-bypass increment adds **Skip to workspace content** before the
 managed workspace controls. It focuses the existing content landmark while
 preserving company URLs, Clerk fragments, drafts and request behavior. Active,

@@ -11,6 +11,54 @@
   border-right: 1px solid var(--managed-line, #2c2f36);
 }
 
+.clerk-trial.managed-frame .managed-watchlist-search {
+  padding: 16px;
+  border-bottom: 1px solid var(--managed-line, #2c2f36);
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search input {
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search p,
+.clerk-trial.managed-frame .managed-watchlist-no-matches,
+.clerk-trial.managed-frame .managed-watchlist-search-notice {
+  color: var(--managed-muted, #aeb4c0);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search p {
+  margin: 8px 0 0;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-no-matches {
+  padding: 0 16px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search-notice {
+  margin-block: 16px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-search-notice p {
+  margin-block: 0 8px;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-count,
 .clerk-trial.managed-frame .managed-watchlist-eyebrow {
   color: var(--managed-muted, #aeb4c0);
