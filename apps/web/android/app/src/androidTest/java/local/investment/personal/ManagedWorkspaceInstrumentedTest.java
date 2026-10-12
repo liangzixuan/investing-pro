@@ -1417,15 +1417,31 @@ public class ManagedWorkspaceInstrumentedTest {
     private void chooseComparisonDate(String scope, String date) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> id = new AtomicReference<>();
-        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-            "document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")?.id",
-            value -> { id.set(value); returned.countDown(); }));
+        scenario.onActivity(activity -> {
+            WebView webView = activity.getBridge().getWebView();
+            assertTrue("Comparison WebView must accept focus", webView.requestFocus());
+            webView.evaluateJavascript(
+                "(() => { const select = document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ");" +
+                " if (!(select instanceof HTMLSelectElement) || select.disabled || !select.id) return null;" +
+                " select.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+                " select.focus({preventScroll:true}); return select.id; })()",
+                value -> { id.set(value); returned.countDown(); });
+        });
         assertTrue("Comparison select id was not returned", returned.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         assertNotNull(id.get());
         String actualId = new org.json.JSONArray("[" + id.get() + "]").getString(0);
         assertFalse("Comparison select must have its real labelled id", actualId.isEmpty());
-        // Escape rollback can close the select dialog opened by a delayed tap.
-        touchInput(actualId);
+        awaitPage("exact enabled comparison select has DOM focus",
+            "(() => { const select = document.getElementById(" + JSONObject.quote(actualId) + ");" +
+            " return select instanceof HTMLSelectElement && !select.disabled && document.activeElement === select" +
+            " && select === document.querySelector(" + JSONObject.quote(scope + " .managed-raw-close-comparison select") + ")" +
+            " && [...select.options].some(option => option.value === " + JSONObject.quote(date) + " && !option.disabled); })()");
+        // Native Space opens the picker without a tap becoming a long press under load.
+        onView(isAssignableFrom(WebView.class)).check((view, noViewFoundException) -> {
+            if (noViewFoundException != null) throw noViewFoundException;
+            assertTrue("Comparison WebView must have focus", view.hasFocus());
+            assertTrue("Comparison window must have focus", view.hasWindowFocus());
+        }).perform(pressKey(KeyEvent.KEYCODE_SPACE));
         // Wait for WebView's native dialog instead of searching the Activity root.
         onView(androidx.test.espresso.matcher.ViewMatchers.withText(date))
             .inRoot(androidx.test.espresso.matcher.RootMatchers.isDialog())

@@ -239,10 +239,14 @@ successful emulator run before native acceptance.
 
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,
-retained history and reset behavior without extra price reads or saves. The
-option lookup waits for the native dialog. Its select tap omits the generic
-Escape rollback, which can dismiss a picker opened by a delayed tap; the exact
-selected value and resulting comparison remain required.
+retained history and reset behavior without extra price reads or saves. It
+focuses the exact enabled select, verifies DOM and native window focus, then
+opens the picker with one native Space-key action. The option lookup waits for
+the native dialog and touches the exact date. This covers keyboard opening and
+native option touch; it does not establish touch-opening reliability. JavaScript
+does not assign the selected value or dispatch selection events. The exact
+selected value and resulting comparison remain required, and the revised helper
+still needs a successful emulator run for its source revision.
 
 The accepted PR 46 main attempt 2 passed all sixteen required cases and retained 33
 PNGs, 30 managed captures and 13 source markers. Two comparison frames received

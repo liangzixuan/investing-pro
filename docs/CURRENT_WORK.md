@@ -222,8 +222,11 @@ React transitions preserved results/disclosure focus without retaining cleared
 data or taking focus from another control. The existing Android Markets journey
 now asserts shared dates, exact values, retained provenance, late-response
 rejection and clearing on navigation using its existing invented responses.
-Execution of those native assertions, hosted checks and delivery remain separate;
-see [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
+Those assertions passed in hosted Android execution. A separate existing
+earlier-date selector test failed when its opening tap became a long press.
+The helper now opens the native picker with Space after verifying select and
+window focus. Fresh native execution, full hosted acceptance and delivery remain
+open. See [the comparison contract](MANAGED_MARKETS_HOME.md#compare-the-three-listings).
 
 The October 10 owner report remains limited to the requested Android 1.19 and
 Brave checklist on Pixel 10 Pro XL/Android 17, without per-step device logs or
