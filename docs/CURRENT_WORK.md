@@ -398,10 +398,14 @@ notes survive the company visit. The original preview and native fixture bundles
 match the reviewed source and complete notices; the native bundle remains below
 the unchanged 4 MiB cap.
 
-The existing Android refresh journey now checks retained instant balances and
-recovery with zero liabilities. Its prior assertions, case/capture counts and
-deadlines remain intact. Hosted native execution and PR checks for this increment
-are pending. It has not been merged or delivered.
+The existing Android refresh journey checks retained instant balances and
+recovery with zero liabilities. All 27 cases passed in the original hosted run.
+Its Ubuntu and Windows jobs found two older tests that incorrectly included the
+independent liquidity table in income-only assertions. A reviewed test correction
+scopes those assertions to income and explicitly retains the liquidity table.
+The corrected head passes the affected tests, the full Ubuntu job and all 27
+Android cases; Windows remains pending. Original failures are retained. This
+candidate has not been merged or delivered.
 
 ### Liquidity-to-note candidate
 
@@ -415,8 +419,13 @@ qualifiers. See the [note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity
 Implementation preserves current-report and draft guards, exact duplicate refusal,
 the complete 2,000-character policy and explicit whole-watchlist Save. Focused
 model, component and composition checks, fresh web types, source boundaries and
-scoped lint/format pass. Independent source reviews pass. Rendered browser and
-hosted native execution remain pending. This candidate is not merged or delivered.
+scoped lint/format pass. Independent source reviews pass. Chrome at 1440, 390 and
+320 CSS pixels verifies complete appended and saved notes, focus, refusal recovery
+and response/session boundaries. A duplicate refusal keeps one visible explanation
+and a persistent polite announcement. The preview and native bundles retain full
+notices and the unchanged asset limit. The extended native refresh journey checks
+exact initial, retained and zero-liability paragraphs; its original hosted
+execution remains pending. This candidate is not merged or delivered.
 
 ## Product scope
 
