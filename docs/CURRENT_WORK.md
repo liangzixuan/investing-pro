@@ -106,6 +106,15 @@ accepts it and rejects missing, altered or extra settings in an isolated check;
 a cross-file regression passes. Whole-app build and native execution still need
 the updated revision's hosted checks. The original failure remains retained.
 
+The updated run executed all 26 Android cases. One failed at an added license
+check because its boundary assertion expected zero saves after the test's
+intentional save; the assertion now expects that one save. The other 25 cases
+passed, including announcements and export. APK isolation was skipped after the
+failure. Ubuntu also timed out while comparing the complete decompressed license
+Buffer. That test now uses native exact-byte equality and keeps the same timeout
+and remaining assertions. Both original failures remain recorded; the repaired
+revision still needs its own hosted checks.
+
 ### Watchlist Annual comparison in development
 
 The next increment compares two different companies from the full watchlist

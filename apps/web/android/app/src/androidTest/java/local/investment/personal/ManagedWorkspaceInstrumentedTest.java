@@ -2696,7 +2696,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertCompleteSoftwareLicenses();
         assertCompanyNoteDraft(2, false);
         assertCompanyNoteCounts(1, 2);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private void assertCompleteSoftwareLicenses() throws Exception {
