@@ -656,9 +656,38 @@ at version 8. Direct-link fallback, invalid links and retirement also pass.
 The preview uses invented RAM data; it makes no live provider or account claim.
 
 The exact native fixture bundle preserves complete software notices. Its largest
-loader payload is 2,348,539 bytes, below the unchanged 4 MiB limit. This is build
-acceptance; original hosted desktop and Android execution remain pending.
-Production and prior candidates are unchanged.
+loader payload is 2,348,539 bytes, below the unchanged 4 MiB limit. All five
+original hosted Actions pass, including both desktop suites and all 27 Android
+cases with the APK isolation gate. CodeScene retains three reviewed maintenance
+advisories without an actionable finding. Stale step metadata is qualified by
+the original job outcomes, full logs and reports. Production is unchanged.
+
+### Newly observed Filings filter candidate
+
+The next increment adds **Refresh view** to company Filings. After an explicit
+refresh supplies a comparison, it can show only newly observed accessions and
+combine them with Form and Filing date. Original row order, source records and
+reference-to-note actions remain available. Filtering makes no request or Save.
+See the [Filings guide](MANAGED_SEC_FILINGS.md#filter-newly-observed-filings).
+
+Affected model, component and Screen checks pass, along with web types, scoped
+lint, formatting, source boundaries and independent source review. Chrome checks
+confirm that filtering precedes paging, combines with Form and Filing date, and
+preserves the complete loaded-list comparison and its original source dates.
+An older newly observed filing adds its exact reference to the latest Unicode
+note. Reordering, whole-draft Save and reload preserve every identity and note.
+Cancellation and transient failure keep the selected filters; a new response,
+including equal content, resets them. Empty results retain their coverage limits.
+Invalid data clears the company results, and late work cannot restore a retired
+session. These checks use invented RAM data.
+
+The first desktop check found a clipped option label. A copy-only correction
+uses **Newly observed**, with the full explanation below. The corrected commit
+`ad3b9e42` passes Chrome at 1440, 390 and 320 CSS pixels, with 44-pixel controls,
+keyboard focus and no horizontal page overflow. Earlier behavior evidence
+applies to the unchanged logic. Complete software notices remain in the exact
+native bundle, whose largest loader payload is 2,351,050 bytes under the unchanged
+4 MiB cap. Original hosted execution remains pending. Production is unchanged.
 
 ## Product scope
 
@@ -684,8 +713,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish the filing comparison's hosted checks and the source integration steps
-when permission arrives. Preserve explicit source requests,
+Finish the newly observed Filings filter's original hosted checks and the source
+integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

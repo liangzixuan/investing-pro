@@ -73,7 +73,7 @@
 }
 .clerk-trial.managed-frame .managed-filings-filters {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 .clerk-trial.managed-frame .managed-filings-annual-context {

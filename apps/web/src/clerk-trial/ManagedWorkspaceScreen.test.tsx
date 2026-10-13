@@ -61,6 +61,11 @@ import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import {
+  initialManagedFilingsFilter,
+  projectManagedFilingsFilter,
+  selectManagedFilingsRefreshView,
+} from "./managed-filings-filter";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -980,7 +985,7 @@ describe("managed workspace screen", () => {
     expect(workspace.filings.getSnapshot().response).toBeNull();
     expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
   });
-  it("compares a company refresh with its watchlist handoff and saves only the current filing reference", async () => {
+  it("filters a company refresh from its watchlist handoff and saves only the filtered current reference", async () => {
     const { workspace, api, html } = fixture({
       ...payload,
       memberships: [
@@ -1018,6 +1023,22 @@ describe("managed workspace screen", () => {
       'data-filings-new-accession="0000000001-26-000002"',
     );
     const pair = workspace.filings.getSnapshot().refreshComparison;
+    const allFilings = initialManagedFilingsFilter(current, null, pair);
+    const newlyObserved = selectManagedFilingsRefreshView(
+      allFilings,
+      allFilings,
+      "new",
+    );
+    const filtered = projectManagedFilingsFilter(newlyObserved);
+    expect(filtered.rows).toEqual([current.issuer.filings[1]!]);
+    expect(filtered.rows[0]).toBe(current.issuer.filings[1]);
+    expect(filtered.matchingCount).toBe(1);
+    expect(filtered.loadedCount).toBe(2);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(original);
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
     workspace.switchToAnnual();
     workspace.switchToFilings();
     expect(workspace.filings.getSnapshot().refreshComparison).toBe(pair);
@@ -1032,15 +1053,14 @@ describe("managed workspace screen", () => {
       company.props.filingsNoteActions.append(seed, seed.issuer.filings[0]!)
         .appended,
     ).toBe(false);
+    workspace.noteResearch(selection, "Latest thesis after filtering");
     expect(
-      company.props.filingsNoteActions.append(
-        current,
-        current.issuer.filings[1]!,
-      ).appended,
+      company.props.filingsNoteActions.append(current, filtered.rows[0]!)
+        .appended,
     ).toBe(true);
     const draft = workspace.coordinator.getSnapshot().draft!;
     expect(draft.memberships[0]!.note).toContain(
-      "Existing thesis Observed SEC filing reference:",
+      "Latest thesis after filtering Observed SEC filing reference:",
     );
     expect(draft.memberships[0]!.note).toContain("0000000001-26-000002");
     expect(draft.memberships[0]!.note).not.toContain("Newly observed");

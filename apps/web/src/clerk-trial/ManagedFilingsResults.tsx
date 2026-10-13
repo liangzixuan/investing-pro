@@ -6,6 +6,7 @@ import {
 } from "./ManagedFilingsNoteAction";
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
 import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
+import { ManagedFilingsRefreshView } from "./ManagedFilingsRefreshView";
 import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 import type { ManagedFilingsRefreshComparison } from "./managed-filings-refresh-comparison";
 import { ManagedFilingsRefreshComparisonDetails } from "./ManagedFilingsRefreshComparisonDetails";
@@ -18,6 +19,7 @@ import {
   selectManagedFilingsForm,
   selectManagedFilingsPage,
   selectManagedFilingsScope,
+  selectManagedFilingsRefreshView,
 } from "./managed-filings-filter";
 
 export function ManagedFilingsResults({
@@ -36,23 +38,26 @@ export function ManagedFilingsResults({
   noteActions?: ManagedFilingsNoteActions;
 }) {
   const [filter, setFilter] = useState(() =>
-    initialManagedFilingsFilter(response, baseline),
+    initialManagedFilingsFilter(response, baseline, refreshComparison),
   );
-  const selection = bindManagedFilingsFilter(filter, response, baseline);
+  const selection = bindManagedFilingsFilter(
+    filter,
+    response,
+    baseline,
+    refreshComparison,
+  );
   if (selection !== filter) setFilter(selection);
 
   const { page } = selection;
   const view = projectManagedFilingsFilter(selection);
   const available = response.issuer.status === "available";
-  const comparison =
-    available && refreshComparison?.current === response
-      ? refreshComparison
-      : null;
+  const comparison = selection.refreshComparison;
 
   return (
     <ManagedFilingsResultsRegion
       response={response}
       baselineResponse={baseline?.response ?? null}
+      refreshComparison={comparison}
     >
       <FilingsSource response={response} />
       {comparison && (
@@ -100,13 +105,27 @@ export function ManagedFilingsResults({
             )
           }
         />
+        <ManagedFilingsRefreshView
+          value={selection.refreshView}
+          available={comparison !== null}
+          onSelect={(value) =>
+            setFilter((current) =>
+              selectManagedFilingsRefreshView(current, selection, value),
+            )
+          }
+        />
       </div>
       <p className="managed-filings-filter-reset" role="status">
         {selection.resetNotice === "filings-replaced"
-          ? "Filings response changed; showing All forms and All loaded filings from page one."
+          ? "Filings response changed; showing All forms, all filing dates and All loaded filings from page one."
           : selection.resetNotice === "annual-baseline-changed"
-            ? "Annual baseline changed; showing All loaded filings from page one. Your Form filter is unchanged."
-            : ""}
+            ? "Annual baseline changed; showing all filing dates from page one. Your Form and Refresh view filters are unchanged."
+            : selection.resetNotice === "refresh-comparison-changed"
+              ? "Loaded-list comparison changed; showing All loaded filings from page one. Your Form and Filing date filters are unchanged."
+              : selection.resetNotice ===
+                  "annual-and-refresh-comparison-changed"
+                ? "Annual baseline and loaded-list comparison changed; showing all filing dates and All loaded filings from page one. Your Form filter is unchanged."
+                : ""}
       </p>
       {noteActions && (
         <p id="managed-filings-note-scope" className="managed-filings-scope">
@@ -120,18 +139,26 @@ export function ManagedFilingsResults({
             {view.matchingCount} of {view.loadedCount} loaded filings · Page{" "}
             {page + 1} of {view.pages}
           </p>
-          {view.loadedCount === 0 && (
+          {selection.refreshView === "new" && view.matchingCount === 0 && (
+            <p className="managed-filings-empty">
+              No newly observed filings match these filters in this loaded
+              response. This does not establish that no new SEC filings exist.
+            </p>
+          )}
+          {selection.refreshView === "all" && view.loadedCount === 0 && (
             <p className="managed-filings-empty">
               No matching filings were observed in the checked source object.
             </p>
           )}
-          {view.loadedCount > 0 && view.matchingCount === 0 && (
-            <p className="managed-filings-empty">
-              {selection.scope === "after-annual"
-                ? "No later-dated filings match these filters in this loaded response. This does not establish that no subsequent filings exist."
-                : "No loaded filings match this Form filter."}
-            </p>
-          )}
+          {selection.refreshView === "all" &&
+            view.loadedCount > 0 &&
+            view.matchingCount === 0 && (
+              <p className="managed-filings-empty">
+                {selection.scope === "after-annual"
+                  ? "No later-dated filings match these filters in this loaded response. This does not establish that no subsequent filings exist."
+                  : "No loaded filings match this Form filter."}
+              </p>
+            )}
           <FilingsList
             response={response}
             rows={view.rows}

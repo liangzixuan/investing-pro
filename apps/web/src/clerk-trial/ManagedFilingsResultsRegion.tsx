@@ -3,11 +3,13 @@ import type {
   ManagedSecFilingsResponseDto,
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
+import type { ManagedFilingsRefreshComparison } from "./managed-filings-refresh-comparison";
 
 interface RegionProps {
   children: ReactNode;
   response: ManagedSecFilingsResponseDto;
   baselineResponse?: PersonalSecAnnualEvidenceResponseDto | null;
+  refreshComparison?: ManagedFilingsRefreshComparison | null;
 }
 
 /** Capture focus before React removes rows, without reading the DOM in render. */
@@ -17,7 +19,8 @@ export class ManagedFilingsResultsRegion extends Component<RegionProps> {
   override getSnapshotBeforeUpdate(previous: RegionProps): Element | null {
     if (
       previous.response === this.props.response &&
-      previous.baselineResponse === this.props.baselineResponse
+      previous.baselineResponse === this.props.baselineResponse &&
+      previous.refreshComparison === this.props.refreshComparison
     )
       return null;
     const region = this.region.current;

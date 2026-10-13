@@ -13,6 +13,7 @@ import {
   getManagedFilingsAnnualBaseline,
   type ManagedFilingsAnnualBaseline,
 } from "./managed-filings-annual-baseline";
+import { ManagedFilingsRefreshView } from "./ManagedFilingsRefreshView";
 import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
 import { TrialApiError } from "./api";
 import {
@@ -81,6 +82,11 @@ function page(
     buttons: elements(node).filter((element) => element.type === "button"),
     select: elements(node).find((element) => element.type === "select")!,
     node,
+    refreshView: elements(node).find(
+      (element) => element.type === ManagedFilingsRefreshView,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFilingsRefreshView>
+    >,
     dateScope: elements(node).find(
       (element) => element.type === ManagedFilingsAnnualScope,
     ) as React.ReactElement<
@@ -146,7 +152,7 @@ describe("company SEC filings presentation", () => {
     expect(reset.select.key).toBe(shown.select.key);
     expect(reset.node.type).toBe(shown.node.type);
     expect(reset.html).toContain(
-      "Filings response changed; showing All forms and All loaded filings from page one.",
+      "Filings response changed; showing All forms, all filing dates and All loaded filings from page one.",
     );
   });
 
@@ -164,7 +170,7 @@ describe("company SEC filings presentation", () => {
     expect(after.html).toContain("0 of 0 loaded filings · Page 1 of 1");
     expect(after.html).toContain("No matching filings were observed");
     expect(after.html).toContain(
-      "Filings response changed; showing All forms and All loaded filings from page one.",
+      "Filings response changed; showing All forms, all filing dates and All loaded filings from page one.",
     );
     expect(after.select.props.value).toBe("");
     expect(after.select.props.disabled).toBeUndefined();
@@ -231,7 +237,7 @@ describe("company SEC filings presentation", () => {
     read.mockResolvedValueOnce(filingsResponse(0));
     await model.load();
     expect(page(model.getSnapshot().response!).html).toContain(
-      "Filings response changed; showing All forms and All loaded filings from page one.",
+      "Filings response changed; showing All forms, all filing dates and All loaded filings from page one.",
     );
     expect(read).toHaveBeenCalledTimes(4);
   });
@@ -313,7 +319,10 @@ describe("company SEC filings presentation", () => {
         );
       }
       expect(html).toContain('id="managed-filings-form"');
-      expect(html.match(/<option /gu)).toHaveLength(2);
+      expect(html.match(/<option /gu)).toHaveLength(4);
+      expect(html).toContain(
+        '<option value="new" disabled="">Newly observed</option>',
+      );
       expect(html).not.toMatch(/<select[^>]*\sdisabled/gu);
       expect(html).not.toContain("Append");
       expect(read).toHaveBeenCalledOnce();
@@ -430,7 +439,7 @@ describe("filings after the current Annual report", () => {
     expect(reset.dateScope.props.scope).toBe("all");
     expect(reset.select.props.value).toBe("8-K");
     expect(reset.html).toContain(
-      "Annual baseline changed; showing All loaded filings from page one. Your Form filter is unchanged.",
+      "Annual baseline changed; showing all filing dates from page one. Your Form and Refresh view filters are unchanged.",
     );
     stale.dateScope.props.onScope("after-annual");
     expect(page(response, undefined, replacement).html).toBe(reset.html);
@@ -521,7 +530,7 @@ describe("consecutive loaded filing lists", () => {
       const model = new Model(read, vi.fn(), undefined, { compareRefresh });
       model.open(filingsSelection);
       await model.load();
-      expect(panel(model)).not.toContain("Newly observed in this refresh");
+      expect(panel(model)).not.toContain("managed-filings-refresh-count");
       expect(panel(model)).not.toContain("Compared loaded lists");
       await model.load();
       if (compareRefresh)
@@ -546,7 +555,7 @@ describe("consecutive loaded filing lists", () => {
     expect(replacement).not.toBe(current);
     const html = page(replacement, undefined, null, comparison).html;
     expect(html).not.toContain("Compared loaded lists");
-    expect(html).not.toContain("Newly observed in this refresh");
+    expect(html).not.toContain("managed-filings-refresh-count");
     expect(html).toContain("2 of 2 loaded filings");
     const unavailable = checked(filingsResponse(0, "invalid_response"));
     expect(page(unavailable, undefined, null, comparison).html).not.toContain(
@@ -729,7 +738,255 @@ describe("consecutive loaded filing lists", () => {
     read.mockResolvedValueOnce(checked(filingsResponse(0, "invalid_response")));
     await model.load();
     expect(panel(model)).not.toContain("Compared loaded lists");
-    expect(panel(model)).not.toContain("Newly observed in this refresh");
+    expect(panel(model)).not.toContain("managed-filings-refresh-count");
+    expect(read).toHaveBeenCalledTimes(5);
+  });
+
+  it("exposes a guarded native refresh selector before a comparison exists", () => {
+    const current = checked(filingsResponse(2));
+    const shown = page(current);
+    const child = ManagedFilingsRefreshView(shown.refreshView.props);
+    const select = elements(child).find((node) => node.type === "select")!;
+    expect(shown.html).toContain(
+      '<label for="managed-filings-refresh-view">Refresh view</label>',
+    );
+    expect(shown.html).toContain(
+      'aria-describedby="managed-filings-refresh-help"',
+    );
+    expect(select.props.disabled).toBeUndefined();
+    expect(
+      elements(select)
+        .filter((node) => node.type === "option")
+        .map((node) => [node.props.value, node.props.disabled]),
+    ).toEqual([
+      ["all", undefined],
+      ["new", true],
+    ]);
+    expect(shown.html).toContain(
+      "needs two available lists from this company visit",
+    );
+    select.props.onChange!({ currentTarget: { value: "new" } });
+    select.props.onChange!({ currentTarget: { value: "forged" } });
+    expect(page(current).html).toBe(shown.html);
+  });
+
+  it("finds original newly observed rows beyond page one and composes Form without changing note inputs", () => {
+    const laterPacket = later(51);
+    const current = checked({
+      ...laterPacket,
+      issuer: {
+        ...laterPacket.issuer,
+        filings: laterPacket.issuer.filings.map((row, index) =>
+          index >= 26 ? { ...row, filingDate: "2026-10-10" } : row,
+        ),
+      },
+    });
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(26)),
+      current,
+    )!;
+    const actions: ManagedFilingsNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({ appended: true, message: "Added to draft." })),
+    };
+    let shown = page(current, actions, null, comparison);
+    shown.buttons[1]!.props.onClick!();
+    shown = page(current, actions, null, comparison);
+    shown.refreshView.props.onSelect("new");
+    vi.mocked(actions.getAction).mockClear();
+    shown = page(current, actions, null, comparison);
+    expect(shown.html).toContain("25 of 51 loaded filings · Page 1 of 1");
+    expect(shown.html).toContain(
+      "Newly observed in this refresh: 25 of 51 filings in the displayed response.",
+    );
+    expect(shown.html.match(/data-filings-new-accession=/gu)).toHaveLength(25);
+    expect(shown.html.match(/<dd>2026-10-10<\/dd>/gu)).toHaveLength(25);
+    const calls = vi.mocked(actions.getAction).mock.calls;
+    expect(calls).toHaveLength(25);
+    for (const [index, [packet, row]] of calls.entries()) {
+      expect(packet).toBe(current);
+      expect(row).toBe(current.issuer.filings[index + 26]);
+    }
+    expect(actions.append).not.toHaveBeenCalled();
+    shown.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    shown = page(current, actions, null, comparison);
+    expect(shown.html).toContain("0 of 51 loaded filings");
+    expect(shown.html).toContain(
+      "No newly observed filings match these filters in this loaded response.",
+    );
+    expect(shown.html).toContain(
+      "This does not establish that no new SEC filings exist.",
+    );
+    expect(shown.html).toContain(
+      "Newly observed in this refresh: 25 of 51 filings",
+    );
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    expect(page(current, actions, null, comparison).html).toContain(
+      "25 of 51 loaded filings",
+    );
+    expect(actions.append).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 2])(
+    "keeps zero-new filtering available for a %i-row admitted comparison with qualified empty text",
+    (count) => {
+      const previous = checked(filingsResponse(2));
+      const current = checked(filingsResponse(count));
+      const comparison = compareManagedFilingsResponses(previous, current)!;
+      page(current, undefined, null, comparison).refreshView.props.onSelect(
+        "new",
+      );
+      const shown = page(current, undefined, null, comparison);
+      expect(shown.refreshView.props.value).toBe("new");
+      expect(shown.refreshView.props.available).toBe(true);
+      expect(shown.html).toContain(
+        `0 of ${count} loaded filings · Page 1 of 1`,
+      );
+      expect(shown.html).toContain(
+        "No newly observed filings match these filters in this loaded response.",
+      );
+      expect(shown.html).toContain(
+        "This does not establish that no new SEC filings exist.",
+      );
+      expect(shown.html).toContain("Compared loaded lists");
+      expect(shown.html).not.toContain("No matching filings were observed");
+    },
+  );
+
+  it("keeps Refresh view through Annual-only replacement and announces simultaneous resets accurately", async () => {
+    const report = await annualResponse();
+    const target = report.evidence.target;
+    if (target.status !== "target") throw new Error("Expected Annual target");
+    const baseline = { response: report, target };
+    const current = later(51);
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(0)),
+      current,
+    )!;
+    let shown = page(current, undefined, baseline, comparison);
+    shown.refreshView.props.onSelect("new");
+    shown = page(current, undefined, baseline, comparison);
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown = page(current, undefined, baseline, comparison);
+    shown.dateScope.props.onScope("after-annual");
+    shown = page(current, undefined, baseline, comparison);
+    shown.buttons[1]!.props.onClick!();
+    const stale = page(current, undefined, baseline, comparison);
+    expect(stale.html).toContain("Page 2 of 2");
+    const replacement = { ...baseline, response: { ...report } };
+    shown = page(current, undefined, replacement, comparison);
+    expect(shown.refreshView.props.value).toBe("new");
+    expect(shown.select.props.value).toBe("8-K");
+    expect(shown.dateScope.props.scope).toBe("all");
+    expect(shown.html).toContain(
+      "Your Form and Refresh view filters are unchanged.",
+    );
+    stale.refreshView.props.onSelect("all");
+    expect(page(current, undefined, replacement, comparison).html).toBe(
+      shown.html,
+    );
+    shown.dateScope.props.onScope("after-annual");
+    const both = page(current, undefined, baseline, null);
+    expect(both.refreshView.props.value).toBe("all");
+    expect(both.dateScope.props.scope).toBe("all");
+    expect(both.select.props.value).toBe("8-K");
+    expect(both.html).toContain(
+      "Annual baseline and loaded-list comparison changed;",
+    );
+  });
+
+  it("resets and fences captured refresh handlers when only the comparison changes or is lost", () => {
+    const current = later(51);
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(26)),
+      current,
+    )!;
+    let shown = page(current, undefined, null, comparison);
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown = page(current, undefined, null, comparison);
+    shown.refreshView.props.onSelect("new");
+    const stale = page(current, undefined, null, comparison);
+    const nextPair = compareManagedFilingsResponses(
+      checked(filingsResponse(50)),
+      current,
+    )!;
+    const reset = page(current, undefined, null, nextPair);
+    expect(reset.refreshView.props.value).toBe("all");
+    expect(reset.select.props.value).toBe("8-K");
+    expect(reset.html).toContain("Loaded-list comparison changed;");
+    expect(reset.html).toContain(
+      "Your Form and Filing date filters are unchanged.",
+    );
+    stale.refreshView.props.onSelect("new");
+    stale.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    stale.buttons[1]!.props.onClick!();
+    expect(page(current, undefined, null, nextPair).html).toBe(reset.html);
+    reset.refreshView.props.onSelect("new");
+    const selected = page(current, undefined, null, nextPair);
+    expect(selected.html).toContain("1 of 51 loaded filings");
+    const lost = page(current);
+    selected.refreshView.props.onSelect("new");
+    expect(page(current).html).toBe(lost.html);
+    expect(lost.refreshView.props.available).toBe(false);
+    expect(lost.html).not.toContain("Compared loaded lists");
+    expect(lost.html).not.toContain("data-filings-new-accession");
+    expect(lost.node.type).toBe(selected.node.type);
+  });
+
+  it("retains new-only paging through pending, Cancel and failure, then resets on equal-content successful replacement", async () => {
+    const read = vi
+      .fn<ManagedApi["recentFilings"]>()
+      .mockResolvedValueOnce(checked(filingsResponse(1)))
+      .mockResolvedValueOnce(later(51));
+    const model = new Model(read, vi.fn(), undefined, { compareRefresh: true });
+    model.open(filingsSelection);
+    await model.load();
+    await model.load();
+    const current = model.getSnapshot().response!;
+    const comparison = model.getSnapshot().refreshComparison!;
+    page(current, undefined, null, comparison).refreshView.props.onSelect(
+      "new",
+    );
+    page(current, undefined, null, comparison).buttons[1]!.props.onClick!();
+    const selected = page(current, undefined, null, comparison);
+    expect(selected.html).toContain("50 of 51 loaded filings · Page 2 of 2");
+    let release!: (value: ReturnType<typeof filingsResponse>) => void;
+    read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = model.load();
+    const retained = () =>
+      page(
+        model.getSnapshot().response!,
+        undefined,
+        null,
+        model.getSnapshot().refreshComparison,
+      );
+    expect(retained().html).toBe(selected.html);
+    model.cancel();
+    expect(retained().html).toBe(selected.html);
+    release(later(0));
+    await pending;
+    expect(retained().html).toBe(selected.html);
+    read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await model.load();
+    expect(retained().html).toBe(selected.html);
+    expect(panel(model)).toContain(
+      "This attempt has not confirmed newer filings",
+    );
+    read.mockResolvedValueOnce(checked(current));
+    await model.load();
+    const reset = retained();
+    expect(reset.refreshView.props.value).toBe("all");
+    expect(reset.html).toContain(
+      "Filings response changed; showing All forms, all filing dates and All loaded filings from page one.",
+    );
+    selected.refreshView.props.onSelect("new");
+    selected.buttons[1]!.props.onClick!();
+    expect(retained().html).toBe(reset.html);
     expect(read).toHaveBeenCalledTimes(5);
   });
 });

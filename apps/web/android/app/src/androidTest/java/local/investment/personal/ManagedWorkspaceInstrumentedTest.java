@@ -1937,6 +1937,11 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-filings-form')?.value === ''" +
             " && Array.from(document.querySelectorAll('#managed-filings-form option')).map(e => e.value).join('|') === '|10-Q|8-K'" +
             " && (document.querySelector('.managed-filings-filter-reset')?.textContent ?? '') === ''");
+        awaitPage("first loaded list offers no fabricated refresh difference",
+            "document.querySelector('#managed-filings-refresh-view')?.value === 'all'" +
+            " && document.querySelector('#managed-filings-refresh-view')?.disabled === false" +
+            " && document.querySelector('#managed-filings-refresh-view option[value=new]')?.disabled === true" +
+            " && document.querySelector('#managed-filings-refresh-view')?.getBoundingClientRect().height >= 44");
         chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
         awaitPage("native form selection shows one observed quarterly filing without losing focus",
             "document.activeElement?.id === 'managed-filings-form'" +
@@ -2008,7 +2013,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-filings-form')?.value === ''" +
             " && document.querySelector('#managed-filings-form')?.disabled === false" +
             " && document.querySelectorAll('#managed-filings-form option').length === 1" +
-            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms and All loaded filings from page one.'");
+            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms, all filing dates and All loaded filings from page one.'");
         awaitPage("completed empty response leaves Refresh available",
             "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
@@ -2025,9 +2030,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('[aria-label=\"Current loaded list\"]')?.textContent.includes('0 of 0 matching entries')" +
             " && Array.from(document.querySelectorAll('.managed-filings-compared-lists section')).every(s => s.textContent.includes('2026-06-23 to 2026-09-20') && s.textContent.includes('2026-09-20T00:00:00.000Z') && s.textContent.includes('2026-09-20T00:00:01.000Z') && s.textContent.includes('2026-09-20T00:00:02.000Z') && s.textContent.includes('Listed by the source; not loaded.') && s.querySelector('a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json')");
         assertFilingsDraftAndCounts(4, 1, 1);
+        chooseNativeSelectOption("#managed-filings-refresh-view", "new", "Newly observed");
+        awaitPage("zero-new comparison is selectable and retains exact source context", emptyComparison +
+            " && document.activeElement?.id === 'managed-filings-refresh-view'" +
+            " && document.querySelector('#managed-filings-refresh-view')?.value === 'new'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '0 of 0 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === true");
+        assertFilingsDraftAndCounts(4, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
-        awaitPage("pending refresh retains the last accepted comparison", emptyComparison);
+        awaitPage("pending refresh retains the last accepted comparison and refresh view", emptyComparison +
+            " && document.querySelector('#managed-filings-refresh-view')?.value === 'new'");
         assertCompanyHistory("listing-zero", "filings", false);
         closeSoftKeyboard();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();

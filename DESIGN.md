@@ -160,13 +160,17 @@ columns on wide screens and stacked at narrow widths. Preserve the current
 source dates and any retained-result warning. The marker conveys observation,
 not investment importance.
 
-In company Filings, place Form and Filing date in two compact columns, stacked
-on narrow screens. Keep both native selects mounted with 44px targets. Show the
+In company Filings, place Form, Filing date and Refresh view in compact columns,
+stacked on narrow screens. Keep the native selects mounted with 44px targets.
+Refresh view starts with all loaded filings and offers newly observed accessions
+only for the current comparison. Keep its qualified empty result and the full
+comparison count visible. Filtering leaves focus on the selected control. Show the
 Annual filing date and same-day exclusion beside the date control; preserve a
 retained-baseline warning in view. Keep the original Annual identity, source
 clocks and date-window explanation in **Annual baseline and date limits**.
 Result counts describe only loaded rows. A baseline reset preserves Form and
-explains the return to All loaded filings without moving focus from a control.
+Refresh view. It explains the return to all filing dates without moving focus
+from a control.
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,
 with system sans-serif fallbacks for characters outside its coverage. Its local

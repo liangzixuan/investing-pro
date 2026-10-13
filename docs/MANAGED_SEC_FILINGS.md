@@ -103,6 +103,26 @@ monitoring, stored history or source request. A filing's reference-to-note actio
 current row and its original evidence; the comparison label is not added to the
 note. Review and Save remain explicit.
 
+## Filter newly observed filings
+
+**Refresh view** starts at **All loaded filings**. After an available comparison,
+choose **Newly observed in this refresh** to show only current accessions absent
+from the preceding loaded list. This combines with Form and Filing date before
+paging. Rows keep their original order, links and reference-to-note actions.
+The comparison count still describes the complete current response.
+
+The first load and a watchlist handoff have no comparison. They cannot select
+this view. A valid comparison with no additions can be selected and shows an
+empty result; it does not establish that no new SEC filings exist. Different
+windows, truncation and unloaded continuation files still limit both lists.
+
+Choosing a view returns to page one without a request, note change or Save.
+Pending, cancelled and transient failed refreshes that retain the same response
+and comparison also retain the view and page. A replacement Filings response
+resets all filters. A changed or lost comparison resets an active newly observed
+view and page while preserving Form and Filing date. A notice explains the reset.
+Section remount and visit retirement keep their existing behavior.
+
 ## Review filings after an Annual report
 
 When this company visit holds a checked Annual report with a resolved filing,
@@ -114,8 +134,8 @@ Use the existing explicit Load or Refresh controls when new evidence is needed.
 This scope includes only loaded rows whose filed date is strictly later than the
 Annual filing date; it also excludes the Annual accession itself. Other filings
 on the same date remain under All loaded filings because these rows do not supply
-an intraday ordering. Exact forms and amendments remain distinct. Form and date
-filters combine before local paging; changing either returns to page one.
+an intraday ordering. Exact forms and amendments remain distinct. Form, Filing
+date and Refresh view combine before local paging; changing a filter returns to page one.
 
 The date beside the control identifies the baseline. **Annual baseline and date
 limits** retains its exact form, accession, original SEC index link, report end,
@@ -130,9 +150,11 @@ unloaded older continuation files still limit coverage. The disclosure identifie
 when the Annual date lies before or after that loaded window.
 
 Retaining the same packets after a pending, cancelled or failed refresh preserves
-both filters and the page. A new Filings packet resets Form, date scope and page.
+the filters and page. A new Filings packet resets Form, date scope, Refresh view
+and page.
 A changed or unavailable Annual baseline resets an active date scope and page,
-while retaining Form. A notice explains an actual reset. Section remount clears
+while retaining Form and Refresh view. A notice explains an actual reset.
+Section remount clears
 these presentation choices as before; the admitted source packets remain with
 their existing visit owners. Removed focused content falls back to the results
 region only if focus has not already moved to another control.
