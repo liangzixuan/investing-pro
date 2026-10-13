@@ -170,10 +170,12 @@ session retirement preserve their existing contracts. These checks use invented
 RAM data. The integrated native fixture builds with a largest loader payload of
 2,252,458 bytes, below the unchanged 4 MiB cap; all complete license bytes are
 preserved. The original hosted Android run passes all 27 cases and package
-isolation. Ubuntu instead finds two stale test expectations: its Annual request
-still uses version 1.0.0, and its static module inventory omits the extracted
-Annual fact normalizer. The corrected tests retain every existing assertion and
-pass locally. Original failures remain recorded; updated hosted checks are pending.
+isolation. The original Ubuntu and Windows jobs find two stale test expectations:
+the Annual request still uses version 1.0.0, and the static module inventory omits
+the extracted Annual fact normalizer. The corrected tests retain every existing
+assertion. Updated head `4e09479` passes all seven required Actions jobs, including
+27 native cases and package isolation. Original failures and reviewed CodeScene
+advisories remain recorded. Source merge and live delivery remain separate.
 
 ### Annual readability candidate
 
@@ -190,7 +192,35 @@ replacement in both directions between populated and missing bases. Failure,
 Cancel, late replies, exact note evidence, whole-draft Save and session retirement
 retain their existing contracts. Checks use invented RAM data. The integrated
 native fixture builds with a largest loader payload of 2,254,725 bytes, below the
-unchanged 4 MiB cap. Hosted checks and native runtime acceptance remain pending.
+unchanged 4 MiB cap. PR103 passes all six applicable Actions jobs and CodeScene.
+Its original Android run passes all 27 cases and package isolation; the artifact
+has been independently accepted. Source merge and live delivery remain separate.
+
+### Cash generation to note candidate
+
+An explicit company Annual action adds available cash generation to the latest
+watchlist-note draft. It retains both reported USD amounts, the exact app
+calculation, filing and period, raw concepts and original evidence dates.
+Historical and retained reports are qualified; missing or incompatible cash
+inputs remain unavailable. Income evidence does not gate valid cash evidence.
+
+Whole-note validation, exact-duplicate refusal and existing identity, response,
+visit and save-coordinator guards preserve edits. Appending makes no source or
+save request. Review and explicitly save the whole draft. Focused model,
+component and integration checks and independent web source reviews pass.
+Chrome checks at 1440, 390 and 320 CSS pixels accept keyboard use, wrapping,
+latest-note admission, full-draft Save/reload and preservation of other entries.
+Missing and incompatible cash inputs refuse the action; negative cash flow,
+zero purchases and exact long decimals copy without rounding. Income-unavailable,
+historical and retained reports keep the correct qualifications and dates.
+Refresh, Cancel, late replies, malformed responses and retirement preserve their
+existing boundaries. All browser writes use invented RAM data.
+
+The Android Annual-note journey adds exact cash-text, duplicate and capacity
+assertions while preserving its original income-note Save/reload assertions.
+The integrated native bundle builds below the unchanged 4 MiB cap, with a largest
+loader payload of 2,259,108 bytes. Hosted cash-note checks and native runtime
+acceptance remain pending. Deployment remains separate.
 
 ## Product scope
 
@@ -216,8 +246,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Run Annual readability's original hosted checks and Android journey while the
-cash candidate's corrected test expectations run through CI. PR100 and PR101
+Run the cash-to-note candidate's original hosted checks and native journey. PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
 Continue meaningful roadmap

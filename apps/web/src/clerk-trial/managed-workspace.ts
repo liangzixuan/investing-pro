@@ -29,6 +29,7 @@ import {
   type ManagedEodHistorySeed,
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
+import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
@@ -1014,6 +1015,77 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private annualCashNoteProposal(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding cash generation.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose cash generation from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualCashNoteExcerpt(response, annual.showingPrevious);
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Cash generation needs available operating cash flow and PP&E purchases from the same filing and annual period.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason:
+          "This exact cash-generation reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualCashNoteAction(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualCashNoteProposal(selection, response);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualCashToResearchNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualCashNoteProposal(selection, response);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Cash generation added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private priceNoteProposal(

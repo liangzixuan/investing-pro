@@ -27,6 +27,11 @@ import {
 } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { annualNoteExcerpt } from "./managed-annual-note";
+import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
+import {
+  cashResponse,
+  cashRow,
+} from "../features/research/sec-annual-cash-fixture";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import {
@@ -4896,4 +4901,307 @@ describe("watchlist Annual comparison workspace ownership", () => {
     });
     expect(api.save).not.toHaveBeenCalled();
   });
+});
+
+describe("Annual cash generation appended to the shared note", () => {
+  const zero: PersonalSecurityMasterSearchResultDto = {
+    ...eodSelection.listing,
+    cik: "0000000001",
+    matchKind: "current_symbol_exact",
+    matchedValue: "ZERO",
+  };
+  async function cashNoteFixture(available = true) {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(second), note: "Keep the other share class" },
+        { ...listingMembership(zero), note: "Original thesis" },
+      ],
+    });
+    const { workspace, api } = setup;
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [zero, second],
+      totalMatches: 2,
+      limitApplied: 25,
+      normalizedQuery: "ZERO",
+    });
+    const response = await cashResponse(
+      available
+        ? [
+            cashRow("operating_cash_flow", "-250.125"),
+            cashRow("ppe_purchases", "0"),
+          ]
+        : [],
+    );
+    vi.mocked(api.annualReport).mockResolvedValue(response);
+    await ready(workspace);
+    workspace.openDiscoveryAnnual(zero);
+    await workspace.annual.load();
+    const selection = workspace.getSnapshot().research!.selection;
+    const append = () =>
+      workspace.appendAnnualCashToResearchNote(selection, response);
+    return { ...setup, selection, response, append };
+  }
+
+  it("uses current raw prose, preserves other members and requires explicit whole-list save before reload", async () => {
+    const { workspace, api, session, selection, response, append, saved } =
+      await cashNoteFixture();
+    expect(workspace.getAnnualCashNoteAction(selection, response)).toEqual({
+      canAppend: true,
+      reason: null,
+    });
+    const prose = "  Cafe\u0301 thesis revised after rendering 😀  ";
+    workspace.noteResearch(selection, prose);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const excerpt = annualCashNoteExcerpt(response, false)!;
+    expect(excerpt).not.toBeNull();
+    expect(append()).toEqual({
+      appended: true,
+      message:
+        "Cash generation added to the note draft. Review and save all changes in My Watchlist.",
+    });
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft).toEqual({
+      ...before,
+      memberships: [
+        before.memberships[0],
+        { ...before.memberships[1], note: prose + " " + excerpt },
+      ],
+    });
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    workspace.switchToEod();
+    workspace.closeResearch();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships[1]?.note).toBe(
+      normalizeWatchlistNote(prose + " " + excerpt),
+    );
+    const reopened = new ManagedWorkspace(api, session);
+    await reopened.coordinator.load();
+    expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
+  });
+
+  it("refuses the exact excerpt twice and permits an explicit remove and re-add", async () => {
+    const { workspace, selection, response, append, api } =
+      await cashNoteFixture();
+    expect(append().appended).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(append()).toEqual({
+      appended: false,
+      message:
+        "This exact cash-generation reference is already in the note draft.",
+    });
+    expect(
+      workspace.getAnnualCashNoteAction(selection, response).canAppend,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.noteResearch(selection, "Edited thesis");
+    expect(append().appended).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+    ).toBe("Edited thesis " + annualCashNoteExcerpt(response, false));
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    "copied selection",
+    "copied response",
+    "reopened visit",
+    "other listing",
+    "closed visit",
+    "Price section",
+    "replacement response",
+    "catalog change",
+    "retirement",
+  ])(
+    "rejects a stale callback after %s without changing the draft or requesting data",
+    async (boundary) => {
+      const setup = await cashNoteFixture();
+      const { workspace, api, response } = setup;
+      let { selection } = setup;
+      let captured = response;
+      if (boundary === "copied selection") selection = { ...selection };
+      else if (boundary === "copied response") captured = { ...response };
+      else if (boundary === "reopened visit") {
+        workspace.closeResearch();
+        workspace.openDiscoveryAnnual(zero);
+        await workspace.annual.load();
+      } else if (boundary === "other listing")
+        workspace.openDiscoveryAnnual(second);
+      else if (boundary === "closed visit") workspace.closeResearch();
+      else if (boundary === "Price section") workspace.switchToEod();
+      else if (boundary === "replacement response") {
+        vi.mocked(api.annualReport).mockResolvedValueOnce(
+          structuredClone(response),
+        );
+        await workspace.annual.load();
+      } else if (boundary === "catalog change") {
+        vi.mocked(api.status).mockResolvedValue({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      } else workspace.coordinator.retire();
+      const before = workspace.coordinator.getSnapshot().draft;
+      const reads = vi.mocked(api.annualReport).mock.calls.length;
+      expect(
+        workspace.getAnnualCashNoteAction(selection, captured).canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendAnnualCashToResearchNote(selection, captured).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.annualReport).toHaveBeenCalledTimes(reads);
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("blocks during refresh, qualifies the retained report after Cancel and ignores a late completion", async () => {
+    const { workspace, api, selection, response, append } =
+      await cashNoteFixture();
+    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+    vi.mocked(api.annualReport).mockReturnValueOnce(held.promise);
+    const loading = workspace.annual.load();
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(append()).toEqual({
+      appended: false,
+      message: "Wait for the Annual report request to finish or cancel it.",
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    workspace.annual.cancel();
+    expect(append().appended).toBe(true);
+    const appended = workspace.coordinator.getSnapshot().draft;
+    expect(appended?.memberships[1]?.note).toBe(
+      "Original thesis " + annualCashNoteExcerpt(response, true),
+    );
+    expect(annualCashNoteExcerpt(response, true)).not.toBe(
+      annualCashNoteExcerpt(response, false),
+    );
+    held.resolve(
+      await cashResponse(
+        [cashRow("operating_cash_flow", "999"), cashRow("ppe_purchases", "12")],
+        "2026-09-21T00:00:00.000Z",
+      ),
+    );
+    await loading;
+    expect(workspace.annual.getSnapshot().response).toBe(response);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(appended);
+    expect(
+      workspace.getAnnualCashNoteAction(selection, response).canAppend,
+    ).toBe(false);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("keeps an unavailable cash section from adding an income-only report", async () => {
+    const { workspace, selection, response, append, api } =
+      await cashNoteFixture(false);
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.getAnnualCashNoteAction(selection, response).canAppend,
+    ).toBe(false);
+    expect(append().appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing member", "changed identity", "stale draft catalog"])(
+    "preserves the %s boundary without adding a member",
+    async (boundary) => {
+      const { workspace, append, api } = await cashNoteFixture();
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      workspace.coordinator.replaceDraft({
+        ...draft,
+        snapshotSha256:
+          boundary === "stale draft catalog" ? nextDigest : digest,
+        memberships:
+          boundary === "missing member"
+            ? [draft.memberships[0]!]
+            : draft.memberships.map((member) =>
+                member.listingId === zero.listingId &&
+                boundary === "changed identity"
+                  ? { ...member, shareClassId: "changed-class" }
+                  : member,
+              ),
+      });
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["loading", "saving", "conflict", "commit_unknown"] as const)(
+    "preserves the %s coordinator boundary",
+    async (boundary) => {
+      const { workspace, api, append } = await cashNoteFixture();
+      workspace.note(zero.listingId, "Changed thesis");
+      const held = deferred<never>();
+      let pending: Promise<void> | null = null;
+      if (boundary === "loading") {
+        vi.mocked(api.load).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.load();
+      } else if (boundary === "saving") {
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        pending = workspace.coordinator.save();
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(boundary));
+        await workspace.coordinator.save();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      const saves = vi.mocked(api.save).mock.calls.length;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).toHaveBeenCalledTimes(saves);
+      if (pending) {
+        held.reject(new TrialApiError("unavailable"));
+        await pending;
+      }
+    },
+  );
+
+  it.each(["😀", "e\u0301"])(
+    "accepts 2,000 normalized code points with %s but refuses overflow without truncation",
+    async (unit) => {
+      const { workspace, selection, response, append, api } =
+        await cashNoteFixture();
+      const excerpt = annualCashNoteExcerpt(response, false)!;
+      expect(excerpt).not.toBeNull();
+      const room = 2000 - [...excerpt].length - 1;
+      workspace.noteResearch(selection, unit.repeat(room + 1));
+      const tooLong = workspace.coordinator.getSnapshot().draft;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(tooLong);
+      workspace.noteResearch(selection, unit.repeat(room));
+      expect(append().appended).toBe(true);
+      const note =
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!.note;
+      expect(note).toBe(unit.repeat(room) + " " + excerpt);
+      expect([...normalizeWatchlistNote(note)!]).toHaveLength(2000);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["private\nline", "invisible\u200btext"])(
+    "preserves an invalid latest raw note instead of appending",
+    async (note) => {
+      const { workspace, selection, response, append, api } =
+        await cashNoteFixture();
+      expect(
+        workspace.getAnnualCashNoteAction(selection, response).canAppend,
+      ).toBe(true);
+      workspace.noteResearch(selection, note);
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(append().appended).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
 });

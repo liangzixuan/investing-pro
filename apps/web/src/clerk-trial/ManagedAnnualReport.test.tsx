@@ -30,6 +30,10 @@ import {
   ManagedAnnualNoteAction,
   type ManagedAnnualNoteActions,
 } from "./ManagedAnnualNoteAction";
+import {
+  ManagedAnnualCashNoteAction,
+  type ManagedAnnualCashNoteActions,
+} from "./ManagedAnnualCashNoteAction";
 
 const panelHooks = vi.hoisted(() => ({
   enabled: false,
@@ -133,6 +137,60 @@ const laterResponse = () =>
   );
 
 describe("managed annual refresh", () => {
+  it("passes only the displayed response to an optional cash action and removes it with the report", async () => {
+    const { model, load } = fixture();
+    const old = await response();
+    const next = structuredClone(old);
+    load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
+    model.open(selection);
+    await model.load();
+    const cashNoteActions: ManagedAnnualCashNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({
+        appended: false,
+        message: "The report changed.",
+      })),
+    };
+    panelHooks.enabled = true;
+    const resultFor = (actions?: ManagedAnnualCashNoteActions) => {
+      panelHooks.index = 0;
+      const panel = Panel({
+        model,
+        ...(actions ? { cashNoteActions: actions } : {}),
+      }) as React.ReactElement<{ children?: React.ReactNode }> | null;
+      return React.Children.toArray(panel?.props.children).find(
+        (node) =>
+          React.isValidElement(node) && node.type === SecAnnualEvidenceResult,
+      ) as
+        | React.ReactElement<
+            React.ComponentProps<typeof SecAnnualEvidenceResult>
+          >
+        | undefined;
+    };
+    expect(resultFor()!.props.cashAction).toBeNull();
+    const captured = resultFor(cashNoteActions)!.props
+      .cashAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedAnnualCashNoteAction>
+    >;
+    expect(captured.type).toBe(ManagedAnnualCashNoteAction);
+    expect(captured.props.response).toBe(old);
+    expect(captured.props.actions).toBe(cashNoteActions);
+    expect(captured.key).toBeNull();
+    await model.load();
+    const current = resultFor(cashNoteActions)!.props
+      .cashAction as typeof captured;
+    expect(current.props.response).toBe(next);
+    expect(current.props.response).not.toBe(captured.props.response);
+    expect(current.key).toBe(captured.key);
+    expect(current.props.response.evidence.generation.sha256).toBe(
+      captured.props.response.evidence.generation.sha256,
+    );
+    model.close();
+    expect(resultFor(cashNoteActions)).toBeUndefined();
+    expect(cashNoteActions.append).not.toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it("binds each note action to the displayed response and pair, including a captured older control", async () => {
     const { model, load } = fixture();
     const old = await response();

@@ -6,13 +6,19 @@ import {
   ManagedAnnualNoteAction,
   type ManagedAnnualNoteActions,
 } from "./ManagedAnnualNoteAction";
+import {
+  ManagedAnnualCashNoteAction,
+  type ManagedAnnualCashNoteActions,
+} from "./ManagedAnnualCashNoteAction";
 
 export function ManagedAnnualReport({
   model,
   noteActions,
+  cashNoteActions,
 }: {
   model: AnnualReportModel;
   noteActions?: ManagedAnnualNoteActions;
+  cashNoteActions?: ManagedAnnualCashNoteActions;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -85,6 +91,14 @@ export function ManagedAnnualReport({
         <SecAnnualEvidenceResult
           response={state.response}
           appearance="financial"
+          cashAction={
+            cashNoteActions ? (
+              <ManagedAnnualCashNoteAction
+                response={state.response}
+                actions={cashNoteActions}
+              />
+            ) : null
+          }
           renderPairAction={(pair) =>
             noteActions && state.response ? (
               <ManagedAnnualNoteAction

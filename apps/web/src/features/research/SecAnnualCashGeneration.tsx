@@ -5,6 +5,7 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import { ObservationDetails } from "./SecAnnualObservation";
+import type { ReactNode } from "react";
 
 const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
   invalid_clock: "The original source times could not be validated.",
@@ -45,8 +46,10 @@ const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
 
 export function SecAnnualCashGeneration({
   response,
+  cashAction,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly cashAction?: ReactNode;
 }) {
   const { cashGeneration: cash, generation } = response.evidence;
   return (
@@ -76,6 +79,7 @@ export function SecAnnualCashGeneration({
         from operating cash flow for the same filing and period. It does not
         adjust for leases, acquisitions or other investing cash flows.
       </p>
+      {cashAction}
       <details className="sec-quarterly-row-details sec-annual-cash-source">
         <summary>Cash sources and calculation inputs</summary>
         <p>

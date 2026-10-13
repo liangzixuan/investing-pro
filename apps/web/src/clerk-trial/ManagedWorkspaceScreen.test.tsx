@@ -22,6 +22,11 @@ import {
   annualComparativeRows,
 } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
+import {
+  cashResponse,
+  cashRow,
+} from "../features/research/sec-annual-cash-fixture";
+import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
@@ -914,6 +919,105 @@ describe("managed workspace screen", () => {
     expect(api.annualReport).toHaveBeenCalledTimes(2);
     expect(api.save).not.toHaveBeenCalled();
     expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("wires cash generation to the latest shared note and updates guarded capacity without saving", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Original thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    const report = await cashResponse([
+      cashRow("operating_cash_flow", "120.125"),
+      cashRow("ppe_purchases", "20"),
+    ]);
+    vi.mocked(api.annualReport).mockResolvedValue(report);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    const company = () => {
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const node = ManagedWorkspaceScreen({ workspace });
+      mounted.direct = false;
+      return elements(node).find(
+        (element) => element.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const captured = company().props.annualCashNoteActions;
+    expect(captured.getAction(report).canAppend).toBe(true);
+    company().props.onNote("x".repeat(2000));
+    expect(html()).toMatch(
+      /<button[^>]*aria-disabled="true"[^>]*>Add cash generation to note draft<\/button>/u,
+    );
+    const tooLong = workspace.coordinator.getSnapshot().draft;
+    expect(captured.append(report).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(tooLong);
+    company().props.onNote("  Latest Cafe\u0301 thesis  ");
+    const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
+    expect(captured.append(report).appended).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(
+      "  Latest Cafe\u0301 thesis   " + annualCashNoteExcerpt(report, false),
+    );
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1],
+    ).toStrictEqual(other);
+    expect(captured.getAction(report)).toEqual({
+      canAppend: false,
+      reason:
+        "This exact cash-generation reference is already in the note draft.",
+    });
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("fences cash-note callbacks after response replacement and a reopened visit", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep my thesis" }],
+    });
+    const report = await cashResponse([
+      cashRow("operating_cash_flow", "123"),
+      cashRow("ppe_purchases", "23"),
+    ]);
+    const next = structuredClone(report);
+    vi.mocked(api.annualReport)
+      .mockResolvedValueOnce(report)
+      .mockResolvedValue(next);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const actions = company.props.annualCashNoteActions;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    await workspace.annual.load();
+    expect(actions.append(report).appended).toBe(false);
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    expect(actions.append(next).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.annualReport).toHaveBeenCalledTimes(3);
+    expect(api.save).not.toHaveBeenCalled();
   });
 
   it("coordinates company section, Back and watchlist review through URL navigation", async () => {
