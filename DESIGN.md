@@ -123,6 +123,11 @@ on desktop and stack controls on narrow screens. Retain full identities and
 original source dates beside the results. Comparison controls use the same 44px
 targets and focus treatment as other research controls.
 
+Keep each exact request-completion timestamp on one line in the watchlist
+comparison's listing cell. Let that table size its columns from their content
+inside the existing horizontal scroll region. Retain the complete source
+disclosure and wrapping for long exact numeric values.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well

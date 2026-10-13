@@ -7,14 +7,23 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
-The next local increment adds an optional indexed raw-price path chart to the
+The current local increment adds an optional indexed raw-price path chart to the
 existing two-listing watchlist comparison. It uses only the currently loaded
 shared dates and selected interval, with exact source closes and rounded indices
-in an accessible table. It adds no source requests or saved state. Local checks,
-native payload accounting, independent review and browser acceptance are being
-completed in an isolated branch from `5b2715e`; the frozen release and separate
-timestamp refinement are unchanged. See the
+in an accessible table. It adds no source requests or saved state. Focused tests,
+types, lint, source boundaries and independent source review pass. Chrome review
+identified axis-title contrast and endpoint date clipping; the scoped corrections
+pass local checks, with final visual acceptance pending. The branch includes
+verified main `f277392`, while the frozen release remains `5b2715e`. See the
 [watchlist guide](APPWRITE_WATCHLIST.md#inspect-raw-price-paths) for the scope.
+
+PR98 is merged in `f277392`. Its styling keeps watchlist comparison completion
+timestamps on one line and sizes the table columns from their content inside
+the existing horizontal scroll region. Exact strings and source details remain
+available. Hosted checks and independent native and Chrome reviews pass; standard
+and long exact prices stay contained at 1440, 390 and 320 pixels, with keyboard
+scrolling to the final column. This refinement is outside the frozen `5b2715e`
+release and changes no state, request or persistence behavior.
 
 The active local design refinement makes the workspace footer compact. Software
 licenses follow the content in the same column. Session scope appears beside
