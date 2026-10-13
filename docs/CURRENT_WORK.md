@@ -30,7 +30,7 @@ owner write was performed, and the initial failure's cause is unknown.
 | --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability |
 | Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                            |
-| Main source     | PR100 then PR101 merged; main is `9cc3423`              | Final actual-main checks are running; published release stays unchanged                    |
+| Main source     | PR100 then PR101 merged; main is `9cc3423`              | All six actual-main Actions passed; published release stays unchanged                      |
 | Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                             |
 
 ## Current task and next acceptance
@@ -426,8 +426,8 @@ and response/session boundaries. A duplicate refusal keeps one visible explanati
 and a persistent polite announcement. The preview and native bundles retain full
 notices and the unchanged asset limit. The extended native refresh journey checks
 exact initial, retained and zero-liability paragraphs. Its original hosted run
-passes all 27 Android cases and independent artifact review. Five of six applicable
-Actions jobs pass; Windows remains pending. This candidate is not merged or delivered.
+passes all 27 Android cases and independent artifact review. All six applicable
+Actions jobs pass. This candidate is not merged or delivered.
 
 ### Liquidity comparison candidate
 
@@ -438,10 +438,14 @@ remain independent of income, cash and revenue-basis selection. The table reuses
 the company liquidity presenters without another request, state owner or
 calculation. See the [comparison guide](MANAGED_SEC_ANNUAL.md#compare-liquidity-between-companies).
 
-Focused comparison and shared-presenter checks, web types and scoped source
-checks pass. Independent review, rendered desktop/mobile acceptance, native
-artifact checks and original hosted execution remain in progress. This candidate
-is not merged or delivered.
+Focused comparison and shared-presenter checks, web types, source boundaries and
+scoped checks pass. Independent source and static-bundle reviews pass. Chrome at
+1440, 390 and 320 CSS pixels verifies exact balances, separate dates, long values,
+keyboard scrolling, source disclosures and independent unavailable states.
+Retained refreshes, cancellation, late completion, navigation with an unsaved note
+and session retirement preserve the existing response boundaries. The native
+fixture retains complete notices and stays below its unchanged asset limit;
+original hosted execution remains pending. This candidate is not merged or delivered.
 
 ## Product scope
 
@@ -471,7 +475,7 @@ Complete liquidity comparison acceptance. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
-actual-main checks are running. PR100's actual-main runs were cancelled when
+actual-main checks all passed. PR100's actual-main runs were cancelled when
 PR101 advanced main; those cancellations remain recorded. Later candidates and
 live delivery remain separate actions.
 Continue meaningful roadmap
