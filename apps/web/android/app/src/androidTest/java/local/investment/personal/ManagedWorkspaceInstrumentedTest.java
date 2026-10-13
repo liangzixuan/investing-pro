@@ -979,6 +979,27 @@ public class ManagedWorkspaceInstrumentedTest {
         assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
         click(".managed-watchlist-price-path > summary");
         assertWatchlistPricePath();
+        String method = ".managed-watchlist-price-path-method";
+        String methodSummary = method + " > summary";
+        awaitPage("chart method starts closed with its native touch target",
+            "(() => { const d = document.querySelector(" + JSONObject.quote(method) + ");" +
+            " return d?.open === false && d.querySelector('summary')?.textContent === 'Chart method and limits'" +
+            " && d.querySelector('summary').getBoundingClientRect().height >= 44; })()");
+        click(methodSummary);
+        awaitPage("complete method remains inspectable without closing the chart",
+            "(() => { const d = document.querySelector(" + JSONObject.quote(method) + ");" +
+            " return d?.open === true && d.querySelector('p').getBoundingClientRect().height > 0" +
+            " && d.querySelector('p').textContent.replace(/\\s+/g, ' ').trim() === " + JSONObject.quote(
+                "Index = 100 × raw close / starting raw close, rounded half up to four decimal places. " +
+                "Chart coordinates are approximate; the vertical scale follows the values. " +
+                "Straight lines guide the eye between shared observations; dates are spaced by observation, " +
+                "with no filled gaps. Omitted dates can hide declines. This is not a USD price or a " +
+                "split/dividend-adjusted return.") + "; })()");
+        assertWatchlistPricePath();
+        click(methodSummary);
+        awaitPage("method closes independently of the chart",
+            "document.querySelector(" + JSONObject.quote(method) + ")?.open === false");
+        assertWatchlistPricePath();
         chooseNativeSelectOption(end, "", "Choose an observed date");
         awaitPage("blank end withholds comparison numbers without reading",
             "document.querySelector('.managed-watchlist-comparison table') === null" +

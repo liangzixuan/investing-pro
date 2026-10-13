@@ -19,16 +19,17 @@ export function ManagedWatchlistPricePath({
     <details
       className="managed-watchlist-price-path"
       open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
+      onToggle={(event) => {
+        if (event.target === event.currentTarget) {
+          setOpen(event.currentTarget.open);
+        }
+      }}
     >
       <summary>Compare raw-price paths</summary>
       <p>
-        Index = 100 × raw close / starting raw close, rounded half up to four
-        decimal places. Chart coordinates are approximate; the vertical scale
-        follows the values. Straight lines guide the eye between shared
-        observations; dates are spaced by observation, with no filled gaps.
-        Omitted dates can hide declines. This is not a USD price or a
-        split/dividend-adjusted return.
+        Index starts at 100; prices are unadjusted. Coordinates are approximate,
+        with a fitted scale and equally spaced observations. Gaps can hide
+        declines; exact values are below.
       </p>
       {path && (
         <ul aria-label="Price path line styles">
@@ -44,6 +45,17 @@ export function ManagedWatchlistPricePath({
         </ul>
       )}
       {open && active && path && <ManagedWatchlistPricePathChart path={path} />}
+      <details className="managed-watchlist-price-path-method">
+        <summary>Chart method and limits</summary>
+        <p>
+          Index = 100 × raw close / starting raw close, rounded half up to four
+          decimal places. Chart coordinates are approximate; the vertical scale
+          follows the values. Straight lines guide the eye between shared
+          observations; dates are spaced by observation, with no filled gaps.
+          Omitted dates can hide declines. This is not a USD price or a
+          split/dividend-adjusted return.
+        </p>
+      </details>
       <div
         className="managed-watchlist-price-path-data"
         role="region"

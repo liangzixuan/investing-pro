@@ -111,6 +111,12 @@ the observed values; observation spacing does not represent elapsed calendar tim
 Straight segments guide the eye without filling gaps. Missing observations can
 hide declines, and raw prices are unadjusted for splits or dividends.
 
+The short guide stays above the plot. Open **Chart method and limits**, between
+the plot and exact table, for the complete formula, rounding and interpretation
+limits. It starts closed and remains available when the chart cannot render.
+Opening or closing this explanation preserves the chart and exact data. Its
+disclosure choice lasts while the view stays mounted.
+
 The exact-data table keeps every source USD close and its four-decimal index,
 rounded half up using decimal arithmetic. Chart coordinates are approximate and
 never feed endpoint changes, ranking or note evidence. If an index exceeds the

@@ -12,7 +12,14 @@ Release `5b2715e` is published on the managed website and API. Android 1.26.0
 preserved. Physical installation was not performed. This release includes the
 watchlist note search, comparison-to-note action and compact workspace footer.
 
-The current local increment adds an optional indexed raw-price path chart to the
+The current local presentation increment puts a short guide above the raw-price
+chart and keeps its complete calculation explanation in an initially closed
+**Chart method and limits** disclosure. The method remains available through
+unavailable data, without changing the chart, exact table or data lifetime. It
+reuses native summary controls and the existing focus treatment. Rendered review
+and hosted checks for this increment are pending.
+
+The preceding local increment adds an optional indexed raw-price path chart to the
 existing two-listing watchlist comparison. It uses only the currently loaded
 shared dates and selected interval, with exact source closes and rounded indices
 in an accessible table. It adds no source requests or saved state. Focused tests,

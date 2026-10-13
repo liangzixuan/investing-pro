@@ -137,6 +137,13 @@ focusable horizontal region available when plotting fails; numeric tokens remain
 whole while identity labels may wrap. Closing or hiding the view disposes the
 chart without changing draft, source or comparison state.
 
+Lead the chart with a short reading guide that keeps unadjusted prices,
+approximate coordinates, observation spacing and hidden declines visible. Put the
+full formula and limits in an initially closed native **Chart method and limits**
+disclosure after the plot and before the exact table. Reuse the 44px summary and
+focus treatment without adding a card. Keep the method available through missing
+or unsafe data, with its open state retained for the mounted view.
+
 Place the labelled **Add comparison to** native selector and quiet **Add
 comparison to note draft** action outside the results' horizontal scroll. Start
 with an empty destination and name both available listings by symbol, company,

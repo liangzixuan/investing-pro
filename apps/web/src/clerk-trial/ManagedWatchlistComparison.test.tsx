@@ -206,8 +206,9 @@ describe("watchlist pair presentation", () => {
       'aria-label="Watchlist raw price comparison results"',
     );
     expect(html.match(/<select /gu) ?? []).toHaveLength(5);
-    expect(html.match(/<summary>/gu) ?? []).toHaveLength(2);
+    expect(html.match(/<summary>/gu) ?? []).toHaveLength(3);
     expect(html).toContain("<summary>Compare raw-price paths</summary>");
+    expect(html).toContain("<summary>Chart method and limits</summary>");
   });
 
   it("shows exact endpoints, signed changes, share classes and original dated provenance", () => {
