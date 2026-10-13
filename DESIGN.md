@@ -285,7 +285,10 @@ Company research shows Price, Annual or Filings beside the watchlist note on wid
 screens. Below 1150px the note follows that content in reading order. Opening
 research hides the origin view while preserving its mounted state. Returning
 restores focus after the origin is visible; route and Android Back behavior stay
-with their existing owners. Filings uses a compact dated list with original SEC
+with their existing owners. If the layout changes during research, keep the
+focused return control fully visible above mobile navigation. Leave its scroll
+position alone when it already fits, and never move focus back after the user
+has chosen another control. Filings uses a compact dated list with original SEC
 links, local page controls and a stable results region. Keep source coverage and
 previous-result notices beside the data; use the same 44px section controls.
 Each filing has a quiet 44px action that adds its dated reference to the existing

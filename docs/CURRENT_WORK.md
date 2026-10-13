@@ -467,8 +467,8 @@ dates, cancelled and late reads, and session retirement. The integrated native
 fixture retains complete notices and fits the unchanged asset limit. The original
 hosted Android run passes all 27 cases and independent artifact review, including
 the bounded liquidity append/refusal assertions. Native liquidity Save is outside
-those assertions. Windows CI remains pending; this candidate is not merged or
-delivered.
+those assertions. All five applicable original Actions and CodeScene pass; this
+candidate is not merged or delivered.
 
 ### Annual report navigation candidate
 
@@ -490,8 +490,11 @@ assertions still require their original hosted run.
 An adjacent Chrome finding remains: entering company research at desktop width
 and returning after narrowing the window focuses the original watchlist button
 below the visible area. Fresh phone-width visits return to a visible button.
-The next increment will correct responsive return visibility while preserving
-the existing draft and focus ownership.
+The next increment corrects responsive return visibility while preserving the
+existing draft and focus ownership. It adds a bounded follow-up check of the
+still-focused return control. Already visible controls and focus moved elsewhere
+are left alone; stale visit/session work is cancelled. Implementation and focused
+source, browser and native acceptance are in progress.
 
 ## Product scope
 

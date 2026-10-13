@@ -274,6 +274,40 @@ function CatalogReviewPanel({
   );
 }
 
+function revealReturnedTarget(target: HTMLElement, view: Window) {
+  const viewport = view.visualViewport ?? {
+    offsetTop: 0,
+    offsetLeft: 0,
+    height: view.innerHeight,
+    width: view.innerWidth,
+  };
+  let bottom = viewport.offsetTop + viewport.height;
+  const navigation = target
+    .closest(".managed-workspace")
+    ?.querySelector(".managed-navigation");
+  if (
+    navigation &&
+    !navigation.contains(target) &&
+    view.getComputedStyle(navigation).position === "fixed"
+  ) {
+    const rect = navigation.getBoundingClientRect();
+    if (rect.top > viewport.offsetTop && rect.bottom >= bottom)
+      bottom = Math.min(bottom, rect.top);
+  }
+  const rect = target.getBoundingClientRect();
+  if (
+    rect.top < viewport.offsetTop ||
+    rect.bottom > bottom ||
+    rect.left < viewport.offsetLeft ||
+    rect.right > viewport.offsetLeft + viewport.width
+  )
+    target.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "instant",
+    });
+}
+
 export function ManagedWorkspaceScreen({
   workspace,
   androidBack,
@@ -297,13 +331,40 @@ export function ManagedWorkspaceScreen({
   const routeBack = navigation?.back;
   const hasCompanyRoute = navigation?.hasCompanyRoute;
   const restoreFocus = useCallback(() => {
-    if (panelOrigin.current?.isConnected) panelOrigin.current.focus();
-    else if (workspace.getSnapshot().view === "markets")
-      marketsNavigation.current?.focus();
-    else if (workspace.getSnapshot().view === "watchlist")
-      watchlistNavigation.current?.focus();
-    else discoverHeading.current?.focus();
+    const returned = workspace.getSnapshot();
+    const target = panelOrigin.current?.isConnected
+      ? panelOrigin.current
+      : returned.view === "markets"
+        ? marketsNavigation.current
+        : returned.view === "watchlist"
+          ? watchlistNavigation.current
+          : discoverHeading.current;
     panelOrigin.current = null;
+    target?.focus();
+    const view = target?.ownerDocument?.defaultView;
+    if (!target || !view) return;
+    let active = true;
+    // Recheck once after the return render, without changing browser history.
+    const frame = view.requestAnimationFrame(() => {
+      const phase = workspace.coordinator.getSnapshot().phase;
+      if (
+        !active ||
+        workspace.getSnapshot() !== returned ||
+        returned.research ||
+        returned.companyRoute ||
+        phase === "retired" ||
+        phase === "signing_out" ||
+        !target.isConnected ||
+        target.getClientRects().length === 0 ||
+        target.ownerDocument.activeElement !== target
+      )
+        return;
+      revealReturnedTarget(target, view);
+    });
+    return () => {
+      active = false;
+      view.cancelAnimationFrame(frame);
+    };
   }, [workspace]);
   const backToWorkspace = useCallback(() => {
     if (routeBack) routeBack();
@@ -313,7 +374,7 @@ export function ManagedWorkspaceScreen({
     }
   }, [routeBack, workspace]);
   useEffect(() => {
-    if (navigation?.returnFocus || localReturnFocus) restoreFocus();
+    if (navigation?.returnFocus || localReturnFocus) return restoreFocus();
   }, [navigation?.returnFocus, localReturnFocus, restoreFocus]);
   const setView = (view: "markets" | "discover" | "watchlist") => {
     if (navigation) return navigation.view(view);

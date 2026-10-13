@@ -396,6 +396,88 @@ function commitReturnFocus(
   mounted.effects[effectIndex]!();
 }
 
+async function returnedFocusFixture() {
+  const { workspace, api } = fixture();
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  workspace.setView("watchlist");
+  workspace.note("listing-one", "Keep this responsive return draft");
+  const before = workspace.coordinator.getSnapshot().draft;
+  const document = {
+    activeElement: null as unknown,
+    defaultView: null as unknown,
+  };
+  let rectangle = { top: 355, bottom: 399, left: 30, right: 155 };
+  const navigation = {
+    getBoundingClientRect: () => ({ top: 773, bottom: 844 }),
+    contains: vi.fn(() => false),
+  };
+  const target = {
+    isConnected: true,
+    ownerDocument: document,
+    getClientRects: vi.fn(() => [{}]),
+    getBoundingClientRect: vi.fn(() => rectangle),
+    closest: () => ({ querySelector: () => navigation }),
+    focus: vi.fn(() => {
+      document.activeElement = target;
+    }),
+    scrollIntoView: vi.fn(),
+  };
+  let frame: FrameRequestCallback | undefined;
+  const view = {
+    innerHeight: 844,
+    innerWidth: 320,
+    visualViewport: { offsetTop: 0, offsetLeft: 0, height: 844, width: 308 },
+    getComputedStyle: vi.fn(() => ({ position: "fixed" })),
+    requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => {
+      frame = callback;
+      return 42;
+    }),
+    cancelAnimationFrame: vi.fn(),
+  };
+  document.defaultView = view;
+  const nav: ManagedCompanyNavigation = {
+    invalid: false,
+    returnFocus: 1,
+    hasCompanyRoute: () => false,
+    open: (action) => action(),
+    section: vi.fn(),
+    view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(true),
+    back: vi.fn(),
+  };
+  const render = (current = workspace) => {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const index = mounted.effects.length;
+    ManagedWorkspaceScreen({ workspace: current, navigation: nav });
+    return () => mounted.effects[index]!();
+  };
+  const commit = render();
+  mounted.refs[0]!.current = target;
+  mounted.refs[2]!.current = target;
+  return {
+    workspace,
+    api,
+    before,
+    document,
+    target,
+    navigation,
+    view,
+    render,
+    commit,
+    offscreen: () => {
+      rectangle = { top: 1198, bottom: 1242, left: 30, right: 155 };
+    },
+    covered: () => {
+      rectangle = { top: 760, bottom: 804, left: 30, right: 155 };
+    },
+    placeAt: (top: number) => {
+      rectangle = { ...rectangle, top, bottom: top + 44 };
+    },
+    frame: () => frame?.(0),
+  };
+}
+
 async function recoveryFocusFixture(navigation?: ManagedCompanyNavigation) {
   const { workspace, api } = fixture();
   await workspace.coordinator.load();
@@ -1374,6 +1456,111 @@ describe("managed workspace screen", () => {
     mountEffects();
     expect(focus).toHaveBeenCalledOnce();
     expect(mounted.refs[0]!.current).toBeNull();
+  });
+
+  it("reveals the focused return target once if later responsive restoration moves it offscreen", async () => {
+    const h = await returnedFocusFixture();
+    h.commit();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    h.offscreen();
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "instant",
+    });
+    expect(h.view.requestAnimationFrame).toHaveBeenCalledOnce();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.workspace.coordinator.getSnapshot().draft).toBe(h.before);
+    expect(h.api.load).toHaveBeenCalledOnce();
+    expect(h.api.status).toHaveBeenCalledOnce();
+    expect(h.api.annualReport).not.toHaveBeenCalled();
+    expect(h.api.eodHistory).not.toHaveBeenCalled();
+    expect(h.api.recentFilings).not.toHaveBeenCalled();
+    expect(h.api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["visible", "desktop sidebar"])(
+    "does not scroll an already visible return target (%s)",
+    async (layout) => {
+      const h = await returnedFocusFixture();
+      if (layout === "desktop sidebar") {
+        h.covered();
+        h.view.getComputedStyle.mockReturnValue({ position: "static" });
+      }
+      h.commit();
+      h.frame();
+      expect(h.target.focus).toHaveBeenCalledOnce();
+      expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reveals an opener covered by the fixed mobile navigation", async () => {
+    const h = await returnedFocusFixture();
+    h.commit();
+    h.covered();
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a smaller visual viewport authoritative when navigation lies below it", async () => {
+    const h = await returnedFocusFixture();
+    h.view.visualViewport.height = 400;
+    h.commit();
+    h.placeAt(500);
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
+  it("focuses the visible fallback inside mobile navigation without scrolling when the opener is gone", async () => {
+    const h = await returnedFocusFixture();
+    mounted.refs[0]!.current = { isConnected: false, focus: vi.fn() };
+    h.navigation.contains.mockReturnValue(true);
+    h.commit();
+    h.covered();
+    h.frame();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "moved focus",
+    "detached",
+    "hidden",
+    "new visit",
+    "retired",
+    "unmount",
+  ])("discards a deferred return correction after %s", async (change) => {
+    const h = await returnedFocusFixture();
+    const cleanup = h.commit();
+    h.offscreen();
+    if (change === "moved focus") h.document.activeElement = {};
+    if (change === "detached") h.target.isConnected = false;
+    if (change === "hidden") h.target.getClientRects.mockReturnValue([]);
+    if (change === "new visit") {
+      h.workspace.openWatchlistAnnual(h.before!.memberships[0]!);
+      h.workspace.closeResearch();
+    }
+    if (change === "retired") h.workspace.coordinator.retire();
+    if (change === "unmount") cleanup?.();
+    h.frame();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.view.requestAnimationFrame).toHaveBeenCalledOnce();
+    if (change === "unmount")
+      expect(h.view.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(42);
+  });
+
+  it("cancels a prior workspace's return frame when its effect is replaced", async () => {
+    const h = await returnedFocusFixture();
+    const cleanup = h.commit();
+    h.offscreen();
+    cleanup?.();
+    h.render(fixture().workspace);
+    h.frame();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    expect(h.view.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(42);
   });
 
   it("uses the route Back action while company metadata is still pending", async () => {
