@@ -194,6 +194,14 @@ warnings explicitly scoped to revenue and net income. Cash availability does
 not depend on the selected revenue basis. Put the complete cash inputs inside
 each company's existing source disclosure, preserving the original dates.
 
+Follow cash with four liquidity rows in that same table. Each balance and
+calculation keeps its own balance date and current-use warning. Distinguish exact
+USD balances from the rounded current-ratio multiple; label both calculated rows.
+Keep liquidity independent of revenue-basis selection and income/cash warnings.
+Place instant observations and calculation references inside each company's
+existing source disclosure. Use the same shared value and source presentation as
+company Annual, with comparison-sized type and contained long-value wrapping.
+
 Place the Annual comparison note action outside the horizontal table scroll.
 Use compact labelled selectors for evidence group and the destination listing,
 followed by one explicit append button. The destination begins empty; keep full

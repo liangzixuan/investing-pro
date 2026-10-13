@@ -1,4 +1,7 @@
-import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
+import {
+  liquidity,
+  liquidityRow,
+} from "../features/research/sec-annual-liquidity-fixture";
 import {
   cashGeneration,
   cashRow,
@@ -6,6 +9,7 @@ import {
 import type {
   PersonalSecAnnualCashObservationDto,
   PersonalSecAnnualEvidenceResponseDto,
+  PersonalSecAnnualLiquidityObservationDto,
   PersonalSecQuarterlyObservationDto,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
@@ -88,6 +92,10 @@ export async function parseAnnualComparisonFixture(
     ...raw.evidence.cashGeneration.operatingCashFlow.observations,
     ...raw.evidence.cashGeneration.ppePurchases.observations,
   ],
+  liquidityRows: readonly PersonalSecAnnualLiquidityObservationDto[] = [
+    ...raw.evidence.liquidity.currentAssets.observations,
+    ...raw.evidence.liquidity.currentLiabilities.observations,
+  ],
 ): Promise<Response> {
   const bytes = new TextEncoder().encode(
     serializePersonalSecAnnualGeneration(raw.evidence),
@@ -110,10 +118,7 @@ export async function parseAnnualComparisonFixture(
         ...evidence,
         resolution: resolvePersonalSecAnnualEvidence(evidence),
         cashGeneration: await cashGeneration(evidence, cashRows),
-        liquidity: await liquidity(evidence, [
-          ...raw.evidence.liquidity.currentAssets.observations,
-          ...raw.evidence.liquidity.currentLiabilities.observations,
-        ]),
+        liquidity: await liquidity(evidence, liquidityRows),
       },
     },
     {
@@ -157,6 +162,39 @@ export function annualComparisonCashRows(
       coordinates,
     ),
     cashRow("ppe_purchases", side === "left" ? "250" : "300", coordinates),
+  ];
+}
+
+export function annualComparisonLiquidityRows(
+  side: Side = "left",
+): PersonalSecAnnualLiquidityObservationDto[] {
+  const { cik, accessionNumber, filedDate, reportDate } =
+    filingCoordinates[side];
+  const coordinates = {
+    endDate: reportDate,
+    accessionNumber,
+    filedDate,
+    frame: null,
+    filing: {
+      status: "matched" as const,
+      form: "10-K" as const,
+      filedDate,
+      reportDate,
+      acceptedAt: `${filedDate}T00:00:00.000Z`,
+      sourceUrl: `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u, "")}/${accessionNumber}-index.htm`,
+    },
+  };
+  return [
+    liquidityRow(
+      "current_assets",
+      side === "left" ? "1500" : "900",
+      coordinates,
+    ),
+    liquidityRow(
+      "current_liabilities",
+      side === "left" ? "600" : "1200",
+      coordinates,
+    ),
   ];
 }
 
@@ -224,6 +262,7 @@ export async function annualComparisonResponse(
     readonly mode?: Mode;
     readonly rows?: PersonalSecQuarterlyObservationDto[];
     readonly cashRows?: readonly PersonalSecAnnualCashObservationDto[];
+    readonly liquidityRows?: readonly PersonalSecAnnualLiquidityObservationDto[];
     readonly cutoffAt?: string;
   } = {},
 ): Promise<Response> {
@@ -290,6 +329,7 @@ export async function annualComparisonResponse(
         ? incomeUnavailable(packet)
         : packet,
     options.cashRows ?? annualComparisonCashRows(side),
+    options.liquidityRows ?? annualComparisonLiquidityRows(side),
   );
 }
 

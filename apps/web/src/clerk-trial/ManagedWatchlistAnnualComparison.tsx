@@ -15,6 +15,10 @@ import {
   SecAnnualCashSourceBody,
   SecAnnualCashValueContent,
 } from "../features/research/SecAnnualCashGeneration";
+import {
+  SecAnnualLiquiditySourceBody,
+  SecAnnualLiquidityValueContent,
+} from "../features/research/SecAnnualLiquidity";
 import type {
   ManagedWatchlistAnnualComparison as ComparisonModel,
   ManagedWatchlistAnnualComparisonState as ComparisonState,
@@ -119,7 +123,8 @@ export function ManagedWatchlistAnnualComparison({
       <h3 id={`${id}-heading`}>Compare annual results</h3>
       <p className="managed-annual-comparison-help">
         Choose two different companies from your full watchlist draft. Load each
-        report explicitly. Fiscal periods and revenue bases may differ.
+        report explicitly. Fiscal periods, balance dates and revenue bases may
+        differ.
       </p>
       <div className="managed-annual-comparison-choices">
         {sides.map((side) => (
@@ -142,9 +147,9 @@ export function ManagedWatchlistAnnualComparison({
         {state.message}
       </p>
       <p id={`${id}-scroll`} className="managed-annual-comparison-help">
-        Exact, unscaled USD. Each company keeps its own reported period and
-        basis. Scroll the results horizontally when needed, or focus them and
-        use the arrow keys.
+        Exact, unscaled USD amounts; current ratio is a rounded multiple. Each
+        company keeps its own period, balance date and revenue basis. Scroll the
+        results horizontally when needed, or focus them and use the arrow keys.
       </p>
       <div
         className="managed-annual-comparison-scroll"
@@ -154,10 +159,10 @@ export function ManagedWatchlistAnnualComparison({
         tabIndex={0}
       >
         <table className="managed-annual-comparison-table">
-          <caption>Reported annual results · separate company filings</caption>
+          <caption>Annual results · separate company filings</caption>
           <thead>
             <tr>
-              <th scope="col">Reported measure</th>
+              <th scope="col">Measure</th>
               {sides.map((side) => (
                 <th scope="col" key={side}>
                   {state[side].selected ? (
@@ -228,6 +233,7 @@ export function ManagedWatchlistAnnualComparison({
               }
             </ComparisonRow>
             <CashComparisonRows state={state} />
+            <LiquidityComparisonRows state={state} />
           </tbody>
         </table>
       </div>
@@ -235,6 +241,13 @@ export function ManagedWatchlistAnnualComparison({
         The app calculation subtracts purchases of property, plant and equipment
         from operating cash flow for the same filing and period. It does not
         adjust for leases, acquisitions or other investing cash flows.
+      </p>
+      <p className="managed-annual-comparison-help">
+        Working capital subtracts current liabilities from current assets.
+        Current ratio divides current assets by current liabilities and rounds
+        to two decimal places, half up. Both calculations require nonnegative
+        balances from the same filing and date; the ratio requires positive
+        liabilities. Current assets are not all cash.
       </p>
       <ManagedWatchlistAnnualComparisonNoteAction
         state={state}
@@ -313,6 +326,13 @@ export function ManagedWatchlistAnnualComparison({
                   >
                     <h4>Cash sources and calculation inputs</h4>
                     <SecAnnualCashSourceBody response={response} />
+                  </div>
+                  <div
+                    className="managed-annual-comparison-liquidity-source"
+                    data-annual-comparison-liquidity-source={side}
+                  >
+                    <h4>Liquidity sources and calculation inputs</h4>
+                    <SecAnnualLiquiditySourceBody response={response} />
                   </div>
                 </details>
               )}
@@ -617,6 +637,40 @@ function CashComparisonRows({ state }: { state: ComparisonState }) {
             {response ? (
               <SecAnnualCashValueContent
                 value={response.evidence.cashGeneration.resolution[metric]}
+              />
+            ) : (
+              "Not loaded"
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  ));
+}
+
+const liquidityRows = [
+  ["currentAssets", "Current assets", "Reported", "USD"],
+  ["currentLiabilities", "Current liabilities", "Reported", "USD"],
+  ["workingCapital", "Working capital", "App calculation", "USD"],
+  ["currentRatio", "Current ratio", "App calculation", "multiple"],
+] as const;
+
+function LiquidityComparisonRows({ state }: { state: ComparisonState }) {
+  return liquidityRows.map(([metric, label, kind, unit]) => (
+    <tr key={metric} data-annual-comparison-liquidity={metric}>
+      <th scope="row">
+        {label}
+        <small>
+          {kind} · {unit}
+        </small>
+      </th>
+      {sides.map((side) => {
+        const response = state[side].report.response;
+        return (
+          <td key={side}>
+            {response ? (
+              <SecAnnualLiquidityValueContent
+                value={response.evidence.liquidity.resolution[metric]}
               />
             ) : (
               "Not loaded"

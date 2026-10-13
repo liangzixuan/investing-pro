@@ -30,7 +30,7 @@ owner write was performed, and the initial failure's cause is unknown.
 | --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability |
 | Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                            |
-| Main source     | PR99 merged as `b59c92a`; actual-main checks pass       | Published release stays unchanged                                                          |
+| Main source     | PR100 then PR101 merged; main is `9cc3423`              | All six actual-main Actions passed; published release stays unchanged                      |
 | Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                             |
 
 ## Current task and next acceptance
@@ -403,8 +403,9 @@ recovery with zero liabilities. All 27 cases passed in the original hosted run.
 Its Ubuntu and Windows jobs found two older tests that incorrectly included the
 independent liquidity table in income-only assertions. A reviewed test correction
 scopes those assertions to income and explicitly retains the liquidity table.
-The corrected head passes the affected tests, the full Ubuntu job and all 27
-Android cases; Windows remains pending. Original failures are retained. This
+The corrected head passes all six applicable Actions jobs, including the full
+Ubuntu and Windows checks and all 27 Android cases. Independent native artifact
+review accepts the original corrected run. Original failures are retained. This
 candidate has not been merged or delivered.
 
 ### Liquidity-to-note candidate
@@ -424,8 +425,27 @@ scoped lint/format pass. Independent source reviews pass. Chrome at 1440, 390 an
 and response/session boundaries. A duplicate refusal keeps one visible explanation
 and a persistent polite announcement. The preview and native bundles retain full
 notices and the unchanged asset limit. The extended native refresh journey checks
-exact initial, retained and zero-liability paragraphs; its original hosted
-execution remains pending. This candidate is not merged or delivered.
+exact initial, retained and zero-liability paragraphs. Its original hosted run
+passes all 27 Android cases and independent artifact review. All six applicable
+Actions jobs pass. This candidate is not merged or delivered.
+
+### Liquidity comparison candidate
+
+The next increment adds four liquidity rows to the existing two-company Annual
+comparison. Each balance and calculation keeps its own date, original source
+details and current-use qualification. Missing inputs and refused calculations
+remain independent of income, cash and revenue-basis selection. The table reuses
+the company liquidity presenters without another request, state owner or
+calculation. See the [comparison guide](MANAGED_SEC_ANNUAL.md#compare-liquidity-between-companies).
+
+Focused comparison and shared-presenter checks, web types, source boundaries and
+scoped checks pass. Independent source and static-bundle reviews pass. Chrome at
+1440, 390 and 320 CSS pixels verifies exact balances, separate dates, long values,
+keyboard scrolling, source disclosures and independent unavailable states.
+Retained refreshes, cancellation, late completion, navigation with an unsaved note
+and session retirement preserve the existing response boundaries. The native
+fixture retains complete notices and stays below its unchanged asset limit;
+original hosted execution remains pending. This candidate is not merged or delivered.
 
 ## Product scope
 
@@ -451,11 +471,13 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for Annual liquidity. Preserve explicit
-source requests, same-company identity and the existing research-note workflow.
-PR100 and PR101
-have passed their original hosted checks and remain awaiting source-merge
-approval. Their merges, the later candidates and live delivery are separate actions.
+Complete liquidity comparison acceptance. Preserve explicit source requests,
+same-company identity and the existing research-note workflow. PR100 and PR101
+merged in order after owner approval and verification of both bases and applicable
+checks. The final merged source has the reviewed PR101 tree; its original
+actual-main checks all passed. PR100's actual-main runs were cancelled when
+PR101 advanced main; those cancellations remain recorded. Later candidates and
+live delivery remain separate actions.
 Continue meaningful roadmap
 work with existing subscriptions and permitted free sources; broader fields and
 cohorts need verified source rights, cost, quotas and identity handling.

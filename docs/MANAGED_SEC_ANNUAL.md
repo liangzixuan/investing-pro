@@ -99,6 +99,27 @@ Session retirement clears both columns. Refresh failure, invalid response and
 source eligibility use the existing Annual report rules. This comparison adds
 no field, feed, cohort, API schema, persistence or automatic refresh.
 
+### Compare liquidity between companies
+
+Four rows after cash generation show **Current assets**, **Current liabilities**,
+**Working capital** and **Current ratio** from each loaded report. Balances and
+working capital retain exact, unscaled USD strings. Current ratio is a multiple
+rounded to two decimal places, half up. Each value shows its own balance date and
+current-use qualification; the companies may have different fiscal year ends.
+
+Working capital subtracts current liabilities from current assets. Current ratio
+divides current assets by current liabilities. Both require nonnegative balances
+from the same filing and date; the ratio also requires positive liabilities.
+Zero liabilities leave working capital available with an explicit ratio refusal.
+Negative working capital is a valid result. Missing or rejected values retain
+their own explanation, independent of income, cash and the selected revenue basis.
+
+Each company's existing source disclosure includes the original instant
+observations, filing links, source captures and calculation references. Refresh,
+failure, cancellation, selection and session retirement follow the existing
+report owner. Rendering and changing a basis send no extra request. The comparison
+note action continues to offer its existing income and cash evidence groups.
+
 ### Open the full report from a comparison
 
 Each loaded column offers **Open full Annual report** beside its load controls.
@@ -319,7 +340,8 @@ duration observation remains inspectable as supplied. The seven-day source
 freshness and 485-day report policies still apply; valid older balances remain
 readable with historical labels. The existing whole-response lifetime carries
 liquidity through refresh, cancellation, navigation and comparison-to-company
-handoff. Liquidity comparison columns and history remain outside this scope.
+handoff. The [comparison rows](#compare-liquidity-between-companies) reuse these
+checked balances and calculations. Liquidity history remains outside this scope.
 
 ### Add liquidity to a note
 

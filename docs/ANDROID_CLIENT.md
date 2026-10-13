@@ -277,6 +277,14 @@ failed refresh, cancellation and late completion. Session retirement clears the
 draft and both reports. It adds no provider connection or Save action. Its source and fixture checks do not establish
 native acceptance; the original hosted run must execute the new required case.
 
+The liquidity comparison extension keeps that journey and adds four rows to its
+existing value assertions. It checks each company's exact balances, working
+capital, rounded ratio, separate balance date and current-use text through basis
+changes and report lifetimes. Its source assertions retain original instant
+observations, capture clocks, filing links and calculation references. The case
+and capture sets, loader limit and APK isolation gates stay unchanged. Source and
+syntax checks do not establish emulator acceptance for this extension.
+
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,
 retained history and reset behavior without extra price reads or saves. It
