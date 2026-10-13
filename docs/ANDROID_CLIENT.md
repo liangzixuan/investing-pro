@@ -285,6 +285,15 @@ observations, capture clocks, filing links and calculation references. The case
 and capture sets, loader limit and APK isolation gates stay unchanged. Source and
 syntax checks do not establish emulator acceptance for this extension.
 
+The liquidity comparison note extension selects Liquidity and ONE as the
+explicit destination, edits ONE's latest prefix, then appends while ZERO remains
+selected in the editor. It checks the whole separately dated paragraph, the
+retained qualifier on ZERO only, unchanged order and other note, duplicate
+refusal, and source/read/save counts. It restores the original draft before the
+existing cash comparison Save and reload checks. Liquidity Save and reload are
+covered separately by composed workspace and browser checks; this native
+extension covers append and refusal. Its own hosted execution remains required.
+
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,
 retained history and reset behavior without extra price reads or saves. It

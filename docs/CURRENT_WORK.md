@@ -447,6 +447,16 @@ and session retirement preserve the existing response boundaries. The native
 fixture retains complete notices and stays below its unchanged asset limit;
 original hosted execution remains pending. This candidate is not merged or delivered.
 
+### Liquidity comparison to note candidate
+
+The next increment adds **Liquidity** to the existing comparison Evidence
+selector. It reuses each company's checked liquidity excerpt, retains complete
+listing identity and separate balance dates, and appends both companies' evidence
+to one chosen member's latest note. The existing whole-note limit, duplicate and
+freshness guards and explicit Save remain in place. No source, calculation or
+persistence change is planned. Implementation and focused acceptance are in
+progress; browser, native and hosted acceptance remain pending.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -471,7 +481,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete liquidity comparison acceptance. Preserve explicit source requests,
+Complete the liquidity comparison-to-note workflow and its acceptance. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

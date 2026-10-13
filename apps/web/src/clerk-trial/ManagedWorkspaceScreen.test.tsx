@@ -1595,12 +1595,16 @@ describe("managed workspace screen", () => {
   it.each([
     ["income", "ready"],
     ["cash", "ready"],
+    ["liquidity", "ready"],
     ["income", "invalid"],
     ["cash", "invalid"],
+    ["liquidity", "invalid"],
     ["income", "pending"],
     ["cash", "pending"],
+    ["liquidity", "pending"],
     ["income", "becomes-pending"],
     ["cash", "becomes-pending"],
+    ["liquidity", "becomes-pending"],
   ] as const)(
     "wires %s Annual comparison notes with navigation %s",
     async (group, route) => {

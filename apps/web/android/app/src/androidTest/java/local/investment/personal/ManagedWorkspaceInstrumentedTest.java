@@ -77,6 +77,26 @@ public class ManagedWorkspaceInstrumentedTest {
         "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. " +
         "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows. " +
         "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String ANNUAL_COMPARISON_LIQUIDITY_PREFIX = "Latest ONE liquidity thesis";
+    private static final String ANNUAL_COMPARISON_LIQUIDITY_NOTE = ANNUAL_COMPARISON_LIQUIDITY_PREFIX + " " +
+        "Observed Annual liquidity comparison; exact, unscaled USD; current ratio is a multiple. " +
+        "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 1500; reported current liabilities (LiabilitiesCurrent) USD 600. " +
+        "App calculations: working capital USD 900; current ratio 2.50 multiple (two decimal places, half up). " +
+        "Same filing and date. Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. Retained previous report. " +
+        "Evidence dates are unchanged; this action does not refresh sources. " +
+        "ONE (One Company; One Class A; Class A; XNAS, US): Observed Annual liquidity: ONE (XNAS); CIK 0000000002; 10-K balances at 2025-06-30. " +
+        "Reported current assets (AssetsCurrent) USD 900; reported current liabilities (LiabilitiesCurrent) USD 1200. " +
+        "App calculations: working capital USD -300; current ratio 0.75 multiple (two decimal places, half up). " +
+        "Same filing and date. Current assets are not all cash. " +
+        "Filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources. " +
+        "Company balance dates may differ; no cross-company calculation or ranking.";
     private static final String NOTE = "Draft survives native Back";
     private static final String LIQUIDITY_NOTE_INITIAL =
         "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
@@ -534,6 +554,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(4, 1, 1);
         assertAnnualComparisonDraft();
+        assertAnnualComparisonLiquidityNote();
         chooseNativeSelectOption("#managed-annual-comparison-note-group", "cash", "Cash generation");
         chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
         click(".managed-annual-report-opener[aria-label='Open full Annual report for ZERO (Zero Company; Class A; XNAS)']");
@@ -724,6 +745,50 @@ public class ManagedWorkspaceInstrumentedTest {
             " && input.querySelector('a')?.href === url && input.querySelector('a')?.target === '_blank'" +
             " && input.querySelector('a')?.rel === 'noreferrer'; })" +
             " && ids[0] !== ids[1] && [...liquidity.querySelectorAll(':scope > p')].slice(-2).map(p => p.textContent).join('|') === 'Working capital references: ' + ids.join(' · ') + '|Current ratio references: ' + ids.join(' · '); }); })()");
+    }
+
+    private void assertAnnualComparisonLiquidityNote() throws Exception {
+        chooseNativeSelectOption("#managed-annual-comparison-note-group", "liquidity", "Liquidity");
+        chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-one", "ONE · One Company · Class A · XNAS");
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", "Invented second note", ANNUAL_COMPARISON_LIQUIDITY_PREFIX);
+        closeSoftKeyboard();
+        selectWatchlistNote(1);
+        awaitPage("liquidity action keeps the chosen destination after editing its latest prefix",
+            "document.querySelector('#managed-annual-comparison-note-group')?.value === 'liquidity'" +
+            " && document.querySelector('#managed-annual-comparison-note-destination')?.value === 'listing-one'" +
+            " && document.querySelector('.managed-annual-comparison-note-action button')?.getAttribute('aria-disabled') === 'false'");
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        assertAnnualComparisonLiquidityDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        awaitPage("duplicate liquidity comparison retains the whole note and exposes its refusal",
+            "document.querySelector('.managed-annual-comparison-note-help')?.textContent === 'This exact Annual comparison reference is already in the note draft.'" +
+            " && document.querySelector('.managed-annual-comparison-note-status')?.textContent === 'This exact Annual comparison reference is already in the note draft.'" +
+            " && document.querySelector('.managed-annual-comparison-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        assertAnnualComparisonLiquidityDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", ANNUAL_COMPARISON_LIQUIDITY_NOTE, "Invented second note");
+        closeSoftKeyboard();
+        selectWatchlistNote(1);
+        assertAnnualComparisonDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+    }
+
+    private void assertAnnualComparisonLiquidityDraft() throws Exception {
+        awaitPage("liquidity appends exact separately dated evidence to ONE while ZERO remains selected",
+            DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_COMPARISON_LIQUIDITY_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.map(member => member.listingId).join(',') === 'listing-one,listing-zero'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-zero'" +
+            " && document.querySelectorAll('.managed-watchlist-choice[aria-pressed=true]').length === 1");
     }
 
     private void assertAnnualComparisonDraft() throws Exception {

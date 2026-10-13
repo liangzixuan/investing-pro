@@ -109,6 +109,12 @@ current member, response and route across cancellation and opening; a stale
 callback cannot replace a newer visit. See the
 [Annual comparison guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison).
 
+The comparison's **Evidence** selector also offers **Liquidity**. Choose either
+compared listing as the note destination, then append both companies' complete
+liquidity evidence to that listing's latest draft. Separate balance dates and
+original source clocks stay in the text. The existing whole-note limit, duplicate
+refusal and explicit Save apply; longer evidence is refused without truncation.
+
 Back uses the same action on screen and on Android. Switching sections preserves
 the original opener. If that control disappears, Back focuses the current view's
 navigation control or the visible Discover heading. There is no persistent cache,

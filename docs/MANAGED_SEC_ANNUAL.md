@@ -117,8 +117,9 @@ their own explanation, independent of income, cash and the selected revenue basi
 Each company's existing source disclosure includes the original instant
 observations, filing links, source captures and calculation references. Refresh,
 failure, cancellation, selection and session retirement follow the existing
-report owner. Rendering and changing a basis send no extra request. The comparison
-note action continues to offer its existing income and cash evidence groups.
+report owner. Rendering and changing a basis send no extra request. Choose
+**Liquidity** in the comparison note action to keep both companies' admitted
+balances and calculations with their original provenance.
 
 ### Open the full report from a comparison
 
@@ -143,20 +144,23 @@ cache or automatic fallback request. Current work records acceptance separately.
 
 ### Keep Annual comparison evidence in a note
 
-Below the comparison, choose **Revenue and net income** or **Cash generation**,
+Below the comparison, choose **Revenue and net income**, **Cash generation** or **Liquidity**,
 then choose one of the two listings in **Add Annual comparison to**. The
 destination starts empty and identifies the company, share class and exchange.
 **Add Annual comparison to note draft** appends both companies' selected evidence
-to that listing's latest note. It preserves each company's fiscal period, exact
-USD values, raw concepts, filing link and original source and completion dates.
+to that listing's latest note. It preserves each company's fiscal period or balance
+date, exact USD values, raw concepts, filing link and original source and completion dates.
 Historical and retained reports keep their qualifications.
 
 Income copies the selected revenue basis, net income, available net margin and
 reported revenue change, or the reason that change is unavailable. Cash copies
 both reported inputs and their admitted same-filing, same-period difference.
-Both companies must have the chosen group's evidence; missing income does not
-block valid cash, and missing cash does not block valid income. No field is
-substituted, rounded further or loaded by this action.
+Liquidity copies current assets, current liabilities, working capital and the
+checked current ratio. Zero liabilities keep the explicit ratio refusal; negative
+working capital remains valid. Its complete source details and separate balance
+dates are retained. Both companies must have the chosen group's evidence; missing
+income or cash does not block valid liquidity. No field is substituted, rounded
+further or loaded by this action.
 
 Changing a company or replacing a report clears the note destination. Changing
 the revenue basis or evidence group keeps the destination but discards earlier

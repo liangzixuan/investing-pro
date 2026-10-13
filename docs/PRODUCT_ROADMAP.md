@@ -6,7 +6,14 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment compares already-loaded liquidity between two watchlist
+The current M2 increment adds **Liquidity** to the Annual comparison's existing
+note evidence selector. It connects both companies' checked balances, calculations
+and original source details to one chosen research-note draft, followed by explicit
+whole-watchlist Save. It reuses the company excerpt and preserves the full-note
+limit without another source read. See the
+[comparison note workflow](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note).
+
+The preceding M2 increment compares already-loaded liquidity between two watchlist
 companies. Exact balances, working capital and current ratio retain each company's
 own balance date, availability and source evidence. This extends the existing
 Annual comparison without another request or financial calculation. See the
