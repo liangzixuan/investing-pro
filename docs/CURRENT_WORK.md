@@ -542,9 +542,22 @@ the button name retains its exact listing identity. Blank and identity searches
 keep their existing rows. Matching, order, selected editor and complete-note Save
 remain unchanged, with no new request or stored state.
 
-Focused helper and component checks and eight composed research/Back/Save cases
-pass, as do web types. Independent review, rendered desktop and narrow acceptance
-and the extended existing native note journey remain in progress.
+Focused helper and component checks, eight composed research/Back/Save cases and
+two recovery cases pass. Web and preview types, scoped lint/format and source
+boundaries pass, with independent source and exact-bundle review. Chrome at
+1440, 390 and 320 CSS pixels verifies original passages, keyboard selection,
+editing outside results, research return, complete-note Save/reload and saved
+version replacement. Narrow results scroll within their existing strip without
+page overflow; long words wrap, and all observed product controls retain 44px
+targets. Session retirement clears the notes and passages.
+
+The browser fixture used invented data. Its original Save expectation omitted
+the existing outer-trim normalization; the corrected comparison preserves the
+complete payload and records that failure. Exceptional Unicode cases and Keep
+my draft are established by focused tests, without a screen-reader claim.
+The exact native fixture build retains complete notices and fits the unchanged
+asset limit. The existing native note journey now checks the passage and
+accessible description; execution remains required in the original hosted run.
 
 ## Product scope
 
