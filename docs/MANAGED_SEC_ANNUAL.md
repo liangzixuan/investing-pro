@@ -92,8 +92,12 @@ Implementation and acceptance are recorded in [Current work](CURRENT_WORK.md).
 The managed Annual view leads with reported financial results. Each eligible
 revenue basis has a table of exact USD revenue, net income and available net
 margin across up to three admitted periods, newest first. Dated reported changes
-follow without repeating the current amounts. Eligible bases lead, with missing
-or rejected bases separately visible below. The local research profile retains
+follow without repeating the current amounts. Eligible bases lead with readable,
+distinct labels: **Revenue**, **Customer contract revenue, excluding assessed
+tax**, and **Net sales revenue**. Genuinely missing bases appear as compact rows
+below the tables. Rejected or withheld evidence retains its visible explanation.
+Exact concept identifiers and statuses remain in **Source and validation
+details**; the labels do not combine or replace bases. The local research profile retains
 its existing evidence-first presentation and basis order.
 
 Exact filed and completed dates, current-use status and retained previous-report

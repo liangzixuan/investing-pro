@@ -100,6 +100,57 @@
 .managed-frame .managed-annual-financial-region {
   min-width: 0;
 }
+.managed-frame .managed-annual-missing-bases {
+  border-top: 1px solid var(--managed-line);
+  padding: 12px 0;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources) {
+  min-width: 0;
+  font-size: 13px;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  h4 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dl {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dl
+  > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 16px;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  :is(dt, dd) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dd {
+  margin: 0;
+  color: var(--managed-muted);
+}
+@media (max-width: 640px) {
+  .managed-frame
+    :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+    dl
+    > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .clerk-trial.managed-frame
   .managed-annual-overview
   .managed-annual-financial-region:focus-visible {

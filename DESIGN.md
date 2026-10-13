@@ -92,6 +92,13 @@ Place observation IDs, scan counts and source pointers in the initially closed
 cash-source disclosure with a 44px summary target. Keep cash availability
 independent of the income overview warning.
 
+In the managed Annual overview, name revenue bases in plain language while
+keeping them distinct. Present genuinely missing bases as compact labelled rows
+below the financial tables. Rejected or withheld evidence keeps its explanation;
+it must not look like an absent source concept. Preserve every exact concept and
+its status in the existing source details. Keep the financial results region
+mounted and the local evidence presentation unchanged.
+
 ## Typography and financial evidence
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,

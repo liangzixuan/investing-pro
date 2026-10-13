@@ -175,6 +175,15 @@ still uses version 1.0.0, and its static module inventory omits the extracted
 Annual fact normalizer. The corrected tests retain every existing assertion and
 pass locally. Original failures remain recorded; updated hosted checks are pending.
 
+### Annual readability in development
+
+The next presentation increment gives managed revenue bases distinct readable
+labels and makes genuinely missing bases compact. Rejected or withheld evidence
+keeps its explanation; exact concept identifiers and statuses stay in the
+existing source details. The local evidence view, financial values, requests and
+note format stay unchanged. Source, rendered layouts and native acceptance for
+this increment remain pending.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -199,8 +208,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Run cash generation's original hosted checks and Android journey, then
-review the combined candidate. PR100 and PR101 have passed their original hosted
+Complete Annual readability's source and rendered checks while the cash
+candidate runs its original hosted checks and Android journey. PR100 and PR101
+have passed their original hosted
 checks and remain awaiting source-merge approval. Their merges, the cash
 candidate and any live delivery are separate actions. Continue meaningful roadmap
 work with existing subscriptions and permitted free sources; broader fields and
