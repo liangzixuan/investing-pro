@@ -99,6 +99,12 @@ it must not look like an absent source concept. Preserve every exact concept and
 its status in the existing source details. Keep the financial results region
 mounted and the local evidence presentation unchanged.
 
+Use those same labels in the Annual trend and company comparison selectors and
+summaries. Keep the full selected basis in a wrapping line below each selector,
+associated with that control for assistive technology. Native selectors may
+clip long names on narrow screens. Preserve exact concept identifiers in source
+details and raw option values; a missing selected basis remains unavailable.
+
 ## Typography and financial evidence
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,

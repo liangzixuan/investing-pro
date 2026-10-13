@@ -73,6 +73,13 @@ restrictions remain visible, and valid historical amounts do not enable an
 ineligible growth comparison. Different fiscal calendars and accounting bases
 are shown without adjustment or cross-company ranking.
 
+Basis choices and the comparison table use the same distinct readable names as
+the financial overview. A wrapping line below each native selector shows the
+complete selected name even when that basis is unavailable. The control references
+that line for assistive technology. Exact source concepts remain in each
+column's source details; selecting a readable name still selects that exact
+concept.
+
 Full source and validation details remain available for each column. Long values
 wrap inside a contained table scroll region; keyboard users can focus the region
 and use arrow keys. Controls stack at narrow widths with the managed 44px targets.
@@ -208,6 +215,11 @@ disclosure. It plots Revenue or Net income in USD for two or three admitted
 periods from one named revenue basis and filing, oldest first. The exact tables
 remain visible. Selecting a basis or metric makes no request and changes no note,
 board selection or saved state. The local research profile is unchanged.
+
+The basis selector and trend source summary share the overview's readable names.
+A wrapping selected-basis line keeps the complete name visible on narrow screens
+and describes the native selector. Raw concept values and source identifiers
+remain unchanged, including when the chosen basis has no available trend.
 
 The summary and both native selectors remain mounted while the loaded Annual view
 is present. The initial basis is the first with a trend, otherwise the first with

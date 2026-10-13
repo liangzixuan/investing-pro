@@ -448,8 +448,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("first explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-left-basis\"]') !== null");
         clickAnnualComparisonAction("Load second annual report");
         awaitPage("second explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'");
-        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenues");
-        assertAnnualComparisonValues("1000", "10%", "25%");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenue");
+        assertAnnualComparisonValues("1000", "10%", "25%", "Revenues", "Revenue");
         assertAnnualComparisonSources();
         click(".managed-annual-comparison-source:first-child details > summary");
         click(".managed-annual-comparison-source:last-child details > summary");
@@ -460,15 +460,15 @@ public class ManagedWorkspaceInstrumentedTest {
             " && p.textContent.includes('2026-09-20T00:00:00.000Z'))" +
             " && panels[0].textContent.includes('CIK 0000000001') && panels[0].textContent.includes('Accession 0000000001-26-000001')" +
             " && panels[1].textContent.includes('CIK 0000000002') && panels[1].textContent.includes('Accession 0000000002-25-000001'); })()");
-        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerExcludingAssessedTax");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(2, 0, 0);
         assertAnnualComparisonDraft();
         clickAnnualComparisonAction("Refresh first annual report");
         awaitPage("failed refresh retains the selected basis and original completion time",
             "document.querySelector('.managed-annual-comparison-choice:first-child [role=alert]') !== null" +
             " && document.querySelector('.managed-annual-comparison-choice:first-child .discovery-warning time')?.dateTime === '2026-09-20T00:00:02.000Z'");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(3, 0, 0);
         clickAnnualComparisonAction("Refresh first annual report");
         awaitPage("one first-company report is pending", DIAGNOSTICS + ".annual === 4" +
@@ -477,11 +477,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonCounts(4, 1, 0);
         click("#settle-cancelled-annual-comparison");
         assertAnnualComparisonCounts(4, 1, 1);
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonSources();
         selectWorkspaceView("Markets");
         selectWorkspaceView("My Watchlist");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(4, 1, 1);
         assertAnnualComparisonDraft();
         clickAnnualComparisonAction("Refresh second annual report");
@@ -508,13 +508,21 @@ public class ManagedWorkspaceInstrumentedTest {
             "//section[contains(@class,'managed-annual-comparison')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
     }
 
-    private void assertAnnualComparisonValues(String revenue, String margin, String change) throws Exception {
+    private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
             " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 6" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
-            " && cells(1)[1].textContent === 'SalesRevenueNet'" +
+            " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
+            " && cells(1)[1].textContent === 'Net sales revenue'" +
+            " && document.querySelector('.managed-annual-comparison select[id$=\"-left-basis\"]')?.value === " + JSONObject.quote(rawBasis) +
+            " && document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'" +
+            " && document.querySelector('[data-annual-comparison-selected-basis=left]')?.textContent === 'Selected basis: ' + " + JSONObject.quote(basisLabel) +
+            " && document.querySelector('[data-annual-comparison-selected-basis=right]')?.textContent === 'Selected basis: Net sales revenue'" +
+            " && ['left', 'right'].every(side => { const select = document.querySelector('.managed-annual-comparison select[id$=\"-' + side + '-basis\"]');" +
+            " const full = document.querySelector('[data-annual-comparison-selected-basis=' + side + ']');" +
+            " return full?.id && select?.getAttribute('aria-describedby')?.split(' ').includes(full.id); })" +
             " && cells(2)[0].textContent === " + JSONObject.quote(revenue) + " && cells(2)[1].textContent === '750'" +
             " && cells(3)[0].textContent === '100' && cells(3)[1].textContent === '150'" +
             " && cells(4)[0].textContent === " + JSONObject.quote(margin) + " && cells(4)[1].textContent === '20%'" +
@@ -530,7 +538,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && sources[0].querySelector(':scope > a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && sources[1].querySelector(':scope > a')?.href === 'https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm'" +
             " && sources.every(s => s.querySelector(':scope > a')?.target === '_blank' && s.querySelector(':scope > a')?.rel === 'noopener noreferrer')" +
-            " && sources[0].textContent.includes('filed 2026-02-01') && sources[1].textContent.includes('filed 2025-08-01'); })()");
+            " && sources[0].textContent.includes('filed 2026-02-01') && sources[1].textContent.includes('filed 2025-08-01')" +
+            " && sources.every((source, i) => { const side = i === 0 ? 'left' : 'right';" +
+            " const raw = document.querySelector('.managed-annual-comparison select[id$=\"-' + side + '-basis\"]')?.value;" +
+            " return source.querySelector('[data-annual-comparison-source-basis=' + side + ']')?.textContent === 'Selected SEC revenue concept: ' + raw; }); })()");
     }
 
     private void assertAnnualComparisonDraft() throws Exception {
@@ -3169,8 +3180,12 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("annual trend starts collapsed with explicit basis and metric choices",
             "document.querySelector('.managed-annual-trend')?.open === false" +
             " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'revenue'" +
             " && Array.from(document.querySelectorAll('[data-annual-trend-basis] option')).map(e => e.value).join(',') === 'RevenueFromContractWithCustomerExcludingAssessedTax,Revenues,SalesRevenueNet'" +
+            " && Array.from(document.querySelectorAll('[data-annual-trend-basis] option')).map(e => e.textContent).join('|') === 'Customer contract revenue, excluding assessed tax|Revenue|Net sales revenue'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.id" +
+            " && document.querySelector('[data-annual-trend-basis]')?.getAttribute('aria-describedby')?.split(' ').includes(document.querySelector('[data-annual-trend-selected-basis]').id)" +
             " && document.querySelector('.managed-annual-trend-canvas') === null && " + controls);
         click(".managed-annual-trend > summary");
         awaitPage("opening trend renders only the admitted three-period revenue basis",
@@ -3181,12 +3196,14 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native metric choice renders the same periods for signed net income",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
-        chooseNativeSelectOption("[data-annual-trend-basis]", "SalesRevenueNet", "SalesRevenueNet");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "SalesRevenueNet", "Net sales revenue");
         awaitPage("missing basis removes the old chart and preserves both selectors",
             "document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('.managed-annual-trend [role=status]')?.textContent.includes('no valid current annual pair')" +
+            " && document.querySelector('[data-annual-trend-basis]')?.value === 'SalesRevenueNet'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Net sales revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income' && " + controls);
-        chooseNativeSelectOption("[data-annual-trend-basis]", "Revenues", "Revenues");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "Revenues", "Revenue");
         awaitPage("returning to the admitted basis keeps the chosen metric",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
@@ -3195,6 +3212,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-annual-trend')?.open === false" +
             " && document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income'");
     }
 

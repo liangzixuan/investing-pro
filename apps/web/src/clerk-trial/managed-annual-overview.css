@@ -23,6 +23,16 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
+}
+.managed-frame .managed-annual-trend-basis {
+  min-width: 0;
+}
+.managed-frame [data-annual-trend-selected-basis] {
+  margin: 6px 0 0;
+  color: var(--managed-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .managed-frame .managed-annual-trend-controls label {
   display: grid;

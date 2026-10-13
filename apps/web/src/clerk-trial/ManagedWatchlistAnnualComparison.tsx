@@ -16,6 +16,7 @@ import type {
   ManagedWatchlistAnnualComparisonState as ComparisonState,
 } from "./managed-watchlist-annual-comparison";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
 import "./managed-annual-comparison.css";
 
 type Side = "left" | "right";
@@ -142,7 +143,11 @@ export function ManagedWatchlistAnnualComparison({
               }
             </ComparisonRow>
             <ComparisonRow label="Revenue basis" projections={projections}>
-              {(p) => p.selectedBasis ?? "Not loaded"}
+              {(p) =>
+                p.selectedBasis === null
+                  ? "Not loaded"
+                  : managedAnnualBasisLabel(p.selectedBasis)
+              }
             </ComparisonRow>
             <ComparisonRow label="Revenue · USD" projections={projections}>
               {(p) => p.current?.revenueUSD ?? unavailable(p)}
@@ -239,6 +244,12 @@ export function ManagedWatchlistAnnualComparison({
                   <summary>
                     {sideLabel(side)} company source and validation details
                   </summary>
+                  {p.selectedBasis !== null && (
+                    <p data-annual-comparison-source-basis={side}>
+                      Selected SEC revenue concept:{" "}
+                      <code>{p.selectedBasis}</code>
+                    </p>
+                  )}
                   <SecAnnualSourceDetails response={response} />
                 </details>
               )}
@@ -365,46 +376,59 @@ function AnnualCompanyControls({
         </p>
       )}
       {column.report.response && (
-        <label htmlFor={`${id}-${side}-basis`}>
-          {sideLabel(side)} company revenue basis
-          <select
-            id={`${id}-${side}-basis`}
-            disabled={!state.active}
-            value={projection.selectedBasis ?? ""}
-            onChange={(event) => {
-              const current = model.getSnapshot();
-              if (!current.active || current[side].selected !== selected)
-                return;
-              const value = event.currentTarget.value;
-              setBasis((previous) => ({
-                ...previous,
-                [side]: {
-                  handle: selected?.handle ?? null,
-                  basis: value,
-                },
-              }));
-            }}
-          >
-            {!projection.selectedBasis && (
-              <option value="">No revenue basis</option>
-            )}
-            {projection.selectedBasis &&
-              !projection.basisChoices.some(
-                (choice) => choice.concept === projection.selectedBasis,
-              ) && (
-                <option value={projection.selectedBasis}>
-                  {projection.selectedBasis} · unavailable in this report
-                </option>
+        <div>
+          <label htmlFor={`${id}-${side}-basis`}>
+            {sideLabel(side)} company revenue basis
+            <select
+              id={`${id}-${side}-basis`}
+              aria-describedby={`${id}-${side}-selected-basis`}
+              disabled={!state.active}
+              value={projection.selectedBasis ?? ""}
+              onChange={(event) => {
+                const current = model.getSnapshot();
+                if (!current.active || current[side].selected !== selected)
+                  return;
+                const value = event.currentTarget.value;
+                setBasis((previous) => ({
+                  ...previous,
+                  [side]: {
+                    handle: selected?.handle ?? null,
+                    basis: value,
+                  },
+                }));
+              }}
+            >
+              {!projection.selectedBasis && (
+                <option value="">No revenue basis</option>
               )}
-            {projection.basisChoices.map((choice) => (
-              <option key={choice.concept} value={choice.concept}>
-                {choice.concept}
-                {choice.status !== "eligible" &&
-                  " · unavailable in this report"}
-              </option>
-            ))}
-          </select>
-        </label>
+              {projection.selectedBasis &&
+                !projection.basisChoices.some(
+                  (choice) => choice.concept === projection.selectedBasis,
+                ) && (
+                  <option value={projection.selectedBasis}>
+                    {managedAnnualBasisLabel(projection.selectedBasis)} ·
+                    unavailable in this report
+                  </option>
+                )}
+              {projection.basisChoices.map((choice) => (
+                <option key={choice.concept} value={choice.concept}>
+                  {managedAnnualBasisLabel(choice.concept)}
+                  {choice.status !== "eligible" &&
+                    " · unavailable in this report"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p
+            id={`${id}-${side}-selected-basis`}
+            data-annual-comparison-selected-basis={side}
+          >
+            Selected basis:{" "}
+            {projection.selectedBasis === null
+              ? "No revenue basis"
+              : managedAnnualBasisLabel(projection.selectedBasis)}
+          </p>
+        </div>
       )}
     </div>
   );

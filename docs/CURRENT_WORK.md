@@ -222,6 +222,18 @@ The integrated native bundle builds below the unchanged 4 MiB cap, with a larges
 loader payload of 2,259,108 bytes. Hosted cash-note checks and native runtime
 acceptance remain pending. Deployment remains separate.
 
+### Consistent Annual basis labels candidate
+
+Annual trend and watchlist comparison controls now share the overview's distinct
+readable revenue names. A wrapping selected-basis line exposes the complete name
+at narrow widths and describes each native selector. Comparison results use
+the same names; exact concepts remain in source details and raw control values.
+An unavailable chosen basis stays unavailable. This changes presentation only;
+selection lifetime, calculations, notes and explicit source requests are unchanged.
+
+Affected source checks and browser/native acceptance are in progress. Source
+merge and delivery remain separate.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -246,7 +258,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Run the cash-to-note candidate's original hosted checks and native journey. PR100 and PR101
+Verify consistent Annual basis labels across native selectors, unavailable states
+and response replacement. Follow the cash-to-note candidate's original hosted
+checks and native journey. PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
 Continue meaningful roadmap
