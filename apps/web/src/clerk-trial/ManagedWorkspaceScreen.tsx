@@ -30,6 +30,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
@@ -448,6 +449,10 @@ export function ManagedWorkspaceScreen({
     opener: HTMLButtonElement;
   } | null>(null);
   const workspaceContent = useRef<HTMLElement | null>(null);
+  const marketsContent = useRef<HTMLDivElement | null>(null);
+  const marketsHeading = useRef<HTMLHeadingElement | null>(null);
+  const agendaHeading = useRef<HTMLHeadingElement | null>(null);
+  const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
   useLayoutEffect(() => {
     const request = recoveryFocus.current;
     recoveryFocus.current = null;
@@ -802,6 +807,8 @@ export function ManagedWorkspaceScreen({
               )}
               {discovery.view === "markets" && (
                 <div
+                  ref={marketsContent}
+                  className="managed-markets-content"
                   hidden={Boolean(
                     discovery.research ||
                     discovery.companyRoute ||
@@ -810,6 +817,39 @@ export function ManagedWorkspaceScreen({
                 >
                   <ManagedMarkets
                     model={workspace.markets}
+                    headingRef={marketsHeading}
+                    sectionNavigation={
+                      <ManagedMarketsNavigation
+                        containerRef={marketsContent}
+                        targets={{
+                          board: {
+                            id: "managed-markets-heading",
+                            ref: marketsHeading,
+                          },
+                          calendar: {
+                            id: "bea-agenda-title",
+                            ref: agendaHeading,
+                          },
+                          announcements: {
+                            id: "fed-announcements-title",
+                            ref: announcementsHeading,
+                          },
+                        }}
+                        isCurrent={() => {
+                          const current = workspace.getSnapshot();
+                          const phase = coordinator.getSnapshot().phase;
+                          return (
+                            phase !== "retired" &&
+                            phase !== "signing_out" &&
+                            current.view === "markets" &&
+                            !current.research &&
+                            !current.companyRoute &&
+                            !navigation?.invalid &&
+                            !hasCompanyRoute?.()
+                          );
+                        }}
+                      />
+                    }
                     onResearch={(kind, opener) => {
                       openResearch(opener, () =>
                         workspace.openMarketResearch(kind),
@@ -820,8 +860,14 @@ export function ManagedWorkspaceScreen({
                       watchlistNavigation.current?.focus();
                     }}
                   />
-                  <ManagedBeaReleaseAgenda model={workspace.agenda} />
-                  <ManagedFedAnnouncements model={workspace.announcements} />
+                  <ManagedBeaReleaseAgenda
+                    model={workspace.agenda}
+                    headingRef={agendaHeading}
+                  />
+                  <ManagedFedAnnouncements
+                    model={workspace.announcements}
+                    headingRef={announcementsHeading}
+                  />
                 </div>
               )}
               <section

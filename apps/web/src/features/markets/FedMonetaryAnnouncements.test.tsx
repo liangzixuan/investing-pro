@@ -69,6 +69,24 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it("makes only an opted-in heading focusable and preserves the local heading markup", () => {
+    const headingRef = React.createRef<HTMLHeadingElement>();
+    const input = props({ headingRef });
+    const heading = nodes(FedMonetaryAnnouncements(input)).find(
+      (node) => node.type === "h2",
+    );
+    expect(heading?.props).toMatchObject({
+      id: "fed-announcements-title",
+      ref: headingRef,
+      tabIndex: -1,
+    });
+    expect(input.onLoad).not.toHaveBeenCalled();
+    expect(
+      renderToStaticMarkup(<FedMonetaryAnnouncements {...props()} />),
+    ).toContain(
+      '<h2 id="fed-announcements-title">Federal Reserve announcements</h2>',
+    );
+  });
   it("requires an explicit load and names the source and feed scope", () => {
     const input = props({ announcements: null });
     const view = FedMonetaryAnnouncements(input);

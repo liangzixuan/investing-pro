@@ -4,6 +4,7 @@ import {
   type PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
 import React, { type ReactNode, type ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   BeaReleaseAgenda,
@@ -73,6 +74,22 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("BEA release agenda presentation", () => {
+  it("makes only an opted-in heading focusable and preserves the local heading markup", () => {
+    const headingRef = React.createRef<HTMLHeadingElement>();
+    const input = props({ headingRef });
+    const heading = nodes(BeaReleaseAgenda(input)).find(
+      (node) => node.type === "h2",
+    );
+    expect(heading?.props).toMatchObject({
+      id: "bea-agenda-title",
+      ref: headingRef,
+      tabIndex: -1,
+    });
+    expect(input.onLoad).not.toHaveBeenCalled();
+    expect(renderToStaticMarkup(<BeaReleaseAgenda {...props()} />)).toContain(
+      '<h2 id="bea-agenda-title">Economic calendar</h2>',
+    );
+  });
   it("offers explicit cancellation during a refresh and keeps the previous packet's dates visible", () => {
     const onCancel = vi.fn();
     const view = BeaReleaseAgenda(

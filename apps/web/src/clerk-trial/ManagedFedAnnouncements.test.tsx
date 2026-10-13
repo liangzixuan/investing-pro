@@ -42,10 +42,11 @@ function fixture() {
   const cancel = {};
   const doc = { activeElement: cancel, body: {} };
   vi.stubGlobal("document", doc);
-  const render = () => {
+  const render = (headingRef?: React.Ref<HTMLHeadingElement>) => {
     hooks.index = 0;
     const view = ManagedFedAnnouncements({
       model,
+      headingRef,
     }) as React.ReactElement<FedMonetaryAnnouncementsProps>;
     hooks.refs[0]!.current = button;
     while (hooks.effects.length) hooks.effects.shift()!();
@@ -55,6 +56,20 @@ function fixture() {
 }
 
 describe("managed announcement controls", () => {
+  it("passes the owned heading ref without loading or replacing accepted announcements", async () => {
+    const f = fixture();
+    const headingRef = { current: null };
+    expect(f.render(headingRef).props.headingRef).toBe(headingRef);
+    expect(f.read).not.toHaveBeenCalled();
+    f.read.mockResolvedValueOnce(fedAnnouncementsFixture());
+    await f.model.load();
+    const packet = f.model.getSnapshot().announcements;
+    const view = f.render(headingRef);
+    expect(view.props.headingRef).toBe(headingRef);
+    expect(view.props.announcements).toBe(packet);
+    expect(f.read).toHaveBeenCalledOnce();
+    expect(f.button.focus).not.toHaveBeenCalled();
+  });
   it("starts idle, passes the original packet and restores focus after a focused Cancel", async () => {
     const f = fixture();
     expect(f.render().props.announcements).toBeNull();

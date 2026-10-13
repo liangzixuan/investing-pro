@@ -72,14 +72,17 @@ function harness() {
   const retired = vi.fn();
   const model = new Model(read, retired);
   let cleanups: Array<void | (() => void)> = [];
-  const render = (currentModel = model) => {
+  const render = (
+    currentModel = model,
+    headingRef?: React.Ref<HTMLHeadingElement>,
+  ) => {
     let node: React.ReactElement<BeaReleaseAgendaProps>;
     for (let i = 0; i < 5; i++) {
       hooks.stateIndex = 0;
       hooks.refIndex = 0;
       hooks.effects = [];
       hooks.changed = false;
-      node = ManagedBeaReleaseAgenda({ model: currentModel });
+      node = ManagedBeaReleaseAgenda({ model: currentModel, headingRef });
       if (!hooks.changed) break;
     }
     cleanups.forEach((cleanup) => cleanup?.());
@@ -101,6 +104,19 @@ function harness() {
 }
 
 describe("managed BEA date selection", () => {
+  it("passes the owned heading ref without loading or changing the date choice", async () => {
+    const h = harness();
+    const headingRef = { current: null };
+    expect(h.render(h.model, headingRef).props.headingRef).toBe(headingRef);
+    expect(h.read).not.toHaveBeenCalled();
+    await h.model.load();
+    h.view().onDateChange("2026-10-30");
+    const view = h.render(h.model, headingRef);
+    expect(view.props.headingRef).toBe(headingRef);
+    expect(view.props.agenda).toBe(h.agenda);
+    expect(view.props.dateView?.selectedDate).toBe("2026-10-30");
+    expect(h.read).toHaveBeenCalledOnce();
+  });
   it("starts unloaded without a read; explicit load permits local date selection and All loaded dates", async () => {
     const h = harness();
     expect(h.html()).not.toContain('id="managed-bea-release-date"');

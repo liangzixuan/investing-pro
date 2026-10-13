@@ -34,6 +34,9 @@ import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
+import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
+import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
@@ -643,6 +646,144 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  function marketsNavigation(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const nodes = elements(screen);
+    const board = nodes.find(
+      (node) => node.type === ManagedMarkets,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedMarkets>>;
+    const nav = board.props.sectionNavigation as React.ReactElement<
+      React.ComponentProps<typeof ManagedMarketsNavigation>
+    >;
+    expect(nav.type).toBe(ManagedMarketsNavigation);
+    const agenda = nodes.find(
+      (node) => node.type === ManagedBeaReleaseAgenda,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseAgenda>
+    >;
+    const fed = nodes.find(
+      (node) => node.type === ManagedFedAnnouncements,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncements>
+    >;
+    expect(nav.props.targets.board.ref).toBe(board.props.headingRef);
+    expect(nav.props.targets.calendar.ref).toBe(agenda.props.headingRef);
+    expect(nav.props.targets.announcements.ref).toBe(fed.props.headingRef);
+    return nav.props;
+  }
+
+  it("keeps Markets jumps current through explicit loads and pending refresh without changing data or draft", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-one", "Unsaved Markets note: Café 😀");
+    workspace.setView("markets");
+    const draft = workspace.coordinator.getSnapshot().draft;
+    const nav = marketsNavigation(workspace);
+    expect(nav.isCurrent()).toBe(true);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    vi.mocked(api.economicCalendar).mockResolvedValue(
+      economicCalendarFixture(),
+    );
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValue(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.agenda.load();
+    await workspace.announcements.load();
+    const agenda = workspace.agenda.getSnapshot().agenda;
+    const announcements = workspace.announcements.getSnapshot().announcements;
+    let release!: (value: ReturnType<typeof economicCalendarFixture>) => void;
+    vi.mocked(api.economicCalendar).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = workspace.agenda.load();
+    expect(workspace.agenda.getSnapshot().busy).toBe(true);
+    expect(nav.isCurrent()).toBe(true);
+    expect(marketsNavigation(workspace).isCurrent()).toBe(true);
+    expect(workspace.agenda.getSnapshot().agenda).toBe(agenda);
+    expect(workspace.announcements.getSnapshot().announcements).toBe(
+      announcements,
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.agenda.cancel();
+    release(economicCalendarFixture());
+    await pending;
+    expect(nav.isCurrent()).toBe(true);
+    expect(workspace.agenda.getSnapshot().agenda).toBe(agenda);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
+    expect(api.monetaryAnnouncements).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses a previous Markets jump as soon as navigation or company research starts", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    let pendingRoute = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 1,
+      hasCompanyRoute: () => pendingRoute,
+      open: (action) => action(),
+      section: vi.fn(),
+      view: vi.fn(() => true),
+      back: vi.fn(),
+    };
+    const nav = marketsNavigation(workspace, navigation);
+    expect(nav.isCurrent()).toBe(true);
+    pendingRoute = true;
+    expect(nav.isCurrent()).toBe(false);
+    pendingRoute = false;
+    expect(
+      marketsNavigation(workspace, {
+        ...navigation,
+        invalid: true,
+      }).isCurrent(),
+    ).toBe(false);
+    workspace.setView("watchlist");
+    expect(nav.isCurrent()).toBe(false);
+    workspace.setView("markets");
+    expect(nav.isCurrent()).toBe(true);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    expect(workspace.getSnapshot().research).not.toBeNull();
+    expect(nav.isCurrent()).toBe(false);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses the previous Markets jump immediately after shared retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    workspace.setView("markets");
+    const nav = marketsNavigation(workspace);
+    expect(nav.isCurrent()).toBe(true);
+    workspace.coordinator.retire();
+    expect(nav.isCurrent()).toBe(false);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("keeps explicitly loaded Fed metadata separate from the calendar and clears it on retirement", async () => {
     const { workspace, api, html } = fixture();
     workspace.setView("markets");

@@ -1,9 +1,21 @@
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type Ref,
+} from "react";
 import { BeaReleaseAgenda } from "../features/markets/BeaReleaseAgenda";
 import { groupBeaReleaseDates } from "../features/markets/bea-release-dates";
 import type { ManagedBeaReleaseAgenda as Model } from "./managed-bea-release-agenda";
 
-export function ManagedBeaReleaseAgenda({ model }: { model: Model }) {
+export function ManagedBeaReleaseAgenda({
+  model,
+  headingRef,
+}: {
+  model: Model;
+  headingRef?: Ref<HTMLHeadingElement> | undefined;
+}) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -62,6 +74,7 @@ export function ManagedBeaReleaseAgenda({ model }: { model: Model }) {
   return (
     <BeaReleaseAgenda
       {...state}
+      headingRef={headingRef}
       className="trial-panel"
       dateView={{
         selectedDate: selection.date,
