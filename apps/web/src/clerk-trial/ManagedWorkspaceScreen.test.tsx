@@ -2243,6 +2243,24 @@ describe("managed workspace screen", () => {
       } as React.ChangeEvent<HTMLInputElement>);
       expect(searchInput(first).props.value).toBe(query);
       expect(searchScope(first).props.value).toBe(scope);
+      const assertNoteContext = () => {
+        const contexts = editorElements(render()).filter(
+          (node) =>
+            (node.props as { "data-watchlist-note-context"?: string })[
+              "data-watchlist-note-context"
+            ],
+        );
+        expect(contexts).toHaveLength(scope === "notes" ? 1 : 0);
+        if (scope === "notes") {
+          expect(contexts[0]!.props).toMatchObject({
+            "data-watchlist-note-context": "listing-two",
+          });
+          expect(renderToStaticMarkup(contexts[0])).toContain(
+            "Note: Private research note",
+          );
+        }
+      };
+      assertNoteContext();
       const opener = editorElements(first).find(
         (node) =>
           node.type === "button" &&
@@ -2326,6 +2344,7 @@ describe("managed workspace screen", () => {
       const returnedEditor = editorElements(render());
       expect(searchInput(render()).props.value).toBe(query);
       expect(searchScope(render()).props.value).toBe(scope);
+      assertNoteContext();
       expect(
         returnedEditor
           .filter(
@@ -2362,6 +2381,7 @@ describe("managed workspace screen", () => {
       );
       expect(searchInput(render()).props.value).toBe(query);
       expect(searchScope(render()).props.value).toBe(scope);
+      assertNoteContext();
       expect(api.load).toHaveBeenCalledOnce();
       expect(api.status).toHaveBeenCalledOnce();
       if (native) {
@@ -2446,6 +2466,18 @@ describe("managed workspace screen", () => {
       expect(matches()).toEqual([
         choice === "Use saved version" ? "listing-two" : "listing-one",
       ]);
+      const contexts = editorElements(render()).filter(
+        (node) =>
+          (node.props as { "data-watchlist-note-context"?: string })[
+            "data-watchlist-note-context"
+          ],
+      );
+      expect(contexts).toHaveLength(1);
+      expect(renderToStaticMarkup(contexts[0])).toContain(
+        choice === "Use saved version"
+          ? "Note: Café saved on another device"
+          : "Note: Café 東京 thesis draft",
+      );
       expect(field("managed-watchlist-search-scope").props.value).toBe("notes");
       expect(field("managed-watchlist-search").props.value).toBe("CAFÉ");
       expect(workspace.coordinator.getSnapshot().draft).toEqual(

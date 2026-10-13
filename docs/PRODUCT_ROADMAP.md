@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 increment adds an explicit **Recent filings** check to the selected
+The current retrieval increment shows a short matching passage in **Research
+notes** search results. It helps the owner recognize a saved or unsaved thesis
+before explicitly selecting it, using the existing draft and matching rules.
+Complete notes, draft order and whole-watchlist Save keep their existing behavior.
+See [watchlist search](APPWRITE_WATCHLIST.md#search-the-current-watchlist-draft).
+
+The preceding M3 increment adds an explicit **Recent filings** check to the selected
 watchlist listing. **View filings** opens that same evidence in company research
 without another request, connecting the saved thesis to the existing filing
 reference and note-save workflow. The result retains its original dates and

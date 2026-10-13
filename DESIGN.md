@@ -270,6 +270,13 @@ retain the 44px height and visible focus treatment. Filtering never replaces the
 selected editor; if its note stops matching, keep the editor and explain that the
 selection is outside the results. Clear removes the query and retains the scope.
 
+For a nonempty Research notes query, put one muted note passage beneath each
+result's identity. Keep the text inside the existing selection button, with
+normal whitespace flow and wrapping long words. Bound the passage to 180 Unicode
+code points without splitting combined characters, and show ellipses at omitted
+edges. Retain the button's identity name and add the passage to its description.
+Identity and blank searches keep the compact rows without a passage.
+
 The managed Annual report leads with compact financial tables for each named
 revenue basis. Show exact periods, USD amounts, margins and dated reported changes
 before technical validation details. Keep unavailable and current-use restrictions

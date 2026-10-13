@@ -533,6 +533,19 @@ The exact native fixture build remains below the unchanged asset limit with
 complete notices. Its journey now covers selected Load, View and Back before the
 existing note Save; execution remains required in the original hosted run.
 
+### Matching note passages candidate
+
+Research notes search now shows a short original passage around the first match
+in each result. Ellipses indicate omitted text. The bounded passage keeps combined
+Unicode characters intact and appears in the result's accessible description;
+the button name retains its exact listing identity. Blank and identity searches
+keep their existing rows. Matching, order, selected editor and complete-note Save
+remain unchanged, with no new request or stored state.
+
+Focused helper and component checks and eight composed research/Back/Save cases
+pass, as do web types. Independent review, rendered desktop and narrow acceptance
+and the extended existing native note journey remain in progress.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -557,7 +570,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish original hosted checks for the responsive return-focus fix. Preserve
+Finish matching-note context acceptance and the preceding filings candidate's
+original hosted checks. Preserve
 explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
