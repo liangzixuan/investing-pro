@@ -726,8 +726,10 @@ semantic assertions retained. The suite keeps 27 cases and adds one named captur
 The initial source-header run also reached the same framing failure before
 cancellation when the repair was pushed. Its report records 26 of 27 cases
 passing; later Filings assertions and APK isolation remain unaccepted. The
-test-only correction needs execution on the updated source; it does not turn
-either original failure into a pass.
+updated source passed all 27 native cases and the APK isolation gate in its
+original hosted attempt. Independent review verified the complete result frame,
+later Filings assertions, source identity and full software notices. Both earlier
+failures remain recorded. The remaining desktop checks are separate.
 
 ### Markets section navigation candidate
 
@@ -749,8 +751,22 @@ not allow explicit undefined forwarding; a type-only correction passed the
 affected checks. The existing native agenda journey now taps all three links
 before loading, with a selected date and during a held refresh. It requires
 visible focused headings and unchanged source, request, draft and URL state;
-its case count and screenshot captures are unchanged. Rendered browser and
-native acceptance remain pending. See the
+its case count and screenshot captures are unchanged.
+
+Chrome checks at 1440, 390 and 320 CSS pixels accept wrapping, target size,
+keyboard continuation and visible focused headings above the mobile navigation.
+Exact loaded sources, selected company, chart choices, BEA date and a Unicode
+unsaved draft survive jumps. Held requests remain pending; cancellation and late
+replies retain the previous data. Equal-content agenda replacement keeps focus
+on the chosen heading and resets the date as before. Company visits and top-level
+return preserve their existing state rules. Session retirement clears local data
+and blocks a late reply. No Save or external source request was made.
+
+The exact preview and native fixture builds preserve full software notices and
+the unchanged native asset cap. Independent source and saved-bundle reviews pass.
+One early screenshot captured a stale frame; its settled replacement supports
+the visual check. Hosted native execution for this new navigation remains pending.
+Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#move-between-markets-sections).
 
 ## Product scope
