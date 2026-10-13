@@ -11,6 +11,10 @@ import {
 } from "react";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
+import {
+  SecAnnualCashSourceBody,
+  SecAnnualCashValueContent,
+} from "../features/research/SecAnnualCashGeneration";
 import type {
   ManagedWatchlistAnnualComparison as ComparisonModel,
   ManagedWatchlistAnnualComparisonState as ComparisonState,
@@ -133,7 +137,10 @@ export function ManagedWatchlistAnnualComparison({
             </tr>
           </thead>
           <tbody>
-            <ComparisonRow label="Annual period" projections={projections}>
+            <ComparisonRow
+              label="Revenue / net income period"
+              projections={projections}
+            >
               {(p) =>
                 p.current ? (
                   <Period start={p.current.startDate} end={p.current.endDate} />
@@ -187,9 +194,15 @@ export function ManagedWatchlistAnnualComparison({
                 )
               }
             </ComparisonRow>
+            <CashComparisonRows state={state} />
           </tbody>
         </table>
       </div>
+      <p className="managed-annual-comparison-help">
+        The app calculation subtracts purchases of property, plant and equipment
+        from operating cash flow for the same filing and period. It does not
+        adjust for leases, acquisitions or other investing cash flows.
+      </p>
       <div className="managed-annual-comparison-sources">
         {sides.map((side) => {
           const p = projections[side];
@@ -213,7 +226,7 @@ export function ManagedWatchlistAnnualComparison({
               )}
               {response && p.currentReason && (
                 <p className="discovery-warning">
-                  Annual amounts unavailable. {p.currentReason}
+                  Revenue and net income unavailable. {p.currentReason}
                 </p>
               )}
               {p.source && (
@@ -251,6 +264,13 @@ export function ManagedWatchlistAnnualComparison({
                     </p>
                   )}
                   <SecAnnualSourceDetails response={response} />
+                  <div
+                    className="managed-annual-comparison-cash-source"
+                    data-annual-comparison-cash-source={side}
+                  >
+                    <h4>Cash sources and calculation inputs</h4>
+                    <SecAnnualCashSourceBody response={response} />
+                  </div>
                 </details>
               )}
             </section>
@@ -469,4 +489,39 @@ function ComparisonRow({
       ))}
     </tr>
   );
+}
+
+const cashRows = [
+  ["operatingCashFlow", "Operating cash flow", "Reported"],
+  ["ppePurchases", "PP&E purchases", "Reported"],
+  [
+    "operatingCashFlowLessPpePurchases",
+    "Operating cash flow less PP&E purchases",
+    "App calculation",
+  ],
+] as const;
+
+function CashComparisonRows({ state }: { state: ComparisonState }) {
+  return cashRows.map(([metric, label, kind]) => (
+    <tr key={metric} data-annual-comparison-cash={metric}>
+      <th scope="row">
+        {label}
+        <small>{kind} · USD</small>
+      </th>
+      {sides.map((side) => {
+        const response = state[side].report.response;
+        return (
+          <td key={side}>
+            {response ? (
+              <SecAnnualCashValueContent
+                value={response.evidence.cashGeneration.resolution[metric]}
+              />
+            ) : (
+              "Not loaded"
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  ));
 }

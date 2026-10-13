@@ -83,7 +83,7 @@ export function projectAnnualComparison(
       basisChoices: Object.freeze([]),
       selectedBasis: requestedBasis ?? null,
       current: null,
-      currentReason: "Load an Annual report to inspect reported amounts.",
+      currentReason: "Load an Annual report to inspect revenue and net income.",
       currentUse: null,
       revenueChange: null,
       revenueChangeReason: "Load an Annual report to inspect reported change.",
@@ -111,8 +111,8 @@ export function projectAnnualComparison(
     currentUse: Object.freeze({
       eligible: resolution.currentTargetEligible,
       message: resolution.currentTargetEligible
-        ? "Within current-use limits at this load."
-        : "Unavailable under the current-use policy at this load. Any valid reported amounts remain historical; reported change is unavailable.",
+        ? "Revenue and net income are within current-use limits at this load."
+        : "Revenue and net income are unavailable under the current-use policy at this load. Any valid reported revenue and net-income amounts remain historical; reported revenue change is unavailable.",
       utilityAge: resolution.utilityAge,
     }),
     ...revenueChange(response, basis, currentReason),
@@ -152,7 +152,7 @@ function basisReason(basis: PersonalSecAnnualBasisDto | undefined): string {
   if (!basis || basis.status === "missing")
     return "The selected revenue basis is missing from this report. Choose another basis explicitly.";
   if (basis.status === "withheld")
-    return "Annual amounts are withheld because the selected report evidence is incomplete. Inspect its source details.";
+    return "Revenue and net income are withheld because the selected report evidence is incomplete. Inspect its source details.";
   return "No valid same-filing annual revenue and net-income pair is available for this basis. Inspect its source details.";
 }
 

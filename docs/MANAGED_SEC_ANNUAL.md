@@ -99,7 +99,28 @@ Session retirement clears both columns. Refresh failure, invalid response and
 source eligibility use the existing Annual report rules. This comparison adds
 no field, feed, cohort, API schema, persistence or automatic refresh.
 
-Implementation and acceptance are recorded in [Current work](CURRENT_WORK.md).
+### Compare cash generation
+
+The same table adds reported operating cash flow, reported PP&E purchases and
+**Operating cash flow less PP&E purchases**, labelled as an app calculation.
+Each company's cell retains its own exact unscaled USD amount, annual period
+and current-use status. Missing or refused values show their reason; unloaded
+columns remain unloaded. The existing income period and warnings apply to
+revenue and net income only.
+
+Cash uses each currently loaded report's independently validated resolution.
+Changing revenue basis cannot change it, and unavailable income cannot hide valid
+cash. When the operands cover different periods, each remains readable but their
+subtraction is unavailable. Historical cash retains its own qualification.
+There is no adjustment for leases, acquisitions or other investing cash flows,
+and no cross-company calculation, annualization or ranking.
+
+Each company's existing source disclosure includes both raw cash concepts,
+scan status, observation references and original source dates. Refresh failure
+and Cancel retain the previous values and dates. Selection and session boundaries
+apply to the entire response. This adds no source request, saved state, cash
+history or note action. Source, browser and native acceptance are recorded in
+[Current work](CURRENT_WORK.md).
 
 ## Financial overview
 
@@ -184,7 +205,8 @@ references are available in **Cash sources and calculation inputs**. Historical
 amounts retain their dates and current-use status; the existing seven-day source
 and 485-day report policies apply independently of income. Refresh, cancellation,
 navigation and session retirement use the existing Annual response lifetime.
-Cash history, charts and a watchlist comparison column remain outside this scope.
+Cash history and charts remain outside this scope. The watchlist's
+[cash comparison](#compare-cash-generation) uses these same loaded amounts.
 
 **Add cash generation to note draft** copies the three available amounts as one
 plain-text paragraph into the existing listing's note. It retains exact raw
