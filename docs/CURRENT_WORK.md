@@ -147,7 +147,7 @@ original Android run passes 27 cases, including the new Annual journey and
 package isolation; the artifact was independently accepted. CodeScene retains
 reviewed complexity advisories. Source merges and live delivery remain separate.
 
-### Annual cash generation in development
+### Annual cash generation candidate
 
 The company Annual view now includes independently reported operating cash flow
 and PP&E purchases, plus their exact same-period difference labelled as an app
@@ -161,7 +161,15 @@ Affected contract, calculation, API, decoder and presentation checks pass.
 Independent source reviews and a replay of retained public SEC responses accept
 the exact amounts, original acquisition times and strict client decoding. The
 replay makes no network request and does not establish current live availability.
-Desktop/narrow Chrome and integrated native acceptance remain pending.
+Chrome accepts the rendered cash values, independent unavailable states, source
+details and exact long amounts at 1440, 390 and 320 CSS pixels. A first desktop
+check found misaligned values beneath a wrapped label; the corrected layout
+aligns them. Pending and failed refreshes retain original evidence, malformed
+responses clear values, and cancellation, navigation, explicit draft Save and
+session retirement preserve their existing contracts. These checks use invented
+RAM data. The integrated native fixture builds with a largest loader payload of
+2,252,458 bytes, below the unchanged 4 MiB cap; all complete license bytes are
+preserved. Original hosted checks and Android execution remain pending.
 
 ## Product scope
 
@@ -187,7 +195,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete cash generation's rendered desktop/narrow and native acceptance, then
+Run cash generation's original hosted checks and Android journey, then
 review the combined candidate. PR100 and PR101 have passed their original hosted
 checks and remain awaiting source-merge approval. Their merges, the cash
 candidate and any live delivery are separate actions. Continue meaningful roadmap
