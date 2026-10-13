@@ -321,7 +321,7 @@ describe("company SEC filings presentation", () => {
       expect(html).toContain('id="managed-filings-form"');
       expect(html.match(/<option /gu)).toHaveLength(4);
       expect(html).toContain(
-        '<option value="new" disabled="">Newly observed in this refresh</option>',
+        '<option value="new" disabled="">Newly observed</option>',
       );
       expect(html).not.toMatch(/<select[^>]*\sdisabled/gu);
       expect(html).not.toContain("Append");

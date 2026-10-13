@@ -24,7 +24,7 @@ export function ManagedFilingsRefreshView({
       >
         <option value="all">All loaded filings</option>
         <option value="new" disabled={!available}>
-          Newly observed in this refresh
+          Newly observed
         </option>
       </select>
       <p id="managed-filings-refresh-help" className="managed-filings-scope">

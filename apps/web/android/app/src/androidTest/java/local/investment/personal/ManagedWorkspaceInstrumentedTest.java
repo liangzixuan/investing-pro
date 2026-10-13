@@ -2030,7 +2030,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('[aria-label=\"Current loaded list\"]')?.textContent.includes('0 of 0 matching entries')" +
             " && Array.from(document.querySelectorAll('.managed-filings-compared-lists section')).every(s => s.textContent.includes('2026-06-23 to 2026-09-20') && s.textContent.includes('2026-09-20T00:00:00.000Z') && s.textContent.includes('2026-09-20T00:00:01.000Z') && s.textContent.includes('2026-09-20T00:00:02.000Z') && s.textContent.includes('Listed by the source; not loaded.') && s.querySelector('a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json')");
         assertFilingsDraftAndCounts(4, 1, 1);
-        chooseNativeSelectOption("#managed-filings-refresh-view", "new", "Newly observed in this refresh");
+        chooseNativeSelectOption("#managed-filings-refresh-view", "new", "Newly observed");
         awaitPage("zero-new comparison is selectable and retains exact source context", emptyComparison +
             " && document.activeElement?.id === 'managed-filings-refresh-view'" +
             " && document.querySelector('#managed-filings-refresh-view')?.value === 'new'" +
