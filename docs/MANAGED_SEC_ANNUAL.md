@@ -186,6 +186,13 @@ associated reason can be read. Appending neither refreshes evidence nor saves
 changes. Review and explicitly save the whole watchlist draft. See the
 [cash-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-cash-generation-to-a-note-draft).
 
+Focused source checks and invented-data Chrome acceptance cover exact note text,
+latest-prose and duplicate guards, full-note limits, explicit Save/reload,
+unavailable and historical cash, and report/session lifetime. The action fits at
+1440, 390 and 320 CSS pixels and remains keyboard-accessible with a 44px target.
+The native fixture builds; hosted execution and delivery are recorded separately
+in current work.
+
 The Annual request/response schema and generation definition are `2.0.0`. The
 route and four request keys are unchanged. Version-1 Annual requests are rejected
 before provider or budget work; version-2 clients reject old responses. A later
