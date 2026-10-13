@@ -333,8 +333,9 @@ results scroll locally. Independent review accepts the saved browser evidence.
 The independently reviewed native fixture bundle has a maximum loader payload of
 2,281,581 bytes under the unchanged 4 MiB cap. Its original hosted Android run
 passed all 27 cases and the APK isolation gate, including the extended report
-journey; independent artifact review is pending. All five required Actions jobs
-from its original workflows pass. CodeScene retains its reviewed advisory failure.
+journey; independent artifact review accepts the original output. All five required
+Actions jobs from its original workflows pass. CodeScene retains its reviewed
+advisory failure.
 No source merge or delivery follows from these checks.
 
 The prerequisite [test repair](https://github.com/liangzixuan/investing-pro/pull/108)
@@ -361,8 +362,19 @@ See the [Filings guide](MANAGED_SEC_FILINGS.md#review-filings-after-an-annual-re
 
 Focused pure rules, component/composition and native fixture checks pass, along
 with web types, scoped lint, formatting and source boundaries. Independent source
-reviews pass. Exact-build private Chrome review and native acceptance are pending.
-This candidate has not been merged or delivered.
+reviews pass. Chrome checks at 1440, 390 and 320 CSS pixels confirm combined
+filters and paging, original source dates, filtered-reference Save and reload,
+comparison navigation, retained refreshes, focus recovery and session clearing.
+Controls retain 44px targets with no page overflow. An admitted Annual filing date
+remains usable when its report is historical or financial amounts are unavailable;
+missing baselines are explained. Independent review accepts the saved browser
+evidence and exact full-draft Save/reload payload.
+
+The independently reviewed native fixture bundle has a maximum loader payload of
+2,288,059 bytes under the unchanged 4 MiB cap. The existing filing journey now
+checks the date and form controls, source dates, request counts and unchanged
+saved note. Its original hosted execution remains pending. These invented-data
+checks do not establish live SEC access. This candidate is not merged or delivered.
 
 ## Product scope
 
@@ -388,10 +400,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete independent artifact review for the Annual report handoff and local
-acceptance of the filing date filter. Preserve the original 90-day
-coverage limits, explicit source requests, same-company identity and existing
-reference-to-note workflow.
+Complete original hosted acceptance for the filing date filter. Preserve the
+original 90-day coverage limits, explicit source
+requests, same-company identity and existing reference-to-note workflow.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
