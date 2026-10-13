@@ -272,8 +272,13 @@ The Android comparison journey now checks these cash values and source inputs
 at its existing basis, retained-response and cancellation checkpoints. Source
 syntax checks pass. The integrated native fixture builds with a largest loader
 payload of 2,262,962 bytes, below the unchanged 4 MiB cap; complete notices and
-source continuity have been independently verified. Original hosted execution,
-source merge and delivery remain separate.
+source continuity have been independently verified. PR106's original Android
+run passes all 27 cases and package isolation. Five of six required Actions
+pass; Windows times out in an unchanged custody test. One local reproduction
+passes in 175 ms, so the hosted cause remains unresolved. The original failure
+is retained, with no speculative fix or rerun. CodeScene's test-nesting advisory
+was reviewed without an actionable correctness finding. Source merge and delivery
+remain separate.
 
 ### Annual comparison to note candidate
 
@@ -286,11 +291,19 @@ group's evidence. Income and cash availability remain independent.
 Pair, response and route checks fence stale actions. Duplicate references and
 invalid or oversized complete notes leave the draft unchanged. Appending makes
 no source or save request; review and explicitly save the complete watchlist.
-Formatter, UI and workspace checks and independent source reviews pass. The
-Android comparison journey now includes append, duplicate refusal, full-note
-review and explicit Save/reload. Its bounded fixture checks and source syntax
-pass. Integrated builds, rendered checks and original hosted execution remain
-pending.
+
+The 589 affected formatter, UI, workspace/Screen and native-fixture tests pass,
+along with fresh web types, scoped lint, formatting, source boundaries and
+independent source reviews. The Android comparison journey now includes append,
+duplicate refusal, full-note review and explicit Save/reload. Its source syntax
+passes, and the independently reviewed native bundle has a maximum loader payload
+of 2,276,554 bytes under the unchanged 4 MiB cap. Original hosted execution of the
+27-case suite remains pending.
+
+Chrome checks and independent review pass for 44 invented-data observations at
+1440, 390 and 320 CSS pixels. They cover complete income and cash Save/reload,
+original evidence dates, note validation, conflict recovery, focus and session
+retirement. Source merge and website, API and Android delivery remain separate.
 
 ## Product scope
 
@@ -316,11 +329,11 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete rendered and hosted acceptance for Annual comparison notes. The cash
-comparison's original Android run passes 27 cases; an unchanged Windows custody
-test timed out while the other five required Actions passed. The original failure
-is retained and under investigation. CodeScene's test-nesting advisory was reviewed
-without an actionable correctness finding.
+Complete the original hosted checks for Annual comparison notes. The selected
+next product outcome opens either loaded comparison
+company in its full Annual view using the checked original report, without another
+source request. Back must preserve the pair, basis choices, note draft and focus;
+an explicit company refresh must leave the comparison's reports unchanged.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
