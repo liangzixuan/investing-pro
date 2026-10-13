@@ -111,8 +111,22 @@ describe("watchlist price path renderer", () => {
         borderColor: "--managed-line",
         textStyle: { color: "--managed-ink" },
       },
-      xAxis: { type: "category", data: path.dates },
-      yAxis: { name: "Start = 100", scale: true },
+      xAxis: {
+        type: "category",
+        data: path.dates,
+        axisLabel: {
+          hideOverlap: true,
+          showMinLabel: true,
+          showMaxLabel: true,
+          alignMinLabel: "left",
+          alignMaxLabel: "right",
+        },
+      },
+      yAxis: {
+        name: "Start = 100",
+        nameTextStyle: { color: "--managed-muted" },
+        scale: true,
+      },
       series: [
         {
           data: [100, 110, 90],
