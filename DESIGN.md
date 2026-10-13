@@ -128,6 +128,22 @@ comparison's listing cell. Let that table size its columns from their content
 inside the existing horizontal scroll region. Retain the complete source
 disclosure and wrapping for long exact numeric values.
 
+Keep **Compare raw-price paths** closed by default. Use the selected shared
+interval and a clearly labelled Start = 100 axis with a scale fitted to the
+observed values. Distinguish both raw-price lines by marker and line style as well
+as color, and name the symbol, share class and exchange throughout. Use the managed
+surface/ink tokens for a confined tooltip. Keep the exact-data table and its
+focusable horizontal region available when plotting fails; numeric tokens remain
+whole while identity labels may wrap. Closing or hiding the view disposes the
+chart without changing draft, source or comparison state.
+
+Lead the chart with a short reading guide that keeps unadjusted prices,
+approximate coordinates, observation spacing and hidden declines visible. Put the
+full formula and limits in an initially closed native **Chart method and limits**
+disclosure after the plot and before the exact table. Reuse the 44px summary and
+focus treatment without adding a card. Keep the method available through missing
+or unsafe data, with its open state retained for the mounted view.
+
 Place the labelled **Add comparison to** native selector and quiet **Add
 comparison to note draft** action outside the results' horizontal scroll. Start
 with an empty destination and name both available listings by symbol, company,

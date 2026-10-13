@@ -273,6 +273,24 @@ export function comparePersonalRawCloseChange(
   }
 }
 
+/** A displayed raw-price index, rounded half up; never an input to returns or rank. */
+export function calculatePersonalRawCloseIndex(
+  close: string,
+  firstClose: string,
+) {
+  const exact = new ExactDecimal(positiveDecimal(close))
+    .times(100)
+    .div(positiveDecimal(firstClose));
+  const index = exact.toFixed(4);
+  return {
+    index,
+    value:
+      exact.gt(Number.MAX_SAFE_INTEGER) || index === "0.0000"
+        ? null
+        : Number(index),
+  };
+}
+
 function compareCloseRatios(
   leftFirst: string,
   leftLast: string,

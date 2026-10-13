@@ -206,7 +206,9 @@ describe("watchlist pair presentation", () => {
       'aria-label="Watchlist raw price comparison results"',
     );
     expect(html.match(/<select /gu) ?? []).toHaveLength(5);
-    expect(html.match(/<summary>/gu) ?? []).toHaveLength(1);
+    expect(html.match(/<summary>/gu) ?? []).toHaveLength(3);
+    expect(html).toContain("<summary>Compare raw-price paths</summary>");
+    expect(html).toContain("<summary>Chart method and limits</summary>");
   });
 
   it("shows exact endpoints, signed changes, share classes and original dated provenance", () => {
@@ -237,6 +239,8 @@ describe("watchlist pair presentation", () => {
     }));
     const html = markup(f);
     expect(html.match(/<strong>ALFA<\/strong>/gu) ?? []).toHaveLength(2);
+    expect(html).toContain('scope="col">ALFA · Class A · XNAS');
+    expect(html).toContain('scope="col">ALFA · Class C · XNAS');
     expect(text(html)).toContain("Shared Company · Class A · XNAS");
     expect(text(html)).toContain("Shared Company · Class C · XNAS");
     expect(text(html)).toContain("-$10 (-10.0000%)");
