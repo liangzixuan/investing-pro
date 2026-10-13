@@ -111,8 +111,13 @@ intentional save; the assertion now expects that one save. The other 25 cases
 passed, including announcements and export. APK isolation was skipped after the
 failure. Ubuntu also timed out while comparing the complete decompressed license
 Buffer. That test now uses native exact-byte equality and keeps the same timeout
-and remaining assertions. Both original failures remain recorded; the repaired
-revision still needs its own hosted checks.
+and remaining assertions. Both original failures remain recorded. The repaired
+revision passes five of six required Actions jobs, including Ubuntu and all 26
+Android cases, APK isolation and complete license-byte checks. Windows instead
+times out in an unchanged native-socket deadline test. A focused local run and
+phase trace pass; they do not reproduce or explain the hosted timeout. A diagnostic
+test update records bounded failure phases while preserving the request deadline,
+test timeout and native-close assertions. Its original hosted checks remain pending.
 
 ## Product scope
 
