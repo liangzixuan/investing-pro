@@ -13,6 +13,7 @@ import {
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 } from "@research-cockpit/contracts";
 import { TablesDB } from "node-appwrite";
 
@@ -59,6 +60,11 @@ import {
   ManagedEconomicCalendarServiceError,
 } from "./managed-economic-calendar-service";
 import {
+  createManagedMonetaryAnnouncementsService,
+  awaitManagedMonetaryAnnouncements,
+  ManagedMonetaryAnnouncementsServiceError,
+} from "./managed-monetary-announcements-service";
+import {
   createManagedCatalogService,
   getManagedWorkspaceCatalog,
 } from "./managed-workspace-catalog";
@@ -103,6 +109,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 ];
 const FORWARDED_HEADERS = [
   "authorization",
@@ -213,8 +220,11 @@ export function createManagedWorkspaceFunction(
     const filings = req.path === MANAGED_SEC_FILINGS_PATH;
     const eod = req.path === MANAGED_EOD_HISTORY_PATH;
     const calendar = req.path === MANAGED_ECONOMIC_CALENDAR_PATH;
+    const announcements = req.path === MANAGED_MONETARY_ANNOUNCEMENTS_PATH;
     const sourceController =
-      annual || filings || eod || calendar ? new AbortController() : undefined;
+      annual || filings || eod || calendar || announcements
+        ? new AbortController()
+        : undefined;
     const sourceTimer =
       sourceController === undefined
         ? undefined
@@ -294,6 +304,13 @@ export function createManagedWorkspaceFunction(
         ...(!calendar
           ? {}
           : { calendar: createManagedEconomicCalendarService({ startedAt }) }),
+        ...(!announcements
+          ? {}
+          : {
+              announcements: createManagedMonetaryAnnouncementsService({
+                startedAt,
+              }),
+            }),
         ...(!eod
           ? {}
           : {
@@ -365,16 +382,27 @@ export function createManagedWorkspaceFunction(
       dispatchedWrite =
         req.method === "POST" && req.path === MANAGED_WATCHLIST_PATH;
       const response = await (sourceController
-        ? calendar
-          ? awaitManagedEconomicCalendar(
+        ? announcements
+          ? awaitManagedMonetaryAnnouncements(
               handle(request),
               sourceController.signal,
             )
-          : eod
-            ? awaitManagedEod(handle(request), sourceController.signal)
-            : filings
-              ? awaitManagedSecFilings(handle(request), sourceController.signal)
-              : awaitManagedSecAnnual(handle(request), sourceController.signal)
+          : calendar
+            ? awaitManagedEconomicCalendar(
+                handle(request),
+                sourceController.signal,
+              )
+            : eod
+              ? awaitManagedEod(handle(request), sourceController.signal)
+              : filings
+                ? awaitManagedSecFilings(
+                    handle(request),
+                    sourceController.signal,
+                  )
+                : awaitManagedSecAnnual(
+                    handle(request),
+                    sourceController.signal,
+                  )
         : handle(request));
       const body = await response.text();
       if (
@@ -382,13 +410,15 @@ export function createManagedWorkspaceFunction(
         (sourceController.signal.aborted ||
           performance.now() - startedAt >= 10_000)
       )
-        throw calendar
-          ? new ManagedEconomicCalendarServiceError("request_timeout")
-          : eod
-            ? new ManagedEodServiceError("request_timeout")
-            : filings
-              ? new ManagedSecFilingsServiceError("request_timeout")
-              : new ManagedSecAnnualServiceError("request_timeout");
+        throw announcements
+          ? new ManagedMonetaryAnnouncementsServiceError("request_timeout")
+          : calendar
+            ? new ManagedEconomicCalendarServiceError("request_timeout")
+            : eod
+              ? new ManagedEodServiceError("request_timeout")
+              : filings
+                ? new ManagedSecFilingsServiceError("request_timeout")
+                : new ManagedSecAnnualServiceError("request_timeout");
       return res.text(
         body,
         response.status,
@@ -403,7 +433,8 @@ export function createManagedWorkspaceFunction(
               : error instanceof ManagedSecAnnualServiceError ||
                   error instanceof ManagedSecFilingsServiceError ||
                   error instanceof ManagedEodServiceError ||
-                  error instanceof ManagedEconomicCalendarServiceError
+                  error instanceof ManagedEconomicCalendarServiceError ||
+                  error instanceof ManagedMonetaryAnnouncementsServiceError
                 ? error.code
                 : dispatchedWrite
                   ? "commit_unknown"
@@ -414,7 +445,8 @@ export function createManagedWorkspaceFunction(
           : (error instanceof ManagedSecAnnualServiceError ||
                 error instanceof ManagedSecFilingsServiceError ||
                 error instanceof ManagedEodServiceError ||
-                error instanceof ManagedEconomicCalendarServiceError) &&
+                error instanceof ManagedEconomicCalendarServiceError ||
+                error instanceof ManagedMonetaryAnnouncementsServiceError) &&
               error.code === "request_timeout"
             ? 408
             : 503,

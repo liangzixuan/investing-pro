@@ -18,8 +18,11 @@ import {
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_EOD_HISTORY_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
   parseManagedEconomicCalendar,
+  MANAGED_MONETARY_ANNOUNCEMENTS_LIMITS,
+  parseManagedMonetaryAnnouncements,
   parseManagedEodHistoryRequest,
   parseManagedEodError,
   encodeMainWatchlistPayload,
@@ -53,6 +56,10 @@ import {
   type ManagedEconomicCalendarService,
 } from "./managed-economic-calendar-service";
 import {
+  ManagedMonetaryAnnouncementsServiceError,
+  type ManagedMonetaryAnnouncementsService,
+} from "./managed-monetary-announcements-service";
+import {
   WatchlistRepositoryError,
   type MainWatchlistReceipt,
   type MainWatchlistRecord,
@@ -70,6 +77,7 @@ export interface ManagedWorkspaceHandlerOptions {
   readonly filings?: ManagedSecFilingsService;
   readonly eod?: ManagedEodService;
   readonly calendar?: ManagedEconomicCalendarService;
+  readonly announcements?: ManagedMonetaryAnnouncementsService;
   readonly openRepository: (
     signal: AbortSignal,
   ) => Promise<ManagedWorkspaceRepositoryOperation>;
@@ -94,6 +102,7 @@ const PATHS: readonly string[] = [
   MANAGED_SEC_FILINGS_PATH,
   MANAGED_EOD_HISTORY_PATH,
   MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
 ];
 
 class RequestFailure extends Error {
@@ -330,7 +339,10 @@ function errorResponse(
   if (error instanceof RequestFailure) {
     status = error.status;
     code = error.code;
-  } else if (error instanceof ManagedEconomicCalendarServiceError) {
+  } else if (
+    error instanceof ManagedEconomicCalendarServiceError ||
+    error instanceof ManagedMonetaryAnnouncementsServiceError
+  ) {
     code = error.code;
     status = code === "request_timeout" ? 408 : 503;
   } else if (
@@ -439,6 +451,19 @@ export function createManagedWorkspaceHandler(
           headers,
         );
         options.calendar.assertActive(request.signal);
+        return response;
+      }
+      if (route.path === MANAGED_MONETARY_ANNOUNCEMENTS_PATH) {
+        if (!options.announcements)
+          throw new Error("Announcements service unavailable");
+        const result = await options.announcements.load(request.signal);
+        options.announcements.assertActive(request.signal);
+        response = jsonResponse(
+          parseManagedMonetaryAnnouncements(result),
+          MANAGED_MONETARY_ANNOUNCEMENTS_LIMITS.responseBytes,
+          headers,
+        );
+        options.announcements.assertActive(request.signal);
         return response;
       }
       if (route.path === MANAGED_EOD_HISTORY_PATH) {

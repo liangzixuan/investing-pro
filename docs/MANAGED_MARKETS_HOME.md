@@ -21,7 +21,7 @@ response supplies 1 to 32 raw USD closes, trading dates, a one-calendar-month wi
 and request start/completion times. The [EOD contract](MANAGED_EOD_HISTORY.md)
 continues to validate full listing and share-class identity, decimals and dates.
 GOOG and GOOGL stay distinct. The page has no live quote, adjusted return, market-wide mover
-ranking, index, breadth or news data. Those need their own inputs and
+ranking, index, breadth or combined market/company news feed. Those need their own inputs and
 acceptance under the [roadmap](PRODUCT_ROADMAP.md).
 
 ## BEA release agenda
@@ -62,6 +62,37 @@ Java assertions. Invented-data Brave desktop and 390-pixel checks cover the shar
 agenda layout. Actual-main checks include a separately accepted 22-case native
 gate. API, website and signed Android delivery are accepted.
 No new live authenticated managed read or physical use is established.
+
+## Federal Reserve announcements
+
+The announcements section follows the BEA agenda. **Load announcements** makes
+one explicit read of the official Federal Reserve monetary-policy RSS feed.
+It shows up to ten titles with original links, publication times in Eastern time,
+the number listed in the feed and the time the response was loaded. A missing
+publication time stays unknown. Article bodies, forecasts and a combined news
+feed are outside this section. Deployment status remains in [Current work](CURRENT_WORK.md).
+
+The authenticated, body-free and query-free
+`GET /v1/managed/monetary-policy-announcements` reuses the existing fixed-source
+adapter. It fetches one public RSS URL without credentials, redirects or retries.
+The adapter bounds source input to 256 KiB and 128 validated items, returning at
+most ten unique items. The managed response is capped at 64 KiB. The ten-second
+invocation deadline includes authentication and serialization; it does not
+interrupt synchronous XML parsing or establish an aggregate request allowance.
+No catalog lookup, storage table, price budget or provider token is involved.
+
+Refresh keeps the last verified feed and its original retrieval time visible
+with a previous-result notice. Failure, an invalid replacement and Cancel retain
+that response. A valid empty feed replaces it. Leaving Markets, opening company
+research, or entering a pending or invalid company route cancels the pending
+read; returning does not fetch again. Late responses cannot replace current data
+or retire a newer session. Current authentication failures retire the shared
+session, clearing the feed and draft through the existing coordinator.
+
+Cancel returns focus to Load or Refresh when Cancel had focus and the current
+control remains visible. Announcements actions do not edit notes, save, reorder
+or reconcile the watchlist. Ordinary source links open separately with their
+original validated URLs; the app does not fetch article contents.
 
 ## Dated raw-close change
 

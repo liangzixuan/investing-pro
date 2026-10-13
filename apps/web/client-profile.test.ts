@@ -95,7 +95,11 @@ describe("compiled client profiles", () => {
       webDir: "dist/managed-android",
       loggingBehavior: "none",
       server: { hostname: "localhost", androidScheme: "https" },
-      android: { allowMixedContent: false, webContentsDebuggingEnabled: false },
+      android: {
+        minWebViewVersion: 111,
+        allowMixedContent: false,
+        webContentsDebuggingEnabled: false,
+      },
     });
   });
 });

@@ -26,6 +26,21 @@ measurements. Physical 1.14 through 1.18, screen-reader and backup/restore
 acceptance remain open. The earlier issue-free Pixel 1.13 report is separate.
 See Current work for exact source, APK identity and checklist scope.
 
+## WebView and software licenses
+
+The client supports Chromium-based WebView 111 or newer. Capacitor's
+`android.minWebViewVersion` declares this minimum. In the current configuration,
+Capacitor logs an unsupported version; it does not block startup without an
+error-page configuration. Huawei WebView uses Capacitor's separate version check.
+
+Software licenses remain available through the explicit footer disclosure.
+The canonical notice inventory is compressed into a lazy JavaScript module at
+build time and decoded in memory with `DecompressionStream`. Build and client
+checks preserve the complete original text, including the appended icon and font
+licenses. This requires no data endpoint or content-security-policy exception.
+When decoding is unavailable or fails, the disclosure shows an error and Retry;
+it never displays partial license text. This change adds no new dependency.
+
 ## Client profiles
 
 | Profile                   | Selection                 | Bundled assets             | Application ID                         |

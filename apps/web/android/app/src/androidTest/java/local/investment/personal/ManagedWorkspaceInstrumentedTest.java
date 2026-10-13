@@ -189,6 +189,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("bea-agenda");
         if (testName.getMethodName().equals("beaSessionExpiryClearsAgendaAndFencesLateResponse"))
             selectFixtureScenario("bea-session-retirement");
+        if (testName.getMethodName().equals("fedAnnouncementsRetainDatesCancelAndRetireWithSession"))
+            selectFixtureScenario("fed-announcements");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
             selectFixtureScenario("watchlist-export");
         assertTrue(copiedFiles > 0 && copiedFiles <= 64 && copiedBytes <= MAX_ASSET_BYTES);
@@ -410,6 +412,124 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#fixture-export-choice')?.textContent === 'null' && " +
             DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0");
     }
+
+    @Test
+    public void fedAnnouncementsRetainDatesCancelAndRetireWithSession() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        awaitPage("Federal Reserve feed is unloaded until explicitly requested",
+            "document.querySelector('.fed-announcements') !== null && document.querySelector('.fed-announcements time') === null" +
+            " && document.querySelector('.fed-announcements-actions > button')?.textContent === 'Load announcements'" +
+            " && document.querySelector('.fed-announcements-actions > button')?.getBoundingClientRect().height >= 44");
+        assertFedCounts(0, 0, 0);
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("announcements test reorders the draft before editing",
+            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
+        typeIntoInput("managed-note-1", NOTE);
+        selectWorkspaceView("Markets");
+        assertFedDraft();
+        clickFedAction("Load announcements");
+        assertFedPacket("2026-10-20T18:00:00.000Z");
+        assertFedCounts(1, 0, 0);
+        clickFedAction("Refresh announcements");
+        awaitPage("failed refresh qualifies the retained original feed",
+            "document.querySelector('.fed-announcements [role=alert]')?.textContent.includes('previously loaded announcements')" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements. This attempt has not confirmed a newer feed.')");
+        assertFedPacket("2026-10-20T18:00:00.000Z");
+        assertFedCounts(2, 0, 0);
+        clickFedAction("Refresh announcements");
+        awaitPage("third announcements read is held", DIAGNOSTICS + ".fed === 3" +
+            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        clickFedAction("Cancel announcements");
+        assertFedCounts(3, 1, 0);
+        click("#settle-cancelled-announcements");
+        assertFedCounts(3, 1, 1);
+        assertFedPacket("2026-10-20T18:00:00.000Z");
+        awaitPage("Cancel preserves the original fetchedAt and qualifies retained content",
+            "document.querySelector('.fed-announcements [role=status]')?.textContent === 'Announcements refresh cancelled. Refresh again when ready.'" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements.')");
+        assertFedDraft();
+        clickFedAction("Refresh announcements");
+        assertFedEmpty();
+        assertFedCounts(4, 1, 1);
+        awaitPage("valid empty replacement clears old failures and retained qualification",
+            "document.querySelector('.fed-announcements [role=alert]') === null" +
+            " && !document.querySelector('.fed-announcements').textContent.includes('Previous announcements.')");
+        clickFedAction("Refresh announcements");
+        awaitPage("fifth announcements read is pending before navigation", DIAGNOSTICS + ".fed === 5" +
+            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        selectWorkspaceView("My Watchlist");
+        assertFedCounts(5, 2, 1);
+        click("#settle-cancelled-announcements");
+        assertFedCounts(5, 2, 2);
+        assertFedDraft();
+        selectWorkspaceView("Markets");
+        assertFedEmpty();
+        assertFedCounts(5, 2, 2);
+        clickFedAction("Refresh announcements");
+        assertFedPacket("2026-10-23T18:00:00.000Z");
+        assertFedCounts(6, 2, 2);
+        assertFedDraft();
+        clickFedAction("Refresh announcements");
+        awaitPage("seventh announcements read is held before session expiry", DIAGNOSTICS + ".fed === 7" +
+            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        click(CATALOG_REFRESH);
+        awaitPage("expired session removes the loaded feed and unsaved draft",
+            DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
+            " && document.querySelector('.fed-announcements') === null" +
+            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false");
+        click("#settle-cancelled-announcements");
+        assertFedCounts(7, 3, 3);
+        awaitPage("late announcements cannot remount a retired session",
+            "document.querySelector('.fed-announcements') === null && document.querySelector('.managed-navigation') === null" +
+            " && !document.body.textContent.includes('Invented monetary policy announcement')" +
+            " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
+        assertEquals("Announcements preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private void clickFedAction(String label) {
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[contains(@class,'fed-announcements')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertFedPacket(String fetchedAt) throws Exception {
+        awaitPage("Fed packet preserves source identities, exact dates and absent publication time",
+            "document.querySelector('.fed-announcements-note time')?.dateTime === " + JSONObject.quote(fetchedAt) +
+            " && Array.from(document.querySelectorAll('.fed-announcements-list li > a')).map(e => e.textContent).join('|') === 'Invented monetary policy announcement|Invented announcement without a publication time'" +
+            " && document.querySelector('.fed-announcements-list li:first-child time')?.dateTime === '2026-10-19T18:00:00.000Z'" +
+            " && document.querySelector('.fed-announcements-list li:last-child p')?.textContent === 'Unknown publication time'" +
+            " && document.querySelector('.fed-announcements-list li:first-child a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261019a.htm'" +
+            " && document.querySelector('.fed-announcements-source a')?.href === 'https://www.federalreserve.gov/feeds/feeds.htm'" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 2 of 2 announcements from this feed.')");
+    }
+
+    private void assertFedEmpty() throws Exception {
+        awaitPage("valid empty feed replaces prior items with its own exact fetchedAt",
+            "document.querySelector('.fed-announcements-note time')?.dateTime === '2026-10-21T18:00:00.000Z'" +
+            " && document.querySelector('.fed-announcements-list') === null" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 0 of 0 announcements from this feed.')" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
+    }
+
+    private void assertFedDraft() throws Exception {
+        awaitPage("announcements preserve complete unsaved watchlist order, notes and version",
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
+    }
+
+    private void assertFedCounts(int reads, int aborted, int late) throws Exception {
+        awaitPage("bounded Fed reads without any other source request or Save",
+            DIAGNOSTICS + ".fed === " + reads + " && " + DIAGNOSTICS + ".fedAborted === " + aborted +
+            " && " + DIAGNOSTICS + ".fedLateResolved === " + late + " && " + DIAGNOSTICS + ".save === 0" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
+    }
+
 
     @Test
     public void beaAgendaRefreshCancelAndNavigationPreserveDraft() throws Exception {
@@ -2447,6 +2567,37 @@ public class ManagedWorkspaceInstrumentedTest {
         // Explicit watchlist review replaces the company entry instead of restoring Markets.
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedCompanyNote", "phase=saved-reloaded, documentTimeOrigin=" + documentTimeOrigin + "; " + pageDiagnostic());
+        assertCompleteSoftwareLicenses();
+        assertCompanyNoteDraft(2, false);
+        assertCompanyNoteCounts(1, 2);
+        assertFixtureBoundary();
+    }
+
+    private void assertCompleteSoftwareLicenses() throws Exception {
+        awaitPage("software licenses start closed without text",
+            "document.querySelector('.trial-notices > button')?.textContent === 'Software licenses'" +
+            " && document.querySelector('#trial-license-text')?.hidden === true" +
+            " && document.querySelector('#trial-license-text pre') === null");
+        click(".trial-notices > button");
+        awaitPage("complete local software licenses are visible",
+            "document.querySelector('.trial-notices > button')?.textContent === 'Hide software licenses'" +
+            " && document.querySelector('#trial-license-text')?.hidden === false" +
+            " && document.querySelector('#trial-license-text pre')?.textContent.length > 0" +
+            " && document.querySelector('#trial-license-text [role=status]') === null");
+        scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
+            "(() => { const region = document.querySelector('#trial-license-text');" +
+            " const bytes = new TextEncoder().encode(region.querySelector('pre').textContent);" +
+            " region.dataset.testLicenseBytes = String(bytes.byteLength);" +
+            " crypto.subtle.digest('SHA-256', bytes).then(hash => {" +
+            " region.dataset.testLicenseHash = Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');" +
+            " }).catch(() => { region.dataset.testLicenseHash = 'failed'; }); })()", null));
+        awaitPage("every canonical notice, icon and font license byte is retained",
+            "document.querySelector('#trial-license-text')?.dataset.testLicenseBytes === '2388267'" +
+            " && document.querySelector('#trial-license-text')?.dataset.testLicenseHash === '395a57fe9bcebb08fd09e8bfb75224ba550bf2c5773431c9fdec1bff88e9a04a'");
+        click(".trial-notices > button");
+        awaitPage("Hide software licenses closes the complete local text",
+            "document.querySelector('.trial-notices > button')?.getAttribute('aria-expanded') === 'false'" +
+            " && document.querySelector('#trial-license-text')?.hidden === true");
     }
 
     @Test
@@ -3458,7 +3609,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
-            scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings"));
+            scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
         assertTrue("Fixture index exceeded its bound", original.length > 0 && original.length <= 65536);

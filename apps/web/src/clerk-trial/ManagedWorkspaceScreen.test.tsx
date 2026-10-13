@@ -37,6 +37,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
@@ -264,6 +265,9 @@ function fixture(
   priceCoverage = [eodSelection.listing, ...payload.memberships],
 ) {
   const api: ManagedApi = {
+    monetaryAnnouncements: vi
+      .fn<ManagedApi["monetaryAnnouncements"]>()
+      .mockRejectedValue(new Error("Unexpected announcements read")),
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
@@ -530,6 +534,36 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  it("keeps explicitly loaded Fed metadata separate from the calendar and clears it on retirement", async () => {
+    const { workspace, api, html } = fixture();
+    workspace.setView("markets");
+    const read = vi
+      .mocked(api.monetaryAnnouncements)
+      .mockResolvedValue(fedAnnouncementsFixture());
+    expect(html()).toContain("Load announcements");
+    expect(read).not.toHaveBeenCalled();
+    await workspace.announcements.load();
+    const loaded = html();
+    expect(loaded).toContain("Invented monetary policy announcement");
+    expect(loaded).toContain("Unknown publication time");
+    expect(loaded).toContain('dateTime="2026-10-20T18:00:00.000Z"');
+    expect(loaded).toContain('dateTime="2026-10-19T18:00:00.000Z"');
+    expect(loaded).not.toContain("local access");
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    await workspace.announcements.load();
+    expect(html()).toContain("Previous announcements");
+    expect(html()).toContain("could not be verified");
+    workspace.setView("watchlist");
+    expect(html()).not.toContain("fed-announcements");
+    workspace.setView("markets");
+    expect(html()).toContain("Invented monetary policy announcement");
+    expect(read).toHaveBeenCalledTimes(2);
+    workspace.coordinator.retire();
+    expect(html()).not.toContain("fed-announcements");
+    expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
   it("shows the explicitly loaded dated agenda in Markets and hides it after shared retirement", async () => {
     const { workspace, api, html } = fixture();
     workspace.setView("markets");

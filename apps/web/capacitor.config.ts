@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
   loggingBehavior: "none",
   server: { hostname: "localhost", androidScheme: "https" },
   android: {
+    minWebViewVersion: 111,
     allowMixedContent: false,
     webContentsDebuggingEnabled: false,
   },

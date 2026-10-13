@@ -1061,6 +1061,7 @@ export * from "./personal-sec-quarter-assessment";
 export * from "./personal-sec-source-json";
 export * from "./personal-economic-calendar";
 export * from "./managed-economic-calendar";
+export * from "./managed-monetary-announcements";
 export * from "./personal-monetary-announcements";
 export * from "./managed-workspace";
 export * from "./managed-eod-history";

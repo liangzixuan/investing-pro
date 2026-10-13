@@ -77,6 +77,12 @@ content, outside its main landmark. Use a single separator and the existing
 retain its unsaved-change and pending-save warnings. Avoid a second bottom
 warning strip or a decorative sidebar slogan.
 
+Federal Reserve announcements follow the BEA agenda in Markets. Keep the feed
+scope, source and original loaded time visible. Separate each title and publication
+time with a thin rule; source links and Load, Refresh and Cancel controls retain
+44px targets. The previous-response notice stays visible during an unconfirmed
+refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
+
 ## Typography and financial evidence
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,

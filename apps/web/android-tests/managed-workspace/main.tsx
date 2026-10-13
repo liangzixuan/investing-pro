@@ -33,6 +33,7 @@ if (
   scenario !== "raw-close-comparison" &&
   scenario !== "bea-agenda" &&
   scenario !== "bea-session-retirement" &&
+  scenario !== "fed-announcements" &&
   scenario !== "markets-selected-price" &&
   scenario !== "watchlist-comparison" &&
   scenario !== "watchlist-export"
@@ -181,6 +182,15 @@ function Fixture() {
             onClick={fixture.settleCancelledFilings}
           >
             Settle cancelled invented filings response
+          </button>
+        )}
+        {scenario === "fed-announcements" && (
+          <button
+            id="settle-cancelled-announcements"
+            disabled={state.fedAborted !== state.fedLateResolved + 1}
+            onClick={fixture.settleCancelledAnnouncements}
+          >
+            Settle cancelled invented announcements response
           </button>
         )}
         {scenario === "watchlist-recovery" && (

@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { defineConfig } from "vite";
 import { buildIdentity } from "./build-identity";
+import { compressedNotices } from "./compressed-notices";
 import { clerkClientProfile, nativeAssetManifest } from "./client-profile";
 import {
   trialFrontendApiOrigin,
@@ -37,6 +38,7 @@ export default defineConfig({
     __INVESTMENT_CLIENT_TARGET__: JSON.stringify(profile.target),
   },
   plugins: [
+    compressedNotices(),
     {
       name: "native-asset-identity",
       async writeBundle(_options, bundle) {

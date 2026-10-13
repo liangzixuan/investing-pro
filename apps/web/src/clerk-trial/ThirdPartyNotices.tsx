@@ -1,26 +1,35 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { loadThirdPartyNotices } from "./load-third-party-notices";
 
 export function ThirdPartyNotices() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const pending = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      pending.current?.abort();
+      pending.current = null;
+    },
+    [],
+  );
   const load = async () => {
-    if (text !== null || loading) return;
+    if (text !== null || pending.current !== null) return;
+    const controller = new AbortController();
+    pending.current = controller;
     setLoading(true);
     setFailed(false);
     try {
-      const notices =
-        await import("../../clerk-trial/third-party-notices.txt?raw");
-      const icons = await import("./icons/LICENSE.txt?raw");
-      const font = await import("./fonts/OFL.txt?raw");
-      setText(
-        `${notices.default}\n\nTabler Icons\n\n${icons.default}\n\nInter\n\n${font.default}`,
-      );
+      const value = await loadThirdPartyNotices(controller.signal);
+      if (pending.current === controller) setText(value);
     } catch {
-      setFailed(true);
+      if (pending.current === controller) setFailed(true);
     } finally {
-      setLoading(false);
+      if (pending.current === controller) {
+        pending.current = null;
+        setLoading(false);
+      }
     }
   };
   return (

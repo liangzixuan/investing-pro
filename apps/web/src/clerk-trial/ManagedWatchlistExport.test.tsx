@@ -160,6 +160,9 @@ function text(node: React.ReactNode): string {
 
 function fixture(initial = payload) {
   const api: ManagedApi = {
+    monetaryAnnouncements: vi
+      .fn<ManagedApi["monetaryAnnouncements"]>()
+      .mockRejectedValue(new Error("Unexpected announcements read")),
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     recentFilings: vi.fn<ManagedApi["recentFilings"]>(),

@@ -14,6 +14,7 @@ import {
   recoverySavedNote,
   signOutNoteDraft,
   beaAgenda,
+  fedAnnouncements,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
@@ -148,6 +149,130 @@ describe("bounded invented watchlist comparison", () => {
       ),
     ).toThrow("Unexpected fixture EOD request");
     expect(fixture.getSnapshot().eod).toBe(0);
+  });
+});
+
+describe("bounded invented Federal Reserve journey", () => {
+  it("retains exact dates and drafts, replaces with empty, and fences navigation/session late responses", async () => {
+    const fixture = await createFixture("fed-announcements");
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      { priceCoverage: fixture.priceCoverage },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.move("listing-zero", 1);
+    workspace.note("listing-zero", "Fed research draft");
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    workspace.setView("markets");
+    expect(fixture.getSnapshot().fed).toBe(0);
+    await workspace.announcements.load();
+    expect(workspace.announcements.getSnapshot().announcements).toEqual(
+      fedAnnouncements,
+    );
+    await workspace.announcements.load();
+    expect(workspace.announcements.getSnapshot()).toMatchObject({
+      announcements: fedAnnouncements,
+      error: "unavailable",
+      showingPrevious: true,
+    });
+    const cancelled = workspace.announcements.load();
+    await workspace.announcements.load();
+    expect(fixture.getSnapshot().fed).toBe(3);
+    expect(() => fixture.settleCancelledAnnouncements()).toThrow(
+      "Only an aborted",
+    );
+    workspace.announcements.cancel();
+    fixture.settleCancelledAnnouncements();
+    await cancelled;
+    expect(workspace.announcements.getSnapshot().announcements).toEqual(
+      fedAnnouncements,
+    );
+    await workspace.announcements.load();
+    const empty = workspace.announcements.getSnapshot().announcements;
+    expect(empty).toMatchObject({
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+      items: [],
+      availableItemCount: 0,
+    });
+    const navigation = workspace.announcements.load();
+    workspace.setView("watchlist");
+    fixture.settleCancelledAnnouncements();
+    await navigation;
+    workspace.setView("markets");
+    expect(workspace.announcements.getSnapshot().announcements).toEqual(empty);
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 1,
+      dirty: true,
+      draft,
+    });
+    await workspace.announcements.load();
+    expect(workspace.announcements.getSnapshot().announcements).toEqual({
+      ...fedAnnouncements,
+      fetchedAt: "2026-10-23T18:00:00.000Z",
+    });
+    const retired = workspace.announcements.load();
+    await workspace.refreshCatalog();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(workspace.announcements.getSnapshot()).toMatchObject({
+      announcements: null,
+      busy: false,
+    });
+    fixture.settleCancelledAnnouncements();
+    await retired;
+    expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(fixture.getSnapshot()).toMatchObject({
+      fed: 7,
+      fedAborted: 3,
+      fedLateResolved: 3,
+      status: 2,
+      load: 1,
+      save: 0,
+      calendar: 0,
+      annual: 0,
+      filings: 0,
+      eod: 0,
+      marketsEod: 0,
+    });
+  });
+
+  it("rejects wrong-scenario, aborted and concurrent native fixture reads", async () => {
+    const ordinary = await createFixture();
+    expect(() =>
+      ordinary.api.monetaryAnnouncements(new AbortController().signal),
+    ).toThrow("Unexpected invented");
+    const fixture = await createFixture("fed-announcements");
+    const aborted = new AbortController();
+    aborted.abort();
+    expect(() => fixture.api.monetaryAnnouncements(aborted.signal)).toThrow(
+      "Unexpected invented",
+    );
+    expect(() => fixture.settleCancelledAnnouncements()).toThrow(
+      "Only an aborted",
+    );
+    await fixture.api.monetaryAnnouncements(new AbortController().signal);
+    await expect(
+      fixture.api.monetaryAnnouncements(new AbortController().signal),
+    ).rejects.toMatchObject({ code: "unavailable" });
+    const controller = new AbortController();
+    const pending = fixture.api.monetaryAnnouncements(controller.signal);
+    expect(() =>
+      fixture.api.monetaryAnnouncements(new AbortController().signal),
+    ).toThrow("Unexpected invented");
+    controller.abort();
+    fixture.settleCancelledAnnouncements();
+    await pending;
+    expect(fixture.getSnapshot()).toMatchObject({
+      fed: 3,
+      fedAborted: 1,
+      fedLateResolved: 1,
+    });
   });
 });
 
@@ -1250,6 +1375,9 @@ describe("Android managed fixture startup", () => {
         refreshScenario: false,
         refreshFailed: 0,
         catalogRecovery: scenario === "catalog-startup-recovery",
+        fed: 0,
+        fedAborted: 0,
+        fedLateResolved: 0,
         calendar: 0,
         calendarAborted: 0,
         calendarLateResolved: 0,

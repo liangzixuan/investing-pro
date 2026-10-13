@@ -3,6 +3,8 @@ import { createHash, generateKeyPairSync, sign } from "node:crypto";
 import {
   encodeMainWatchlistPayload,
   MANAGED_ECONOMIC_CALENDAR_PATH,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+  parseManagedMonetaryAnnouncements,
   parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
 } from "@research-cockpit/contracts";
@@ -16,6 +18,7 @@ import * as catalogModule from "./managed-workspace-catalog";
 import * as secAdmissionModule from "./managed-sec-admission";
 import * as eodAdmissionModule from "./managed-eod-admission";
 import * as beaProviderModule from "./bea-release-provider";
+import * as fedProviderModule from "./fed-monetary-announcements-provider";
 import * as annualServiceModule from "./managed-sec-annual-service";
 import * as eodServiceModule from "./managed-eod-service";
 import {
@@ -1461,6 +1464,361 @@ describe("managed BEA calendar composed function", () => {
           failure === "failure"
             ? Promise.reject(new Error("private-provider-body"))
             : Promise.resolve(Response.json({ "private-provider-body": {} })),
+        ),
+      );
+      const answer = await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path }));
+      expect(answer).toMatchObject({
+        status: 503,
+        body: { error: "unavailable" },
+      });
+      expect(JSON.stringify(answer)).not.toContain("private-provider-body");
+      expect(globalThis.fetch).toHaveBeenCalledOnce();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("managed Fed announcements composed function", () => {
+  const path = MANAGED_MONETARY_ANNOUNCEMENTS_PATH;
+  const schedule = () => `<rss version="2.0"><channel>
+    <title>FRB: Press Release - Monetary Policy</title>
+    <link>https://www.federalreserve.gov/feeds/feeds.htm</link>
+    <item><title>Invented monetary announcement</title>
+      <link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916a.htm</link>
+      <pubDate>Wed, 16 Sep 2026 18:00:00 GMT</pubDate></item>
+    <item><title>Invented announcement without time</title>
+      <link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20260916b.htm</link></item>
+  </channel></rss>`;
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "loads one fixed public request for the signed %s caller without execution credentials or storage",
+    async (origin) => {
+      const f = memoryRepository();
+      const annual = vi.spyOn(
+        annualServiceModule,
+        "createManagedSecAnnualService",
+      );
+      const eod = vi.spyOn(eodServiceModule, "createManagedEodService");
+      const provider = vi.spyOn(
+        fedProviderModule,
+        "createFedMonetaryAnnouncementsProvider",
+      );
+      const fetch = vi.fn(() => Promise.resolve(new Response(schedule())));
+      vi.stubGlobal("fetch", fetch);
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      expect(provider).not.toHaveBeenCalled();
+      const answer = (await run(
+        context({
+          path,
+          headers: {
+            origin,
+            authorization: `Bearer ${token({ azp: origin })}`,
+          },
+        }),
+      )) as { status: number; body: unknown; headers: Record<string, string> };
+      expect(answer.status).toBe(200);
+      expect(
+        parseManagedMonetaryAnnouncements(answer.body)?.items[0]?.title,
+      ).toBe("Invented monetary announcement");
+      expect(parseManagedMonetaryAnnouncements(answer.body)).toMatchObject({
+        availableItemCount: 2,
+        items: [
+          { publishedAt: "2026-09-16T18:00:00.000Z" },
+          { publishedAt: null },
+        ],
+      });
+      expect(answer.headers["cache-control"]).toBe("no-store");
+      expect(answer.headers["access-control-allow-origin"]).toBe(origin);
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
+        "https://www.federalreserve.gov/feeds/press_monetary.xml",
+        {
+          method: "GET",
+          headers: { Accept: "application/rss+xml, application/xml;q=0.9" },
+          credentials: "omit",
+          redirect: "error",
+          referrerPolicy: "no-referrer",
+          cache: "no-store",
+          signal: expect.any(AbortSignal) as AbortSignal,
+        },
+      );
+      expect(provider).toHaveBeenCalledOnce();
+      expect(annual).not.toHaveBeenCalled();
+      expect(eod).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+      expect(f.repository).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    [{ method: "POST", bodyBinary: Buffer.from("{}") }, 400, "invalid_request"],
+    [{ method: "POST" }, 400, "invalid_request"],
+    [{ method: "HEAD" }, 405, "method_not_allowed"],
+    [{ bodyBinary: Buffer.from("x") }, 400, "invalid_request"],
+    [{ bodyBinary: Buffer.alloc(20_000) }, 413, "payload_too_large"],
+    [{ queryString: "days=365" }, 400, "invalid_request"],
+    [{ queryString: "%" }, 400, "invalid_request"],
+    [{ headers: { origin: ORIGIN } }, 401, "unauthenticated"],
+    [
+      { headers: { origin: "https://untrusted.example" } },
+      403,
+      "origin_denied",
+    ],
+  ] as const)(
+    "denies unadmitted announcements before provider, upstream or repository work %#",
+    async (patch, status, code) => {
+      const f = memoryRepository();
+      const provider = vi.spyOn(
+        fedProviderModule,
+        "createFedMonetaryAnnouncementsProvider",
+      );
+      const answer = await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path, ...patch }));
+      expect(answer).toMatchObject({ status, body: { error: code } });
+      expect(provider).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    [ORIGIN, NATIVE_ORIGIN],
+    [NATIVE_ORIGIN, ORIGIN],
+  ])(
+    "refuses a valid token for a different authorized party (%s/%s)",
+    async (origin, azp) => {
+      const f = memoryRepository();
+      const provider = vi.spyOn(
+        fedProviderModule,
+        "createFedMonetaryAnnouncementsProvider",
+      );
+      const answer = await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(
+        context({
+          path,
+          headers: { origin, authorization: `Bearer ${token({ azp })}` },
+        }),
+      );
+      expect(answer).toMatchObject({
+        status: 401,
+        body: { error: "unauthenticated" },
+      });
+      expect(provider).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses a signed non-owner before source construction", async () => {
+    const f = memoryRepository();
+    const provider = vi.spyOn(
+      fedProviderModule,
+      "createFedMonetaryAnnouncementsProvider",
+    );
+    const answer = await createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(
+      context({
+        path,
+        headers: {
+          origin: ORIGIN,
+          authorization: `Bearer ${token({ sub: "user_otherInvented" })}`,
+        },
+      }),
+    );
+    expect(answer).toMatchObject({
+      status: 403,
+      body: { error: "access_denied" },
+    });
+    expect(provider).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it.each([ORIGIN, NATIVE_ORIGIN])(
+    "admits only body-free GET preflight without auth or source (%s)",
+    async (origin) => {
+      const f = memoryRepository();
+      const auth = vi.fn<authModule.ClerkTrialAuth>();
+      vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(auth);
+      const provider = vi.spyOn(
+        fedProviderModule,
+        "createFedMonetaryAnnouncementsProvider",
+      );
+      const run = createManagedWorkspaceFunction(configuration(), null, null);
+      for (const [method, requestedHeaders, status] of [
+        ["GET", "Authorization", 204],
+        ["POST", "Authorization", 403],
+        ["GET", "Authorization, Content-Type", 403],
+        ["GET", "Authorization, Authorization", 403],
+      ] as const) {
+        expect(
+          await run(
+            context({
+              path,
+              method: "OPTIONS",
+              headers: {
+                origin,
+                "access-control-request-method": method,
+                "access-control-request-headers": requestedHeaders,
+              },
+            }),
+          ),
+        ).toMatchObject({ status });
+      }
+      expect(auth).not.toHaveBeenCalled();
+      expect(provider).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(f.transport).not.toHaveBeenCalled();
+    },
+  );
+  it("includes default-entry configuration work in its total deadline before Fed can start", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    const validate = configModule.validateClerkTrialFunctionConfiguration;
+    vi.spyOn(
+      configModule,
+      "validateClerkTrialFunctionConfiguration",
+    ).mockImplementation((input) => {
+      elapsed = 10_000;
+      return validate(input);
+    });
+    vi.stubGlobal("__MANAGED_WORKSPACE_SERVER_CONFIG__", configuration());
+    vi.stubGlobal("__MANAGED_SEC_CONFIG__", null);
+    const f = memoryRepository();
+    expect(await main(context({ path }))).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("bounds stalled authentication and rejects its late acceptance without creating a provider", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: authModule.ClerkTrialAuthResult) => void;
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const provider = vi.spyOn(
+      fedProviderModule,
+      "createFedMonetaryAnnouncementsProvider",
+    );
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    finish({
+      status: "allowed",
+      principal: { userId: "invented-announcements-owner" },
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(provider).not.toHaveBeenCalled();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("bounds provider work by time left after auth, closes it, and makes no retry", async () => {
+    vi.useFakeTimers();
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.spyOn(authModule, "createClerkTrialAuth").mockReturnValue(() => {
+      elapsed = 4_000;
+      return Promise.resolve({
+        status: "allowed",
+        principal: { userId: "invented-announcements-owner" },
+      });
+    });
+    const original = fedProviderModule.createFedMonetaryAnnouncementsProvider;
+    const close = vi.fn();
+    vi.spyOn(
+      fedProviderModule,
+      "createFedMonetaryAnnouncementsProvider",
+    ).mockImplementation(() => {
+      const provider = original();
+      return {
+        load: provider.load.bind(provider),
+        close: () => {
+          close();
+          provider.close();
+        },
+      };
+    });
+    const fetch = vi.fn<typeof globalThis.fetch>(
+      () => new Promise(() => undefined),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const f = memoryRepository();
+    const pending = createManagedWorkspaceFunction(
+      configuration(),
+      null,
+      null,
+    )(context({ path }));
+    await vi.advanceTimersByTimeAsync(5_999);
+    expect(close).not.toHaveBeenCalled();
+    elapsed = 10_000;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await pending).toMatchObject({
+      status: 408,
+      body: { error: "request_timeout" },
+    });
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(fetch.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+    expect(close).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("checks the total deadline after reading the serialized response body", async () => {
+    let elapsed = 0;
+    vi.spyOn(performance, "now").mockImplementation(() => elapsed);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.resolve(new Response(schedule()))),
+    );
+    vi.spyOn(Response.prototype, "text").mockImplementation(() => {
+      elapsed = 10_000;
+      return Promise.resolve("{}");
+    });
+    const f = memoryRepository();
+    expect(
+      await createManagedWorkspaceFunction(
+        configuration(),
+        null,
+        null,
+      )(context({ path })),
+    ).toMatchObject({ status: 408, body: { error: "request_timeout" } });
+    expect(globalThis.fetch).toHaveBeenCalledOnce();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it.each(["invalid", "failure", "status"] as const)(
+    "returns generic unavailable for %s provider output without a source body",
+    async (failure) => {
+      const f = memoryRepository();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(() =>
+          failure === "failure"
+            ? Promise.reject(new Error("private-provider-body"))
+            : Promise.resolve(
+                new Response("private-provider-body", {
+                  status: failure === "status" ? 429 : 200,
+                }),
+              ),
         ),
       );
       const answer = await createManagedWorkspaceFunction(

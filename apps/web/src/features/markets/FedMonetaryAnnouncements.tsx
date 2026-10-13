@@ -4,6 +4,7 @@ import {
   PERSONAL_FED_MONETARY_SOURCE,
   type PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
+import type { MouseEventHandler, Ref } from "react";
 import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
 import "./fed-announcements.css";
 
@@ -13,6 +14,11 @@ export interface FedMonetaryAnnouncementsProps {
   readonly error: PersonalWorkspaceApiErrorCode | null;
   readonly enabled: boolean;
   readonly onLoad: () => void;
+  readonly className?: string;
+  readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
+  readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly showingPrevious?: boolean;
+  readonly message?: string;
 }
 
 const timestamp = new Intl.DateTimeFormat("en-US", {
@@ -31,10 +37,15 @@ export function FedMonetaryAnnouncements({
   error,
   enabled,
   onLoad,
+  className = "",
+  onCancel,
+  loadButtonRef,
+  showingPrevious = false,
+  message = "",
 }: FedMonetaryAnnouncementsProps) {
   return (
     <section
-      className="fed-announcements"
+      className={`fed-announcements ${className}`.trim()}
       aria-labelledby="fed-announcements-title"
     >
       <header className="fed-announcements-heading">
@@ -42,13 +53,25 @@ export function FedMonetaryAnnouncements({
           <h2 id="fed-announcements-title">Federal Reserve announcements</h2>
           <p>Monetary policy · Announcements from this feed.</p>
         </div>
-        <button type="button" disabled={!enabled || busy} onClick={onLoad}>
-          {busy
-            ? "Loading announcements…"
-            : announcements === null
-              ? "Load announcements"
-              : "Refresh announcements"}
-        </button>
+        <div className="fed-announcements-actions">
+          <button
+            ref={loadButtonRef}
+            type="button"
+            disabled={!enabled || busy}
+            onClick={onLoad}
+          >
+            {busy
+              ? "Loading announcements…"
+              : announcements === null
+                ? "Load announcements"
+                : "Refresh announcements"}
+          </button>
+          {busy && onCancel && (
+            <button type="button" onClick={onCancel}>
+              Cancel announcements
+            </button>
+          )}
+        </div>
       </header>
       <p className="fed-announcements-source">
         {PERSONAL_FED_MONETARY_SOURCE.name} · All times Eastern.{" "}
@@ -60,6 +83,16 @@ export function FedMonetaryAnnouncements({
           Official Federal Reserve feeds
         </a>
       </p>
+      {message && (
+        <p role="status" aria-live="polite">
+          {message}
+        </p>
+      )}
+      {showingPrevious && announcements !== null && (
+        <p className="fed-announcements-note">
+          Previous announcements. This attempt has not confirmed a newer feed.
+        </p>
+      )}
       {error !== null && (
         <p role="alert" className="fed-announcements-error">
           {error === "invalid_response"

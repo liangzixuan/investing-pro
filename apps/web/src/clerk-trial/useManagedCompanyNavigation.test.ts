@@ -4,6 +4,8 @@ import { ManagedWorkspace } from "./managed-workspace";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 import { useManagedCompanyNavigation } from "./useManagedCompanyNavigation";
+import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
+import { TrialApiError } from "./api";
 
 // Exercise the hook's actual transitions against a real workspace. The router
 // harness supplies PUSH/REPLACE/POP and preserves the same hook slots per mount.
@@ -149,6 +151,9 @@ async function settle() {
 }
 function fixture() {
   const api: ManagedApi = {
+    monetaryAnnouncements: vi
+      .fn<ManagedApi["monetaryAnnouncements"]>()
+      .mockRejectedValue(new Error("Unexpected announcements read")),
     economicCalendar: vi.fn(),
     status: vi.fn<ManagedApi["status"]>().mockResolvedValue({ snapshot }),
     load: vi.fn<ManagedApi["load"]>().mockResolvedValue({
@@ -226,6 +231,84 @@ function direct(search = "?company=listing-zero&section=price") {
 }
 
 describe("managed company URL navigation", () => {
+  it.each([
+    "?company=listing-zero&section=price",
+    "?company=listing-zero&section=invalid",
+  ])(
+    "keeps announcements inactive on a cold route and pending return (%s)",
+    async (search) => {
+      direct(search);
+      const f = fixture();
+      f.workspace.setView("markets");
+      const nav = f.render();
+      await f.workspace.announcements.load();
+      expect(f.api.monetaryAnnouncements).not.toHaveBeenCalled();
+      mount.navigate.mockImplementation(() => undefined);
+      nav.back();
+      await f.workspace.announcements.load();
+      expect(f.api.monetaryAnnouncements).not.toHaveBeenCalled();
+      expect(nav.hasCompanyRoute()).toBe(true);
+      mount.entries[0] = {
+        pathname: "/",
+        search: "",
+        key: "returned",
+        state: null,
+      };
+      f.render();
+      expect(f.api.monetaryAnnouncements).not.toHaveBeenCalled();
+      vi.mocked(f.api.monetaryAnnouncements).mockResolvedValue(
+        fedAnnouncementsFixture(),
+      );
+      await f.workspace.announcements.load();
+      expect(f.api.monetaryAnnouncements).toHaveBeenCalledOnce();
+    },
+  );
+  it("cancels a refresh on company entry and fences late auth while preserving feed and unsaved note", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("markets");
+    let nav = f.render();
+    const feed = fedAnnouncementsFixture();
+    vi.mocked(f.api.monetaryAnnouncements).mockResolvedValueOnce(feed);
+    await f.workspace.announcements.load();
+    const member = f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    f.workspace.note(member.listingId, "Unsent announcement journey note");
+    const draft = f.workspace.coordinator.getSnapshot().draft;
+    let fail!: (error: unknown) => void;
+    vi.mocked(f.api.monetaryAnnouncements).mockReturnValueOnce(
+      new Promise((_, reject) => {
+        fail = reject;
+      }),
+    );
+    const pending = f.workspace.announcements.load();
+    nav.open(() =>
+      f.workspace.openWatchlistEod(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    expect(
+      vi.mocked(f.api.monetaryAnnouncements).mock.calls[1]![0].aborted,
+    ).toBe(true);
+    fail(new TrialApiError("unauthenticated"));
+    await pending;
+    expect(f.workspace.coordinator.getSnapshot().phase).not.toBe("retired");
+    expect(f.workspace.announcements.getSnapshot()).toMatchObject({
+      announcements: feed,
+      busy: false,
+      showingPrevious: true,
+    });
+    nav = f.render();
+    nav.back();
+    f.render();
+    expect(f.workspace.announcements.getSnapshot().announcements).toBe(feed);
+    expect(f.workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(f.api.monetaryAnnouncements).toHaveBeenCalledTimes(2);
+    expect(f.api.save).not.toHaveBeenCalled();
+    expect(f.api.economicCalendar).not.toHaveBeenCalled();
+    expect(f.api.eodHistory).not.toHaveBeenCalled();
+    f.workspace.coordinator.retire();
+    expect(f.workspace.announcements.getSnapshot().announcements).toBeNull();
+  });
   it.each(["price", "annual", "filings"])(
     "resolves a cold %s link after catalog readiness without source loads and replaces it on Back",
     async (section) => {
