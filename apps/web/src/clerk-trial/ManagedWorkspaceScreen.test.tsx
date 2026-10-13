@@ -980,6 +980,94 @@ describe("managed workspace screen", () => {
     expect(workspace.filings.getSnapshot().response).toBeNull();
     expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
   });
+  it("compares a company refresh with its watchlist handoff and saves only the current filing reference", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Existing thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const original = workspace.coordinator.getSnapshot().draft!;
+    workspace.selectWatchlistFilingsMember(original.memberships[0]!);
+    const selected = workspace.watchlistFilings.getSnapshot();
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(1, "available", selected.filings.selection!),
+    );
+    await workspace.watchlistFilings.load(selected.selected!);
+    const seed = workspace.watchlistFilings.getSnapshot().filings.response!;
+    workspace.openWatchlistFilings({
+      member: selected.selected!,
+      response: seed,
+    });
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
+    expect(html()).not.toContain("Compared loaded lists");
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    const current = workspace.filings.getSnapshot().response!;
+    expect(html()).toContain(
+      "Newly observed in this refresh: 1 of 2 filings in the displayed response.",
+    );
+    expect(html()).toContain(
+      'data-filings-new-accession="0000000001-26-000002"',
+    );
+    const pair = workspace.filings.getSnapshot().refreshComparison;
+    workspace.switchToAnnual();
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot().refreshComparison).toBe(pair);
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    expect(
+      company.props.filingsNoteActions.append(seed, seed.issuer.filings[0]!)
+        .appended,
+    ).toBe(false);
+    expect(
+      company.props.filingsNoteActions.append(
+        current,
+        current.issuer.filings[1]!,
+      ).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships[0]!.note).toContain(
+      "Existing thesis Observed SEC filing reference:",
+    );
+    expect(draft.memberships[0]!.note).toContain("0000000001-26-000002");
+    expect(draft.memberships[0]!.note).not.toContain("Newly observed");
+    expect(draft.memberships[1]).toEqual(original.memberships[1]);
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
+    expect(workspace.watchlistFilings.getSnapshot().filings.response).toBe(
+      seed,
+    );
+    expect(
+      workspace.watchlistFilings.getSnapshot().filings.refreshComparison,
+    ).toBeNull();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(draft);
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
   it("updates comparative Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
     const { workspace, api, html } = fixture({
       ...payload,

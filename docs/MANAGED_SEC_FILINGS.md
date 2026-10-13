@@ -74,6 +74,35 @@ matching filings. A truncated result reports the matching count and retained
 limit. Identical accession duplicates collapse; conflicting duplicates are
 refused. Form amendments remain as supplied by SEC.
 
+## Compare consecutive loaded lists
+
+After a successful company **Refresh filings**, **Newly observed in this refresh**
+marks current accessions absent from the previous loaded list. The count covers
+the full displayed response, regardless of Form, Filing date or page. An entry's
+absence from the earlier list does not establish when SEC published it or that
+either list is complete. Different windows and source limits can change which
+accessions appear.
+
+The first available result, including an empty result or a checked watchlist
+handoff, establishes a baseline without a comparison claim. Each later available
+result compares against the preceding accepted list. An equal or empty replacement
+can therefore show zero newly observed filings. **Compared loaded lists** retains
+both original windows, request, retrieval and completion times, source links,
+retained counts, truncation and unloaded continuation limits.
+
+Pending refreshes, Cancel, cooldown and transient failure preserve the displayed
+pair and its original dates. A retained-result warning still explains that the
+latest attempt did not confirm newer filings. Invalid or ineligible evidence,
+closing the visit, identity changes and session retirement clear the pair.
+Switching company sections preserves it. The selected watchlist keeps its own
+single packet for Back; the comparison belongs only to the company visit.
+
+The comparison retains only the previous and current available lists within the
+company visit. Existing latest-attempt metadata remains separate. It adds no
+monitoring, stored history or source request. A filing's reference-to-note action uses the
+current row and its original evidence; the comparison label is not added to the
+note. Review and Save remain explicit.
+
 ## Review filings after an Annual report
 
 When this company visit holds a checked Annual report with a resolved filing,

@@ -1914,6 +1914,9 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("View filings hands off the same packet without another read",
             "document.activeElement?.id === 'managed-filings-heading'" +
             " && document.querySelector('.managed-filings-status')?.textContent.includes('loaded watchlist filings')");
+        awaitPage("a watchlist handoff establishes a baseline without a refresh claim",
+            "document.querySelector('.managed-filings-refresh-comparison') === null" +
+            " && document.querySelector('[data-filings-new-accession]') === null");
         assertCompanyHistory("listing-zero", "filings", false);
         assertFilingsDraftAndCounts(1, 0, 0);
         String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 of 26 loaded filings')" +
@@ -2009,8 +2012,22 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("completed empty response leaves Refresh available",
             "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
+        String emptyComparison = "document.querySelector('.managed-filings-refresh-count')?.textContent === 'Newly observed in this refresh: 0 of 0 filings in the displayed response.'" +
+            " && document.querySelector('[data-filings-new-accession]') === null" +
+            " && document.querySelector('.managed-filings-refresh-comparison')?.textContent.includes('This does not establish when they were published or that either list is complete.')";
+        awaitPage("an empty successful refresh still compares the two admitted lists", emptyComparison +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === false" +
+            " && document.querySelector('.managed-filings-refresh-comparison summary')?.getBoundingClientRect().height >= 44");
+        click(".managed-filings-refresh-comparison summary");
+        awaitPage("native disclosure exposes both original lists and their incomplete coverage", emptyComparison +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === true" +
+            " && document.querySelector('[aria-label=\"Previous loaded list\"]')?.textContent.includes('26 of 26 matching entries')" +
+            " && document.querySelector('[aria-label=\"Current loaded list\"]')?.textContent.includes('0 of 0 matching entries')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-compared-lists section')).every(s => s.textContent.includes('2026-06-23 to 2026-09-20') && s.textContent.includes('2026-09-20T00:00:00.000Z') && s.textContent.includes('2026-09-20T00:00:01.000Z') && s.textContent.includes('2026-09-20T00:00:02.000Z') && s.textContent.includes('Listed by the source; not loaded.') && s.querySelector('a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json')");
+        assertFilingsDraftAndCounts(4, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
+        awaitPage("pending refresh retains the last accepted comparison", emptyComparison);
         assertCompanyHistory("listing-zero", "filings", false);
         closeSoftKeyboard();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
@@ -2042,6 +2059,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("reopened Filings requires one fresh explicit read", loaded +
             " && document.querySelectorAll('.managed-filings-list > li').length === 25");
+        awaitPage("a reopened visit clears its prior comparison",
+            "document.querySelector('.managed-filings-refresh-comparison') === null");
         assertFilingsDraftAndCounts(6, 2, 2);
         click(".managed-filings-pagination > button:last-child");
         String add = ".managed-filings-list button[aria-label='Add Form 8-K filing 0000000001-26-000026 reference to note draft']";

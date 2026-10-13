@@ -145,6 +145,14 @@ focus outline at the destination. Source details opens the existing disclosure.
 Keep this navigator in the document flow, with no new sticky layer or automatic
 scrolling when data changes. It leaves company routes, history and notes intact.
 
+For a company Filings refresh, put the full-response newly observed count above
+the local filters. Use quiet row text to mark accessions absent from the previous
+loaded list. Keep the incomplete-coverage explanation visible. One initially
+closed **Compared loaded lists** disclosure contains the two source records in
+columns on wide screens and stacked at narrow widths. Preserve the current
+source dates and any retained-result warning. The marker conveys observation,
+not investment importance.
+
 In company Filings, place Form and Filing date in two compact columns, stacked
 on narrow screens. Keep both native selects mounted with 44px targets. Show the
 Annual filing date and same-day exclusion beside the date control; preserve a

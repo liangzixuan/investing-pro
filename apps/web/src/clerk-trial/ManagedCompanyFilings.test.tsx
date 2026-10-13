@@ -15,6 +15,14 @@ import {
 } from "./managed-filings-annual-baseline";
 import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
 import { TrialApiError } from "./api";
+import {
+  managedSecFilingsWindow,
+  parseManagedSecFilingsResponse,
+} from "@research-cockpit/contracts";
+import {
+  compareManagedFilingsResponses,
+  type ManagedFilingsRefreshComparison,
+} from "./managed-filings-refresh-comparison";
 const hooks = vi.hoisted<{ state: unknown; direct: boolean }>(() => ({
   state: undefined,
   direct: false,
@@ -58,11 +66,13 @@ function page(
   response = filingsResponse(),
   noteActions?: ManagedFilingsNoteActions,
   baseline: ManagedFilingsAnnualBaseline | null = null,
+  refreshComparison: ManagedFilingsRefreshComparison | null = null,
 ) {
   hooks.direct = true;
   const node = ManagedFilingsResults({
     response,
     baseline,
+    refreshComparison,
     ...(noteActions ? { noteActions } : {}),
   });
   hooks.direct = false;
@@ -465,5 +475,261 @@ describe("filings after the current Annual report", () => {
     expect(html).toContain("Date filtering needs a loaded Annual report");
     expect(html).not.toContain("Annual baseline and date limits");
     expect(html).toContain("26 of 26 loaded filings");
+  });
+});
+
+describe("consecutive loaded filing lists", () => {
+  function checked(response = filingsResponse()) {
+    const parsed = parseManagedSecFilingsResponse(response, {
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256: filingsSelection.catalogSnapshotSha256,
+      listingId: filingsSelection.listing.listingId,
+      symbol: filingsSelection.listing.symbol,
+    });
+    expect(parsed).not.toBeNull();
+    return parsed!;
+  }
+
+  function later(count: number) {
+    return checked({
+      ...filingsResponse(count),
+      requestStartedAt: "2026-10-13T00:00:00.000Z",
+      completedAt: "2026-10-13T00:00:01.000Z",
+      window: managedSecFilingsWindow("2026-10-13T00:00:00.000Z")!,
+      issuer: {
+        ...filingsResponse(count).issuer,
+        fetchedAt: "2026-10-13T00:00:00.500Z",
+      },
+    });
+  }
+
+  function panel(model: Model) {
+    return renderToStaticMarkup(
+      <ManagedCompanyFilings
+        model={model}
+        annual={new AnnualModel(vi.fn(), vi.fn())}
+      />,
+    );
+  }
+
+  it("makes no comparison claim on the first packet or in single-packet mode", async () => {
+    for (const compareRefresh of [false, true]) {
+      const read = vi
+        .fn<ManagedApi["recentFilings"]>()
+        .mockResolvedValueOnce(checked(filingsResponse(1)))
+        .mockResolvedValueOnce(later(2));
+      const model = new Model(read, vi.fn(), undefined, { compareRefresh });
+      model.open(filingsSelection);
+      await model.load();
+      expect(panel(model)).not.toContain("Newly observed in this refresh");
+      expect(panel(model)).not.toContain("Compared loaded lists");
+      await model.load();
+      if (compareRefresh)
+        expect(panel(model)).toContain(
+          "1 of 2 filings in the displayed response.",
+        );
+      else expect(panel(model)).not.toContain("Compared loaded lists");
+      expect(read).toHaveBeenCalledTimes(2);
+    }
+  });
+
+  it("rejects a stale pair even when the replacement has equal contents", () => {
+    const current = later(2);
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(1)),
+      current,
+    )!;
+    expect(page(current, undefined, null, comparison).html).toContain(
+      "Compared loaded lists",
+    );
+    const replacement = checked(current);
+    expect(replacement).not.toBe(current);
+    const html = page(replacement, undefined, null, comparison).html;
+    expect(html).not.toContain("Compared loaded lists");
+    expect(html).not.toContain("Newly observed in this refresh");
+    expect(html).toContain("2 of 2 loaded filings");
+    const unavailable = checked(filingsResponse(0, "invalid_response"));
+    expect(page(unavailable, undefined, null, comparison).html).not.toContain(
+      "Compared loaded lists",
+    );
+  });
+
+  it("keeps the count across pages and Form filters while marking only current rows", () => {
+    const current = later(51);
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(26)),
+      current,
+    )!;
+    const actions: ManagedFilingsNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({ appended: true, message: "Added to draft." })),
+    };
+    let shown = page(current, actions, null, comparison);
+    const count =
+      "Newly observed in this refresh: 25 of 51 filings in the displayed response.";
+    expect(shown.html).toContain(count);
+    expect(shown.html).not.toContain("data-filings-new-accession");
+    shown.buttons[1]!.props.onClick!();
+    vi.mocked(actions.getAction).mockClear();
+    shown = page(current, actions, null, comparison);
+    expect(shown.html).toContain(count);
+    expect(shown.html.match(/data-filings-new-accession=/gu)).toHaveLength(24);
+    const calls = vi.mocked(actions.getAction).mock.calls;
+    expect(calls).toHaveLength(25);
+    for (const [index, [packet, row]] of calls.entries()) {
+      expect(packet).toBe(current);
+      expect(row).toBe(current.issuer.filings[index + 25]);
+    }
+    shown.buttons[1]!.props.onClick!();
+    shown = page(current, actions, null, comparison);
+    expect(shown.html.match(/data-filings-new-accession=/gu)).toHaveLength(1);
+    expect(shown.html).toContain(
+      'data-filings-new-accession="0000000001-26-000051"',
+    );
+    shown.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    shown = page(current, actions, null, comparison);
+    expect(shown.html).toContain(count);
+    expect(shown.html).not.toContain("data-filings-new-accession");
+    expect(shown.html).toContain("1 of 51 loaded filings · Page 1 of 1");
+    expect(actions.append).not.toHaveBeenCalled();
+  });
+
+  it("keeps the full count when the Annual date scope hides the newly observed row", async () => {
+    const original = filingsResponse(1);
+    const current = checked({
+      ...original,
+      requestStartedAt: "2026-02-02T00:00:00.000Z",
+      completedAt: "2026-02-02T00:00:01.000Z",
+      window: managedSecFilingsWindow("2026-02-02T00:00:00.000Z")!,
+      issuer: {
+        ...original.issuer,
+        fetchedAt: "2026-02-02T00:00:00.500Z",
+        filings: original.issuer.filings.map((row) => ({
+          ...row,
+          filingDate: "2026-02-01",
+          reportDate: "2025-12-31",
+        })),
+      },
+    });
+    const comparison = compareManagedFilingsResponses(
+      checked(filingsResponse(0)),
+      current,
+    )!;
+    const report = await annualResponse();
+    const target = report.evidence.target;
+    expect(target.status).toBe("target");
+    if (target.status !== "target") throw new Error("Expected Annual target");
+    const baseline: ManagedFilingsAnnualBaseline = {
+      response: report,
+      target,
+    };
+    const shown = page(current, undefined, baseline, comparison);
+    shown.dateScope.props.onScope("after-annual");
+    const filtered = page(current, undefined, baseline, comparison).html;
+    expect(filtered).toContain("0 of 1 loaded filings");
+    expect(filtered).toContain(
+      "Newly observed in this refresh: 1 of 1 filings in the displayed response.",
+    );
+    expect(filtered).not.toContain("data-filings-new-accession");
+  });
+
+  it("keeps both original clocks, windows and incomplete-list limits in one closed disclosure", () => {
+    const previous = checked({
+      ...filingsResponse(1000),
+      issuer: {
+        ...filingsResponse(1000).issuer,
+        matchingFilings: 1002,
+        truncated: true,
+      },
+    });
+    const current = later(2);
+    const comparison = compareManagedFilingsResponses(previous, current)!;
+    const html = page(current, undefined, null, comparison).html;
+    expect(
+      html.match(/<summary>Compared loaded lists<\/summary>/gu),
+    ).toHaveLength(1);
+    expect(html).toContain("<details><summary>Compared loaded lists</summary>");
+    expect(html).toContain('aria-label="Previous loaded list"');
+    expect(html).toContain('aria-label="Current loaded list"');
+    for (const packet of [previous, current]) {
+      expect(html).toContain(packet.requestStartedAt);
+      expect(html).toContain(packet.completedAt);
+      expect(html).toContain(packet.issuer.fetchedAt);
+      expect(html).toContain(
+        `${packet.window.fromDate} to ${packet.window.throughDate}`,
+      );
+      expect(html).toContain(`href="${packet.issuer.sourceUrl}"`);
+    }
+    expect(html).toContain("1000 of 1002 matching entries");
+    expect(html).toContain("This list was truncated.");
+    expect(html).toContain("This list was not truncated.");
+    expect(html).toContain("Listed by the source; not loaded.");
+    expect(html).toContain(
+      "Different windows and response limits can affect which accessions appear in each list.",
+    );
+    expect(html).toContain(
+      "This does not establish when they were published or that either list is complete.",
+    );
+    expect(html.indexOf("Retrieved 2026-10-13T00:00:00.500Z")).toBeLessThan(
+      html.indexOf("<details>"),
+    );
+  });
+
+  it("shows zero for an equal or empty accepted replacement without implying no filings exist", () => {
+    const previous = checked(filingsResponse(2));
+    for (const current of [checked(previous), checked(filingsResponse(0))]) {
+      const comparison = compareManagedFilingsResponses(previous, current)!;
+      const html = page(current, undefined, null, comparison).html;
+      expect(html).toContain(
+        `Newly observed in this refresh: 0 of ${current.issuer.filings.length} filings in the displayed response.`,
+      );
+      expect(html).not.toContain("data-filings-new-accession");
+      expect(html).toContain("Compared loaded lists");
+      expect(html).toContain("either list is complete");
+    }
+  });
+
+  it("retains the displayed pair through pending, Cancel and failure, then clears it on invalid evidence", async () => {
+    const read = vi
+      .fn<ManagedApi["recentFilings"]>()
+      .mockResolvedValueOnce(checked(filingsResponse(1)))
+      .mockResolvedValueOnce(later(2));
+    const model = new Model(read, vi.fn(), undefined, { compareRefresh: true });
+    model.open(filingsSelection);
+    await model.load();
+    await model.load();
+    const comparison = model.getSnapshot().refreshComparison!;
+    expect(comparison).not.toBeNull();
+    let release!: (value: ReturnType<typeof filingsResponse>) => void;
+    read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = model.load();
+    for (const cancelled of [false, true]) {
+      if (cancelled) model.cancel();
+      expect(model.getSnapshot().refreshComparison).toBe(comparison);
+      expect(panel(model)).toContain(
+        "1 of 2 filings in the displayed response.",
+      );
+      expect(panel(model)).toContain(
+        "This attempt has not confirmed newer filings",
+      );
+      expect(panel(model)).toContain(comparison.previous.completedAt);
+      expect(panel(model)).toContain(comparison.current.completedAt);
+    }
+    release(later(0));
+    await pending;
+    read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    expect(panel(model)).toContain("1 of 2 filings in the displayed response.");
+    read.mockResolvedValueOnce(checked(filingsResponse(0, "invalid_response")));
+    await model.load();
+    expect(panel(model)).not.toContain("Compared loaded lists");
+    expect(panel(model)).not.toContain("Newly observed in this refresh");
+    expect(read).toHaveBeenCalledTimes(5);
   });
 });
