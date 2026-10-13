@@ -298,16 +298,21 @@ independent source reviews. The Android comparison journey now includes append,
 duplicate refusal, full-note review and explicit Save/reload. Its source syntax
 passes, and the independently reviewed native bundle has a maximum loader payload
 of 2,276,554 bytes under the unchanged 4 MiB cap. The original hosted Android run
-passed all 27 cases and package isolation; independent artifact review is pending.
+passed all 27 cases and package isolation, with independent artifact acceptance.
+Four of five original Actions jobs passed. Windows timed out in an unchanged
+database evidence test containing thirteen serial validation variants. A separate
+test-only repair registers those same cases individually, preserving every
+mutation, refusal assertion and the default timeout. Its 67 affected tests and
+fresh database types pass locally; original hosted checks remain pending.
 
 Chrome checks and independent review pass for 44 invented-data observations at
 1440, 390 and 320 CSS pixels. They cover complete income and cash Save/reload,
 original evidence dates, note validation, conflict recovery, focus and session
 retirement. Source merge and website, API and Android delivery remain separate.
 
-### Annual comparison report handoff in progress
+### Annual comparison report handoff candidate
 
-The next increment opens either loaded comparison column in the full company
+Either loaded comparison column now opens in the full company
 Annual view without another SEC request. It preserves original source dates and
 qualifications, identifies reused comparison evidence, and returns to the same
 pair, bases, note destination and shared draft. An explicit refresh changes only
@@ -318,8 +323,17 @@ Focused implementation checks and fresh web types pass. Independent review found
 opening callbacks that could publish stale evidence or overwrite a replacement
 visit; regression tests reproduced them, and ownership checks now fence those
 paths. UI callbacks now update on commit, and the comparison-origin label remains
-visible after a retained refresh. Source reviews pass. Chrome and native acceptance
-remain pending. No source merge or delivery follows from these local changes.
+visible after a retained refresh. Source reviews pass.
+
+Chrome checks cover both zero-request openings, Back focus and preserved comparison
+choices, an unloaded Forward visit, independent company refresh, complete note
+Save/reload, retained and unavailable evidence, removal and session retirement.
+Layouts at 1440, 390 and 320 CSS pixels have no page overflow; narrow comparison
+results scroll locally. Independent review accepts the saved browser evidence.
+The independently reviewed native fixture bundle has a maximum loader payload of
+2,281,581 bytes under the unchanged 4 MiB cap. Its extended Android journey still
+needs its original hosted execution. No source merge or delivery follows from
+these local checks.
 
 ## Product scope
 
@@ -345,11 +359,11 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the original hosted checks for Annual comparison notes. The selected
-next product outcome opens either loaded comparison
-company in its full Annual view using the checked original report, without another
-source request. Back must preserve the pair, basis choices, note draft and focus;
-an explicit company refresh must leave the comparison's reports unchanged.
+Complete original hosted acceptance for the test repair and Annual report handoff.
+The next proposed product outcome connects a loaded Annual filing to the existing
+company Filings view, with an explicit date scope for subsequently filed records.
+It must preserve the original 90-day coverage limits, explicit source requests,
+same-company identity and existing reference-to-note workflow.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
