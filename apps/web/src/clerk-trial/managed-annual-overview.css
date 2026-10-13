@@ -194,6 +194,8 @@
   gap: 20px;
 }
 .managed-frame .sec-annual-cash-values > div {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   padding: 12px 0;
 }
@@ -202,7 +204,8 @@
   color: var(--managed-ink);
 }
 .managed-frame .sec-annual-cash-values dd {
-  margin: 10px 0 0;
+  margin: auto 0 0;
+  padding-top: 10px;
 }
 .managed-frame .sec-annual-cash-values small {
   display: block;

@@ -65,7 +65,7 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Observed SEC revenue, net income and margin for each reported basis.
+        Reported revenue, net income and cash generation from SEC Company Facts.
       </p>
       <p
         className="managed-annual-status"
