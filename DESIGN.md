@@ -83,6 +83,14 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+Place the BEA **Release date** native selector between the original loaded-window
+description and the dated releases. Keep a visible label, an All loaded dates
+option, readable Eastern dates with counts and a visible count against the full
+loaded packet. Preserve the original source, dates and previous-result warning.
+Use the existing managed field tokens, 44px height and focus outline; allow help
+and status text to wrap at narrow widths. Announce a successful replacement's
+reset without moving focus or scrolling. The local profile keeps its full agenda.
+
 Place the selected watchlist's Recent filings check after dated price. Keep the
 newest observed filing, date and loaded-row count compact, with source times and
 coverage limits in one disclosure. Load, Refresh, Cancel and View filings retain

@@ -1,5 +1,6 @@
 import {
   PERSONAL_BEA_CALENDAR_SOURCE,
+  parseManagedEconomicCalendar,
   type PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
 import React, { type ReactNode, type ReactElement } from "react";
@@ -184,5 +185,159 @@ describe("BEA release agenda presentation", () => {
     );
     expect(text(view)).toContain("could not be verified");
     expect(text(view)).not.toContain("No BEA releases are listed");
+  });
+});
+
+describe("managed BEA release-date presentation", () => {
+  function view(
+    selectedDate = "",
+    overrides: Partial<BeaReleaseAgendaProps> = {},
+  ) {
+    return BeaReleaseAgenda(
+      props({
+        dateView: { selectedDate, resetNotice: false, onDateChange: vi.fn() },
+        ...overrides,
+      }),
+    );
+  }
+  it("offers Eastern ISO date keys and exact counts without altering the local profile", () => {
+    expect(parseManagedEconomicCalendar(fixture())).not.toBeNull();
+    const managed = view();
+    const select = nodes(managed).find((node) => node.type === "select")!;
+    expect(select.props).toMatchObject({
+      id: "managed-bea-release-date",
+      value: "",
+      "aria-describedby":
+        "managed-bea-release-date-help managed-bea-release-date-count",
+    });
+    expect(
+      nodes(managed).filter((node) => node.type === "label")[0]?.props.htmlFor,
+    ).toBe(select.props.id);
+    expect(
+      nodes(select)
+        .filter((node) => node.type === "option")
+        .map((node) => [node.props.value, text(node)]),
+    ).toEqual([
+      ["", "All loaded dates"],
+      ["2026-10-29", "Thu, Oct 29, 2026 ( 1 )"],
+      ["2026-10-30", "Fri, Oct 30, 2026 ( 2 )"],
+      ["2026-11-02", "Mon, Nov 2, 2026 ( 1 )"],
+    ]);
+    expect(text(managed)).toContain("4 of 4 loaded BEA releases.");
+    const local = BeaReleaseAgenda(props());
+    expect(nodes(local).some((node) => node.type === "select")).toBe(false);
+    expect(nodes(local).filter((node) => node.type === "li")).toHaveLength(4);
+    expect(text(local)).not.toContain("loaded BEA releases.");
+  });
+  it("filters only rendered groups and preserves simultaneous series, provenance and failure warnings", () => {
+    const agenda = fixture();
+    const before = structuredClone(agenda);
+    const managed = view("2026-10-30", {
+      agenda,
+      showingPrevious: true,
+      error: "unavailable",
+    });
+    expect(
+      nodes(managed)
+        .filter((node) => node.type === "li")
+        .map(text),
+    ).toEqual([
+      "8:30 AM EDT Synthetic first series",
+      "8:30 AM EDT Synthetic second series",
+    ]);
+    expect(text(managed)).toContain("2 of 4 loaded BEA releases.");
+    expect(text(managed)).toContain("Tue, Oct 20, 2026, 2:00 PM EDT");
+    expect(text(managed)).toContain(
+      "Thu, Nov 19, 2026, 1:00 PM EST (end excluded)",
+    );
+    expect(text(managed)).toContain("Previous agenda");
+    expect(text(managed)).toContain("could not be loaded");
+    expect(nodes(managed).find((node) => node.type === "a")?.props.href).toBe(
+      PERSONAL_BEA_CALENDAR_SOURCE.scheduleUrl,
+    );
+    expect(agenda).toEqual(before);
+  });
+  it("uses Eastern boundaries across the spring clock change", () => {
+    const agenda = parseManagedEconomicCalendar({
+      ...fixture(),
+      fetchedAt: "2026-03-01T00:00:00.000Z",
+      window: {
+        fromInclusive: "2026-03-01T00:00:00.000Z",
+        toExclusive: "2026-03-31T00:00:00.000Z",
+      },
+      events: [
+        {
+          series: "Previous Eastern day",
+          scheduledAt: "2026-03-08T04:30:00.000Z",
+        },
+        {
+          series: "Before spring change",
+          scheduledAt: "2026-03-08T06:30:00.000Z",
+        },
+        {
+          series: "After spring change",
+          scheduledAt: "2026-03-08T07:30:00.000Z",
+        },
+      ],
+    });
+    expect(agenda).not.toBeNull();
+    const managed = view("2026-03-08", { agenda });
+    expect(
+      nodes(managed)
+        .filter((node) => node.type === "li")
+        .map(text),
+    ).toEqual([
+      "1:30 AM EST Before spring change",
+      "3:30 AM EDT After spring change",
+    ]);
+    expect(text(managed)).toContain("2 of 3 loaded BEA releases.");
+    expect(
+      nodes(managed)
+        .filter((node) => node.type === "option")
+        .map((node) => node.props.value),
+    ).toEqual(["", "2026-03-07", "2026-03-08"]);
+  });
+  it("keeps verified empty and unloaded states distinct and announces a replacement reset", () => {
+    const empty = view("", {
+      agenda: { ...fixture(), events: [] },
+      dateView: { selectedDate: "", resetNotice: true, onDateChange: vi.fn() },
+    });
+    expect(text(empty)).toContain("0 of 0 loaded BEA releases.");
+    expect(text(empty)).toContain(
+      "No BEA releases are listed in this loaded 30-day window.",
+    );
+    expect(text(empty)).toContain(
+      "Agenda response changed; showing All loaded dates.",
+    );
+    const status = nodes(empty).find(
+      (node) => node.props.id === "managed-bea-release-date-count",
+    );
+    expect(status?.props).toMatchObject({
+      role: "status",
+      "aria-live": "polite",
+    });
+    expect(
+      nodes(view("", { agenda: null })).some((node) => node.type === "select"),
+    ).toBe(false);
+  });
+  it("preserves the admitted maximum event set and long labels, and safely falls back from an unknown date", () => {
+    const events = Array.from({ length: 512 }, (_, i) => ({
+      series: `Invented ${String(i).padStart(3, "0")} ${"x".repeat(240)}`,
+      scheduledAt:
+        i < 256 ? "2026-10-30T12:30:00.000Z" : "2026-11-02T13:30:00.000Z",
+    }));
+    const agenda = parseManagedEconomicCalendar({ ...fixture(), events });
+    expect(agenda).not.toBeNull();
+    const managed = view("2026-11-02", { agenda });
+    expect(text(managed)).toContain("256 of 512 loaded BEA releases.");
+    expect(nodes(managed).filter((node) => node.type === "li")).toHaveLength(
+      256,
+    );
+    expect(text(managed)).toContain(events[511]!.series);
+    expect(
+      nodes(view("foreign-date", { agenda })).filter(
+        (node) => node.type === "li",
+      ),
+    ).toHaveLength(512);
   });
 });

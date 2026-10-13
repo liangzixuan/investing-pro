@@ -4,9 +4,12 @@ import {
   PERSONAL_BEA_CALENDAR_SOURCE,
   PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS,
   type PersonalEconomicCalendarDto,
-  type PersonalEconomicCalendarEventDto,
 } from "@research-cockpit/contracts";
 import type { MouseEventHandler, Ref } from "react";
+import {
+  formatBeaReleaseDate,
+  groupBeaReleaseDates,
+} from "./bea-release-dates";
 import "./bea-release-agenda.css";
 
 export interface BeaReleaseAgendaProps {
@@ -20,14 +23,12 @@ export interface BeaReleaseAgendaProps {
   readonly loadButtonRef?: Ref<HTMLButtonElement>;
   readonly showingPrevious?: boolean;
   readonly message?: string;
+  readonly dateView?: {
+    readonly selectedDate: string;
+    readonly resetNotice: boolean;
+    readonly onDateChange: (date: string) => void;
+  };
 }
-const date = new Intl.DateTimeFormat("en-US", {
-  timeZone: PERSONAL_BEA_CALENDAR_SOURCE.timeZone,
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
 const time = new Intl.DateTimeFormat("en-US", {
   timeZone: PERSONAL_BEA_CALENDAR_SOURCE.timeZone,
   hour: "numeric",
@@ -35,7 +36,7 @@ const time = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 const timestamp = (instant: string) =>
-  `${date.format(new Date(instant))}, ${time.format(new Date(instant))}`;
+  `${formatBeaReleaseDate(instant)}, ${time.format(new Date(instant))}`;
 
 export function BeaReleaseAgenda({
   className = "",
@@ -48,14 +49,21 @@ export function BeaReleaseAgenda({
   loadButtonRef,
   showingPrevious = false,
   message = "",
+  dateView,
 }: BeaReleaseAgendaProps) {
-  const groups = new Map<string, PersonalEconomicCalendarEventDto[]>();
-  for (const event of agenda?.events ?? []) {
-    const day = date.format(new Date(event.scheduledAt));
-    const group = groups.get(day) ?? [];
-    group.push(event);
-    groups.set(day, group);
-  }
+  const groups = groupBeaReleaseDates(agenda);
+  const selectedDate = groups.some(
+    (group) => group.key === dateView?.selectedDate,
+  )
+    ? dateView!.selectedDate
+    : "";
+  const visible = selectedDate
+    ? groups.filter((group) => group.key === selectedDate)
+    : groups;
+  const visibleCount = visible.reduce(
+    (count, group) => count + group.events.length,
+    0,
+  );
   return (
     <section
       className={`bea-release-agenda ${className}`.trim()}
@@ -137,19 +145,51 @@ export function BeaReleaseAgenda({
               {timestamp(agenda.window.fromInclusive)} until{" "}
               {timestamp(agenda.window.toExclusive)} (end excluded).
             </p>
-            {groups.size === 0 ? (
+            {dateView && (
+              <div className="managed-bea-release-date">
+                <label htmlFor="managed-bea-release-date">Release date</label>
+                <select
+                  id="managed-bea-release-date"
+                  value={selectedDate}
+                  aria-describedby="managed-bea-release-date-help managed-bea-release-date-count"
+                  onChange={(event) =>
+                    dateView.onDateChange(event.currentTarget.value)
+                  }
+                >
+                  <option value="">All loaded dates</option>
+                  {groups.map((group) => (
+                    <option key={group.key} value={group.key}>
+                      {group.label} ({group.events.length})
+                    </option>
+                  ))}
+                </select>
+                <p id="managed-bea-release-date-help">
+                  Filter this loaded window by Eastern release date.
+                </p>
+                <p
+                  id="managed-bea-release-date-count"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {visibleCount} of {agenda.events.length} loaded BEA releases.
+                  {dateView.resetNotice &&
+                    " Agenda response changed; showing All loaded dates."}
+                </p>
+              </div>
+            )}
+            {groups.length === 0 ? (
               <p className="bea-agenda-empty">
                 No BEA releases are listed in this loaded 30-day window.
               </p>
             ) : (
               <div className="bea-agenda-days">
-                {[...groups].map(([day, events]) => (
+                {visible.map(({ key, label, events }) => (
                   <section
                     className="bea-agenda-day"
-                    key={day}
-                    aria-label={day}
+                    key={key}
+                    aria-label={label}
                   >
-                    <h3>{day}</h3>
+                    <h3>{label}</h3>
                     <ul>
                       {events.map((event) => (
                         <li key={`${event.scheduledAt}:${event.series}`}>

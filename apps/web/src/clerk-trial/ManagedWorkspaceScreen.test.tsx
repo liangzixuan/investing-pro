@@ -679,6 +679,10 @@ describe("managed workspace screen", () => {
     await workspace.agenda.load();
     const loaded = html();
     expect(loaded).toContain("Refresh agenda");
+    expect(loaded).toContain('id="managed-bea-release-date"');
+    expect(loaded).toContain('value="2026-10-30"');
+    expect(loaded).toContain('value="2026-11-02"');
+    expect(loaded).toContain("2 of 2 loaded BEA releases.");
     expect(loaded).toContain("Invented October release");
     expect(loaded).toContain("8:30 AM EDT");
     expect(loaded).toContain("8:30 AM EST");
@@ -690,6 +694,7 @@ describe("managed workspace screen", () => {
     expect(previous).toContain("Previous agenda");
     expect(previous).toContain("could not be verified");
     expect(previous).toContain("Invented October release");
+    expect(previous).toContain("2 of 2 loaded BEA releases.");
     workspace.setView("watchlist");
     expect(html()).not.toContain("bea-release-agenda");
     workspace.setView("markets");
@@ -698,6 +703,10 @@ describe("managed workspace screen", () => {
     workspace.coordinator.retire();
     expect(html()).not.toContain("bea-release-agenda");
     expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    expect(html()).not.toContain('id="managed-bea-release-date"');
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
   });
   it("keeps Annual, the shared note and Back usable for a listing outside declared price coverage", async () => {
     const { workspace, api, html } = fixture(payload, []);
