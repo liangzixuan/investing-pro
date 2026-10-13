@@ -169,7 +169,11 @@ responses clear values, and cancellation, navigation, explicit draft Save and
 session retirement preserve their existing contracts. These checks use invented
 RAM data. The integrated native fixture builds with a largest loader payload of
 2,252,458 bytes, below the unchanged 4 MiB cap; all complete license bytes are
-preserved. Original hosted checks and Android execution remain pending.
+preserved. The original hosted Android run passes all 27 cases and package
+isolation. Ubuntu instead finds two stale test expectations: its Annual request
+still uses version 1.0.0, and its static module inventory omits the extracted
+Annual fact normalizer. The corrected tests retain every existing assertion and
+pass locally. Original failures remain recorded; updated hosted checks are pending.
 
 ## Product scope
 
