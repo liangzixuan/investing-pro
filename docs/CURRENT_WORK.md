@@ -219,8 +219,11 @@ existing boundaries. All browser writes use invented RAM data.
 The Android Annual-note journey adds exact cash-text, duplicate and capacity
 assertions while preserving its original income-note Save/reload assertions.
 The integrated native bundle builds below the unchanged 4 MiB cap, with a largest
-loader payload of 2,259,108 bytes. Hosted cash-note checks and native runtime
-acceptance remain pending. Deployment remains separate.
+loader payload of 2,259,108 bytes. PR104 passes all six applicable Actions jobs.
+Its original hosted Android run passes all 27 cases and package isolation; the
+artifact has been independently accepted. CodeScene retains two reviewed guard
+complexity advisories without an actionable correctness finding. Deployment
+remains separate.
 
 ### Consistent Annual basis labels candidate
 
@@ -231,8 +234,18 @@ the same names; exact concepts remain in source details and raw control values.
 An unavailable chosen basis stays unavailable. This changes presentation only;
 selection lifetime, calculations, notes and explicit source requests are unchanged.
 
-Affected source checks and browser/native acceptance are in progress. Source
-merge and delivery remain separate.
+The 71 affected tests, web types, lint, boundaries and independent source review
+pass. Chrome checks at 1440, 390 and 320 CSS pixels accept wrapping full names,
+44px targets, exact source keys, separate values and keyboard focus through
+response replacement. Missing evidence preserves the chosen basis; changing or
+clearing a company resets it. Choice changes leave source counts and notes
+unchanged, and Cancel, late responses and retirement retain their boundaries.
+These checks use invented RAM data. Chrome's native popup geometry was not
+captured; its option text and selection behavior were verified separately.
+
+The integrated native fixture builds with a largest loader payload of 2,260,259
+bytes, below the unchanged 4 MiB cap. The original hosted picker journeys and
+applicable checks remain pending. Source merge and delivery remain separate.
 
 ## Product scope
 
@@ -258,9 +271,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Verify consistent Annual basis labels across native selectors, unavailable states
-and response replacement. Follow the cash-to-note candidate's original hosted
-checks and native journey. PR100 and PR101
+Run the basis-label candidate's original hosted checks and native picker journeys.
+PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
 Continue meaningful roadmap

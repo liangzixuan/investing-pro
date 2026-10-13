@@ -80,6 +80,13 @@ that line for assistive technology. Exact source concepts remain in each
 column's source details; selecting a readable name still selects that exact
 concept.
 
+Invented-data Chrome checks at 1440, 390 and 320 CSS pixels accept these labels,
+wrapping selected names, exact source keys and separate amounts. The basis
+selector and results region retain keyboard focus through report replacement.
+Changing or clearing a company resets its basis; selecting a name adds no
+request or note change. Native popup geometry and hosted picker execution are
+separate acceptance in current work.
+
 Full source and validation details remain available for each column. Long values
 wrap inside a contained table scroll region; keyboard users can focus the region
 and use arrow keys. Controls stack at narrow widths with the managed 44px targets.
@@ -220,6 +227,8 @@ The basis selector and trend source summary share the overview's readable names.
 A wrapping selected-basis line keeps the complete name visible on narrow screens
 and describes the native selector. Raw concept values and source identifiers
 remain unchanged, including when the chosen basis has no available trend.
+Invented-data Chrome checks accept the full name at narrow widths and the same
+focused selector through replacement with missing evidence and back.
 
 The summary and both native selectors remain mounted while the loaded Annual view
 is present. The initial basis is the first with a trend, otherwise the first with
