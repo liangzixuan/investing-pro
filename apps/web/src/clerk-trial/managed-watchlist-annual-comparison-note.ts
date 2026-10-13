@@ -5,9 +5,10 @@ import {
 import { getPersonalSecAnnualSourceReason } from "@research-cockpit/personal-financial-analytics";
 import { annualCashGeneration } from "../lib/sec-annual-cash-response";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import type { ManagedWatchlistAnnualComparisonMember } from "./managed-watchlist-annual-comparison";
 
-export type AnnualComparisonNoteGroup = "income" | "cash";
+export type AnnualComparisonNoteGroup = "income" | "cash" | "liquidity";
 export interface AnnualComparisonNoteCapture {
   readonly group: AnnualComparisonNoteGroup;
   readonly left: {
@@ -154,6 +155,26 @@ function cashEvidence(column: Column): Evidence {
   };
 }
 
+function liquidityEvidence(column: Column): Evidence {
+  const excerpt = annualLiquidityNoteExcerpt(
+    column.response,
+    column.showingPrevious,
+  );
+  return excerpt === null
+    ? {
+        excerpt: null,
+        reason:
+          "Liquidity comparison needs available current assets, current liabilities and working capital from the same filing and date, with a checked ratio or zero-liability refusal.",
+      }
+    : { excerpt: `${identity(column)}: ${excerpt}`, reason: null };
+}
+
+const formatEvidence = {
+  income: incomeEvidence,
+  cash: cashEvidence,
+  liquidity: liquidityEvidence,
+};
+
 /** Formats admitted captured reports; callers own freshness, draft and Save guards. */
 export function getAnnualComparisonNoteEvidence(
   capture: AnnualComparisonNoteCapture,
@@ -165,8 +186,15 @@ export function getAnnualComparisonNoteEvidence(
         reason:
           "Choose two distinct companies with matching report identities.",
       };
-    if (capture.group !== "income" && capture.group !== "cash")
-      return { excerpt: null, reason: "Choose income or cash evidence." };
+    if (
+      capture.group !== "income" &&
+      capture.group !== "cash" &&
+      capture.group !== "liquidity"
+    )
+      return {
+        excerpt: null,
+        reason: "Choose income, cash or liquidity evidence.",
+      };
     const pieces: string[] = [];
     for (const [label, column] of [
       ["First company", capture.left],
@@ -177,14 +205,20 @@ export function getAnnualComparisonNoteEvidence(
           excerpt: null,
           reason: `${label}: Annual source or filing is unavailable.`,
         };
-      const result =
-        capture.group === "income"
-          ? incomeEvidence(column)
-          : cashEvidence(column);
+      const result = formatEvidence[capture.group](column);
       if (result.excerpt === null)
         return { excerpt: null, reason: `${label}: ${result.reason}` };
       pieces.push(result.excerpt);
     }
+    if (capture.group === "liquidity")
+      return {
+        excerpt: [
+          "Observed Annual liquidity comparison; exact, unscaled USD; current ratio is a multiple.",
+          ...pieces,
+          "Company balance dates may differ; no cross-company calculation or ranking.",
+        ].join(" "),
+        reason: null,
+      };
     return {
       excerpt: [
         capture.group === "income"

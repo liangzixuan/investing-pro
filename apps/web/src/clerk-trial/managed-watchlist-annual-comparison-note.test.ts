@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   annualComparisonCashRows,
+  annualComparisonLiquidityRows,
   annualComparisonMemberships,
   annualComparisonResponse,
   annualComparisonRows,
@@ -445,4 +446,430 @@ describe("Annual comparison note evidence", () => {
       });
     },
   );
+});
+
+const expectedLiquidity = [
+  "Observed Annual liquidity comparison; exact, unscaled USD; current ratio is a multiple.",
+  "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. Reported current assets (AssetsCurrent) USD 1500; reported current liabilities (LiabilitiesCurrent) USD 600. App calculations: working capital USD 900; current ratio 2.50 multiple (two decimal places, half up). Same filing and date. Current assets are not all cash. Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.",
+  "ONE (One Company; One Class A; Class A; XNAS, US): Observed Annual liquidity: ONE (XNAS); CIK 0000000002; 10-K balances at 2025-06-30. Reported current assets (AssetsCurrent) USD 900; reported current liabilities (LiabilitiesCurrent) USD 1200. App calculations: working capital USD -300; current ratio 0.75 multiple (two decimal places, half up). Same filing and date. Current assets are not all cash. Filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm. Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.",
+  "Company balance dates may differ; no cross-company calculation or ranking.",
+].join(" ");
+const liquidityRefusal =
+  "Liquidity comparison needs available current assets, current liabilities and working capital from the same filing and date, with a checked ratio or zero-liability refusal.";
+
+describe("Annual liquidity comparison note evidence", () => {
+  it("copies both complete, separately dated reports without changing frozen evidence", async () => {
+    const input = await capture("liquidity");
+    const before = JSON.stringify(input);
+    expect(getAnnualComparisonNoteEvidence(input)).toEqual({
+      excerpt: expectedLiquidity,
+      reason: null,
+    });
+    expect([...expectedLiquidity]).toHaveLength(1819);
+    expect(expectedLiquidity).not.toMatch(/[\r\n]/u);
+    expect(Object.isFrozen(input.left.response)).toBe(true);
+    expect(Object.isFrozen(input.right.response)).toBe(true);
+    expect(JSON.stringify(input)).toBe(before);
+  });
+
+  it.each([
+    null,
+    "unavailable-basis",
+    "RevenueFromContractWithCustomerExcludingAssessedTax",
+  ])(
+    "keeps liquidity independent of income, cash and selected basis %s",
+    async (selectedBasis) => {
+      const input = await capture(
+        "liquidity",
+        { mode: "income-invalid", cashRows: [] },
+        { rows: [], cashRows: [] },
+      );
+      const selected = {
+        ...input,
+        left: { ...input.left, selectedBasis },
+        right: { ...input.right, selectedBasis },
+      };
+      expect(getAnnualComparisonNoteEvidence(selected).excerpt).toBe(
+        expectedLiquidity,
+      );
+      for (const group of ["income", "cash"] as const)
+        expect(
+          getAnnualComparisonNoteEvidence({ ...selected, group }).excerpt,
+        ).toBeNull();
+    },
+  );
+
+  it("leaves income and cash available when the liquidity group refuses", async () => {
+    const input = await capture("liquidity", { liquidityRows: [] });
+    expect(getAnnualComparisonNoteEvidence(input)).toEqual({
+      excerpt: null,
+      reason: `First company: ${liquidityRefusal}`,
+    });
+    expect(
+      getAnnualComparisonNoteEvidence({ ...input, group: "income" }).excerpt,
+    ).toBe(expectedIncome);
+    expect(
+      getAnnualComparisonNoteEvidence({ ...input, group: "cash" }).excerpt,
+    ).toBe(expectedCash);
+  });
+
+  it.each(["left", "right"] as const)(
+    "preserves a checked zero-liability refusal on the %s",
+    async (side) => {
+      const liquidityRows = annualComparisonLiquidityRows(side).map((row) => ({
+        ...row,
+        value: row.metric === "current_liabilities" ? "0" : row.value,
+      }));
+      const input = await capture(
+        "liquidity",
+        side === "left" ? { liquidityRows } : undefined,
+        side === "right" ? { liquidityRows } : undefined,
+      );
+      const oldAmount = side === "left" ? "600" : "1200";
+      const oldCalculation =
+        side === "left"
+          ? "working capital USD 900; current ratio 2.50 multiple (two decimal places, half up)."
+          : "working capital USD -300; current ratio 0.75 multiple (two decimal places, half up).";
+      const assets = side === "left" ? "1500" : "900";
+      const expected = expectedLiquidity
+        .replace(
+          `current liabilities (LiabilitiesCurrent) USD ${oldAmount}`,
+          "current liabilities (LiabilitiesCurrent) USD 0",
+        )
+        .replace(
+          oldCalculation,
+          `working capital USD ${assets}; current ratio unavailable because current liabilities are zero.`,
+        );
+      expect(getAnnualComparisonNoteEvidence(input)).toEqual({
+        excerpt: expected,
+        reason: null,
+      });
+      expect([...expected]).toHaveLength(side === "left" ? 1823 : 1820);
+    },
+  );
+
+  it("qualifies only the historical retained side with its original clocks", async () => {
+    const input = await capture("liquidity", {
+      mode: "current-use-unavailable",
+    });
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2035-01-01T00:00:00.000Z"));
+      const expected = expectedLiquidity.replaceAll("2026-09-20", "2028-09-20");
+      const leftEnd = expected.indexOf(" ONE (One Company;");
+      const left = expected
+        .slice(0, leftEnd)
+        .replace(
+          "Current-use policy at original load: eligible.",
+          "Historical evidence; current-use policy at original load: unavailable.",
+        )
+        .replace(
+          "Evidence dates are unchanged;",
+          "Retained previous report. Evidence dates are unchanged;",
+        );
+      const right = expectedLiquidity.slice(leftEnd);
+      const result = getAnnualComparisonNoteEvidence({
+        ...input,
+        left: { ...input.left, showingPrevious: true },
+      });
+      expect(result).toEqual({ excerpt: left + right, reason: null });
+      expect(result.excerpt).not.toContain("2035");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the complete both-retained historical paragraph within the measured short-prefix budget", async () => {
+    const input = await capture(
+      "liquidity",
+      { mode: "current-use-unavailable" },
+      {
+        mode: "current-use-unavailable",
+        liquidityRows: annualComparisonLiquidityRows("right").map((row) => ({
+          ...row,
+          value: row.metric === "current_liabilities" ? "0" : row.value,
+        })),
+      },
+    );
+    const result = getAnnualComparisonNoteEvidence({
+      ...input,
+      left: { ...input.left, showingPrevious: true },
+      right: { ...input.right, showingPrevious: true },
+    });
+    const expected = expectedLiquidity
+      .replaceAll("2026-09-20", "2028-09-20")
+      .replaceAll(
+        "Current-use policy at original load: eligible.",
+        "Historical evidence; current-use policy at original load: unavailable.",
+      )
+      .replaceAll(
+        "Evidence dates are unchanged;",
+        "Retained previous report. Evidence dates are unchanged;",
+      )
+      .replace(
+        "current liabilities (LiabilitiesCurrent) USD 1200",
+        "current liabilities (LiabilitiesCurrent) USD 0",
+      )
+      .replace(
+        "working capital USD -300; current ratio 0.75 multiple (two decimal places, half up).",
+        "working capital USD 900; current ratio unavailable because current liabilities are zero.",
+      );
+    expect(result).toEqual({ excerpt: expected, reason: null });
+    expect([...expected]).toHaveLength(1920);
+    expect([...`${"x".repeat(32)} ${expected}`]).toHaveLength(1953);
+  });
+
+  it.each([
+    "missing-assets",
+    "missing-liabilities",
+    "negative-assets",
+    "negative-liabilities",
+    "wrong-date",
+    "wrong-filing",
+    "duration-row",
+    "conflicting-assets",
+  ] as const)(
+    "refuses %s on the second company without partial output",
+    async (mode) => {
+      const rows = annualComparisonLiquidityRows("right");
+      const liquidityRows =
+        mode === "missing-assets"
+          ? rows.filter((row) => row.metric !== "current_assets")
+          : mode === "missing-liabilities"
+            ? rows.filter((row) => row.metric !== "current_liabilities")
+            : mode === "conflicting-assets"
+              ? [
+                  ...rows,
+                  {
+                    ...rows[0]!,
+                    value: "901",
+                    sourceLocator: "/facts/us-gaap/AssetsCurrent/units/USD/1",
+                  },
+                ]
+              : rows.map((row) => {
+                  if (
+                    mode === "negative-assets" &&
+                    row.metric === "current_assets"
+                  )
+                    return { ...row, value: "-900" };
+                  if (row.metric !== "current_liabilities") return row;
+                  if (mode === "negative-liabilities")
+                    return { ...row, value: "-1200" };
+                  if (mode === "wrong-date")
+                    return { ...row, endDate: "2025-06-29" };
+                  if (mode === "wrong-filing")
+                    return { ...row, accessionNumber: "0000000002-24-000001" };
+                  if (mode === "duration-row")
+                    return {
+                      ...row,
+                      startDate: "2024-07-01",
+                      durationDays: 365,
+                    };
+                  return row;
+                });
+      expect(
+        getAnnualComparisonNoteEvidence(
+          await capture("liquidity", undefined, { liquidityRows }),
+        ),
+      ).toEqual({
+        excerpt: null,
+        reason: `Second company: ${liquidityRefusal}`,
+      });
+    },
+  );
+
+  it.each([
+    "working-capital",
+    "ratio",
+    "date",
+    "reference",
+    "current-use",
+    "source-value",
+    "filing-url",
+    "fake-zero-ratio",
+    "other-family-id",
+  ] as const)("refuses externally changed liquidity %s", async (mode) => {
+    const input = await capture("liquidity");
+    const response = structuredClone(input.left.response);
+    const liquidity = response.evidence.liquidity;
+    if (mode === "working-capital")
+      Reflect.set(liquidity.resolution.workingCapital, "value", "901");
+    if (mode === "ratio")
+      Reflect.set(liquidity.resolution.currentRatio, "value", "2.51");
+    if (mode === "date")
+      Reflect.set(
+        liquidity.resolution.workingCapital,
+        "asOfDate",
+        "2025-12-30",
+      );
+    if (mode === "reference")
+      Reflect.set(liquidity.resolution.workingCapital, "observationIds", [
+        `sec-fact:${"a".repeat(64)}`,
+      ]);
+    if (mode === "current-use")
+      Reflect.set(
+        liquidity.resolution.workingCapital,
+        "currentUseEligible",
+        false,
+      );
+    if (mode === "source-value")
+      Reflect.set(liquidity.currentAssets.observations[0]!, "value", "1501");
+    if (mode === "filing-url")
+      Reflect.set(
+        liquidity.currentAssets.observations[0]!.filing,
+        "sourceUrl",
+        "https://example.invalid/",
+      );
+    if (mode === "fake-zero-ratio")
+      Reflect.set(liquidity.resolution, "currentRatio", {
+        status: "unavailable",
+        unit: "multiple",
+        reason: "nonpositive_current_liabilities",
+        observationIds: liquidity.resolution.currentRatio.observationIds,
+      });
+    if (mode === "other-family-id")
+      Reflect.set(
+        response.evidence.observations[0]!,
+        "id",
+        liquidity.currentAssets.observations[0]!.id,
+      );
+    expect(
+      getAnnualComparisonNoteEvidence({
+        ...input,
+        left: { ...input.left, response },
+      }),
+    ).toEqual({ excerpt: null, reason: `First company: ${liquidityRefusal}` });
+  });
+
+  it.each(["source-unavailable", "wrong-source-url", "wrong-clock"] as const)(
+    "retains the shared %s source guard for liquidity",
+    async (mode) => {
+      const input = await capture(
+        "liquidity",
+        mode === "source-unavailable" ? { mode } : undefined,
+      );
+      const response = structuredClone(input.left.response);
+      if (mode === "wrong-source-url")
+        Reflect.set(
+          response.evidence.generation.sources.submissions,
+          "sourceUrl",
+          "https://data.sec.gov/submissions/CIK0000000002.json",
+        );
+      if (mode === "wrong-clock")
+        Reflect.set(
+          response.evidence.generation,
+          "completedAt",
+          "2020-01-01T00:00:00.000Z",
+        );
+      expect(
+        getAnnualComparisonNoteEvidence({
+          ...input,
+          left: { ...input.left, response },
+        }),
+      ).toEqual({
+        excerpt: null,
+        reason: "First company: Annual source or filing is unavailable.",
+      });
+    },
+  );
+
+  it.each([
+    "same-handle",
+    "same-issuer",
+    "same-cik",
+    "wrong-listing",
+    "wrong-security",
+    "different-catalog",
+  ] as const)(
+    "retains the shared identity guard for liquidity: %s",
+    async (mode) => {
+      const input = await capture("liquidity");
+      const member = {
+        ...input.right.member,
+        listing: { ...input.right.member.listing },
+      };
+      const response = structuredClone(input.right.response);
+      if (mode === "same-handle") member.handle = input.left.member.handle;
+      if (mode === "same-issuer")
+        member.listing.issuerId = input.left.member.listing.issuerId;
+      if (mode === "same-cik")
+        Reflect.set(response.security, "cik", input.left.response.security.cik);
+      if (mode === "wrong-listing")
+        Reflect.set(response.security, "listingId", "listing-other");
+      if (mode === "wrong-security")
+        Reflect.set(response.security, "securityName", "Other Class");
+      if (mode === "different-catalog")
+        Reflect.set(
+          response,
+          "catalogSnapshotSha256",
+          `sha256:${"b".repeat(64)}`,
+        );
+      expect(
+        getAnnualComparisonNoteEvidence({
+          ...input,
+          right: { ...input.right, member, response },
+        }),
+      ).toEqual({
+        excerpt: null,
+        reason:
+          "Choose two distinct companies with matching report identities.",
+      });
+    },
+  );
+
+  it("preserves exact long values and refuses no text on behalf of the whole-note limit", async () => {
+    const liquidityRows = annualComparisonLiquidityRows().map((row) => ({
+      ...row,
+      value:
+        row.metric === "current_assets"
+          ? "9007199254740993123.0000000001"
+          : "0.0000000002",
+    }));
+    const input = await capture("liquidity", { liquidityRows });
+    const listing = {
+      ...input.left.member.listing,
+      issuerName: "名".repeat(128),
+      securityName: "株".repeat(128),
+      shareClassName: "類".repeat(128),
+    };
+    const response = {
+      ...input.left.response,
+      security: {
+        ...input.left.response.security,
+        issuerName: listing.issuerName,
+        securityName: listing.securityName,
+      },
+    };
+    const result = getAnnualComparisonNoteEvidence({
+      ...input,
+      left: {
+        ...input.left,
+        member: { ...input.left.member, listing },
+        response,
+      },
+    });
+    expect(result.reason).toBeNull();
+    expect(result.excerpt).toContain(
+      `ZERO (${listing.issuerName}; ${listing.securityName}; ${listing.shareClassName}; XNAS, US)`,
+    );
+    expect(result.excerpt).toContain(
+      "current assets (AssetsCurrent) USD 9007199254740993123.0000000001; reported current liabilities (LiabilitiesCurrent) USD 0.0000000002.",
+    );
+    expect(result.excerpt).toContain(
+      "working capital USD 9007199254740993122.9999999999; current ratio 45035996273704965615000000000.50 multiple",
+    );
+    expect([...result.excerpt!].length).toBeGreaterThan(2000);
+    expect(result.excerpt).toContain(
+      "CIK 0000000002; 10-K balances at 2025-06-30",
+    );
+  });
+
+  it("refuses an unrecognized external group instead of silently choosing liquidity", async () => {
+    const input = await capture("liquidity");
+    Reflect.set(input, "group", "other");
+    expect(getAnnualComparisonNoteEvidence(input)).toEqual({
+      excerpt: null,
+      reason: "Choose income, cash or liquidity evidence.",
+    });
+  });
 });

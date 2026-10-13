@@ -170,6 +170,7 @@ describe("Annual comparison note action", () => {
     expect(html).toContain("ONE · One Company · Class A · XNAS");
     expect(html.match(/aria-describedby="annual-note-help"/gu)).toHaveLength(3);
     expect(html).toContain("Cash generation");
+    expect(html).toContain('<option value="liquidity">Liquidity</option>');
     expect(html).not.toMatch(/\sdisabled=/u);
     expect(h.button().props["aria-disabled"]).toBe(true);
     expect(h.actions.append).not.toHaveBeenCalled();
@@ -453,6 +454,94 @@ describe("Annual comparison note action", () => {
     expect(
       vi.mocked(h.actions.append).mock.calls[0]![0].left.selectedBasis,
     ).toBe("Revenues");
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers liquidity when income and cash are unavailable without requiring a revenue basis or another read", async () => {
+    const h = await harness(
+      await packet("left", { mode: "income-invalid", cashRows: [] }),
+    );
+    h.change("destination", members.right.listingId);
+    vi.mocked(h.actions.getAction).mockImplementation(
+      (capture, destination) => {
+        const evidence = getAnnualComparisonNoteEvidence(capture);
+        return {
+          canAppend: destination !== null && evidence.excerpt !== null,
+          reason: evidence.reason,
+        };
+      },
+    );
+    expect(h.button().props["aria-disabled"]).toBe(true);
+    h.change("group", "cash");
+    expect(h.button().props["aria-disabled"]).toBe(true);
+    h.change("group", "liquidity");
+    h.render({ bases: { left: null, right: null } });
+    expect(h.button().props["aria-disabled"]).toBe(false);
+    h.button().props.onClick!();
+    const [capture, destination] = vi.mocked(h.actions.append).mock.calls[0]!;
+    expect(capture.group).toBe("liquidity");
+    expect(destination).toBe(h.state.right.selected);
+    expect(capture.left.selectedBasis).toBeNull();
+    expect(getAnnualComparisonNoteEvidence(capture).excerpt).toContain(
+      "working capital USD -300",
+    );
+    expect(h.select("destination").props.value).toBe(members.right.listingId);
+    expect(h.read).toHaveBeenCalledTimes(2);
+    expect(h.draft.memberships).toEqual([members.left, members.right]);
+  });
+
+  it("explains a refused liquidity column and recovers when the user chooses available income", async () => {
+    const h = await harness(
+      undefined,
+      await packet("right", { liquidityRows: [] }),
+    );
+    h.change("destination", members.left.listingId);
+    vi.mocked(h.actions.getAction).mockImplementation(
+      (capture, destination) => {
+        const evidence = getAnnualComparisonNoteEvidence(capture);
+        return {
+          canAppend: destination !== null && evidence.excerpt !== null,
+          reason: evidence.reason,
+        };
+      },
+    );
+    h.change("group", "liquidity");
+    expect(h.button().props["aria-disabled"]).toBe(true);
+    expect(h.html()).toContain("Second company: Liquidity comparison needs");
+    expect(h.html()).not.toMatch(/\sdisabled=/u);
+    h.button().props.onClick!();
+    expect(h.actions.append).not.toHaveBeenCalled();
+    h.change("group", "income");
+    expect(h.button().props["aria-disabled"]).toBe(false);
+    expect(h.html()).not.toContain(
+      "Second company: Liquidity comparison needs",
+    );
+    h.button().props.onClick!();
+    expect(vi.mocked(h.actions.append).mock.calls[0]![0].group).toBe("income");
+    expect(h.select("destination").props.value).toBe(members.left.listingId);
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
+
+  it("retires a liquidity callback across a group round trip while preserving destination and focus", async () => {
+    const h = await harness();
+    h.change("destination", members.right.listingId);
+    h.change("group", "liquidity");
+    const click = h.button().props.onClick!;
+    const focused = { focus: vi.fn() };
+    vi.stubGlobal("document", { activeElement: focused });
+    click();
+    expect(h.html()).toContain("Added to the chosen draft.");
+    h.change("group", "cash");
+    h.render();
+    h.change("group", "liquidity");
+    h.render();
+    click();
+    expect(h.actions.append).toHaveBeenCalledTimes(1);
+    expect(h.html()).not.toContain("Added to the chosen draft.");
+    expect(h.select("group").props.value).toBe("liquidity");
+    expect(h.select("destination").props.value).toBe(members.right.listingId);
+    expect(document.activeElement).toBe(focused);
+    expect(focused.focus).not.toHaveBeenCalled();
     expect(h.read).toHaveBeenCalledTimes(2);
   });
 
