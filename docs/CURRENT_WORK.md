@@ -7,23 +7,36 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
+Release `5b2715e` is published on the managed website and API. Android 1.26.0
+(code 27) is delivered, with the previous website, API and Android 1.25 artifacts
+preserved. Physical installation was not performed. This release includes the
+watchlist note search, comparison-to-note action and compact workspace footer.
+
 The current local increment adds an optional indexed raw-price path chart to the
 existing two-listing watchlist comparison. It uses only the currently loaded
 shared dates and selected interval, with exact source closes and rounded indices
 in an accessible table. It adds no source requests or saved state. Focused tests,
-types, lint, source boundaries and independent source review pass. Chrome review
-identified axis-title contrast and endpoint date clipping; the scoped corrections
-pass local checks, with final visual acceptance pending. The branch includes
-verified main `f277392`, while the frozen release remains `5b2715e`. See the
+types, lint, source boundaries and independent source review pass. Final Chrome
+review accepts the scoped axis-title and endpoint-label corrections at 1440, 390
+and 320 CSS pixels, with exact data and contained scrolling. Hosted checks for
+this increment are pending. See the
 [watchlist guide](APPWRITE_WATCHLIST.md#inspect-raw-price-paths) for the scope.
 
-PR98 is merged in `f277392`. Its styling keeps watchlist comparison completion
-timestamps on one line and sizes the table columns from their content inside
-the existing horizontal scroll region. Exact strings and source details remain
-available. Hosted checks and independent native and Chrome reviews pass; standard
-and long exact prices stay contained at 1440, 390 and 320 pixels, with keyboard
-scrolling to the final column. This refinement is outside the frozen `5b2715e`
-release and changes no state, request or persistence behavior.
+The branch includes PR98 main `f277392`, which is outside the published
+`5b2715e` release. PR98 keeps comparison completion timestamps on one line and
+sizes table columns from their content inside the existing scroll region. Its
+original PR checks and independent native and Chrome reviews passed. A separate
+actual-main Android run passed 24 of 25 cases: the export test's invented-root
+click was rejected during the Unicode probe, followed by a screenshot cleanup
+failure. The test-only repair waits for a fresh actionable root in the active
+system picker before one click. It preserves the real Save, output, draft and
+screenshot assertions; hosted validation remains pending. The original click
+rejection's cause is not established.
+
+## Earlier increment verification
+
+The following checkpoints predate the published `5b2715e` release; their pending
+integration and delivery notes record the status at those checkpoints.
 
 The active local design refinement makes the workspace footer compact. Software
 licenses follow the content in the same column. Session scope appears beside

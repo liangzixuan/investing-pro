@@ -40,8 +40,7 @@ final class WatchlistSystemPicker {
         AccessibilityNodeInfo navigation = await(node -> isRootsList(node)
             || "Show roots".contentEquals(string(node.getContentDescription())));
         if (!isRootsList(navigation)) click(navigation);
-        click(await(node -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText()))
-            && hasAncestor(node, ":id/roots_list")));
+        clickInventedRoot();
         await(node -> string(node.getViewIdResourceName()).endsWith(":id/toolbar")
             && find(node, child -> SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(child.getText())), 0) != null);
         AccessibilityNodeInfo save = await(node -> "android:id/button1".equals(node.getViewIdResourceName())
@@ -49,6 +48,48 @@ final class WatchlistSystemPicker {
         assertTrue("Unexpected native Save control", "Save".equalsIgnoreCase(string(save.getText())));
         click(save);
         awaitReturnToApp();
+    }
+
+    /** Reacquire after drawer events settle; a rejected action is never retried. */
+    private void clickInventedRoot() throws Exception {
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        while (SystemClock.uptimeMillis() < deadline) {
+            long remaining = deadline - SystemClock.uptimeMillis();
+            if (remaining <= 0) break;
+            automation.waitForIdle(50, remaining);
+            AccessibilityNodeInfo target = readyInventedRoot();
+            if (target != null && SystemClock.uptimeMillis() < deadline) {
+                assertTrue("System control action must dispatch after invented-root readiness",
+                    target.performAction(AccessibilityNodeInfo.ACTION_CLICK));
+                return;
+            }
+            remaining = deadline - SystemClock.uptimeMillis();
+            if (remaining > 0) Thread.sleep(Math.min(50, remaining));
+        }
+        throw new AssertionError("Invented root did not become actionable in the active system picker");
+    }
+
+    private AccessibilityNodeInfo readyInventedRoot() {
+        AccessibilityNodeInfo root = automation.getRootInActiveWindow();
+        if (root == null || !root.refresh() || !root.isVisibleToUser()
+            || !string(root.getPackageName()).endsWith(".documentsui")) return null;
+        Predicate<AccessibilityNodeInfo> label = node ->
+            SavedWatchlistTestDocumentsProvider.TITLE.contentEquals(string(node.getText()))
+                && hasAncestor(node, ":id/roots_list");
+        AccessibilityNodeInfo target = find(root, label, 0);
+        if (target == null || !target.refresh() || !target.isVisibleToUser()
+            || !label.test(target)) return null;
+        while (target != null && !target.isClickable()) target = target.getParent();
+        if (target == null || !target.refresh() || !target.isVisibleToUser()
+            || !target.isEnabled() || !target.isClickable()
+            || target.getWindowId() != root.getWindowId()
+            || !string(root.getPackageName()).equals(string(target.getPackageName()))
+            || !hasAncestor(target, ":id/roots_list")
+            || !target.getActionList().contains(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)) return null;
+        AccessibilityWindowInfo window = target.getWindow();
+        if (window == null || window.getType() != AccessibilityWindowInfo.TYPE_APPLICATION
+            || !window.isActive() || !window.isFocused()) return null;
+        return target;
     }
 
     /** A dispatched picker action does not mean its destination or Activity result is ready. */
