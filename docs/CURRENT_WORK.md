@@ -112,8 +112,11 @@ intentional save; the assertion now expects that one save. The other 25 cases
 passed, including announcements and export. APK isolation was skipped after the
 failure. Ubuntu also timed out while comparing the complete decompressed license
 Buffer. That test now uses native exact-byte equality and keeps the same timeout
-and remaining assertions. Both original failures remain recorded; the repaired
-revision still needs its own hosted checks.
+and remaining assertions. Both original failures remain recorded. The repaired
+revision's original Android run passes all 26 required cases and every workflow
+step, including APK isolation and complete license-byte checks. Ubuntu also
+passes. Windows timed out in an existing native-socket deadline test; its original
+failure is under review. No production cause has been established.
 
 ### Watchlist Annual comparison in development
 
@@ -124,11 +127,18 @@ basis, exact USD amounts, available annual revenue change and complete evidence.
 There is no cross-company calculation, new source or saved-payload change. See
 the [Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison).
 
-Affected model, projection, UI and workspace checks pass. Independent review
-found a basis-selection reset issue when returning to a previous company;
-regressions now cover both changing companies and clearing the choice. The fix
-keeps a choice across refreshes and unchanged membership edits. Web types and
-scoped lint pass. Chrome and native acceptance remain in progress.
+Affected model, projection, UI and workspace checks, web types, scoped lint and
+independent source review pass. Regressions cover basis resets after changing
+companies or clearing a choice; refreshes and unchanged membership edits retain
+the selected basis. Chrome checks at 1440, 390 and 320 CSS pixels accept explicit
+reads, separate filing periods, exact amounts, full-draft Save and recovery,
+cancellation, late replies, navigation and session retirement. Controls retain
+44px targets, and the results table scrolls by keyboard without page overflow.
+The checks use invented RAM data and do not establish live SEC access.
+
+The integrated native fixture's largest static loader payload is 2,234,308 bytes,
+below the unchanged 4 MiB cap. Source and bundle checks pass; the new Annual
+journey still requires its original hosted Android execution.
 
 ## Product scope
 
@@ -154,11 +164,13 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the original announcements hosted checks and the Annual comparison's
-browser and native acceptance. Continue with the next complete product outcome
-from the roadmap and relevant feature guide, using existing subscriptions and
-permitted free sources. Broader fields and cohorts need verified source rights,
-cost, quotas and identity handling.
+Resolve the announcements revision's Windows check and complete
+the Annual comparison's applicable hosted checks, including its new Android
+journey. Local Annual source, Chrome and native bundle acceptance are complete;
+hosted runtime and live delivery remain separate. Continue with the next complete
+product outcome from the roadmap and relevant feature guide, using existing
+subscriptions and permitted free sources. Broader fields and cohorts need
+verified source rights, cost, quotas and identity handling.
 
 Controlled real-account expiry and two-session conflict acceptance, authenticated
 browser coverage, screen-reader review, physical upgrades and an isolated managed
