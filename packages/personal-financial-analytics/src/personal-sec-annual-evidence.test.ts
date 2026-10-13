@@ -106,7 +106,7 @@ function input(
   return {
     cik: "0000000042",
     generation: {
-      definitionVersion: "2.0.0",
+      definitionVersion: "3.0.0",
       cutoffAt,
       completedAt,
       sha256: `sha256:${"a".repeat(64)}`,

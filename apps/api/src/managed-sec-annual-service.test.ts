@@ -64,6 +64,12 @@ function packets(cik = "0000320193") {
           PaymentsToAcquirePropertyPlantAndEquipment: {
             units: { USD: [{ ...fact, val: 3 }] },
           },
+          AssetsCurrent: {
+            units: { USD: [{ ...fact, start: undefined, val: 120 }] },
+          },
+          LiabilitiesCurrent: {
+            units: { USD: [{ ...fact, start: undefined, val: 80 }] },
+          },
         },
       },
     },
@@ -118,22 +124,25 @@ afterEach(() => {
 });
 
 describe("managed annual evidence service", () => {
-  it("rejects version 1 before reserving a budget or acquiring either source", async () => {
-    const f = fixture();
-    await expect(
-      f.service.load(
-        {
-          ...command(),
-          schemaVersion: "1.0.0",
-        } as unknown as PersonalSecAnnualEvidenceRequestDto,
-        PRINCIPAL,
-        new AbortController().signal,
-      ),
-    ).rejects.toMatchObject({ code: "invalid_request" });
-    expect(f.openAdmission).not.toHaveBeenCalled();
-    expect(f.reserve).not.toHaveBeenCalled();
-    expect(f.fetch).not.toHaveBeenCalled();
-  });
+  it.each(["1.0.0", "2.0.0"])(
+    "rejects version %s before reserving a budget or acquiring either source",
+    async (schemaVersion) => {
+      const f = fixture();
+      await expect(
+        f.service.load(
+          {
+            ...command(),
+            schemaVersion,
+          } as unknown as PersonalSecAnnualEvidenceRequestDto,
+          PRINCIPAL,
+          new AbortController().signal,
+        ),
+      ).rejects.toMatchObject({ code: "invalid_request" });
+      expect(f.openAdmission).not.toHaveBeenCalled();
+      expect(f.reserve).not.toHaveBeenCalled();
+      expect(f.fetch).not.toHaveBeenCalled();
+    },
+  );
   it.each([
     { symbol: "AAPL", cik: "0000320193" },
     { symbol: "GOOG", cik: "0001652044" },
@@ -172,6 +181,20 @@ describe("managed annual evidence service", () => {
         status: "available",
         value: "-5",
         currentUseEligible: true,
+      });
+      expect(result.evidence.liquidity.resolution.workingCapital).toMatchObject(
+        {
+          status: "available",
+          unit: "USD",
+          value: "40",
+          asOfDate: "2025-09-30",
+        },
+      );
+      expect(result.evidence.liquidity.resolution.currentRatio).toMatchObject({
+        status: "available",
+        unit: "multiple",
+        value: "1.50",
+        asOfDate: "2025-09-30",
       });
       expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
         `https://data.sec.gov/submissions/CIK${cik}.json`,

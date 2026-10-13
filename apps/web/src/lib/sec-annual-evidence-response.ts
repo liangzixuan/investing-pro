@@ -1,3 +1,4 @@
+import { annualLiquidity } from "./sec-annual-liquidity-response";
 import { annualCashGeneration } from "./sec-annual-cash-response";
 import {
   keys,
@@ -123,6 +124,7 @@ function isEvidence(value: unknown, cik: string): value is Evidence {
       "targetScan",
       "incomeScanStatus",
       "cashGeneration",
+      "liquidity",
       "completeness",
       "coverage",
       "observations",
@@ -261,6 +263,7 @@ function isEvidence(value: unknown, cik: string): value is Evidence {
   const evidence = value as unknown as Evidence;
   if (
     !annualCashGeneration(value.cashGeneration, evidence, ids) ||
+    !annualLiquidity(value.liquidity, evidence, ids) ||
     evidence.completeness.reason !== getPersonalSecAnnualRefusalReason(evidence)
   )
     return false;
@@ -471,6 +474,8 @@ async function hashesMatch(evidence: Evidence, signal: AbortSignal) {
     ...evidence.observations,
     ...evidence.cashGeneration.operatingCashFlow.observations,
     ...evidence.cashGeneration.ppePurchases.observations,
+    ...evidence.liquidity.currentAssets.observations,
+    ...evidence.liquidity.currentLiabilities.observations,
   ]) {
     signal.throwIfAborted();
     const fields = {

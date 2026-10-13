@@ -957,6 +957,12 @@ describe("managed annual composed function", () => {
           "us-gaap": {
             Revenues: { units: { USD: [fact] } },
             NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+            AssetsCurrent: {
+              units: { USD: [{ ...fact, start: undefined, val: 120 }] },
+            },
+            LiabilitiesCurrent: {
+              units: { USD: [{ ...fact, start: undefined, val: 80 }] },
+            },
           },
         },
       },
@@ -976,7 +982,19 @@ describe("managed annual composed function", () => {
       status: 200,
       body: {
         security: { symbol: "AAPL", cik: "0000320193" },
-        evidence: { resolution: { currentTargetEligible: true } },
+        evidence: {
+          resolution: { currentTargetEligible: true },
+          liquidity: {
+            resolution: {
+              workingCapital: { status: "available", unit: "USD", value: "40" },
+              currentRatio: {
+                status: "available",
+                unit: "multiple",
+                value: "1.50",
+              },
+            },
+          },
+        },
       },
     });
     expect(fetch.mock.calls.map(([url]) => url)).toEqual([

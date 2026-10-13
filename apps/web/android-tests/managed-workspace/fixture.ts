@@ -33,6 +33,10 @@ import {
   cashGeneration,
   cashRow,
 } from "../../src/features/research/sec-annual-cash-fixture";
+import {
+  liquidity,
+  liquidityRow,
+} from "../../src/features/research/sec-annual-liquidity-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
 import { annualComparisonResponse } from "../../src/clerk-trial/annual-comparison-fixture";
@@ -245,6 +249,26 @@ export async function createFixture(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
+  const refreshAnnual = {
+    ...annual,
+    evidence: {
+      ...annual.evidence,
+      liquidity: await liquidity(annual.evidence, [
+        liquidityRow("current_assets", "120.125"),
+        liquidityRow("current_liabilities", "80.025"),
+      ]),
+    },
+  };
+  const refreshRecovered = {
+    ...recovered,
+    evidence: {
+      ...recovered.evidence,
+      liquidity: await liquidity(recovered.evidence, [
+        liquidityRow("current_assets", "120.125"),
+        liquidityRow("current_liabilities", "0"),
+      ]),
+    },
+  };
   const comparisonReports =
     scenario === "annual-comparison"
       ? await Promise.all([
@@ -1054,7 +1078,7 @@ export async function createFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "2.0.0" ||
+          request.schemaVersion !== "3.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1089,7 +1113,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "2.0.0" ||
+        request.schemaVersion !== "3.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"
@@ -1117,7 +1141,8 @@ export async function createFixture(
         throw new Error("Unexpected extra fixture annual read");
       signal.addEventListener("abort", () => count("aborted"), { once: true });
       if (state.refreshScenario) {
-        if (state.annual === 1) return Promise.resolve(structuredClone(annual));
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(refreshAnnual));
         if (state.annual === 2)
           return new Promise<PersonalSecAnnualEvidenceResponseDto>(
             (_resolve, reject) => {
@@ -1125,7 +1150,7 @@ export async function createFixture(
             },
           );
         if (state.annual === 3)
-          return Promise.resolve(structuredClone(recovered));
+          return Promise.resolve(structuredClone(refreshRecovered));
         throw new Error("Unexpected extra fixture annual refresh");
       }
       // Deliberately ignores cancellation: the real model must reject this late completion.

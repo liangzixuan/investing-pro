@@ -4,6 +4,7 @@ import {
   PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
   type PersonalSecAnnualCashMetricEvidenceDto,
+  type PersonalSecAnnualLiquidityMetricEvidenceDto,
   type PersonalSecAnnualEvidenceDto,
   type PersonalSecAnnualMetricCountsDto,
   type PersonalSecAnnualResolutionInput,
@@ -14,6 +15,7 @@ import {
   getPersonalSecAnnualRefusalReason,
   resolvePersonalSecAnnualEvidence,
   resolvePersonalSecAnnualCashGeneration,
+  resolvePersonalSecAnnualLiquidity,
   selectPersonalSecAnnualTarget,
   serializePersonalSecAnnualGeneration,
 } from "@research-cockpit/personal-financial-analytics";
@@ -21,7 +23,9 @@ import {
 import {
   normalizePersonalSecAnnualCompanyFacts,
   unavailablePersonalSecAnnualCashMetric,
+  unavailablePersonalSecAnnualLiquidityMetric,
   type PersonalSecAnnualCashSourceMetric,
+  type PersonalSecAnnualLiquiditySourceMetric,
 } from "./personal-sec-annual-company-facts";
 import {
   decodePersonalSecSourceUtf8,
@@ -307,6 +311,16 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
           submissions.value,
         ),
       });
+      const liquidity = Object.freeze({
+        currentAssets: joinLiquidityMetric(
+          facts.value?.currentAssets,
+          submissions.value,
+        ),
+        currentLiabilities: joinLiquidityMetric(
+          facts.value?.currentLiabilities,
+          submissions.value,
+        ),
+      });
       return Object.freeze({
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
@@ -317,6 +331,15 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
             generation: boundGeneration,
             target,
             cashGeneration,
+          }),
+        }),
+        liquidity: Object.freeze({
+          ...liquidity,
+          resolution: resolvePersonalSecAnnualLiquidity({
+            cik,
+            generation: boundGeneration,
+            target,
+            liquidity,
           }),
         }),
       });
@@ -425,6 +448,25 @@ function joinCashMetric(
 ): PersonalSecAnnualCashMetricEvidenceDto {
   const metric =
     source ?? unavailablePersonalSecAnnualCashMetric("source_unavailable");
+  return Object.freeze({
+    scan: metric.scan,
+    observations: Object.freeze(
+      metric.observations.map((row) =>
+        Object.freeze({
+          ...row,
+          filing: joinFiling(row, submissions),
+        }),
+      ),
+    ),
+  });
+}
+
+function joinLiquidityMetric(
+  source: PersonalSecAnnualLiquiditySourceMetric | undefined,
+  submissions: Submissions | undefined,
+): PersonalSecAnnualLiquidityMetricEvidenceDto {
+  const metric =
+    source ?? unavailablePersonalSecAnnualLiquidityMetric("source_unavailable");
   return Object.freeze({
     scan: metric.scan,
     observations: Object.freeze(

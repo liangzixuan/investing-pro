@@ -6,13 +6,20 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment adds a local **Filed after Annual report** scope to the
+The current M2 increment adds **Liquidity at fiscal year-end** to company Annual:
+reported current assets and liabilities, exact working capital and a rounded
+current ratio. It reuses the explicit SEC read and preserves source dates,
+independent unavailable values and the whole-report lifetime. The
+[Annual guide](MANAGED_SEC_ANNUAL.md#liquidity-at-fiscal-year-end) defines the
+instant-balance rules and coordinated version-3 API/client boundary.
+
+The preceding increment adds a local **Filed after Annual report** scope to the
 existing company Filings view. It joins the current checked Annual baseline with
 loaded filings, preserving exact source dates, coverage limits and reference-to-note
 actions without another source request. The [Filings guide](MANAGED_SEC_FILINGS.md#review-filings-after-an-annual-report)
 defines its date-only scope and reset rules.
 
-The preceding increment opens either loaded Annual comparison report in the
+An earlier increment opens either loaded Annual comparison report in the
 company research view without another source request. Back preserves the pair,
 basis choices and shared note draft; an explicit company refresh leaves the
 comparison unchanged. The [Annual guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison)

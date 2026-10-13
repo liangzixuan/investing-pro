@@ -75,7 +75,8 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Reported revenue, net income and cash generation from SEC Company Facts.
+        Reported revenue, net income, cash generation and liquidity from SEC
+        Company Facts.
       </p>
       <p
         className="managed-annual-status"

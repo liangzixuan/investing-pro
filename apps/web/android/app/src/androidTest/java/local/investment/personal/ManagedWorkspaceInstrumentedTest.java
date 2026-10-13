@@ -1233,6 +1233,7 @@ public class ManagedWorkspaceInstrumentedTest {
         prepareDraftAndOpenAnnual();
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(1, false, false, false);
+        assertRefreshLiquiditySources(false);
         Log.i("ManagedRefresh", "phase=initial; " + pageDiagnostic());
 
         click(".managed-annual-report .trial-actions button:first-child");
@@ -1251,6 +1252,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(3, false, false, true);
+        assertRefreshLiquiditySources(true);
         awaitPage("successful refresh clears the old failure",
             "document.querySelector('.managed-annual-report [role=alert]') === null");
         Log.i("ManagedRefresh", "phase=recovered; " + pageDiagnostic());
@@ -4150,6 +4152,58 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
+        assertRefreshLiquidity(recovered);
+    }
+
+    private void assertRefreshLiquidity(boolean recovered) throws Exception {
+        awaitPage("Annual liquidity retains exact balances and independently bounds current ratio",
+            "(() => { const panel = document.querySelector('.sec-annual-liquidity');" +
+            " const rows = Array.from(panel?.querySelectorAll('tbody tr') ?? []);" +
+            " const amounts = rows.map(row => row.querySelector('.sec-annual-liquidity-amount')?.textContent ?? 'Unavailable');" +
+            " return panel?.getAttribute('aria-label') === 'Annual liquidity' && rows.length === 4" +
+            " && panel.querySelector('caption')?.textContent === 'Balances at 2025-12-31'" +
+            " && rows.map(row => row.querySelector('th').textContent).join('|') === 'Current assetsReported · USD|Current liabilitiesReported · USD|Working capitalApp calculation · USD|Current ratioApp calculation · multiple'" +
+            " && amounts.join(',') === " + JSONObject.quote(recovered ? "120.125,0,120.125,Unavailable" : "120.125,80.025,40.1,1.50×") +
+            " && rows.slice(0, " + (recovered ? 3 : 4) + ").every(row => row.querySelector('td > small:first-of-type')?.textContent === 'At 2025-12-31' && row.querySelector('td > small:last-of-type')?.textContent === 'Within current-use limits at this load.')" +
+            " && (rows[3].querySelector('.sec-annual-liquidity-unavailable')?.textContent ?? '') === " + JSONObject.quote(recovered ? "Unavailable. Current ratio requires current liabilities greater than zero." : "") +
+            " && panel.querySelector('p').textContent.includes('Current ratio is a rounded multiple.')" +
+            " && panel.querySelector('p:last-of-type').textContent.includes('rounds to two decimal places, half up.'); })()");
+    }
+
+    private void assertRefreshLiquiditySources(boolean recovered) throws Exception {
+        String source = ".sec-annual-liquidity-source";
+        String inputs = source + " > section > ol > li > details";
+        String capturedDay = recovered ? "2026-09-21" : "2026-09-20";
+        awaitPage("liquidity provenance starts closed",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === false");
+        click(source + " > summary");
+        awaitPage("liquidity shows its original cutoff and bounded instant observations",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === true" +
+            " && document.querySelector('.sec-annual-liquidity-source > p:first-of-type')?.textContent === " + JSONObject.quote("Annual cutoff " + capturedDay + "T00:00:00.000Z. Company Facts captured " + capturedDay + "T00:00:01.000Z. Submissions captured " + capturedDay + "T00:00:02.000Z. Completed " + capturedDay + "T00:00:02.000Z.") +
+            " && Array.from(document.querySelectorAll('.sec-annual-liquidity-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(inputs + " > summary") + ")).map(e => e.textContent).join('|') === " + JSONObject.quote("AssetsCurrent · Source end 2025-12-31 · 120.125 USD|LiabilitiesCurrent · Source end 2025-12-31 · " + (recovered ? "0" : "80.025") + " USD"));
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        awaitPage("instant operands retain exact filing coordinates and both calculation references",
+            "(() => { const rows = Array.from(document.querySelectorAll(" + JSONObject.quote(inputs) + "));" +
+            " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
+            " const shared = '|2025-12-31|Not supplied|Not supplied; an instant balance requires no duration.|2025 · FY|CY2025Q4I|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|Open original filing index|';" +
+            " const ids = values.map(row => row[12]);" +
+            " const paragraphs = Array.from(document.querySelectorAll('.sec-annual-liquidity-source > p'));" +
+            " return rows.length === 2 && rows.every(row => row.open)" +
+            " && values[0].slice(0, 12).join('|') === '120.125' + shared + '/facts/us-gaap/AssetsCurrent/units/USD/0'" +
+            " && values[1].slice(0, 12).join('|') === " + JSONObject.quote(recovered ? "0" : "80.025") + " + shared + '/facts/us-gaap/LiabilitiesCurrent/units/USD/0'" +
+            " && rows.every(row => row.querySelector('a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm' && row.querySelector('a')?.target === '_blank' && row.querySelector('a')?.rel === 'noreferrer')" +
+            " && ids.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && ids[0] !== ids[1]" +
+            " && paragraphs.at(-2)?.textContent === 'Working capital references: ' + ids.join(' · ')" +
+            " && paragraphs.at(-1)?.textContent === 'Current ratio references: ' + ids.join(' · '); })()");
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        click(source + " > summary");
+        awaitPage("closing liquidity provenance preserves the native draft and read count",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === false" +
+            " && " + DIAGNOSTICS + ".annual === " + (recovered ? 3 : 1) +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
     }
 
     private void retainRefreshFailureScreenshot() throws Exception {

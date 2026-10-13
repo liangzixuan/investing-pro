@@ -1,3 +1,4 @@
+import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import { MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS } from "@research-cockpit/contracts";
 import type {
@@ -416,6 +417,7 @@ describe("annual SEC evidence browser client", () => {
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
         cashGeneration: await cashGeneration(input),
+        liquidity: await liquidity(input),
       },
     };
     fetchMock.mockResolvedValue(json(wire));
@@ -461,6 +463,7 @@ describe("annual SEC evidence browser client", () => {
           ...input,
           resolution: resolvePersonalSecAnnualEvidence(input),
           cashGeneration: await cashGeneration(input),
+          liquidity: await liquidity(input),
         },
       }),
     );
@@ -686,7 +689,7 @@ describe("shared annual SEC response decoder", () => {
 type Wire = PersonalSecAnnualEvidenceResponseDto;
 function request(): PersonalSecAnnualEvidenceRequestDto {
   return {
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "listing-zero",
     symbol: "ZERO",
@@ -776,7 +779,7 @@ async function response(
   const input: PersonalSecAnnualResolutionInput = {
     cik: "0000000001",
     generation: {
-      definitionVersion: "2.0.0",
+      definitionVersion: "3.0.0",
       cutoffAt: "2026-09-20T00:00:00.000Z",
       completedAt: "2026-09-20T00:00:02.000Z",
       sha256: `sha256:${"0".repeat(64)}`,
@@ -836,7 +839,7 @@ async function response(
   };
   const evidence = { ...input, generation };
   return {
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     catalogSnapshotSha256: request().catalogSnapshotSha256,
     security: {
       country: "US",
@@ -852,6 +855,7 @@ async function response(
       ...evidence,
       resolution: resolvePersonalSecAnnualEvidence(evidence),
       cashGeneration: await cashGeneration(evidence),
+      liquidity: await liquidity(evidence),
     },
   };
 }

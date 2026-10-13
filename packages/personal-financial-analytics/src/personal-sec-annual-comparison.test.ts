@@ -93,7 +93,7 @@ function packet(observations = rows()): PersonalSecAnnualResolutionInput {
       history: { returned: counts, truncated: false },
     },
     generation: {
-      definitionVersion: "2.0.0",
+      definitionVersion: "3.0.0",
       cutoffAt: "2026-09-20T06:00:00.000Z",
       completedAt: "2026-09-20T06:00:03.000Z",
       sha256: `sha256:${"a".repeat(64)}`,

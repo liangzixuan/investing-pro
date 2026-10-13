@@ -376,6 +376,26 @@ checks the date and form controls, source dates, request counts and unchanged
 saved note. Its original hosted execution remains pending. These invented-data
 checks do not establish live SEC access. This candidate is not merged or delivered.
 
+### Annual liquidity candidate
+
+The current increment adds reported current assets and liabilities, working
+capital and current ratio to company Annual. It uses exact instant balances from
+the selected filing and keeps missing or rejected values independent of income
+and cash. The existing explicit read, saved drafts and report lifetime remain
+unchanged. The required Annual version-3 contract needs coordinated API, browser
+and Android delivery. See the [Annual guide](MANAGED_SEC_ANNUAL.md#liquidity-at-fiscal-year-end).
+
+Focused contract, arithmetic, resolver, API and decoder checks pass, including
+independent scan failures, instant dates, exact long decimals and old-version
+rejection. Managed component and native fixture checks pass. Fresh API/web types,
+scoped lint, formatting and source boundaries pass. Independent source reviews
+cover the financial rules, transport, presentation and affected fixtures.
+
+The existing Android refresh journey now checks retained instant balances and
+recovery with zero liabilities. Its prior assertions, case/capture counts and
+deadlines remain intact. Rendered browser checks and native execution for this
+increment are pending. It has not been merged or delivered.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

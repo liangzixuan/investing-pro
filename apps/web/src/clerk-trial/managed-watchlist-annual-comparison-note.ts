@@ -54,7 +54,7 @@ function validPair({ left, right }: AnnualComparisonNoteCapture): boolean {
 function validIdentity({ member, response }: Column): boolean {
   return (
     typeof member.handle === "symbol" &&
-    response.schemaVersion === "2.0.0" &&
+    response.schemaVersion === "3.0.0" &&
     response.security.cik === response.evidence.cik &&
     identityFields.every(
       (key) => member.listing[key] === response.security[key],

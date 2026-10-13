@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
 
 import {
-  PERSONAL_SEC_ANNUAL_CASH_LIMITS as LIMITS,
+  PERSONAL_SEC_ANNUAL_CASH_LIMITS,
+  PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
   type PersonalSecAnnualCashAbsence,
-  type PersonalSecAnnualCashConcept,
   type PersonalSecAnnualCashObservationDto,
   type PersonalSecAnnualCashScanDto,
+  type PersonalSecAnnualLiquidityObservationDto,
   type PersonalSecAnnualScanStatus,
 } from "@research-cockpit/contracts";
 
@@ -19,10 +20,48 @@ import {
 
 type WithoutFiling<T> = T extends unknown ? Omit<T, "filing"> : never;
 type CashRow = WithoutFiling<PersonalSecAnnualCashObservationDto>;
-export interface PersonalSecAnnualCashSourceMetric {
+type LiquidityRow = WithoutFiling<PersonalSecAnnualLiquidityObservationDto>;
+type AnnualRow = CashRow | LiquidityRow;
+interface AnnualSourceMetric<Row> {
   readonly scan: PersonalSecAnnualCashScanDto;
-  readonly observations: readonly CashRow[];
+  readonly observations: readonly Row[];
 }
+export type PersonalSecAnnualCashSourceMetric = AnnualSourceMetric<CashRow>;
+export type PersonalSecAnnualLiquiditySourceMetric =
+  AnnualSourceMetric<LiquidityRow>;
+type MetricIdentity = (typeof IDENTITIES)[keyof typeof IDENTITIES];
+type CashIdentity = Extract<MetricIdentity, { metric: CashRow["metric"] }>;
+type LiquidityIdentity = Extract<
+  MetricIdentity,
+  { metric: LiquidityRow["metric"] }
+>;
+type MetricLimits = Readonly<{
+  candidateRowsPerMetric: number;
+  observationsPerMetric: number;
+}>;
+
+const IDENTITIES = {
+  operatingCashFlow: {
+    metric: "operating_cash_flow",
+    taxonomy: "us-gaap",
+    concept: "NetCashProvidedByUsedInOperatingActivities",
+  },
+  ppePurchases: {
+    metric: "ppe_purchases",
+    taxonomy: "us-gaap",
+    concept: "PaymentsToAcquirePropertyPlantAndEquipment",
+  },
+  currentAssets: {
+    metric: "current_assets",
+    taxonomy: "us-gaap",
+    concept: "AssetsCurrent",
+  },
+  currentLiabilities: {
+    metric: "current_liabilities",
+    taxonomy: "us-gaap",
+    concept: "LiabilitiesCurrent",
+  },
+} as const;
 
 /** The complete parsed issuer envelope is shared; fixed concept scans are not. */
 export function normalizePersonalSecAnnualCompanyFacts(
@@ -42,14 +81,28 @@ export function normalizePersonalSecAnnualCompanyFacts(
   const income = scanIncome(value, cik);
   return Object.freeze({
     ...income,
-    operatingCashFlow: scanCash(
+    operatingCashFlow: scanMetric(
       taxonomy,
-      "NetCashProvidedByUsedInOperatingActivities",
+      IDENTITIES.operatingCashFlow,
+      PERSONAL_SEC_ANNUAL_CASH_LIMITS,
       accession,
     ),
-    ppePurchases: scanCash(
+    ppePurchases: scanMetric(
       taxonomy,
-      "PaymentsToAcquirePropertyPlantAndEquipment",
+      IDENTITIES.ppePurchases,
+      PERSONAL_SEC_ANNUAL_CASH_LIMITS,
+      accession,
+    ),
+    currentAssets: scanMetric(
+      taxonomy,
+      IDENTITIES.currentAssets,
+      PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
+      accession,
+    ),
+    currentLiabilities: scanMetric(
+      taxonomy,
+      IDENTITIES.currentLiabilities,
+      PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
       accession,
     ),
   });
@@ -72,29 +125,54 @@ function scanIncome(value: unknown, cik: string) {
 export function unavailablePersonalSecAnnualCashMetric(
   status: Exclude<PersonalSecAnnualScanStatus, "available">,
 ): PersonalSecAnnualCashSourceMetric {
+  return unavailableMetric(status);
+}
+
+export function unavailablePersonalSecAnnualLiquidityMetric(
+  status: Exclude<PersonalSecAnnualScanStatus, "available">,
+): PersonalSecAnnualLiquiditySourceMetric {
+  return unavailableMetric(status);
+}
+
+function unavailableMetric<Row>(
+  status: Exclude<PersonalSecAnnualScanStatus, "available">,
+): AnnualSourceMetric<Row> {
   return Object.freeze({
     scan: Object.freeze({ status, absence: null, coverage: null }),
     observations: Object.freeze([]),
   });
 }
 
-function scanCash(
+function scanMetric(
   taxonomy: Record<string, unknown> | undefined,
-  concept: PersonalSecAnnualCashConcept,
+  identity: CashIdentity,
+  limits: MetricLimits,
   accession: string | null,
-): PersonalSecAnnualCashSourceMetric {
+): PersonalSecAnnualCashSourceMetric;
+function scanMetric(
+  taxonomy: Record<string, unknown> | undefined,
+  identity: LiquidityIdentity,
+  limits: MetricLimits,
+  accession: string | null,
+): PersonalSecAnnualLiquiditySourceMetric;
+function scanMetric(
+  taxonomy: Record<string, unknown> | undefined,
+  identity: MetricIdentity,
+  limits: MetricLimits,
+  accession: string | null,
+): AnnualSourceMetric<AnnualRow> {
   try {
-    const { rows, absence } = cashCandidates(taxonomy?.[concept]);
-    if (rows.length > LIMITS.candidateRowsPerMetric)
+    const { rows, absence } = metricCandidates(taxonomy?.[identity.concept]);
+    if (rows.length > limits.candidateRowsPerMetric)
       throw new PersonalSecSourceError("candidate_limit");
-    const normalized = normalizeCashRows(rows, concept);
-    return selectCash(normalized, rows.length, absence, accession);
+    const normalized = normalizeRows(rows, identity);
+    return selectMetric(normalized, rows.length, absence, accession, limits);
   } catch (error) {
-    return unavailablePersonalSecAnnualCashMetric(scanFailure(error));
+    return unavailableMetric(scanFailure(error));
   }
 }
 
-function cashCandidates(entry: unknown): {
+function metricCandidates(entry: unknown): {
   rows: readonly unknown[];
   absence: PersonalSecAnnualCashAbsence | null;
 } {
@@ -108,15 +186,12 @@ function cashCandidates(entry: unknown): {
   return { rows, absence: rows.length === 0 ? "empty_usd" : null };
 }
 
-function normalizeCashRows(
-  rows: readonly unknown[],
-  concept: PersonalSecAnnualCashConcept,
-) {
-  const unique = new Map<string, CashRow>();
+function normalizeRows(rows: readonly unknown[], identity: MetricIdentity) {
+  const unique = new Map<string, AnnualRow>();
   let invalidRows = 0;
   let duplicateRows = 0;
   for (const [index, value] of rows.entries()) {
-    const row = cashRow(value, concept, index);
+    const row = metricRow(value, identity, index);
     if (row === null) invalidRows += 1;
     else if (unique.has(row.id)) duplicateRows += 1;
     else unique.set(row.id, row);
@@ -128,34 +203,22 @@ function normalizeCashRows(
   };
 }
 
-function cashRow(
+function metricRow(
   value: unknown,
-  concept: PersonalSecAnnualCashConcept,
+  identity: MetricIdentity,
   index: number,
-): CashRow | null {
+): AnnualRow | null {
   const source = normalizePersonalSecSourceFactFields(value);
   if (source === null) return null;
-  const identity =
-    concept === "NetCashProvidedByUsedInOperatingActivities"
-      ? {
-          metric: "operating_cash_flow" as const,
-          taxonomy: "us-gaap" as const,
-          concept,
-        }
-      : {
-          metric: "ppe_purchases" as const,
-          taxonomy: "us-gaap" as const,
-          concept,
-        };
   const fields = { ...identity, unit: "USD" as const, ...source };
   return Object.freeze({
     id: `sec-fact:${createHash("sha256").update(JSON.stringify(fields)).digest("hex")}`,
     ...fields,
-    sourceLocator: `/facts/us-gaap/${concept}/units/USD/${index}`,
+    sourceLocator: `/facts/us-gaap/${identity.concept}/units/USD/${index}`,
   });
 }
 
-function compareRows(a: CashRow, b: CashRow): number {
+function compareRows(a: AnnualRow, b: AnnualRow): number {
   return (
     b.endDate.localeCompare(a.endDate) ||
     (b.startDate ?? "").localeCompare(a.startDate ?? "") ||
@@ -166,12 +229,17 @@ function compareRows(a: CashRow, b: CashRow): number {
   );
 }
 
-function selectCash(
-  normalized: ReturnType<typeof normalizeCashRows>,
+function selectMetric(
+  normalized: {
+    observations: AnnualRow[];
+    invalidRows: number;
+    duplicateRows: number;
+  },
   candidateRows: number,
   absence: PersonalSecAnnualCashAbsence | null,
   accession: string | null,
-): PersonalSecAnnualCashSourceMetric {
+  limits: MetricLimits,
+): AnnualSourceMetric<AnnualRow> {
   const selected =
     accession === null
       ? null
@@ -179,7 +247,7 @@ function selectCash(
           (row) => row.accessionNumber === accession,
         );
   const observations =
-    selected !== null && selected.length <= LIMITS.observationsPerMetric
+    selected !== null && selected.length <= limits.observationsPerMetric
       ? selected
       : [];
   return Object.freeze({

@@ -115,7 +115,12 @@ export {
 } from "./personal-sec-annual-evidence";
 
 export { resolvePersonalSecAnnualCashGeneration } from "./personal-sec-annual-cash-generation";
+export { resolvePersonalSecAnnualLiquidity } from "./personal-sec-annual-liquidity";
 export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
+export {
+  calculatePersonalCurrentAssetsLessCurrentLiabilities,
+  calculatePersonalCurrentRatio,
+} from "./personal-liquidity";
 
 export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessment";
 

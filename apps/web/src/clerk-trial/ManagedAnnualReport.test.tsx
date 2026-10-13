@@ -1,4 +1,5 @@
 import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
+import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -682,6 +683,7 @@ describe("managed annual refresh", () => {
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
         cashGeneration: await cashGeneration(input),
+        liquidity: await liquidity(input),
       },
     };
     const admitted = await parseSecAnnualEvidenceResponse(
@@ -723,6 +725,7 @@ describe("managed annual read", () => {
     );
     expect(html()).toContain("Refresh annual report");
     expect(html()).toContain("Inspect selected-report income evidence");
+    expect(html()).toContain("Liquidity at fiscal year-end");
   });
 
   it("coalesces duplicate loads, aborts on Cancel and fences an uncooperative late result", async () => {
