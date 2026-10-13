@@ -30,6 +30,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
@@ -715,6 +716,7 @@ export function ManagedWorkspaceScreen({
                     }}
                   />
                   <ManagedBeaReleaseAgenda model={workspace.agenda} />
+                  <ManagedFedAnnouncements model={workspace.announcements} />
                 </div>
               )}
               <section

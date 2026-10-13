@@ -6,6 +6,7 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalEconomicCalendarDto,
   ManagedSecFilingsResponseDto,
+  PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
 import {
   encodeMainWatchlistPayload,
@@ -15,6 +16,7 @@ import {
   parseManagedEconomicCalendar,
   parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
+  parseManagedMonetaryAnnouncements,
 } from "@research-cockpit/contracts";
 import {
   ManagedEodHistoryError,
@@ -29,6 +31,7 @@ import {
 } from "../../src/features/research/sec-annual-evidence-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
+import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 export const signOutNoteDraft = "Sign-out review draft";
@@ -57,6 +60,22 @@ export const beaAgenda = parseManagedEconomicCalendar({
   ],
 });
 if (!beaAgenda) throw new Error("Invalid invented BEA agenda");
+export const fedAnnouncements = parseManagedMonetaryAnnouncements(
+  fedAnnouncementsFixture(),
+);
+if (!fedAnnouncements) throw new Error("Invalid invented Fed announcements");
+function fedPacket(
+  fetchedAt: string,
+  empty = false,
+): PersonalMonetaryAnnouncementsDto {
+  const packet = parseManagedMonetaryAnnouncements({
+    ...fedAnnouncements,
+    fetchedAt,
+    ...(empty ? { items: [], availableItemCount: 0 } : {}),
+  });
+  if (!packet) throw new Error("Invalid invented announcements variant");
+  return structuredClone(packet);
+}
 const zero: PersonalSecurityMasterSearchResultDto = {
   cik: "0000000001",
   country: "US",
@@ -177,6 +196,7 @@ export async function createFixture(
     | "raw-close-comparison"
     | "bea-agenda"
     | "bea-session-retirement"
+    | "fed-announcements"
     | "markets-selected-price"
     | "watchlist-comparison"
     | "watchlist-export" = "default",
@@ -388,6 +408,9 @@ export async function createFixture(
     calendar: 0,
     calendarAborted: 0,
     calendarLateResolved: 0,
+    fed: 0,
+    fedAborted: 0,
+    fedLateResolved: 0,
   };
   const listeners = new Set<() => void>();
   const count = (
@@ -404,6 +427,8 @@ export async function createFixture(
   let releaseCatalog: (() => void) | null = null;
   let pendingEod: ((value: ManagedEodHistoryResponseDto) => void) | null = null;
   let pendingCalendar: ((value: PersonalEconomicCalendarDto) => void) | null =
+    null;
+  let pendingFed: ((value: PersonalMonetaryAnnouncementsDto) => void) | null =
     null;
   let pendingMarkets: ((value: ManagedEodHistoryResponseDto) => void) | null =
     null;
@@ -509,6 +534,13 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenario === "fed-announcements" && state.status === 2) {
+        if (state.fed !== 7 || !pendingFed)
+          return Promise.reject(
+            new Error("Hold the seventh announcements read before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "bea-session-retirement" && state.status === 2) {
         if (state.calendar !== 2 || !pendingCalendar)
           return Promise.reject(
@@ -531,6 +563,31 @@ export async function createFixture(
         );
       }
       return Promise.resolve({ snapshot: structuredClone(snapshot) });
+    },
+    monetaryAnnouncements: (signal) => {
+      if (
+        signal.aborted ||
+        scenario !== "fed-announcements" ||
+        pendingFed ||
+        state.fed >= 7
+      )
+        throw new Error("Unexpected invented announcements read");
+      count("fed");
+      if (state.fed === 1)
+        return Promise.resolve(structuredClone(fedAnnouncements!));
+      if (state.fed === 6)
+        return Promise.resolve(fedPacket("2026-10-23T18:00:00.000Z"));
+      if (state.fed === 2)
+        return Promise.reject(new TrialApiError("unavailable"));
+      if (state.fed === 4)
+        return Promise.resolve(fedPacket("2026-10-21T18:00:00.000Z", true));
+      return new Promise<PersonalMonetaryAnnouncementsDto>((resolve) => {
+        pendingFed = resolve;
+        // Completion deliberately arrives after cancellation to test the model fence.
+        signal.addEventListener("abort", () => count("fedAborted"), {
+          once: true,
+        });
+      });
     },
     economicCalendar: (signal) => {
       if (
@@ -999,6 +1056,16 @@ export async function createFixture(
       pendingCalendar = null;
       resolve({ ...structuredClone(beaAgenda!), events: [] });
       void Promise.resolve().then(() => count("calendarLateResolved"));
+    },
+    settleCancelledAnnouncements: () => {
+      if (!pendingFed || state.fedAborted !== state.fedLateResolved + 1)
+        throw new Error(
+          "Only an aborted invented announcements read may settle",
+        );
+      const resolve = pendingFed;
+      pendingFed = null;
+      resolve(fedPacket("2026-10-22T18:00:00.000Z"));
+      void Promise.resolve().then(() => count("fedLateResolved"));
     },
     generations: {
       initial: annual.evidence.generation,

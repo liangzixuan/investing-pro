@@ -26,12 +26,12 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ### Delivery status
 
-| Surface         | Accepted status                                         | Limits                                                                                                            |
-| --------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability                        |
-| Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                                                   |
-| Main source     | PR98 merged as `f277392` after approval                 | Its timestamp layout refinement is outside the published release; actual-main Android failed a system-picker test |
-| Chart candidate | PR99 remains a draft                                    | Updated source, hosted acceptance and delivery are separate from the published release                            |
+| Surface         | Accepted status                                         | Limits                                                                                          |
+| --------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability      |
+| Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                                 |
+| Main source     | PR99 merged as `b59c92a` after approval                 | Actual-main checks are separate from the completed PR checks; published release stays unchanged |
+| Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                                  |
 
 ## Current task and next acceptance
 
@@ -68,8 +68,56 @@ The test-only repair replaces that root interaction with one checked native
 touch through AndroidX UI Automator, using a freshly resolved and bounded target.
 The existing readiness deadline, actual system Save, provider output, exact bytes,
 permissions, cancellation and recreation assertions remain required. Updated
-native execution and all applicable current-head checks are pending. Main merge
-and live delivery are not accepted for PR99.
+head `e39b54d` passed all six required Actions jobs across five original workflows.
+Android passed all 25 cases and its APK isolation gate, including five successful
+guarded picker touches and the existing saved-byte assertions. CodeScene retains
+its reviewed advisory failure. After owner approval, PR99 merged into main as
+`b59c92a`. Its actual-main checks are separate from the completed PR checks.
+Live delivery of the chart is not accepted.
+
+### Federal Reserve announcements candidate
+
+The next increment adds an explicit official monetary-policy feed read below the
+BEA agenda. It reuses the existing provider and metadata contract. The managed
+API and client preserve source links, publication times, the original retrieval
+time, retained responses and session retirement. Company and pending navigation
+cancel active requests. [Markets scope](MANAGED_MARKETS_HOME.md#federal-reserve-announcements)
+describes the limits; broader news remains roadmap work.
+
+Affected API, client, navigation and fixture checks and independent source review
+pass. Chrome accepts explicit loading, retained original dates after failure or
+cancellation, empty replacement, navigation with an unsaved note, invalid-link
+recovery and session retirement. Final layouts pass at 1440, 390 and 320 CSS
+pixels, with keyboard controls and no horizontal overflow. The preview uses
+invented data; live authentication and provider acceptance remain separate.
+
+A prerequisite compresses the unchanged complete software-license text into a
+lazy module. Source, round-trip, decoding, lifetime and Chrome checks pass,
+including full displayed text equality and recovery after decoder failure. The
+integrated native fixture build uses 2,198,001 bytes at its largest loader payload,
+below the unchanged 4 MiB limit. Its new announcements journey and extended
+license assertions still require execution in the original hosted Android run.
+
+The first hosted Android attempt stopped before native execution: the strict
+Gradle configuration map had not been updated for the declared WebView minimum.
+The map now includes that exact setting. The original Gradle validation task
+accepts it and rejects missing, altered or extra settings in an isolated check;
+a cross-file regression passes. Whole-app build and native execution still need
+the updated revision's hosted checks. The original failure remains retained.
+
+The updated run executed all 26 Android cases. One failed at an added license
+check because its boundary assertion expected zero saves after the test's
+intentional save; the assertion now expects that one save. The other 25 cases
+passed, including announcements and export. APK isolation was skipped after the
+failure. Ubuntu also timed out while comparing the complete decompressed license
+Buffer. That test now uses native exact-byte equality and keeps the same timeout
+and remaining assertions. Both original failures remain recorded. The repaired
+revision passes five of six required Actions jobs, including Ubuntu and all 26
+Android cases, APK isolation and complete license-byte checks. Windows instead
+times out in an unchanged native-socket deadline test. A focused local run and
+phase trace pass; they do not reproduce or explain the hosted timeout. A diagnostic
+test update records bounded failure phases while preserving the request deadline,
+test timeout and native-close assertions. Its original hosted checks remain pending.
 
 ## Product scope
 
@@ -95,8 +143,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the chart candidate's current-head native and source acceptance before
-requesting its main merge or release. Select the next complete product outcome
+Complete the announcements increment and its browser/native acceptance while
+the chart's actual-main checks run. Select the next complete product outcome
 from the roadmap and relevant feature guide, using existing subscriptions and
 permitted free sources. Broader fields and cohorts need verified source rights,
 cost, quotas and identity handling.

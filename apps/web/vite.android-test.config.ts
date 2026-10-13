@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { buildIdentity } from "./build-identity";
+import { compressedNotices } from "./compressed-notices";
 
 const sourceSha = buildIdentity(process.env.INVESTMENT_BUILD_SHA);
 if (!sourceSha)
@@ -14,6 +15,7 @@ export default defineConfig({
   publicDir: false,
   envDir: false,
   plugins: [
+    compressedNotices(),
     {
       name: "android-test-boundary",
       moduleParsed({ id }) {

@@ -1198,3 +1198,57 @@
     font-size: 12px;
   }
 }
+
+.managed-frame .fed-announcements {
+  min-width: 0;
+  color: var(--managed-ink);
+  overflow-wrap: anywhere;
+}
+.managed-frame .fed-announcements-heading,
+.managed-frame .fed-announcements-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.managed-frame .fed-announcements-heading h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.managed-frame .fed-announcements-heading p {
+  margin: 6px 0 0;
+}
+.managed-frame .fed-announcements :is(p, time) {
+  color: var(--managed-muted);
+}
+.managed-frame .fed-announcements a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  max-width: 100%;
+  color: var(--managed-action);
+  text-underline-offset: 3px;
+}
+.managed-frame .fed-announcements .fed-announcements-error {
+  padding-left: 12px;
+  border-left: 3px solid var(--managed-negative);
+  color: var(--managed-negative);
+}
+.managed-frame .fed-announcements-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.managed-frame .fed-announcements-list li {
+  min-width: 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--managed-line);
+}
+.managed-frame .fed-announcements-list a {
+  font-weight: 600;
+}
+.managed-frame .fed-announcements-list p {
+  margin: 0;
+}

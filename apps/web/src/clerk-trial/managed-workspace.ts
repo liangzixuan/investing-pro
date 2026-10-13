@@ -40,6 +40,7 @@ import {
   ManagedWatchlistPrices,
   type ManagedWatchlistPriceHandle,
 } from "./managed-watchlist-prices";
+import { ManagedFedAnnouncements } from "./managed-fed-announcements";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import {
@@ -177,6 +178,8 @@ export class ManagedWorkspace {
   readonly markets: ManagedMarkets;
   readonly watchlistPrices: ManagedWatchlistPrices;
   readonly agenda: ManagedBeaReleaseAgenda;
+  readonly announcements: ManagedFedAnnouncements;
+  private announcementsNavigationBlocked = false;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -224,6 +227,10 @@ export class ManagedWorkspace {
     this.filings.subscribe(() => {
       if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();
     });
+    this.announcements = new ManagedFedAnnouncements(
+      (signal) => api.monetaryAnnouncements(signal),
+      (error) => this.coordinator.readError(error),
+    );
     this.agenda = new ManagedBeaReleaseAgenda(
       (signal) => api.economicCalendar(signal),
       (error) => this.coordinator.readError(error),
@@ -287,8 +294,24 @@ export class ManagedWorkspace {
   };
   private update(next: Partial<ManagedDiscoveryState>) {
     this.state = { ...this.state, ...next };
+    this.syncAnnouncements();
     this.syncWatchlistPrices();
     for (const listener of this.listeners) listener();
+  }
+  setAnnouncementsNavigationBlocked(blocked: boolean) {
+    this.announcementsNavigationBlocked = blocked;
+    this.syncAnnouncements();
+  }
+  private syncAnnouncements() {
+    if (
+      this.retired ||
+      this.announcementsNavigationBlocked ||
+      this.state.view !== "markets" ||
+      this.state.research ||
+      this.state.companyRoute
+    )
+      this.announcements.leave();
+    else this.announcements.enter();
   }
   private syncWatchlistPrices() {
     if (this.retired || this.state.view !== "watchlist") {
@@ -319,6 +342,7 @@ export class ManagedWorkspace {
     this.markets.retire();
     this.watchlistPrices.retire();
     this.agenda.retire();
+    this.announcements.retire();
     this.searchOperation?.abort();
     this.resolveOperation?.abort();
     this.searchOperation = null;

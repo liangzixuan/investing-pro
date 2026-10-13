@@ -7,6 +7,10 @@ import {
   type ManagedSecFilingsRequestDto,
   type ManagedSecFilingsResponseDto,
   type ManagedSecFilingsErrorCode,
+  MANAGED_MONETARY_ANNOUNCEMENTS_LIMITS,
+  MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+  parseManagedMonetaryAnnouncements,
+  type PersonalMonetaryAnnouncementsDto,
   MANAGED_ECONOMIC_CALENDAR_LIMITS,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   parseManagedEconomicCalendar,
@@ -55,6 +59,9 @@ export interface ManagedApi {
     request: ManagedSecFilingsRequestDto,
     signal: AbortSignal,
   ) => Promise<ManagedSecFilingsResponseDto>;
+  monetaryAnnouncements: (
+    signal: AbortSignal,
+  ) => Promise<PersonalMonetaryAnnouncementsDto>;
   economicCalendar: (
     signal: AbortSignal,
   ) => Promise<PersonalEconomicCalendarDto>;
@@ -119,7 +126,13 @@ export class ManagedEodCooldownError extends Error {
 }
 
 type RequestKind =
-  "watchlist" | "resolve" | "annual" | "eod" | "calendar" | "filings";
+  | "watchlist"
+  | "resolve"
+  | "annual"
+  | "eod"
+  | "calendar"
+  | "filings"
+  | "announcements";
 
 function secCooldown(value: unknown): never {
   const error = parseManagedSecFilingsError(value);
@@ -195,7 +208,7 @@ function responseError(
   kind: RequestKind,
 ): never {
   if (kind === "filings") filingsError(status, value);
-  if (kind === "calendar") {
+  if (kind === "calendar" || kind === "announcements") {
     if (
       value &&
       typeof value === "object" &&
@@ -373,6 +386,15 @@ export function createManagedApi(
         "filings",
       );
     },
+    monetaryAnnouncements: (signal) =>
+      request(
+        MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+        signal,
+        MANAGED_MONETARY_ANNOUNCEMENTS_LIMITS.responseBytes,
+        parseManagedMonetaryAnnouncements,
+        undefined,
+        "announcements",
+      ),
     economicCalendar: (signal) =>
       request(
         MANAGED_ECONOMIC_CALENDAR_PATH,

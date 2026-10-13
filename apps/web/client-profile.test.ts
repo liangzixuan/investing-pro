@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   capacitorClientProfile,
@@ -95,8 +96,23 @@ describe("compiled client profiles", () => {
       webDir: "dist/managed-android",
       loggingBehavior: "none",
       server: { hostname: "localhost", androidScheme: "https" },
-      android: { allowMixedContent: false, webContentsDebuggingEnabled: false },
+      android: {
+        minWebViewVersion: 111,
+        allowMixedContent: false,
+        webContentsDebuggingEnabled: false,
+      },
     });
+  });
+  it("keeps Gradle's strict synced Android map aligned with Capacitor", async () => {
+    const { default: config } = await import("./capacitor.config");
+    const expectedMap = Object.entries(config.android ?? {})
+      .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
+      .join(", ");
+    const gradle = readFileSync(
+      new URL("./android/app/build.gradle", import.meta.url),
+      "utf8",
+    );
+    expect(gradle).toContain(`capacitor.android != [${expectedMap}]`);
   });
 });
 

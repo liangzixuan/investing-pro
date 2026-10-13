@@ -113,6 +113,9 @@ function deferred<T>() {
 function fixture(initial = empty) {
   let stored = { version: 1, payload: structuredClone(initial) };
   const api: ManagedApi = {
+    monetaryAnnouncements: vi
+      .fn<ManagedApi["monetaryAnnouncements"]>()
+      .mockRejectedValue(new Error("Unexpected announcements read")),
     economicCalendar: vi.fn(),
     eodHistory: vi.fn(),
     recentFilings: vi.fn<ManagedApi["recentFilings"]>(),
