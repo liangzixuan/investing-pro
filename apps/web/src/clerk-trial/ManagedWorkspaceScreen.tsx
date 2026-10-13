@@ -1010,6 +1010,24 @@ export function ManagedWorkspaceScreen({
                       ref={watchlistEditor}
                       memberships={saved.draft.memberships}
                       prices={watchlistPrices}
+                      filings={workspace.watchlistFilings}
+                      onSelectedMember={(member) => {
+                        if (
+                          !navigation?.invalid &&
+                          !navigation?.hasCompanyRoute()
+                        )
+                          workspace.selectWatchlistFilingsMember(member);
+                      }}
+                      onViewFilings={(capture, opener) => {
+                        if (
+                          navigation?.invalid ||
+                          navigation?.hasCompanyRoute()
+                        )
+                          return;
+                        openResearch(opener, () =>
+                          workspace.openWatchlistFilings(capture),
+                        );
+                      }}
                       comparisonNoteActions={{
                         getAction: (selection, destination) =>
                           navigation?.invalid || navigation?.hasCompanyRoute()

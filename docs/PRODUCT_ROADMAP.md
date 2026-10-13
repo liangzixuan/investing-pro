@@ -6,7 +6,14 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment adds **On this report** navigation to the managed Annual
+The current M3 increment adds an explicit **Recent filings** check to the selected
+watchlist listing. **View filings** opens that same evidence in company research
+without another request, connecting the saved thesis to the existing filing
+reference and note-save workflow. The result retains its original dates and
+coverage limits. It adds no monitoring, batch requests or persistent cache. See
+the [selected filing check](MANAGED_SEC_FILINGS.md#check-a-selected-watchlist-company).
+
+The preceding M2 increment adds **On this report** navigation to the managed Annual
 view. Users can jump to income, cash, liquidity and source details while keeping
 all evidence visible. It connects existing evidence and note actions without
 another source read, route change or financial field. See the

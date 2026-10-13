@@ -46,7 +46,14 @@ import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
-import { ManagedCompanyFilings } from "./managed-company-filings";
+import {
+  ManagedCompanyFilings,
+  type ManagedCompanyFilingsSeed,
+} from "./managed-company-filings";
+import {
+  ManagedWatchlistFilings,
+  type ManagedWatchlistFilingsCapture,
+} from "./managed-watchlist-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
@@ -188,6 +195,7 @@ export class ManagedWorkspace {
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly filings: ManagedCompanyFilings;
+  readonly watchlistFilings: ManagedWatchlistFilings;
   private readonly secAccess = new ManagedSecAccess();
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
@@ -252,6 +260,15 @@ export class ManagedWorkspace {
     this.filings.subscribe(() => {
       if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();
     });
+    this.watchlistFilings = new ManagedWatchlistFilings(
+      (request, signal) => api.recentFilings(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+    );
+    this.watchlistFilings.subscribe(() => {
+      if (this.watchlistFilings.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
+    });
     this.announcements = new ManagedFedAnnouncements(
       (signal) => api.monetaryAnnouncements(signal),
       (error) => this.coordinator.readError(error),
@@ -296,6 +313,7 @@ export class ManagedWorkspace {
       const saved = this.coordinator.getSnapshot();
       this.syncWatchlistPrices();
       this.syncAnnualComparison();
+      this.syncWatchlistFilings();
       const selection = this.state.research?.selection;
       if (
         selection?.origin === "watchlist" &&
@@ -323,12 +341,50 @@ export class ManagedWorkspace {
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
+    this.syncWatchlistFilings();
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
     this.navigationBlocked = blocked;
     this.syncAnnouncements();
     this.syncAnnualComparison();
+    this.syncWatchlistFilings();
+  }
+  private syncWatchlistFilings() {
+    if (this.retired || this.state.view !== "watchlist") {
+      this.watchlistFilings.leave();
+      return;
+    }
+    this.watchlistFilings.reconcile(
+      this.coordinator.getSnapshot().draft,
+      this.state.snapshot?.snapshotSha256 ?? null,
+      !this.navigationBlocked &&
+        !this.state.research &&
+        !this.state.companyRoute,
+      this.canEdit(),
+    );
+  }
+  selectWatchlistFilingsMember(member: WatchlistMembership | null) {
+    if (
+      this.retired ||
+      this.navigationBlocked ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute
+    )
+      return;
+    this.syncWatchlistFilings();
+    const current = this.watchlistFilings.getSnapshot();
+    if (member === null) {
+      this.watchlistFilings.select(current, null);
+      return;
+    }
+    if (!this.coordinator.getSnapshot().draft?.memberships.includes(member))
+      return;
+    const selected = current.memberships.find((entry) =>
+      membershipMatchesResult(member, entry.listing),
+    );
+    if (selected) this.watchlistFilings.select(current, selected);
   }
   private syncAnnouncements() {
     if (
@@ -380,6 +436,7 @@ export class ManagedWorkspace {
     this.annual.retire();
     this.annualComparison.retire();
     this.filings.retire();
+    this.watchlistFilings.retire();
     this.secAccess.retire();
     this.eod.retire();
     this.markets.retire();
@@ -461,6 +518,7 @@ export class ManagedWorkspace {
     this.cancelReview();
     this.markets.leave();
     this.watchlistPrices.leave();
+    this.watchlistFilings.leave();
     this.closeResearch();
     this.update({
       snapshot: null,
@@ -607,6 +665,31 @@ export class ManagedWorkspace {
     this.openResearch(handoff.selection, "annual", {
       annualSeed: handoff.seed,
       admit: () => this.canOpenAnnualComparisonReport(capture),
+    });
+  }
+  private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "watchlist" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      draft.memberships.some((member) =>
+        membershipMatchesResult(member, capture.member.listing),
+      ) &&
+      this.watchlistFilings.canAdmitFilings(capture)
+    );
+  }
+  openWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
+    if (!this.canOpenWatchlistFilings(capture)) return;
+    const handoff = this.watchlistFilings.admitFilings(capture);
+    if (!handoff || !this.canOpenWatchlistFilings(capture)) return;
+    this.openResearch(handoff.selection, "filings", {
+      filingsSeed: handoff.seed,
+      admit: () => this.canOpenWatchlistFilings(capture),
     });
   }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
@@ -834,6 +917,7 @@ export class ManagedWorkspace {
       companyRoute?: CompanyRouteState;
       priceSeed?: ManagedEodHistorySeed | undefined;
       annualSeed?: ManagedAnnualReportSeed;
+      filingsSeed?: ManagedCompanyFilingsSeed;
       admit?: () => boolean;
     } = {},
   ) {
@@ -843,6 +927,8 @@ export class ManagedWorkspace {
     const admitted = () => !this.retired && (options.admit?.() ?? true);
     this.watchlistPrices.cancel();
     if (!owns() || !admitted()) return;
+    this.watchlistFilings.cancel();
+    if (!owns() || !admitted()) return;
     this.clearResearch(operation);
     if (!owns() || !admitted()) return;
     if (section === "eod" || options.priceSeed)
@@ -850,7 +936,8 @@ export class ManagedWorkspace {
     if (!owns()) return;
     if (section === "annual") this.annual.open(selection, options.annualSeed);
     if (!owns()) return;
-    if (section === "filings") this.filings.open(selection);
+    if (section === "filings")
+      this.filings.open(selection, options.filingsSeed);
     if (!owns()) return;
     if (!admitted()) {
       this.clearResearch(operation);

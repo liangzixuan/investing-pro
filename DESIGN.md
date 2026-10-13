@@ -83,6 +83,13 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+Place the selected watchlist's Recent filings check after dated price. Keep the
+newest observed filing, date and loaded-row count compact, with source times and
+coverage limits in one disclosure. Load, Refresh, Cancel and View filings retain
+44px targets. Wrap long forms and accessions without widening the page. Preserve
+the selected note and the return control's focus; selecting a listing sends no
+request. Empty and unavailable evidence keep distinct explanations.
+
 The Annual cash section follows income results. Show the two reported amounts and
 one labelled app calculation with exact USD values and a period for each available
 amount. Use a simple three-column definition list on wide screens and stacked

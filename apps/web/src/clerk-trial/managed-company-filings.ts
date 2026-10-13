@@ -25,6 +25,8 @@ export interface ManagedCompanyFilingsState {
 
   readonly response: ManagedSecFilingsResponseDto | null;
 
+  readonly responseOrigin: "request" | "watchlist" | null;
+
   readonly lastCheck: ManagedSecFilingsResponseDto | null;
 
   readonly showingPrevious: boolean;
@@ -38,9 +40,55 @@ export interface ManagedCompanyFilingsState {
   readonly error: boolean;
 }
 
+export interface ManagedCompanyFilingsSeed {
+  readonly response: ManagedSecFilingsResponseDto;
+  readonly showingPrevious: boolean;
+}
+
+function checkedResponse(
+  selection: ManagedResearchSelection,
+  response: ManagedSecFilingsResponseDto,
+) {
+  const checked = parseManagedSecFilingsResponse(response, {
+    schemaVersion: "1.0.0",
+    catalogSnapshotSha256: selection.catalogSnapshotSha256,
+    listingId: selection.listing.listingId,
+    symbol: selection.listing.symbol,
+  });
+  return checked &&
+    membershipMatchesResult(
+      { ...selection.listing, note: "" },
+      checked.security,
+    ) &&
+    (selection.cik === null || checked.security.cik === selection.cik)
+    ? checked
+    : null;
+}
+
+/** A local handoff is independently decoded and never falls back to a request. */
+export function captureManagedCompanyFilingsSeed(
+  selection: ManagedResearchSelection,
+  seed: ManagedCompanyFilingsSeed,
+): ManagedCompanyFilingsSeed | null {
+  try {
+    if (
+      selection.origin !== "watchlist" ||
+      typeof seed.showingPrevious !== "boolean"
+    )
+      return null;
+    const response = checkedResponse(selection, seed.response);
+    return response
+      ? Object.freeze({ response, showingPrevious: seed.showingPrevious })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 const empty = (): ManagedCompanyFilingsState => ({
   selection: null,
   response: null,
+  responseOrigin: null,
   lastCheck: null,
   showingPrevious: false,
   running: false,
@@ -102,6 +150,8 @@ export class ManagedCompanyFilings {
 
   private operation: AbortController | null = null;
 
+  private lifetime = Symbol();
+
   private retired = false;
 
   constructor(
@@ -125,25 +175,52 @@ export class ManagedCompanyFilings {
     for (const listener of this.listeners) listener();
   }
 
-  open(selection: ManagedResearchSelection) {
+  open(selection: ManagedResearchSelection, seed?: ManagedCompanyFilingsSeed) {
     if (this.retired) return;
-
-    this.close();
-
+    const lifetime = this.closeVisit();
+    if (this.retired || this.lifetime !== lifetime) return;
+    const captured = Object.freeze({
+      ...selection,
+      listing: Object.freeze({ ...selection.listing }),
+    });
+    const admitted =
+      seed === undefined
+        ? null
+        : captureManagedCompanyFilingsSeed(captured, seed);
+    if (this.retired || this.lifetime !== lifetime) return;
     this.update({
-      selection: Object.freeze({
-        ...selection,
-        listing: Object.freeze({ ...selection.listing }),
-      }),
-      message: "Load SEC filings from the last 90 days when you are ready.",
+      selection: seed !== undefined && admitted === null ? null : captured,
+      response: admitted?.response ?? null,
+      responseOrigin: admitted ? "watchlist" : null,
+      lastCheck: admitted?.response ?? null,
+      showingPrevious: admitted?.showingPrevious ?? false,
+      error:
+        seed !== undefined &&
+        (admitted === null || admitted.response.issuer.status !== "available"),
+      message: admitted
+        ? admitted.response.issuer.status === "available"
+          ? "The loaded watchlist filings are available in this company visit. Refresh explicitly to check again."
+          : managedFilingsStatus(admitted.response.issuer.status)
+        : seed !== undefined
+          ? "The loaded watchlist filings could not be validated. Return to the watchlist and choose the company again."
+          : "Load SEC filings from the last 90 days when you are ready.",
     });
   }
 
   close() {
-    this.operation?.abort();
+    this.closeVisit();
+  }
+
+  private closeVisit() {
+    const lifetime = Symbol();
+    this.lifetime = lifetime;
+    const operation = this.operation;
     this.operation = null;
     this.state = empty();
-    for (const listener of this.listeners) listener();
+    operation?.abort();
+    if (this.lifetime === lifetime)
+      for (const listener of this.listeners) listener();
+    return lifetime;
   }
 
   retire() {
@@ -152,10 +229,12 @@ export class ManagedCompanyFilings {
   }
 
   cancel() {
-    if (!this.operation) return;
-
-    this.operation.abort();
+    const operation = this.operation;
+    if (!operation) return;
+    const lifetime = this.lifetime;
     this.operation = null;
+    operation.abort();
+    if (this.lifetime !== lifetime || this.operation || this.retired) return;
 
     this.update({
       running: false,
@@ -169,23 +248,8 @@ export class ManagedCompanyFilings {
     response: ManagedSecFilingsResponseDto,
     selection: ManagedResearchSelection,
   ) {
-    const checked = parseManagedSecFilingsResponse(response, {
-      schemaVersion: "1.0.0",
-      catalogSnapshotSha256: selection.catalogSnapshotSha256,
-
-      listingId: selection.listing.listingId,
-      symbol: selection.listing.symbol,
-    });
-
-    if (
-      !checked ||
-      !membershipMatchesResult(
-        { ...selection.listing, note: "" },
-        checked.security,
-      ) ||
-      (selection.cik !== null && checked.security.cik !== selection.cik)
-    )
-      throw new TrialApiError("invalid_response");
+    const checked = checkedResponse(selection, response);
+    if (!checked) throw new TrialApiError("invalid_response");
 
     const previous =
       this.state.response !== null &&
@@ -193,6 +257,7 @@ export class ManagedCompanyFilings {
 
     this.update({
       response: previous ? this.state.response : checked,
+      responseOrigin: previous ? this.state.responseOrigin : "request",
       lastCheck: checked,
       showingPrevious: previous,
       error: checked.issuer.status !== "available",
@@ -232,6 +297,7 @@ export class ManagedCompanyFilings {
 
     this.update({
       response: previous ? this.state.response : null,
+      responseOrigin: previous ? this.state.responseOrigin : null,
       lastCheck: previous ? this.state.lastCheck : null,
       showingPrevious: previous,
       error: true,
@@ -283,6 +349,7 @@ export class ManagedCompanyFilings {
     });
 
     try {
+      if (!current()) return;
       const response = await this.read(
         {
           schemaVersion: "1.0.0",
