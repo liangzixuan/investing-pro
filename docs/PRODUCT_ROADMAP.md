@@ -1,10 +1,17 @@
 # Personal market platform roadmap
 
-Updated October 12, 2026. This document defines the durable product goals and
+Updated October 13, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
+
+The current M2 increment adds annual cash generation to company research, using
+two fixed SEC cash concepts and a labelled exact subtraction. It preserves
+independent field availability and the existing explicit source reads. The
+[Annual guide](MANAGED_SEC_ANNUAL.md#cash-generation) defines its scope; Current
+work distinguishes source, browser, native and delivery acceptance. Broader
+financial statements, valuation and complete company coverage remain open.
 
 ## Goal and constraints
 

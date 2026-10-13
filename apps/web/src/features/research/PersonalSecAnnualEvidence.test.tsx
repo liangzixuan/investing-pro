@@ -87,7 +87,7 @@ describe("PersonalSecAnnualEvidence", () => {
       ),
     ).toHaveLength(3);
     expect(text(view)).toMatch(
-      /Inspect selected-report evidence \(\s*4 observations\)/u,
+      /Inspect selected-report income evidence \(\s*4 observations\)/u,
     );
     expect(text(view)).toContain("Filing focus, not observation year");
     expect(
@@ -229,7 +229,9 @@ describe("PersonalSecAnnualEvidence", () => {
     api.fetchPersonalSecAnnualEvidence.mockReturnValueOnce(held.promise);
     click(previous, "Refresh annual report");
     const pending = render();
-    expect(text(pending)).not.toContain("Inspect selected-report evidence");
+    expect(text(pending)).not.toContain(
+      "Inspect selected-report income evidence",
+    );
     expect(text(pending)).not.toContain("Net margin · %");
     const abort = api.fetchPersonalSecAnnualEvidence.mock
       .calls[1]?.[1] as AbortSignal;
@@ -238,7 +240,9 @@ describe("PersonalSecAnnualEvidence", () => {
     held.resolve(await response());
     await flush();
     expect(text(render())).toContain("Annual report load cancelled");
-    expect(text(render())).not.toContain("Inspect selected-report evidence");
+    expect(text(render())).not.toContain(
+      "Inspect selected-report income evidence",
+    );
   });
 
   it("restores focus after an intentional Cancel only when the same visible control remains current", async () => {
@@ -316,7 +320,7 @@ describe("PersonalSecAnnualEvidence", () => {
       held.resolve(await response());
       await flush();
       expect(text(render(false))).not.toContain(
-        "Inspect selected-report evidence",
+        "Inspect selected-report income evidence",
       );
       expect(api.fetchPersonalSecAnnualEvidence).toHaveBeenCalledOnce();
       harness.effects();
@@ -341,7 +345,9 @@ describe("PersonalSecAnnualEvidence", () => {
     render();
     held.resolve(await response());
     await flush();
-    expect(text(render())).not.toContain("Inspect selected-report evidence");
+    expect(text(render())).not.toContain(
+      "Inspect selected-report income evidence",
+    );
     const next = deferred<Wire>();
     api.fetchPersonalSecAnnualEvidence.mockReturnValueOnce(next.promise);
     click(render(), "Load observed annual report");
@@ -367,7 +373,7 @@ describe("PersonalSecAnnualEvidence", () => {
     render();
     click(render(), "Load observed annual report");
     await flush();
-    expect(text(render())).toContain("Inspect selected-report evidence");
+    expect(text(render())).toContain("Inspect selected-report income evidence");
     const held = deferred<Wire>();
     api.fetchPersonalSecAnnualEvidence.mockReturnValueOnce(held.promise);
     click(render(), "Refresh annual report");
@@ -379,7 +385,7 @@ describe("PersonalSecAnnualEvidence", () => {
         .aborted,
     ).toBe(true);
     expect(text(render(false))).not.toContain(
-      "Inspect selected-report evidence",
+      "Inspect selected-report income evidence",
     );
   });
 
@@ -399,7 +405,9 @@ describe("PersonalSecAnnualEvidence", () => {
     });
     await load();
     expect(text(render())).toContain("could not be validated");
-    expect(text(render())).not.toContain("Inspect selected-report evidence");
+    expect(text(render())).not.toContain(
+      "Inspect selected-report income evidence",
+    );
   });
 
   it("reports session loss once and does not retry", async () => {

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
+  type PersonalSecAnnualCashConcept,
   type PersonalSecQuarterlyConcept,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,7 +45,9 @@ function fact(
 function companyFacts(
   revenue: readonly unknown[] = [fact()],
   income: readonly unknown[] = [fact({ val: -30 })],
-  extras: Partial<Record<PersonalSecQuarterlyConcept, unknown>> = {},
+  extras: Partial<
+    Record<PersonalSecQuarterlyConcept | PersonalSecAnnualCashConcept, unknown>
+  > = {},
 ): Record<string, unknown> {
   return {
     cik: 42,
@@ -562,18 +565,6 @@ describe("explicit observed annual SEC evidence provider", () => {
       "response_too_large",
       false,
     ],
-    [
-      "raw candidate cap",
-      () =>
-        Response.json(
-          companyFacts(
-            Array.from({ length: LIMITS.candidateRows + 1 }, () => fact()),
-            [],
-          ),
-        ),
-      "candidate_limit",
-      true,
-    ],
   ] as const)(
     "retains truthful source failure metadata for %s",
     async (_name, response, status, captured) => {
@@ -590,9 +581,142 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.coverage).toBeNull();
       expect(result.completeness.reason).toBe("source_unavailable");
       expect(result.observations).toEqual([]);
+      expect(result.incomeScanStatus).toBe("source_unavailable");
+      expect(result.cashGeneration.operatingCashFlow.scan.status).toBe(
+        "source_unavailable",
+      );
+      expect(
+        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "unavailable", reason: "source_unavailable" });
       expect(JSON.stringify(result)).not.toContain("private-canary");
     },
   );
+
+  it("joins independent exact cash rows to the selected filing without adding source reads", async () => {
+    const text = JSON.stringify(
+      companyFacts(undefined, undefined, {
+        NetCashProvidedByUsedInOperatingActivities: {
+          units: { USD: [fact({ val: 42 }), fact({ accn: OLDER, val: 500 })] },
+        },
+        PaymentsToAcquirePropertyPlantAndEquipment: {
+          units: { USD: [fact({ val: 41 })] },
+        },
+      }),
+    )
+      .replace('"val":42', '"val":-0.000000000000000002')
+      .replace('"val":41', '"val":1.000000000000000001');
+    const { provider, fetch } = setup(() => new Response(text));
+    const result = await finish(provider.loadEvidence(CIK));
+    const cash = result.cashGeneration;
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+    expect(result.generation.definitionVersion).toBe("2.0.0");
+    expect(result.incomeScanStatus).toBe("available");
+    expect(cash.operatingCashFlow.scan).toMatchObject({
+      coverage: {
+        full: { candidateRows: 2 },
+        selected: 1,
+        otherAccessions: 1,
+        returned: 1,
+        omittedSelected: 0,
+      },
+    });
+    expect(cash.operatingCashFlow.observations[0]).toMatchObject({
+      value: "-0.000000000000000002",
+      filing: {
+        status: "matched",
+        reportDate: "2025-12-31",
+        acceptedAt: "2026-02-01T12:00:00.000Z",
+      },
+    });
+    expect(cash.resolution.operatingCashFlowLessPpePurchases).toEqual({
+      status: "available",
+      value: "-1.000000000000000003",
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      accessionNumber: ACCESSION,
+      observationIds: [
+        cash.operatingCashFlow.observations[0]!.id,
+        cash.ppePurchases.observations[0]!.id,
+      ],
+      currentUseEligible: true,
+    });
+    expect(result.resolution.currentTargetEligible).toBe(true);
+  });
+
+  it.each(["invalid_response", "candidate_limit"] as const)(
+    "retains cash evidence when the income scan has %s",
+    async (status) => {
+      const extras = {
+        Revenues:
+          status === "invalid_response"
+            ? null
+            : {
+                units: {
+                  USD: Array.from({ length: LIMITS.candidateRows + 1 }, () =>
+                    fact(),
+                  ),
+                },
+              },
+        NetCashProvidedByUsedInOperatingActivities: {
+          units: { USD: [fact({ val: 9 })] },
+        },
+        PaymentsToAcquirePropertyPlantAndEquipment: {
+          units: { USD: [fact({ val: 4 })] },
+        },
+      };
+      const { provider } = setup(() =>
+        Response.json(companyFacts([], [], extras)),
+      );
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(result.generation.sources.companyFacts.status).toBe("available");
+      expect(result.generation.sources.companyFacts.sha256).toMatch(
+        /^sha256:/u,
+      );
+      expect(result.incomeScanStatus).toBe(status);
+      expect(result.coverage).toBeNull();
+      expect(result.completeness).toEqual({
+        status: "refused",
+        reason: "source_unavailable",
+      });
+      expect(
+        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "available", value: "5" });
+    },
+  );
+
+  it("retains income and PP&E when operating cash flow is malformed, without accepting an invalid cash value", async () => {
+    const { provider } = setup(() =>
+      Response.json(
+        companyFacts(undefined, undefined, {
+          NetCashProvidedByUsedInOperatingActivities: {
+            units: { USD: [fact({ val: "120" }), fact({ val: 9 })] },
+          },
+          PaymentsToAcquirePropertyPlantAndEquipment: {
+            units: { USD: [fact({ val: 4 })] },
+          },
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(result.cashGeneration.operatingCashFlow.scan).toMatchObject({
+      coverage: { full: { invalidRows: 1 }, returned: 1 },
+    });
+    expect(result.cashGeneration.operatingCashFlow.observations).toHaveLength(
+      1,
+    );
+    expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_source_rows",
+    });
+    expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
+      status: "available",
+      value: "4",
+    });
+  });
 
   it("rejects over-cap or conflicting Submissions before selecting a target", async () => {
     for (const packet of [
@@ -619,6 +743,39 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.completeness.reason).toBe("source_unavailable");
     }
   });
+
+  it.each([
+    [101, "selected_report_overflow"],
+    [10_001, "candidate_limit"],
+  ] as const)(
+    "refuses %i operating cash-flow rows without clipping, losing income or PP&E",
+    async (length, reason) => {
+      const { provider } = setup(() =>
+        Response.json(
+          companyFacts(undefined, undefined, {
+            NetCashProvidedByUsedInOperatingActivities: {
+              units: { USD: Array.from({ length }, (_, val) => fact({ val })) },
+            },
+            PaymentsToAcquirePropertyPlantAndEquipment: {
+              units: { USD: [fact({ val: 4 })] },
+            },
+          }),
+        ),
+      );
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(result.generation.sources.companyFacts.status).toBe("available");
+      expect(result.resolution.currentTargetEligible).toBe(true);
+      expect(result.cashGeneration.operatingCashFlow.observations).toEqual([]);
+      expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
+        status: "available",
+        value: "4",
+      });
+    },
+  );
 
   it.each([0, 1, 2, 3])(
     "rejects an invalid operation clock at capture %i without emitting annual data",

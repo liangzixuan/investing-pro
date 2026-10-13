@@ -83,6 +83,15 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+The Annual cash section follows income results. Show the two reported amounts and
+one labelled app calculation with exact USD values and a period for each available
+amount. Use a simple three-column definition list on wide screens and stacked
+rows below 640px. Keep thin separators, tabular figures and wrapped long values.
+Missing values and current-use restrictions stay readable beside their measure.
+Place observation IDs, scan counts and source pointers in the initially closed
+cash-source disclosure with a 44px summary target. Keep cash availability
+independent of the income overview warning.
+
 ## Typography and financial evidence
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,

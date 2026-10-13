@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PersonalSecAnnualEvidenceRequestDto } from "@research-cockpit/contracts";
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  type PersonalSecAnnualEvidenceRequestDto,
+} from "@research-cockpit/contracts";
 
 import { ManagedSecAdmissionError } from "./managed-sec-admission";
 import { createManagedSecAnnualService } from "./managed-sec-annual-service";
@@ -17,7 +20,7 @@ function command(symbol = "AAPL"): PersonalSecAnnualEvidenceRequestDto {
     .search(symbol)!
     .results.find((r) => r.symbol === symbol)!;
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
     catalogSnapshotSha256: catalog.status().snapshot.snapshotSha256,
     listingId: listing.listingId,
     symbol,
@@ -55,6 +58,12 @@ function packets(cik = "0000320193") {
         "us-gaap": {
           Revenues: { units: { USD: [fact] } },
           NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+          NetCashProvidedByUsedInOperatingActivities: {
+            units: { USD: [{ ...fact, val: -2 }] },
+          },
+          PaymentsToAcquirePropertyPlantAndEquipment: {
+            units: { USD: [{ ...fact, val: 3 }] },
+          },
         },
       },
     },
@@ -109,6 +118,22 @@ afterEach(() => {
 });
 
 describe("managed annual evidence service", () => {
+  it("rejects version 1 before reserving a budget or acquiring either source", async () => {
+    const f = fixture();
+    await expect(
+      f.service.load(
+        {
+          ...command(),
+          schemaVersion: "1.0.0",
+        } as unknown as PersonalSecAnnualEvidenceRequestDto,
+        PRINCIPAL,
+        new AbortController().signal,
+      ),
+    ).rejects.toMatchObject({ code: "invalid_request" });
+    expect(f.openAdmission).not.toHaveBeenCalled();
+    expect(f.reserve).not.toHaveBeenCalled();
+    expect(f.fetch).not.toHaveBeenCalled();
+  });
   it.each([
     { symbol: "AAPL", cik: "0000320193" },
     { symbol: "GOOG", cik: "0001652044" },
@@ -137,6 +162,17 @@ describe("managed annual evidence service", () => {
         cik,
       });
       expect(result.evidence.resolution.currentTargetEligible).toBe(true);
+      expect(result.schemaVersion).toBe(
+        PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+      );
+      expect(
+        result.evidence.cashGeneration.resolution
+          .operatingCashFlowLessPpePurchases,
+      ).toMatchObject({
+        status: "available",
+        value: "-5",
+        currentUseEligible: true,
+      });
       expect(f.fetch.mock.calls.map(([url]) => url)).toEqual([
         `https://data.sec.gov/submissions/CIK${cik}.json`,
         `https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`,

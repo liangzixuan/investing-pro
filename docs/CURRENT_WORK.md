@@ -118,9 +118,12 @@ Android cases, APK isolation and complete license-byte checks. Windows instead
 times out in an unchanged native-socket deadline test. A focused local run and
 phase trace pass; they do not reproduce or explain the hosted timeout. A diagnostic
 test update records bounded failure phases while preserving the request deadline,
-test timeout and native-close assertions. Its original hosted checks remain pending.
+test timeout and native-close assertions. The resulting PR100 revision passes all
+six required Actions jobs, including Windows and 26 Android cases with package
+isolation. Its artifacts were independently accepted. CodeScene retains reviewed
+complexity advisories. The earlier Windows failure remains unexplained.
 
-### Watchlist Annual comparison in development
+### Watchlist Annual comparison candidate
 
 The next increment compares two different companies from the full watchlist
 draft. Both choices start empty, and each report loads explicitly through the
@@ -139,8 +142,38 @@ cancellation, late replies, navigation and session retirement. Controls retain
 The checks use invented RAM data and do not establish live SEC access.
 
 The integrated native fixture's largest static loader payload is 2,234,308 bytes,
-below the unchanged 4 MiB cap. Source and bundle checks pass; the new Annual
-journey still requires its original hosted Android execution.
+below the unchanged 4 MiB cap. PR101 passes all six required Actions jobs. Its
+original Android run passes 27 cases, including the new Annual journey and
+package isolation; the artifact was independently accepted. CodeScene retains
+reviewed complexity advisories. Source merges and live delivery remain separate.
+
+### Annual cash generation candidate
+
+The company Annual view now includes independently reported operating cash flow
+and PP&E purchases, plus their exact same-period difference labelled as an app
+calculation. Each measure retains its own availability, annual period and
+current-use status. Income and cash scans are independent. The strict Annual
+payload version is 2.0.0; the same two SEC requests, source limits, admission,
+deadlines and saved watchlist schema remain in place. See the
+[cash generation guide](MANAGED_SEC_ANNUAL.md#cash-generation).
+
+Affected contract, calculation, API, decoder and presentation checks pass.
+Independent source reviews and a replay of retained public SEC responses accept
+the exact amounts, original acquisition times and strict client decoding. The
+replay makes no network request and does not establish current live availability.
+Chrome accepts the rendered cash values, independent unavailable states, source
+details and exact long amounts at 1440, 390 and 320 CSS pixels. A first desktop
+check found misaligned values beneath a wrapped label; the corrected layout
+aligns them. Pending and failed refreshes retain original evidence, malformed
+responses clear values, and cancellation, navigation, explicit draft Save and
+session retirement preserve their existing contracts. These checks use invented
+RAM data. The integrated native fixture builds with a largest loader payload of
+2,252,458 bytes, below the unchanged 4 MiB cap; all complete license bytes are
+preserved. The original hosted Android run passes all 27 cases and package
+isolation. Ubuntu instead finds two stale test expectations: its Annual request
+still uses version 1.0.0, and its static module inventory omits the extracted
+Annual fact normalizer. The corrected tests retain every existing assertion and
+pass locally. Original failures remain recorded; updated hosted checks are pending.
 
 ## Product scope
 
@@ -166,13 +199,12 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Resolve the announcements revision's Windows check and complete
-the Annual comparison's applicable hosted checks, including its new Android
-journey. Local Annual source, Chrome and native bundle acceptance are complete;
-hosted runtime and live delivery remain separate. Continue with the next complete
-product outcome from the roadmap and relevant feature guide, using existing
-subscriptions and permitted free sources. Broader fields and cohorts need
-verified source rights, cost, quotas and identity handling.
+Run cash generation's original hosted checks and Android journey, then
+review the combined candidate. PR100 and PR101 have passed their original hosted
+checks and remain awaiting source-merge approval. Their merges, the cash
+candidate and any live delivery are separate actions. Continue meaningful roadmap
+work with existing subscriptions and permitted free sources; broader fields and
+cohorts need verified source rights, cost, quotas and identity handling.
 
 Controlled real-account expiry and two-session conflict acceptance, authenticated
 browser coverage, screen-reader review, physical upgrades and an isolated managed

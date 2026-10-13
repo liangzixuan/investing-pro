@@ -1,9 +1,11 @@
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import type {
-  PersonalSecAnnualEvidenceDto,
-  PersonalSecAnnualEvidenceResponseDto,
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
+  type PersonalSecAnnualEvidenceDto,
+  type PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import {
   LOCAL_RESEARCH_VAULT_PROFILE,
@@ -35,6 +37,9 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["cache-control"]).toBe("private, no-store");
     const body = response.json<PersonalSecAnnualEvidenceResponseDto>();
+    expect(body.schemaVersion).toBe(
+      PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+    );
     expect(body.catalogSnapshotSha256).toBe(fixture.body.catalogSnapshotSha256);
     expect(body.security).toEqual({
       country: "US",
@@ -64,13 +69,22 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect((await fixture.request("{ private-canary")).statusCode).toBe(400);
   });
 
+  it("rejects version 1 before calling the source", async () => {
+    const fixture = await setup();
+    expect(
+      (await fixture.request({ ...fixture.body, schemaVersion: "1.0.0" }))
+        .statusCode,
+    ).toBe(400);
+    expect(fixture.loadEvidence).not.toHaveBeenCalled();
+  });
+
   it.each([
     null,
     [],
     {},
     { listingId: "lst-00000", symbol: "S00000" },
     {
-      schemaVersion: "1.0.0",
+      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
       catalogSnapshotSha256: "bad",
       listingId: "lst-00000",
       symbol: "S00000",
@@ -278,7 +292,7 @@ async function setup() {
   );
   applications.push(app);
   const body = {
-    schemaVersion: "1.0.0",
+    schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
     catalogSnapshotSha256: catalog.snapshotSha256,
     listingId: "lst-00000",
     symbol: "S00000",
@@ -331,7 +345,7 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
   return {
     cik,
     generation: {
-      definitionVersion: "1.0.0",
+      definitionVersion: PERSONAL_SEC_ANNUAL_DEFINITION_VERSION,
       cutoffAt: "2026-09-20T12:00:00.000Z",
       completedAt: "2026-09-20T12:00:00.000Z",
       sources: {
@@ -348,6 +362,8 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
       annualFilings: 0,
       olderHistoryAvailable: false,
     },
+    incomeScanStatus: "available",
+    cashGeneration: emptyCashGeneration(),
     completeness: { status: "refused", reason: "target_unresolved" },
     coverage: {
       full: {
@@ -370,6 +386,44 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
       bases: [],
       selectedReportPairEligible: false,
       currentTargetEligible: false,
+      utilityAge: null,
+    },
+  };
+}
+
+function emptyCashGeneration(): PersonalSecAnnualEvidenceDto["cashGeneration"] {
+  const metric = {
+    scan: {
+      status: "available" as const,
+      absence: "concept_missing" as const,
+      coverage: {
+        full: {
+          candidateRows: 0,
+          inspectedRows: 0,
+          invalidRows: 0,
+          duplicateRows: 0,
+          uniqueObservations: 0,
+        },
+        selected: null,
+        otherAccessions: null,
+        returned: 0,
+        omittedSelected: null,
+      },
+    },
+    observations: [],
+  };
+  const value = {
+    status: "unavailable" as const,
+    reason: "target_unresolved" as const,
+    observationIds: [],
+  };
+  return {
+    operatingCashFlow: metric,
+    ppePurchases: metric,
+    resolution: {
+      operatingCashFlow: value,
+      ppePurchases: value,
+      operatingCashFlowLessPpePurchases: value,
       utilityAge: null,
     },
   };

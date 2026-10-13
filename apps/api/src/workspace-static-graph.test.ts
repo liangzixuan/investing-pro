@@ -22,6 +22,7 @@ describe("personal workspace startup static graph", () => {
       "personal-owner-account.ts",
       "personal-owner-session-routes.ts",
       "personal-owner-session.ts",
+      "personal-sec-annual-company-facts.ts",
       "personal-sec-annual-evidence-provider.ts",
       "personal-sec-filing-context-parser.ts",
       "personal-sec-filing-context-provider.ts",

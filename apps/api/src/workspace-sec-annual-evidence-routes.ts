@@ -1,7 +1,8 @@
-import type {
-  PersonalSecAnnualEvidenceRequestDto,
-  PersonalSecAnnualEvidenceResponseDto,
-  ProblemDetailsDto,
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  type PersonalSecAnnualEvidenceRequestDto,
+  type PersonalSecAnnualEvidenceResponseDto,
+  type ProblemDetailsDto,
 } from "@research-cockpit/contracts";
 import {
   PERSONAL_SECURITY_MASTER_LIMITS,
@@ -91,7 +92,7 @@ export function registerPersonalWorkspaceSecAnnualEvidenceRoutes(
           return sendProblem(reply, request, 502, "provider_unavailable");
         }
         const response: PersonalSecAnnualEvidenceResponseDto = {
-          schemaVersion: "1.0.0",
+          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
           catalogSnapshotSha256: catalog.snapshotSha256,
           security: {
             country: listing.country,
@@ -141,7 +142,7 @@ function isRequest(
   return (
     Object.keys(row).sort().join(",") ===
       "catalogSnapshotSha256,listingId,schemaVersion,symbol" &&
-    row.schemaVersion === "1.0.0" &&
+    row.schemaVersion === PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION &&
     typeof row.catalogSnapshotSha256 === "string" &&
     /^sha256:[0-9a-f]{64}$/u.test(row.catalogSnapshotSha256) &&
     typeof row.listingId === "string" &&

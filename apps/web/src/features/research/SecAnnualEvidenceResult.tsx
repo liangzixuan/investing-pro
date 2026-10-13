@@ -1,3 +1,5 @@
+import { ObservationDetails } from "./SecAnnualObservation";
+import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
@@ -33,7 +35,7 @@ const sourceStatuses = {
 const reasons: Readonly<Record<string, string>> = {
   source_unavailable: "A required SEC source is unavailable.",
   invalid_source_rows:
-    "The source contains invalid observations; annual values are withheld.",
+    "The income scan contains invalid observations; revenue and net income are withheld.",
   target_unresolved: "The observed annual report could not be resolved.",
   selected_report_overflow:
     "The selected report exceeds the 100 revenue or 100 net-income reference limit.",
@@ -94,11 +96,7 @@ export function SecAnnualEvidenceResult({
               ? reason(response.evidence.target.reason)
               : null
           }
-          completenessMessage={
-            response.evidence.completeness.status === "complete"
-              ? null
-              : reason(response.evidence.completeness.reason)
-          }
+          completenessMessage={incomeCompletenessMessage(response.evidence)}
         />
         <ManagedAnnualTrend response={response} />
         <div
@@ -113,13 +111,14 @@ export function SecAnnualEvidenceResult({
             financial
           />
         </div>
+        <SecAnnualCashGeneration response={response} />
         <details className="managed-annual-provenance">
           <summary>Source and validation details</summary>
           <p className="sec-quarterly-message">
-            Observed SEC annual revenue, net income and net margin in USD.
-            Revenue concepts stay separate. This view covers the observed report
-            in current submissions; it does not provide complete filing history
-            or prices.
+            Observed SEC annual revenue, net income, net margin and cash
+            generation in USD. Revenue concepts stay separate. This view covers
+            the observed report in current submissions; it does not provide
+            complete filing history or prices.
           </p>
           <SecAnnualSourceDetails response={response} />
         </details>
@@ -129,6 +128,7 @@ export function SecAnnualEvidenceResult({
     <div className="sec-quarterly-comparison">
       <AnnualEvidenceContext response={response} />
       <AnnualBases response={response} renderPairAction={renderPairAction} />
+      <SecAnnualCashGeneration response={response} />
       <AnnualEvidenceSources response={response} />
     </div>
   );
@@ -188,8 +188,8 @@ function AnnualEvidenceContext({
         </p>
       )}
       <p className="sec-quarterly-caveat">
-        Complete selected evidence does not mean complete issuer history or a
-        valid annual pair. The observed report is chosen from current
+        Complete selected income evidence does not mean complete issuer history
+        or a valid annual pair. The observed report is chosen from current
         submissions before examining values; a missing pair is not replaced by
         an older report. Annual net margin uses NetIncomeLoss ÷ the named
         revenue basis × 100, rounded half up to two decimal places. No
@@ -197,7 +197,7 @@ function AnnualEvidenceContext({
       </p>
       {coverage === null ? null : (
         <p className="sec-quarterly-message">
-          Full source scan: {coverage.full.inspectedRows} requested rows;{" "}
+          Revenue and income scan: {coverage.full.inspectedRows} requested rows;{" "}
           {coverage.full.invalidRows} invalid and {coverage.full.duplicateRows}{" "}
           identical duplicates. Selected evidence returned:{" "}
           {coverage.returned.observations}
@@ -238,11 +238,15 @@ function AnnualReportCoordinates({
         </dd>
       </div>
       <div>
-        <dt>Complete selected evidence</dt>
+        <dt>Revenue and income scan</dt>
+        <dd>{evidenceIncomeScanStatus(response.evidence.incomeScanStatus)}</dd>
+      </div>
+      <div>
+        <dt>Revenue and income evidence</dt>
         <dd>
           {completeness.status === "complete"
             ? "Complete for the four requested USD concepts"
-            : `Unavailable. ${reason(completeness.reason)}`}
+            : `Unavailable. ${incomeCompletenessMessage(response.evidence)}`}
         </dd>
       </div>
       <div>
@@ -323,7 +327,7 @@ function AnnualBasisStatus({
         : status === "missing"
           ? "Unknown: this revenue basis is missing for the observed report."
           : status === "withheld"
-            ? "Annual values withheld because complete selected evidence is unavailable."
+            ? "Revenue and net income withheld because their complete selected evidence is unavailable."
             : "Unknown: this revenue basis cannot form a valid annual pair."}
     </p>
   );
@@ -366,7 +370,7 @@ function AnnualEvidenceSources({
   return (
     <details className="sec-quarterly-row-details sec-filing-context">
       <summary>
-        Inspect selected-report evidence ({evidence.observations.length}{" "}
+        Inspect selected-report income evidence ({evidence.observations.length}{" "}
         observations)
       </summary>
       <p className="sec-quarterly-message">
@@ -807,80 +811,32 @@ function AnnualComparisonMethodology() {
   );
 }
 
-function ObservationDetails({
-  row,
-}: {
-  readonly row: PersonalSecQuarterlyObservationDto;
-}) {
-  return (
-    <details className="sec-quarterly-row-details">
-      <summary>
-        {row.concept} · {row.startDate ?? "Unknown start"} to {row.endDate} ·{" "}
-        {row.value} USD
-      </summary>
-      <dl className="sec-quarterly-comparison-coordinates">
-        <div>
-          <dt>Exact USD observation</dt>
-          <dd>{row.value}</dd>
-        </div>
-        <div>
-          <dt>Inclusive duration</dt>
-          <dd>
-            {row.durationDays === null ? "Unknown" : `${row.durationDays} days`}
-          </dd>
-        </div>
-        <div>
-          <dt>Filing focus, not observation year</dt>
-          <dd>
-            {row.filingFocusYear ?? "Unknown"} ·{" "}
-            {row.filingFocusPeriod ?? "Unknown"}
-          </dd>
-        </div>
-        <div>
-          <dt>Calendar frame</dt>
-          <dd>{row.frame ?? "Not supplied"}</dd>
-        </div>
-        <div>
-          <dt>Reported form / filed date</dt>
-          <dd>
-            {row.form} · {row.filedDate}
-          </dd>
-        </div>
-        <div>
-          <dt>Accession</dt>
-          <dd>{row.accessionNumber}</dd>
-        </div>
-        <div>
-          <dt>Joined filing metadata</dt>
-          <dd>
-            {row.filing.status === "matched"
-              ? "Matched to current submissions"
-              : "Filing metadata conflict"}{" "}
-            · {row.filing.form} · {row.filing.filedDate}
-          </dd>
-        </div>
-        <div>
-          <dt>Joined report / accepted time</dt>
-          <dd>
-            {row.filing.reportDate ?? "Unknown"} ·{" "}
-            {row.filing.acceptedAt ?? "Unknown"}
-          </dd>
-        </div>
-        <div>
-          <dt>Company Facts source pointer</dt>
-          <dd>{row.sourceLocator}</dd>
-        </div>
-        <div>
-          <dt>Observation identifier</dt>
-          <dd>{row.id}</dd>
-        </div>
-      </dl>
-    </details>
-  );
-}
-
 function reason(value: string | null): string {
   return value === null
     ? "Unavailable"
     : (reasons[value] ?? "The evidence cannot be admitted.");
+}
+
+function evidenceIncomeScanStatus(
+  status: PersonalSecAnnualEvidenceResponseDto["evidence"]["incomeScanStatus"],
+) {
+  return {
+    available: "Complete source scan",
+    source_unavailable: "Source unavailable",
+    invalid_response: "Income concepts could not be validated",
+    candidate_limit: "Income concepts exceed the bounded scan limit",
+  }[status];
+}
+
+function incomeCompletenessMessage(
+  evidence: PersonalSecAnnualEvidenceResponseDto["evidence"],
+): string | null {
+  if (evidence.completeness.status === "complete") return null;
+  if (evidence.completeness.reason === "source_unavailable") {
+    if (evidence.incomeScanStatus === "invalid_response")
+      return "Revenue and income could not be validated.";
+    if (evidence.incomeScanStatus === "candidate_limit")
+      return "The revenue and income scan exceeds its source limit.";
+  }
+  return reason(evidence.completeness.reason);
 }

@@ -1,3 +1,4 @@
+import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import { MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS } from "@research-cockpit/contracts";
 import type {
   PersonalSecAnnualEvidenceRequestDto,
@@ -112,7 +113,7 @@ describe("annual SEC evidence browser client", () => {
   });
 
   it.each([
-    { ...request(), schemaVersion: "2.0.0" },
+    { ...request(), schemaVersion: "1.0.0" },
     { ...request(), catalogSnapshotSha256: "bad" },
     { ...request(), listingId: "https://evil.invalid" },
     { ...request(), symbol: "zero" },
@@ -343,6 +344,7 @@ describe("annual SEC evidence browser client", () => {
       input = {
         ...input,
         coverage: null,
+        incomeScanStatus: "source_unavailable",
         generation: {
           ...old.generation,
           sources: {
@@ -413,6 +415,7 @@ describe("annual SEC evidence browser client", () => {
       evidence: {
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
+        cashGeneration: await cashGeneration(input),
       },
     };
     fetchMock.mockResolvedValue(json(wire));
@@ -457,6 +460,7 @@ describe("annual SEC evidence browser client", () => {
         evidence: {
           ...input,
           resolution: resolvePersonalSecAnnualEvidence(input),
+          cashGeneration: await cashGeneration(input),
         },
       }),
     );
@@ -682,7 +686,7 @@ describe("shared annual SEC response decoder", () => {
 type Wire = PersonalSecAnnualEvidenceResponseDto;
 function request(): PersonalSecAnnualEvidenceRequestDto {
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "listing-zero",
     symbol: "ZERO",
@@ -772,7 +776,7 @@ async function response(
   const input: PersonalSecAnnualResolutionInput = {
     cik: "0000000001",
     generation: {
-      definitionVersion: "1.0.0",
+      definitionVersion: "2.0.0",
       cutoffAt: "2026-09-20T00:00:00.000Z",
       completedAt: "2026-09-20T00:00:02.000Z",
       sha256: `sha256:${"0".repeat(64)}`,
@@ -807,6 +811,7 @@ async function response(
       annualFilings: 1,
       olderHistoryAvailable: false,
     },
+    incomeScanStatus: "available",
     completeness: { status: "complete", reason: null },
     coverage: {
       full: {
@@ -831,7 +836,7 @@ async function response(
   };
   const evidence = { ...input, generation };
   return {
-    schemaVersion: "1.0.0",
+    schemaVersion: "2.0.0",
     catalogSnapshotSha256: request().catalogSnapshotSha256,
     security: {
       country: "US",
@@ -846,6 +851,7 @@ async function response(
     evidence: {
       ...evidence,
       resolution: resolvePersonalSecAnnualEvidence(evidence),
+      cashGeneration: await cashGeneration(evidence),
     },
   };
 }

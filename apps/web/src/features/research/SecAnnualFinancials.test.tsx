@@ -41,9 +41,15 @@ describe("managed annual financial overview", () => {
       expect(visible).toContain("2026-09-20T00:00:02.000Z");
       if (wire.evidence.target.status === "target")
         expect(visible).toContain(`filed ${wire.evidence.target.filedDate}`);
-      expect(visible).toContain("Within current-use limits at this load.");
+      expect(visible).toContain(
+        "Revenue and income are within current-use limits at this load.",
+      );
       expect(visible).not.toContain("Source ages at completion:");
-      expect(visible).not.toContain("Report age at cutoff:");
+      expect(
+        visible.split(
+          '<details class="sec-quarterly-row-details sec-annual-cash-source">',
+        )[0],
+      ).not.toContain("Report age at cutoff:");
       expect(visible).not.toContain("485-day");
       expect(visible).not.toContain("Reported annual financials");
       expect(visible).toContain(
@@ -55,7 +61,7 @@ describe("managed annual financial overview", () => {
       expect(html).toContain(
         '<details class="managed-annual-provenance"><summary>Source and validation details</summary>',
       );
-      expect(visible).not.toContain("Full source scan:");
+      expect(visible).not.toContain("Revenue and income scan:");
       expect(html).toContain(wire.evidence.generation.sha256);
       const provenance = html.slice(visible.length);
       expect(provenance).toContain("Source ages at completion:");
@@ -89,7 +95,7 @@ describe("managed annual financial overview", () => {
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult response={wire} />,
     );
-    expect(html.indexOf("Complete selected evidence")).toBeLessThan(
+    expect(html.indexOf("Revenue and income evidence")).toBeLessThan(
       html.indexOf("Revenue · USD"),
     );
     expect(html).toContain(
@@ -214,7 +220,7 @@ describe("managed annual financial overview", () => {
       render(await response(annualHistoryRows(), "2027-09-20T00:00:00.000Z")),
     );
     expect(visible).toContain(
-      "Unavailable under the current-use policy at this load.",
+      "Revenue and income are unavailable under the current-use policy at this load.",
     );
     expect(visible).toContain(
       "outside the current-use policy at its original load",

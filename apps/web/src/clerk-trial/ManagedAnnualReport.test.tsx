@@ -1,3 +1,4 @@
+import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -478,6 +479,7 @@ describe("managed annual refresh", () => {
     const next = await laterResponse();
     let input: PersonalSecAnnualResolutionInput = {
       ...next.evidence,
+      incomeScanStatus: "source_unavailable",
       observations: [],
       coverage: null,
       generation: {
@@ -513,6 +515,7 @@ describe("managed annual refresh", () => {
       evidence: {
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
+        cashGeneration: await cashGeneration(input),
       },
     };
     const admitted = await parseSecAnnualEvidenceResponse(
@@ -553,7 +556,7 @@ describe("managed annual read", () => {
       expect.any(AbortSignal),
     );
     expect(html()).toContain("Refresh annual report");
-    expect(html()).toContain("Inspect selected-report evidence");
+    expect(html()).toContain("Inspect selected-report income evidence");
   });
 
   it("coalesces duplicate loads, aborts on Cancel and fences an uncooperative late result", async () => {

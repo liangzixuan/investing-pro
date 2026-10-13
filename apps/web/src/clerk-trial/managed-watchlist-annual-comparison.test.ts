@@ -227,7 +227,7 @@ describe("watchlist Annual explicit read lifetime", () => {
     await model.load("left", left);
     expect(read).toHaveBeenCalledOnce();
     expect(read.mock.calls[0]![0]).toEqual({
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       catalogSnapshotSha256: digest,
       listingId: first.listingId,
       symbol: first.symbol,

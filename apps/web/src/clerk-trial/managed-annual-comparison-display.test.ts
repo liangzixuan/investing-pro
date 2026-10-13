@@ -282,6 +282,7 @@ describe("managed Annual comparison display", () => {
       ...raw,
       evidence: {
         ...raw.evidence,
+        incomeScanStatus: "source_unavailable",
         completeness: { status: "refused", reason: "source_unavailable" },
         observations: [],
         coverage: null,

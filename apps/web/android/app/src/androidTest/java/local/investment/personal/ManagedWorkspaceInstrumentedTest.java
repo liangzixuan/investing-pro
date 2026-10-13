@@ -2849,12 +2849,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '1000,100,10%'" +
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(amounts + " thead th:nth-child(2) time") + ")).map(e => e.dateTime).join(',') === '2025-01-01,2025-12-31'" +
             " && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
-            " && document.querySelector('.managed-annual-summary .managed-annual-age')?.textContent === 'Within current-use limits at this load.'" +
+            " && document.querySelector('.managed-annual-summary .managed-annual-age')?.textContent === 'Revenue and income are within current-use limits at this load.'" +
             " && document.querySelector('.managed-annual-financial-region')?.getAttribute('aria-label') === 'Annual financial results'" +
             " && document.querySelector('.managed-annual-financial-region')?.tabIndex === 0" +
             " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
         awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
+        assertAnnualCashGeneration();
         String comparison = basis + " .managed-annual-changes[aria-label='Reported annual comparison Revenues']";
         awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
             "document.querySelector(" + JSONObject.quote(comparison) + ")?.getAttribute('aria-label') === 'Reported annual comparison Revenues'" +
@@ -3119,6 +3120,45 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income'");
+    }
+
+    private void assertAnnualCashGeneration() throws Exception {
+        String cash = ".sec-annual-cash";
+        String source = cash + " > .sec-annual-cash-source";
+        String inputs = source + " > section > ol > li > details";
+        awaitPage("cash reports exact independent amounts and a same-period subtraction",
+            "document.querySelector('.sec-annual-cash')?.getAttribute('aria-label') === 'Annual cash generation'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
+            " && document.querySelector('.sec-annual-cash > p:last-of-type')?.textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.')" +
+            " && document.querySelector('.sec-annual-cash-source')?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        click(source + " > summary");
+        awaitPage("cash disclosure retains original capture times and complete bounded inputs",
+            "document.querySelector('.sec-annual-cash-source')?.open === true" +
+            " && document.querySelector('.sec-annual-cash-source > p:first-of-type')?.textContent === 'Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(inputs + " > summary") + ")).map(e => e.textContent).join('|') === 'NetCashProvidedByUsedInOperatingActivities · 2025-01-01 to 2025-12-31 · 120.125 USD|PaymentsToAcquirePropertyPlantAndEquipment · 2025-01-01 to 2025-12-31 · 20.025 USD'");
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        awaitPage("both cash operands keep exact filing coordinates and calculation references",
+            "(() => { const rows = Array.from(document.querySelectorAll(" + JSONObject.quote(inputs) + "));" +
+            " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
+            " const shared = '|365 days|2025 · FY|CY2025|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|';" +
+            " const ids = values.map(row => row[9]);" +
+            " return rows.length === 2 && rows.every(row => row.open)" +
+            " && values[0].slice(0, 9).join('|') === '120.125' + shared + '/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0'" +
+            " && values[1].slice(0, 9).join('|') === '20.025' + shared + '/facts/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment/units/USD/0'" +
+            " && ids.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && ids[0] !== ids[1]" +
+            " && document.querySelector('.sec-annual-cash-source > p:last-of-type')?.textContent === 'Calculation references: ' + ids.join(' · '); })()");
+        assertAnnualNoteCounts(1, 0, 1);
+        click(source + " > summary");
+        awaitPage("closing cash details preserves values and the existing unsaved note",
+            "document.querySelector('.sec-annual-cash-source')?.open === false" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
     }
 
     private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {

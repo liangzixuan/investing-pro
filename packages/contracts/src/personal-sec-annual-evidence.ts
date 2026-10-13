@@ -1,12 +1,16 @@
 import type { PersonalMarketDataIdentityDto } from "./index";
 import type {
+  PersonalSecAnnualCashGenerationDto,
+  PersonalSecAnnualScanStatus,
+} from "./personal-sec-annual-cash-generation";
+import type {
   PersonalSecQuarterlyConcept,
   PersonalSecQuarterlyObservationDto,
   PersonalSecQuarterlySourceStatus,
 } from "./personal-sec-quarterly-evidence";
 
-export const PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION = "1.0.0" as const;
-export const PERSONAL_SEC_ANNUAL_DEFINITION_VERSION = "1.0.0" as const;
+export const PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION = "2.0.0" as const;
+export const PERSONAL_SEC_ANNUAL_DEFINITION_VERSION = "2.0.0" as const;
 export const MANAGED_SEC_ANNUAL_EVIDENCE_PATH =
   "/v1/managed/sec-annual-evidence" as const;
 export const MANAGED_SEC_ANNUAL_EVIDENCE_LIMITS = Object.freeze({
@@ -174,6 +178,8 @@ export interface PersonalSecAnnualEvidenceDto {
     annualFilings: number;
     olderHistoryAvailable: boolean;
   }> | null;
+  /** Revenue/net-income normalization, independent of source and cash scans. */
+  readonly incomeScanStatus: PersonalSecAnnualScanStatus;
   readonly completeness:
     | Readonly<{ status: "complete"; reason: null }>
     | Readonly<{ status: "refused"; reason: PersonalSecAnnualRefusalReason }>;
@@ -182,10 +188,11 @@ export interface PersonalSecAnnualEvidenceDto {
   /** Every selected-accession observation before annual filtering; at most100/100. */
   readonly observations: readonly PersonalSecQuarterlyObservationDto[];
   readonly resolution: PersonalSecAnnualResolutionDto;
+  readonly cashGeneration: PersonalSecAnnualCashGenerationDto;
 }
 export type PersonalSecAnnualResolutionInput = Omit<
   PersonalSecAnnualEvidenceDto,
-  "resolution"
+  "resolution" | "cashGeneration"
 >;
 export interface PersonalSecAnnualEvidenceRequestDto {
   readonly schemaVersion: typeof PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION;
