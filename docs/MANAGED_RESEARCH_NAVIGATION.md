@@ -120,6 +120,13 @@ the original opener. If that control disappears, Back focuses the current view's
 navigation control or the visible Discover heading. There is no persistent cache,
 automatic load, prefetch, save or source request on resume.
 
+After a responsive layout change, the return control must remain visible above
+the mobile navigation. A bounded follow-up checks the control that still owns
+focus and scrolls it into view only when obscured. An already visible control
+keeps its position. A new visit, retired session, removed or hidden target, or
+focus moved elsewhere cancels that correction. The existing route and history
+behavior remains unchanged; [Current work](CURRENT_WORK.md) records acceptance.
+
 ## Keyboard bypass
 
 The managed workspace's first keyboard stop is **Skip to workspace content**.

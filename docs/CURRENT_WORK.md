@@ -467,8 +467,8 @@ dates, cancelled and late reads, and session retirement. The integrated native
 fixture retains complete notices and fits the unchanged asset limit. The original
 hosted Android run passes all 27 cases and independent artifact review, including
 the bounded liquidity append/refusal assertions. Native liquidity Save is outside
-those assertions. Windows CI remains pending; this candidate is not merged or
-delivered.
+those assertions. All five applicable original Actions and CodeScene pass; this
+candidate is not merged or delivered.
 
 ### Annual report navigation candidate
 
@@ -484,14 +484,29 @@ and 320 CSS pixels verifies all destinations, keyboard continuation, visible
 focus, unavailable income with independent cash/liquidity, retained and replaced
 reports, cancellation, late completion, note append and session retirement. The
 focused link survives replacement; the viewport can shift as content changes.
-Full notices and the native loader limit are preserved. The native navigation
-assertions still require their original hosted run.
+Full notices and the native loader limit are preserved. All six applicable
+original Actions pass, including 27 Android cases and independent artifact
+review of the four report-navigation assertions. CodeScene retains a reviewed
+advisory failure without an actionable correctness finding.
 
-An adjacent Chrome finding remains: entering company research at desktop width
+An adjacent Chrome finding showed that entering company research at desktop width
 and returning after narrowing the window focuses the original watchlist button
 below the visible area. Fresh phone-width visits return to a visible button.
-The next increment will correct responsive return visibility while preserving
-the existing draft and focus ownership.
+The responsive return fix preserves the existing draft and focus ownership.
+It adds a bounded follow-up check of the
+still-focused return control. Already visible controls and focus moved elsewhere
+are left alone; stale visit/session work is cancelled.
+
+All 131 focused screen cases, web and preview types, scoped lint/format and source
+boundaries pass. Independent source and bundle reviews pass. Chrome verifies
+desktop-to-phone Back at 320 and 390 CSS pixels, including a loaded comparison
+handoff, with the original opener visible above mobile navigation. Desktop and
+phone controls remain visible without a follow-up position change. Full drafts,
+comparison choices, original evidence dates and request counts are preserved.
+The initial 320-pixel keyboard attempt did not navigate; a subsequent click did.
+The focused tests cover missing openers, moved focus and stale lifetime guards;
+those timing cases are not claimed as browser observations. Complete notices and
+the native asset limit pass. The original hosted run is still required.
 
 ## Product scope
 
@@ -517,8 +532,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish original hosted checks for the Annual report navigation candidate and
-correct the responsive return-focus finding. Preserve explicit source requests,
+Finish original hosted checks for the responsive return-focus fix. Preserve
+explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
