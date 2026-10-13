@@ -6,7 +6,7 @@ import type { MainWatchlistPayload } from "@research-cockpit/contracts";
 import type { ComponentProps } from "react";
 import type { ManagedWatchlistAnnualComparisonNoteAction } from "./ManagedWatchlistAnnualComparisonNoteAction";
 import { TrialApiError } from "./api";
-import type { ManagedApi } from "./managed-api";
+import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { ManagedWatchlistAnnualComparison as Model } from "./managed-watchlist-annual-comparison";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import {
@@ -34,14 +34,16 @@ const hooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
   stateIndex: 0,
   refIndex: 0,
-  effects: [] as Array<() => void>,
+  effects: [] as Array<() => void | (() => void)>,
+  cleanups: [] as Array<() => void>,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
   useId: () => "annual-comparison-test",
   useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) =>
     snapshot(),
-  useLayoutEffect: (effect: () => void) => hooks.effects.push(effect),
+  useLayoutEffect: (effect: () => void | (() => void)) =>
+    hooks.effects.push(effect),
   useRef: (value: unknown) =>
     (hooks.refs[hooks.refIndex++] ??= { current: value }),
   useState: (initial: unknown) => {
@@ -62,6 +64,7 @@ beforeEach(() => {
   hooks.states = [];
   hooks.refs = [];
   hooks.effects = [];
+  hooks.cleanups = [];
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -70,6 +73,8 @@ type ControlProps = {
   id?: string;
   value?: string;
   disabled?: boolean;
+  className?: string;
+  "aria-label"?: string;
   "aria-describedby"?: string;
   "data-annual-comparison-cash-source"?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
@@ -116,7 +121,16 @@ function fixture() {
   };
   const originalMemberships = model.getSnapshot().memberships;
   const originalDraft = structuredClone(draft);
-  const render = () => {
+  const onOpenReport =
+    vi.fn<
+      ComponentProps<typeof ManagedWatchlistAnnualComparison>["onOpenReport"]
+    >();
+  const render = (
+    props: Partial<
+      ComponentProps<typeof ManagedWatchlistAnnualComparison>
+    > = {},
+    commit = true,
+  ) => {
     hooks.stateIndex = 0;
     hooks.refIndex = 0;
     const tree = ManagedWatchlistAnnualComparison({
@@ -124,8 +138,15 @@ function fixture() {
       active: true,
       editable: true,
       noteActions,
+      onOpenReport,
+      ...props,
     });
-    while (hooks.effects.length) hooks.effects.shift()!();
+    if (commit) {
+      while (hooks.effects.length) {
+        const cleanup = hooks.effects.shift()!();
+        if (cleanup) hooks.cleanups.push(cleanup);
+      }
+    }
     return tree;
   };
   const choose = (side: "left" | "right", listingId: string) => {
@@ -147,10 +168,217 @@ function fixture() {
     originalMemberships,
     originalDraft,
     noteActions,
+    onOpenReport,
   };
 }
 
 describe("watchlist annual comparison controls and presentation", () => {
+  const reportButton = (tree: ReactNode, side: "left" | "right" = "left") =>
+    walk(tree).filter((node) =>
+      node.props.className?.includes("managed-annual-report-opener"),
+    )[side === "left" ? 0 : 1]!;
+  const clickReport = (
+    button: ReactElement<ControlProps>,
+    opener = {} as HTMLButtonElement,
+  ) =>
+    button.props.onClick!({
+      currentTarget: opener,
+    } as React.MouseEvent<HTMLButtonElement>);
+
+  it("keeps the committed report action across interrupted renders and refuses after unmount", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.read.mockResolvedValueOnce(await packet("left"));
+    await f.load("left");
+    const committed = reportButton(f.render());
+    const replacement = vi.fn<typeof f.onOpenReport>();
+    const abandoned = f.render(
+      { active: false, onOpenReport: replacement },
+      false,
+    );
+    expect(reportButton(abandoned).props.disabled).toBe(true);
+    clickReport(committed);
+    expect(f.onOpenReport).toHaveBeenCalledOnce();
+    expect(replacement).not.toHaveBeenCalled();
+    hooks.effects = [];
+    f.render({ active: false });
+    const uncommitted = f.render(
+      { active: true, onOpenReport: replacement },
+      false,
+    );
+    expect(reportButton(uncommitted).props.disabled).toBe(false);
+    clickReport(committed);
+    expect(f.onOpenReport).toHaveBeenCalledOnce();
+    expect(replacement).not.toHaveBeenCalled();
+    hooks.effects = [];
+    f.render({ active: true, onOpenReport: replacement });
+    clickReport(committed);
+    expect(replacement).toHaveBeenCalledOnce();
+    hooks.cleanups.at(-1)!();
+    clickReport(committed);
+    expect(replacement).toHaveBeenCalledOnce();
+    expect(f.read).toHaveBeenCalledOnce();
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it("keeps explicit full-report controls outside the results and unavailable until loaded", () => {
+    const f = fixture();
+    const empty = f.render();
+    expect(reportButton(empty).props.disabled).toBe(true);
+    expect(reportButton(empty, "right").props.disabled).toBe(true);
+    f.choose("left", members.left.listingId);
+    const chosen = f.render();
+    expect(reportButton(chosen).props["aria-label"]).toBe(
+      "Open full Annual report for ZERO (Zero Company; Class A; XNAS)",
+    );
+    expect(reportButton(chosen).props.disabled).toBe(true);
+    clickReport(reportButton(chosen));
+    const html = renderToStaticMarkup(chosen);
+    expect(html.indexOf("managed-annual-report-opener")).toBeLessThan(
+      html.indexOf('class="managed-annual-comparison-scroll"'),
+    );
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "income-invalid",
+    "current-use-unavailable",
+    "source-unavailable",
+  ] as const)(
+    "opens exact %s reports without requiring editable notes or income eligibility",
+    async (mode) => {
+      const f = fixture();
+      f.choose("left", members.left.listingId);
+      f.read.mockResolvedValueOnce(await packet("left", { mode }));
+      await f.load("left");
+      const state = f.model.getSnapshot();
+      const button = reportButton(f.render({ editable: false }));
+      const opener = {} as HTMLButtonElement;
+      expect(button.props.disabled).toBe(false);
+      clickReport(button, opener);
+      expect(f.onOpenReport).toHaveBeenCalledExactlyOnceWith(
+        {
+          side: "left",
+          member: state.left.selected,
+          response: state.left.report.response,
+        },
+        opener,
+      );
+      expect(f.read).toHaveBeenCalledTimes(1);
+      expect(f.noteActions.append).not.toHaveBeenCalled();
+      expect(f.draft).toEqual(f.originalDraft);
+    },
+  );
+
+  it("opens a retained report and leaves pending comparison cancellation to the handoff owner", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    f.read.mockResolvedValueOnce(await packet("left"));
+    await f.load("left");
+    f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await f.load("left");
+    const response = f.model.getSnapshot().left.report.response;
+    expect(f.model.getSnapshot().left.report.showingPrevious).toBe(true);
+    let release!: (value: Awaited<ReturnType<typeof packet>>) => void;
+    f.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = f.load("right");
+    const operation = f.model.getSnapshot().pending;
+    const button = reportButton(f.render());
+    expect(button.props.disabled).toBe(false);
+    clickReport(button);
+    expect(f.onOpenReport.mock.calls[0]![0].response).toBe(response);
+    expect(f.model.getSnapshot().pending).toBe(operation);
+    expect(f.read).toHaveBeenCalledTimes(3);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    operation!.cancel();
+    release(await packet("right"));
+    await pending;
+  });
+
+  it("fences equal-content response replacement and remove/re-add callbacks before rerender", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    const report = await packet("left");
+    f.read
+      .mockResolvedValueOnce(report)
+      .mockResolvedValueOnce(structuredClone(report));
+    await f.load("left");
+    const old = reportButton(f.render());
+    await f.load("left");
+    clickReport(old);
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    const replaced = reportButton(f.render());
+    f.model.reconcile(
+      { ...f.draft, memberships: [members.right] },
+      f.digest,
+      true,
+      true,
+    );
+    f.model.reconcile(f.draft, f.digest, true, true);
+    f.choose("left", members.left.listingId);
+    clickReport(replaced);
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses the latest view guard and action port while retaining admitted note/reorder captures", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.read.mockResolvedValueOnce(await packet("left"));
+    await f.load("left");
+    const old = reportButton(f.render());
+    f.render({ active: false });
+    clickReport(old);
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    const latest =
+      vi.fn<
+        ComponentProps<typeof ManagedWatchlistAnnualComparison>["onOpenReport"]
+      >();
+    f.model.reconcile(
+      {
+        ...f.draft,
+        memberships: [...f.draft.memberships]
+          .reverse()
+          .map((m) => ({ ...m, note: "Updated note" })),
+      },
+      f.digest,
+      true,
+      false,
+    );
+    f.render({ active: true, editable: false, onOpenReport: latest });
+    clickReport(old);
+    expect(latest).toHaveBeenCalledOnce();
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalledTimes(1);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it("refuses captured controls after catalog availability, activity or session retirement changes", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.read.mockResolvedValueOnce(await packet("left"));
+    await f.load("left");
+    const old = reportButton(f.render());
+    f.read.mockRejectedValueOnce(new ManagedCatalogChangedError());
+    await f.load("left");
+    clickReport(old);
+    expect(reportButton(f.render()).props.disabled).toBe(true);
+    f.model.reconcile(f.draft, f.digest, false, true);
+    clickReport(old);
+    f.model.retire();
+    clickReport(old);
+    expect(f.onOpenReport).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalledTimes(2);
+  });
+
   it("forwards the exact current pair, projected basis and action port outside the scrolling table", async () => {
     const f = fixture();
     f.choose("left", members.left.listingId);

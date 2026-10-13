@@ -1045,6 +1045,16 @@ export function ManagedWorkspaceScreen({
                     <ManagedUnsavedWatchlistReview state={saved} />
                     <ManagedWatchlistAnnualComparison
                       model={workspace.annualComparison}
+                      onOpenReport={(capture, opener) => {
+                        if (
+                          navigation?.invalid ||
+                          navigation?.hasCompanyRoute()
+                        )
+                          return;
+                        openResearch(opener, () =>
+                          workspace.openAnnualComparisonReport(capture),
+                        );
+                      }}
                       editable={editable}
                       active={
                         discovery.view === "watchlist" &&

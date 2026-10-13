@@ -6,13 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment connects a two-company Annual comparison to one chosen
-research-note draft. The owner chooses income or cash evidence; each company
-keeps its exact amounts, own fiscal period and original filing and source dates.
-Appending uses already loaded reports and the existing explicit full-draft Save.
-The [Annual guide](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note)
-defines its scope; Current
-work distinguishes source, browser, native and delivery acceptance. Broader
+The current M2 increment opens either loaded Annual comparison report in the
+company research view without another source request. Back preserves the pair,
+basis choices and shared note draft; an explicit company refresh leaves the
+comparison unchanged. The [Annual guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison)
+defines its scope. The preceding increment connects income or cash comparison
+evidence to one chosen note through the existing full-draft Save. Current work
+distinguishes source, browser, native and delivery acceptance. Broader
 financial statements, valuation and complete company coverage remain open.
 
 ## Goal and constraints

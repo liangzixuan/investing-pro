@@ -137,6 +137,114 @@ const laterResponse = () =>
   );
 
 describe("managed annual refresh", () => {
+  it.each(["failure", "cancel"] as const)(
+    "keeps comparison provenance through a %s refresh until replacement or clear",
+    async (outcome) => {
+      const { model, load, html } = fixture();
+      const loaded = await response(annualComparativeRows());
+      model.open(
+        { ...selection, origin: "watchlist", cik: null },
+        { response: loaded, showingPrevious: false },
+      );
+      await vi.waitFor(() =>
+        expect(model.getSnapshot().checkingSeed).toBe(false),
+      );
+      const origin =
+        "Showing the report loaded in the watchlist comparison. Original source and observation times are unchanged.";
+      expect(html()).toContain(origin);
+      const held = deferred<typeof loaded>();
+      load.mockReturnValueOnce(held.promise);
+      const refreshing = model.load();
+      expect(html()).toContain(origin);
+      if (outcome === "cancel") model.cancel();
+      held.reject(new TrialApiError("unavailable"));
+      await refreshing;
+      expect(html()).toContain(origin);
+      expect(html()).toContain(loaded.evidence.generation.completedAt);
+      expect(model.getSnapshot().responseOrigin).toBe("watchlist-comparison");
+      const refreshed = await laterResponse();
+      load.mockResolvedValueOnce(refreshed);
+      await model.load();
+      expect(html()).not.toContain(origin);
+      expect(html()).toContain(refreshed.evidence.generation.completedAt);
+      expect(model.getSnapshot().responseOrigin).toBe("request");
+      model.close();
+      expect(html()).toBe("");
+      expect(load).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("labels local report checking separately and renders original comparison provenance without a request", async () => {
+    const { model, load, html } = fixture();
+    const loaded = await response(annualComparativeRows());
+    model.open(
+      { ...selection, origin: "watchlist", cik: null },
+      { response: loaded, showingPrevious: true },
+    );
+    const checking = html();
+    expect(checking).toContain("Checking loaded report…");
+    expect(checking).toContain('aria-busy="true"');
+    expect(checking).toContain("Cancel annual report");
+    expect(checking).toContain(
+      "Checking the loaded comparison report does not request new evidence.",
+    );
+    expect(checking).not.toContain("Loading annual report…");
+    await vi.waitFor(() =>
+      expect(model.getSnapshot().checkingSeed).toBe(false),
+    );
+    const accepted = html();
+    expect(accepted).toContain("watchlist comparison");
+    expect(accepted).toContain(loaded.evidence.generation.completedAt);
+    expect(accepted).toContain("Showing the previous report");
+    expect(accepted).toContain("Refresh annual report");
+    expect(accepted).not.toContain("Checking loaded report…");
+    expect(load).not.toHaveBeenCalled();
+    expect(model.getSnapshot().responseOrigin).toBe("watchlist-comparison");
+    const held = deferred<typeof loaded>();
+    load.mockReturnValueOnce(held.promise);
+    const refreshing = model.load();
+    expect(html()).toContain("Refreshing annual report…");
+    expect(html()).not.toContain("Checking loaded report…");
+    held.resolve(loaded);
+    await refreshing;
+    expect(load).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().responseOrigin).toBe("request");
+  });
+
+  it("keeps the existing Cancel control during local checking and never starts a fallback load", async () => {
+    const { model, load, html } = fixture();
+    model.open(
+      { ...selection, origin: "watchlist", cik: null },
+      { response: await response(), showingPrevious: false },
+    );
+    panelHooks.enabled = true;
+    const controls = buttons(Panel({ model }));
+    const cancel = controls.find(
+      (button) => button.props.children === "Cancel annual report",
+    )!;
+    const click = cancel.props
+      .onClick as React.MouseEventHandler<HTMLButtonElement>;
+    const origin = {} as HTMLButtonElement;
+    const priorDocument = globalThis.document;
+    vi.stubGlobal("document", { activeElement: origin });
+    try {
+      click({ currentTarget: origin } as React.MouseEvent<HTMLButtonElement>);
+      expect(model.getSnapshot().checkingSeed).toBe(false);
+      expect(model.getSnapshot().response).toBeNull();
+      panelHooks.index = 0;
+      expect(buttons(Panel({ model }))[0]!.props.children).toBe(
+        "Load annual report",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(model.getSnapshot().response).toBeNull();
+      expect(load).not.toHaveBeenCalled();
+    } finally {
+      vi.stubGlobal("document", priorDocument);
+      panelHooks.enabled = false;
+    }
+    expect(html()).not.toContain("Checking loaded report…");
+  });
+
   it("passes only the displayed response to an optional cash action and removes it with the report", async () => {
     const { model, load } = fixture();
     const old = await response();

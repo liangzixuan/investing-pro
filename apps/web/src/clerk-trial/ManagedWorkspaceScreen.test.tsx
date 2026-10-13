@@ -1523,6 +1523,100 @@ describe("managed workspace screen", () => {
     },
   );
 
+  it.each([
+    "ready",
+    "invalid",
+    "pending",
+    "becomes-pending",
+    "navigation-refuses",
+  ] as const)(
+    "opens a checked comparison report through the existing navigation owner: %s",
+    async (route) => {
+      let pending = route === "pending";
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [
+          annualComparisonMemberships.left,
+          {
+            ...annualComparisonMemberships.right,
+            note: "Fiscal company research",
+          },
+        ],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const model = workspace.annualComparison;
+      const member = model.getSnapshot().memberships[0]!;
+      model.select("left", model.getSnapshot(), member);
+      vi.mocked(api.annualReport).mockResolvedValueOnce(
+        await annualComparisonResponse("left"),
+      );
+      await model.load("left", member);
+      const response = model.getSnapshot().left.report.response!;
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn<ManagedCompanyNavigation["open"]>((action) => {
+          if (route !== "navigation-refuses") action();
+        }),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const comparison = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >;
+      const focus = vi.fn();
+      const origin = {
+        isConnected: true,
+        focus,
+      } as unknown as HTMLButtonElement;
+      if (route === "becomes-pending") pending = true;
+      comparison.props.onOpenReport({ side: "left", member, response }, origin);
+      if (route === "ready") {
+        expect(navigation.open).toHaveBeenCalledOnce();
+        expect(workspace.getSnapshot().research?.section).toBe("annual");
+        expect(mounted.refs[0]!.current).toBe(origin);
+        await vi.waitFor(() =>
+          expect(workspace.annual.getSnapshot().checkingSeed).toBe(false),
+        );
+        expect(workspace.annual.getSnapshot().response).toEqual(response);
+        workspace.closeResearch();
+        const effectIndex = mounted.effects.length;
+        mounted.refIndex = 0;
+        ManagedWorkspaceScreen({
+          workspace,
+          navigation: { ...navigation, returnFocus: 1 },
+        });
+        expect(focus).not.toHaveBeenCalled();
+        mounted.effects[effectIndex]!();
+        expect(focus).toHaveBeenCalledOnce();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(model.getSnapshot().left.selected).toBe(member);
+        expect(model.getSnapshot().left.report.response).toBe(response);
+      } else {
+        expect(workspace.getSnapshot().research).toBeNull();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(focus).not.toHaveBeenCalled();
+        expect(navigation.open).toHaveBeenCalledTimes(
+          route === "navigation-refuses" ? 1 : 0,
+        );
+      }
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+    },
+  );
+
   it("adds from a captured discovery visit and fences old note and review controls", async () => {
     const { workspace, api, html } = fixture({ ...payload, memberships: [] });
     const listing = {

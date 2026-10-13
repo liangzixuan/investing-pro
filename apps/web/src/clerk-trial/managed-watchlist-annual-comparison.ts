@@ -2,19 +2,31 @@ import {
   membershipMatchesResult,
   type MainWatchlistPayload,
   type ManagedEodIdentity,
+  type PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import {
   ManagedAnnualReport,
   type ManagedAnnualReportState,
+  type ManagedAnnualReportSeed,
 } from "./managed-annual-report";
 import { ManagedSecAccess } from "./managed-sec-access";
+import type { ManagedResearchSelection } from "./managed-research-selection";
 
 export type ManagedWatchlistAnnualComparisonSide = "left" | "right";
 export interface ManagedWatchlistAnnualComparisonMember {
   readonly handle: symbol;
   readonly listing: ManagedEodIdentity;
+}
+export interface ManagedAnnualComparisonReportCapture {
+  readonly side: ManagedWatchlistAnnualComparisonSide;
+  readonly member: ManagedWatchlistAnnualComparisonMember;
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}
+export interface ManagedAnnualComparisonReportHandoff {
+  readonly selection: ManagedResearchSelection;
+  readonly seed: ManagedAnnualReportSeed;
 }
 interface SelectedReport {
   readonly selected: ManagedWatchlistAnnualComparisonMember | null;
@@ -293,6 +305,44 @@ export class ManagedWatchlistAnnualComparison {
         this.publish();
       }
     }
+  }
+  canAdmitReport(capture: ManagedAnnualComparisonReportCapture): boolean {
+    if (
+      this.retired ||
+      !this.active ||
+      this.state.catalogChanged ||
+      !sides.includes(capture.side)
+    )
+      return false;
+    const owner = this.owners[capture.side];
+    const report = owner.model.getSnapshot();
+    return (
+      owner.selected === capture.member &&
+      this.memberships.includes(capture.member) &&
+      report.response !== null &&
+      report.response === capture.response &&
+      report.selection?.catalogSnapshotSha256 === this.digest
+    );
+  }
+  admitReport(
+    capture: ManagedAnnualComparisonReportCapture,
+  ): ManagedAnnualComparisonReportHandoff | null {
+    if (!this.canAdmitReport(capture)) return null;
+    if (this.operation) this.cancel(this.operation);
+    if (this.operation || !this.canAdmitReport(capture)) return null;
+    const report = this.owners[capture.side].model.getSnapshot();
+    return Object.freeze({
+      selection: Object.freeze({
+        listing: Object.freeze({ ...capture.member.listing }),
+        catalogSnapshotSha256: this.digest!,
+        origin: "watchlist",
+        cik: null,
+      }),
+      seed: Object.freeze({
+        response: capture.response,
+        showingPrevious: report.showingPrevious,
+      }),
+    });
   }
   retire() {
     if (this.retired) return;
