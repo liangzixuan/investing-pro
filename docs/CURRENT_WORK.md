@@ -660,6 +660,17 @@ loader payload is 2,348,539 bytes, below the unchanged 4 MiB limit. This is buil
 acceptance; original hosted desktop and Android execution remain pending.
 Production and prior candidates are unchanged.
 
+### Newly observed Filings filter candidate
+
+The next increment adds **Refresh view** to company Filings. After an explicit
+refresh supplies a comparison, it can show only newly observed accessions and
+combine them with Form and Filing date. Original row order, source records and
+reference-to-note actions remain available. Filtering makes no request or Save.
+See the [Filings guide](MANAGED_SEC_FILINGS.md#filter-newly-observed-filings).
+
+Implementation and affected checks are in progress. Browser, native and original
+hosted acceptance remain pending. Production is unchanged.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

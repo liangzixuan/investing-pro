@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2/M4 increment opens another watchlist company from within research.
+The current M3/M4 increment filters newly observed accessions in the loaded company
+Filings comparison. Refresh view combines with Form and Filing date before paging,
+keeping original rows, source limits and the existing filing-to-note workflow.
+It adds no request, saved state or source. See the
+[filter guide](MANAGED_SEC_FILINGS.md#filter-newly-observed-filings).
+
+The preceding M2/M4 increment opens another watchlist company from within research.
 An explicit choice keeps the current section, exact listing identity, each note
 and the original workspace return. New company visits start unloaded. It adds no
 request, saved state or source. See the [navigation guide](MANAGED_RESEARCH_NAVIGATION.md#choose-another-watchlist-company).
