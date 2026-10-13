@@ -5,7 +5,7 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
 } from "@research-cockpit/contracts";
 import { ObservationDetails } from "./SecAnnualObservation";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
   invalid_clock: "The original source times could not be validated.",
@@ -47,14 +47,26 @@ const reasons: Record<PersonalSecAnnualCashUnavailableReason, string> = {
 export function SecAnnualCashGeneration({
   response,
   cashAction,
+  headingTarget,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly cashAction?: ReactNode;
+  readonly headingTarget?: {
+    readonly id: string;
+    readonly ref: Ref<HTMLHeadingElement>;
+  };
 }) {
   const { cashGeneration: cash } = response.evidence;
   return (
     <section className="sec-annual-cash" aria-label="Annual cash generation">
-      <h4>Cash generation</h4>
+      <h4
+        id={headingTarget?.id}
+        ref={headingTarget?.ref}
+        tabIndex={headingTarget ? -1 : undefined}
+        data-annual-report-target={headingTarget ? "cash" : undefined}
+      >
+        Cash generation
+      </h4>
       <p className="sec-quarterly-message">
         Exact, unscaled USD from the selected annual filing. Each reported
         amount is checked independently.

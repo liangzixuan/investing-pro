@@ -142,6 +142,14 @@ const laterResponse = () =>
     "2026-09-21T00:00:00.000Z",
   );
 
+function expectReportNavigation(html: string) {
+  expect(html.match(/<nav\b[^>]*aria-label="On this report"/gu)).toHaveLength(
+    1,
+  );
+  for (const target of ["income", "cash", "liquidity", "sources"])
+    expect(html).toContain(`data-annual-report-jump="${target}"`);
+}
+
 describe("managed annual refresh", () => {
   it.each(["failure", "cancel"] as const)(
     "keeps comparison provenance through a %s refresh until replacement or clear",
@@ -158,20 +166,24 @@ describe("managed annual refresh", () => {
       const origin =
         "Showing the report loaded in the watchlist comparison. Original source and observation times are unchanged.";
       expect(html()).toContain(origin);
+      expectReportNavigation(html());
       const held = deferred<typeof loaded>();
       load.mockReturnValueOnce(held.promise);
       const refreshing = model.load();
       expect(html()).toContain(origin);
+      expectReportNavigation(html());
       if (outcome === "cancel") model.cancel();
       held.reject(new TrialApiError("unavailable"));
       await refreshing;
       expect(html()).toContain(origin);
+      expectReportNavigation(html());
       expect(html()).toContain(loaded.evidence.generation.completedAt);
       expect(model.getSnapshot().responseOrigin).toBe("watchlist-comparison");
       const refreshed = await laterResponse();
       load.mockResolvedValueOnce(refreshed);
       await model.load();
       expect(html()).not.toContain(origin);
+      expectReportNavigation(html());
       expect(html()).toContain(refreshed.evidence.generation.completedAt);
       expect(model.getSnapshot().responseOrigin).toBe("request");
       model.close();
@@ -195,10 +207,12 @@ describe("managed annual refresh", () => {
       "Checking the loaded comparison report does not request new evidence.",
     );
     expect(checking).not.toContain("Loading annual report…");
+    expect(checking).not.toContain('aria-label="On this report"');
     await vi.waitFor(() =>
       expect(model.getSnapshot().checkingSeed).toBe(false),
     );
     const accepted = html();
+    expectReportNavigation(accepted);
     expect(accepted).toContain("watchlist comparison");
     expect(accepted).toContain(loaded.evidence.generation.completedAt);
     expect(accepted).toContain("Showing the previous report");
@@ -673,7 +687,7 @@ describe("managed annual refresh", () => {
   it.each(["close", "retire", "selection"] as const)(
     "clears retained refresh evidence on %s and ignores its late result",
     async (action) => {
-      const { model, load } = fixture();
+      const { model, load, html } = fixture();
       const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
       load
         .mockResolvedValueOnce(await response())
@@ -681,12 +695,14 @@ describe("managed annual refresh", () => {
       model.open(selection);
       await model.load();
       const pending = model.load();
+      expectReportNavigation(html());
       if (action === "selection")
         model.open({
           ...selection,
           listing: { ...selection.listing, symbol: "OTHER" },
         });
       else model[action]();
+      expect(html()).not.toContain('aria-label="On this report"');
       expect(load.mock.calls[1]![1].aborted).toBe(true);
       held.resolve(await laterResponse());
       await pending;
@@ -696,6 +712,7 @@ describe("managed annual refresh", () => {
         running: false,
       });
       expect(load).toHaveBeenCalledTimes(2);
+      expect(html()).not.toContain('aria-label="On this report"');
     },
   );
 
@@ -761,6 +778,7 @@ describe("managed annual refresh", () => {
       showingPrevious: false,
     });
     expect(html()).toContain("SEC source temporarily unavailable");
+    expectReportNavigation(html());
     expect(html()).not.toContain("Net margin · %</dt>");
     expect(html()).not.toContain(old.evidence.generation.sha256);
     expect(html()).not.toContain("Showing the previous report");
@@ -775,6 +793,7 @@ describe("managed annual read", () => {
     expect(load).not.toHaveBeenCalled();
     expect(html()).toContain("Load annual report");
     expect(html()).toContain("Annual report");
+    expect(html()).not.toContain('aria-label="On this report"');
     Object.assign(input.listing, { symbol: "MUTATED" });
     load.mockResolvedValue(await response());
     await model.load();
@@ -785,6 +804,7 @@ describe("managed annual read", () => {
     expect(html()).toContain("Refresh annual report");
     expect(html()).toContain("Inspect selected-report income evidence");
     expect(html()).toContain("Liquidity at fiscal year-end");
+    expectReportNavigation(html());
   });
 
   it("coalesces duplicate loads, aborts on Cancel and fences an uncooperative late result", async () => {
@@ -796,12 +816,14 @@ describe("managed annual read", () => {
     await model.load();
     expect(load).toHaveBeenCalledOnce();
     expect(html()).toContain("Cancel annual report");
+    expect(html()).not.toContain('aria-label="On this report"');
     model.cancel();
     expect(load.mock.calls[0]![1].aborted).toBe(true);
     held.resolve(await response());
     await pending;
     expect(model.getSnapshot().response).toBeNull();
     expect(html()).toContain("cancelled");
+    expect(html()).not.toContain('aria-label="On this report"');
   });
 
   it("fences A-to-B-to-A responses and Back discards the report", async () => {

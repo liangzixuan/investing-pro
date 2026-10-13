@@ -446,8 +446,8 @@ Retained refreshes, cancellation, late completion, navigation with an unsaved no
 and session retirement preserve the existing response boundaries. The native
 fixture retains complete notices and stays below its unchanged asset limit.
 The original hosted Android run passes all 27 cases and independent artifact
-review. Ubuntu passes; Windows is still pending. This candidate is not merged or
-delivered.
+review. All six applicable Actions and CodeScene pass. This candidate is not
+merged or delivered.
 
 ### Liquidity comparison to note candidate
 
@@ -464,10 +464,34 @@ reviews pass. Chrome at 1440, 390 and 320 CSS pixels verifies the complete note,
 explicit Save/reload, unchanged other notes and order, whole-note and duplicate
 refusals, zero liabilities, independent evidence groups, historical and retained
 dates, cancelled and late reads, and session retirement. The integrated native
-fixture retains complete notices and fits the unchanged asset limit. Its bounded
-liquidity append/refusal assertions still require original hosted execution;
-native liquidity Save is outside those assertions. This candidate is not merged
-or delivered.
+fixture retains complete notices and fits the unchanged asset limit. The original
+hosted Android run passes all 27 cases and independent artifact review, including
+the bounded liquidity append/refusal assertions. Native liquidity Save is outside
+those assertions. Windows CI remains pending; this candidate is not merged or
+delivered.
+
+### Annual report navigation candidate
+
+The next increment adds **On this report** links to income, cash, liquidity and
+report source details in the loaded managed Annual view. Explicit activation
+moves focus to the existing section and opens the source disclosure when chosen.
+All evidence, warnings and unavailable explanations remain in place. Navigation
+makes no data request, changes no note and adds no browser-history entry.
+
+Focused component and composed checks, web types, scoped lint/format and source
+boundaries pass. Independent source and bundle reviews pass. Chrome at 1440, 390
+and 320 CSS pixels verifies all destinations, keyboard continuation, visible
+focus, unavailable income with independent cash/liquidity, retained and replaced
+reports, cancellation, late completion, note append and session retirement. The
+focused link survives replacement; the viewport can shift as content changes.
+Full notices and the native loader limit are preserved. The native navigation
+assertions still require their original hosted run.
+
+An adjacent Chrome finding remains: entering company research at desktop width
+and returning after narrowing the window focuses the original watchlist button
+below the visible area. Fresh phone-width visits return to a visible button.
+The next increment will correct responsive return visibility while preserving
+the existing draft and focus ownership.
 
 ## Product scope
 
@@ -493,7 +517,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the liquidity comparison-to-note candidate. Preserve explicit source requests,
+Finish original hosted checks for the Annual report navigation candidate and
+correct the responsive return-focus finding. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

@@ -62,8 +62,8 @@ describe("managed annual financial overview", () => {
       expect(visible).toContain("data-annual-trend-basis");
       expect(visible).toContain("data-annual-trend-metric");
       expect(visible).not.toContain("managed-annual-trend-canvas");
-      expect(html).toContain(
-        '<details class="managed-annual-provenance"><summary>Source and validation details</summary>',
+      expect(html).toMatch(
+        /<details class="managed-annual-provenance"><summary[^>]*data-annual-report-target="sources"[^>]*>Source and validation details<\/summary>/u,
       );
       expect(visible).not.toContain("Revenue and income scan:");
       expect(html).toContain(wire.evidence.generation.sha256);

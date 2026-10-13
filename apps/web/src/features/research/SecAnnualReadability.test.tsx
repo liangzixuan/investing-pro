@@ -129,7 +129,7 @@ describe("managed Annual revenue-basis readability", () => {
     expect(visible(html)).not.toContain("Other revenue bases");
     expect(visible(html).match(/data-annual-missing-basis=/gu)).toHaveLength(3);
     const incomeRegion = html
-      .split('aria-label="Annual financial results" tabindex="0">')[1]!
+      .split('<div class="managed-annual-financial-region"')[1]!
       .split('<section class="sec-annual-cash"')[0]!;
     expect(incomeRegion).not.toContain("<table");
     expect(visible(html)).toContain(
