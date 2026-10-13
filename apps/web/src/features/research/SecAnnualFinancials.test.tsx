@@ -138,7 +138,9 @@ describe("managed annual financial overview", () => {
         basis.pairs.filter((pair) => pair.status === "eligible"),
       ),
     );
-    expect(visible).toContain("Unknown: this revenue basis is missing");
+    expect(visible).toContain(
+      "Missing from this report&#x27;s loaded evidence.",
+    );
     expect(
       wire.evidence.resolution.bases.map((basis) => basis.concept),
     ).toEqual(originalOrder);
@@ -150,7 +152,7 @@ describe("managed annual financial overview", () => {
       visible.indexOf('aria-label="Annual revenue basis Revenues"'),
     ).toBeLessThan(
       visible.indexOf(
-        'aria-label="Annual revenue basis RevenueFromContractWithCustomerExcludingAssessedTax"',
+        'data-annual-missing-basis="RevenueFromContractWithCustomerExcludingAssessedTax"',
       ),
     );
     const local = renderToStaticMarkup(

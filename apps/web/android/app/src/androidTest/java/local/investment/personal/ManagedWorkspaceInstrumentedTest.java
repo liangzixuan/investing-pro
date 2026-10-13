@@ -2855,6 +2855,15 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
         awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
+        awaitPage("friendly revenue heading and compact missing bases preserve separate concepts",
+            "document.querySelector(" + JSONObject.quote(basis + " > h4") + ")?.textContent === 'Revenue'" +
+            " && document.querySelector('.managed-annual-missing-bases > h4')?.textContent === 'Other revenue bases'" +
+            " && document.querySelectorAll('.managed-annual-missing-bases [data-annual-missing-basis]').length === 2" +
+            " && Array.from(document.querySelectorAll('.managed-annual-missing-bases [data-annual-missing-basis]')).map(e => e.getAttribute('data-annual-missing-basis') + '|' + e.querySelector('dt')?.textContent + '|' + e.querySelector('dd')?.textContent).join(';') === " +
+                JSONObject.quote("RevenueFromContractWithCustomerExcludingAssessedTax|Customer contract revenue, excluding assessed tax|Missing from this report's loaded evidence.;SalesRevenueNet|Net sales revenue|Missing from this report's loaded evidence.") +
+            " && document.querySelector(\"section[aria-label='Annual revenue basis RevenueFromContractWithCustomerExcludingAssessedTax']\") === null" +
+            " && document.querySelector(\"section[aria-label='Annual revenue basis SalesRevenueNet']\") === null" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
         assertAnnualCashGeneration();
         String comparison = basis + " .managed-annual-changes[aria-label='Reported annual comparison Revenues']";
         awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
@@ -2917,6 +2926,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-annual-provenance > summary");
         awaitPage("financial methodology remains inspectable without another read",
             "document.querySelector('.managed-annual-provenance')?.open === true" +
+            " && document.querySelectorAll('.managed-annual-provenance .managed-annual-basis-sources [data-annual-source-basis]').length === 3" +
+            " && Array.from(document.querySelectorAll('.managed-annual-provenance .managed-annual-basis-sources [data-annual-source-basis]')).map(e => e.getAttribute('data-annual-source-basis') + '|' + e.querySelector('dt')?.textContent + '|' + e.querySelector('dd')?.textContent).sort().join(';') === " +
+                JSONObject.quote("RevenueFromContractWithCustomerExcludingAssessedTax|RevenueFromContractWithCustomerExcludingAssessedTax|missing;Revenues|Revenues|eligible;SalesRevenueNet|SalesRevenueNet|missing") +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Percentage change is (current − prior) ÷ prior × 100')" +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Margin change subtracts the unrounded ratios')" +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('unusual items in NetIncomeLoss')");

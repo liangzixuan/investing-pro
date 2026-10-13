@@ -22,6 +22,16 @@ import {
   annualMarginChangeText,
 } from "../../lib/sec-annual-comparison-display";
 
+type AnnualBasis =
+  PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number];
+
+const revenueBasisLabels: Readonly<Record<AnnualBasis["concept"], string>> = {
+  Revenues: "Revenue",
+  RevenueFromContractWithCustomerExcludingAssessedTax:
+    "Customer contract revenue, excluding assessed tax",
+  SalesRevenueNet: "Net sales revenue",
+};
+
 const sourceStatuses = {
   available: "Available",
   not_covered: "No coverage for this issuer",
@@ -120,6 +130,7 @@ export function SecAnnualEvidenceResult({
             the observed report in current submissions; it does not provide
             complete filing history or prices.
           </p>
+          <AnnualBasisSources bases={response.evidence.resolution.bases} />
           <SecAnnualSourceDetails response={response} />
         </details>
       </div>
@@ -289,12 +300,15 @@ function AnnualBases({
 }) {
   const evidence = response.evidence;
   const { resolution } = evidence;
+  const missing = financial ? resolution.bases.filter(isMissingBasis) : [];
   const bases = financial
-    ? [...resolution.bases].sort(
-        (left, right) =>
-          Number(right.status === "eligible") -
-          Number(left.status === "eligible"),
-      )
+    ? resolution.bases
+        .filter((basis) => !isMissingBasis(basis))
+        .sort(
+          (left, right) =>
+            Number(right.status === "eligible") -
+            Number(left.status === "eligible"),
+        )
     : resolution.bases;
   return (
     <>
@@ -304,14 +318,71 @@ function AnnualBases({
           key={basis.concept}
           aria-label={`Annual revenue basis ${basis.concept}`}
         >
-          <h4>{basis.concept}</h4>
+          <h4>
+            {financial ? revenueBasisLabels[basis.concept] : basis.concept}
+          </h4>
           {(!financial || basis.status !== "eligible") && (
             <AnnualBasisStatus status={basis.status} />
           )}
           {renderPairs(basis.pairs, evidence, renderPairAction, financial)}
         </section>
       ))}
+      {missing.length > 0 && (
+        <MissingAnnualBases bases={missing} hasOtherBases={bases.length > 0} />
+      )}
     </>
+  );
+}
+
+function isMissingBasis(basis: AnnualBasis): boolean {
+  return basis.status === "missing" && basis.pairs.length === 0;
+}
+
+function MissingAnnualBases({
+  bases,
+  hasOtherBases,
+}: {
+  readonly bases: readonly AnnualBasis[];
+  readonly hasOtherBases: boolean;
+}) {
+  return (
+    <section
+      className="managed-annual-missing-bases"
+      aria-label="Missing revenue bases"
+    >
+      <h4>{hasOtherBases ? "Other revenue bases" : "Revenue bases"}</h4>
+      <dl>
+        {bases.map((basis) => (
+          <div key={basis.concept} data-annual-missing-basis={basis.concept}>
+            <dt>{revenueBasisLabels[basis.concept]}</dt>
+            <dd>Missing from this report's loaded evidence.</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function AnnualBasisSources({
+  bases,
+}: {
+  readonly bases: readonly AnnualBasis[];
+}) {
+  return (
+    <section
+      className="managed-annual-basis-sources"
+      aria-label="Revenue basis source status"
+    >
+      <h4>Revenue basis source status</h4>
+      <dl>
+        {bases.map((basis) => (
+          <div key={basis.concept} data-annual-source-basis={basis.concept}>
+            <dt>{basis.concept}</dt>
+            <dd>{basis.status}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
