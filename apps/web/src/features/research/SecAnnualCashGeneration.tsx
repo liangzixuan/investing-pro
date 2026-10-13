@@ -51,7 +51,7 @@ export function SecAnnualCashGeneration({
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly cashAction?: ReactNode;
 }) {
-  const { cashGeneration: cash, generation } = response.evidence;
+  const { cashGeneration: cash } = response.evidence;
   return (
     <section className="sec-annual-cash" aria-label="Annual cash generation">
       <h4>Cash generation</h4>
@@ -82,31 +82,7 @@ export function SecAnnualCashGeneration({
       {cashAction}
       <details className="sec-quarterly-row-details sec-annual-cash-source">
         <summary>Cash sources and calculation inputs</summary>
-        <p>
-          Company Facts captured{" "}
-          {generation.sources.companyFacts.fetchedAt ?? "Unavailable"}.
-          Submissions captured{" "}
-          {generation.sources.submissions.fetchedAt ?? "Unavailable"}. Completed{" "}
-          {generation.completedAt}.
-        </p>
-        {cash.resolution.utilityAge && (
-          <p>
-            Report age at cutoff: {cash.resolution.utilityAge.endAgeDays} days.
-            Current use requires a report within 485 days and source captures
-            within seven days.
-          </p>
-        )}
-        <CashInputs
-          label="Operating cash flow"
-          evidence={cash.operatingCashFlow}
-        />
-        <CashInputs label="PP&E purchases" evidence={cash.ppePurchases} />
-        <p>
-          Calculation references:{" "}
-          {cash.resolution.operatingCashFlowLessPpePurchases.observationIds.join(
-            " · ",
-          ) || "None"}
-        </p>
+        <SecAnnualCashSourceBody response={response} />
       </details>
     </section>
   );
@@ -128,29 +104,72 @@ function CashValue({
         <small>{calculated ? "App calculation" : "Reported"} · USD</small>
       </dt>
       <dd>
-        {value.status === "available" ? (
-          <>
-            <span className="sec-annual-cash-amount">{value.value}</span>
-            <small>
-              {value.startDate} to {value.endDate}
-            </small>
-            <small
-              className={
-                value.currentUseEligible ? undefined : "discovery-warning"
-              }
-            >
-              {value.currentUseEligible
-                ? "Within current-use limits at this load."
-                : "Historical amount; outside current-use limits at this load."}
-            </small>
-          </>
-        ) : (
-          <span className="sec-annual-cash-unavailable">
-            Unavailable. {reasons[value.reason]}
-          </span>
-        )}
+        <SecAnnualCashValueContent value={value} />
       </dd>
     </div>
+  );
+}
+
+export function SecAnnualCashValueContent({
+  value,
+}: {
+  readonly value: PersonalSecAnnualCashValueDto;
+}) {
+  return value.status === "available" ? (
+    <>
+      <span className="sec-annual-cash-amount">{value.value}</span>
+      <small>
+        {value.startDate} to {value.endDate}
+      </small>
+      <small
+        className={value.currentUseEligible ? undefined : "discovery-warning"}
+      >
+        {value.currentUseEligible
+          ? "Within current-use limits at this load."
+          : "Historical amount; outside current-use limits at this load."}
+      </small>
+    </>
+  ) : (
+    <span className="sec-annual-cash-unavailable">
+      Unavailable. {reasons[value.reason]}
+    </span>
+  );
+}
+
+export function SecAnnualCashSourceBody({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  const { cashGeneration: cash, generation } = response.evidence;
+  return (
+    <>
+      <p>
+        Company Facts captured{" "}
+        {generation.sources.companyFacts.fetchedAt ?? "Unavailable"}.
+        Submissions captured{" "}
+        {generation.sources.submissions.fetchedAt ?? "Unavailable"}. Completed{" "}
+        {generation.completedAt}.
+      </p>
+      {cash.resolution.utilityAge && (
+        <p>
+          Report age at cutoff: {cash.resolution.utilityAge.endAgeDays} days.
+          Current use requires a report within 485 days and source captures
+          within seven days.
+        </p>
+      )}
+      <CashInputs
+        label="Operating cash flow"
+        evidence={cash.operatingCashFlow}
+      />
+      <CashInputs label="PP&E purchases" evidence={cash.ppePurchases} />
+      <p>
+        Calculation references:{" "}
+        {cash.resolution.operatingCashFlowLessPpePurchases.observationIds.join(
+          " · ",
+        ) || "None"}
+      </p>
+    </>
   );
 }
 

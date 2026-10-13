@@ -164,6 +164,14 @@ keyboard-focusable scroll region. Stack controls and source disclosures on narro
 screens; preserve exact amounts and 44px targets. Previous reports and historical
 use restrictions retain their visible warning treatment.
 
+Follow the income rows with three cash-generation rows in the same comparison
+table. Each cash cell shows its exact USD amount, its own period and current-use
+status, or its specific unavailable reason. Label the subtraction as an app
+calculation and show its limits once below the table. Keep income periods and
+warnings explicitly scoped to revenue and net income. Cash availability does
+not depend on the selected revenue basis. Put the complete cash inputs inside
+each company's existing source disclosure, preserving the original dates.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well

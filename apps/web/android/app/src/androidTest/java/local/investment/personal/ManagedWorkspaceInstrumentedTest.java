@@ -511,7 +511,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 6" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 9" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -529,6 +529,26 @@ public class ManagedWorkspaceInstrumentedTest {
             " && cells(5)[0].firstChild.textContent === " + JSONObject.quote(change) + " && cells(5)[1].firstChild.textContent === '25%'" +
             " && cells(5)[0].textContent.includes('2024-01-01 to 2024-12-31')" +
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
+        assertAnnualComparisonCash();
+    }
+
+    private void assertAnnualComparisonCash() throws Exception {
+        awaitPage("cash values keep each company's exact period and remain independent of the revenue basis",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-cash]')];" +
+            " const keys = ['operatingCashFlow', 'ppePurchases', 'operatingCashFlowLessPpePurchases'];" +
+            " const labels = ['Operating cash flow', 'PP&E purchases', 'Operating cash flow less PP&E purchases'];" +
+            " const expected = [['1000', '900'], ['250', '300'], ['750', '600']];" +
+            " const periods = ['2025-01-01 to 2025-12-31', '2024-07-01 to 2025-06-30'];" +
+            " return rows.length === 3 && rows.every((row, i) => { const header = row.querySelector('th');" +
+            " const cells = [...row.querySelectorAll('td')]; return row.dataset.annualComparisonCash === keys[i]" +
+            " && header?.scope === 'row' && header.firstChild.textContent === labels[i]" +
+            " && header.querySelector('small')?.textContent === (i === 2 ? 'App calculation' : 'Reported') + ' · USD'" +
+            " && cells.length === 2 && cells.every((cell, side) => cell.querySelector('.sec-annual-cash-amount')?.textContent === expected[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === periods[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'" +
+            " && !cell.querySelector('.sec-annual-cash-unavailable')); })" +
+            " && document.querySelector('.managed-annual-comparison-table tbody th')?.textContent === 'Revenue / net income period'" +
+            " && document.querySelector('.managed-annual-comparison').textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.'); })()");
     }
 
     private void assertAnnualComparisonSources() throws Exception {
@@ -541,7 +561,26 @@ public class ManagedWorkspaceInstrumentedTest {
             " && sources[0].textContent.includes('filed 2026-02-01') && sources[1].textContent.includes('filed 2025-08-01')" +
             " && sources.every((source, i) => { const side = i === 0 ? 'left' : 'right';" +
             " const raw = document.querySelector('.managed-annual-comparison select[id$=\"-' + side + '-basis\"]')?.value;" +
-            " return source.querySelector('[data-annual-comparison-source-basis=' + side + ']')?.textContent === 'Selected SEC revenue concept: ' + raw; }); })()");
+            " return source.querySelector('[data-annual-comparison-source-basis=' + side + ']')?.textContent === 'Selected SEC revenue concept: ' + raw; })" +
+            " && sources.every((source, side) => { const cash = source.querySelector('[data-annual-comparison-cash-source]');" +
+            " const inputs = cash?.querySelectorAll('section');" +
+            " const concepts = ['NetCashProvidedByUsedInOperatingActivities', 'PaymentsToAcquirePropertyPlantAndEquipment'];" +
+            " const values = side === 0 ? ['1000', '250'] : ['900', '300'];" +
+            " const period = side === 0 ? '2025-01-01 to 2025-12-31' : '2024-07-01 to 2025-06-30';" +
+            " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " const ids = []; return cash?.closest('details') === source.querySelector('details')" +
+            " && cash.dataset.annualComparisonCashSource === (side === 0 ? 'left' : 'right')" +
+            " && cash.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
+            " && cash.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z')" +
+            " && cash.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && inputs.length === 2 && [...inputs].every((input, i) => { const pairs = [...input.querySelectorAll('dl > div')];" +
+            " const field = label => pairs.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); ids.push(id); return id && input.querySelectorAll('ol > li').length === 1" +
+            " && input.querySelector('summary')?.textContent === concepts[i] + ' · ' + period + ' · ' + values[i] + ' USD'" +
+            " && input.textContent.includes('Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.')" +
+            " && field('Exact USD observation') === values[i] && field('Accession') === accession" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
+            " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
     }
 
     private void assertAnnualComparisonDraft() throws Exception {

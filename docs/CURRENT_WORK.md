@@ -247,6 +247,21 @@ The integrated native fixture builds with a largest loader payload of 2,260,259
 bytes, below the unchanged 4 MiB cap. The original hosted picker journeys and
 applicable checks remain pending. Source merge and delivery remain separate.
 
+### Cash generation comparison candidate
+
+The next increment adds operating cash flow, PP&E purchases and their admitted
+same-period difference to the two-company Annual comparison. Each cell retains
+its exact USD amount, own period and availability independently of income and
+revenue-basis choice. The existing source disclosures include the cash inputs.
+This reuses the loaded reports and existing company presentation; it adds no
+source request, financial formula, saved state or note action.
+
+Affected component and projection checks, strict fixture validation, fresh web
+types, lint and independent source review pass. The Android comparison journey
+now checks these cash values and source inputs at its existing basis, retained
+response and cancellation checkpoints. Source syntax checks pass; browser,
+hosted native, source merge and delivery acceptance remain separate.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -271,7 +286,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Run the basis-label candidate's original hosted checks and native picker journeys.
+Complete the cash comparison's responsive browser and original hosted checks.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.

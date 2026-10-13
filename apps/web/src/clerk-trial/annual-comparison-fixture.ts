@@ -1,10 +1,15 @@
-import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
+import {
+  cashGeneration,
+  cashRow,
+} from "../features/research/sec-annual-cash-fixture";
 import type {
+  PersonalSecAnnualCashObservationDto,
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecQuarterlyObservationDto,
   WatchlistMembership,
 } from "@research-cockpit/contracts";
 import {
+  getPersonalSecAnnualRefusalReason,
   resolvePersonalSecAnnualEvidence,
   serializePersonalSecAnnualGeneration,
 } from "@research-cockpit/personal-financial-analytics";
@@ -23,6 +28,7 @@ type Mode =
   | "exact-decimal"
   | "missing-prior"
   | "current-use-unavailable"
+  | "income-invalid"
   | "source-unavailable";
 
 /** Invented identities and complete packets for tests and isolated previews only. */
@@ -77,6 +83,10 @@ export function annualComparisonRows(side: Side = "left") {
 
 export async function parseAnnualComparisonFixture(
   raw: Response,
+  cashRows: readonly PersonalSecAnnualCashObservationDto[] = [
+    ...raw.evidence.cashGeneration.operatingCashFlow.observations,
+    ...raw.evidence.cashGeneration.ppePurchases.observations,
+  ],
 ): Promise<Response> {
   const bytes = new TextEncoder().encode(
     serializePersonalSecAnnualGeneration(raw.evidence),
@@ -98,7 +108,7 @@ export async function parseAnnualComparisonFixture(
       evidence: {
         ...evidence,
         resolution: resolvePersonalSecAnnualEvidence(evidence),
-        cashGeneration: await cashGeneration(evidence),
+        cashGeneration: await cashGeneration(evidence, cashRows),
       },
     },
     {
@@ -111,6 +121,38 @@ export async function parseAnnualComparisonFixture(
   );
   if (!parsed) throw new Error("Invalid invented Annual comparison packet");
   return parsed;
+}
+
+export function annualComparisonCashRows(
+  side: Side = "left",
+): PersonalSecAnnualCashObservationDto[] {
+  const { cik, accessionNumber, filedDate, reportDate } =
+    filingCoordinates[side];
+  const coordinates = {
+    startDate: side === "left" ? "2025-01-01" : "2024-07-01",
+    endDate: reportDate,
+    durationDays: 365,
+    accessionNumber,
+    form: "10-K" as const,
+    filedDate,
+    frame: null,
+    filing: {
+      status: "matched" as const,
+      form: "10-K" as const,
+      filedDate,
+      reportDate,
+      acceptedAt: `${filedDate}T00:00:00.000Z`,
+      sourceUrl: `https://www.sec.gov/Archives/edgar/data/${cik.replace(/^0+/u, "")}/${accessionNumber}-index.htm`,
+    },
+  };
+  return [
+    cashRow(
+      "operating_cash_flow",
+      side === "left" ? "1000" : "900",
+      coordinates,
+    ),
+    cashRow("ppe_purchases", side === "left" ? "250" : "300", coordinates),
+  ];
 }
 
 function modeRows(side: Side, mode: Mode) {
@@ -176,6 +218,7 @@ export async function annualComparisonResponse(
   options: {
     readonly mode?: Mode;
     readonly rows?: PersonalSecQuarterlyObservationDto[];
+    readonly cashRows?: readonly PersonalSecAnnualCashObservationDto[];
     readonly cutoffAt?: string;
   } = {},
 ): Promise<Response> {
@@ -236,8 +279,31 @@ export async function annualComparisonResponse(
     evidence,
   };
   return parseAnnualComparisonFixture(
-    mode === "source-unavailable" ? unavailable(packet) : packet,
+    mode === "source-unavailable"
+      ? unavailable(packet)
+      : mode === "income-invalid"
+        ? incomeUnavailable(packet)
+        : packet,
+    options.cashRows ?? annualComparisonCashRows(side),
   );
+}
+
+function incomeUnavailable(packet: Response): Response {
+  const evidence = {
+    ...packet.evidence,
+    incomeScanStatus: "invalid_response" as const,
+    observations: [],
+    coverage: null,
+  };
+  const reason = getPersonalSecAnnualRefusalReason(evidence);
+  if (reason === null) throw new Error("Invented income refusal required");
+  return {
+    ...packet,
+    evidence: {
+      ...evidence,
+      completeness: { status: "refused", reason },
+    },
+  };
 }
 
 function unavailable(packet: Response): Response {
