@@ -1923,8 +1923,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('CIK 0000000001')" +
             " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Request started 2026-09-20T00:00:00.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Request started' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:00.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Completed' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:02.000Z')" +
             " && document.querySelector('.managed-filings-source a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json'";
         awaitPage("explicit load shows exact dates, identity and original SEC index link", loaded +
             " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
@@ -1942,6 +1942,17 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-filings-refresh-view')?.disabled === false" +
             " && document.querySelector('#managed-filings-refresh-view option[value=new]')?.disabled === true" +
             " && document.querySelector('#managed-filings-refresh-view')?.getBoundingClientRect().height >= 44");
+        awaitPage("source detail starts closed while the dated result remains visible", loaded +
+            " && document.querySelector('.managed-filings-source-details')?.open === false" +
+            " && document.querySelector('.managed-filings-source-details > summary')?.textContent === 'Filings source and coverage'" +
+            " && document.querySelector('.managed-filings-source-details > summary')?.getBoundingClientRect().height >= 44" +
+            " && !document.querySelector('.managed-filings-source')?.closest('details')");
+        click(".managed-filings-source-details > summary");
+        awaitPage("opening source detail retains exact clocks and complete coverage limits", loaded +
+            " && document.querySelector('.managed-filings-source-details')?.open === true" +
+            " && document.querySelector('.managed-filings-source-details')?.textContent.includes('Older continuation files were not loaded')" +
+            " && document.querySelector('.managed-filings-source-details')?.textContent.includes('The source lists older continuation files.')");
+        assertFilingsDraftAndCounts(1, 0, 0);
         chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
         awaitPage("native form selection shows one observed quarterly filing without losing focus",
             "document.activeElement?.id === 'managed-filings-form'" +
@@ -1949,6 +1960,12 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelectorAll('.managed-filings-list > li').length === 1" +
             " && document.querySelector('.managed-filings-list a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && document.querySelector('.managed-filings-pagination > button:last-child')?.getAttribute('aria-disabled') === 'true'");
+        assertFilingsDraftAndCounts(1, 0, 0);
+        awaitPage("local filtering preserves the open source detail",
+            "document.querySelector('.managed-filings-source-details')?.open === true");
+        click(".managed-filings-source-details > summary");
+        awaitPage("source detail closes without removing dated result context", loaded.replace("26 of 26 loaded filings", "1 of 26 loaded filings") +
+            " && document.querySelector('.managed-filings-source-details')?.open === false");
         assertFilingsDraftAndCounts(1, 0, 0);
         retainAnnualNoteFrame("companyFilingsFormFilter", "label[for=managed-filings-form]",
             "label[for=managed-filings-form], #managed-filings-form, .managed-filings-count, .managed-filings-list > li", 4);
@@ -2146,8 +2163,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         String source = "document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
             " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Request started 2026-09-20T00:00:00.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')";
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Request started' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:00.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Completed' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:02.000Z')";
         awaitPage("loaded metadata offers a native date choice from the same company Annual", source +
             " && document.querySelector('.managed-filings-count')?.textContent === '26 of 26 loaded filings · Page 1 of 2'" +
             " && document.querySelector('label[for=managed-filings-date]')?.textContent === 'Filing date'" +

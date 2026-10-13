@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3/M4 increment filters newly observed accessions in the loaded company
+The current design increment compacts the company Filings source header. Key dates,
+identity and warnings remain visible; full routine source metadata moves into a
+native disclosure. Filters and results become easier to reach without changing
+loaded evidence or note actions. See the [Filings guide](MANAGED_SEC_FILINGS.md#read-the-company-result).
+
+The preceding M3/M4 increment filters newly observed accessions in the loaded company
 Filings comparison. Refresh view combines with Form and Filing date before paging,
 keeping original rows, source limits and the existing filing-to-note workflow.
 It adds no request, saved state or source. See the

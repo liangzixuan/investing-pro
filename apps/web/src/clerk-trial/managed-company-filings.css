@@ -27,7 +27,9 @@
 .clerk-trial.managed-frame .managed-filings-refresh-count {
   color: var(--managed-ink);
 }
-.clerk-trial.managed-frame .managed-filings-refresh-comparison summary {
+.clerk-trial.managed-frame
+  :is(.managed-filings-refresh-comparison, .managed-filings-source-details)
+  summary {
   min-height: 44px;
   padding-block: 12px;
   cursor: pointer;
@@ -41,15 +43,21 @@
 .clerk-trial.managed-frame .managed-filings-compared-lists h4 {
   margin-block: 8px;
 }
-.clerk-trial.managed-frame .managed-filings-compared-lists dl {
+.clerk-trial.managed-frame
+  :is(.managed-filings-compared-lists, .managed-filings-source-details)
+  dl {
   display: grid;
   gap: 8px;
   margin: 0;
 }
-.clerk-trial.managed-frame .managed-filings-compared-lists dt {
+.clerk-trial.managed-frame
+  :is(.managed-filings-compared-lists, .managed-filings-source-details)
+  dt {
   color: var(--managed-muted);
 }
-.clerk-trial.managed-frame .managed-filings-compared-lists dd {
+.clerk-trial.managed-frame
+  :is(.managed-filings-compared-lists, .managed-filings-source-details)
+  dd {
   margin: 0;
 }
 .clerk-trial.managed-frame .managed-filings-compared-lists a {
@@ -76,7 +84,8 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
-.clerk-trial.managed-frame .managed-filings-annual-context {
+.clerk-trial.managed-frame
+  :is(.managed-filings-annual-context, .managed-filings-source-details) {
   min-width: 0;
   font-size: 0.85rem;
   overflow-wrap: anywhere;

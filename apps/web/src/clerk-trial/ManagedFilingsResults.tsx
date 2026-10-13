@@ -5,6 +5,7 @@ import {
   type ManagedFilingsNoteActions,
 } from "./ManagedFilingsNoteAction";
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
+import { ManagedFilingsSource } from "./ManagedFilingsSource";
 import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
 import { ManagedFilingsRefreshView } from "./ManagedFilingsRefreshView";
 import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
@@ -59,7 +60,7 @@ export function ManagedFilingsResults({
       baselineResponse={baseline?.response ?? null}
       refreshComparison={comparison}
     >
-      <FilingsSource response={response} />
+      <ManagedFilingsSource response={response} />
       {comparison && (
         <ManagedFilingsRefreshComparisonDetails comparison={comparison} />
       )}
@@ -254,56 +255,5 @@ function FilingsList({
         </li>
       ))}
     </ol>
-  );
-}
-
-function FilingsSource({
-  response,
-}: {
-  response: ManagedSecFilingsResponseDto;
-}) {
-  const issuer = response.issuer;
-  const available = issuer.status === "available";
-  return (
-    <>
-      <p className="managed-filings-period">
-        <strong>
-          {response.window.fromDate} to {response.window.throughDate}
-        </strong>{" "}
-        · 90 days · CIK {issuer.cik}
-      </p>
-
-      <p className="managed-filings-source">
-        <a href={issuer.sourceUrl} target="_blank" rel="noreferrer">
-          SEC Submissions source
-        </a>{" "}
-        · {available ? "Retrieved" : "Checked"} {issuer.fetchedAt}
-        <br />
-        Request started {response.requestStartedAt} · Completed{" "}
-        {response.completedAt}
-      </p>
-
-      <p className="managed-filings-scope">
-        {available
-          ? "Only the SEC current recent-filings object was checked."
-          : "This attempt requested the SEC current recent-filings object; its contents were not successfully validated."}{" "}
-        Older continuation files were not loaded; this list does not establish
-        complete coverage of the 90-day window.
-      </p>
-
-      {issuer.olderHistoryAvailable && (
-        <p className="managed-filings-scope">
-          The source lists older continuation files.
-        </p>
-      )}
-
-      {issuer.truncated && (
-        <p className="managed-filings-warning">
-          Showing {issuer.filings.length} of {issuer.matchingFilings} matching
-          entries retained from the current source object. The response limit
-          truncated this list.
-        </p>
-      )}
-    </>
   );
 }

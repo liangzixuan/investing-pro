@@ -689,6 +689,15 @@ applies to the unchanged logic. Complete software notices remain in the exact
 native bundle, whose largest loader payload is 2,351,050 bytes under the unchanged
 4 MiB cap. Original hosted execution remains pending. Production is unchanged.
 
+### Compact company Filings source header candidate
+
+The next presentation increment groups routine source details in an initially
+closed **Filings source and coverage** disclosure. The original date window,
+CIK, source link, Retrieved or Checked time and key coverage warnings remain
+visible. Filters, comparison evidence and note actions keep their behavior.
+Implementation and affected checks are in progress. Rendered and original hosted
+acceptance remain pending; production is unchanged.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
