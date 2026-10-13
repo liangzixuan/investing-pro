@@ -655,6 +655,18 @@ export function ManagedWorkspaceScreen({
                         response,
                       ),
                   }}
+                  annualLiquidityNoteActions={{
+                    getAction: (response) =>
+                      workspace.getAnnualLiquidityNoteAction(
+                        discovery.research!.selection,
+                        response,
+                      ),
+                    append: (response) =>
+                      workspace.appendAnnualLiquidityToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                      ),
+                  }}
                   priceNoteActions={{
                     getAction: (response, start, end) =>
                       workspace.getPriceNoteAction(

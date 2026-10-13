@@ -36,6 +36,11 @@ import {
   type ManagedAnnualCashNoteActions,
 } from "./ManagedAnnualCashNoteAction";
 
+import {
+  ManagedAnnualLiquidityNoteAction,
+  type ManagedAnnualLiquidityNoteActions,
+} from "./ManagedAnnualLiquidityNoteAction";
+
 const panelHooks = vi.hoisted(() => ({
   enabled: false,
   refs: [] as Array<{ current: unknown }>,
@@ -297,6 +302,60 @@ describe("managed annual refresh", () => {
     model.close();
     expect(resultFor(cashNoteActions)).toBeUndefined();
     expect(cashNoteActions.append).not.toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes only the displayed response to an optional liquidity action and removes it with the report", async () => {
+    const { model, load } = fixture();
+    const old = await response();
+    const next = structuredClone(old);
+    load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
+    model.open(selection);
+    await model.load();
+    const liquidityNoteActions: ManagedAnnualLiquidityNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({
+        appended: false,
+        message: "The report changed.",
+      })),
+    };
+    panelHooks.enabled = true;
+    const resultFor = (actions?: ManagedAnnualLiquidityNoteActions) => {
+      panelHooks.index = 0;
+      const panel = Panel({
+        model,
+        ...(actions ? { liquidityNoteActions: actions } : {}),
+      }) as React.ReactElement<{ children?: React.ReactNode }> | null;
+      return React.Children.toArray(panel?.props.children).find(
+        (node) =>
+          React.isValidElement(node) && node.type === SecAnnualEvidenceResult,
+      ) as
+        | React.ReactElement<
+            React.ComponentProps<typeof SecAnnualEvidenceResult>
+          >
+        | undefined;
+    };
+    expect(resultFor()!.props.liquidityAction).toBeNull();
+    const captured = resultFor(liquidityNoteActions)!.props
+      .liquidityAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedAnnualLiquidityNoteAction>
+    >;
+    expect(captured.type).toBe(ManagedAnnualLiquidityNoteAction);
+    expect(captured.props.response).toBe(old);
+    expect(captured.props.actions).toBe(liquidityNoteActions);
+    expect(captured.key).toBeNull();
+    await model.load();
+    const current = resultFor(liquidityNoteActions)!.props
+      .liquidityAction as typeof captured;
+    expect(current.props.response).toBe(next);
+    expect(current.props.response).not.toBe(captured.props.response);
+    expect(current.key).toBe(captured.key);
+    expect(current.props.response.evidence.generation.sha256).toBe(
+      captured.props.response.evidence.generation.sha256,
+    );
+    model.close();
+    expect(resultFor(liquidityNoteActions)).toBeUndefined();
+    expect(liquidityNoteActions.append).not.toHaveBeenCalled();
     expect(load).toHaveBeenCalledTimes(2);
   });
 

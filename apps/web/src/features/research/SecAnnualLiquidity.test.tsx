@@ -9,6 +9,33 @@ import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 
 describe("Annual liquidity presentation", () => {
+  it("places the optional managed note action before sources and excludes it from the local appearance", async () => {
+    const wire = await liquidityResponse([
+      liquidityRow("current_assets", "120.125"),
+      liquidityRow("current_liabilities", "80.025"),
+    ]);
+    const action = <button>Add liquidity to note draft</button>;
+    const managed = renderToStaticMarkup(
+      <SecAnnualEvidenceResult
+        response={wire}
+        appearance="financial"
+        liquidityAction={action}
+      />,
+    );
+    expect(managed.indexOf("Add liquidity to note draft")).toBeGreaterThan(
+      managed.indexOf("Both calculations require nonnegative"),
+    );
+    expect(managed.indexOf("Add liquidity to note draft")).toBeLessThan(
+      managed.indexOf("<summary>Liquidity sources and calculation inputs"),
+    );
+    expect(managed.match(/Add liquidity to note draft/gu)).toHaveLength(1);
+    expect(
+      renderToStaticMarkup(
+        <SecAnnualEvidenceResult response={wire} liquidityAction={action} />,
+      ),
+    ).not.toContain("Add liquidity to note draft");
+  });
+
   it("labels exact reported balances and calculated units at the report date", async () => {
     const wire = await liquidityResponse([
       liquidityRow("current_assets", "120.125"),
