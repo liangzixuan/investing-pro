@@ -134,6 +134,14 @@ comparison's listing cell. Let that table size its columns from their content
 inside the existing horizontal scroll region. Retain the complete source
 disclosure and wrapping for long exact numeric values.
 
+Annual comparison follows the watchlist's editing and Save controls. Begin with
+two empty company choices and separate explicit load actions. Keep each fiscal
+period and revenue basis beside its values, with a per-company basis selector
+and original source dates. Use one semantic comparison table in a contained,
+keyboard-focusable scroll region. Stack controls and source disclosures on narrow
+screens; preserve exact amounts and 44px targets. Previous reports and historical
+use restrictions retain their visible warning treatment.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well

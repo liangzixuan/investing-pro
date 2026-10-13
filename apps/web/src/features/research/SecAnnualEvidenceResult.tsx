@@ -121,9 +121,7 @@ export function SecAnnualEvidenceResult({
             in current submissions; it does not provide complete filing history
             or prices.
           </p>
-          <AnnualEvidenceContext response={response} />
-          <AnnualComparisonMethodology />
-          <AnnualEvidenceSources response={response} />
+          <SecAnnualSourceDetails response={response} />
         </details>
       </div>
     );
@@ -133,6 +131,20 @@ export function SecAnnualEvidenceResult({
       <AnnualBases response={response} renderPairAction={renderPairAction} />
       <AnnualEvidenceSources response={response} />
     </div>
+  );
+}
+
+export function SecAnnualSourceDetails({
+  response,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+}) {
+  return (
+    <>
+      <AnnualEvidenceContext response={response} />
+      <AnnualComparisonMethodology />
+      <AnnualEvidenceSources response={response} />
+    </>
   );
 }
 

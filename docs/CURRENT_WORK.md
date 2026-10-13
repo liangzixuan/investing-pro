@@ -26,12 +26,12 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ### Delivery status
 
-| Surface         | Accepted status                                         | Limits                                                                                          |
-| --------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability      |
-| Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                                 |
-| Main source     | PR99 merged as `b59c92a` after approval                 | Actual-main checks are separate from the completed PR checks; published release stays unchanged |
-| Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                                  |
+| Surface         | Accepted status                                         | Limits                                                                                     |
+| --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability |
+| Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                            |
+| Main source     | PR99 merged as `b59c92a`; actual-main checks pass       | Published release stays unchanged                                                          |
+| Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                             |
 
 ## Current task and next acceptance
 
@@ -72,7 +72,8 @@ head `e39b54d` passed all six required Actions jobs across five original workflo
 Android passed all 25 cases and its APK isolation gate, including five successful
 guarded picker touches and the existing saved-byte assertions. CodeScene retains
 its reviewed advisory failure. After owner approval, PR99 merged into main as
-`b59c92a`. Its actual-main checks are separate from the completed PR checks.
+`b59c92a`. The separate actual-main run also passed all six Actions jobs,
+including the 25 Android cases and APK isolation gate.
 Live delivery of the chart is not accepted.
 
 ### Federal Reserve announcements candidate
@@ -105,6 +106,21 @@ accepts it and rejects missing, altered or extra settings in an isolated check;
 a cross-file regression passes. Whole-app build and native execution still need
 the updated revision's hosted checks. The original failure remains retained.
 
+### Watchlist Annual comparison in development
+
+The next increment compares two different companies from the full watchlist
+draft. Both choices start empty, and each report loads explicitly through the
+existing SEC access boundary. Each column keeps its own fiscal period, revenue
+basis, exact USD amounts, available annual revenue change and complete evidence.
+There is no cross-company calculation, new source or saved-payload change. See
+the [Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison).
+
+Affected model, projection, UI and workspace checks pass. Independent review
+found a basis-selection reset issue when returning to a previous company;
+regressions now cover both changing companies and clearing the choice. The fix
+keeps a choice across refreshes and unchanged membership edits. Web types and
+scoped lint pass. Chrome and native acceptance remain in progress.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -129,8 +145,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the announcements increment and its browser/native acceptance while
-the chart's actual-main checks run. Select the next complete product outcome
+Complete the original announcements hosted checks and the Annual comparison's
+browser and native acceptance. Continue with the next complete product outcome
 from the roadmap and relevant feature guide, using existing subscriptions and
 permitted free sources. Broader fields and cohorts need verified source rights,
 cost, quotas and identity handling.

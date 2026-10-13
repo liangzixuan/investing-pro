@@ -31,6 +31,7 @@ import {
 } from "../../src/features/research/sec-annual-evidence-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
+import { annualComparisonResponse } from "../../src/clerk-trial/annual-comparison-fixture";
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
@@ -197,6 +198,7 @@ export async function createFixture(
     | "bea-agenda"
     | "bea-session-retirement"
     | "fed-announcements"
+    | "annual-comparison"
     | "markets-selected-price"
     | "watchlist-comparison"
     | "watchlist-export" = "default",
@@ -215,6 +217,19 @@ export async function createFixture(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
+  const comparisonReports =
+    scenario === "annual-comparison"
+      ? await Promise.all([
+          annualComparisonResponse("left", { mode: "multiple-bases" }),
+          annualComparisonResponse("right"),
+          annualComparisonResponse("left", {
+            cutoffAt: "2026-09-21T00:00:00.000Z",
+          }),
+          annualComparisonResponse("right", {
+            cutoffAt: "2026-09-21T00:00:00.000Z",
+          }),
+        ])
+      : null;
   const eodPacket = (kind: "initial" | "late" | "recovered") => {
     const request = {
       catalogSnapshotSha256: digest,
@@ -421,6 +436,8 @@ export async function createFixture(
   };
   let pending: ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null =
     null;
+  let pendingAnnualComparison:
+    ((value: PersonalSecAnnualEvidenceResponseDto) => void) | null = null;
   let rejectRefresh: ((error: unknown) => void) | null = null;
   let pendingFilings: ((value: ManagedSecFilingsResponseDto) => void) | null =
     null;
@@ -534,6 +551,13 @@ export async function createFixture(
     },
     status: () => {
       count("status");
+      if (scenario === "annual-comparison" && state.status === 2) {
+        if (state.annual !== 5 || !pendingAnnualComparison)
+          return Promise.reject(
+            new Error("Hold the fifth comparison read before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
       if (scenario === "fed-announcements" && state.status === 2) {
         if (state.fed !== 7 || !pendingFed)
           return Promise.reject(
@@ -623,7 +647,11 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
-      if (scenario === "watchlist-comparison") return unexpected("save");
+      if (
+        scenario === "watchlist-comparison" ||
+        scenario === "annual-comparison"
+      )
+        return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
       if (signOutScenario) {
         if (
@@ -957,6 +985,38 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (scenario === "annual-comparison") {
+        const second = state.annual === 1 || state.annual === 4;
+        if (
+          !comparisonReports ||
+          signal.aborted ||
+          pendingAnnualComparison ||
+          request.schemaVersion !== "1.0.0" ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== (second ? "listing-one" : "listing-zero") ||
+          request.symbol !== (second ? "ONE" : "ZERO") ||
+          state.annual >= 5 ||
+          (state.annual === 4 &&
+            (state.aborted !== 1 || state.lateResolved !== 1))
+        )
+          throw new Error(
+            "Unexpected invented Annual comparison request or order",
+          );
+        count("annual");
+        if (state.annual <= 2)
+          return Promise.resolve(
+            structuredClone(comparisonReports[state.annual - 1]!),
+          );
+        if (state.annual === 3)
+          return Promise.reject(new TrialApiError("unavailable"));
+        signal.addEventListener("abort", () => count("aborted"), {
+          once: true,
+        });
+        // Deliberately ignore abort so the real comparison must fence the late packet.
+        return new Promise((resolve) => {
+          pendingAnnualComparison = resolve;
+        });
+      }
       if (scenario === "watchlist-comparison")
         throw new Error("Unexpected invented watchlist comparison Annual read");
       if (scenario === "price-comparison-note")
@@ -1035,6 +1095,20 @@ export async function createFixture(
       scenario === "watchlist-comparison"
         ? comparisonListings
         : [identity, ...marketsCohort],
+    settleCancelledAnnualComparison: () => {
+      if (
+        !comparisonReports ||
+        !pendingAnnualComparison ||
+        state.aborted !== state.lateResolved + 1
+      )
+        throw new Error(
+          "Only an aborted invented Annual comparison may settle",
+        );
+      const resolve = pendingAnnualComparison;
+      pendingAnnualComparison = null;
+      resolve(structuredClone(comparisonReports[state.annual === 4 ? 2 : 3]));
+      void Promise.resolve().then(() => count("lateResolved"));
+    },
     settleCancelledFilings: () => {
       if (
         !pendingFilings ||
