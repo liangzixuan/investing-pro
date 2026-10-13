@@ -6,6 +6,7 @@ import {
 } from "@research-cockpit/contracts";
 import {
   annualNoteDraft,
+  annualComparisonNoteDraft,
   createFixture,
   filingsNoteDraft,
   marketsPriceNoteDraft,
@@ -19,6 +20,7 @@ import {
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
+import type { AnnualComparisonNoteCapture } from "../../src/clerk-trial/managed-watchlist-annual-comparison-note";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 
@@ -2048,6 +2050,175 @@ describe("bounded invented Annual comparison", () => {
     catalogSnapshotSha256: fixtureDigest,
     listingId: second ? "listing-one" : "listing-zero",
     symbol: second ? "ONE" : "ZERO",
+  });
+
+  async function noteReady() {
+    const fixture = await createFixture("annual-comparison");
+    const signal = new AbortController().signal;
+    const initial = await fixture.api.load(signal);
+    await fixture.api.status(signal);
+    const left = await fixture.api.annualReport(request(), signal);
+    const right = await fixture.api.annualReport(request(true), signal);
+    await expect(fixture.api.annualReport(request(), signal)).rejects.toThrow();
+    const controller = new AbortController();
+    const held = fixture.api.annualReport(request(), controller.signal);
+    controller.abort();
+    fixture.settleCancelledAnnualComparison();
+    await held;
+    const payload = {
+      ...initial.payload,
+      memberships: [
+        { ...initial.payload.memberships[1]! },
+        { ...initial.payload.memberships[0]!, note: annualComparisonNoteDraft },
+      ],
+    };
+    return {
+      fixture,
+      signal,
+      left,
+      right,
+      initial,
+      command: {
+        idempotencyKey: "12345678-1234-4123-8123-123456789012",
+        expectedVersion: 1,
+        payload,
+      },
+    };
+  }
+
+  it("admits exactly one complete comparison-note save and reload without changing the source sequence", async () => {
+    const { fixture, signal, command, left, right } = await noteReady();
+    const receipt = await fixture.api.save(command, signal);
+    expect(parseManagedWatchlistReceipt(receipt, command)).toEqual(receipt);
+    expect(receipt).toEqual({
+      version: 2,
+      payload: command.payload,
+      replayed: false,
+    });
+    expect(await fixture.api.load(signal)).toEqual({
+      version: 2,
+      payload: command.payload,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 4,
+      aborted: 1,
+      lateResolved: 1,
+      save: 1,
+      load: 2,
+      status: 1,
+      eod: 0,
+      filings: 0,
+    });
+    const retirement = new AbortController();
+    const last = fixture.api.annualReport(request(true), retirement.signal);
+    await expect(fixture.api.status(signal)).rejects.toThrow();
+    retirement.abort();
+    fixture.settleCancelledAnnualComparison();
+    await last;
+    expect(left.evidence.target.status).toBe("target");
+    expect(right.evidence.target.status).toBe("target");
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 5,
+      aborted: 2,
+      lateResolved: 2,
+      save: 1,
+      load: 2,
+      status: 2,
+    });
+  });
+
+  it.each([
+    "aborted",
+    "version",
+    "note",
+    "other note",
+    "order",
+    "digest",
+  ] as const)(
+    "rejects a comparison-note save with changed %s",
+    async (kind) => {
+      const { fixture, signal, command, initial } = await noteReady();
+      if (kind === "version") command.expectedVersion = 2;
+      else if (kind === "note")
+        command.payload.memberships[1]!.note += " altered";
+      else if (kind === "other note")
+        command.payload.memberships[0]!.note = "Changed other note";
+      else if (kind === "order") command.payload.memberships.reverse();
+      else if (kind === "digest")
+        command.payload.snapshotSha256 = `sha256:${"b".repeat(64)}`;
+      await expect(
+        fixture.api.save(
+          command,
+          kind === "aborted" ? AbortSignal.abort() : signal,
+        ),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(await fixture.api.load(signal)).toEqual(initial);
+    },
+  );
+
+  it("uses the real note action for exact retained text, duplicate refusal and explicit full-draft Save", async () => {
+    const fixture = await createFixture("annual-comparison");
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Draft survives native Back");
+    workspace.move("listing-zero", 1);
+    const model = workspace.annualComparison;
+    const left = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ZERO")!;
+    const right = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ONE")!;
+    model.select("left", model.getSnapshot(), left);
+    model.select("right", model.getSnapshot(), right);
+    await model.load("left", left);
+    await model.load("right", right);
+    await model.load("left", left);
+    const held = model.load("left", left);
+    model.getSnapshot().pending!.cancel();
+    fixture.settleCancelledAnnualComparison();
+    await held;
+    const captured: AnnualComparisonNoteCapture = {
+      group: "cash",
+      left: {
+        member: left,
+        response: model.getSnapshot().left.report.response!,
+        selectedBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        showingPrevious: true,
+      },
+      right: {
+        member: right,
+        response: model.getSnapshot().right.report.response!,
+        selectedBasis: "SalesRevenueNet",
+        showingPrevious: false,
+      },
+    };
+    expect(
+      workspace.appendAnnualComparisonToNote(captured, left).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(draft!.memberships[1]!.note).toBe(annualComparisonNoteDraft);
+    expect(
+      workspace.appendAnnualComparisonToNote(captured, left).appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(fixture.getSnapshot().save).toBe(0);
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      saved: { version: 2, payload: draft },
+      dirty: false,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 4,
+      aborted: 1,
+      lateResolved: 1,
+      save: 1,
+      load: 2,
+    });
   });
 
   it("keeps separate filings, raw draft and original dates through failure, Cancel and retirement", async () => {

@@ -275,6 +275,23 @@ payload of 2,262,962 bytes, below the unchanged 4 MiB cap; complete notices and
 source continuity have been independently verified. Original hosted execution,
 source merge and delivery remain separate.
 
+### Annual comparison to note candidate
+
+An explicit action adds income or cash evidence from the loaded two-company
+Annual comparison to one selected listing's latest note draft. It preserves
+exact values, separate periods and filing links, original evidence dates and
+historical or retained-report qualifications. Both companies need the selected
+group's evidence. Income and cash availability remain independent.
+
+Pair, response and route checks fence stale actions. Duplicate references and
+invalid or oversized complete notes leave the draft unchanged. Appending makes
+no source or save request; review and explicitly save the complete watchlist.
+Formatter, UI and workspace checks and independent source reviews pass. The
+Android comparison journey now includes append, duplicate refusal, full-note
+review and explicit Save/reload. Its bounded fixture checks and source syntax
+pass. Integrated builds, rendered checks and original hosted execution remain
+pending.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -299,7 +316,11 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Run the cash comparison's original hosted checks.
+Complete rendered and hosted acceptance for Annual comparison notes. The cash
+comparison's original Android run passes 27 cases; an unchanged Windows custody
+test timed out while the other five required Actions passed. The original failure
+is retained and under investigation. CodeScene's test-nesting advisory was reviewed
+without an actionable correctness finding.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.

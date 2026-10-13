@@ -39,6 +39,17 @@ import { annualComparisonResponse } from "../../src/clerk-trial/annual-compariso
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const annualComparisonNoteDraft = [
+  "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment.",
+  "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750.",
+  "CIK 0000000001; filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm.",
+  "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. Retained previous report.",
+  "ONE (One Company; One Class A; Class A; XNAS, US): 10-K 2024-07-01 to 2025-06-30; reported OCF USD 900; reported PP&E USD 300; app calculation OCF less PP&E USD 600.",
+  "CIK 0000000002; filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm.",
+  "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load.",
+  "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows.",
+  "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.",
+].join(" ");
 export const signOutNoteDraft = "Sign-out review draft";
 export const filingsNoteDraft =
   "Draft survives native Back Observed SEC filing reference: ZERO (XNAS); CIK 0000000001; Form 8-K; accession 0000000001-26-000026; filed 2026-09-19; report date unavailable; filing index https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm. Source: SEC Submissions; requested window 2026-06-23 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; retrieved 2026-09-20T00:00:01.000Z; completed 2026-09-20T00:00:02.000Z. Only the current recent-filings object was checked; older continuation files were not loaded; complete window coverage is not established. The source lists older continuation files. Filing contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
@@ -664,12 +675,41 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
-      if (
-        scenario === "watchlist-comparison" ||
-        scenario === "annual-comparison"
-      )
-        return unexpected("save");
+      if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
+      if (scenario === "annual-comparison") {
+        const expected: MainWatchlistPayload = {
+          ...payload,
+          memberships: [
+            payload.memberships[1]!,
+            { ...payload.memberships[0]!, note: annualComparisonNoteDraft },
+          ],
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 4 ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 1 ||
+          pendingAnnualComparison ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
       if (signOutScenario) {
         if (
           signal.aborted ||

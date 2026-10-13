@@ -23,7 +23,14 @@ import {
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
 import { ManagedAnnualReport } from "./managed-annual-report";
-import { ManagedWatchlistAnnualComparison } from "./managed-watchlist-annual-comparison";
+import {
+  ManagedWatchlistAnnualComparison,
+  type ManagedWatchlistAnnualComparisonMember,
+} from "./managed-watchlist-annual-comparison";
+import {
+  getAnnualComparisonNoteEvidence,
+  type AnnualComparisonNoteCapture,
+} from "./managed-watchlist-annual-comparison-note";
 import {
   ManagedEodHistory,
   type ManagedEodHistorySeed,
@@ -1242,6 +1249,94 @@ export class ManagedWorkspace {
     return {
       appended: true,
       message: `Comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
+    };
+  }
+  private annualComparisonNoteProposal(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const draft = this.coordinator.getSnapshot().draft;
+    const comparison = this.annualComparison.getSnapshot();
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    if (
+      !this.canEdit() ||
+      !draft ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      !comparison.active ||
+      !comparison.canRead ||
+      comparison.catalogChanged ||
+      this.state.snapshot?.snapshotSha256 !== draft.snapshotSha256
+    )
+      return refuse(
+        "Return to an editable watchlist before adding Annual comparison evidence.",
+      );
+    if (comparison.pending)
+      return refuse(
+        "Wait for the Annual comparison request to finish or cancel it.",
+      );
+    for (const side of ["left", "right"] as const) {
+      const current = comparison[side];
+      const observed = capture[side];
+      if (
+        current.selected !== observed.member ||
+        current.report.response !== observed.response ||
+        current.report.showingPrevious !== observed.showingPrevious ||
+        current.report.running ||
+        observed.response.catalogSnapshotSha256 !== draft.snapshotSha256
+      )
+        return refuse(
+          "Choose evidence from the current Annual comparison before adding it.",
+        );
+    }
+    if (
+      !destination ||
+      ![capture.left.member, capture.right.member].includes(destination)
+    )
+      return refuse(
+        "Choose one of these two listings as the note destination.",
+      );
+    const member = draft.memberships.find((item) =>
+      membershipMatchesResult(item, destination.listing),
+    );
+    if (!member)
+      return refuse(
+        "Choose one of these two listings as the note destination.",
+      );
+    const evidence = getAnnualComparisonNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason!);
+    if (member.note.includes(evidence.excerpt))
+      return refuse(
+        "This exact Annual comparison reference is already in the note draft.",
+      );
+    const note = member.note + (member.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member, reason: null };
+  }
+  getAnnualComparisonNoteAction(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualComparisonNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualComparisonToNote(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualComparisonNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
   private filingsNoteProposal(

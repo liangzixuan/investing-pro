@@ -172,6 +172,15 @@ warnings explicitly scoped to revenue and net income. Cash availability does
 not depend on the selected revenue basis. Put the complete cash inputs inside
 each company's existing source disclosure, preserving the original dates.
 
+Place the Annual comparison note action outside the horizontal table scroll.
+Use compact labelled selectors for evidence group and the destination listing,
+followed by one explicit append button. The destination begins empty; keep full
+company, share-class and exchange labels in its options. Stack the controls on
+narrow screens, preserve 44px targets and associate unavailable reasons with the
+controls. Keep focus on the chosen control after appending or refusal; the
+selected note editor stays unchanged. Saving remains in the existing watchlist
+workflow.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well

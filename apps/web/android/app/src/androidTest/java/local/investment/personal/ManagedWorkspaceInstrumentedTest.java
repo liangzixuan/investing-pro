@@ -67,6 +67,16 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
+    private static final String ANNUAL_COMPARISON_NOTE =
+        "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
+        "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
+        "CIK 0000000001; filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. Retained previous report. " +
+        "ONE (One Company; One Class A; Class A; XNAS, US): 10-K 2024-07-01 to 2025-06-30; reported OCF USD 900; reported PP&E USD 300; app calculation OCF less PP&E USD 600. " +
+        "CIK 0000000002; filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm. " +
+        "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. " +
+        "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows. " +
+        "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String NOTE = "Draft survives native Back";
     private static final String WATCHLIST_COMPARISON_EXISTING_NOTE = "Latest ONE research note";
     private static final String WATCHLIST_COMPARISON_NOTE = WATCHLIST_COMPARISON_EXISTING_NOTE + " " +
@@ -432,7 +442,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("My Watchlist");
         awaitPage("Annual comparison starts without selections or automatic source reads",
             "(() => { const p = document.querySelector('.managed-annual-comparison');" +
-            " const selects = p?.querySelectorAll('select'); return selects?.length === 2" +
+            " const selects = p?.querySelectorAll('.managed-annual-comparison-choice select'); return selects?.length === 2" +
             " && [...selects].every(s => s.value === '' && !s.disabled && s.getBoundingClientRect().height >= 44)" +
             " && p.querySelectorAll('time').length === 0; })()");
         assertAnnualComparisonCounts(0, 0, 0);
@@ -484,6 +494,25 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(4, 1, 1);
         assertAnnualComparisonDraft();
+        chooseNativeSelectOption("#managed-annual-comparison-note-group", "cash", "Cash generation");
+        chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        assertAnnualComparisonNote(1, true);
+        assertAnnualComparisonCounts(4, 1, 1);
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        awaitPage("duplicate Annual comparison is refused without changing the exact note",
+            "document.querySelector('.managed-annual-comparison-note-action').textContent.includes('This exact Annual comparison reference is already in the note draft.')");
+        assertAnnualComparisonNote(1, true);
+        click("#managed-unsaved-review-summary");
+        awaitPage("review exposes the complete comparison note before Save",
+            "document.querySelector('#managed-unsaved-review')?.open === true" +
+            " && document.querySelector('#managed-unsaved-review').textContent.includes(" + JSONObject.quote(ANNUAL_COMPARISON_NOTE) + ")");
+        clickWatchlistAction("Save watchlist");
+        assertAnnualComparisonNote(2, false);
+        clickWatchlistAction("Load saved watchlist");
+        assertAnnualComparisonNote(2, false);
+        assertAnnualComparisonCounts(4, 1, 1, 1, 2);
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         clickAnnualComparisonAction("Refresh second annual report");
         awaitPage("second-company report is pending before retirement", DIAGNOSTICS + ".annual === 5" +
             " && [...document.querySelectorAll('.managed-annual-comparison button')].some(b => b.textContent === 'Cancel second annual report')");
@@ -494,13 +523,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
             " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false");
         click("#settle-cancelled-annual-comparison");
-        assertAnnualComparisonCounts(5, 2, 2);
+        assertAnnualComparisonCounts(5, 2, 2, 1, 2);
         awaitPage("late Annual completion cannot restore retired evidence or notes",
             "document.querySelector('.managed-annual-comparison') === null && document.querySelector('.managed-navigation') === null" +
             " && !document.body.textContent.includes('0000000002-25-000001')" +
             " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
         assertEquals("Annual comparison preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private void clickAnnualComparisonAction(String label) {
@@ -591,11 +620,23 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
     }
 
+    private void assertAnnualComparisonNote(int version, boolean dirty) throws Exception {
+        awaitPage("Annual comparison note keeps complete order, other prose and explicit saved state",
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(ANNUAL_COMPARISON_NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty);
+    }
+
     private void assertAnnualComparisonCounts(int reads, int aborted, int late) throws Exception {
-        awaitPage("bounded Annual reads without other providers or Save",
+        assertAnnualComparisonCounts(reads, aborted, late, 0, 1);
+    }
+
+    private void assertAnnualComparisonCounts(int reads, int aborted, int late, int saves, int loads) throws Exception {
+        awaitPage("bounded Annual reads and explicit saves without other providers",
             DIAGNOSTICS + ".annual === " + reads + " && " + DIAGNOSTICS + ".aborted === " + aborted +
-            " && " + DIAGNOSTICS + ".lateResolved === " + late + " && " + DIAGNOSTICS + ".save === 0" +
-            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0" +
+            " && " + DIAGNOSTICS + ".lateResolved === " + late + " && " + DIAGNOSTICS + ".save === " + saves +
+            " && " + DIAGNOSTICS + ".load === " + loads + " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0" +
             " && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
     }
 

@@ -6,11 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment connects annual cash generation in company research
-to the two-company watchlist comparison, using two fixed SEC cash concepts and
-a labelled exact subtraction. It preserves each amount's period, independent
-field availability and the existing explicit source reads. The
-[Annual guide](MANAGED_SEC_ANNUAL.md#cash-generation) defines its scope; Current
+The current M2 increment connects a two-company Annual comparison to one chosen
+research-note draft. The owner chooses income or cash evidence; each company
+keeps its exact amounts, own fiscal period and original filing and source dates.
+Appending uses already loaded reports and the existing explicit full-draft Save.
+The [Annual guide](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note)
+defines its scope; Current
 work distinguishes source, browser, native and delivery acceptance. Broader
 financial statements, valuation and complete company coverage remain open.
 

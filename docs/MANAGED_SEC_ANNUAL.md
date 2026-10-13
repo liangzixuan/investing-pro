@@ -99,6 +99,36 @@ Session retirement clears both columns. Refresh failure, invalid response and
 source eligibility use the existing Annual report rules. This comparison adds
 no field, feed, cohort, API schema, persistence or automatic refresh.
 
+### Keep Annual comparison evidence in a note
+
+Below the comparison, choose **Revenue and net income** or **Cash generation**,
+then choose one of the two listings in **Add Annual comparison to**. The
+destination starts empty and identifies the company, share class and exchange.
+**Add Annual comparison to note draft** appends both companies' selected evidence
+to that listing's latest note. It preserves each company's fiscal period, exact
+USD values, raw concepts, filing link and original source and completion dates.
+Historical and retained reports keep their qualifications.
+
+Income copies the selected revenue basis, net income, available net margin and
+reported revenue change, or the reason that change is unavailable. Cash copies
+both reported inputs and their admitted same-filing, same-period difference.
+Both companies must have the chosen group's evidence; missing income does not
+block valid cash, and missing cash does not block valid income. No field is
+substituted, rounded further or loaded by this action.
+
+Changing a company or replacing a report clears the note destination. Changing
+the revenue basis or evidence group keeps the destination but discards earlier
+action feedback. Note edits, ordering and Save preserve it. Refresh must finish
+or be cancelled before appending; a retained report uses its original dates.
+
+The action rechecks the current pair, reports, route and editable draft when
+clicked. It preserves existing prose, refuses an identical excerpt and validates
+the complete resulting note against the existing 2,000-character policy. An
+oversized or invalid note stays unchanged, without truncation. Review unsaved
+changes and choose **Save watchlist** to save the complete draft. Appending makes
+no source or save request. Current work records browser, native and delivery
+acceptance separately.
+
 ### Compare cash generation
 
 The same table adds reported operating cash flow, reported PP&E purchases and
