@@ -131,6 +131,13 @@ Price was unavailable. Native execution for the financial layout passed its
 exact-head hosted check; release acceptance remains separate in
 [Current work](CURRENT_WORK.md).
 
+A later Chrome check accepts the readable basis labels and compact missing rows
+at 1440, 390 and 320 CSS pixels. Exact raw concepts and statuses remain available
+by keyboard. The same financial-results region keeps focus during delayed
+replacement from populated bases to missing ones and back. Rejected, withheld
+and historical evidence, explicit note appending and whole-draft Save retain
+their behavior. This check uses invented RAM data; it makes no live-source claim.
+
 ## Cash generation
 
 The company Annual view shows reported operating cash flow and purchases of

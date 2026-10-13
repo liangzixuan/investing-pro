@@ -175,14 +175,22 @@ still uses version 1.0.0, and its static module inventory omits the extracted
 Annual fact normalizer. The corrected tests retain every existing assertion and
 pass locally. Original failures remain recorded; updated hosted checks are pending.
 
-### Annual readability in development
+### Annual readability candidate
 
-The next presentation increment gives managed revenue bases distinct readable
-labels and makes genuinely missing bases compact. Rejected or withheld evidence
-keeps its explanation; exact concept identifiers and statuses stay in the
-existing source details. The local evidence view, financial values, requests and
-note format stay unchanged. Source, rendered layouts and native acceptance for
-this increment remain pending.
+Managed revenue bases now use distinct readable labels, and genuinely missing
+bases appear as compact rows. Rejected or withheld evidence keeps its explanation;
+exact concept identifiers and statuses stay in the existing source details. The
+local evidence view, financial values, requests and note format stay unchanged.
+
+The 127 affected tests, web types, lint and independent source review pass.
+Chrome checks at 1440, 390 and 320 CSS pixels accept the headings, compact rows,
+exact source keys, rejected and historical states, and keyboard disclosure.
+Keyboard focus stays on the same financial-results region through delayed
+replacement in both directions between populated and missing bases. Failure,
+Cancel, late replies, exact note evidence, whole-draft Save and session retirement
+retain their existing contracts. Checks use invented RAM data. The integrated
+native fixture builds with a largest loader payload of 2,254,725 bytes, below the
+unchanged 4 MiB cap. Hosted checks and native runtime acceptance remain pending.
 
 ## Product scope
 
@@ -208,11 +216,11 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete Annual readability's source and rendered checks while the cash
-candidate runs its original hosted checks and Android journey. PR100 and PR101
-have passed their original hosted
-checks and remain awaiting source-merge approval. Their merges, the cash
-candidate and any live delivery are separate actions. Continue meaningful roadmap
+Run Annual readability's original hosted checks and Android journey while the
+cash candidate's corrected test expectations run through CI. PR100 and PR101
+have passed their original hosted checks and remain awaiting source-merge
+approval. Their merges, the later candidates and live delivery are separate actions.
+Continue meaningful roadmap
 work with existing subscriptions and permitted free sources; broader fields and
 cohorts need verified source rights, cost, quotas and identity handling.
 
