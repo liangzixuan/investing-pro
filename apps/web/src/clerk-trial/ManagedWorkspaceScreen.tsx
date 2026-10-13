@@ -672,6 +672,25 @@ export function ManagedWorkspaceScreen({
                   annual={workspace.annual}
                   filings={workspace.filings}
                   eod={workspace.eod}
+                  companyNavigationState={workspace.getResearchCompanyNavigation(
+                    discovery.research,
+                  )}
+                  canOpenCompany={(visit, member) =>
+                    !navigation?.invalid &&
+                    workspace.canOpenResearchCompany(visit, member)
+                  }
+                  onOpenCompany={(visit, member) => {
+                    if (
+                      navigation?.invalid ||
+                      !workspace.canOpenResearchCompany(visit, member)
+                    )
+                      return;
+                    const open = () =>
+                      workspace.openResearchCompany(visit, member);
+                    // Keep the original workspace opener for the final Back.
+                    if (navigation) navigation.open(open);
+                    else open();
+                  }}
                   onBack={() => {
                     if (
                       workspace.getSnapshot().research?.selection ===

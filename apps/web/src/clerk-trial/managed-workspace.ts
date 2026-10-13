@@ -80,6 +80,10 @@ export interface ManagedResearchVisit {
   readonly selection: ManagedResearchSelection;
   readonly section: "annual" | "eod" | "filings";
 }
+export interface ResearchCompanyNavigationState {
+  readonly members: readonly WatchlistMembership[];
+  readonly reason: string;
+}
 export interface ResearchWatchlistState {
   readonly member: WatchlistMembership | null;
   readonly canAdd: boolean;
@@ -203,6 +207,7 @@ export class ManagedWorkspace {
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
+  private navigationRevision = 0;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
@@ -346,6 +351,7 @@ export class ManagedWorkspace {
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
+    this.navigationRevision++;
     this.navigationBlocked = blocked;
     this.syncAnnouncements();
     this.syncAnnualComparison();
@@ -911,6 +917,86 @@ export class ManagedWorkspace {
         this.companyRouteOperation = null;
     }
   }
+  getResearchCompanyNavigation(
+    visit: ManagedResearchVisit,
+  ): ResearchCompanyNavigationState {
+    if (
+      this.retired ||
+      this.state.research !== visit ||
+      !this.canSwitchResearch(visit.selection)
+    )
+      return { members: [], reason: "Open a current company visit first." };
+    const route = this.state.companyRoute;
+    if (
+      this.navigationBlocked &&
+      (route?.status !== "open" ||
+        route.listingId !== visit.selection.listing.listingId ||
+        route.section !== visit.section)
+    )
+      return { members: [], reason: "Wait for company navigation to finish." };
+    return this.researchCompanyChoices(visit);
+  }
+  private researchCompanyChoices(
+    visit: ManagedResearchVisit,
+  ): ResearchCompanyNavigationState {
+    if (
+      visit.selection.catalogSnapshotSha256 !==
+        this.state.snapshot?.snapshotSha256 ||
+      this.annual.getSnapshot().catalogChanged ||
+      this.filings.getSnapshot().catalogChanged ||
+      this.eod.getSnapshot().catalogChanged
+    )
+      return { members: [], reason: "Load the current catalog first." };
+    const draft = this.coordinator.getSnapshot().draft;
+    if (draft?.snapshotSha256 !== visit.selection.catalogSnapshotSha256)
+      return {
+        members: [],
+        reason: "Load My Watchlist from the current catalog first.",
+      };
+    return {
+      members: draft.memberships,
+      reason: draft.memberships.length ? "" : "My Watchlist has no companies.",
+    };
+  }
+  canOpenResearchCompany(
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) {
+    return (
+      this.getResearchCompanyNavigation(visit).members.includes(member) &&
+      !membershipMatchesResult(member, visit.selection.listing)
+    );
+  }
+  openResearchCompany(
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) {
+    if (!this.canOpenResearchCompany(visit, member)) return;
+    const navigationRevision = this.navigationRevision;
+    const selection: ManagedResearchSelection = {
+      catalogSnapshotSha256: visit.selection.catalogSnapshotSha256,
+      listing: listingIdentity(member),
+      cik: null,
+      origin: "watchlist",
+    };
+    this.openResearch(selection, visit.section, {
+      admit: (phase) => {
+        if (
+          this.navigationRevision !== navigationRevision ||
+          !membershipMatchesResult(member, selection.listing)
+        )
+          return false;
+        if (phase === "before-clear")
+          return this.canOpenResearchCompany(visit, member);
+        return (
+          this.state.research === null &&
+          this.state.companyRoute === null &&
+          this.canSwitchResearch(visit.selection) &&
+          this.researchCompanyChoices(visit).members.includes(member)
+        );
+      },
+    });
+  }
   private openResearch(
     selection: ManagedResearchSelection,
     section: ManagedResearchVisit["section"],
@@ -919,19 +1005,25 @@ export class ManagedWorkspace {
       priceSeed?: ManagedEodHistorySeed | undefined;
       annualSeed?: ManagedAnnualReportSeed;
       filingsSeed?: ManagedCompanyFilingsSeed;
-      admit?: () => boolean;
+      admit?: (phase: "before-clear" | "after-clear") => boolean;
     } = {},
   ) {
     const operation = Symbol();
     this.researchOperation = operation;
     const owns = () => this.researchOperation === operation;
-    const admitted = () => !this.retired && (options.admit?.() ?? true);
+    let phase: "before-clear" | "after-clear" = "before-clear";
+    const admitted = () => !this.retired && (options.admit?.(phase) ?? true);
     this.watchlistPrices.cancel();
     if (!owns() || !admitted()) return;
     this.watchlistFilings.cancel();
     if (!owns() || !admitted()) return;
+    phase = "after-clear";
     this.clearResearch(operation);
-    if (!owns() || !admitted()) return;
+    if (!owns()) return;
+    if (!admitted()) {
+      this.update({});
+      return;
+    }
     if (section === "eod" || options.priceSeed)
       this.eod.open(selection, options.priceSeed);
     if (!owns()) return;
@@ -942,6 +1034,7 @@ export class ManagedWorkspace {
     if (!owns()) return;
     if (!admitted()) {
       this.clearResearch(operation);
+      if (owns()) this.update({});
       return;
     }
     const captured = this[section].getSnapshot().selection;

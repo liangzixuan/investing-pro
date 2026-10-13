@@ -51,6 +51,29 @@ resolves metadata, stays unloaded and returns to Markets through Android Back.
 External Android app links and process-death restoration are not implemented.
 Physical installation and use of signed Android 1.7 remain unperformed.
 
+## Choose another watchlist company
+
+**Company in My Watchlist** lists the full current draft in its current order,
+including unsaved additions and separate share classes. Choose a listing, check
+its company, share class and exchange, then select **Open company**. Choosing an
+option alone changes no company, source response or note. A new visit selects
+the current company when it is in the draft; otherwise the control starts at
+**Choose company**. Adding that company later keeps the existing choice.
+An unavailable draft or catalog has an explicit explanation.
+
+Open keeps the current Price, Annual or Filings section. A different company
+closes the previous visit and starts unloaded; source reads remain explicit.
+Opening the same company preserves its loaded evidence. A replaced or removed
+member, old visit or retired session cannot be opened through a stale action.
+Navigation remains available for a readable draft with invalid notes or readonly
+note controls; it does not repair, save or discard those notes.
+
+The existing URL entry is replaced for each company change. Back returns once
+to the original workspace destination and control. A visit that began from a
+direct link keeps its Markets fallback. Notes and order remain in the shared
+draft through all company changes. Use **Review in My Watchlist** and the
+existing whole-draft **Save watchlist** action when ready.
+
 ## Source and screen contract
 
 | Section | Source and identity                                                                     | Content and limits                                                                                                           | Loading                  |

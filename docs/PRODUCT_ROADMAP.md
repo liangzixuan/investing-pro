@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 increment compares consecutive loaded company filing lists. After
+The current M2/M4 increment opens another watchlist company from within research.
+An explicit choice keeps the current section, exact listing identity, each note
+and the original workspace return. New company visits start unloaded. It adds no
+request, saved state or source. See the [navigation guide](MANAGED_RESEARCH_NAVIGATION.md#choose-another-watchlist-company).
+
+The preceding M3 increment compares consecutive loaded company filing lists. After
 an explicit successful refresh, it marks accessions absent from the previous
 accepted list and keeps both original source records available. The comparison
 describes observations within those lists; it adds no monitoring, complete-history

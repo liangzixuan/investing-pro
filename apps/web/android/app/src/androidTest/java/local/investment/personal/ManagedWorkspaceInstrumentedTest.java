@@ -2944,6 +2944,40 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.activeElement?.id === 'managed-eod-heading'" +
             " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
             " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        String companyChoice = "#managed-research-company-select";
+        String openCompany = ".managed-research-company-controls button";
+        awaitPage("company choices include the unsaved addition in full draft order",
+            "document.querySelector('label[for=managed-research-company-select]')?.textContent === 'Company in My Watchlist'" +
+            " && document.querySelector(" + JSONObject.quote(companyChoice) + ")?.value === ''" +
+            " && [...document.querySelector(" + JSONObject.quote(companyChoice) + ").options].map(o => o.value).join(',') === ',listing-zero,listing-one,listing-alfa'" +
+            " && document.querySelector(" + JSONObject.quote(openCompany) + ")?.getAttribute('aria-disabled') === 'true'" +
+            " && [document.querySelector(" + JSONObject.quote(companyChoice) + "), document.querySelector(" + JSONObject.quote(openCompany) + ")].every(e => e.getBoundingClientRect().height >= 44)");
+        chooseNativeSelectOption(companyChoice, "listing-alfa", "ALFA · Alfa Company · Common Stock · XNAS");
+        awaitPage("choosing the current company keeps Open unavailable",
+            "document.querySelector(" + JSONObject.quote(openCompany) + ")?.getAttribute('aria-disabled') === 'true'");
+        click(openCompany);
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        chooseNativeSelectOption(companyChoice, "listing-one", "ONE · One Company · Class A · XNAS");
+        awaitPage("choosing another company leaves the current company and note intact",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteCounts(0, 1);
+        click(openCompany);
+        awaitPage("explicit Open shows the other exact note in the same unloaded Price section",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ONE'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Invented second note'" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null");
+        assertCompanyNoteCounts(0, 1);
+        chooseNativeSelectOption(companyChoice, "listing-alfa", "ALFA · Alfa Company · Common Stock · XNAS");
+        click(openCompany);
+        awaitPage("returning to the unsaved company restores its complete draft without a read",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
         retainCompanyNoteScreenshot();
         assertFixtureBoundary();
         pressBack();

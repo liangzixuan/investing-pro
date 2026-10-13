@@ -630,6 +630,19 @@ The exact native fixture build preserves complete notices and fits the unchanged
 4 MiB loader limit. Added assertions in the existing Filings journey still need
 the original hosted Android run. Hosted and live acceptance remain separate.
 
+### Company selection within research candidate
+
+The next increment adds **Company in My Watchlist** and **Open company** to the
+company header. It uses the complete current draft in its current order. Opening
+another listing keeps the research section, starts that visit unloaded and
+preserves every note. The original workspace destination and Back control remain
+after several company changes. A staged choice makes no request or write, and
+opening the current company preserves its loaded results. See the
+[navigation guide](MANAGED_RESEARCH_NAVIGATION.md#choose-another-watchlist-company).
+
+Source implementation and affected checks are in progress. Browser, native and
+hosted acceptance remain pending. Production and prior candidates are unchanged.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
