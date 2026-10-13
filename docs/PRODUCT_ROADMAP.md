@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current design increment compacts the company Filings source header. Key dates,
+The current M1 design increment adds **On Markets** links to the company board,
+economic calendar and Fed announcements. It makes the existing daily sections
+easier to reach while preserving explicit loads, original source dates and the
+watchlist draft. It adds no source, financial field or saved preference. See
+[Markets navigation](MANAGED_MARKETS_HOME.md#move-between-markets-sections).
+
+The preceding design increment compacts the company Filings source header. Key dates,
 identity and warnings remain visible; full routine source metadata moves into a
 native disclosure. Filters and results become easier to reach without changing
 loaded evidence or note actions. See the [Filings guide](MANAGED_SEC_FILINGS.md#read-the-company-result).

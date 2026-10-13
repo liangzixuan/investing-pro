@@ -8,6 +8,24 @@ and narrow bottom navigation. It retains our branding and permitted inputs.
 [DESIGN.md](../DESIGN.md) records the presentation; delivery is recorded separately
 in [Current work](CURRENT_WORK.md).
 
+## Move between Markets sections
+
+**On Markets** offers **Company board**, **Economic calendar** and **Fed
+announcements** below the Markets toolbar. Each link moves focus to that
+section's heading and scrolls it into view. All sections stay on the same page.
+The links wrap on narrow screens and have a minimum target height of 44 pixels.
+
+A jump uses the current visible Markets view. It does not load or refresh data,
+change the URL or create a history entry. Loaded responses keep their original
+dates, source context and pending or previous-result notices. The selected
+company, chart choices, BEA release date and watchlist draft keep their existing
+state. Load, Refresh and Cancel remain separate controls.
+
+The app checks the heading and view again after focus moves. It stops if the
+view changes or the target is hidden, detached or no longer belongs to Markets.
+Loading a response does not trigger a jump. Browser and native verification,
+and delivery status, remain in [Current work](CURRENT_WORK.md).
+
 ## Inputs and scope
 
 The browser declares the three exact listing identities and resolves them against
