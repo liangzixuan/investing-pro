@@ -42,6 +42,13 @@ Our entry fixture does not establish the SDK widget's rendered result. Any futur
 SDK theme change needs its own rendered review in a controlled, signed-out Brave
 context at the canonical origin; the inert staging page does not mount Clerk.
 
+The company header includes a labelled **Company in My Watchlist** native
+selector and an explicit **Open company** action. Keep the selected company's
+full identity in wrapping text below the control, so narrow screens do not rely
+on a clipped option label. Use the existing managed field, 44px controls and
+focus tokens. At narrow widths, stack the field and action. A staged choice
+does not change the open company until the action is selected.
+
 ## Color and surfaces
 
 Use these semantic managed tokens:

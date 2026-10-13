@@ -2,6 +2,7 @@ import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
   ManagedResearchVisit,
+  ResearchCompanyNavigationState,
   ResearchWatchlistState,
 } from "./managed-workspace";
 import type { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
@@ -14,6 +15,8 @@ import type { ManagedAnnualCashNoteActions } from "./ManagedAnnualCashNoteAction
 import type { ManagedAnnualLiquidityNoteActions } from "./ManagedAnnualLiquidityNoteAction";
 import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
+import type { WatchlistMembership } from "@research-cockpit/contracts";
+import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNavigation";
 
 export function ManagedCompanyResearch({
   research,
@@ -31,6 +34,9 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions,
   priceNoteActions,
   filingsNoteActions,
+  companyNavigationState,
+  canOpenCompany,
+  onOpenCompany,
 }: {
   research: ManagedResearchVisit;
   annual: AnnualModel;
@@ -47,6 +53,15 @@ export function ManagedCompanyResearch({
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
   filingsNoteActions: ManagedFilingsNoteActions;
+  companyNavigationState: ResearchCompanyNavigationState;
+  canOpenCompany: (
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) => boolean;
+  onOpenCompany: (
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) => void;
 }) {
   const labels = { eod: "Price", annual: "Annual", filings: "Filings" };
   const listing = research.selection.listing;
@@ -70,6 +85,12 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
+      <ManagedResearchCompanyNavigation
+        research={research}
+        state={companyNavigationState}
+        canOpen={canOpenCompany}
+        onOpen={onOpenCompany}
+      />
       <div className="managed-research-body">
         <div>
           <nav

@@ -18,6 +18,7 @@ import {
   listingMembership,
   ManagedWorkspace,
   reviewChanges,
+  type ManagedResearchVisit,
 } from "./managed-workspace";
 import type { TrialSession } from "./session";
 import {
@@ -192,6 +193,517 @@ async function ready(workspace: ManagedWorkspace) {
   workspace.setQuery("Invented");
   await workspace.search();
 }
+
+describe("explicit in-company watchlist navigation", () => {
+  const zero = listingMembership({
+    ...eodSelection.listing,
+    cik: "0000000001",
+    matchKind: "current_symbol_exact",
+    matchedValue: "ZERO",
+  });
+  const otherClass = {
+    ...zero,
+    listingId: "listing-zero-c",
+    securityId: "security-zero-c",
+    shareClassId: "class-zero-c",
+    shareClassName: "Class C",
+    symbol: "ZEROC",
+  };
+  async function companyFixture(
+    section: ManagedResearchVisit["section"] = "annual",
+  ) {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...zero, note: "Original ZERO note" },
+        { ...listingMembership(second), note: "Original OTHER note" },
+        { ...otherClass, note: "Separate Class C note" },
+      ],
+    });
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    setup.workspace.openWatchlistAnnual(
+      setup.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    if (section === "eod") setup.workspace.switchToEod();
+    if (section === "filings") setup.workspace.switchToFilings();
+    return setup;
+  }
+  function target(workspace: ManagedWorkspace) {
+    return workspace.coordinator
+      .getSnapshot()
+      .draft!.memberships.find(
+        (member) => member.listingId === second.listingId,
+      )!;
+  }
+  function expectNoSourceRead(api: ManagedApi) {
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+  }
+
+  it.each(["annual", "eod", "filings"] as const)(
+    "opens another full identity in %s unloaded and preserves the complete draft until explicit Save",
+    async (section) => {
+      const { workspace, api, saved } = await companyFixture(section);
+      workspace.note(zero.listingId, "Current unsaved ZERO thesis");
+      workspace.move(second.listingId, -1);
+      const before = workspace.coordinator.getSnapshot().draft!;
+      const visit = workspace.getSnapshot().research!;
+      const choices = workspace.getResearchCompanyNavigation(visit);
+      expect(choices).toEqual({ members: before.memberships, reason: "" });
+      expect(choices.members).toBe(before.memberships);
+      expect(choices.members.map((member) => member.listingId)).toEqual([
+        second.listingId,
+        zero.listingId,
+        otherClass.listingId,
+      ]);
+      expect(workspace.getSnapshot().research).toBe(visit);
+      expect(workspace.canOpenResearchCompany(visit, target(workspace))).toBe(
+        true,
+      );
+      workspace.openResearchCompany(visit, target(workspace));
+      const opened = workspace.getSnapshot().research!;
+      expect(opened).toMatchObject({
+        section,
+        selection: {
+          origin: "watchlist",
+          cik: null,
+          catalogSnapshotSha256: digest,
+          listing: { listingId: second.listingId },
+        },
+      });
+      // The exact second identity replaces all eleven fields, not just the ticker.
+      expect(opened.selection.listing).toEqual(
+        Object.fromEntries(
+          Object.entries(target(workspace)).filter(([key]) => key !== "note"),
+        ),
+      );
+      expect(workspace[section].getSnapshot()).toMatchObject({
+        response: null,
+        running: false,
+      });
+      for (const other of ["annual", "eod", "filings"] as const)
+        if (other !== section)
+          expect(workspace[other].getSnapshot().selection).toBeNull();
+      workspace.openResearchCompany(opened, before.memberships[2]!);
+      expect(workspace.getSnapshot().research?.selection.listing).toEqual(
+        Object.fromEntries(
+          Object.entries(otherClass).filter(([key]) => key !== "note"),
+        ),
+      );
+      expect(workspace.getSnapshot().research?.section).toBe(section);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expectNoSourceRead(api);
+      expect(api.save).not.toHaveBeenCalled();
+      workspace.closeResearch();
+      await workspace.coordinator.save();
+      expect(saved()).toEqual({ version: 2, payload: before });
+      await workspace.coordinator.load();
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(before);
+      expect(api.save).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["annual", "eod", "filings"] as const)(
+    "same-company %s Open preserves accepted data and a pending refresh",
+    async (section) => {
+      const { workspace, api } = await companyFixture(section);
+      vi.mocked(api.annualReport).mockResolvedValue(await annualResponse());
+      vi.mocked(api.eodHistory).mockResolvedValue(eodResponse());
+      vi.mocked(api.recentFilings).mockResolvedValue(filingsResponse());
+      const model = workspace[section];
+      await model.load();
+      expect(model.getSnapshot().response).not.toBeNull();
+      const held = deferred<never>();
+      const read =
+        section === "annual"
+          ? api.annualReport
+          : section === "eod"
+            ? api.eodHistory
+            : api.recentFilings;
+      vi.mocked(read).mockReturnValueOnce(held.promise);
+      const pending = model.load();
+      const before = model.getSnapshot();
+      const visit = workspace.getSnapshot().research!;
+      const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      expect(workspace.canOpenResearchCompany(visit, member)).toBe(false);
+      workspace.openResearchCompany(visit, member);
+      expect(workspace.getSnapshot().research).toBe(visit);
+      expect(model.getSnapshot()).toBe(before);
+      expect(vi.mocked(read).mock.calls[1]![1].aborted).toBe(false);
+      workspace.closeResearch();
+      held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.coordinator.getSnapshot().phase).toBe("idle");
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows a readable conflict draft and raw invalid notes without editing or saving them", async () => {
+    const { workspace, api } = await companyFixture();
+    workspace.note(zero.listingId, "Dirty before conflict");
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    const conflict = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.coordinator.getSnapshot().conflict).toBe(true);
+    workspace.openResearchCompany(
+      workspace.getSnapshot().research!,
+      target(workspace),
+    );
+    expect(workspace.getSnapshot().research?.selection.listing.listingId).toBe(
+      second.listingId,
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(conflict);
+    expect(api.save).toHaveBeenCalledOnce();
+    expectNoSourceRead(api);
+
+    const editable = await companyFixture();
+    editable.workspace.note(zero.listingId, "Raw\ninvalid note");
+    const raw = editable.workspace.coordinator.getSnapshot().draft;
+    editable.workspace.openResearchCompany(
+      editable.workspace.getSnapshot().research!,
+      target(editable.workspace),
+    );
+    expect(
+      editable.workspace.getSnapshot().research?.selection.listing.listingId,
+    ).toBe(second.listingId);
+    expect(editable.workspace.coordinator.getSnapshot().draft).toBe(raw);
+    expect(raw!.memberships[0]!.note).toBe("Raw\ninvalid note");
+    expect(editable.api.save).not.toHaveBeenCalled();
+  });
+
+  it("exposes an explicit empty or mismatched draft reason without a fallback company", async () => {
+    const { workspace, api } = fixture();
+    await ready(workspace);
+    workspace.openDiscoveryAnnual(result);
+    const visit = workspace.getSnapshot().research!;
+    expect(workspace.getResearchCompanyNavigation(visit)).toEqual({
+      members: [],
+      reason: "My Watchlist has no companies.",
+    });
+    workspace.coordinator.replaceDraft({
+      ...empty,
+      snapshotSha256: nextDigest,
+      memberships: [listingMembership(second)],
+    });
+    expect(workspace.getResearchCompanyNavigation(visit)).toEqual({
+      members: [],
+      reason: "Load My Watchlist from the current catalog first.",
+    });
+    workspace.openResearchCompany(visit, target(workspace));
+    expect(workspace.getSnapshot().research).toBe(visit);
+    expectNoSourceRead(api);
+  });
+
+  it.each([
+    "note",
+    "identity",
+    "removed",
+    "section",
+    "visit",
+    "catalog",
+    "retired",
+    "navigation",
+  ] as const)(
+    "refuses a captured action after %s changes",
+    async (boundary) => {
+      const { workspace, api } = await companyFixture();
+      const visit = workspace.getSnapshot().research!;
+      const member = target(workspace);
+      if (boundary === "note")
+        workspace.note(member.listingId, "New note handle");
+      if (boundary === "identity") {
+        const draft = workspace.coordinator.getSnapshot().draft!;
+        workspace.coordinator.replaceDraft({
+          ...draft,
+          memberships: draft.memberships.map((row) =>
+            row === member
+              ? { ...row, issuerName: "Replacement identity" }
+              : row,
+          ),
+        });
+      }
+      if (boundary === "removed") workspace.remove(member.listingId);
+      if (boundary === "section") workspace.switchToFilings();
+      if (boundary === "visit") workspace.openWatchlistAnnual(member);
+      if (boundary === "catalog") {
+        vi.mocked(api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      }
+      if (boundary === "retired") workspace.coordinator.retire();
+      if (boundary === "navigation") workspace.setNavigationBlocked(true);
+      const before = workspace.getSnapshot();
+      expect(workspace.canOpenResearchCompany(visit, member)).toBe(false);
+      workspace.openResearchCompany(visit, member);
+      expect(workspace.getSnapshot()).toBe(before);
+      if (boundary === "note")
+        expect(workspace.canOpenResearchCompany(visit, target(workspace))).toBe(
+          true,
+        );
+      expectNoSourceRead(api);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps exact current choices while the initial company route is pending and blocks Open until ready", async () => {
+    const { workspace, api } = await companyFixture();
+    const visit = workspace.getSnapshot().research!;
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    const current = draft.memberships[0]!;
+    const other = target(workspace);
+    const annual = workspace.annual.getSnapshot();
+    const choices = workspace.getResearchCompanyNavigation(visit);
+    workspace.setNavigationBlocked(true);
+
+    const pending = workspace.getResearchCompanyNavigation(visit);
+    expect(pending.members).toBe(choices.members);
+    expect(pending.members).toBe(draft.memberships);
+    expect(pending.members[0]).toBe(current);
+    expect(pending.reason).toBe("Wait for company navigation to finish.");
+    expect(workspace.canOpenResearchCompany(visit, current)).toBe(false);
+    expect(workspace.canOpenResearchCompany(visit, other)).toBe(false);
+    const blocked = workspace.getSnapshot();
+    workspace.openResearchCompany(visit, other);
+    expect(workspace.getSnapshot()).toBe(blocked);
+    expect(workspace.annual.getSnapshot()).toBe(annual);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: current.listingId,
+      section: "annual",
+    });
+    const readyVisit = workspace.getSnapshot().research!;
+    const readyChoices = workspace.getResearchCompanyNavigation(readyVisit);
+    expect(readyVisit.selection).toBe(visit.selection);
+    expect(readyChoices.members).toBe(pending.members);
+    expect(readyChoices.reason).toBe("");
+    expect(workspace.canOpenResearchCompany(readyVisit, current)).toBe(false);
+    expect(workspace.canOpenResearchCompany(readyVisit, other)).toBe(true);
+    const readyState = workspace.getSnapshot();
+    workspace.openResearchCompany(readyVisit, current);
+    expect(workspace.getSnapshot()).toBe(readyState);
+    expect(workspace.annual.getSnapshot()).toBe(annual);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expectNoSourceRead(api);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("admits the exact established company route despite its persistent navigation block", async () => {
+    const { workspace, api } = await companyFixture("filings");
+    workspace.setNavigationBlocked(true);
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: zero.listingId,
+      section: "filings",
+    });
+    const visit = workspace.getSnapshot().research!;
+    expect(workspace.getSnapshot().companyRoute?.status).toBe("open");
+    expect(workspace.getResearchCompanyNavigation(visit).reason).toBe("");
+    workspace.openResearchCompany(visit, target(workspace));
+    expect(workspace.getSnapshot().research).toMatchObject({
+      section: "filings",
+      selection: { listing: { listingId: second.listingId } },
+    });
+    expectNoSourceRead(api);
+  });
+
+  it.each(["annual", "eod", "filings"] as const)(
+    "cancels %s and fences its late authentication error after the explicit company switch",
+    async (section) => {
+      const { workspace, api } = await companyFixture(section);
+      const held = deferred<never>();
+      const read =
+        section === "annual"
+          ? api.annualReport
+          : section === "eod"
+            ? api.eodHistory
+            : api.recentFilings;
+      vi.mocked(read).mockReturnValueOnce(held.promise);
+      const pending = workspace[section].load();
+      workspace.openResearchCompany(
+        workspace.getSnapshot().research!,
+        target(workspace),
+      );
+      const accepted = workspace.getSnapshot().research;
+      const state = workspace[section].getSnapshot();
+      expect(vi.mocked(read).mock.calls[0]![1].aborted).toBe(true);
+      held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.getSnapshot().research).toBe(accepted);
+      expect(workspace[section].getSnapshot()).toBe(state);
+      expect(state.selection?.listing.listingId).toBe(second.listingId);
+      expect(state.response).toBeNull();
+      expect(read).toHaveBeenCalledOnce();
+      expect(workspace.coordinator.getSnapshot().phase).toBe("idle");
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["success", "cooldown"] as const)(
+    "clears both accepted Filings lists and fences a late %s from the old company",
+    async (outcome) => {
+      const { workspace, api } = await companyFixture("filings");
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(filingsResponse(2));
+      await workspace.filings.load();
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(filingsResponse(3));
+      await workspace.filings.load();
+      expect(
+        workspace.filings.getSnapshot().refreshComparison?.newAccessions,
+      ).toHaveLength(1);
+      const held = deferred<Awaited<ReturnType<ManagedApi["recentFilings"]>>>();
+      vi.mocked(api.recentFilings).mockReturnValueOnce(held.promise);
+      const pending = workspace.filings.load();
+      workspace.openResearchCompany(
+        workspace.getSnapshot().research!,
+        target(workspace),
+      );
+      const state = workspace.filings.getSnapshot();
+      expect(state).toMatchObject({
+        response: null,
+        refreshComparison: null,
+        running: false,
+      });
+      if (outcome === "success") held.resolve(filingsResponse(4));
+      else
+        held.reject(
+          new ManagedSecCooldownError(
+            new Date(Date.now() + 60_000).toISOString(),
+          ),
+        );
+      await pending;
+      expect(workspace.filings.getSnapshot()).toBe(state);
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(
+        filingsResponse(1, "available", state.selection!),
+      );
+      await workspace.filings.load();
+      expect(api.recentFilings).toHaveBeenCalledTimes(4);
+      expect(
+        workspace.filings.getSnapshot().response?.issuer.filings,
+      ).toHaveLength(1);
+      expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["clear", "inner-close", "open"] as const)(
+    "rechecks a removed target during %s publication",
+    async (boundary) => {
+      const { workspace, api } = await companyFixture();
+      const visit = workspace.getSnapshot().research!;
+      const member = target(workspace);
+      const published: (ManagedResearchVisit | null)[] = [];
+      const stopPublications = workspace.subscribe(() =>
+        published.push(workspace.getSnapshot().research),
+      );
+      let emptyPublications = 0;
+      let changed = false;
+      const unsubscribe = workspace.annual.subscribe(() => {
+        const selection = workspace.annual.getSnapshot().selection;
+        if (!selection) emptyPublications++;
+        if (
+          !changed &&
+          ((boundary === "clear" && emptyPublications === 1) ||
+            (boundary === "inner-close" && emptyPublications === 2) ||
+            (boundary === "open" &&
+              selection?.listing.listingId === member.listingId))
+        ) {
+          changed = true;
+          workspace.remove(member.listingId);
+        }
+      });
+      workspace.openResearchCompany(visit, member);
+      unsubscribe();
+      stopPublications();
+      expect(changed).toBe(true);
+      expect(workspace.getSnapshot().research).toBeNull();
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(published).toEqual([null]);
+      expectNoSourceRead(api);
+    },
+  );
+
+  it.each(["clear", "inner-close", "open"] as const)(
+    "preserves a nested replacement visit during %s instead of stale cleanup",
+    async (boundary) => {
+      const { workspace, api } = await companyFixture();
+      const visit = workspace.getSnapshot().research!;
+      const member = target(workspace);
+      const replacement =
+        workspace.coordinator.getSnapshot().draft!.memberships[2]!;
+      let emptyPublications = 0;
+      let changed = false;
+      const unsubscribe = workspace.annual.subscribe(() => {
+        const selection = workspace.annual.getSnapshot().selection;
+        if (!selection) emptyPublications++;
+        if (
+          !changed &&
+          ((boundary === "clear" && emptyPublications === 1) ||
+            (boundary === "inner-close" && emptyPublications === 2) ||
+            (boundary === "open" &&
+              selection?.listing.listingId === member.listingId))
+        ) {
+          changed = true;
+          workspace.openWatchlistEod(replacement);
+        }
+      });
+      workspace.openResearchCompany(visit, member);
+      unsubscribe();
+      expect(changed).toBe(true);
+      expect(workspace.getSnapshot().research).toMatchObject({
+        section: "eod",
+        selection: { listing: { listingId: replacement.listingId } },
+      });
+      expect(workspace.eod.getSnapshot().selection?.listing.listingId).toBe(
+        replacement.listingId,
+      );
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expectNoSourceRead(api);
+    },
+  );
+
+  it("refuses a same-flag navigation publication during cancellation of a routed visit", async () => {
+    const { workspace, api } = await companyFixture();
+    workspace.setNavigationBlocked(true);
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: zero.listingId,
+      section: "annual",
+    });
+    const held = deferred<never>();
+    vi.mocked(api.annualReport).mockImplementationOnce((_request, signal) => {
+      signal.addEventListener(
+        "abort",
+        () => workspace.setNavigationBlocked(true),
+        { once: true },
+      );
+      return held.promise;
+    });
+    const pending = workspace.annual.load();
+    const visit = workspace.getSnapshot().research!;
+    const publication = vi.fn();
+    const stopPublications = workspace.subscribe(publication);
+    expect(workspace.canOpenResearchCompany(visit, target(workspace))).toBe(
+      true,
+    );
+    workspace.openResearchCompany(visit, target(workspace));
+    stopPublications();
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(publication).toHaveBeenCalledOnce();
+    expect(workspace.annual.getSnapshot().selection).toBeNull();
+    held.reject(new TrialApiError("unauthenticated"));
+    await pending;
+    expect(workspace.coordinator.getSnapshot().phase).toBe("idle");
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+});
 
 describe("managed workspace composition", () => {
   it("loads the agenda independently of catalog and watchlist work without changing a draft", async () => {

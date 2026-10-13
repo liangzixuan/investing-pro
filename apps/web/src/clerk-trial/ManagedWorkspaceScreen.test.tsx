@@ -2178,6 +2178,138 @@ describe("managed workspace screen", () => {
     },
   );
 
+  it.each(["annual", "eod", "filings"] as const)(
+    "opens watchlist companies in %s, keeps the first opener and saves all notes",
+    async (section) => {
+      const other = {
+        ...payload.memberships[0]!,
+        listingId: "listing-two",
+        securityId: "security-two",
+        shareClassId: "class-two",
+        shareClassName: "Class B",
+        symbol: "DEMB",
+        note: "Other class note",
+      };
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [...payload.memberships, other],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      mounted.direct = true;
+      const render = () => {
+        mounted.refIndex = 0;
+        return ManagedWorkspaceScreen({ workspace });
+      };
+      const origin = { isConnected: true, focus: vi.fn() };
+      const opener = editorElements(render()).find(
+        (node) =>
+          (node.props as { "aria-label"?: string })["aria-label"] ===
+          "Annual report for saved DEMO",
+      ) as React.ReactElement<{
+        onClick: (event: { currentTarget: unknown }) => void;
+      }>;
+      opener.props.onClick({ currentTarget: origin });
+      const company = () =>
+        elements(render()).find(
+          (node) => node.type === ManagedCompanyResearch,
+        ) as React.ReactElement<
+          React.ComponentProps<typeof ManagedCompanyResearch>
+        >;
+      company().props.onSection(section);
+      company().props.onNote("First complete note: Café 😀");
+      const before = company();
+      const second = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      expect(before.props.canOpenCompany(before.props.research, second)).toBe(
+        true,
+      );
+      before.props.onOpenCompany(before.props.research, second);
+      const after = company();
+      expect(after.props.research.section).toBe(section);
+      expect(after.props.research.selection.listing.listingId).toBe(
+        "listing-two",
+      );
+      expect(after.props.watchlist.member?.note).toBe("Other class note");
+      expect(mounted.refs[0]!.current).toBe(origin);
+      before.props.onOpenCompany(before.props.research, second);
+      before.props.onNote("Stale note must not write");
+      expect(workspace.getSnapshot().research).toBe(after.props.research);
+      after.props.onNote("Second complete note");
+      const latest = company();
+      const first = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      latest.props.onOpenCompany(latest.props.research, first);
+      expect(company().props.watchlist.member?.note).toBe(
+        "First complete note: Café 😀",
+      );
+      expect(company().props.research.section).toBe(section);
+      expect(mounted.refs[0]!.current).toBe(origin);
+      company().props.onBack();
+      commitReturnFocus(workspace);
+      expect(origin.focus).toHaveBeenCalledOnce();
+      expect(workspace.getSnapshot().research).toBeNull();
+      workspace.move("listing-two", -1);
+      const expected = workspace.coordinator.getSnapshot().draft!;
+      expect(expected.memberships.map((m) => [m.listingId, m.note])).toEqual([
+        ["listing-two", "Second complete note"],
+        ["listing-one", "First complete note: Café 😀"],
+      ]);
+      vi.mocked(api.save).mockResolvedValue({
+        version: 2,
+        payload: expected,
+        replayed: false,
+      });
+      await workspace.coordinator.save();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(expected);
+      expect(workspace.coordinator.getSnapshot().saved?.payload).toEqual(
+        expected,
+      );
+      for (const read of [
+        api.annualReport,
+        api.eodHistory,
+        api.recentFilings,
+        api.resolve,
+      ])
+        expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("lets the navigation owner refuse a company change without replacing the opener", async () => {
+    const { workspace } = fixture({
+      ...payload,
+      memberships: Object.values(annualComparisonMemberships),
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const members = workspace.coordinator.getSnapshot().draft!.memberships;
+    workspace.openWatchlistAnnual(members[0]!);
+    const visit = workspace.getSnapshot().research!;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => true,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const company = elements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    ).find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const original = { isConnected: true, focus: vi.fn() };
+    mounted.refs[0]!.current = original;
+    company.props.onOpenCompany(visit, members[1]!);
+    expect(navigation.open).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().research).toBe(visit);
+    expect(mounted.refs[0]!.current).toBe(original);
+  });
+
   it("adds from a captured discovery visit and fences old note and review controls", async () => {
     const { workspace, api, html } = fixture({ ...payload, memberships: [] });
     const listing = {
