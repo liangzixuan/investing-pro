@@ -100,7 +100,32 @@ company research retains the mounted comparison for the return journey.
 
 The comparison remains available while Save or recovery blocks new price reads.
 Comparison choices are session state; they are not saved in the watchlist.
-Broader comparison sets, ranking and charting are outside this slice.
+Broader comparison sets and ranking are outside this slice.
+
+### Inspect raw-price paths
+
+Open **Compare raw-price paths** to see both selected histories over the current
+shared Start/End interval. The optional chart indexes each raw close to 100 at
+Start and shows only dates observed in both histories. Its vertical scale follows
+the observed values; observation spacing does not represent elapsed calendar time.
+Straight segments guide the eye without filling gaps. Missing observations can
+hide declines, and raw prices are unadjusted for splits or dividends.
+
+The exact-data table keeps every source USD close and its four-decimal index,
+rounded half up using decimal arithmetic. Chart coordinates are approximate and
+never feed endpoint changes, ranking or note evidence. If an index exceeds the
+safe coordinate bound or a positive value rounds to zero, the chart explains why
+it is unavailable while the table remains readable. Long numeric strings stay
+whole within the keyboard-scrollable table.
+
+Opening the chart sends no requests or saves. It follows the current pair and
+interval, including qualified retained histories and replacement resets. Its
+disclosure and table focus region remain mounted when an interval becomes
+unavailable. Opening company research disposes the hidden chart; returning can
+restore it within the same mounted watchlist view. Top-level exit retires the pair
+and removes its data; the disclosure choice lasts while the view stays mounted.
+Unmounting or ending the session resets it. Original source coverage
+and request dates remain inspectable in the comparison's coverage disclosure.
 
 ### Keep a comparison in a research note
 

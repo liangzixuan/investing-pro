@@ -7,6 +7,15 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
+The next local increment adds an optional indexed raw-price path chart to the
+existing two-listing watchlist comparison. It uses only the currently loaded
+shared dates and selected interval, with exact source closes and rounded indices
+in an accessible table. It adds no source requests or saved state. Local checks,
+native payload accounting, independent review and browser acceptance are being
+completed in an isolated branch from `5b2715e`; the frozen release and separate
+timestamp refinement are unchanged. See the
+[watchlist guide](APPWRITE_WATCHLIST.md#inspect-raw-price-paths) for the scope.
+
 The active local design refinement makes the workspace footer compact. Software
 licenses follow the content in the same column. Session scope appears beside
 the existing sign-out review, whose draft warnings and behavior are unchanged.

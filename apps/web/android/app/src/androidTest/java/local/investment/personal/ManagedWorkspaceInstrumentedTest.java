@@ -977,15 +977,28 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelector(" + JSONObject.quote(end) + ").options).map(e => e.value).join('|') === '|2026-09-18|2026-09-19'");
         chooseNativeSelectOption(end, "2026-09-18", "2026-09-18");
         assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        click(".managed-watchlist-price-path > summary");
+        assertWatchlistPricePath();
         chooseNativeSelectOption(end, "", "Choose an observed date");
         awaitPage("blank end withholds comparison numbers without reading",
             "document.querySelector('.managed-watchlist-comparison table') === null" +
             " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-status')?.textContent === 'Choose an ending date after the starting date.'" +
             " && document.querySelector('.managed-watchlist-comparison-note-action > button')?.getAttribute('aria-disabled') === 'true'" +
             " && document.querySelector('.managed-watchlist-comparison [role=region]')?.tabIndex === -1");
+        awaitPage("blank end retains the open disclosure and exact-data host without stale canvas",
+            "document.querySelector('.managed-watchlist-price-path')?.open === true" +
+            " && document.querySelector('.managed-watchlist-price-path-canvas') === null" +
+            " && document.querySelector('.managed-watchlist-price-path-data')?.tabIndex === 0" +
+            " && document.querySelector('.managed-watchlist-price-path-data table') === null");
         assertWatchlistComparisonDraft(false);
         chooseNativeSelectOption(end, "2026-09-18", "2026-09-18");
         assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
+        assertWatchlistPricePath();
+        click(".managed-watchlist-price-path > summary");
+        awaitPage("closing the optional chart disposes its canvas without changing the exact data",
+            "document.querySelector('.managed-watchlist-price-path')?.open === false" +
+            " && document.querySelector('.managed-watchlist-price-path-canvas') === null" +
+            " && document.querySelectorAll('.managed-watchlist-price-path-data tbody tr').length === 2");
         click("[data-watchlist-selection='listing-zero']");
         click("button[aria-label='Move ZERO down']");
         typeIntoInput("managed-watchlist-search", "ONE");
@@ -1001,11 +1014,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " return sections.length === 2 && Array.from(sections).map(e => e.querySelector('h4')?.textContent).join('|') === 'ZERO · XNAS|ONE · XNAS'" +
             " && Array.from(sections).every(e => Array.from(e.querySelectorAll('dd')).map(d => d.textContent).join('|') === '2026-08-20 to 2026-09-20|2026-09-17 to 2026-09-19|3 / 0|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'); })()");
         click(".managed-watchlist-comparison .managed-price-comparison-source > summary");
-        retainAnnualNoteFrame("watchlistSharedPriceComparison", scope + " [role=region]",
-            scope + " .managed-price-comparison-status, " + scope + " [role=region]", 2);
+        retainAnnualNoteFrame("watchlistSharedPriceComparison", scope + " > .managed-price-comparison-scroll",
+            scope + " .managed-price-comparison-status, " + scope + " > .managed-price-comparison-scroll", 2);
         assertWatchlistPair("2026-09-18", "110", "95", "+$10 (+10.0000%)", "-$5 (-5.0000%)", 2);
         assertWatchlistComparisonDraft(true);
         appendWatchlistComparisonToOneNote();
+        click(".managed-watchlist-price-path > summary");
+        assertWatchlistPricePath();
         selectWorkspaceView("Discover");
         selectWorkspaceView("My Watchlist");
         awaitPage("top-level exit retires pair and loaded histories without automatic reads",
@@ -1013,6 +1028,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-watchlist-comparison table') === null" +
             " && document.querySelector('.managed-watchlist-comparison .managed-price-comparison-provenance') === null" +
             " && document.querySelector('#managed-watchlist-selected-price > strong')?.textContent === 'Price not loaded'");
+        awaitPage("retirement preserves the mounted disclosure but clears all chart data",
+            "document.querySelector('.managed-watchlist-price-path')?.open === true" +
+            " && document.querySelector('.managed-watchlist-price-path-canvas') === null" +
+            " && document.querySelector('.managed-watchlist-price-path-data table') === null");
         assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
         assertFixtureBoundary();
         assertRootHistory();
@@ -1023,7 +1042,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertWatchlistPair(String end, String zeroClose, String oneClose,
             String zeroChange, String oneChange, int count) throws Exception {
         awaitPage("exact shared watchlist comparison through " + end,
-            "(() => { const c = document.querySelector('.managed-watchlist-comparison'); const rows = c?.querySelectorAll('tbody tr');" +
+            "(() => { const c = document.querySelector('.managed-watchlist-comparison'); const rows = c?.querySelectorAll('.managed-price-comparison-scroll tbody tr');" +
             " if (!rows || rows.length !== 2) return false;" +
             " return c.querySelector('.managed-price-comparison-status')?.textContent === " +
                 JSONObject.quote("2026-09-17 to " + end + " · " + count + " shared observed dates in this interval · 3 across the loaded histories") +
@@ -1039,6 +1058,19 @@ public class ManagedWorkspaceInstrumentedTest {
             " && rows[0].querySelector('.managed-market-change > strong')?.textContent === " + JSONObject.quote("Raw close change: " + zeroChange) +
             " && rows[1].querySelector('.managed-market-change > strong')?.textContent === " + JSONObject.quote("Raw close change: " + oneChange) +
             " && Array.from(c.querySelectorAll('.managed-market-change-basis')).every(e => e.textContent.includes('2026-09-17 to ' + " + JSONObject.quote(end) + ")); })()");
+    }
+
+    private void assertWatchlistPricePath() throws Exception {
+        awaitPage("optional chart preserves both exact short-interval paths",
+            "(() => { const d = document.querySelector('.managed-watchlist-price-path'); const plot = d?.querySelector('[role=img]');" +
+            " const rows = d?.querySelectorAll('tbody tr'); return d?.open === true && d.querySelector('summary')?.getBoundingClientRect().height >= 44" +
+            " && plot?.getAttribute('aria-label') === 'ZERO Class A XNAS; ONE Class A XNAS: raw closes indexed to 100 on 2026-09-17, through 2026-09-18. 2 shared observations. Exact values follow the chart.'" +
+            " && plot.querySelector('canvas') !== null && rows.length === 2" +
+            " && Array.from(rows).map(r => r.cells[0].textContent).join('|') === '2026-09-17|2026-09-18'" +
+            " && Array.from(rows[0].querySelectorAll('td span')).map(e => e.textContent).join('|') === '100|100.0000|100|100.0000'" +
+            " && Array.from(rows[1].querySelectorAll('td span')).map(e => e.textContent).join('|') === '110|110.0000|95|95.0000'" +
+            " && d.querySelector('[role=region]')?.getAttribute('aria-label') === 'Watchlist price path exact data'" +
+            " && " + DIAGNOSTICS + ".eod === 2; })()");
     }
 
     private void assertWatchlistComparisonDraft(boolean reordered) throws Exception {

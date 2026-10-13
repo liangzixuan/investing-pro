@@ -10,6 +10,7 @@ import {
   type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { RawCloseChange } from "./RawCloseChange";
+import { ManagedWatchlistPricePath } from "./ManagedWatchlistPricePath";
 import {
   ManagedWatchlistComparisonNoteAction,
   type ManagedWatchlistComparisonNoteActions,
@@ -55,6 +56,7 @@ export function ManagedWatchlistComparison({
   }, [prices, active, captured]);
   return (
     <ManagedWatchlistComparisonView
+      active={active}
       memberships={memberships}
       prices={prices}
       projection={projection}
@@ -97,6 +99,7 @@ export function ManagedWatchlistComparison({
 }
 
 export function ManagedWatchlistComparisonView({
+  active = true,
   memberships,
   prices,
   projection,
@@ -104,6 +107,7 @@ export function ManagedWatchlistComparisonView({
   onDate,
   noteAction,
 }: Pick<Props, "memberships" | "prices"> & {
+  active?: boolean;
   noteAction?: ReactNode;
   projection: Projection;
   onPair: (side: Side, row: ManagedWatchlistPriceRow | null) => void;
@@ -178,6 +182,7 @@ export function ManagedWatchlistComparisonView({
         dates; completion is not a live market update.
       </p>
       {noteAction}
+      <ManagedWatchlistPricePath projection={projection} active={active} />
       <Coverage projection={projection} />
     </section>
   );

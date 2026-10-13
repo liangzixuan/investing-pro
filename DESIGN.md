@@ -123,6 +123,15 @@ on desktop and stack controls on narrow screens. Retain full identities and
 original source dates beside the results. Comparison controls use the same 44px
 targets and focus treatment as other research controls.
 
+Keep **Compare raw-price paths** closed by default. Use the selected shared
+interval and a clearly labelled Start = 100 axis with a scale fitted to the
+observed values. Distinguish both raw-price lines by marker and line style as well
+as color, and name the symbol, share class and exchange throughout. Use the managed
+surface/ink tokens for a confined tooltip. Keep the exact-data table and its
+focusable horizontal region available when plotting fails; numeric tokens remain
+whole while identity labels may wrap. Closing or hiding the view disposes the
+chart without changing draft, source or comparison state.
+
 Place the labelled **Add comparison to** native selector and quiet **Add
 comparison to note draft** action outside the results' horizontal scroll. Start
 with an empty destination and name both available listings by symbol, company,

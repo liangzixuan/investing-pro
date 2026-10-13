@@ -382,6 +382,55 @@
   padding: 24px 20px;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-price-path {
+  min-width: 0;
+  margin: 16px 0;
+  border-top: 1px solid var(--managed-line);
+  font-size: 13px;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path-canvas {
+  width: 100%;
+  min-width: 0;
+  height: 280px;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path-data {
+  min-width: 0;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path-data table {
+  width: 100%;
+  min-width: 480px;
+  table-layout: auto;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path-data :is(th, td) {
+  padding: 8px;
+  border-bottom: 1px solid var(--managed-line);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame
+  .managed-watchlist-price-path-data
+  tr
+  > :first-child {
+  width: 7rem;
+  text-align: left;
+}
+.clerk-trial.managed-frame .managed-watchlist-price-path :is(p, li, caption) {
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-price-path-data td {
+  white-space: nowrap;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-comparison-pair {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
