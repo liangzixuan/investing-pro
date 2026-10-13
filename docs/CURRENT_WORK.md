@@ -444,8 +444,10 @@ scoped checks pass. Independent source and static-bundle reviews pass. Chrome at
 keyboard scrolling, source disclosures and independent unavailable states.
 Retained refreshes, cancellation, late completion, navigation with an unsaved note
 and session retirement preserve the existing response boundaries. The native
-fixture retains complete notices and stays below its unchanged asset limit;
-original hosted execution remains pending. This candidate is not merged or delivered.
+fixture retains complete notices and stays below its unchanged asset limit.
+The original hosted Android run passes all 27 cases and independent artifact
+review. Ubuntu passes; Windows is still pending. This candidate is not merged or
+delivered.
 
 ### Liquidity comparison to note candidate
 
@@ -454,8 +456,18 @@ selector. It reuses each company's checked liquidity excerpt, retains complete
 listing identity and separate balance dates, and appends both companies' evidence
 to one chosen member's latest note. The existing whole-note limit, duplicate and
 freshness guards and explicit Save remain in place. No source, calculation or
-persistence change is planned. Implementation and focused acceptance are in
-progress; browser, native and hosted acceptance remain pending.
+persistence change is introduced.
+
+Focused formatter, workspace, UI and navigation checks, full web types, scoped
+lint/format and source boundaries pass. Independent source and static-bundle
+reviews pass. Chrome at 1440, 390 and 320 CSS pixels verifies the complete note,
+explicit Save/reload, unchanged other notes and order, whole-note and duplicate
+refusals, zero liabilities, independent evidence groups, historical and retained
+dates, cancelled and late reads, and session retirement. The integrated native
+fixture retains complete notices and fits the unchanged asset limit. Its bounded
+liquidity append/refusal assertions still require original hosted execution;
+native liquidity Save is outside those assertions. This candidate is not merged
+or delivered.
 
 ## Product scope
 
@@ -481,7 +493,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the liquidity comparison-to-note workflow and its acceptance. Preserve explicit source requests,
+Complete original hosted acceptance for the liquidity comparison-to-note candidate. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
