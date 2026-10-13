@@ -5,7 +5,7 @@ import type {
   PersonalSecAnnualLiquidityUnavailableReason,
   PersonalSecAnnualLiquidityValueDto,
 } from "@research-cockpit/contracts";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 
 const reasons: Record<PersonalSecAnnualLiquidityUnavailableReason, string> = {
   invalid_clock: "The original source times could not be validated.",
@@ -48,15 +48,27 @@ const reasons: Record<PersonalSecAnnualLiquidityUnavailableReason, string> = {
 export function SecAnnualLiquidity({
   response,
   liquidityAction,
+  headingTarget,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly liquidityAction?: ReactNode;
+  readonly headingTarget?: {
+    readonly id: string;
+    readonly ref: Ref<HTMLHeadingElement>;
+  };
 }) {
   const { liquidity, target } = response.evidence;
   const values = liquidity.resolution;
   return (
     <section className="sec-annual-liquidity" aria-label="Annual liquidity">
-      <h4>Liquidity at fiscal year-end</h4>
+      <h4
+        id={headingTarget?.id}
+        ref={headingTarget?.ref}
+        tabIndex={headingTarget ? -1 : undefined}
+        data-annual-report-target={headingTarget ? "liquidity" : undefined}
+      >
+        Liquidity at fiscal year-end
+      </h4>
       <p className="sec-quarterly-message">
         Exact, unscaled USD balances from the selected annual filing. Each
         reported amount is checked independently. Current ratio is a rounded

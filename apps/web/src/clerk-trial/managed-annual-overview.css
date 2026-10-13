@@ -7,6 +7,51 @@
 .managed-frame .managed-annual-summary {
   margin: 12px 0;
 }
+.managed-frame .managed-annual-report-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+  padding-block: 12px;
+  border-block: 1px solid var(--managed-line);
+}
+.managed-frame .managed-annual-report-navigation > p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-annual-report-navigation > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 7px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-annual-report-navigation > a:hover {
+  background: var(--managed-surface-raised);
+  border-color: var(--managed-field-border);
+}
+.managed-frame [data-annual-report-target] {
+  scroll-margin-block: 16px;
+}
+.clerk-trial.managed-frame [data-annual-report-target]:focus {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .managed-frame .managed-annual-report-navigation > a {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
 .managed-frame .managed-annual-trend {
   margin: 12px 0;
   min-width: 0;

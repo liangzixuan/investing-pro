@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment adds **Liquidity** to the Annual comparison's existing
+The current M2 increment adds **On this report** navigation to the managed Annual
+view. Users can jump to income, cash, liquidity and source details while keeping
+all evidence visible. It connects existing evidence and note actions without
+another source read, route change or financial field. See the
+[financial overview](MANAGED_SEC_ANNUAL.md#financial-overview).
+
+The preceding M2 increment adds **Liquidity** to the Annual comparison's existing
 note evidence selector. It connects both companies' checked balances, calculations
 and original source details to one chosen research-note draft, followed by explicit
 whole-watchlist Save. It reuses the company excerpt and preserves the full-note

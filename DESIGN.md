@@ -121,6 +121,15 @@ details and raw option values; a missing selected basis remains unavailable.
 
 ## Typography and financial evidence
 
+Place a compact **On this report** navigator after the loaded Annual summary.
+Use quiet links with 44px targets for Revenue and net income, Cash generation,
+Liquidity and Report source details. Wrap them into two columns on narrow
+screens. Keep every section and unavailable explanation in the document.
+An explicit jump moves focus to its section and scrolls immediately; show the
+focus outline at the destination. Source details opens the existing disclosure.
+Keep this navigator in the document flow, with no new sticky layer or automatic
+scrolling when data changes. It leaves company routes, history and notes intact.
+
 In company Filings, place Form and Filing date in two compact columns, stacked
 on narrow screens. Keep both native selects mounted with 44px targets. Show the
 Annual filing date and same-day exclusion beside the date control; preserve a

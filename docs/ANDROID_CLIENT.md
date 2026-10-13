@@ -270,6 +270,14 @@ and save counts. Scoped captures show the pair action and note controls; they do
 not claim to display the entire long note at once. This case requires its own
 successful emulator run before native acceptance.
 
+The report-navigation extension activates all four **On this report** links in
+that same Annual-note journey. It checks linked target identity, 44-pixel touch
+height, focus and visibility above the mobile navigation, unchanged URL/history,
+the complete note draft and source-read/save counts. The source link opens the
+existing disclosure; the test closes it before continuing the original note
+journey. Cases, captures and loader limits stay unchanged. Static checks do not
+establish emulator acceptance for this extension.
+
 The watchlist Annual comparison adds a separate invented two-company journey.
 It uses the actual company and revenue-basis controls, checks independent fiscal
 periods and filing details, and preserves the reordered note draft through

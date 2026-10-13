@@ -200,6 +200,13 @@ history or note action. Source, browser and native acceptance are recorded in
 
 ## Financial overview
 
+Once a managed Annual report is loaded, **On this report** links to Revenue and
+net income, Cash generation, Liquidity and Report source details. Each jump
+moves keyboard focus to the existing content. Report source details also opens
+its disclosure. All sections remain visible, including their unavailable states.
+These links read no sources, change no notes and add no browser-history entries.
+Replacing or retaining a report does not automatically move focus or scroll.
+
 The managed Annual view leads with reported financial results. Each eligible
 revenue basis has a table of exact USD revenue, net income and available net
 margin across up to three admitted periods, newest first. Dated reported changes

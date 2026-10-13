@@ -3242,6 +3242,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).slice(0,2).map(e => e.children.length).join(',') === '2,2'" +
             " && document.querySelector('.managed-annual-provenance')?.open === false");
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualReportNavigation();
         assertAnnualTrendPresentation();
         awaitPage("trend presentation preserves the exact report and draft", exactReport +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
@@ -3516,6 +3517,38 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_NOTE) +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
+    }
+
+    private void assertAnnualReportNavigation() throws Exception {
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        awaitPage("loaded report has four explicit destinations and initially closed source details",
+            "(() => { const nav = document.querySelector('nav[aria-label=\"On this report\"]');" +
+            " const links = [...(nav?.querySelectorAll('a') || [])];" +
+            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Cash generation|Liquidity|Report source details'" +
+            " && links.every(a => a.getBoundingClientRect().height >= 44 && document.getElementById(a.getAttribute('href').slice(1))?.getAttribute('data-annual-report-target') === a.getAttribute('data-annual-report-jump'))" +
+            " && document.querySelector('.managed-annual-provenance')?.open === false; })()");
+        for (String section : new String[] {"income", "cash", "liquidity", "sources"}) {
+            click("a[data-annual-report-jump='" + section + "']");
+            awaitPage("report jump focuses its visible destination without changing history or draft: " + section,
+                "(() => { const target = document.querySelector('[data-annual-report-target=\"" + section + "\"]');" +
+                " if (!target || document.activeElement !== target) return false;" +
+                " const r = target.getBoundingClientRect(); const v = visualViewport;" +
+                " const bottomNav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+                " const bottom = Math.min(v.offsetTop + v.height, bottomNav?.top > v.offsetTop ? bottomNav.top : Infinity);" +
+                " return r.top >= v.offsetTop && Math.min(r.bottom, r.top + 30) <= bottom" +
+                " && location.href === " + JSONObject.quote(originalLocation) +
+                " && String(history.length) === " + JSONObject.quote(originalHistoryLength) +
+                " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+                " && document.querySelector('.managed-annual-provenance').open === " + section.equals("sources") + "; })()");
+            assertAnnualNoteCounts(1, 0, 1);
+        }
+        click(".managed-annual-provenance > summary");
+        awaitPage("explicit close restores the source disclosure before the original note journey",
+            "document.querySelector('.managed-annual-provenance')?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualNoteCounts(1, 0, 1);
     }
 
     private void assertAnnualTrendPresentation() throws Exception {

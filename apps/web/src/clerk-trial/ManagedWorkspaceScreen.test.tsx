@@ -1731,6 +1731,7 @@ describe("managed workspace screen", () => {
       );
       await model.load("left", member);
       const response = model.getSnapshot().left.report.response!;
+      const draftBeforeVisit = workspace.coordinator.getSnapshot().draft;
       const navigation: ManagedCompanyNavigation = {
         hasCompanyRoute: () => pending,
         invalid: route === "invalid",
@@ -1766,6 +1767,18 @@ describe("managed workspace screen", () => {
           expect(workspace.annual.getSnapshot().checkingSeed).toBe(false),
         );
         expect(workspace.annual.getSnapshot().response).toEqual(response);
+        mounted.refIndex = 0;
+        const company = elements(
+          ManagedWorkspaceScreen({ workspace, navigation }),
+        ).find((node) => node.type === ManagedCompanyResearch)!;
+        mounted.direct = false;
+        try {
+          const report = renderToStaticMarkup(company);
+          expect(report).toContain('aria-label="On this report"');
+          expect(report).toContain(response.evidence.generation.completedAt);
+        } finally {
+          mounted.direct = true;
+        }
         workspace.closeResearch();
         const effectIndex = mounted.effects.length;
         mounted.refIndex = 0;
@@ -1791,6 +1804,7 @@ describe("managed workspace screen", () => {
       expect(api.save).not.toHaveBeenCalled();
       expect(api.eodHistory).not.toHaveBeenCalled();
       expect(api.resolve).not.toHaveBeenCalled();
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeVisit);
     },
   );
 
@@ -2201,6 +2215,7 @@ describe("managed workspace screen", () => {
     vi.mocked(api.annualReport).mockResolvedValue(report);
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
+    const draftBeforeSections = workspace.coordinator.getSnapshot().draft;
     mounted.direct = true;
     const render = () => {
       mounted.refIndex = 0;
@@ -2254,16 +2269,19 @@ describe("managed workspace screen", () => {
     expect(priceHtml).toContain(prices.completedAt);
     expect(priceHtml).toContain(prices.window.startDate);
     expect(priceHtml).not.toContain('class="managed-annual-report"');
+    expect(priceHtml).not.toContain('aria-label="On this report"');
     section("Price").onClick();
     expect(workspace.eod.getSnapshot()).toBe(priceState);
     section("Annual").onClick();
     expect(section("Annual")["aria-pressed"]).toBe(true);
     expect(section("Price")["aria-pressed"]).toBe(false);
     expect(html()).not.toContain('class="managed-eod-history"');
+    expect(html()).not.toContain('aria-label="On this report"');
     expect(api.annualReport).not.toHaveBeenCalled();
     await workspace.annual.load();
     const annualState = workspace.annual.getSnapshot();
     const annualHtml = html();
+    expect(annualHtml).toContain('aria-label="On this report"');
     expect(annualHtml).toContain(report.evidence.generation.completedAt);
     expect(annualHtml.match(/Back to workspace/gu)).toHaveLength(1);
     expect(annualHtml.match(/id="managed-company-heading"/gu)).toHaveLength(1);
@@ -2281,6 +2299,7 @@ describe("managed workspace screen", () => {
     expect(api.eodHistory).toHaveBeenCalledOnce();
     expect(api.annualReport).toHaveBeenCalledOnce();
     expect(api.save).not.toHaveBeenCalled();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeSections);
     expect(mounted.refs[0]!.current).toBe(origin);
     company().props.onBack();
     expect(workspace.getSnapshot().research).toBeNull();
@@ -2289,6 +2308,7 @@ describe("managed workspace screen", () => {
     expect(origin.focus).not.toHaveBeenCalled();
     commitReturnFocus(workspace);
     expect(origin.focus).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeSections);
   });
   it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
     const { workspace, api, html } = fixture();

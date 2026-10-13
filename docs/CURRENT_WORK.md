@@ -446,8 +446,8 @@ Retained refreshes, cancellation, late completion, navigation with an unsaved no
 and session retirement preserve the existing response boundaries. The native
 fixture retains complete notices and stays below its unchanged asset limit.
 The original hosted Android run passes all 27 cases and independent artifact
-review. Ubuntu passes; Windows is still pending. This candidate is not merged or
-delivered.
+review. All six applicable Actions and CodeScene pass. This candidate is not
+merged or delivered.
 
 ### Liquidity comparison to note candidate
 
@@ -468,6 +468,15 @@ fixture retains complete notices and fits the unchanged asset limit. Its bounded
 liquidity append/refusal assertions still require original hosted execution;
 native liquidity Save is outside those assertions. This candidate is not merged
 or delivered.
+
+### Annual report navigation candidate
+
+The next increment adds **On this report** links to income, cash, liquidity and
+report source details in the loaded managed Annual view. Explicit activation
+moves focus to the existing section and opens the source disclosure when chosen.
+All evidence, warnings and unavailable explanations remain in place. Navigation
+makes no data request, changes no note and adds no browser-history entry. The
+implementation and source, browser and native acceptance are in progress.
 
 ## Product scope
 
@@ -493,7 +502,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the liquidity comparison-to-note candidate. Preserve explicit source requests,
+Complete the Annual report navigation increment and its acceptance while the
+liquidity comparison-to-note candidate finishes original hosted checks. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

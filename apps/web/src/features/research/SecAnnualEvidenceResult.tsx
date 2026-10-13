@@ -6,7 +6,8 @@ import type {
   PersonalSecAnnualPairDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
-import type { ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
+import { ManagedAnnualReportNavigation } from "./ManagedAnnualReportNavigation";
 import { ManagedAnnualTrend } from "./ManagedAnnualTrend";
 import {
   SecAnnualFinancials,
@@ -97,47 +98,12 @@ export function SecAnnualEvidenceResult({
 }) {
   if (appearance === "financial")
     return (
-      <div className="sec-quarterly-comparison managed-annual-overview">
-        <AnnualOverviewSummary
-          response={response}
-          targetMessage={
-            response.evidence.target.status === "unresolved"
-              ? reason(response.evidence.target.reason)
-              : null
-          }
-          completenessMessage={incomeCompletenessMessage(response.evidence)}
-        />
-        <ManagedAnnualTrend response={response} />
-        <div
-          className="managed-annual-financial-region"
-          role="region"
-          aria-label="Annual financial results"
-          tabIndex={0}
-        >
-          <AnnualBases
-            response={response}
-            renderPairAction={renderPairAction}
-            financial
-          />
-        </div>
-        <SecAnnualCashGeneration response={response} cashAction={cashAction} />
-        <SecAnnualLiquidity
-          response={response}
-          liquidityAction={liquidityAction}
-        />
-        <details className="managed-annual-provenance">
-          <summary>Source and validation details</summary>
-          <p className="sec-quarterly-message">
-            Observed SEC annual revenue, net income, net margin and cash
-            generation, plus liquidity balances and calculations. Revenue
-            concepts stay separate. This view covers the observed report in
-            current submissions; it does not provide complete filing history or
-            prices.
-          </p>
-          <AnnualBasisSources bases={response.evidence.resolution.bases} />
-          <SecAnnualSourceDetails response={response} />
-        </details>
-      </div>
+      <ManagedAnnualFinancialResult
+        response={response}
+        renderPairAction={renderPairAction}
+        cashAction={cashAction}
+        liquidityAction={liquidityAction}
+      />
     );
   return (
     <div className="sec-quarterly-comparison">
@@ -145,6 +111,93 @@ export function SecAnnualEvidenceResult({
       <AnnualBases response={response} renderPairAction={renderPairAction} />
       <SecAnnualCashGeneration response={response} />
       <AnnualEvidenceSources response={response} />
+    </div>
+  );
+}
+
+function ManagedAnnualFinancialResult({
+  response,
+  renderPairAction,
+  cashAction,
+  liquidityAction,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly renderPairAction:
+    ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
+  readonly cashAction: ReactNode;
+  readonly liquidityAction: ReactNode;
+}) {
+  const id = useId();
+  const income = useRef<HTMLDivElement>(null);
+  const cash = useRef<HTMLHeadingElement>(null);
+  const liquidity = useRef<HTMLHeadingElement>(null);
+  const sources = useRef<HTMLElement>(null);
+  const sourceDetails = useRef<HTMLDetailsElement>(null);
+  const targets = {
+    income: { id: `${id}-income`, ref: income },
+    cash: { id: `${id}-cash`, ref: cash },
+    liquidity: { id: `${id}-liquidity`, ref: liquidity },
+    sources: { id: `${id}-sources`, ref: sources },
+  };
+  return (
+    <div className="sec-quarterly-comparison managed-annual-overview">
+      <AnnualOverviewSummary
+        response={response}
+        targetMessage={
+          response.evidence.target.status === "unresolved"
+            ? reason(response.evidence.target.reason)
+            : null
+        }
+        completenessMessage={incomeCompletenessMessage(response.evidence)}
+      />
+      <ManagedAnnualReportNavigation
+        response={response}
+        targets={targets}
+        sourceDetails={sourceDetails}
+      />
+      <ManagedAnnualTrend response={response} />
+      <div
+        className="managed-annual-financial-region"
+        role="region"
+        aria-label="Annual financial results"
+        tabIndex={0}
+        id={targets.income.id}
+        ref={income}
+        data-annual-report-target="income"
+      >
+        <AnnualBases
+          response={response}
+          renderPairAction={renderPairAction}
+          financial
+        />
+      </div>
+      <SecAnnualCashGeneration
+        response={response}
+        cashAction={cashAction}
+        headingTarget={targets.cash}
+      />
+      <SecAnnualLiquidity
+        response={response}
+        liquidityAction={liquidityAction}
+        headingTarget={targets.liquidity}
+      />
+      <details className="managed-annual-provenance" ref={sourceDetails}>
+        <summary
+          id={targets.sources.id}
+          ref={sources}
+          data-annual-report-target="sources"
+        >
+          Source and validation details
+        </summary>
+        <p className="sec-quarterly-message">
+          Observed SEC annual revenue, net income, net margin and cash
+          generation, plus liquidity balances and calculations. Revenue concepts
+          stay separate. This view covers the observed report in current
+          submissions; it does not provide complete filing history or prices.
+        </p>
+        <AnnualBasisSources bases={response.evidence.resolution.bases} />
+        <SecAnnualSourceDetails response={response} />
+      </details>
     </div>
   );
 }
