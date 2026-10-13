@@ -40,6 +40,7 @@ function snapshots(annualResponse = response) {
   const filings: ManagedCompanyFilingsState = {
     selection: filingsSelection,
     response: checked,
+    responseOrigin: "request",
     lastCheck: checked,
     showingPrevious: false,
     running: false,

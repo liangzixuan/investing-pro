@@ -1864,7 +1864,33 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-toolbar .trial-actions > button')?.textContent === 'Load filings'");
         assertFilingsDraftAndCounts(0, 0, 0);
         assertCompanyHistory("listing-zero", "filings", false);
-        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        pressBack();
+        assertClosedDraft(true);
+        assertReturnedRootHistory("listing-zero", "filings");
+        String selectedFilings = ".managed-watchlist-filings";
+        String viewFilings = selectedFilings + " button[aria-label^='View filings for ZERO (']";
+        awaitPage("selected filing check starts unloaded without a source read",
+            "document.querySelector('[data-watchlist-filings-load]')?.textContent === 'Load filings'" +
+            " && document.querySelector('[data-watchlist-filings-load]')?.disabled === false" +
+            " && document.querySelector('.managed-watchlist-filings-summary') === null");
+        assertFilingsDraftAndCounts(0, 0, 0);
+        click("[data-watchlist-filings-load]");
+        String selectedPacket = "document.querySelector('.managed-watchlist-filings-summary')?.textContent.includes('26 loaded filings')" +
+            " && document.querySelector('.managed-watchlist-filings-summary')?.textContent.includes('2026-06-23 to 2026-09-20')" +
+            " && document.querySelector('.managed-watchlist-filings-summary a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-watchlist-filings-summary a')?.textContent.includes('Form 10-Q')" +
+            " && document.querySelector('.managed-watchlist-filings-summary time')?.textContent === '2026-09-19'" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:01.000Z')" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:02.000Z')";
+        awaitPage("selected filing read shows exact original dates and coverage", selectedPacket);
+        assertFilingsDraftAndCounts(1, 0, 0);
+        click(viewFilings);
+        awaitPage("View filings hands off the same packet without another read",
+            "document.activeElement?.id === 'managed-filings-heading'" +
+            " && document.querySelector('.managed-filings-status')?.textContent.includes('loaded watchlist filings')");
+        assertCompanyHistory("listing-zero", "filings", false);
+        assertFilingsDraftAndCounts(1, 0, 0);
         String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 of 26 loaded filings')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('CIK 0000000001')" +
@@ -1977,7 +2003,9 @@ public class ManagedWorkspaceInstrumentedTest {
             assertFalse("Filings Back requires the native keyboard to be hidden", imeVisible);
         });
         pressBack();
-        assertClosedDraft(true);
+        assertClosedDraft(false);
+        awaitPage("Back restores the selected filing opener and its unchanged original packet", selectedPacket +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(viewFilings) + ")");
         assertFilingsDraftAndCounts(5, 2, 1);
         click("#settle-cancelled-filings");
         awaitPage("late filings cannot recreate a closed visit", "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-filings-results') === null");

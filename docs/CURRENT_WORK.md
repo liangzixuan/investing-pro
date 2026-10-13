@@ -508,6 +508,24 @@ The focused tests cover missing openers, moved focus and stale lifetime guards;
 those timing cases are not claimed as browser observations. Complete notices and
 the native asset limit pass. The original hosted run is still required.
 
+### Selected watchlist filings candidate
+
+The next increment adds an explicit Recent filings check for the selected
+watchlist listing. Its compact summary retains the newest observed row, loaded
+count, source dates and coverage limits. View filings opens a separately checked
+copy in the existing company Filings view without another read. Back preserves
+the selected packet and draft; company Refresh changes only its visit. The
+existing reference-to-note action and whole-draft Save complete the workflow.
+
+One temporary packet belongs to the selected listing. Changing that identity,
+leaving the watchlist, catalog invalidation and session retirement clear it.
+Pending and late responses retain their existing cancellation rules. This uses
+the existing source and shared SEC budget, without monitoring, expanded coverage
+or persistent storage. Focused model, component and workspace checks, web types,
+scoped lint, source boundaries and independent source review pass. The native
+journey now covers selected Load, View and Back before its existing note Save.
+Browser verification, exact native artifacts and hosted execution remain required.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

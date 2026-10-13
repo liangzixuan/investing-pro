@@ -13,6 +13,11 @@ import {
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
+import type {
+  ManagedWatchlistFilings as FilingsModel,
+  ManagedWatchlistFilingsCapture,
+} from "./managed-watchlist-filings";
 import type { ManagedWatchlistComparisonNoteActions } from "./ManagedWatchlistComparisonNoteAction";
 import {
   ManagedWatchlistPriceReadout,
@@ -35,6 +40,12 @@ export interface ManagedWatchlistEditorProps {
   editable: boolean;
   active: boolean;
   prices: ManagedWatchlistPricesState;
+  filings: FilingsModel;
+  onSelectedMember: (member: WatchlistMembership | null) => void;
+  onViewFilings: (
+    capture: ManagedWatchlistFilingsCapture,
+    opener: HTMLButtonElement,
+  ) => void;
   comparisonNoteActions: ManagedWatchlistComparisonNoteActions;
   onLoadPrice: (handle: ManagedWatchlistPriceHandle) => void;
   canOpenAnnual: (member: WatchlistMembership) => boolean;
@@ -416,6 +427,12 @@ function WatchlistDetail({
         identityReady={props.canOpenEod(selected)}
         onLoad={props.onLoadPrice}
       />
+      <ManagedWatchlistFilings
+        selected={selected}
+        model={props.filings}
+        active={props.active}
+        onViewFilings={props.onViewFilings}
+      />
       <div className="trial-actions managed-watchlist-research-actions">
         <button
           type="button"
@@ -481,6 +498,10 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
     const currentId = selected?.listingId ?? null;
     if (selectedId !== currentId) setSelectedId(currentId);
   }, [selected?.listingId, selectedId]);
+
+  useLayoutEffect(() => {
+    props.onSelectedMember(selected ?? null);
+  }, [selected, props.onSelectedMember]);
 
   useImperativeHandle(
     ref,

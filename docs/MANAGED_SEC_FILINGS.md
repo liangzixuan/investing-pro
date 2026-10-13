@@ -10,7 +10,35 @@ their separate listing identities while sharing Alphabet's CIK. Catalog identity
 determines the issuer; a ticker alone cannot select another issuer or expand
 coverage. [Current work](CURRENT_WORK.md) records verification and release status.
 
-## Read the result
+## Check a selected watchlist company
+
+The selected listing in My Watchlist has a **Recent filings** check. Selecting a
+listing makes no request. **Load filings**, **Refresh filings** and **Cancel
+filings** use the same source, coverage and shared SEC budget as company research.
+The summary shows the newest observed row, its exact form, filing date and index
+link, and the number of retained rows in the original request window. It does not
+claim to show the latest filing overall or assess investment significance.
+
+**Filings source and coverage** keeps the original request and source times,
+truncation and unloaded older-history limits. An empty admitted result stays
+distinct from an unavailable source. Pending refreshes, Cancel and recoverable
+failures retain the earlier packet and its dates; an invalid replacement clears it.
+
+**View filings** opens the existing company Filings view with a separately checked
+copy of this packet, without another request. Its filters and reference-to-note
+action work as usual. Company Refresh affects that visit's copy. Back preserves
+the selected watchlist packet, note and order, and restores the original control.
+Viewing retained evidence remains possible during a save conflict; source reads
+and note writes keep their existing restrictions.
+
+Only one selected-listing packet is retained in memory. Selecting another listing,
+removing or changing that identity, leaving My Watchlist for another workspace
+view, catalog invalidation or session retirement clears it. Company visits suspend
+pending work while preserving the selected packet for Back. Note edits, ordering
+and an explicit Save keep the same identity's packet. No batch read, automatic
+refresh, persistent cache or broader issuer coverage is added.
+
+## Read the company result
 
 Filings appear newest first by filed date, with accession order resolving dates
 that tie. Each row shows the original form, filed date, available report date and

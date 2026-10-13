@@ -8,6 +8,8 @@ import {
 } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
+import { ManagedWatchlistFilings as FilingsModel } from "./managed-watchlist-filings";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 
@@ -76,6 +78,7 @@ function elements(
     node,
     ...(typeof node.type === "function" &&
     node.type !== ManagedNoteEditor &&
+    node.type !== ManagedWatchlistFilings &&
     node.type !== ManagedWatchlistComparison
       ? elements(
           (node.type as (props: Record<string, unknown>) => React.ReactNode)(
@@ -118,6 +121,9 @@ function fixture() {
     ],
     editable: true,
     active: true,
+    filings: new FilingsModel(vi.fn(), vi.fn()),
+    onSelectedMember: vi.fn(),
+    onViewFilings: vi.fn(),
     comparisonNoteActions: {
       getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
       append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
@@ -250,6 +256,61 @@ function fixture() {
 }
 
 describe("ManagedWatchlistEditor", () => {
+  it("publishes only committed selected detail and forwards its filings owner without loading or changing notes", () => {
+    const f = fixture();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[0],
+    );
+    const calls = vi.mocked(f.props.onSelectedMember).mock.calls.length;
+    f.click("Edit research note for BETA, Class A, XNAS");
+    const output = f.render();
+    expect(vi.mocked(f.props.onSelectedMember).mock.calls).toHaveLength(calls);
+    const filings = output.find(
+      (entry) => entry.type === ManagedWatchlistFilings,
+    )!;
+    expect(filings.props).toMatchObject({
+      selected: f.props.memberships[1],
+      model: f.props.filings,
+      active: true,
+      onViewFilings: f.props.onViewFilings,
+    });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[1],
+    );
+    expect(f.props.onNote).not.toHaveBeenCalled();
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+    expect(f.focus).not.toHaveBeenCalled();
+  });
+
+  it("keeps filings bound to the selected editor outside search and notifies replacement, removal and empty selection", () => {
+    const f = fixture();
+    const output = f.search("BETA");
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistFilings)?.props
+        .selected,
+    ).toBe(f.props.memberships[0]);
+    f.commit();
+    const replacement = {
+      ...f.props.memberships[0]!,
+      shareClassName: "Class C",
+    };
+    f.render({ memberships: [replacement, f.props.memberships[1]!] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(replacement);
+    f.render({ memberships: [f.props.memberships[1]!] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[1],
+    );
+    f.render({ memberships: [] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(null);
+    expect(f.props.onNote).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+  });
+
   it("keeps the full comparison cohort available through search and edit locks", () => {
     const f = fixture();
     const filtered = f.search("BETA");

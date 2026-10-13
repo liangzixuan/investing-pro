@@ -5864,3 +5864,189 @@ describe("loaded Annual comparison report visits", () => {
     },
   );
 });
+
+describe("selected watchlist filings handoff", () => {
+  async function selectedFixture() {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(result), note: "Selected thesis Café 😀" },
+        { ...listingMembership(second), note: "Other class thesis" },
+      ],
+    });
+    await ready(setup.workspace);
+    const { workspace, api } = setup;
+    workspace.setView("watchlist");
+    workspace.selectWatchlistFilingsMember(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    const model = workspace.watchlistFilings;
+    const member = model.getSnapshot().selected!;
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    const selection = model.getSnapshot().filings.selection!;
+    vi.mocked(api.recentFilings).mockResolvedValue(
+      filingsResponse(2, "available", selection),
+    );
+    await model.load(member);
+    const response = model.getSnapshot().filings.response!;
+    return { ...setup, model, member, response, capture: { member, response } };
+  }
+
+  it("opens the checked packet without another read, appends to the latest note and saves the complete draft only explicitly", async () => {
+    const { workspace, api, model, capture, saved } = await selectedFixture();
+    workspace.note(result.listingId, "Latest thesis Café 😀");
+    workspace.move(result.listingId, 1);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    workspace.openWatchlistFilings(capture);
+    expect(workspace.getSnapshot().research?.section).toBe("filings");
+    const selection = workspace.getSnapshot().research!.selection;
+    const response = workspace.filings.getSnapshot().response!;
+    expect(response).toEqual(capture.response);
+    expect(response).not.toBe(capture.response);
+    expect(workspace.filings.getSnapshot().responseOrigin).toBe("watchlist");
+    expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(model.getSnapshot().active).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    const row = response.issuer.filings[0]!;
+    const excerpt = filingReferenceNoteExcerpt(response, row, false)!;
+    expect(
+      workspace.appendFilingReferenceToResearchNote(selection, response, row)
+        .appended,
+    ).toBe(true);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual({
+      ...before,
+      memberships: [
+        before.memberships[0],
+        { ...before.memberships[1], note: "Latest thesis Café 😀 " + excerpt },
+      ],
+    });
+    expect(
+      workspace.appendFilingReferenceToResearchNote(selection, response, row)
+        .appended,
+    ).toBe(false);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    workspace.closeResearch();
+    expect(model.getSnapshot().filings.response).toBe(capture.response);
+    expect(model.getSnapshot().selected).toBe(capture.member);
+    await workspace.coordinator.save();
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(saved().payload);
+    expect(saved().payload.memberships[1]!.note).toBe(
+      "Latest thesis Café 😀 " + excerpt,
+    );
+    expect(model.getSnapshot().filings.response).toBe(capture.response);
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("keeps company refresh independent and clears the selected packet on a top-level departure", async () => {
+    const { workspace, api, model, capture } = await selectedFixture();
+    workspace.openWatchlistFilings(capture);
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(0, "available", selection),
+    );
+    await workspace.filings.load();
+    expect(
+      workspace.filings.getSnapshot().response!.issuer.filings,
+    ).toHaveLength(0);
+    expect(workspace.filings.getSnapshot().responseOrigin).toBe("request");
+    workspace.closeResearch();
+    expect(model.getSnapshot().filings.response).toBe(capture.response);
+    workspace.setView("markets");
+    expect(model.getSnapshot().filings.response).toBeNull();
+    workspace.setView("watchlist");
+    workspace.selectWatchlistFilingsMember(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    expect(model.getSnapshot().filings.response).toBeNull();
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+  });
+
+  it("permits viewing retained evidence during a save conflict while source reads and note writes stay blocked", async () => {
+    const { workspace, api, model, capture } = await selectedFixture();
+    workspace.note(result.listingId, "Conflicted draft");
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(model.getSnapshot().canRead).toBe(false);
+    await model.load(capture.member);
+    workspace.openWatchlistFilings(capture);
+    const selection = workspace.getSnapshot().research!.selection;
+    expect(workspace.filings.getSnapshot().response).toEqual(capture.response);
+    workspace.noteResearch(selection, "Must not replace draft");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    "selection",
+    "removed",
+    "identity",
+    "navigation",
+    "view",
+    "retired",
+  ] as const)("refuses a stale opener after %s", async (boundary) => {
+    const { workspace, api, model, capture } = await selectedFixture();
+    if (boundary === "selection")
+      workspace.selectWatchlistFilingsMember(
+        workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+      );
+    if (boundary === "removed") workspace.remove(result.listingId);
+    if (boundary === "identity") {
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      workspace.coordinator.replaceDraft({
+        ...draft,
+        memberships: draft.memberships.map((m) =>
+          m.listingId === result.listingId
+            ? { ...m, shareClassId: "new-class" }
+            : m,
+        ),
+      });
+    }
+    if (boundary === "navigation") workspace.setNavigationBlocked(true);
+    if (boundary === "view") workspace.setView("markets");
+    if (boundary === "retired") workspace.coordinator.retire();
+    const draft = workspace.coordinator.getSnapshot().draft;
+    workspace.openWatchlistFilings(capture);
+    expect(workspace.getSnapshot().research).toBeNull();
+    expect(workspace.filings.getSnapshot().selection).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(model.canAdmitFilings(capture)).toBe(false);
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+  });
+
+  it.each(["new visit", "retire", "remove"] as const)(
+    "does not publish an older handoff when company model notification triggers %s",
+    async (boundary) => {
+      const { workspace, api, capture } = await selectedFixture();
+      let ran = false;
+      const stop = workspace.filings.subscribe(() => {
+        if (ran || !workspace.filings.getSnapshot().selection) return;
+        ran = true;
+        if (boundary === "new visit")
+          workspace.openWatchlistAnnual(
+            workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+          );
+        if (boundary === "retire") workspace.coordinator.retire();
+        if (boundary === "remove") workspace.remove(result.listingId);
+      });
+      workspace.openWatchlistFilings(capture);
+      stop();
+      expect(ran).toBe(true);
+      expect(workspace.getSnapshot().research?.section ?? null).toBe(
+        boundary === "new visit" ? "annual" : null,
+      );
+      expect(workspace.filings.getSnapshot().selection).toBeNull();
+      if (boundary === "new visit")
+        expect(
+          workspace.getSnapshot().research!.selection.listing.listingId,
+        ).toBe(second.listingId);
+      expect(api.recentFilings).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+});

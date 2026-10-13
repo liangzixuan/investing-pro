@@ -37,6 +37,7 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import {
   annualComparisonMemberships,
@@ -356,7 +357,8 @@ function editorElements(node: React.ReactNode) {
       const rendered =
         typeof node.type === "function" &&
         node.type !== ManagedNoteEditor &&
-        node.type !== ManagedWatchlistComparison
+        node.type !== ManagedWatchlistComparison &&
+        node.type !== ManagedWatchlistFilings
           ? expand(
               (
                 node.type as (props: {
@@ -1992,6 +1994,90 @@ describe("managed workspace screen", () => {
       expect(api.eodHistory).not.toHaveBeenCalled();
       expect(api.resolve).not.toHaveBeenCalled();
       expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeVisit);
+    },
+  );
+
+  it.each([
+    "ready",
+    "invalid",
+    "pending",
+    "becomes-pending",
+    "navigation-refuses",
+  ] as const)(
+    "opens selected watchlist Filings through the navigation owner: %s",
+    async (route) => {
+      const { workspace, api } = fixture(payload);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const selected =
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      workspace.selectWatchlistFilingsMember(selected);
+      const model = workspace.watchlistFilings;
+      const member = model.getSnapshot().selected!;
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(
+        filingsResponse(2, "available", model.getSnapshot().filings.selection!),
+      );
+      await model.load(member);
+      const response = model.getSnapshot().filings.response!;
+      const draft = workspace.coordinator.getSnapshot().draft;
+      let pending = route === "pending";
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn<ManagedCompanyNavigation["open"]>((action) => {
+          if (route !== "navigation-refuses") action();
+        }),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const editor = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistEditor,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistEditor>
+      >;
+      expect(editor.props.filings).toBe(model);
+      const focus = vi.fn();
+      const opener = {
+        isConnected: true,
+        focus,
+      } as unknown as HTMLButtonElement;
+      if (route === "becomes-pending") pending = true;
+      editor.props.onViewFilings({ member, response }, opener);
+      if (route === "ready") {
+        expect(navigation.open).toHaveBeenCalledOnce();
+        expect(workspace.getSnapshot().research?.section).toBe("filings");
+        expect(workspace.filings.getSnapshot().response).toEqual(response);
+        expect(mounted.refs[0]!.current).toBe(opener);
+        workspace.closeResearch();
+        const effectIndex = mounted.effects.length;
+        mounted.refIndex = 0;
+        ManagedWorkspaceScreen({
+          workspace,
+          navigation: { ...navigation, returnFocus: 1 },
+        });
+        mounted.effects[effectIndex]!();
+        expect(focus).toHaveBeenCalledOnce();
+        expect(model.getSnapshot().selected).toBe(member);
+        expect(model.getSnapshot().filings.response).toBe(response);
+      } else {
+        expect(workspace.getSnapshot().research).toBeNull();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(navigation.open).toHaveBeenCalledTimes(
+          route === "navigation-refuses" ? 1 : 0,
+        );
+      }
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.recentFilings).toHaveBeenCalledOnce();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
     },
   );
 

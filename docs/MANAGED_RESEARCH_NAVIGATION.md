@@ -76,8 +76,8 @@ A request already admitted by the managed service may still finish there.
 
 Back, a different listing, a changed or refused catalog, session retirement, or
 an invalidated watchlist identity clears the whole visit. A new visit starts
-unloaded unless it explicitly reuses loaded Price history or an Annual comparison
-report as described below. A section-specific unavailable or unsupported result follows that
+unloaded unless it explicitly reuses loaded Price history, an Annual comparison
+report or the selected watchlist Filings packet. A section-specific unavailable or unsupported result follows that
 section's existing error policy and leaves unrelated validated evidence intact.
 Account or catalog invalidation applies to all three sections.
 
@@ -98,6 +98,13 @@ origin. Refreshing Price replaces only the company response. Back restores the
 unchanged board snapshot and chart choice. Rows without admitted history, direct
 links, reloads, Forward and Discover entry start unloaded. A watchlist Price
 opener likewise reuses that row's admitted history when available.
+
+The selected watchlist **View filings** action independently validates and copies
+its current packet into the company Filings section without a source request.
+The copy retains original dates and any previous-result qualification. Company
+Refresh leaves the watchlist packet unchanged; Back restores its selected control
+and draft. It does not supply an Annual baseline. See the
+[selected filing check](MANAGED_SEC_FILINGS.md#check-a-selected-watchlist-company).
 
 **Open full Annual report** on a loaded watchlist comparison column opens that
 exact report in the company visit without another source read. Its original
