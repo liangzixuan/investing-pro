@@ -695,8 +695,22 @@ The next presentation increment groups routine source details in an initially
 closed **Filings source and coverage** disclosure. The original date window,
 CIK, source link, Retrieved or Checked time and key coverage warnings remain
 visible. Filters, comparison evidence and note actions keep their behavior.
-Implementation and affected checks are in progress. Rendered and original hosted
-acceptance remain pending; production is unchanged.
+The default header is about 34 CSS pixels shorter at a 1440-pixel viewport and
+78 pixels shorter at 390 and 320 pixels, measured against the preceding layout
+with the same loaded response. Chrome accepts keyboard opening and closing,
+44-pixel targets, wrapping and visible warnings. Native open state persists
+through filtering, paging, retained requests and response replacement. Replacement
+updates the original metadata; failure and cancellation retain the previous dates.
+Empty and unavailable responses keep their distinct coverage wording.
+
+Affected component tests, full web types, lint, formatting, source boundaries and
+independent source and bundle review pass. Initial test typing errors and stale
+native test selectors were corrected without changing their expected dates.
+Two early screenshots captured stale frames; settled replacements support visual
+acceptance. The exact native fixture bundle preserves complete software notices
+and remains within its unchanged 4 MiB limit. The existing native journey now
+checks the disclosure; original hosted execution is still required. Production
+is unchanged.
 
 ## Product scope
 
@@ -722,8 +736,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish the newly observed Filings filter's original hosted checks and the source
-integration steps when permission arrives. Preserve explicit source requests,
+Finish the Filings filter and source header's original hosted checks and the
+source integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
