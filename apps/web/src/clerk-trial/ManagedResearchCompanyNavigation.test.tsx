@@ -149,6 +149,49 @@ describe("Company selection within research", () => {
     expect(h.onOpen).not.toHaveBeenCalled();
   });
 
+  it("keeps the current and staged choices through pending navigation without admitting blocked actions", () => {
+    const choices = [members.left, members.right];
+    const reason = "Wait for company navigation to finish.";
+    const h = harness({ state: { members: choices, reason } });
+    const pending = h.render();
+    expect(h.select(pending).props.value).toBe(members.left.listingId);
+    expect(h.select(pending).props["aria-disabled"]).toBe(true);
+    expect(h.button(pending).props["aria-disabled"]).toBe(true);
+    h.change(members.right.listingId, pending);
+    h.button(pending).props.onClick!();
+    expect(h.select().props.value).toBe(members.left.listingId);
+    expect(h.canOpen).not.toHaveBeenCalled();
+    expect(h.onOpen).not.toHaveBeenCalled();
+
+    h.render({ state: { members: choices, reason: "" } });
+    expect(h.select().props.value).toBe(members.left.listingId);
+    expect(h.select().props["aria-disabled"]).toBe(false);
+    h.change(members.right.listingId);
+    const staged = h.render();
+    expect(h.button(staged).props["aria-disabled"]).toBe(false);
+    const blocked = h.render({ state: { members: choices, reason } });
+    expect(h.select(blocked).props.value).toBe(members.right.listingId);
+    expect(h.button(blocked).props["aria-disabled"]).toBe(true);
+    h.change(members.left.listingId, staged);
+    h.change(members.left.listingId, blocked);
+    h.button(staged).props.onClick!();
+    h.button(blocked).props.onClick!();
+    expect(h.select().props.value).toBe(members.right.listingId);
+    expect(h.onOpen).not.toHaveBeenCalled();
+
+    h.render({ state: { members: choices, reason: "" } });
+    expect(h.select().props.value).toBe(members.right.listingId);
+    h.change(members.right.listingId, pending);
+    h.button(staged).props.onClick!();
+    h.button(blocked).props.onClick!();
+    expect(h.onOpen).not.toHaveBeenCalled();
+    h.button().props.onClick!();
+    expect(h.onOpen).toHaveBeenCalledExactlyOnceWith(
+      h.props.research,
+      members.right,
+    );
+  });
+
   it("changes only local choice until Open, which receives the exact visit and member", () => {
     const h = harness();
     const visit = h.props.research;

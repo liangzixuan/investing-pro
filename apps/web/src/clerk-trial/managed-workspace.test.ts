@@ -451,6 +451,50 @@ describe("explicit in-company watchlist navigation", () => {
     },
   );
 
+  it("keeps exact current choices while the initial company route is pending and blocks Open until ready", async () => {
+    const { workspace, api } = await companyFixture();
+    const visit = workspace.getSnapshot().research!;
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    const current = draft.memberships[0]!;
+    const other = target(workspace);
+    const annual = workspace.annual.getSnapshot();
+    const choices = workspace.getResearchCompanyNavigation(visit);
+    workspace.setNavigationBlocked(true);
+
+    const pending = workspace.getResearchCompanyNavigation(visit);
+    expect(pending.members).toBe(choices.members);
+    expect(pending.members).toBe(draft.memberships);
+    expect(pending.members[0]).toBe(current);
+    expect(pending.reason).toBe("Wait for company navigation to finish.");
+    expect(workspace.canOpenResearchCompany(visit, current)).toBe(false);
+    expect(workspace.canOpenResearchCompany(visit, other)).toBe(false);
+    const blocked = workspace.getSnapshot();
+    workspace.openResearchCompany(visit, other);
+    expect(workspace.getSnapshot()).toBe(blocked);
+    expect(workspace.annual.getSnapshot()).toBe(annual);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+
+    await workspace.setCompanyRoute({
+      kind: "company",
+      listingId: current.listingId,
+      section: "annual",
+    });
+    const readyVisit = workspace.getSnapshot().research!;
+    const readyChoices = workspace.getResearchCompanyNavigation(readyVisit);
+    expect(readyVisit.selection).toBe(visit.selection);
+    expect(readyChoices.members).toBe(pending.members);
+    expect(readyChoices.reason).toBe("");
+    expect(workspace.canOpenResearchCompany(readyVisit, current)).toBe(false);
+    expect(workspace.canOpenResearchCompany(readyVisit, other)).toBe(true);
+    const readyState = workspace.getSnapshot();
+    workspace.openResearchCompany(readyVisit, current);
+    expect(workspace.getSnapshot()).toBe(readyState);
+    expect(workspace.annual.getSnapshot()).toBe(annual);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expectNoSourceRead(api);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("admits the exact established company route despite its persistent navigation block", async () => {
     const { workspace, api } = await companyFixture("filings");
     workspace.setNavigationBlocked(true);

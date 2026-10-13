@@ -926,6 +926,8 @@ export class ManagedWorkspace {
       !this.canSwitchResearch(visit.selection)
     )
       return { members: [], reason: "Open a current company visit first." };
+    const choices = this.researchCompanyChoices(visit);
+    if (choices.reason) return choices;
     const route = this.state.companyRoute;
     if (
       this.navigationBlocked &&
@@ -933,8 +935,8 @@ export class ManagedWorkspace {
         route.listingId !== visit.selection.listing.listingId ||
         route.section !== visit.section)
     )
-      return { members: [], reason: "Wait for company navigation to finish." };
-    return this.researchCompanyChoices(visit);
+      return { ...choices, reason: "Wait for company navigation to finish." };
+    return choices;
   }
   private researchCompanyChoices(
     visit: ManagedResearchVisit,
@@ -962,8 +964,10 @@ export class ManagedWorkspace {
     visit: ManagedResearchVisit,
     member: WatchlistMembership,
   ) {
+    const choices = this.getResearchCompanyNavigation(visit);
     return (
-      this.getResearchCompanyNavigation(visit).members.includes(member) &&
+      !choices.reason &&
+      choices.members.includes(member) &&
       !membershipMatchesResult(member, visit.selection.listing)
     );
   }
