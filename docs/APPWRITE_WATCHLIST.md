@@ -195,6 +195,14 @@ Internal identifiers are excluded. The count shows matching listings and the ful
 draft total in the draft's existing order. An empty query shows all memberships.
 Use Discover to find and add a company that is not in the draft.
 
+A nonempty Research notes search shows a short passage from each matching note
+below its listing identity. The passage keeps the original text around the first
+match, with ellipses where content is omitted. It is limited to 180 Unicode code
+points and keeps combined characters intact; a longer match may itself be
+shortened. Whitespace wraps normally in the result. Select the listing to read or
+edit its complete note. The result's accessible description includes the passage
+alongside any price status, while its name keeps the exact listing identity.
+
 Typing or changing scope never changes the selected listing. If the selection
 falls outside the results, including after editing its note, its exact identity
 and editor remain visible with an explanation. **Show selected listing** and

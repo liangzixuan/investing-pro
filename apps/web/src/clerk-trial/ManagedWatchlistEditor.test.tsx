@@ -1,4 +1,5 @@
 import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import {
@@ -256,6 +257,130 @@ function fixture() {
 }
 
 describe("ManagedWatchlistEditor", () => {
+  it("describes each matching listing with its exact raw note context beside the unchanged price description", () => {
+    const f = fixture();
+    const memberships = [
+      member("one", "ALFA", "Company draft captured in research"),
+      member("two", "BETA", "  Captured\nIN research <b>raw</b>  "),
+      member("three", "HIDDEN", "Hidden complete note"),
+    ];
+    f.render({ memberships });
+    f.search("CAPTURED in research");
+    const output = f.scope("notes");
+    expect(choices(output)).toEqual(["one", "two"]);
+    for (const selected of memberships.slice(0, 2)) {
+      const choice = output.find(
+        (entry) =>
+          entry.props["data-watchlist-selection"] === selected.listingId,
+      )!;
+      const context = output.find(
+        (entry) =>
+          entry.props["data-watchlist-note-context"] === selected.listingId,
+      )!;
+      expect(choice.props["aria-label"]).toBe(
+        `Edit research note for ${selected.symbol}, Class A, XNAS`,
+      );
+      expect(choice.props["aria-describedby"]).toBe(
+        `managed-watchlist-price-${selected.listingId} managed-watchlist-note-context-${selected.listingId}`,
+      );
+      expect(context.props.id).toBe(
+        `managed-watchlist-note-context-${selected.listingId}`,
+      );
+      expect(textContent(context)).toBe(`Note: ${selected.note}`);
+      expect(context.props.dangerouslySetInnerHTML).toBeUndefined();
+    }
+    const raw = output.find(
+      (entry) => entry.props["data-watchlist-note-context"] === "two",
+    )!;
+    expect(renderToStaticMarkup(raw)).toContain("&lt;b&gt;raw&lt;/b&gt;");
+    expect(
+      output.some((entry) => textContent(entry) === "Note needs correction"),
+    ).toBe(true);
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(memberships[0]!.note);
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+      f.props.onViewFilings,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("omits note context and its description for empty queries, identity scope and retired membership bytes", () => {
+    const f = fixture();
+    f.scope("notes");
+    expect(
+      f
+        .search("Keep")
+        .some((entry) => entry.props["data-watchlist-note-context"]),
+    ).toBe(true);
+    for (const output of [
+      f.search(" \t "),
+      f.search(""),
+      f.scope("identity"),
+      f.search("ALFA"),
+      f.render({ memberships: [] }),
+    ]) {
+      expect(
+        output.some((entry) => entry.props["data-watchlist-note-context"]),
+      ).toBe(false);
+      for (const choice of output.filter(
+        (entry) => entry.props["data-watchlist-selection"],
+      ))
+        expect(choice.props["aria-describedby"]).toBe(
+          `managed-watchlist-price-${String(choice.props["data-watchlist-selection"])}`,
+        );
+    }
+  });
+
+  it("updates context from the current draft while keeping selection, field focus and complete raw note intent", () => {
+    const f = fixture();
+    f.scope("notes");
+    const before = f.search("Keep");
+    const note = before.find((entry) => entry.type === ManagedNoteEditor)!;
+    const page = { activeElement: f.field, body: {} };
+    vi.stubGlobal("document", page);
+    const raw = `Keep latest ${"exact 🧭 ".repeat(40)} ending`;
+    (note.props.onChange as (value: string) => void)(raw);
+    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith("one", raw);
+    const memberships = [
+      { ...f.props.memberships[0]!, note: raw },
+      f.props.memberships[1]!,
+    ];
+    const output = f.render({ memberships });
+    f.commit();
+    const context = output.find(
+      (entry) => entry.props["data-watchlist-note-context"] === "one",
+    )!;
+    expect(textContent(context)).toBe(
+      `Note: ${Array.from(raw).slice(0, 180).join("")}…`,
+    );
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(raw);
+    expect(output.find((entry) => entry.type === ManagedNoteEditor)?.key).toBe(
+      note.key,
+    );
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(memberships[1]).toBe(f.props.memberships[1]);
+    expect(page.activeElement).toBe(f.field);
+    expect(f.focus).not.toHaveBeenCalled();
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+  });
+
   it("publishes only committed selected detail and forwards its filings owner without loading or changing notes", () => {
     const f = fixture();
     expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
@@ -552,6 +677,9 @@ describe("ManagedWatchlistEditor", () => {
       note: changed,
     });
     expect(choices(output)).toEqual([]);
+    expect(
+      output.some((entry) => entry.props["data-watchlist-note-context"]),
+    ).toBe(false);
     expect(
       textContent(
         output.find(

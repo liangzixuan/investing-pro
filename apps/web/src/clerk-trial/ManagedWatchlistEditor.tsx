@@ -14,6 +14,11 @@ import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
+import {
+  getWatchlistNoteContext,
+  normalizeWatchlistSearch as normalizeSearch,
+  type WatchlistNoteContext,
+} from "./managed-watchlist-note-context";
 import type {
   ManagedWatchlistFilings as FilingsModel,
   ManagedWatchlistFilingsCapture,
@@ -67,9 +72,6 @@ type FocusRequest = (
 ) & { origin: Element | null };
 
 type WatchlistSearchScope = "identity" | "notes";
-
-const normalizeSearch = (value: string) =>
-  value.toLowerCase().trim().replace(/\s+/gu, " ");
 
 function matchingMemberships(
   memberships: readonly WatchlistMembership[],
@@ -178,13 +180,16 @@ function WatchlistChoice({
   selected,
   onSelect,
   price,
+  noteContext,
 }: {
   member: WatchlistMembership;
   selected: boolean;
   onSelect: () => void;
   price: ManagedWatchlistPriceRow | undefined;
+  noteContext: WatchlistNoteContext | null;
 }) {
   const priceId = `managed-watchlist-price-${member.listingId}`;
+  const contextId = `managed-watchlist-note-context-${member.listingId}`;
   return (
     <li>
       <button
@@ -194,7 +199,7 @@ function WatchlistChoice({
         aria-label={`Edit research note for ${member.symbol}, ${member.shareClassName}, ${member.exchangeMic}`}
         aria-pressed={selected}
         aria-controls="managed-watchlist-selected-note"
-        aria-describedby={priceId}
+        aria-describedby={noteContext ? `${priceId} ${contextId}` : priceId}
         onClick={onSelect}
       >
         <strong>{member.symbol}</strong>
@@ -204,6 +209,17 @@ function WatchlistChoice({
           {member.instrumentType === "adr" ? "ADR" : "Common stock"}
         </small>
         <ManagedWatchlistPriceReadout row={price} id={priceId} />
+        {noteContext && (
+          <span
+            id={contextId}
+            className="managed-watchlist-note-preview"
+            data-watchlist-note-context={member.listingId}
+          >
+            Note: {noteContext.omittedBefore ? "…" : ""}
+            {noteContext.text}
+            {noteContext.omittedAfter ? "…" : ""}
+          </span>
+        )}
         {normalizeWatchlistNote(member.note) === null && (
           <span className="managed-watchlist-invalid">
             Note needs correction
@@ -304,6 +320,11 @@ function WatchlistChoices({
             selected={selectedId === member.listingId}
             onSelect={() => onSelect(member.listingId)}
             price={watchlistPriceRow(prices, member)}
+            noteContext={
+              scope === "notes"
+                ? getWatchlistNoteContext(member.note, query)
+                : null
+            }
           />
         ))}
       </ol>

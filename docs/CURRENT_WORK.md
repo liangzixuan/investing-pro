@@ -533,6 +533,32 @@ The exact native fixture build remains below the unchanged asset limit with
 complete notices. Its journey now covers selected Load, View and Back before the
 existing note Save; execution remains required in the original hosted run.
 
+### Matching note passages candidate
+
+Research notes search now shows a short original passage around the first match
+in each result. Ellipses indicate omitted text. The bounded passage keeps combined
+Unicode characters intact and appears in the result's accessible description;
+the button name retains its exact listing identity. Blank and identity searches
+keep their existing rows. Matching, order, selected editor and complete-note Save
+remain unchanged, with no new request or stored state.
+
+Focused helper and component checks, eight composed research/Back/Save cases and
+two recovery cases pass. Web and preview types, scoped lint/format and source
+boundaries pass, with independent source and exact-bundle review. Chrome at
+1440, 390 and 320 CSS pixels verifies original passages, keyboard selection,
+editing outside results, research return, complete-note Save/reload and saved
+version replacement. Narrow results scroll within their existing strip without
+page overflow; long words wrap, and all observed product controls retain 44px
+targets. Session retirement clears the notes and passages.
+
+The browser fixture used invented data. Its original Save expectation omitted
+the existing outer-trim normalization; the corrected comparison preserves the
+complete payload and records that failure. Exceptional Unicode cases and Keep
+my draft are established by focused tests, without a screen-reader claim.
+The exact native fixture build retains complete notices and fits the unchanged
+asset limit. The existing native note journey now checks the passage and
+accessible description; execution remains required in the original hosted run.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -557,7 +583,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish original hosted checks for the responsive return-focus fix. Preserve
+Finish matching-note context acceptance and the preceding filings candidate's
+original hosted checks. Preserve
 explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable

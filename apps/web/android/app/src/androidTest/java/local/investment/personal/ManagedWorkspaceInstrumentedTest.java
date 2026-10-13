@@ -3002,6 +3002,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === ''" +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE));
+        String noteContext = "[data-watchlist-note-context='listing-alfa']";
+        awaitPage("the result explains its match with the exact original note and accessible description",
+            "(() => { const preview = document.querySelector(" + JSONObject.quote(noteContext) + ");" +
+            " const choice = document.querySelector(\"[data-watchlist-selection='listing-alfa']\");" +
+            " return preview?.textContent === " + JSONObject.quote("Note: " + COMPANY_NOTE) +
+            " && choice?.getAttribute('aria-describedby')?.split(/\\s+/).includes(preview.id)" +
+            " && choice?.getAttribute('aria-label') === 'Edit research note for ALFA, Common Stock, XNAS'; })()");
         assertCompanyNoteCounts(0, 1);
         touchInput("managed-note-2");
         replaceFocusedInput("managed-note-2", COMPANY_NOTE, NOTE);
@@ -3016,6 +3023,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-watchlist-search')?.value === 'Captured in research'" +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
             " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0; })()");
+        awaitPage("editing out of the results removes the stale note context",
+            "document.querySelectorAll('[data-watchlist-note-context]').length === 0");
         assertCompanyNoteCounts(0, 1);
         replaceFocusedInput("managed-note-2", NOTE, COMPANY_NOTE);
         awaitPage("restoring the original note restores its match without moving focus",
@@ -3023,6 +3032,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'");
+        awaitPage("restored result shows the exact note context again",
+            "document.querySelector(" + JSONObject.quote(noteContext) + ")?.textContent === " + JSONObject.quote("Note: " + COMPANY_NOTE));
         awaitPage("filtered note search preserves the complete draft and unrelated notes",
             DRAFT + ".memberships.map(member => member.listingId + ':' + member.symbol).join('|') === 'listing-zero:ZERO|listing-one:ONE|listing-alfa:ALFA'" +
             " && " + DRAFT + ".memberships[0].note === ''" +
@@ -3037,6 +3048,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'" +
             " && document.activeElement === document.querySelector('#managed-watchlist-search')" +
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        awaitPage("clearing the phrase removes all search-only note excerpts",
+            "document.querySelectorAll('[data-watchlist-note-context]').length === 0");
         chooseNativeSelectOption("#managed-watchlist-search-scope", "identity", "Listing identity");
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);

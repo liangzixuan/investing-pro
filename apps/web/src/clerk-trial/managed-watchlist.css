@@ -122,6 +122,12 @@
   font-size: 0.8125rem;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-note-preview {
+  font-size: 0.8125rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-choice:hover {
   background: var(--managed-surface-raised, #22252b);
 }
