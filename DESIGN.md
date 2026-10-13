@@ -123,6 +123,11 @@ on desktop and stack controls on narrow screens. Retain full identities and
 original source dates beside the results. Comparison controls use the same 44px
 targets and focus treatment as other research controls.
 
+Keep each exact request-completion timestamp on one line in the watchlist
+comparison's listing cell. Let that table size its columns from their content
+inside the existing horizontal scroll region. Retain the complete source
+disclosure and wrapping for long exact numeric values.
+
 Place the labelled **Add comparison to** native selector and quiet **Add
 comparison to note draft** action outside the results' horizontal scroll. Start
 with an empty destination and name both available listings by symbol, company,

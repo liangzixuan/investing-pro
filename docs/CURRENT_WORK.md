@@ -7,6 +7,16 @@ preserves PR69 delivery, earlier live and physical acceptance, and original fail
 
 ## Accepted release
 
+A separate local styling refinement keeps watchlist comparison completion
+timestamps on one line. The table sizes its columns from their content inside
+the existing horizontal scroll region; all exact strings and source details
+remain available. Scoped formatting, independent source review and Chrome checks
+at 1440, 390 and 320 pixels pass. Standard and long exact prices stay contained;
+keyboard scrolling reaches the final column. Independent browser evidence review
+also passes. Hosted checks, integration and delivery remain open. This refinement
+is outside the current footer release candidate and has no state, request or
+persistence changes.
+
 The active local design refinement makes the workspace footer compact. Software
 licenses follow the content in the same column. Session scope appears beside
 the existing sign-out review, whose draft warnings and behavior are unchanged.
