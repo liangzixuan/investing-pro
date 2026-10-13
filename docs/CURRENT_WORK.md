@@ -506,7 +506,10 @@ comparison choices, original evidence dates and request counts are preserved.
 The initial 320-pixel keyboard attempt did not navigate; a subsequent click did.
 The focused tests cover missing openers, moved focus and stale lifetime guards;
 those timing cases are not claimed as browser observations. Complete notices and
-the native asset limit pass. The original hosted run is still required.
+the native asset limit pass. All five applicable original Actions passed,
+including the independently reviewed Android artifact and its unchanged 27-case
+suite. CodeScene's failed complexity advisory was reviewed without an actionable
+correctness finding. Production remains unchanged.
 
 ### Selected watchlist filings candidate
 
@@ -522,9 +525,13 @@ leaving the watchlist, catalog invalidation and session retirement clear it.
 Pending and late responses retain their existing cancellation rules. This uses
 the existing source and shared SEC budget, without monitoring, expanded coverage
 or persistent storage. Focused model, component and workspace checks, web types,
-scoped lint, source boundaries and independent source review pass. The native
-journey now covers selected Load, View and Back before its existing note Save.
-Browser verification, exact native artifacts and hosted execution remain required.
+scoped lint, source boundaries and independent source review pass. Chrome at
+1440, 390 and 320 CSS pixels accepts explicit loading, source dates, keyboard
+handoff and visible Back focus, full-note Save/reload, cancellation and late
+completion, retained failures, invalid/empty/truncated results and session cleanup.
+The exact native fixture build remains below the unchanged asset limit with
+complete notices. Its journey now covers selected Load, View and Back before the
+existing note Save; execution remains required in the original hosted run.
 
 ## Product scope
 
