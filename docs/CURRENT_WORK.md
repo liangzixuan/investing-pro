@@ -640,8 +640,25 @@ after several company changes. A staged choice makes no request or write, and
 opening the current company preserves its loaded results. See the
 [navigation guide](MANAGED_RESEARCH_NAVIGATION.md#choose-another-watchlist-company).
 
-Source implementation and affected checks are in progress. Browser, native and
-hosted acceptance remain pending. Production and prior candidates are unchanged.
+Affected model, component, screen and route checks pass, along with web types,
+lint, formatting and source boundaries. Independent source review passes. The
+first Chrome check found that transient route preparation left the current
+company unselected. The corrected model keeps valid choices visible while its
+pending reason still blocks opening. A regression fails before that correction
+and passes afterward; the first build and failed browser evidence remain saved.
+
+Chrome accepts the corrected commit `6bb2d205` at 1440, 390 and 320 CSS pixels.
+The selector keeps separate share classes and full wrapping identities. Explicit
+switches preserve the section and notes, start unloaded, and reject late work
+from the previous visit. One Back action restores the original watchlist opener.
+Reordering, saving and reloading preserves all three full identities and notes
+at version 8. Direct-link fallback, invalid links and retirement also pass.
+The preview uses invented RAM data; it makes no live provider or account claim.
+
+The exact native fixture bundle preserves complete software notices. Its largest
+loader payload is 2,348,539 bytes, below the unchanged 4 MiB limit. This is build
+acceptance; original hosted desktop and Android execution remain pending.
+Production and prior candidates are unchanged.
 
 ## Product scope
 
