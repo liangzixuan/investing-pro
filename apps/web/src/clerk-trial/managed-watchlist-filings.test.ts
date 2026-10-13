@@ -354,6 +354,27 @@ describe("one selected watchlist filings packet", () => {
     expect(model.getSnapshot().filings.response).toBe(response);
     expect(read).toHaveBeenCalledOnce();
   });
+  it("keeps a single selected packet after consecutive refreshes and in its admitted handoff", async () => {
+    const { model, member, read } = await loaded();
+    const first = model.getSnapshot().filings.response;
+    expect(model.getSnapshot().filings.refreshComparison).toBeNull();
+    read.mockResolvedValueOnce(filingsResponse(1));
+    await model.load(member);
+    const secondPacket = model.getSnapshot().filings.response!;
+    expect(secondPacket).not.toBe(first);
+    expect(model.getSnapshot().filings.refreshComparison).toBeNull();
+    read.mockResolvedValueOnce(filingsResponse(2));
+    await model.load(member);
+    const state = model.getSnapshot();
+    const response = state.filings.response!;
+    expect(state.filings.refreshComparison).toBeNull();
+    expect(state.filings.lastCheck).toBe(response);
+    expect(model.admitFilings({ member, response })?.seed).toEqual({
+      response,
+      showingPrevious: false,
+    });
+    expect(read).toHaveBeenCalledTimes(3);
+  });
   it("withdraws a pending source request when a running publication removes the member", async () => {
     const { model, read, choose } = fixture();
     const member = choose(0);

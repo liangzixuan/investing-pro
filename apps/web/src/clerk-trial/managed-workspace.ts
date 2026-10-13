@@ -256,6 +256,7 @@ export class ManagedWorkspace {
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
+      { compareRefresh: true },
     );
     this.filings.subscribe(() => {
       if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();

@@ -14,6 +14,10 @@ import {
 } from "./managed-api";
 
 import type { ManagedResearchSelection } from "./managed-research-selection";
+import {
+  compareManagedFilingsResponses,
+  type ManagedFilingsRefreshComparison,
+} from "./managed-filings-refresh-comparison";
 
 import {
   ManagedSecAccess,
@@ -26,6 +30,8 @@ export interface ManagedCompanyFilingsState {
   readonly response: ManagedSecFilingsResponseDto | null;
 
   readonly responseOrigin: "request" | "watchlist" | null;
+
+  readonly refreshComparison: ManagedFilingsRefreshComparison | null;
 
   readonly lastCheck: ManagedSecFilingsResponseDto | null;
 
@@ -89,6 +95,7 @@ const empty = (): ManagedCompanyFilingsState => ({
   selection: null,
   response: null,
   responseOrigin: null,
+  refreshComparison: null,
   lastCheck: null,
   showingPrevious: false,
   running: false,
@@ -154,13 +161,19 @@ export class ManagedCompanyFilings {
 
   private retired = false;
 
+  private readonly compareRefresh: boolean;
+
   constructor(
     private readonly read: ManagedApi["recentFilings"],
 
     private readonly readError: (error: TrialApiError) => void,
 
     private readonly access = new ManagedSecAccess(),
-  ) {}
+
+    options: { readonly compareRefresh?: boolean } = {},
+  ) {
+    this.compareRefresh = options.compareRefresh === true;
+  }
 
   getSnapshot = () => this.state;
 
@@ -258,6 +271,11 @@ export class ManagedCompanyFilings {
     this.update({
       response: previous ? this.state.response : checked,
       responseOrigin: previous ? this.state.responseOrigin : "request",
+      refreshComparison: previous
+        ? this.state.refreshComparison
+        : this.compareRefresh
+          ? compareManagedFilingsResponses(this.state.response, checked)
+          : null,
       lastCheck: checked,
       showingPrevious: previous,
       error: checked.issuer.status !== "available",
@@ -298,6 +316,7 @@ export class ManagedCompanyFilings {
     this.update({
       response: previous ? this.state.response : null,
       responseOrigin: previous ? this.state.responseOrigin : null,
+      refreshComparison: previous ? this.state.refreshComparison : null,
       lastCheck: previous ? this.state.lastCheck : null,
       showingPrevious: previous,
       error: true,

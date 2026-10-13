@@ -18,6 +18,51 @@
 .clerk-trial.managed-frame .managed-filings-results {
   min-width: 0;
 }
+.clerk-trial.managed-frame .managed-filings-refresh-comparison {
+  margin-block: 16px;
+  min-width: 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-refresh-count {
+  color: var(--managed-ink);
+}
+.clerk-trial.managed-frame .managed-filings-refresh-comparison summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--managed-action);
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists h4 {
+  margin-block: 8px;
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists dt {
+  color: var(--managed-muted);
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists dd {
+  margin: 0;
+}
+.clerk-trial.managed-frame .managed-filings-compared-lists a {
+  display: inline-block;
+  min-height: 44px;
+  padding-block: 12px;
+}
+.clerk-trial.managed-frame .managed-filings-new-observation {
+  margin: 4px 0 0;
+  color: var(--managed-muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
 .clerk-trial.managed-frame .managed-filings-filter {
   display: grid;
   align-content: start;
@@ -161,6 +206,9 @@
   cursor: default;
 }
 @media (max-width: 760px) {
+  .clerk-trial.managed-frame .managed-filings-compared-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .clerk-trial.managed-frame .managed-filings-filters {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;

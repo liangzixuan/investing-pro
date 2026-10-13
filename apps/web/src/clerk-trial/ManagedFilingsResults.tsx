@@ -7,6 +7,8 @@ import {
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
 import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
 import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
+import type { ManagedFilingsRefreshComparison } from "./managed-filings-refresh-comparison";
+import { ManagedFilingsRefreshComparisonDetails } from "./ManagedFilingsRefreshComparisonDetails";
 
 import {
   MANAGED_FILINGS_PAGE_SIZE,
@@ -23,12 +25,14 @@ export function ManagedFilingsResults({
   baseline = null,
   annualPrevious = false,
   annualFromComparison = false,
+  refreshComparison = null,
   noteActions,
 }: {
   response: ManagedSecFilingsResponseDto;
   baseline?: ManagedFilingsAnnualBaseline | null;
   annualPrevious?: boolean;
   annualFromComparison?: boolean;
+  refreshComparison?: ManagedFilingsRefreshComparison | null;
   noteActions?: ManagedFilingsNoteActions;
 }) {
   const [filter, setFilter] = useState(() =>
@@ -40,6 +44,10 @@ export function ManagedFilingsResults({
   const { page } = selection;
   const view = projectManagedFilingsFilter(selection);
   const available = response.issuer.status === "available";
+  const comparison =
+    available && refreshComparison?.current === response
+      ? refreshComparison
+      : null;
 
   return (
     <ManagedFilingsResultsRegion
@@ -47,6 +55,9 @@ export function ManagedFilingsResults({
       baselineResponse={baseline?.response ?? null}
     >
       <FilingsSource response={response} />
+      {comparison && (
+        <ManagedFilingsRefreshComparisonDetails comparison={comparison} />
+      )}
       <div className="managed-filings-filters">
         <div className="managed-filings-filter">
           <label htmlFor="managed-filings-form">Form</label>
@@ -125,6 +136,7 @@ export function ManagedFilingsResults({
             response={response}
             rows={view.rows}
             page={page}
+            newAccessions={comparison?.newAccessions ?? []}
             {...(noteActions ? { noteActions } : {})}
           />
         </>
@@ -163,11 +175,13 @@ function FilingsList({
   response,
   rows,
   page,
+  newAccessions,
   noteActions,
 }: {
   response: ManagedSecFilingsResponseDto;
   rows: ManagedSecFilingsResponseDto["issuer"]["filings"];
   page: number;
+  newAccessions: readonly string[];
   noteActions?: ManagedFilingsNoteActions;
 }) {
   return (
@@ -184,6 +198,14 @@ function FilingsList({
                 {filing.accessionNumber}
               </span>
             </a>
+            {newAccessions.includes(filing.accessionNumber) && (
+              <p
+                className="managed-filings-new-observation"
+                data-filings-new-accession={filing.accessionNumber}
+              >
+                Newly observed in this refresh
+              </p>
+            )}
           </div>
           <dl>
             <div>

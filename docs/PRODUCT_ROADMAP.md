@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current Markets increment adds a **Release date** selector to the loaded BEA
+The current M3 increment compares consecutive loaded company filing lists. After
+an explicit successful refresh, it marks accessions absent from the previous
+accepted list and keeps both original source records available. The comparison
+describes observations within those lists; it adds no monitoring, complete-history
+claim or automatic request. See the [comparison guide](MANAGED_SEC_FILINGS.md#compare-consecutive-loaded-lists).
+
+The preceding Markets increment adds a **Release date** selector to the loaded BEA
 agenda. It supports a daily view while retaining the full loaded-window count,
 Eastern dates and original source context. It adds no request, financial field,
 saved preference or source. See the [agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).

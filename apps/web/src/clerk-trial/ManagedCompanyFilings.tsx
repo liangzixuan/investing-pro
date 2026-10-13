@@ -110,6 +110,11 @@ export function ManagedCompanyFilings({
       {state.response && (
         <ManagedFilingsResults
           response={state.response}
+          refreshComparison={
+            state.refreshComparison?.current === state.response
+              ? state.refreshComparison
+              : null
+          }
           baseline={baseline}
           annualPrevious={annualState.showingPrevious}
           annualFromComparison={

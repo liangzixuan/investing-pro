@@ -580,8 +580,12 @@ page overflow. These checks use invented RAM data.
 
 The exact native fixture build preserves complete notices and fits the unchanged
 4 MiB loader limit. The existing Android agenda journey now checks date selection
-through failure, cancellation and navigation; execution remains required in the
-original hosted run. No live delivery is claimed.
+through failure, cancellation and navigation. PR120 passed its applicable desktop,
+parser and dependency checks. Its first Android attempt failed during SDK setup,
+before application execution. One targeted repeat at the same source passed all
+27 cases and the package gate. The original full log and artifact establish those
+results; the saved child-step status list remains incomplete. The first failure
+is retained. No live delivery is claimed.
 
 [PR119](https://github.com/liangzixuan/investing-pro/pull/119) separately integrates
 the candidates through PR118 against accepted main. Its normal local merge keeps
@@ -590,8 +594,41 @@ requires eight Actions checks. Original PR106's Windows custody timeout remains
 unresolved; PR107's database-verifier timeout is retained alongside PR108's
 bounded test partition repair. PR117's five original Actions and native review
 passed. PR118's five original Actions and native review also passed. Aggregate
-acceptance remains in progress. Annual schema 3.0.0
+acceptance passed all eight Actions jobs, including 27 Android cases and package
+isolation. Independent source and artifact review passed. CodeScene retains
+reviewed complexity advisories. The merge request awaits owner approval.
+Annual schema 3.0.0
 requires a separate coordinated API, website and Android delivery decision.
+
+### Company Filings refresh comparison candidate
+
+Company Filings now compares each successful refresh with the previous available
+loaded list. Current accessions absent from that list receive a quiet **Newly
+observed in this refresh** marker. The full-response count stays visible while
+filters or paging hide rows. **Compared loaded lists** preserves both original
+windows, source dates and incomplete-coverage limits. A first load or watchlist
+handoff establishes the baseline. Pending, cancelled and transient failed reads
+retain the pair; closing the visit clears it. The selected watchlist retains its
+own single packet. See the [comparison guide](MANAGED_SEC_FILINGS.md#compare-consecutive-loaded-lists).
+
+Affected model, helper, component and composed-workspace checks, web types and
+scoped lint pass. The composed check covers watchlist handoff, a current-row note
+reference, unchanged other notes and explicit whole-draft Save. The first common
+type check found a direct test fixture missing the new state field; the fixture
+now supplies its null baseline. No production change was needed.
+
+Chrome checks accept consecutive, equal and empty replacements, filtering,
+original source dates, retained failures, cancellation and late responses. They
+also cover section navigation, the unchanged watchlist packet on Back, complete
+note append and reordered whole-draft Save/reload, and session retirement.
+Desktop and 390/320-pixel layouts preserve visible keyboard focus, 44px controls
+and wrapping without page overflow. These checks use invented RAM records.
+Initial incomplete screenshots were retained and excluded; a fresh desktop
+capture after resetting the temporary viewport passed.
+
+The exact native fixture build preserves complete notices and fits the unchanged
+4 MiB loader limit. Added assertions in the existing Filings journey still need
+the original hosted Android run. Hosted and live acceptance remain separate.
 
 ## Product scope
 
@@ -617,8 +654,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish hosted agenda date checks and aggregate PR119 acceptance. Preserve
-explicit source requests,
+Finish the filing comparison's hosted checks and the source integration steps
+when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

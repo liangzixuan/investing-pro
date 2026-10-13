@@ -29,7 +29,9 @@ function deferred<T>() {
 function fixture(access = new ManagedSecAccess()) {
   const read = vi.fn<ManagedApi["recentFilings"]>();
   const readError = vi.fn();
-  const model = new ManagedCompanyFilings(read, readError, access);
+  const model = new ManagedCompanyFilings(read, readError, access, {
+    compareRefresh: true,
+  });
   model.open(filingsSelection);
   return { read, readError, model, access };
 }
@@ -489,5 +491,239 @@ describe("owned watchlist filings handoff", () => {
       showingPrevious: false,
     });
     expect(read).toHaveBeenCalledOnce();
+  });
+});
+
+describe("visit-owned successful refresh comparison", () => {
+  async function compared() {
+    const f = fixture();
+    f.read
+      .mockResolvedValueOnce(filingsResponse(1))
+      .mockResolvedValueOnce(filingsResponse(2));
+    await f.model.load();
+    const first = f.model.getSnapshot().response!;
+    expect(f.model.getSnapshot().refreshComparison).toBeNull();
+    await f.model.load();
+    const comparison = f.model.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(first);
+    expect(comparison.current).toBe(f.model.getSnapshot().response);
+    return { ...f, comparison };
+  }
+
+  it("advances exactly one successful packet at a time, including equal and empty replacements", async () => {
+    const { model, read, comparison } = await compared();
+    expect(comparison.newAccessions).toEqual(["0000000001-26-000002"]);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const next = model.getSnapshot().refreshComparison!;
+    expect(next.previous).toBe(comparison.current);
+    expect(next.newAccessions).toEqual(["0000000001-26-000003"]);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const equal = model.getSnapshot().refreshComparison!;
+    expect(equal.previous).toBe(next.current);
+    expect(equal.current).toEqual(next.current);
+    expect(equal.current).not.toBe(next.current);
+    expect(equal.newAccessions).toEqual([]);
+    read.mockResolvedValueOnce(filingsResponse(0));
+    await model.load();
+    const empty = model.getSnapshot().refreshComparison!;
+    expect(empty.previous).toBe(equal.current);
+    expect(empty.newAccessions).toEqual([]);
+    read.mockResolvedValueOnce(filingsResponse(1));
+    await model.load();
+    expect(model.getSnapshot().refreshComparison).toMatchObject({
+      previous: empty.current,
+      current: model.getSnapshot().response,
+      newAccessions: ["0000000001-26-000001"],
+    });
+    expect(read).toHaveBeenCalledTimes(6);
+  });
+
+  it.each([0, 2])(
+    "starts a seeded visit with one %i-row baseline and no read or carried pair",
+    async (count) => {
+      const { model, read } = await compared();
+      model.open(
+        { ...filingsSelection, origin: "watchlist", cik: null },
+        { response: filingsResponse(count), showingPrevious: true },
+      );
+      const seed = model.getSnapshot().response;
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      expect(model.getSnapshot().showingPrevious).toBe(true);
+      expect(read).toHaveBeenCalledTimes(2);
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison?.previous).toBe(seed);
+      expect(model.getSnapshot().refreshComparison?.newAccessions).toHaveLength(
+        3 - count,
+      );
+      model.close();
+      model.open(filingsSelection);
+      read.mockResolvedValueOnce(filingsResponse(1));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it.each(["rate_limited", "upstream_unavailable"] as const)(
+    "keeps the pair through checked %s without using lastCheck as the next baseline",
+    async (status) => {
+      const { model, read, comparison } = await compared();
+      const failed = filingsResponse(0, status);
+      read.mockResolvedValueOnce(failed);
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBe(comparison);
+      expect(model.getSnapshot().lastCheck).toEqual(failed);
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison?.previous).toBe(
+        comparison.current,
+      );
+      expect(model.getSnapshot().refreshComparison?.newAccessions).toEqual([
+        "0000000001-26-000003",
+      ]);
+    },
+  );
+
+  it.each([
+    new ManagedSecFilingsError("request_timeout"),
+    new ManagedSecFilingsError("unavailable"),
+    new TrialApiError("unavailable"),
+  ])("retains the exact pair after transient %s", async (error) => {
+    const { model, read, comparison } = await compared();
+    read.mockRejectedValueOnce(error);
+    await model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    expect(model.getSnapshot().response).toBe(comparison.current);
+    expect(model.getSnapshot().showingPrevious).toBe(true);
+  });
+
+  it("retains pending/Cancel and ignores a cancelled reply after another successful refresh", async () => {
+    const { model, read, comparison } = await compared();
+    const held = deferred<ManagedSecFilingsResponseDto>();
+    read.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(3);
+    model.cancel();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const accepted = model.getSnapshot().refreshComparison;
+    held.resolve(filingsResponse(0));
+    await pending;
+    expect(model.getSnapshot().refreshComparison).toBe(accepted);
+    expect(read.mock.calls[2]![1].aborted).toBe(true);
+  });
+
+  it("retains the pair through a checked cooldown and blocks a read until that deadline", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-10-12T00:00:00.000Z");
+    const { model, read, comparison } = await compared();
+    read.mockRejectedValueOnce(
+      new ManagedSecCooldownError("2026-10-12T00:02:00.000Z"),
+    );
+    await model.load();
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    vi.setSystemTime("2026-10-12T00:02:01.000Z");
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    expect(model.getSnapshot().refreshComparison?.previous).toBe(
+      comparison.current,
+    );
+  });
+
+  it.each(["not_covered", "invalid_response"] as const)(
+    "clears comparison on admitted %s and establishes a fresh next baseline",
+    async (status) => {
+      const { model, read } = await compared();
+      read.mockResolvedValueOnce(filingsResponse(0, status));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      expect(model.getSnapshot().response?.issuer.filings).toHaveLength(3);
+    },
+  );
+
+  it.each([
+    new TrialApiError("invalid_response"),
+    new ManagedCatalogChangedError(),
+    new ManagedSecFilingsError("not_configured"),
+    new ManagedSecCooldownError("invalid"),
+    new TrialApiError("access_denied"),
+  ])("clears the pair with unusable evidence on %s", async (error) => {
+    const { model, read } = await compared();
+    read.mockRejectedValueOnce(error);
+    await model.load();
+    expect(model.getSnapshot().response).toBeNull();
+    expect(model.getSnapshot().refreshComparison).toBeNull();
+  });
+
+  it.each(["catalog", "issuer", "share class"] as const)(
+    "does not retain a pair when a current packet changes %s",
+    async (field) => {
+      const { model, read } = await compared();
+      const response = filingsResponse();
+      read.mockResolvedValueOnce({
+        ...response,
+        ...(field === "catalog"
+          ? { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const }
+          : {
+              security: {
+                ...response.security,
+                ...(field === "issuer"
+                  ? { cik: "0000000002" }
+                  : { shareClassId: "other-class" }),
+              },
+            }),
+      });
+      await model.load();
+      expect(model.getSnapshot().response).toBeNull();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it.each(["close", "retire"] as const)(
+    "clears both packets on %s and rejects a late refresh",
+    async (method) => {
+      const { model, read } = await compared();
+      const held = deferred<ManagedSecFilingsResponseDto>();
+      read.mockReturnValueOnce(held.promise);
+      const pending = model.load();
+      model[method]();
+      held.resolve(filingsResponse(4));
+      await pending;
+      expect(model.getSnapshot().response).toBeNull();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it("cannot overwrite a new seeded visit during comparison publication", async () => {
+    const { model, read } = fixture();
+    read.mockResolvedValueOnce(filingsResponse(1));
+    await model.load();
+    const seed = filingsResponse(0);
+    model.subscribe(() => {
+      if (model.getSnapshot().refreshComparison)
+        model.open(
+          { ...filingsSelection, origin: "watchlist" },
+          { response: seed, showingPrevious: true },
+        );
+    });
+    read.mockResolvedValueOnce(filingsResponse(2));
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      response: seed,
+      responseOrigin: "watchlist",
+      refreshComparison: null,
+      showingPrevious: true,
+      running: false,
+    });
   });
 });

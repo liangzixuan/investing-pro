@@ -41,6 +41,7 @@ function snapshots(annualResponse = response) {
     selection: filingsSelection,
     response: checked,
     responseOrigin: "request",
+    refreshComparison: null,
     lastCheck: checked,
     showingPrevious: false,
     running: false,

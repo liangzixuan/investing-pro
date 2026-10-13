@@ -5945,6 +5945,8 @@ describe("selected watchlist filings handoff", () => {
   it("keeps company refresh independent and clears the selected packet on a top-level departure", async () => {
     const { workspace, api, model, capture } = await selectedFixture();
     workspace.openWatchlistFilings(capture);
+    const baseline = workspace.filings.getSnapshot().response;
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
     const selection = workspace.getSnapshot().research!.selection;
     vi.mocked(api.recentFilings).mockResolvedValueOnce(
       filingsResponse(0, "available", selection),
@@ -5954,7 +5956,13 @@ describe("selected watchlist filings handoff", () => {
       workspace.filings.getSnapshot().response!.issuer.filings,
     ).toHaveLength(0);
     expect(workspace.filings.getSnapshot().responseOrigin).toBe("request");
+    const comparison = workspace.filings.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(baseline);
+    expect(comparison.current).toBe(workspace.filings.getSnapshot().response);
+    expect(comparison.newAccessions).toEqual([]);
+    expect(model.getSnapshot().filings.refreshComparison).toBeNull();
     workspace.closeResearch();
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
     expect(model.getSnapshot().filings.response).toBe(capture.response);
     workspace.setView("markets");
     expect(model.getSnapshot().filings.response).toBeNull();
