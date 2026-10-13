@@ -15,6 +15,10 @@ const render = (wire: Awaited<ReturnType<typeof response>>) =>
   );
 const overview = (html: string) =>
   html.split('<details class="managed-annual-provenance">')[0]!;
+const incomeRegion = (html: string) =>
+  html
+    .split('<div class="managed-annual-financial-region"')[1]!
+    .split('<section class="sec-annual-cash"')[0]!;
 
 describe("managed annual financial overview", () => {
   it.each([
@@ -147,7 +151,10 @@ describe("managed annual financial overview", () => {
     expect(
       visible.match(/aria-label="Annual financial results"/gu),
     ).toHaveLength(1);
-    expect(visible.match(/tabindex="0"/gu)).toHaveLength(1);
+    expect(incomeRegion(visible).match(/tabindex="0"/gu)).toHaveLength(1);
+    expect(visible).toContain(
+      'aria-label="Annual liquidity results" tabindex="0"><table>',
+    );
     expect(
       visible.indexOf('aria-label="Annual revenue basis Revenues"'),
     ).toBeLessThan(
@@ -233,7 +240,7 @@ describe("managed annual financial overview", () => {
     expect(visible).not.toContain("Earlier reported annual comparison");
   });
 
-  it("keeps a complete-but-missing pair visible as unavailable and offers no action or table", async () => {
+  it("keeps a complete-but-missing pair visible as unavailable and offers no income action or table", async () => {
     const wire = await response([row()]);
     const action = vi.fn(() => <button>Add to note draft</button>);
     const visible = overview(
@@ -251,7 +258,10 @@ describe("managed annual financial overview", () => {
     expect(visible).toContain(
       'aria-label="Annual financial results" tabindex="0"',
     );
-    expect(visible).not.toContain("<table");
+    expect(incomeRegion(visible)).not.toContain("<table");
+    expect(visible).toContain(
+      'aria-label="Annual liquidity results" tabindex="0"><table>',
+    );
     expect(action).not.toHaveBeenCalled();
   });
 });

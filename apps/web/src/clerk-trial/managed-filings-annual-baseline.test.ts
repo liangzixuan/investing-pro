@@ -53,7 +53,7 @@ function snapshots(annualResponse = response) {
 describe("current Annual filing baseline", () => {
   it("joins distinct schemas and keeps the exact admitted response and target", () => {
     const { annual, filings } = snapshots();
-    expect(annual.response?.schemaVersion).toBe("2.0.0");
+    expect(annual.response?.schemaVersion).toBe("3.0.0");
     expect(filings.response?.schemaVersion).toBe("1.0.0");
     const baseline = getManagedFilingsAnnualBaseline(annual, filings);
     expect(baseline?.response).toBe(response);

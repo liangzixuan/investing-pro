@@ -280,9 +280,51 @@ unavailable and historical cash, and report/session lifetime. The action fits at
 The native fixture builds; hosted execution and delivery are recorded separately
 in current work.
 
-The Annual request/response schema and generation definition are `2.0.0`. The
-route and four request keys are unchanged. Version-1 Annual requests are rejected
-before provider or budget work; version-2 clients reject old responses. A later
+## Liquidity at fiscal year-end
+
+Company Annual shows independently reported **Current assets** and **Current
+liabilities**, followed by two labelled app calculations: **Working capital**
+and **Current ratio**. The amounts retain exact, unscaled USD; the ratio is a
+multiple rounded to two decimal places, half up. Working capital subtracts
+current liabilities from current assets. Current ratio divides the same inputs.
+
+Only `AssetsCurrent` and `LiabilitiesCurrent` USD observations are used. Both
+are instant balances: the source must supply no start date or duration, and its
+end date must equal the selected annual report date. FY filing focus and the
+exact unamended 10-K or 20-F accession must match current Submissions metadata.
+The filing-focus year need not equal the balance's calendar year. Annual-flow
+duration rules and calendar-quarter tolerances do not apply to these balances.
+
+Each reported amount can remain available without the other. Calculations require
+nonnegative operands from the same filing and date; current ratio also requires
+positive current liabilities. Negative reported operands remain visible with an
+explanation that the calculations are withheld. Working capital itself can be
+negative. Missing or conflicting values stay unavailable, with no fallback to a
+different concept, currency or filing. Current assets are not all cash.
+
+Liquidity reuses the existing explicit Submissions and Company Facts read. Its
+two bounded scans are independent of each other, income and cash. Each allows
+10,000 USD source candidates and 100 unique observations from the selected filing,
+counted before date filtering. Invalid rows or an exceeded bound withhold that
+metric without clipping. Source decimal strings allow 64 characters; exact
+working-capital and ratio outputs allow 128 and 129 characters respectively.
+The decoder recomputes every result, reference and qualification from the admitted
+observations. Existing request, source, response, cancellation and session bounds
+remain unchanged.
+
+The initially closed **Liquidity sources and calculation inputs** disclosure
+contains the original cutoff, capture and completion times, scan coverage, raw
+period fields, filing join, source pointers and calculation references. A rejected
+duration observation remains inspectable as supplied. The seven-day source
+freshness and 485-day report policies still apply; valid older balances remain
+readable with historical labels. The existing whole-response lifetime carries
+liquidity through refresh, cancellation, navigation and comparison-to-company
+handoff. This slice adds no note action, comparison columns, saved fields or
+liquidity history.
+
+The Annual request/response schema and generation definition are `3.0.0`. The
+route and four request keys are unchanged. Version-1 and version-2 Annual requests
+are rejected before provider or budget work; version-3 clients reject old responses. A later
 release must coordinate the API, website and Android client. During a mismatched
 rollout, Annual reads are unavailable until the matching client is installed or
 loaded. Saved watchlists and notes require no migration. Current work records

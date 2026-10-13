@@ -7,7 +7,7 @@ import {
 
 function request() {
   return {
-    schemaVersion: "2.0.0",
+    schemaVersion: "3.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "synthetic-listing-a",
     symbol: "ZERO.A",
@@ -32,6 +32,7 @@ describe("managed annual SEC request", () => {
     [],
     "request",
     { ...request(), schemaVersion: "1.0.0" },
+    { ...request(), schemaVersion: "2.0.0" },
     { ...request(), catalogSnapshotSha256: `sha256:${"A".repeat(64)}` },
     { ...request(), catalogSnapshotSha256: "a".repeat(64) },
     { ...request(), listingId: "ab" },

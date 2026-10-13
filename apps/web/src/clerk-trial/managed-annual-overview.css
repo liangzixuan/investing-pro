@@ -298,6 +298,89 @@
 .managed-frame .sec-annual-cash-values .discovery-warning {
   color: var(--managed-warning, #f3c477);
 }
+.managed-frame .sec-annual-liquidity {
+  min-width: 0;
+  border-top: 1px solid var(--managed-line);
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.managed-frame .sec-annual-liquidity h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.managed-frame .sec-annual-liquidity-results {
+  min-width: 0;
+  border-radius: 4px;
+}
+.managed-frame .sec-annual-liquidity-results:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .sec-annual-liquidity table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .sec-annual-liquidity caption {
+  padding: 0 0 12px;
+  text-align: left;
+  color: var(--managed-ink);
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity :is(th, td) {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--managed-line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity th {
+  font-weight: 500;
+}
+.managed-frame .sec-annual-liquidity th:first-child {
+  width: 43%;
+}
+.managed-frame .sec-annual-liquidity thead th:last-child {
+  text-align: right;
+}
+.managed-frame .sec-annual-liquidity thead th {
+  color: var(--managed-muted);
+  font-size: 12px;
+}
+.managed-frame .sec-annual-liquidity small {
+  display: block;
+  margin-top: 4px;
+  color: var(--managed-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.managed-frame .sec-annual-liquidity-amount {
+  display: block;
+  font-size: 20px;
+  text-align: right;
+}
+.managed-frame .sec-annual-liquidity :is(p, summary, li, dd) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .sec-annual-liquidity-unavailable,
+.managed-frame .sec-annual-liquidity-source {
+  color: var(--managed-muted);
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity-source summary,
+.managed-frame .sec-annual-liquidity-source a {
+  display: block;
+  min-height: 44px;
+  padding: 12px 0;
+}
+.managed-frame .sec-annual-liquidity-source summary {
+  display: list-item;
+}
+.managed-frame .sec-annual-liquidity .discovery-warning {
+  color: var(--managed-warning, #f3c477);
+}
 @media (max-width: 640px) {
   .managed-frame .sec-annual-cash-values {
     grid-template-columns: minmax(0, 1fr);

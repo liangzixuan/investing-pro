@@ -69,14 +69,16 @@ describe("selected-company observed annual SEC evidence route", () => {
     expect((await fixture.request("{ private-canary")).statusCode).toBe(400);
   });
 
-  it("rejects version 1 before calling the source", async () => {
-    const fixture = await setup();
-    expect(
-      (await fixture.request({ ...fixture.body, schemaVersion: "1.0.0" }))
-        .statusCode,
-    ).toBe(400);
-    expect(fixture.loadEvidence).not.toHaveBeenCalled();
-  });
+  it.each(["1.0.0", "2.0.0"])(
+    "rejects version %s before calling the source",
+    async (schemaVersion) => {
+      const fixture = await setup();
+      expect(
+        (await fixture.request({ ...fixture.body, schemaVersion })).statusCode,
+      ).toBe(400);
+      expect(fixture.loadEvidence).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     null,
@@ -364,6 +366,7 @@ function evidence(cik: string): PersonalSecAnnualEvidenceDto {
     },
     incomeScanStatus: "available",
     cashGeneration: emptyCashGeneration(),
+    liquidity: emptyLiquidity(),
     completeness: { status: "refused", reason: "target_unresolved" },
     coverage: {
       full: {
@@ -424,6 +427,26 @@ function emptyCashGeneration(): PersonalSecAnnualEvidenceDto["cashGeneration"] {
       operatingCashFlow: value,
       ppePurchases: value,
       operatingCashFlowLessPpePurchases: value,
+      utilityAge: null,
+    },
+  };
+}
+
+function emptyLiquidity(): PersonalSecAnnualEvidenceDto["liquidity"] {
+  const metric = emptyCashGeneration().operatingCashFlow;
+  const value = {
+    status: "unavailable" as const,
+    reason: "target_unresolved" as const,
+    observationIds: [],
+  };
+  return {
+    currentAssets: { scan: metric.scan, observations: [] },
+    currentLiabilities: { scan: metric.scan, observations: [] },
+    resolution: {
+      currentAssets: { ...value, unit: "USD" },
+      currentLiabilities: { ...value, unit: "USD" },
+      workingCapital: { ...value, unit: "USD" },
+      currentRatio: { ...value, unit: "multiple" },
       utilityAge: null,
     },
   };

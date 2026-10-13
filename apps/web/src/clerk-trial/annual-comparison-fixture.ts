@@ -1,3 +1,4 @@
+import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import {
   cashGeneration,
   cashRow,
@@ -109,10 +110,14 @@ export async function parseAnnualComparisonFixture(
         ...evidence,
         resolution: resolvePersonalSecAnnualEvidence(evidence),
         cashGeneration: await cashGeneration(evidence, cashRows),
+        liquidity: await liquidity(evidence, [
+          ...raw.evidence.liquidity.currentAssets.observations,
+          ...raw.evidence.liquidity.currentLiabilities.observations,
+        ]),
       },
     },
     {
-      schemaVersion: "2.0.0",
+      schemaVersion: "3.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,

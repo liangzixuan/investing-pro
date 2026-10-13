@@ -1,31 +1,82 @@
 import {
   PERSONAL_SEC_QUARTERLY_CONCEPTS,
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS,
-  PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
   PERSONAL_SEC_ANNUAL_CASH_LIMITS,
+  PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
+  PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS,
+  PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
   type PersonalSecQuarterlyObservationDto,
   type PersonalSecAnnualCashObservationDto,
   type PersonalSecAnnualCashMetric,
+  type PersonalSecAnnualLiquidityObservationDto,
+  type PersonalSecAnnualLiquidityMetric,
 } from "@research-cockpit/contracts";
 
 const limits = PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS;
+const concepts = [
+  ...PERSONAL_SEC_QUARTERLY_CONCEPTS,
+  ...PERSONAL_SEC_ANNUAL_CASH_CONCEPTS,
+  ...PERSONAL_SEC_ANNUAL_LIQUIDITY_CONCEPTS,
+] as const;
 const accessionPattern = /^[0-9]{10}-[0-9]{2}-[0-9]{6}$/u;
 const forbiddenText = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 type Observation =
-  PersonalSecQuarterlyObservationDto | PersonalSecAnnualCashObservationDto;
+  | PersonalSecQuarterlyObservationDto
+  | PersonalSecAnnualCashObservationDto
+  | PersonalSecAnnualLiquidityObservationDto;
+type ObservationFields = Omit<
+  PersonalSecQuarterlyObservationDto,
+  "metric" | "concept"
+> & {
+  readonly metric: unknown;
+  readonly concept: string;
+};
 
 export function incomeObservation(
   value: unknown,
   cik: string,
 ): value is PersonalSecQuarterlyObservationDto {
-  return observation(value, cik, false);
+  return (
+    observation(value, cik, limits.candidateRows) &&
+    member(["revenue", "net_income"], value.metric) &&
+    member(PERSONAL_SEC_QUARTERLY_CONCEPTS, value.concept) &&
+    (value.metric === "net_income") === (value.concept === "NetIncomeLoss")
+  );
 }
 export function cashObservation(
   value: unknown,
   cik: string,
   metric: PersonalSecAnnualCashMetric,
 ): value is PersonalSecAnnualCashObservationDto {
-  return observation(value, cik, true) && value.metric === metric;
+  return (
+    observation(
+      value,
+      cik,
+      PERSONAL_SEC_ANNUAL_CASH_LIMITS.candidateRowsPerMetric,
+    ) &&
+    value.metric === metric &&
+    value.concept ===
+      (metric === "operating_cash_flow"
+        ? "NetCashProvidedByUsedInOperatingActivities"
+        : "PaymentsToAcquirePropertyPlantAndEquipment")
+  );
+}
+
+export function liquidityObservation(
+  value: unknown,
+  cik: string,
+  metric: PersonalSecAnnualLiquidityMetric,
+): value is PersonalSecAnnualLiquidityObservationDto {
+  return (
+    observation(
+      value,
+      cik,
+      PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS.candidateRowsPerMetric,
+    ) &&
+    value.metric === metric &&
+    value.concept ===
+      (metric === "current_assets" ? "AssetsCurrent" : "LiabilitiesCurrent")
+  );
 }
 
 export async function hash(value: string): Promise<`sha256:${string}`> {
@@ -64,14 +115,8 @@ export function equal(left: unknown, right: unknown): boolean {
 function observation(
   value: unknown,
   cik: string,
-  cash: boolean,
-): value is Observation {
-  const concepts = cash
-    ? PERSONAL_SEC_ANNUAL_CASH_CONCEPTS
-    : PERSONAL_SEC_QUARTERLY_CONCEPTS;
-  const candidateLimit = cash
-    ? PERSONAL_SEC_ANNUAL_CASH_LIMITS.candidateRowsPerMetric
-    : limits.candidateRows;
+  candidateLimit: number,
+): value is ObservationFields {
   if (
     !keys(value, [
       "id",
@@ -94,19 +139,8 @@ function observation(
       "filing",
     ]) ||
     !matches(value.id, /^sec-fact:[a-f0-9]{64}$/u) ||
-    !member(
-      cash
-        ? ["operating_cash_flow", "ppe_purchases"]
-        : ["revenue", "net_income"],
-      value.metric,
-    ) ||
     value.taxonomy !== "us-gaap" ||
     !member(concepts, value.concept) ||
-    (cash
-      ? (value.metric === "operating_cash_flow") !==
-        (value.concept === "NetCashProvidedByUsedInOperatingActivities")
-      : (value.metric === "net_income") !==
-        (value.concept === "NetIncomeLoss")) ||
     value.unit !== "USD" ||
     !matches(value.value, /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$/u) ||
     value.value.length > limits.decimalCharacters ||

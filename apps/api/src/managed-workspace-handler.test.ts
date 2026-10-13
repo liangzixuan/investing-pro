@@ -1159,6 +1159,10 @@ describe("managed annual read-only POST boundary", () => {
     ).toBe(400);
     expect(f.load).not.toHaveBeenCalled();
     expect(
+      (await f.handler(f.post({ ...value, schemaVersion: "2.0.0" }))).status,
+    ).toBe(400);
+    expect(f.load).not.toHaveBeenCalled();
+    expect(
       (await f.handler(f.post({ ...value, cik: "0000320193" }))).status,
     ).toBe(400);
     expect(f.load).not.toHaveBeenCalled();

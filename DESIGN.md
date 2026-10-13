@@ -92,6 +92,14 @@ Place observation IDs, scan counts and source pointers in the initially closed
 cash-source disclosure with a 44px summary target. Keep cash availability
 independent of the income overview warning.
 
+Place Annual liquidity after cash in a two-column Measure/Value table. Show the
+two reported balances and two labelled app calculations with their exact balance
+dates, USD or multiple units and current-use qualifications. Keep thin row rules,
+tabular right-aligned numbers, a focusable results region and wrapping long
+decimals at narrow widths. Original instant source fields and calculation inputs
+belong in an initially closed disclosure with 44px summary and link targets.
+Explain missing and rejected values independently of income and cash.
+
 In the managed Annual overview, name revenue bases in plain language while
 keeping them distinct. Present genuinely missing bases as compact labelled rows
 below the financial tables. Rejected or withheld evidence keeps its explanation;

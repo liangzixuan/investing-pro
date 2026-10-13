@@ -1,5 +1,6 @@
 import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
+import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
@@ -118,13 +119,15 @@ export function SecAnnualEvidenceResult({
           />
         </div>
         <SecAnnualCashGeneration response={response} cashAction={cashAction} />
+        <SecAnnualLiquidity response={response} />
         <details className="managed-annual-provenance">
           <summary>Source and validation details</summary>
           <p className="sec-quarterly-message">
             Observed SEC annual revenue, net income, net margin and cash
-            generation in USD. Revenue concepts stay separate. This view covers
-            the observed report in current submissions; it does not provide
-            complete filing history or prices.
+            generation, plus liquidity balances and calculations. Revenue
+            concepts stay separate. This view covers the observed report in
+            current submissions; it does not provide complete filing history or
+            prices.
           </p>
           <AnnualBasisSources bases={response.evidence.resolution.bases} />
           <SecAnnualSourceDetails response={response} />
