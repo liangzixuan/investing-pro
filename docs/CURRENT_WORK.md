@@ -335,6 +335,16 @@ The independently reviewed native fixture bundle has a maximum loader payload of
 needs its original hosted execution. No source merge or delivery follows from
 these local checks.
 
+The prerequisite [test repair](https://github.com/liangzixuan/investing-pro/pull/108)
+separates the existing database rejection variants into named tests. Its original
+desktop and PostgreSQL checks pass. Android failed during setup while the Activity
+was stopped, before the selected-price journey began. The reviewed follow-up
+requires native foreground readiness within the existing ten-second setup wait;
+history, Back and screenshot assertions remain required. The original failure is
+retained; why the Activity stopped is unknown. Updated hosted execution remains pending.
+The handoff includes this repair; its application files are unchanged from the
+accepted local build and Chrome checks.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
