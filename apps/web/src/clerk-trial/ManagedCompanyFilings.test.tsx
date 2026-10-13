@@ -7,6 +7,14 @@ import { ManagedCompanyFilings as Model } from "./managed-company-filings";
 import type { ManagedApi } from "./managed-api";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
 import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
+import { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
+import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
+import {
+  getManagedFilingsAnnualBaseline,
+  type ManagedFilingsAnnualBaseline,
+} from "./managed-filings-annual-baseline";
+import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
+import { TrialApiError } from "./api";
 const hooks = vi.hoisted<{ state: unknown; direct: boolean }>(() => ({
   state: undefined,
   direct: false,
@@ -49,10 +57,12 @@ function elements(node: React.ReactNode): React.ReactElement<NodeProps>[] {
 function page(
   response = filingsResponse(),
   noteActions?: ManagedFilingsNoteActions,
+  baseline: ManagedFilingsAnnualBaseline | null = null,
 ) {
   hooks.direct = true;
   const node = ManagedFilingsResults({
     response,
+    baseline,
     ...(noteActions ? { noteActions } : {}),
   });
   hooks.direct = false;
@@ -61,6 +71,11 @@ function page(
     buttons: elements(node).filter((element) => element.type === "button"),
     select: elements(node).find((element) => element.type === "select")!,
     node,
+    dateScope: elements(node).find(
+      (element) => element.type === ManagedFilingsAnnualScope,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFilingsAnnualScope>
+    >,
   };
 }
 afterEach(() => {
@@ -121,7 +136,7 @@ describe("company SEC filings presentation", () => {
     expect(reset.select.key).toBe(shown.select.key);
     expect(reset.node.type).toBe(shown.node.type);
     expect(reset.html).toContain(
-      "Filings response changed; showing All forms from page one.",
+      "Filings response changed; showing All forms and All loaded filings from page one.",
     );
   });
 
@@ -139,7 +154,7 @@ describe("company SEC filings presentation", () => {
     expect(after.html).toContain("0 of 0 loaded filings · Page 1 of 1");
     expect(after.html).toContain("No matching filings were observed");
     expect(after.html).toContain(
-      "Filings response changed; showing All forms from page one.",
+      "Filings response changed; showing All forms and All loaded filings from page one.",
     );
     expect(after.select.props.value).toBe("");
     expect(after.select.props.disabled).toBeUndefined();
@@ -206,7 +221,7 @@ describe("company SEC filings presentation", () => {
     read.mockResolvedValueOnce(filingsResponse(0));
     await model.load();
     expect(page(model.getSnapshot().response!).html).toContain(
-      "Filings response changed; showing All forms from page one.",
+      "Filings response changed; showing All forms and All loaded filings from page one.",
     );
     expect(read).toHaveBeenCalledTimes(4);
   });
@@ -271,7 +286,10 @@ describe("company SEC filings presentation", () => {
       model.open(filingsSelection);
       await model.load();
       const html = renderToStaticMarkup(
-        <ManagedCompanyFilings model={model} />,
+        <ManagedCompanyFilings
+          model={model}
+          annual={new AnnualModel(vi.fn(), vi.fn())}
+        />,
       );
       if (status === "available")
         expect(html).toContain("No matching filings were observed");
@@ -285,7 +303,7 @@ describe("company SEC filings presentation", () => {
         );
       }
       expect(html).toContain('id="managed-filings-form"');
-      expect(html.match(/<option /gu)).toHaveLength(1);
+      expect(html.match(/<option /gu)).toHaveLength(2);
       expect(html).not.toMatch(/<select[^>]*\sdisabled/gu);
       expect(html).not.toContain("Append");
       expect(read).toHaveBeenCalledOnce();
@@ -303,13 +321,149 @@ describe("company SEC filings presentation", () => {
       completedAt: "2026-10-12T00:00:02.000Z",
     });
     await model.load();
-    const html = renderToStaticMarkup(<ManagedCompanyFilings model={model} />);
+    const html = renderToStaticMarkup(
+      <ManagedCompanyFilings
+        model={model}
+        annual={new AnnualModel(vi.fn(), vi.fn())}
+      />,
+    );
     expect(html).toContain(
       "Showing the previous filings response, completed 2026-10-12T00:00:01.000Z",
     );
     expect(html).toContain(
       "Latest source attempt checked 2026-10-12T00:00:00.500Z; completed 2026-10-12T00:00:02.000Z",
     );
+    expect(html).toContain("26 of 26 loaded filings");
+  });
+});
+
+describe("filings after the current Annual report", () => {
+  async function loaded() {
+    const annualRead = vi
+      .fn<ManagedApi["annualReport"]>()
+      .mockResolvedValue(await annualResponse());
+    const annual = new AnnualModel(annualRead, vi.fn());
+    const filingsRead = vi
+      .fn<ManagedApi["recentFilings"]>()
+      .mockResolvedValue(filingsResponse());
+    const filings = new Model(filingsRead, vi.fn());
+    annual.open(filingsSelection);
+    filings.open(filingsSelection);
+    await annual.load();
+    await filings.load();
+    const baseline = getManagedFilingsAnnualBaseline(
+      annual.getSnapshot(),
+      filings.getSnapshot(),
+    )!;
+    expect(baseline).not.toBeNull();
+    return {
+      annual,
+      filings,
+      annualRead,
+      filingsRead,
+      baseline,
+      response: filings.getSnapshot().response!,
+    };
+  }
+
+  it("uses the admitted Annual target, keeps original row note actions and combines date with Form without a read", async () => {
+    const { baseline, response, annualRead, filingsRead } = await loaded();
+    const actions: ManagedFilingsNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({ appended: true, message: "Added to draft." })),
+    };
+    let shown = page(response, actions, baseline);
+    expect(shown.html).toContain("Annual report filed 2026-02-01");
+    expect(shown.html).toContain(
+      "Same-day filings remain in All loaded filings",
+    );
+    expect(shown.html).toContain("Annual baseline and date limits");
+    expect(shown.html).toContain(
+      "This Annual filing predates the loaded window",
+    );
+    shown.dateScope.props.onScope("after-annual");
+    vi.mocked(actions.getAction).mockClear();
+    shown = page(response, actions, baseline);
+    expect(shown.html).toContain("25 of 26 loaded filings · Page 1 of 1");
+    expect(shown.dateScope.props.scope).toBe("after-annual");
+    expect(
+      vi.mocked(actions.getAction).mock.calls.map(([, row]) => row),
+    ).toEqual(response.issuer.filings.slice(1));
+    for (const [packet, row] of vi.mocked(actions.getAction).mock.calls) {
+      expect(packet).toBe(response);
+      expect(response.issuer.filings).toContain(row);
+    }
+    shown.select.props.onChange!({ currentTarget: { value: "10-Q" } });
+    shown = page(response, actions, baseline);
+    expect(shown.html).toContain("0 of 26 loaded filings");
+    expect(shown.html).toContain(
+      "No later-dated filings match these filters in this loaded response",
+    );
+    expect(shown.html).toContain(
+      "does not establish that no subsequent filings exist",
+    );
+    expect(shown.html).toContain("Older continuation files were not loaded");
+    expect(annualRead).toHaveBeenCalledOnce();
+    expect(filingsRead).toHaveBeenCalledOnce();
+    expect(actions.append).not.toHaveBeenCalled();
+  });
+
+  it("announces an Annual replacement, preserves Form and refuses stale date handlers", async () => {
+    const { baseline, response } = await loaded();
+    let shown = page(response, undefined, baseline);
+    shown.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    shown = page(response, undefined, baseline);
+    shown.dateScope.props.onScope("after-annual");
+    const stale = page(response, undefined, baseline);
+    const replacement = { ...baseline, response: { ...baseline.response } };
+    const reset = page(response, undefined, replacement);
+    expect(reset.dateScope.props.scope).toBe("all");
+    expect(reset.select.props.value).toBe("8-K");
+    expect(reset.html).toContain(
+      "Annual baseline changed; showing All loaded filings from page one. Your Form filter is unchanged.",
+    );
+    stale.dateScope.props.onScope("after-annual");
+    expect(page(response, undefined, replacement).html).toBe(reset.html);
+    reset.dateScope.props.onScope("after-annual");
+    const selected = page(response, undefined, replacement);
+    expect(selected.dateScope.props.scope).toBe("after-annual");
+    const lost = page(response);
+    expect(lost.dateScope.props.baseline).toBeNull();
+    expect(lost.dateScope.props.scope).toBe("all");
+    selected.dateScope.props.onScope("after-annual");
+    expect(page(response).html).toBe(lost.html);
+  });
+
+  it("renders current model context, original clocks and retained/historical qualifications", async () => {
+    const { annual, filings, annualRead, filingsRead } = await loaded();
+    annualRead.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await annual.load();
+    let html = renderToStaticMarkup(
+      <ManagedCompanyFilings model={filings} annual={annual} />,
+    );
+    expect(html).toContain(
+      "Previous Annual report retained; newer evidence was not confirmed.",
+    );
+    expect(html).toContain("Annual cutoff 2026-09-20T00:00:00.000Z");
+    expect(html).toContain("Completed 2026-09-20T00:00:02.000Z");
+    expect(html).toContain("0000000001-26-000001");
+    annualRead.mockResolvedValueOnce(
+      await annualResponse(undefined, "2028-09-20T00:00:00.000Z"),
+    );
+    await annual.load();
+    html = renderToStaticMarkup(
+      <ManagedCompanyFilings model={filings} annual={annual} />,
+    );
+    expect(html).toContain("outside the current-use age limits");
+    expect(html).toContain("Annual cutoff 2028-09-20T00:00:00.000Z");
+    expect(html).not.toContain("Previous Annual report retained");
+    expect(filingsRead).toHaveBeenCalledOnce();
+    annual.close();
+    html = renderToStaticMarkup(
+      <ManagedCompanyFilings model={filings} annual={annual} />,
+    );
+    expect(html).toContain("Date filtering needs a loaded Annual report");
+    expect(html).not.toContain("Annual baseline and date limits");
     expect(html).toContain("26 of 26 loaded filings");
   });
 });

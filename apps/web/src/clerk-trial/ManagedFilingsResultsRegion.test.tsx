@@ -2,6 +2,7 @@ import type { ReactElement, RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
 import { filingsResponse } from "./sec-filings-fixture";
+import { response as annualResponse } from "../features/research/sec-annual-evidence-fixture";
 
 // Controlled DOM port verifies snapshot/commit decisions. Browser focus remains a separate check.
 function fixture() {
@@ -46,6 +47,31 @@ describe("filings replacement focus boundary", () => {
   it("does not capture ordinary draft or page updates on the same response", () => {
     const f = fixture();
     expect(f.boundary.getSnapshotBeforeUpdate(f.current)).toBeNull();
+  });
+  it("recovers a removed page row when only the Annual baseline changes", async () => {
+    const f = fixture();
+    const previous = { ...f.current, baselineResponse: await annualResponse() };
+    const captured = f.boundary.getSnapshotBeforeUpdate(previous);
+    expect(captured).toBe(f.row);
+    f.remove();
+    f.boundary.componentDidUpdate(previous, null, captured);
+    expect(f.region.focus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+  });
+  it("captures removed Annual context but preserves a newly focused date control", async () => {
+    const f = fixture();
+    const context = {} as Element;
+    f.ownerDocument.activeElement = {
+      closest: vi.fn(() => context),
+    } as unknown as Element;
+    const previous = { ...f.current, baselineResponse: await annualResponse() };
+    const captured = f.boundary.getSnapshotBeforeUpdate(previous);
+    expect(captured).toBe(context);
+    f.remove();
+    f.ownerDocument.activeElement = {} as Element;
+    f.boundary.componentDidUpdate(previous, null, captured);
+    expect(f.region.focus).not.toHaveBeenCalled();
   });
   it.each(["outside row", "outside region"])(
     "does not capture %s focus",

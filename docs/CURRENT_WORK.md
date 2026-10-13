@@ -331,9 +331,12 @@ Save/reload, retained and unavailable evidence, removal and session retirement.
 Layouts at 1440, 390 and 320 CSS pixels have no page overflow; narrow comparison
 results scroll locally. Independent review accepts the saved browser evidence.
 The independently reviewed native fixture bundle has a maximum loader payload of
-2,281,581 bytes under the unchanged 4 MiB cap. Its extended Android journey still
-needs its original hosted execution. No source merge or delivery follows from
-these local checks.
+2,281,581 bytes under the unchanged 4 MiB cap. Its original hosted Android run
+passed all 27 cases and the APK isolation gate, including the extended report
+journey; independent artifact review accepts the original output. All five required
+Actions jobs from its original workflows pass. CodeScene retains its reviewed
+advisory failure.
+No source merge or delivery follows from these checks.
 
 The prerequisite [test repair](https://github.com/liangzixuan/investing-pro/pull/108)
 separates the existing database rejection variants into named tests. Its original
@@ -341,9 +344,37 @@ desktop and PostgreSQL checks pass. Android failed during setup while the Activi
 was stopped, before the selected-price journey began. The reviewed follow-up
 requires native foreground readiness within the existing ten-second setup wait;
 history, Back and screenshot assertions remain required. The original failure is
-retained; why the Activity stopped is unknown. Updated hosted execution remains pending.
+retained; why the Activity stopped is unknown. The updated original Android run
+passed all 27 cases and the APK isolation gate, with independent artifact review
+accepted. All six required Actions jobs from the updated original workflows pass.
+CodeScene retains its reviewed advisory failure.
 The handoff includes this repair; its application files are unchanged from the
 accepted local build and Chrome checks.
+
+### Filings after an Annual report candidate
+
+The next increment adds **Filed after Annual report** to the existing company
+Filings filters. It uses the current checked Annual filing date and loaded
+Filings packet for the same listing, catalog and CIK. Same-day filings stay under
+All loaded filings; financial availability does not control this metadata view.
+Original clocks, coverage limits, references and the full note Save remain intact.
+See the [Filings guide](MANAGED_SEC_FILINGS.md#review-filings-after-an-annual-report).
+
+Focused pure rules, component/composition and native fixture checks pass, along
+with web types, scoped lint, formatting and source boundaries. Independent source
+reviews pass. Chrome checks at 1440, 390 and 320 CSS pixels confirm combined
+filters and paging, original source dates, filtered-reference Save and reload,
+comparison navigation, retained refreshes, focus recovery and session clearing.
+Controls retain 44px targets with no page overflow. An admitted Annual filing date
+remains usable when its report is historical or financial amounts are unavailable;
+missing baselines are explained. Independent review accepts the saved browser
+evidence and exact full-draft Save/reload payload.
+
+The independently reviewed native fixture bundle has a maximum loader payload of
+2,288,059 bytes under the unchanged 4 MiB cap. The existing filing journey now
+checks the date and form controls, source dates, request counts and unchanged
+saved note. Its original hosted execution remains pending. These invented-data
+checks do not establish live SEC access. This candidate is not merged or delivered.
 
 ## Product scope
 
@@ -369,11 +400,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the test repair and Annual report handoff.
-The next proposed product outcome connects a loaded Annual filing to the existing
-company Filings view, with an explicit date scope for subsequently filed records.
-It must preserve the original 90-day coverage limits, explicit source requests,
-same-company identity and existing reference-to-note workflow.
+Complete original hosted acceptance for the filing date filter. Preserve the
+original 90-day coverage limits, explicit source
+requests, same-company identity and existing reference-to-note workflow.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.

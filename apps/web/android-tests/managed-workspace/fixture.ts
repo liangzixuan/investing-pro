@@ -520,6 +520,12 @@ export async function createFixture(
       { ...payload.memberships[0]!, note: recoverySavedNote },
     ],
   };
+  const completedFilingsNote = () =>
+    state.filings === 6 &&
+    state.filingsAborted === 2 &&
+    state.filingsLateResolved === 2 &&
+    state.save === 1 &&
+    state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
       const request = parseManagedSecFilingsRequest(input);
@@ -530,11 +536,11 @@ export async function createFixture(
         request?.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO" ||
-        state.filings >= 6
+        (state.filings >= 6 && !(completedFilingsNote() && state.annual === 1))
       )
         throw new Error("Unexpected invented company filings request");
       count("filings");
-      if (state.filings === 1 || state.filings === 6)
+      if (state.filings === 1 || state.filings === 6 || state.filings === 7)
         return Promise.resolve(inventedFilingsPacket(identity));
       if (state.filings === 3)
         return Promise.reject(new TrialApiError("unavailable"));
@@ -1092,6 +1098,12 @@ export async function createFixture(
       if (scenario === "annual-note") {
         if (state.annual !== 0)
           throw new Error("Unexpected extra fixture annual note read");
+        count("annual");
+        return Promise.resolve(structuredClone(annual));
+      }
+      if (scenario === "company-filings") {
+        if (!completedFilingsNote() || state.annual !== 0)
+          throw new Error("Annual baseline requires the saved filings note");
         count("annual");
         return Promise.resolve(structuredClone(annual));
       }

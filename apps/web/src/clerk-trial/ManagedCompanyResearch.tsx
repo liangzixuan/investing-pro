@@ -98,6 +98,7 @@ export function ManagedCompanyResearch({
             ) : research.section === "filings" ? (
               <ManagedCompanyFilings
                 model={filings}
+                annual={annual}
                 noteActions={filingsNoteActions}
               />
             ) : null}

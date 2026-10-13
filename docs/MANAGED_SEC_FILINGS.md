@@ -29,8 +29,8 @@ Changing the form returns to page one without another request. A pending refresh
 Cancel or failure retaining the same packet also retains the filter and page.
 A new response resets both and announces an actual reset. Empty and unavailable
 packets leave the Form control enabled with only All forms and an explanation.
-The filter belongs to the mounted results view: switching sections or closing
-the visit clears it. Filing-note actions still use the original observed rows,
+The filters belong to the mounted results view: switching sections or closing
+the visit clears them. Filing-note actions still use the original observed rows,
 and filtering never changes or saves the complete note draft.
 
 The result retains its original inclusive window, request start, completion and
@@ -45,6 +45,43 @@ body at 4 MiB, inspects at most 10,000 recent rows and retains at most 1,000
 matching filings. A truncated result reports the matching count and retained
 limit. Identical accession duplicates collapse; conflicting duplicates are
 refused. Form amendments remain as supplied by SEC.
+
+## Review filings after an Annual report
+
+When this company visit holds a checked Annual report with a resolved filing,
+**Filing date** offers **Filed after Annual report** beside **All loaded filings**.
+The baseline must match the current company selections, catalog and CIK in both
+loaded packets. Opening Filings or choosing a filter never loads either source.
+Use the existing explicit Load or Refresh controls when new evidence is needed.
+
+This scope includes only loaded rows whose filed date is strictly later than the
+Annual filing date; it also excludes the Annual accession itself. Other filings
+on the same date remain under All loaded filings because these rows do not supply
+an intraday ordering. Exact forms and amendments remain distinct. Form and date
+filters combine before local paging; changing either returns to page one.
+
+The date beside the control identifies the baseline. **Annual baseline and date
+limits** retains its exact form, accession, original SEC index link, report end,
+cutoff, completion and Submissions capture time. A retained or historical Annual
+report can still provide its original filing date. Unavailable financial measures
+do not invalidate otherwise admitted filing metadata. This filter does not assess
+a filing's contents or investment significance.
+
+Counts describe matching rows in the loaded packet. No matches does not establish
+that no subsequent filings exist. The original 90-date window, truncation and
+unloaded older continuation files still limit coverage. The disclosure identifies
+when the Annual date lies before or after that loaded window.
+
+Retaining the same packets after a pending, cancelled or failed refresh preserves
+both filters and the page. A new Filings packet resets Form, date scope and page.
+A changed or unavailable Annual baseline resets an active date scope and page,
+while retaining Form. A notice explains an actual reset. Section remount clears
+these presentation choices as before; the admitted source packets remain with
+their existing visit owners. Removed focused content falls back to the results
+region only if focus has not already moved to another control.
+
+Each visible filing keeps the existing reference-to-note action and explicit
+whole-draft Review and Save. Filtering neither appends nor saves a note.
 
 ## Request and visit lifetime
 

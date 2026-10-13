@@ -107,6 +107,14 @@ details and raw option values; a missing selected basis remains unavailable.
 
 ## Typography and financial evidence
 
+In company Filings, place Form and Filing date in two compact columns, stacked
+on narrow screens. Keep both native selects mounted with 44px targets. Show the
+Annual filing date and same-day exclusion beside the date control; preserve a
+retained-baseline warning in view. Keep the original Annual identity, source
+clocks and date-window explanation in **Annual baseline and date limits**.
+Result counts describe only loaded rows. A baseline reset preserves Form and
+explains the return to All loaded filings without moving focus from a control.
+
 Use the bundled normal-style Inter Latin variable font for the managed profile,
 with system sans-serif fallbacks for characters outside its coverage. Its local
 WOFF2 file stabilizes metrics without a runtime font CDN request. Keep the local
