@@ -643,6 +643,18 @@ export function ManagedWorkspaceScreen({
                         pair,
                       ),
                   }}
+                  annualCashNoteActions={{
+                    getAction: (response) =>
+                      workspace.getAnnualCashNoteAction(
+                        discovery.research!.selection,
+                        response,
+                      ),
+                    append: (response) =>
+                      workspace.appendAnnualCashToResearchNote(
+                        discovery.research!.selection,
+                        response,
+                      ),
+                  }}
                   priceNoteActions={{
                     getAction: (response, start, end) =>
                       workspace.getPriceNoteAction(

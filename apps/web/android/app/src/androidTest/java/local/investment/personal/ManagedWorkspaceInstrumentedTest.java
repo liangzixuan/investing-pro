@@ -123,6 +123,17 @@ public class ManagedWorkspaceInstrumentedTest {
         "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
         "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
         "Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String ANNUAL_CASH_NOTE = "Cash research draft " +
+        "Observed Annual cash generation: ZERO (XNAS); CIK 0000000001; 10-K 2025-01-01 to 2025-12-31. " +
+        "Reported operating cash flow (NetCashProvidedByUsedInOperatingActivities) USD 120.125; " +
+        "reported PP&E purchases (PaymentsToAcquirePropertyPlantAndEquipment) USD 20.025. " +
+        "App calculation: operating cash flow less PP&E purchases USD 100.1. " +
+        "Same filing and period; no adjustments for leases, acquisitions or other investing cash flows. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
+        "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
     private static final String CATALOG_REFRESH = ".managed-search-bar > button";
@@ -2938,12 +2949,14 @@ public class ManagedWorkspaceInstrumentedTest {
         retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
         awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualCashNoteDraft();
         click(add);
         awaitPage("explicit chosen pair appends exact provenance to the existing draft",
             "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
             " && document.querySelector('.managed-annual-note-action [role=status]')?.textContent === " +
                 JSONObject.quote("Annual evidence added to the note draft. Review and save all changes in My Watchlist."));
         assertAnnualNoteDraft(1, true);
+        assertAnnualCashNoteCapacity();
         assertAnnualNoteCounts(1, 0, 1);
         // The textarea contains the whole exact note, but this frame claims only its visible controls.
         retainAnnualNoteFrame("annualEvidenceNoteDraft", "#managed-research-note-heading",
@@ -3088,6 +3101,57 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && document.querySelector('#managed-note-0')?.disabled === true" +
             " && Array.from(document.querySelectorAll('.managed-version-review + .trial-actions > button')).map(b => b.textContent).join(',') === 'Use saved version,Keep my draft'; })()");
+    }
+
+    private void assertAnnualCashNoteDraft() throws Exception {
+        String action = ".managed-annual-cash-note-action > button";
+        awaitPage("cash action is labelled, associated and available at the original load",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + ");" +
+            " return b && !b.disabled && b.getAttribute('aria-disabled') === 'false'" +
+            " && b.textContent === 'Add cash generation to note draft'" +
+            " && b.getBoundingClientRect().height >= 44" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('Nothing is saved here.'); })()");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", "Annual research draft", "Cash research draft");
+        click(action);
+        String exact = "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_CASH_NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_CASH_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li').length === 2";
+        awaitPage("cash append uses the latest prefix and exact amounts, calculation and original provenance", exact +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent === " +
+                JSONObject.quote("Cash generation added to the note draft. Review and save all changes in My Watchlist."));
+        assertAnnualNoteCounts(1, 0, 1);
+        awaitPage("exact duplicate remains focusable and has its associated refusal",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('already in the note draft'); })()");
+        click(action);
+        awaitPage("duplicate cash action cannot append again", exact);
+        assertAnnualNoteCounts(1, 0, 1);
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", ANNUAL_CASH_NOTE, "Annual research draft");
+        awaitPage("editing the note clears obsolete duplicate feedback before the original pair journey",
+            "document.querySelector('#managed-research-note')?.value === 'Annual research draft'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Annual research draft'" +
+            " && document.querySelector(" + JSONObject.quote(action) + ")?.getAttribute('aria-disabled') === 'false'" +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent === ''");
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
+    private void assertAnnualCashNoteCapacity() throws Exception {
+        String action = ".managed-annual-cash-note-action > button";
+        awaitPage("cash action rechecks capacity against the latest complete Annual note",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('complete note must fit within 2,000 characters'); })()");
+        click(action);
+        awaitPage("capacity refusal leaves the latest raw note unchanged",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent.includes('complete note must fit within 2,000 characters')");
+        assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
     }
 
     private void assertAnnualNoteDraft(int version, boolean dirty) throws Exception {

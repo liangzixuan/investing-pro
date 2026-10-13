@@ -245,6 +245,27 @@ choose evidence and retain its source citation. This implementation uses the
 existing plain-text watchlist and SEC response. [Current work](CURRENT_WORK.md)
 records implementation and delivery acceptance separately.
 
+## Add cash generation to a note draft
+
+The company Annual view also offers **Add cash generation to note draft** after
+the calculation explanation. It copies reported operating cash flow, reported
+PP&E purchases and their same-filing, same-period difference together. All three
+must be available from the observed report. Negative operating cash flow and
+zero purchases remain valid. The excerpt is independent of income evidence.
+
+Exact USD amounts, raw SEC concepts, the app-calculation label and limits, CIK,
+listing symbol and exchange, annual period, filing link and original load/source
+dates remain in the paragraph. Historical current-use status and a retained
+previous report are explicitly qualified. Copying does not refresh those dates.
+
+The latest note is checked when clicked. An exact duplicate, invalid characters
+or a complete note over 2,000 normalized Unicode code points leaves the draft
+unchanged. The control stays focusable with an associated reason; feedback
+belongs to the actual displayed response. Existing membership, identity,
+catalog, coordinator, visit and session guards apply. It adds no member and
+makes no provider or save request. Review the text and use **Save watchlist** for
+the whole draft. Saved-note fields and aggregate save limits are unchanged.
+
 ## Acceptance
 
 The selected checks cover loaded returns in both directions without extra reads,

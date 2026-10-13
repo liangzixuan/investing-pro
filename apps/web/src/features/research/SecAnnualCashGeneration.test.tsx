@@ -11,6 +11,35 @@ import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 
 describe("Annual cash generation presentation", () => {
+  it("places a managed cash action after the calculation and before sources without changing local appearance", async () => {
+    const wire = await cashResponse([
+      cashRow("operating_cash_flow", "120.125"),
+      cashRow("ppe_purchases", "20.025"),
+    ]);
+    const cashAction = <button>Invented cash note action</button>;
+    const managed = renderToStaticMarkup(
+      <SecAnnualEvidenceResult
+        response={wire}
+        appearance="financial"
+        cashAction={cashAction}
+      />,
+    );
+    const actionIndex = managed.indexOf("Invented cash note action");
+    expect(actionIndex).toBeGreaterThan(
+      managed.indexOf(
+        "adjust for leases, acquisitions or other investing cash flows.",
+      ),
+    );
+    expect(actionIndex).toBeLessThan(
+      managed.indexOf("Cash sources and calculation inputs"),
+    );
+    const local = renderToStaticMarkup(
+      <SecAnnualEvidenceResult response={wire} cashAction={cashAction} />,
+    );
+    expect(local).not.toContain("Invented cash note action");
+    expect(local).toContain("Cash sources and calculation inputs");
+  });
+
   it("shows exact reported operands, the labelled app calculation and inspectable original inputs", async () => {
     const wire = await cashResponse([
       cashRow("operating_cash_flow", "182935000000"),

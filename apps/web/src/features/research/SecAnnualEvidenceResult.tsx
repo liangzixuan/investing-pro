@@ -90,10 +90,12 @@ const reasons: Readonly<Record<string, string>> = {
 export function SecAnnualEvidenceResult({
   response,
   renderPairAction,
+  cashAction,
   appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
+  readonly cashAction?: ReactNode;
   readonly appearance?: "evidence" | "financial";
 }) {
   if (appearance === "financial")
@@ -121,7 +123,7 @@ export function SecAnnualEvidenceResult({
             financial
           />
         </div>
-        <SecAnnualCashGeneration response={response} />
+        <SecAnnualCashGeneration response={response} cashAction={cashAction} />
         <details className="managed-annual-provenance">
           <summary>Source and validation details</summary>
           <p className="sec-quarterly-message">

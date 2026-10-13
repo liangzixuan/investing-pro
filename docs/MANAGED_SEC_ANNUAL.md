@@ -170,8 +170,21 @@ references are available in **Cash sources and calculation inputs**. Historical
 amounts retain their dates and current-use status; the existing seven-day source
 and 485-day report policies apply independently of income. Refresh, cancellation,
 navigation and session retirement use the existing Annual response lifetime.
-This increment adds no cash history, chart, watchlist comparison column or
-Annual-to-note field.
+Cash history, charts and a watchlist comparison column remain outside this scope.
+
+**Add cash generation to note draft** copies the three available amounts as one
+plain-text paragraph into the existing listing's note. It retains exact raw
+concept names, the app-calculation label and limits, filing identity and link,
+annual period, original source and load dates, and current-use status. Historical
+and retained reports carry explicit qualifiers. Cash can be copied when income
+evidence is unavailable; missing or incompatible cash inputs block the action.
+
+The action reads the latest note at click time, preserves its prose, refuses an
+identical excerpt and checks the whole proposed note against the existing
+2,000-character policy. It remains keyboard-focusable when unavailable so its
+associated reason can be read. Appending neither refreshes evidence nor saves
+changes. Review and explicitly save the whole watchlist draft. See the
+[cash-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-cash-generation-to-a-note-draft).
 
 The Annual request/response schema and generation definition are `2.0.0`. The
 route and four request keys are unchanged. Version-1 Annual requests are rejected
