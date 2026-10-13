@@ -31,6 +31,7 @@ import {
 } from "./ManagedWatchlistEditor";
 import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
+import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
@@ -1030,6 +1031,9 @@ export function ManagedWorkspaceScreen({
                       </p>
                     )}
                     <ManagedUnsavedWatchlistReview state={saved} />
+                    <ManagedWatchlistAnnualComparison
+                      model={workspace.annualComparison}
+                    />
                   </>
                 )}
                 {discovery.review && (

@@ -1,0 +1,430 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type {
+  MainWatchlistPayload,
+  ManagedEodIdentity,
+  WatchlistMembership,
+} from "@research-cockpit/contracts";
+import { annualComparisonResponse } from "./annual-comparison-fixture";
+import { TrialApiError } from "./api";
+import {
+  ManagedAnnualReportError,
+  ManagedCatalogChangedError,
+  ManagedSecCooldownError,
+  type ManagedApi,
+} from "./managed-api";
+import { eodSelection } from "./eod-history-fixture";
+import { ManagedSecAccess } from "./managed-sec-access";
+import {
+  ManagedWatchlistAnnualComparison,
+  type ManagedWatchlistAnnualComparisonSide,
+} from "./managed-watchlist-annual-comparison";
+
+const digest = eodSelection.catalogSnapshotSha256;
+const first = eodSelection.listing;
+const second: ManagedEodIdentity = {
+  ...first,
+  listingId: "listing-one",
+  securityId: "security-one",
+  securityName: "One Class A",
+  shareClassId: "class-one",
+  issuerId: "issuer-one",
+  issuerName: "One Company",
+  symbol: "ONE",
+};
+const sameIssuer: ManagedEodIdentity = {
+  ...first,
+  listingId: "listing-other-class",
+  securityId: "security-other-class",
+  shareClassId: "class-other",
+  shareClassName: "Class C",
+  symbol: "ZEROC",
+};
+const member = (listing = first): WatchlistMembership => ({
+  ...listing,
+  note: "  Exact unsaved Café 😀  ",
+});
+function draft(
+  memberships = [member(), member(second), member(sameIssuer)],
+): MainWatchlistPayload {
+  return {
+    name: "My Watchlist",
+    schemaVersion: 1,
+    snapshotSha256: digest,
+    memberships,
+  };
+}
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+function responseFor(listing = first) {
+  return annualComparisonResponse(listing === second ? "right" : "left");
+}
+function fixture() {
+  const read = vi.fn<ManagedApi["annualReport"]>();
+  const readError = vi.fn();
+  const access = new ManagedSecAccess();
+  const model = new ManagedWatchlistAnnualComparison(read, readError, access);
+  model.reconcile(draft(), digest, true, true);
+  const choose = (
+    side: ManagedWatchlistAnnualComparisonSide,
+    index: number | null,
+  ) => {
+    const state = model.getSnapshot();
+    const selected = index === null ? null : state.memberships[index]!;
+    model.select(side, state, selected);
+    return selected;
+  };
+  return { model, read, readError, access, choose };
+}
+afterEach(() => vi.useRealTimers());
+
+describe("watchlist Annual pair selection", () => {
+  it("starts without defaults or reads and includes every complete draft identity", () => {
+    const { model, read } = fixture();
+    expect(model.getSnapshot()).toMatchObject({
+      active: true,
+      canRead: true,
+      pending: null,
+      left: { selected: null, report: { response: null } },
+      right: { selected: null, report: { response: null } },
+    });
+    expect(
+      model.getSnapshot().memberships.map((entry) => entry.listing),
+    ).toEqual([first, second, sameIssuer]);
+    expect(
+      Object.keys(model.getSnapshot().memberships[0]!.listing),
+    ).not.toContain("note");
+    expect(Object.isFrozen(model.getSnapshot().memberships[0]!.listing)).toBe(
+      true,
+    );
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("refuses two share classes of one issuer, preserving the accepted pair and clearing feedback on correction", () => {
+    const { model, choose, read } = fixture();
+    const left = choose("left", 0);
+    const right = choose("right", 1);
+    choose("right", 2);
+    expect(model.getSnapshot().left.selected).toBe(left);
+    expect(model.getSnapshot().right.selected).toBe(right);
+    expect(model.getSnapshot().message).toContain("different companies");
+    choose("right", 1);
+    expect(model.getSnapshot().message).toBe("");
+    choose("left", null);
+    expect(model.getSnapshot().left.selected).toBeNull();
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("fences captured select/clear/load events after a newer selection", async () => {
+    const { model, choose, read } = fixture();
+    const old = model.getSnapshot();
+    const selected = choose("left", 0)!;
+    model.select("left", old, null);
+    expect(model.getSnapshot().left.selected).toBe(selected);
+    choose("left", 1);
+    await model.load("left", selected);
+    expect(model.getSnapshot().left.selected?.listing).toEqual(second);
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("retains both owners, accepted packets and handles through note/reorder/save copies", async () => {
+    const { model, choose, read } = fixture();
+    const left = choose("left", 0)!;
+    const right = choose("right", 1)!;
+    const packet = await responseFor();
+    read.mockResolvedValueOnce(packet);
+    await model.load("left", left);
+    const prior = model.getSnapshot().left;
+    const changed = draft([
+      member(second),
+      { ...member(), note: "Changed raw note\n😀" },
+      member(sameIssuer),
+    ]);
+    model.reconcile(changed, digest, true, false);
+    expect(model.getSnapshot().left).toBe(prior);
+    expect(model.getSnapshot().right.selected).toBe(right);
+    model.reconcile(structuredClone(changed), digest, true, true);
+    expect(model.getSnapshot().left).toBe(prior);
+    expect(model.getSnapshot().memberships[1]).toBe(left);
+    expect(changed.memberships[1]!.note).toBe("Changed raw note\n😀");
+    expect(read).toHaveBeenCalledOnce();
+  });
+  it.each(Object.keys(first) as (keyof ManagedEodIdentity)[])(
+    "clears a selected changed %s even while hidden",
+    (key) => {
+      const { model, choose } = fixture();
+      const previous = choose("left", 0)!;
+      const right = choose("right", 1);
+      model.reconcile(
+        draft([{ ...member(), [key]: "changed" }, member(second)]),
+        digest,
+        false,
+        false,
+      );
+      expect(model.getSnapshot().left.selected).toBeNull();
+      expect(model.getSnapshot().right.selected).toBe(right);
+      expect(model.getSnapshot().memberships[0]!.handle).not.toBe(
+        previous.handle,
+      );
+    },
+  );
+  it("does not revive a removed then re-added member or old callback", async () => {
+    const { model, choose, read } = fixture();
+    const old = choose("left", 0)!;
+    const captured = model.getSnapshot();
+    model.reconcile(draft([member(second)]), digest, false, false);
+    model.reconcile(draft(), digest, true, true);
+    model.select("left", captured, old);
+    await model.load("left", old);
+    expect(model.getSnapshot().left.selected).toBeNull();
+    expect(model.getSnapshot().memberships[0]!.handle).not.toBe(old.handle);
+    expect(read).not.toHaveBeenCalled();
+  });
+  it.each([null, `sha256:${"b".repeat(64)}`] as const)(
+    "clears both owners on a missing or changed catalog %s",
+    (catalog) => {
+      const { model, choose } = fixture();
+      choose("left", 0);
+      choose("right", 1);
+      model.reconcile(draft(), catalog, true, true);
+      expect(model.getSnapshot()).toMatchObject({
+        memberships: [],
+        canRead: false,
+        left: { selected: null },
+        right: { selected: null },
+      });
+    },
+  );
+  it("does not publish equivalent reconciliation, including a reentrant subscriber", () => {
+    const { model } = fixture();
+    const listener = vi.fn(() =>
+      model.reconcile(draft(), digest, true, model.getSnapshot().canRead),
+    );
+    model.subscribe(listener);
+    const original = model.getSnapshot();
+    model.reconcile(draft(), digest, true, true);
+    expect(model.getSnapshot()).toBe(original);
+    expect(listener).not.toHaveBeenCalled();
+    model.reconcile(draft(), digest, true, false);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+});
+
+describe("watchlist Annual explicit read lifetime", () => {
+  it("loads each selected company explicitly with exact request identity and serializes the pair", async () => {
+    const { model, choose, read } = fixture();
+    const left = choose("left", 0)!;
+    const right = choose("right", 1)!;
+    const held = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read
+      .mockReturnValueOnce(held.promise)
+      .mockResolvedValueOnce(await responseFor(second));
+    const loading = model.load("left", left);
+    await model.load("right", right);
+    await model.load("left", left);
+    expect(read).toHaveBeenCalledOnce();
+    expect(read.mock.calls[0]![0]).toEqual({
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256: digest,
+      listingId: first.listingId,
+      symbol: first.symbol,
+    });
+    const packet = await responseFor();
+    held.resolve(packet);
+    await loading;
+    await model.load("right", right);
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(read.mock.calls[1]![0].listingId).toBe(second.listingId);
+    expect(model.getSnapshot().left.report.response).toBe(packet);
+    expect(model.getSnapshot().right.report.response?.security.issuerId).toBe(
+      second.issuerId,
+    );
+    expect(model.getSnapshot().pending).toBeNull();
+  });
+  it.each(["selection", "navigation", "locked", "catalog", "retirement"])(
+    "aborts and ignores late success after %s",
+    async (cause) => {
+      const { model, choose, read } = fixture();
+      const left = choose("left", 0)!;
+      const held = deferred<Awaited<ReturnType<typeof responseFor>>>();
+      read.mockReturnValueOnce(held.promise);
+      const loading = model.load("left", left);
+      if (cause === "selection") choose("left", 1);
+      if (cause === "navigation")
+        model.reconcile(draft(), digest, false, false);
+      if (cause === "locked") model.reconcile(draft(), digest, true, false);
+      if (cause === "catalog") model.reconcile(draft(), null, true, true);
+      if (cause === "retirement") model.retire();
+      expect(read.mock.calls[0]![1].aborted).toBe(true);
+      held.resolve(await responseFor());
+      await loading;
+      expect(model.getSnapshot().left.report.response).toBeNull();
+      expect(model.getSnapshot().pending).toBeNull();
+      await model.load("left", left);
+      expect(read).toHaveBeenCalledOnce();
+    },
+  );
+  it("retains an accepted report on navigation and ignores late authentication failure", async () => {
+    const { model, choose, read, readError } = fixture();
+    const left = choose("left", 0)!;
+    const packet = await responseFor();
+    const held = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read.mockResolvedValueOnce(packet).mockReturnValueOnce(held.promise);
+    await model.load("left", left);
+    const refreshing = model.load("left", left);
+    model.reconcile(draft(), digest, false, false);
+    held.reject(new TrialApiError("unauthenticated"));
+    await refreshing;
+    model.reconcile(draft(), digest, true, true);
+    expect(model.getSnapshot().left).toMatchObject({
+      selected: left,
+      report: { response: packet, showingPrevious: true, running: false },
+    });
+    expect(readError).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+  it.each(["pending", "running"])(
+    "does not start a read after a reentrant leave on the %s notification",
+    async (stage) => {
+      const { model, choose, read } = fixture();
+      const left = choose("left", 0)!;
+      model.subscribe(() => {
+        const state = model.getSnapshot();
+        if (stage === "pending" ? state.pending : state.left.report.running)
+          model.reconcile(draft(), digest, false, false);
+      });
+      await model.load("left", left);
+      expect(read).not.toHaveBeenCalled();
+      expect(model.getSnapshot()).toMatchObject({
+        active: false,
+        pending: null,
+        left: { report: { running: false } },
+      });
+    },
+  );
+  it("keeps cancellation bound to its original operation", async () => {
+    const { model, choose, read } = fixture();
+    const left = choose("left", 0)!;
+    const firstRead = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    const secondRead = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read
+      .mockReturnValueOnce(firstRead.promise)
+      .mockReturnValueOnce(secondRead.promise);
+    const a = model.load("left", left);
+    const cancel = model.getSnapshot().pending!.cancel;
+    cancel();
+    const b = model.load("left", left);
+    cancel();
+    expect(read.mock.calls[1]![1].aborted).toBe(false);
+    firstRead.resolve(await responseFor());
+    await a;
+    expect(model.getSnapshot().pending).not.toBeNull();
+    secondRead.resolve(await responseFor());
+    await b;
+    expect(model.getSnapshot().pending).toBeNull();
+  });
+  it.each([
+    new TrialApiError("unavailable"),
+    new ManagedAnnualReportError("request_timeout"),
+  ])(
+    "retains the exact accepted packet on an established refresh failure %s",
+    async (error) => {
+      const { model, choose, read } = fixture();
+      const left = choose("left", 0)!;
+      const packet = await responseFor();
+      read.mockResolvedValueOnce(packet).mockRejectedValueOnce(error);
+      await model.load("left", left);
+      await model.load("left", left);
+      expect(model.getSnapshot().left.report).toMatchObject({
+        response: packet,
+        showingPrevious: true,
+        error: true,
+      });
+    },
+  );
+  it("uses the same checked SEC cooldown for both owners and honors an existing owner deadline", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+    const { model, choose, read, access } = fixture();
+    const left = choose("left", 0)!;
+    const right = choose("right", 1)!;
+    const deadline = "2026-10-01T00:01:00.000Z";
+    read.mockRejectedValueOnce(new ManagedSecCooldownError(deadline));
+    await model.load("left", left);
+    await model.load("right", right);
+    expect(read).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().right.report.message).toContain(deadline);
+    access.recordCooldown(
+      new ManagedSecCooldownError("2026-10-01T00:02:00.000Z"),
+      new AbortController().signal,
+    );
+    await model.load("left", left);
+    expect(read).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().left.report.message).toContain("00:02:00.000Z");
+  });
+  it.each([
+    new TrialApiError("invalid_response"),
+    new ManagedAnnualReportError("not_configured"),
+    new ManagedCatalogChangedError(),
+  ])(
+    "clears an old packet for a non-retainable Annual error %s",
+    async (error) => {
+      const { model, choose, read } = fixture();
+      const left = choose("left", 0)!;
+      read
+        .mockResolvedValueOnce(await responseFor())
+        .mockRejectedValueOnce(error);
+      await model.load("left", left);
+      await model.load("left", left);
+      expect(model.getSnapshot().left.report.response).toBeNull();
+      expect(model.getSnapshot().catalogChanged).toBe(
+        error instanceof ManagedCatalogChangedError,
+      );
+      if (error instanceof ManagedCatalogChangedError) {
+        const refused = model.getSnapshot();
+        model.select("left", refused, null);
+        await model.load("left", left);
+        expect(model.getSnapshot()).toBe(refused);
+        expect(read).toHaveBeenCalledTimes(2);
+      }
+    },
+  );
+  it("refuses a response for the other selected issuer", async () => {
+    const { model, choose, read } = fixture();
+    const left = choose("left", 0)!;
+    read.mockResolvedValueOnce(await responseFor(second));
+    await model.load("left", left);
+    expect(model.getSnapshot().left.report).toMatchObject({
+      response: null,
+      error: true,
+    });
+  });
+  it.each(["unauthenticated", "access_denied", "origin_denied"] as const)(
+    "retires both reports and all handles for current %s",
+    async (code) => {
+      const { model, choose, read, readError } = fixture();
+      const left = choose("left", 0)!;
+      const right = choose("right", 1)!;
+      read
+        .mockResolvedValueOnce(await responseFor())
+        .mockRejectedValueOnce(new TrialApiError(code));
+      await model.load("left", left);
+      await model.load("right", right);
+      expect(readError).toHaveBeenCalledOnce();
+      expect(model.getSnapshot()).toMatchObject({
+        memberships: [],
+        active: false,
+        pending: null,
+        left: { selected: null, report: { response: null } },
+        right: { selected: null, report: { response: null } },
+      });
+      model.reconcile(draft(), digest, true, true);
+      await model.load("left", left);
+      expect(model.getSnapshot().memberships).toEqual([]);
+      expect(read).toHaveBeenCalledTimes(2);
+    },
+  );
+});

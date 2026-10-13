@@ -55,6 +55,38 @@ note draft and Back remain available. Existing price mappings keep their exact
 listing identities. Catalog admission neither enables a price feed nor changes
 the three-listing Markets board.
 
+## Watchlist Annual comparison
+
+**Compare annual results** lets the owner choose two different companies from
+the complete current watchlist draft. Both selectors start empty. Each report
+has its own explicit Load, Refresh and Cancel controls; one comparison read can
+run at a time through the existing shared SEC admission boundary. Different
+share classes of the same issuer cannot fill both columns. Selecting a company
+or revenue basis sends no request and changes no note or saved payload.
+
+The comparison shows each company's exact annual period, named revenue basis,
+unscaled USD revenue and net income, net margin and available reported revenue
+change. Each column retains its own filing and original load dates. A visible
+basis choice keeps concepts separate. A chosen basis that disappears on refresh
+becomes unavailable; another concept cannot silently replace it. Current-use
+restrictions remain visible, and valid historical amounts do not enable an
+ineligible growth comparison. Different fiscal calendars and accounting bases
+are shown without adjustment or cross-company ranking.
+
+Full source and validation details remain available for each column. Long values
+wrap inside a contained table scroll region; keyboard users can focus the region
+and use arrow keys. Controls stack at narrow widths with the managed 44px targets.
+
+Note edits, reordering and Save preserve unchanged selections and reports. Leaving
+My Watchlist cancels a pending read and retains accepted data for the mounted
+session; returning never loads automatically. Removing a selected membership,
+changing its identity or invalidating the catalog clears the affected selection.
+Session retirement clears both columns. Refresh failure, invalid response and
+source eligibility use the existing Annual report rules. This comparison adds
+no field, feed, cohort, API schema, persistence or automatic refresh.
+
+Implementation and acceptance are recorded in [Current work](CURRENT_WORK.md).
+
 ## Financial overview
 
 The managed Annual view leads with reported financial results. Each eligible

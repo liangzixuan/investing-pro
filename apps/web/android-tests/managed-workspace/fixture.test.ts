@@ -1948,3 +1948,137 @@ describe("bounded invented company filings journey", () => {
     expect(fixture.getSnapshot().filings).toBe(0);
   });
 });
+describe("bounded invented Annual comparison", () => {
+  const request = (second = false) => ({
+    schemaVersion: "1.0.0" as const,
+    catalogSnapshotSha256: fixtureDigest,
+    listingId: second ? "listing-one" : "listing-zero",
+    symbol: second ? "ONE" : "ZERO",
+  });
+
+  it("keeps separate filings, raw draft and original dates through failure, Cancel and retirement", async () => {
+    const fixture = await createFixture("annual-comparison");
+    const workspace = new ManagedWorkspace(
+      fixture.api,
+      fixture.session,
+      undefined,
+      {
+        marketsCohort: fixture.marketsCohort,
+        priceCoverage: fixture.priceCoverage,
+      },
+    );
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "  Exact Café 😀 draft\nSecond line  ");
+    workspace.move("listing-zero", 1);
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
+    const model = workspace.annualComparison;
+    expect(fixture.getSnapshot().annual).toBe(0);
+    const left = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ZERO")!;
+    const right = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ONE")!;
+    model.select("left", model.getSnapshot(), left);
+    model.select("right", model.getSnapshot(), right);
+    expect(fixture.getSnapshot().annual).toBe(0);
+    await model.load("left", left);
+    await model.load("right", right);
+    const initialLeft = model.getSnapshot().left.report.response!;
+    const initialRight = model.getSnapshot().right.report.response!;
+    expect(initialLeft.evidence.target).toMatchObject({
+      reportDate: "2025-12-31",
+      accessionNumber: "0000000001-26-000001",
+    });
+    expect(initialRight.evidence.target).toMatchObject({
+      reportDate: "2025-06-30",
+      accessionNumber: "0000000002-25-000001",
+    });
+    expect(
+      initialLeft.evidence.resolution.bases.filter(
+        (b) => b.status === "eligible",
+      ),
+    ).toHaveLength(2);
+    await model.load("left", left);
+    expect(model.getSnapshot().left.report).toMatchObject({
+      response: initialLeft,
+      showingPrevious: true,
+      error: true,
+    });
+    const cancelled = model.load("left", left);
+    expect(fixture.getSnapshot().annual).toBe(4);
+    model.getSnapshot().pending!.cancel();
+    fixture.settleCancelledAnnualComparison();
+    await cancelled;
+    expect(model.getSnapshot().left.report.response).toBe(initialLeft);
+    expect(model.getSnapshot().right.report.response).toBe(initialRight);
+    workspace.setView("markets");
+    workspace.setView("watchlist");
+    expect(model.getSnapshot().left.report.response).toBe(initialLeft);
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+    const retired = model.load("right", right);
+    await workspace.refreshCatalog();
+    fixture.settleCancelledAnnualComparison();
+    await retired;
+    expect(model.getSnapshot()).toMatchObject({
+      left: { selected: null, report: { response: null } },
+      right: { selected: null, report: { response: null } },
+      pending: null,
+    });
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 5,
+      aborted: 2,
+      lateResolved: 2,
+      save: 0,
+      load: 1,
+      eod: 0,
+      marketsEod: 0,
+      filings: 0,
+      calendar: 0,
+      fed: 0,
+    });
+  });
+
+  it("rejects wrong identity, digest, pre-aborted and concurrent reads before advancing the sequence", async () => {
+    const fixture = await createFixture("annual-comparison");
+    const signal = new AbortController().signal;
+    for (const invalid of [
+      request(true),
+      { ...request(), symbol: "ONE" },
+      {
+        ...request(),
+        catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const,
+      },
+    ])
+      expect(() => fixture.api.annualReport(invalid, signal)).toThrow(
+        "Unexpected invented Annual comparison",
+      );
+    expect(() =>
+      fixture.api.annualReport(request(), AbortSignal.abort()),
+    ).toThrow();
+    expect(fixture.getSnapshot().annual).toBe(0);
+    await fixture.api.annualReport(request(), signal);
+    await fixture.api.annualReport(request(true), signal);
+    await expect(fixture.api.annualReport(request(), signal)).rejects.toThrow();
+    const controller = new AbortController();
+    const pending = fixture.api.annualReport(request(), controller.signal);
+    expect(() => fixture.api.annualReport(request(true), signal)).toThrow();
+    expect(() => fixture.settleCancelledAnnualComparison()).toThrow();
+    controller.abort();
+    fixture.settleCancelledAnnualComparison();
+    const late = await pending;
+    expect(late.evidence.generation.cutoffAt).toBe("2026-09-21T00:00:00.000Z");
+    expect(() => fixture.settleCancelledAnnualComparison()).toThrow();
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 4,
+      aborted: 1,
+      lateResolved: 1,
+    });
+  });
+});

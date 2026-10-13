@@ -92,7 +92,7 @@ export function useManagedCompanyNavigation(
     };
     appliedKey.current = location.key;
     pendingNavigation.current = false;
-    workspace.setAnnouncementsNavigationBlocked(parsed.kind !== "none");
+    workspace.setNavigationBlocked(parsed.kind !== "none");
     void workspace.setCompanyRoute(parsed.kind === "company" ? parsed : null);
     if (prior.company && parsed.kind === "none") {
       if (action === NavigationType.Pop && prior.origin)
@@ -119,7 +119,7 @@ export function useManagedCompanyNavigation(
       !current.research &&
       !current.companyRoute
     ) {
-      workspace.setAnnouncementsNavigationBlocked(true);
+      workspace.setNavigationBlocked(true);
       pendingNavigation.current = true;
       void navigate("/", { replace: true, state: null });
     }
@@ -140,7 +140,7 @@ export function useManagedCompanyNavigation(
       const origin = replacing
         ? returnLocation(location.state, scope)
         : { scope, view: current.view };
-      workspace.setAnnouncementsNavigationBlocked(true);
+      workspace.setNavigationBlocked(true);
       pendingNavigation.current = true;
       void navigate(href, {
         replace: replacing,
@@ -172,7 +172,7 @@ export function useManagedCompanyNavigation(
         current.section,
       );
       if (location.pathname + location.search === href) return;
-      workspace.setAnnouncementsNavigationBlocked(true);
+      workspace.setNavigationBlocked(true);
       pendingNavigation.current = true;
       const state: unknown = location.state;
       void navigate(href, { replace: true, state });
@@ -183,14 +183,14 @@ export function useManagedCompanyNavigation(
   const view = useCallback(
     (next: WorkspaceView) => {
       if (pendingNavigation.current) return false;
-      workspace.setAnnouncementsNavigationBlocked(true);
+      workspace.setNavigationBlocked(true);
       pendingNavigation.current = true;
       workspace.setView(next);
       if (route.kind !== "none")
         void navigate("/", { replace: true, state: null });
       else {
         pendingNavigation.current = false;
-        workspace.setAnnouncementsNavigationBlocked(false);
+        workspace.setNavigationBlocked(false);
       }
       return true;
     },
@@ -199,7 +199,7 @@ export function useManagedCompanyNavigation(
 
   const back = useCallback(() => {
     if (pendingNavigation.current) return;
-    workspace.setAnnouncementsNavigationBlocked(true);
+    workspace.setNavigationBlocked(true);
     pendingNavigation.current = true;
     workspace.closeResearch();
     if (route.kind === "company" && returnLocation(location.state, scope)) {

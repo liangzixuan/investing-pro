@@ -4696,3 +4696,204 @@ describe("watchlist price workspace composition", () => {
     expect(api.eodHistory).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("watchlist Annual comparison workspace ownership", () => {
+  const initial = (): MainWatchlistPayload => ({
+    ...empty,
+    memberships: [
+      { ...eodSelection.listing, note: "  Original ZERO thesis 😀  " },
+      { ...listingMembership(result), note: "Other issuer thesis" },
+    ],
+  });
+  async function comparisonFixture() {
+    const setup = fixture(initial());
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    const comparison = setup.workspace.annualComparison;
+    const left = comparison.getSnapshot().memberships[0]!;
+    const right = comparison.getSnapshot().memberships[1]!;
+    comparison.select("left", comparison.getSnapshot(), left);
+    comparison.select("right", comparison.getSnapshot(), right);
+    return { ...setup, comparison, left, right };
+  }
+
+  it("retains both explicit choices and the report across note/reorder/Save without extra reads", async () => {
+    const { workspace, api, comparison, left, right } =
+      await comparisonFixture();
+    vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
+    const beforeRead = workspace.coordinator.getSnapshot();
+    await comparison.load("left", left);
+    expect(workspace.coordinator.getSnapshot()).toBe(beforeRead);
+    const report = comparison.getSnapshot().left.report;
+    workspace.note(left.listing.listingId, "Exact changed Café 😀");
+    workspace.move(left.listing.listingId, 1);
+    const fullDraft = workspace.coordinator.getSnapshot().draft;
+    await workspace.coordinator.save();
+    expect(comparison.getSnapshot().left.report).toBe(report);
+    expect(comparison.getSnapshot().left.selected).toBe(left);
+    expect(comparison.getSnapshot().right.selected).toBe(right);
+    expect(comparison.getSnapshot().memberships).toEqual([right, left]);
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(fullDraft);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+  });
+
+  it("reconciles Keep draft and Use saved against the complete draft even while hidden", async () => {
+    const { workspace, api, comparison, left, right } =
+      await comparisonFixture();
+    vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
+    await comparison.load("left", left);
+    const report = comparison.getSnapshot().left.report;
+    workspace.note(left.listing.listingId, "Unsaved recovery research");
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    expect(comparison.getSnapshot().canRead).toBe(false);
+    await comparison.load("right", right);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    await workspace.coordinator.load();
+    workspace.coordinator.keepDraft();
+    expect(comparison.getSnapshot().left.report).toBe(report);
+    expect(comparison.getSnapshot().canRead).toBe(true);
+    workspace.setView("discover");
+    vi.mocked(api.load).mockResolvedValueOnce({
+      version: 4,
+      payload: { ...initial(), memberships: [initial().memberships[1]!] },
+    });
+    await workspace.coordinator.load();
+    workspace.coordinator.useSaved();
+    expect(comparison.getSnapshot().left.selected).toBeNull();
+    expect(comparison.getSnapshot().right.selected).toBe(right);
+    workspace.coordinator.replaceDraft(initial());
+    workspace.setView("watchlist");
+    expect(comparison.getSnapshot().left.selected).toBeNull();
+    expect(comparison.getSnapshot().memberships[0]!.handle).not.toBe(
+      left.handle,
+    );
+    await comparison.load("left", left);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+  });
+
+  it.each(["loading", "saving", "conflict", "commit_unknown"] as const)(
+    "cancels pending comparison reads when coordinator enters %s",
+    async (boundary) => {
+      const { workspace, api, comparison, left } = await comparisonFixture();
+      workspace.note(left.listing.listingId, "Draft remains exact");
+      const annual = deferred<never>();
+      vi.mocked(api.annualReport).mockReturnValueOnce(annual.promise);
+      const reading = comparison.load("left", left);
+      const held = deferred<never>();
+      let changing: Promise<void> | null = null;
+      if (boundary === "loading") {
+        vi.mocked(api.load).mockReturnValueOnce(held.promise);
+        changing = workspace.coordinator.load();
+      } else if (boundary === "saving") {
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        changing = workspace.coordinator.save();
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(boundary));
+        await workspace.coordinator.save();
+      }
+      expect(vi.mocked(api.annualReport).mock.calls[0]![1].aborted).toBe(true);
+      expect(comparison.getSnapshot()).toMatchObject({
+        canRead: false,
+        pending: null,
+      });
+      await comparison.load("left", left);
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      annual.reject(new TrialApiError("unauthenticated"));
+      await reading;
+      expect(workspace.coordinator.getSnapshot().phase).not.toBe("retired");
+      expect(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+      ).toBe("Draft remains exact");
+      if (changing) {
+        held.reject(new TrialApiError("unavailable"));
+        await changing;
+      }
+    },
+  );
+
+  it("cancels pending work on company navigation but retains accepted reports on Back", async () => {
+    const { workspace, api, comparison, left } = await comparisonFixture();
+    const packet = await annualResponse();
+    vi.mocked(api.annualReport).mockResolvedValueOnce(packet);
+    await comparison.load("left", left);
+    const held = deferred<never>();
+    vi.mocked(api.annualReport).mockReturnValueOnce(held.promise);
+    const refresh = comparison.load("left", left);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    expect(comparison.getSnapshot().active).toBe(false);
+    expect(vi.mocked(api.annualReport).mock.calls[1]![1].aborted).toBe(true);
+    held.reject(new TrialApiError("unauthenticated"));
+    await refresh;
+    workspace.closeResearch();
+    expect(comparison.getSnapshot()).toMatchObject({
+      active: true,
+      left: {
+        selected: left,
+        report: { response: packet, showingPrevious: true },
+      },
+    });
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("shares a comparison SEC deadline with the existing company Annual and Filings owners", async () => {
+    const { workspace, api, comparison, left } = await comparisonFixture();
+    const deadline = new Date(Date.now() + 120000).toISOString();
+    vi.mocked(api.annualReport).mockRejectedValueOnce(
+      new ManagedSecCooldownError(deadline),
+    );
+    await comparison.load("left", left);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    expect(workspace.annual.getSnapshot().message).toContain(deadline);
+    expect(workspace.filings.getSnapshot().message).toContain(deadline);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+  });
+
+  it("invalidates catalog-dependent owners and never rewrites the draft after comparison catalog refusal", async () => {
+    const { workspace, api, comparison, left } = await comparisonFixture();
+    const before = workspace.coordinator.getSnapshot().draft;
+    vi.mocked(api.annualReport).mockRejectedValueOnce(
+      new ManagedCatalogChangedError(),
+    );
+    await comparison.load("left", left);
+    expect(workspace.getSnapshot().snapshot).toBeNull();
+    expect(comparison.getSnapshot().memberships).toEqual([]);
+    expect(comparison.getSnapshot().left.selected).toBeNull();
+    expect(workspace.watchlistPrices.getSnapshot().rows).toEqual([]);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    await workspace.refreshCatalog();
+    expect(comparison.getSnapshot().memberships[0]!.handle).not.toBe(
+      left.handle,
+    );
+  });
+
+  it("clears both comparison sides and the draft on current Annual authentication loss", async () => {
+    const { workspace, api, comparison, left } = await comparisonFixture();
+    vi.mocked(api.annualReport).mockRejectedValueOnce(
+      new TrialApiError("unauthenticated"),
+    );
+    await comparison.load("left", left);
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      phase: "retired",
+      draft: null,
+    });
+    expect(comparison.getSnapshot()).toMatchObject({
+      active: false,
+      memberships: [],
+      left: { selected: null },
+      right: { selected: null },
+    });
+    expect(api.save).not.toHaveBeenCalled();
+  });
+});

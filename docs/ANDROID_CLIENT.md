@@ -270,6 +270,13 @@ and save counts. Scoped captures show the pair action and note controls; they do
 not claim to display the entire long note at once. This case requires its own
 successful emulator run before native acceptance.
 
+The watchlist Annual comparison adds a separate invented two-company journey.
+It uses the actual company and revenue-basis controls, checks independent fiscal
+periods and filing details, and preserves the reordered note draft through
+failed refresh, cancellation and late completion. Session retirement clears the
+draft and both reports. It adds no provider connection or Save action. Its source and fixture checks do not establish
+native acceptance; the original hosted run must execute the new required case.
+
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,
 retained history and reset behavior without extra price reads or saves. It

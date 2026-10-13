@@ -123,6 +123,7 @@ jobs:
                   "beaAgendaRefreshCancelAndNavigationPreserveDraft",
                   "beaSessionExpiryClearsAgendaAndFencesLateResponse",
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
+                  "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",
               },
           }
           executed = set()

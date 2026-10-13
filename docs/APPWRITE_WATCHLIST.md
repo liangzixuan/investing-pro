@@ -156,6 +156,22 @@ evidence. Review the draft, use Research notes search to find its text, and choo
 **Save watchlist** to save the complete draft explicitly. Save keeps its existing
 note normalization and recovery rules.
 
+## Compare two companies' annual results
+
+**Compare annual results** uses the complete draft, including companies outside
+the current search results. Choose two different issuers and load each report
+explicitly through the existing SEC access. Separate columns retain fiscal
+dates, revenue bases, exact amounts, reported changes and original source dates.
+Each company has its own basis choice and source disclosure. The
+[Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison)
+defines eligibility and retention.
+
+The comparison does not edit or save the watchlist. Notes, reordering and Save
+preserve unchanged selections. Leaving cancels pending work while accepted
+reports remain in the mounted session. Removed or changed identities, catalog
+invalidation and session retirement clear the affected state. Returning never
+loads automatically.
+
 ## Search the current watchlist draft
 
 **Search My Watchlist** filters the current draft. **Search in** defaults to

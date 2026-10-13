@@ -584,3 +584,55 @@ describe("managed company URL navigation", () => {
     expect(f.api.resolve).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Annual comparison router boundaries", () => {
+  it("keeps the pair inactive throughout a pending Back and restores it without an automatic read", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    let navigation = f.render();
+    const comparison = f.workspace.annualComparison;
+    const member = comparison.getSnapshot().memberships[0]!;
+    comparison.select("left", comparison.getSnapshot(), member);
+    navigation.open(() =>
+      f.workspace.openWatchlistAnnual(
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      ),
+    );
+    navigation = f.render();
+    expect(comparison.getSnapshot().active).toBe(false);
+    const apply = mount.navigate.getMockImplementation()!;
+    mount.navigate.mockImplementation(() => undefined);
+    navigation.back();
+    expect(f.workspace.getSnapshot().research).toBeNull();
+    expect(comparison.getSnapshot().active).toBe(false);
+    await comparison.load("left", member);
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    apply(-1);
+    f.render();
+    expect(comparison.getSnapshot().active).toBe(true);
+    expect(comparison.getSnapshot().left.selected).toBe(member);
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+
+  it("blocks a retained watchlist pair on an invalid URL before the view changes", async () => {
+    const f = fixture();
+    await f.ready();
+    f.workspace.setView("watchlist");
+    f.render();
+    const comparison = f.workspace.annualComparison;
+    const member = comparison.getSnapshot().memberships[0]!;
+    comparison.select("left", comparison.getSnapshot(), member);
+    mount.navigate("/?company=listing-zero&section=invalid");
+    const navigation = f.render();
+    expect(navigation.invalid).toBe(true);
+    expect(f.workspace.getSnapshot().view).toBe("watchlist");
+    expect(comparison.getSnapshot().active).toBe(false);
+    await comparison.load("left", member);
+    comparison.select("left", comparison.getSnapshot(), null);
+    expect(comparison.getSnapshot().left.selected).toBe(member);
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.resolve).not.toHaveBeenCalled();
+  });
+});

@@ -34,6 +34,7 @@ if (
   scenario !== "bea-agenda" &&
   scenario !== "bea-session-retirement" &&
   scenario !== "fed-announcements" &&
+  scenario !== "annual-comparison" &&
   scenario !== "markets-selected-price" &&
   scenario !== "watchlist-comparison" &&
   scenario !== "watchlist-export"
@@ -182,6 +183,15 @@ function Fixture() {
             onClick={fixture.settleCancelledFilings}
           >
             Settle cancelled invented filings response
+          </button>
+        )}
+        {scenario === "annual-comparison" && (
+          <button
+            id="settle-cancelled-annual-comparison"
+            disabled={state.aborted !== state.lateResolved + 1}
+            onClick={fixture.settleCancelledAnnualComparison}
+          >
+            Settle cancelled invented Annual comparison
           </button>
         )}
         {scenario === "fed-announcements" && (
