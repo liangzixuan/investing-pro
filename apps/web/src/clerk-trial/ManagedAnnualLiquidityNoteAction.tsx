@@ -68,7 +68,14 @@ export function ManagedAnnualLiquidityNoteAction({
           "Adds the exact liquidity balances, calculation results, original dates and filing link to your existing note draft. Nothing is saved here."}
       </p>
       <p
-        className="managed-annual-liquidity-note-status"
+        className={
+          "managed-annual-liquidity-note-status" +
+          (currentFeedback &&
+          feedback.refusal !== null &&
+          feedback.message === action.reason
+            ? " sr-only"
+            : "")
+        }
         role="status"
         aria-live="polite"
       >

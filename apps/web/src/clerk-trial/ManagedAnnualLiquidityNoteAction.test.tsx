@@ -66,6 +66,9 @@ describe("managed Annual liquidity note action", () => {
     expect(renderToStaticMarkup(render())).toContain(
       "Added to draft. Review and save all changes in My Watchlist.",
     );
+    expect(renderToStaticMarkup(render())).toContain(
+      'class="managed-annual-liquidity-note-status" role="status" aria-live="polite"',
+    );
   });
 
   it("keeps unavailable controls focusable and rechecks an already captured handler", async () => {
@@ -97,6 +100,9 @@ describe("managed Annual liquidity note action", () => {
     captured();
     expect(renderToStaticMarkup(render())).toContain(
       "The Annual visit changed.",
+    );
+    expect(renderToStaticMarkup(render())).toContain(
+      'class="managed-annual-liquidity-note-status" role="status" aria-live="polite">The Annual visit changed.</p>',
     );
     const replacement = structuredClone(response);
     expect(replacement.evidence.generation.sha256).toBe(
@@ -133,6 +139,9 @@ describe("managed Annual liquidity note action", () => {
       const available = renderToStaticMarkup(render());
       expect(available).toContain('aria-disabled="false"');
       expect(available).not.toContain(reason);
+      expect(available).toContain(
+        'class="managed-annual-liquidity-note-status" role="status" aria-live="polite"></p>',
+      );
       expect(actions.append).not.toHaveBeenCalled();
     },
   );
@@ -166,6 +175,17 @@ describe("managed Annual liquidity note action", () => {
     const completed = renderToStaticMarkup(render());
     expect(completed).toContain("Review and save all changes in My Watchlist.");
     expect(completed).toContain("already in the note draft");
+    expect(completed).toContain(
+      'class="managed-annual-liquidity-note-status" role="status" aria-live="polite"',
+    );
+    button(render()).props.onClick();
+    const duplicate = renderToStaticMarkup(render());
+    expect(duplicate).toContain(
+      '<p id="liquidity-note-help">This exact liquidity evidence is already in the note draft.</p>',
+    );
+    expect(duplicate).toContain(
+      'class="managed-annual-liquidity-note-status sr-only" role="status" aria-live="polite">This exact liquidity evidence is already in the note draft.</p>',
+    );
     expect(
       renderToStaticMarkup(render(structuredClone(response))),
     ).not.toContain("Review and save all changes in My Watchlist.");
