@@ -12,6 +12,7 @@ import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualCompar
 import {
   annualComparisonMemberships as members,
   annualComparisonCashRows as cashRows,
+  annualComparisonLiquidityRows as liquidityRows,
   annualComparisonResponse as packet,
 } from "./annual-comparison-fixture";
 
@@ -77,6 +78,7 @@ type ControlProps = {
   "aria-label"?: string;
   "aria-describedby"?: string;
   "data-annual-comparison-cash-source"?: string;
+  "data-annual-comparison-liquidity-source"?: string;
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
 };
@@ -676,7 +678,7 @@ describe("cash in the existing annual comparison", () => {
     }
     expect(
       html.split("<tbody>")[1]!.split("</tbody>")[0]!.match(/<tr/gu),
-    ).toHaveLength(9);
+    ).toHaveLength(13);
     expect(
       html.match(
         /It does not adjust for leases, acquisitions or other investing cash flows\./gu,
@@ -950,5 +952,366 @@ describe("cash in the existing annual comparison", () => {
       ).toHaveLength(2);
     expect(retired).not.toContain("data-annual-comparison-cash-source");
     expect(f.read).toHaveBeenCalledTimes(3);
+  });
+});
+
+const liquidityMetrics = [
+  "currentAssets",
+  "currentLiabilities",
+  "workingCapital",
+  "currentRatio",
+] as const;
+function liquidityRowHtml(
+  html: string,
+  metric: (typeof liquidityMetrics)[number],
+) {
+  return html
+    .split(`data-annual-comparison-liquidity="${metric}"`)[1]!
+    .split("</tr>")[0]!;
+}
+function liquidityAmounts(
+  html: string,
+  metric: (typeof liquidityMetrics)[number],
+) {
+  return Array.from(
+    liquidityRowHtml(html, metric).matchAll(
+      /class="sec-annual-liquidity-amount">([^<]+)</gu,
+    ),
+    (match) => match[1],
+  );
+}
+function balanceRows(
+  assets: string,
+  liabilities: string,
+  side: "left" | "right" = "left",
+) {
+  return liquidityRows(side).map((row) => ({
+    ...row,
+    value: row.metric === "current_assets" ? assets : liabilities,
+  }));
+}
+
+describe("liquidity in the existing annual comparison", () => {
+  it("keeps four labelled unloaded rows and explicit units without a request", () => {
+    const f = fixture();
+    const html = renderToStaticMarkup(f.render());
+    for (const metric of liquidityMetrics)
+      expect(
+        liquidityRowHtml(html, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(html).toContain("Current assets<small>Reported · USD</small>");
+    expect(html).toContain("Current liabilities<small>Reported · USD</small>");
+    expect(html).toContain(
+      "Working capital<small>App calculation · USD</small>",
+    );
+    expect(html).toContain(
+      "Current ratio<small>App calculation · multiple</small>",
+    );
+    expect(html).toContain("current ratio is a rounded multiple");
+    expect(html.match(/Both calculations require nonnegative/gu)).toHaveLength(
+      1,
+    );
+    expect(
+      html.indexOf('data-annual-comparison-liquidity="currentAssets"'),
+    ).toBeGreaterThan(
+      html.indexOf(
+        'data-annual-comparison-cash="operatingCashFlowLessPpePurchases"',
+      ),
+    );
+    expect(f.read).not.toHaveBeenCalled();
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it("shows exact per-company balances, negative capital, separate dates and original source inputs", async () => {
+    const f = fixture();
+    const left = await packet("left");
+    const right = await packet("right");
+    f.read.mockResolvedValueOnce(left).mockResolvedValueOnce(right);
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    const single = renderToStaticMarkup(f.render());
+    for (const metric of liquidityMetrics)
+      expect(
+        liquidityRowHtml(single, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(1);
+    await f.load("right");
+    const html = renderToStaticMarkup(f.render());
+    expect(liquidityAmounts(html, "currentAssets")).toEqual(["1500", "900"]);
+    expect(liquidityAmounts(html, "currentLiabilities")).toEqual([
+      "600",
+      "1200",
+    ]);
+    expect(liquidityAmounts(html, "workingCapital")).toEqual(["900", "-300"]);
+    expect(liquidityAmounts(html, "currentRatio")).toEqual(["2.50×", "0.75×"]);
+    for (const metric of liquidityMetrics) {
+      const row = liquidityRowHtml(html, metric);
+      expect(row).toContain("At 2025-12-31");
+      expect(row).toContain("At 2025-06-30");
+      expect(
+        row.match(/Within current-use limits at this load\./gu),
+      ).toHaveLength(2);
+    }
+    for (const [side, wire] of [
+      ["left", left],
+      ["right", right],
+    ] as const) {
+      const source = walk(f.render()).find(
+        (item) =>
+          item.props["data-annual-comparison-liquidity-source"] === side,
+      );
+      expect(source).toBeDefined();
+      const section = renderToStaticMarkup(source);
+      const { liquidity, generation } = wire.evidence;
+      for (const metric of [
+        liquidity.currentAssets,
+        liquidity.currentLiabilities,
+      ])
+        for (const row of metric.observations)
+          for (const text of [
+            row.id,
+            row.concept,
+            row.sourceLocator,
+            row.accessionNumber,
+            row.filing.sourceUrl!,
+          ])
+            expect(section).toContain(text);
+      for (const clock of [
+        generation.cutoffAt,
+        generation.completedAt,
+        generation.sources.companyFacts.fetchedAt!,
+        generation.sources.submissions.fetchedAt!,
+      ])
+        expect(section).toContain(clock);
+      expect(section).toContain(
+        "Not supplied; an instant balance requires no duration.",
+      );
+      expect(section).toContain("Working capital references:");
+      expect(section).toContain("Current ratio references:");
+    }
+    expect(html).not.toContain("<details open");
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.draft).toEqual(f.originalDraft);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
+  it.each(["missing income", "invalid income", "missing cash"])(
+    "keeps liquidity independent of %s and a missing selected revenue basis",
+    async (mode) => {
+      const f = fixture();
+      f.read.mockResolvedValueOnce(
+        await packet(
+          "left",
+          mode === "missing income"
+            ? { rows: [] }
+            : mode === "invalid income"
+              ? { mode: "income-invalid" }
+              : { cashRows: [] },
+        ),
+      );
+      f.choose("left", members.left.listingId);
+      await f.load("left");
+      const before = renderToStaticMarkup(f.render());
+      control(f.render(), "select", "-left-basis").props.onChange!({
+        currentTarget: { value: "SalesRevenueNet" },
+      } as React.ChangeEvent<HTMLSelectElement>);
+      const after = renderToStaticMarkup(f.render());
+      for (const metric of liquidityMetrics)
+        expect(liquidityRowHtml(after, metric)).toBe(
+          liquidityRowHtml(before, metric),
+        );
+      expect(liquidityAmounts(after, "currentRatio")).toEqual(["2.50×"]);
+      expect(after).toContain("Revenue and net income unavailable");
+      expect(f.read).toHaveBeenCalledOnce();
+      expect(f.draft).toEqual(f.originalDraft);
+    },
+  );
+
+  it.each([
+    {
+      assets: "10",
+      liabilities: "0",
+      capital: ["10"],
+      ratio: [],
+      reason: "Current ratio requires current liabilities greater than zero.",
+    },
+    {
+      assets: "-10",
+      liabilities: "20",
+      capital: [],
+      ratio: [],
+      reason: "This calculation requires nonnegative reported balances.",
+    },
+    {
+      assets: "10",
+      liabilities: "-20",
+      capital: [],
+      ratio: [],
+      reason: "Current ratio requires current liabilities greater than zero.",
+    },
+    {
+      assets: "0",
+      liabilities: "20",
+      capital: ["-20"],
+      ratio: ["0.00×"],
+      reason: null,
+    },
+  ])(
+    "preserves independent amounts and checked calculation results for $assets / $liabilities",
+    async ({ assets, liabilities, capital, ratio, reason }) => {
+      const f = fixture();
+      f.read.mockResolvedValueOnce(
+        await packet("left", {
+          liquidityRows: balanceRows(assets, liabilities),
+        }),
+      );
+      f.choose("left", members.left.listingId);
+      await f.load("left");
+      const html = renderToStaticMarkup(f.render());
+      expect(liquidityAmounts(html, "currentAssets")).toEqual([assets]);
+      expect(liquidityAmounts(html, "currentLiabilities")).toEqual([
+        liabilities,
+      ]);
+      expect(liquidityAmounts(html, "workingCapital")).toEqual(capital);
+      expect(liquidityAmounts(html, "currentRatio")).toEqual(ratio);
+      if (reason)
+        expect(liquidityRowHtml(html, "currentRatio")).toContain(reason);
+      if (capital.length === 0)
+        expect(liquidityRowHtml(html, "workingCapital")).toContain(
+          "This calculation requires nonnegative reported balances.",
+        );
+      expect(cashAmounts(html, "operatingCashFlow")).toEqual(["1000"]);
+      expect(html).toContain('<th scope="row">Revenue · USD</th><td>1000</td>');
+    },
+  );
+
+  it("preserves a missing balance and rejected instant independently of the other side", async () => {
+    const f = fixture();
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", {
+          liquidityRows: liquidityRows().filter(
+            (row) => row.metric === "current_liabilities",
+          ),
+        }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", {
+          liquidityRows: liquidityRows("right").map((row) =>
+            row.metric === "current_assets"
+              ? { ...row, startDate: "2024-07-01", durationDays: 365 }
+              : row,
+          ),
+        }),
+      );
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    const html = renderToStaticMarkup(f.render());
+    expect(liquidityRowHtml(html, "currentAssets")).toContain(
+      "This reported balance concept is absent from the source.",
+    );
+    expect(liquidityRowHtml(html, "currentAssets")).toContain(
+      "The source observation has a period rather than a balance at one date.",
+    );
+    expect(liquidityAmounts(html, "currentLiabilities")).toEqual([
+      "600",
+      "1200",
+    ]);
+    expect(liquidityAmounts(html, "workingCapital")).toEqual([]);
+    expect(liquidityAmounts(html, "currentRatio")).toEqual([]);
+  });
+
+  it("preserves full long derived values and distinguishes each side's historical qualification", async () => {
+    const f = fixture();
+    const large = "9".repeat(64);
+    const tiny = `0.${"0".repeat(61)}1`;
+    f.read
+      .mockResolvedValueOnce(
+        await packet("left", {
+          mode: "current-use-unavailable",
+          liquidityRows: balanceRows(large, tiny),
+        }),
+      )
+      .mockResolvedValueOnce(
+        await packet("right", {
+          liquidityRows: balanceRows(tiny, large, "right"),
+        }),
+      );
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    await f.load("left");
+    await f.load("right");
+    const html = renderToStaticMarkup(f.render());
+    expect(liquidityAmounts(html, "workingCapital")).toEqual([
+      `${"9".repeat(63)}8.${"9".repeat(62)}`,
+      `-${"9".repeat(63)}8.${"9".repeat(62)}`,
+    ]);
+    expect(liquidityAmounts(html, "currentRatio")).toEqual([
+      `${large}${"0".repeat(62)}.00×`,
+      "0.00×",
+    ]);
+    for (const metric of liquidityMetrics) {
+      const row = liquidityRowHtml(html, metric);
+      expect(
+        row.match(
+          /Historical value; outside current-use limits at this load\./gu,
+        ),
+      ).toHaveLength(1);
+      expect(
+        row.match(/Within current-use limits at this load\./gu),
+      ).toHaveLength(1);
+    }
+  });
+
+  it("replaces and retains liquidity with its response, then clears a removed selection and retired session", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.read.mockResolvedValueOnce(await packet("left"));
+    await f.load("left");
+    const focused = { focus: vi.fn() };
+    const doc = { activeElement: focused, body: {} };
+    vi.stubGlobal("document", doc);
+    const next = await packet("left", {
+      liquidityRows: balanceRows("120.125", "20.025"),
+      cutoffAt: "2026-09-21T00:00:00.000Z",
+    });
+    f.read.mockResolvedValueOnce(next);
+    await f.load("left");
+    const replaced = renderToStaticMarkup(f.render());
+    expect(liquidityAmounts(replaced, "workingCapital")).toEqual(["100.1"]);
+    expect(liquidityAmounts(replaced, "currentRatio")).toEqual(["6.00×"]);
+    f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await f.load("left");
+    const retained = renderToStaticMarkup(f.render());
+    for (const metric of liquidityMetrics)
+      expect(liquidityRowHtml(retained, metric)).toBe(
+        liquidityRowHtml(replaced, metric),
+      );
+    expect(retained).toContain("Previous report, loaded");
+    expect(retained).toContain(next.evidence.generation.completedAt);
+    expect(doc.activeElement).toBe(focused);
+    expect(focused.focus).not.toHaveBeenCalled();
+    f.choose("left", "");
+    const cleared = renderToStaticMarkup(f.render());
+    for (const metric of liquidityMetrics)
+      expect(
+        liquidityRowHtml(cleared, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(cleared).not.toContain("data-annual-comparison-liquidity-source");
+    f.choose("left", members.left.listingId);
+    f.read.mockResolvedValueOnce(next);
+    await f.load("left");
+    f.model.retire();
+    const retired = renderToStaticMarkup(f.render());
+    for (const metric of liquidityMetrics)
+      expect(
+        liquidityRowHtml(retired, metric).match(/<td>Not loaded<\/td>/gu),
+      ).toHaveLength(2);
+    expect(retired).not.toContain("data-annual-comparison-liquidity-source");
+    expect(f.read).toHaveBeenCalledTimes(4);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+    expect(f.draft).toEqual(f.originalDraft);
   });
 });

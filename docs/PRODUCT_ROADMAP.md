@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment connects the loaded company's liquidity to its existing
+The current M2 increment compares already-loaded liquidity between two watchlist
+companies. Exact balances, working capital and current ratio retain each company's
+own balance date, availability and source evidence. This extends the existing
+Annual comparison without another request or financial calculation. See the
+[comparison guide](MANAGED_SEC_ANNUAL.md#compare-liquidity-between-companies).
+
+The preceding M2 increment connects the loaded company's liquidity to its existing
 research-note draft. An explicit action preserves exact balances, checked
 calculations or the zero-liabilities ratio refusal, original provenance and
 historical qualifiers. The existing full-draft review and Save make the evidence

@@ -5,10 +5,93 @@ import {
   liquidityResponse,
   liquidityRow,
 } from "./sec-annual-liquidity-fixture";
-import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
+import {
+  SecAnnualLiquidity,
+  SecAnnualLiquiditySourceBody,
+  SecAnnualLiquidityValueContent,
+} from "./SecAnnualLiquidity";
 import { SecAnnualEvidenceResult } from "./SecAnnualEvidenceResult";
 
 describe("Annual liquidity presentation", () => {
+  it("reuses exact cell contents with independent current, historical and unavailable qualifications", async () => {
+    const current = await liquidityResponse([
+      liquidityRow("current_assets", "0"),
+      liquidityRow("current_liabilities", "20"),
+    ]);
+    const historical = await liquidityResponse(
+      [
+        liquidityRow("current_assets", "9".repeat(64)),
+        liquidityRow("current_liabilities", `0.${"0".repeat(61)}1`),
+      ],
+      "2028-09-20T00:00:00.000Z",
+    );
+    const zeroLiabilities = await liquidityResponse([
+      liquidityRow("current_assets", "10"),
+      liquidityRow("current_liabilities", "0"),
+    ]);
+    for (const response of [current, historical, zeroLiabilities]) {
+      const before = JSON.stringify(response);
+      const company = renderToStaticMarkup(
+        <SecAnnualLiquidity response={response} />,
+      );
+      const { resolution } = response.evidence.liquidity;
+      for (const value of [
+        resolution.currentAssets,
+        resolution.currentLiabilities,
+        resolution.workingCapital,
+        resolution.currentRatio,
+      ]) {
+        const body = renderToStaticMarkup(
+          <SecAnnualLiquidityValueContent value={value} />,
+        );
+        expect(body).not.toMatch(/<(?:table|tr|th|td|div)\b/u);
+        expect(company).toContain(`<td>${body}</td>`);
+        if (value.status === "available") {
+          expect(body).toContain(
+            `class="sec-annual-liquidity-amount">${value.value}${value.unit === "multiple" ? "×" : ""}<`,
+          );
+          expect(body).toContain("<small>At 2025-12-31</small>");
+          expect(body).toContain(
+            response === historical
+              ? '<small class="discovery-warning">Historical value; outside current-use limits at this load.</small>'
+              : "<small>Within current-use limits at this load.</small>",
+          );
+        } else {
+          expect(body).toBe(
+            '<span class="sec-annual-liquidity-unavailable">Unavailable. Current ratio requires current liabilities greater than zero.</span>',
+          );
+        }
+      }
+      expect(JSON.stringify(response)).toBe(before);
+    }
+  });
+
+  it("reuses the complete source body inside the caller's disclosure", async () => {
+    const response = await liquidityResponse([
+      liquidityRow("current_assets", "150"),
+      liquidityRow("current_liabilities", "100"),
+    ]);
+    const before = JSON.stringify(response);
+    const body = renderToStaticMarkup(
+      <SecAnnualLiquiditySourceBody response={response} />,
+    );
+    expect(body).toMatch(/^<p>Annual cutoff 2026-09-20T00:00:00.000Z/u);
+    expect(body).toContain("Company Facts captured 2026-09-20T00:00:01.000Z");
+    expect(body).toContain("Submissions captured 2026-09-20T00:00:02.000Z");
+    expect(body).toContain("Completed 2026-09-20T00:00:02.000Z");
+    expect(body).toContain('aria-label="Current assets source inputs"');
+    expect(body).toContain('aria-label="Current liabilities source inputs"');
+    expect(body.match(/<details\b/gu)).toHaveLength(2);
+    expect(body).not.toContain("Liquidity sources and calculation inputs");
+    expect(body).not.toContain("sec-annual-liquidity-source");
+    expect(
+      renderToStaticMarkup(<SecAnnualLiquidity response={response} />),
+    ).toContain(
+      `<details class="sec-quarterly-row-details sec-annual-liquidity-source"><summary>Liquidity sources and calculation inputs</summary>${body}</details>`,
+    );
+    expect(JSON.stringify(response)).toBe(before);
+  });
+
   it("places the optional managed note action before sources and excludes it from the local appearance", async () => {
     const wire = await liquidityResponse([
       liquidityRow("current_assets", "120.125"),

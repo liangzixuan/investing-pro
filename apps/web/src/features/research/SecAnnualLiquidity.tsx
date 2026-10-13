@@ -109,7 +109,7 @@ export function SecAnnualLiquidity({
       {liquidityAction}
       <details className="sec-quarterly-row-details sec-annual-liquidity-source">
         <summary>Liquidity sources and calculation inputs</summary>
-        <LiquiditySources response={response} />
+        <SecAnnualLiquiditySourceBody response={response} />
       </details>
     </section>
   );
@@ -133,34 +133,40 @@ function LiquidityRow({
         </small>
       </th>
       <td>
-        {value.status === "available" ? (
-          <>
-            <span className="sec-annual-liquidity-amount">
-              {value.value}
-              {value.unit === "multiple" ? "×" : ""}
-            </span>
-            <small>At {value.asOfDate}</small>
-            <small
-              className={
-                value.currentUseEligible ? undefined : "discovery-warning"
-              }
-            >
-              {value.currentUseEligible
-                ? "Within current-use limits at this load."
-                : "Historical value; outside current-use limits at this load."}
-            </small>
-          </>
-        ) : (
-          <span className="sec-annual-liquidity-unavailable">
-            Unavailable. {reasons[value.reason]}
-          </span>
-        )}
+        <SecAnnualLiquidityValueContent value={value} />
       </td>
     </tr>
   );
 }
 
-function LiquiditySources({
+export function SecAnnualLiquidityValueContent({
+  value,
+}: {
+  readonly value: PersonalSecAnnualLiquidityValueDto;
+}) {
+  return value.status === "available" ? (
+    <>
+      <span className="sec-annual-liquidity-amount">
+        {value.value}
+        {value.unit === "multiple" ? "×" : ""}
+      </span>
+      <small>At {value.asOfDate}</small>
+      <small
+        className={value.currentUseEligible ? undefined : "discovery-warning"}
+      >
+        {value.currentUseEligible
+          ? "Within current-use limits at this load."
+          : "Historical value; outside current-use limits at this load."}
+      </small>
+    </>
+  ) : (
+    <span className="sec-annual-liquidity-unavailable">
+      Unavailable. {reasons[value.reason]}
+    </span>
+  );
+}
+
+export function SecAnnualLiquiditySourceBody({
   response,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;

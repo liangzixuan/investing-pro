@@ -605,7 +605,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 9" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 13" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -624,6 +624,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && cells(5)[0].textContent.includes('2024-01-01 to 2024-12-31')" +
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
         assertAnnualComparisonCash();
+        assertAnnualComparisonLiquidity();
     }
 
     private void assertAnnualComparisonCash() throws Exception {
@@ -675,6 +676,54 @@ public class ManagedWorkspaceInstrumentedTest {
             " && field('Exact USD observation') === values[i] && field('Accession') === accession" +
             " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
             " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
+        assertAnnualComparisonLiquiditySources();
+    }
+
+    private void assertAnnualComparisonLiquidity() throws Exception {
+        awaitPage("liquidity keeps exact balances, independent dates and units through basis and report lifetimes",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-liquidity]')];" +
+            " const keys = ['currentAssets', 'currentLiabilities', 'workingCapital', 'currentRatio'];" +
+            " const labels = ['Current assets', 'Current liabilities', 'Working capital', 'Current ratio'];" +
+            " const expected = [['1500', '900'], ['600', '1200'], ['900', '-300'], ['2.50×', '0.75×']];" +
+            " const dates = ['2025-12-31', '2025-06-30'];" +
+            " return rows.length === 4 && rows.every((row, i) => { const header = row.querySelector('th');" +
+            " const cells = [...row.querySelectorAll('td')]; return row.dataset.annualComparisonLiquidity === keys[i]" +
+            " && header?.scope === 'row' && header.firstChild.textContent === labels[i]" +
+            " && header.querySelector('small')?.textContent === (i < 2 ? 'Reported' : 'App calculation') + ' · ' + (i === 3 ? 'multiple' : 'USD')" +
+            " && cells.length === 2 && cells.every((cell, side) => cell.querySelector('.sec-annual-liquidity-amount')?.textContent === expected[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === 'At ' + dates[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'" +
+            " && !cell.querySelector('.sec-annual-liquidity-unavailable')); }); })()");
+    }
+
+    private void assertAnnualComparisonLiquiditySources() throws Exception {
+        awaitPage("each liquidity disclosure retains original instant observations and calculation references",
+            "(() => { const sources = [...document.querySelectorAll('.managed-annual-comparison-source')];" +
+            " return sources.length === 2 && sources.every((source, side) => {" +
+            " const liquidity = source.querySelector('[data-annual-comparison-liquidity-source]');" +
+            " const inputs = liquidity?.querySelectorAll(':scope > section');" +
+            " const concepts = ['AssetsCurrent', 'LiabilitiesCurrent'];" +
+            " const values = side === 0 ? ['1500', '600'] : ['900', '1200'];" +
+            " const date = side === 0 ? '2025-12-31' : '2025-06-30';" +
+            " const filed = side === 0 ? '2026-02-01' : '2025-08-01';" +
+            " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " const url = 'https://www.sec.gov/Archives/edgar/data/' + (side + 1) + '/' + accession + '-index.htm';" +
+            " const ids = []; return liquidity?.closest('details') === source.querySelector('details')" +
+            " && liquidity.dataset.annualComparisonLiquiditySource === (side === 0 ? 'left' : 'right')" +
+            " && liquidity.querySelector(':scope > p')?.textContent === 'Annual cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && inputs.length === 2 && [...inputs].every((input, i) => { const pairs = [...input.querySelectorAll('dl > div')];" +
+            " const field = label => pairs.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); ids.push(id); return id && input.querySelectorAll('ol > li').length === 1" +
+            " && input.querySelector('summary')?.textContent === concepts[i] + ' · Source end ' + date + ' · ' + values[i] + ' USD'" +
+            " && input.querySelector(':scope > p')?.textContent === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && field('Exact USD observation') === values[i] && field('Source end date') === date" +
+            " && field('Source start date') === 'Not supplied' && field('Source duration') === 'Not supplied; an instant balance requires no duration.'" +
+            " && field('Accession') === accession && field('Reported form / filed date') === '10-K · ' + filed" +
+            " && field('Joined report / accepted time') === date + ' · ' + filed + 'T00:00:00.000Z'" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
+            " && input.querySelector('a')?.href === url && input.querySelector('a')?.target === '_blank'" +
+            " && input.querySelector('a')?.rel === 'noreferrer'; })" +
+            " && ids[0] !== ids[1] && [...liquidity.querySelectorAll(':scope > p')].slice(-2).map(p => p.textContent).join('|') === 'Working capital references: ' + ids.join(' · ') + '|Current ratio references: ' + ids.join(' · '); }); })()");
     }
 
     private void assertAnnualComparisonDraft() throws Exception {
