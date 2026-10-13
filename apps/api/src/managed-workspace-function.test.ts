@@ -4,6 +4,7 @@ import {
   encodeMainWatchlistPayload,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   parseManagedMonetaryAnnouncements,
   parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
@@ -819,7 +820,7 @@ describe("managed annual composed function", () => {
       .search(symbol)!
       .results.find((row) => row.symbol === symbol)!;
     return {
-      schemaVersion: "1.0.0",
+      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
       catalogSnapshotSha256: service.status().snapshot.snapshotSha256,
       listingId: selected.listingId,
       symbol,

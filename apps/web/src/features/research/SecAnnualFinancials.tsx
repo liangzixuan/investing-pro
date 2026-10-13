@@ -59,12 +59,12 @@ export function AnnualOverviewSummary({
         }
       >
         {resolution.currentTargetEligible
-          ? "Within current-use limits at this load."
-          : "Unavailable under the current-use policy at this load. Any valid reported amounts below remain historical; comparison and history are unavailable."}
+          ? "Revenue and income are within current-use limits at this load."
+          : "Revenue and income are unavailable under the current-use policy at this load. Any valid reported income amounts remain historical; their comparison and history are unavailable."}
       </p>
       {completenessMessage && (
         <p className="discovery-warning">
-          Annual values withheld. {completenessMessage}
+          Revenue and net income withheld. {completenessMessage}
         </p>
       )}
       <p className="managed-annual-basis-help">

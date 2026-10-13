@@ -220,14 +220,10 @@ export function serializePersonalSecAnnualGeneration(input: {
   ]);
 }
 
-/** Deterministic global refusal precedence shared by provider and decoder. */
-export function getPersonalSecAnnualRefusalReason(
-  input: Pick<
-    PersonalSecAnnualResolutionInput,
-    "generation" | "target" | "coverage"
-  >,
-): PersonalSecAnnualRefusalReason | null {
-  const { generation, target, coverage } = input;
+/** Shared source/clock admission, independent of any financial concept scan. */
+export function getPersonalSecAnnualSourceReason(
+  generation: PersonalSecAnnualGenerationDto,
+): "invalid_clock" | "source_unavailable" | null {
   const cutoff = instant(generation.cutoffAt),
     completed = instant(generation.completedAt);
   if (
@@ -241,7 +237,7 @@ export function getPersonalSecAnnualRefusalReason(
     generation.sources.companyFacts,
     generation.sources.submissions,
   ];
-  if (sources.some((s) => s.status !== "available") || coverage === null)
+  if (sources.some((s) => s.status !== "available"))
     return "source_unavailable";
   const captures = sources.map((s) =>
     s.fetchedAt === null ? null : instant(s.fetchedAt),
@@ -250,6 +246,50 @@ export function getPersonalSecAnnualRefusalReason(
     captures.some((time) => time === null || time < cutoff || time > completed)
   )
     return "invalid_clock";
+  return null;
+}
+
+export function getPersonalSecAnnualUtilityAge(
+  generation: PersonalSecAnnualGenerationDto,
+  target: PersonalSecAnnualTargetDto,
+): PersonalSecAnnualResolutionDto["utilityAge"] {
+  if (
+    getPersonalSecAnnualSourceReason(generation) !== null ||
+    target.status !== "target" ||
+    day(target.reportDate) === null
+  )
+    return null;
+  const endAgeDays =
+    (day(generation.cutoffAt.slice(0, 10))! - day(target.reportDate)!) / DAY;
+  const sourceAgeDays: [number, number] = [
+    generation.sources.companyFacts,
+    generation.sources.submissions,
+  ].map(
+    (source) =>
+      (instant(generation.completedAt)! - instant(source.fetchedAt!)!) / DAY,
+  ) as [number, number];
+  return {
+    endAgeDays,
+    sourceAgeDays,
+    withinWindow:
+      endAgeDays >= 0 &&
+      endAgeDays <= 485 &&
+      sourceAgeDays.every((age) => age >= 0 && age <= 7),
+  };
+}
+
+/** Deterministic revenue/income refusal precedence shared by provider and decoder. */
+export function getPersonalSecAnnualRefusalReason(
+  input: Pick<
+    PersonalSecAnnualResolutionInput,
+    "generation" | "target" | "coverage" | "incomeScanStatus"
+  >,
+): PersonalSecAnnualRefusalReason | null {
+  const { generation, target, coverage } = input;
+  const sourceReason = getPersonalSecAnnualSourceReason(generation);
+  if (sourceReason !== null) return sourceReason;
+  if (input.incomeScanStatus !== "available" || coverage === null)
+    return "source_unavailable";
   if (coverage.full.invalidRows > 0) return "invalid_source_rows";
   if (target.status === "unresolved") return "target_unresolved";
   requireValid(coverage.selected !== null);
@@ -260,13 +300,30 @@ export function getPersonalSecAnnualRefusalReason(
       PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS.observationsPerMetric
   )
     return "selected_report_overflow";
-  if (captures.some((time) => (completed - time!) / DAY > 7))
+  if (
+    [generation.sources.companyFacts, generation.sources.submissions].some(
+      (source) =>
+        (instant(generation.completedAt)! - instant(source.fetchedAt!)!) / DAY >
+        7,
+    )
+  )
     return "source_stale";
   return null;
 }
+
+export { filingReason as getPersonalSecAnnualFilingReason };
 /** Annual row admission; the caller names the filing's expected report end. */
 export function getPersonalSecAnnualRowReason(
-  row: Observation,
+  row: Pick<
+    Observation,
+    | "form"
+    | "filingFocusPeriod"
+    | "startDate"
+    | "endDate"
+    | "durationDays"
+    | "filing"
+    | "filedDate"
+  >,
   cutoffAt: string,
   fetchedAt: string,
   expectedReportDate: string,
@@ -517,24 +574,14 @@ export function resolvePersonalSecAnnualEvidence(
           : ("missing" as const),
     };
   });
-  const endAgeDays =
-    (day(generation.cutoffAt.slice(0, 10))! - day(target.reportDate)!) / DAY;
-  const sourceAgeDays: [number, number] = [
-    generation.sources.companyFacts,
-    generation.sources.submissions,
-  ].map(
-    (s) => (instant(generation.completedAt)! - instant(s.fetchedAt!)!) / DAY,
-  ) as [number, number];
-  const withinWindow =
-    endAgeDays >= 0 &&
-    endAgeDays <= 485 &&
-    sourceAgeDays.every((n) => n >= 0 && n <= 7);
+  const utilityAge = getPersonalSecAnnualUtilityAge(generation, target)!;
   const selectedReportPairEligible = bases.some((b) => b.status === "eligible");
   return freeze({
     pairs: resultPairs,
     bases,
     selectedReportPairEligible,
-    currentTargetEligible: selectedReportPairEligible && withinWindow,
-    utilityAge: { endAgeDays, sourceAgeDays, withinWindow },
+    currentTargetEligible:
+      selectedReportPairEligible && utilityAge.withinWindow,
+    utilityAge,
   });
 }

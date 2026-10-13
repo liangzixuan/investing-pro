@@ -173,7 +173,9 @@ describe("shared annual result", () => {
     expect(html).toContain(">-2.5</dd>");
     expect(html).toContain('aria-label="Annual revenue basis SalesRevenueNet"');
     expect(html).toContain('aria-label="Annual revenue basis Revenues"');
-    expect(html).toContain("Inspect selected-report evidence (3 observations)");
+    expect(html).toContain(
+      "Inspect selected-report income evidence (3 observations)",
+    );
     expect(html).toContain(wire.evidence.generation.sha256);
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).not.toContain("Load observed annual report");

@@ -17,6 +17,7 @@ import {
   fedAnnouncements,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
+import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
@@ -799,7 +800,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-beta-a",
           symbol: "BETA",
@@ -921,7 +922,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "2.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -1006,13 +1007,82 @@ describe("Android managed fixture startup", () => {
     const original = await fixture.api.load(signal);
     expect(original.payload.snapshotSha256).toBe(fixtureDigest);
     const request = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "2.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
     };
     const report = await fixture.api.annualReport(request, signal);
     expect(report.evidence.generation).toEqual(fixture.generations.initial);
+    expect(
+      await parseSecAnnualEvidenceResponse(report, request, signal),
+    ).toEqual(report);
+    const cash = report.evidence.cashGeneration;
+    const operating = cash.operatingCashFlow.observations[0]!;
+    const purchases = cash.ppePurchases.observations[0]!;
+    const period = {
+      status: "available",
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      accessionNumber: "0000000001-26-000001",
+      currentUseEligible: true,
+    };
+    expect(cash.resolution).toMatchObject({
+      operatingCashFlow: {
+        ...period,
+        value: "120.125",
+        observationIds: [operating.id],
+      },
+      ppePurchases: {
+        ...period,
+        value: "20.025",
+        observationIds: [purchases.id],
+      },
+      operatingCashFlowLessPpePurchases: {
+        ...period,
+        value: "100.1",
+        observationIds: [operating.id, purchases.id],
+      },
+    });
+    expect(
+      [operating, purchases].map((item) => ({
+        concept: item.concept,
+        value: item.value,
+        sourceLocator: item.sourceLocator,
+        filing: item.filing,
+      })),
+    ).toEqual([
+      {
+        concept: "NetCashProvidedByUsedInOperatingActivities",
+        value: "120.125",
+        sourceLocator:
+          "/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0",
+        filing: {
+          status: "matched",
+          form: "10-K",
+          filedDate: "2026-02-01",
+          reportDate: "2025-12-31",
+          acceptedAt: "2026-02-01T00:00:00.000Z",
+          sourceUrl:
+            "https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm",
+        },
+      },
+      {
+        concept: "PaymentsToAcquirePropertyPlantAndEquipment",
+        value: "20.025",
+        sourceLocator:
+          "/facts/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment/units/USD/0",
+        filing: {
+          status: "matched",
+          form: "10-K",
+          filedDate: "2026-02-01",
+          reportDate: "2025-12-31",
+          acceptedAt: "2026-02-01T00:00:00.000Z",
+          sourceUrl:
+            "https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm",
+        },
+      },
+    ]);
     const pair = report.evidence.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
@@ -1098,7 +1168,7 @@ describe("Android managed fixture startup", () => {
       if (invalid !== "unloaded")
         await fixture.api.annualReport(
           {
-            schemaVersion: "1.0.0",
+            schemaVersion: "2.0.0",
             catalogSnapshotSha256: fixtureDigest,
             listingId: "listing-zero",
             symbol: "ZERO",
@@ -1322,7 +1392,7 @@ describe("Android managed fixture startup", () => {
   it("serves one fresh Annual response after the cancelled visit read settles", async () => {
     const fixture = await createFixture();
     const request = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "2.0.0" as const,
       catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -1339,6 +1409,30 @@ describe("Android managed fixture startup", () => {
       new AbortController().signal,
     );
     expect(fresh.evidence.generation).toEqual(fixture.generations.recovered);
+    expect(
+      await parseSecAnnualEvidenceResponse(
+        fresh,
+        request,
+        new AbortController().signal,
+      ),
+    ).toEqual(fresh);
+    expect(fresh.evidence.cashGeneration.resolution).toMatchObject({
+      operatingCashFlow: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+      ppePurchases: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+      operatingCashFlowLessPpePurchases: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+    });
     expect(fixture.getSnapshot()).toMatchObject({
       annual: 2,
       aborted: 1,
@@ -1950,7 +2044,7 @@ describe("bounded invented company filings journey", () => {
 });
 describe("bounded invented Annual comparison", () => {
   const request = (second = false) => ({
-    schemaVersion: "1.0.0" as const,
+    schemaVersion: "2.0.0" as const,
     catalogSnapshotSha256: fixtureDigest,
     listingId: second ? "listing-one" : "listing-zero",
     symbol: second ? "ONE" : "ZERO",

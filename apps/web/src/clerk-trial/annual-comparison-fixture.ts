@@ -1,3 +1,4 @@
+import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecQuarterlyObservationDto,
@@ -97,10 +98,11 @@ export async function parseAnnualComparisonFixture(
       evidence: {
         ...evidence,
         resolution: resolvePersonalSecAnnualEvidence(evidence),
+        cashGeneration: await cashGeneration(evidence),
       },
     },
     {
-      schemaVersion: "1.0.0",
+      schemaVersion: "2.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,
@@ -243,6 +245,7 @@ function unavailable(packet: Response): Response {
     ...packet,
     evidence: {
       ...packet.evidence,
+      incomeScanStatus: "source_unavailable",
       completeness: { status: "refused", reason: "source_unavailable" },
       observations: [],
       coverage: null,

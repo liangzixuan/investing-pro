@@ -127,6 +127,49 @@ Price was unavailable. Native execution for the financial layout passed its
 exact-head hosted check; release acceptance remains separate in
 [Current work](CURRENT_WORK.md).
 
+## Cash generation
+
+The company Annual view shows reported operating cash flow and purchases of
+property, plant and equipment (PP&E) independently. It also shows **Operating
+cash flow less PP&E purchases**, explicitly labelled as an app calculation.
+Amounts remain exact, unscaled USD with their actual annual periods. The
+calculation requires both operands from the same filing and period. Negative
+operating cash flow and zero purchases are valid; negative reported purchases
+remain visible but withhold the subtraction. This is a narrow calculation, with
+no adjustment for leases, acquisitions or other investing cash flows.
+
+The source uses only `NetCashProvidedByUsedInOperatingActivities` and
+`PaymentsToAcquirePropertyPlantAndEquipment` in SEC Company Facts. It reuses the
+existing Submissions target and the same two explicit source requests. Missing,
+conflicting or invalid amounts stay unavailable. Another concept, filing or
+currency cannot fill a gap. Each amount must establish FY focus, an unamended
+annual filing and a 335–395 day period ending at the selected report date.
+Cash eligibility does not require a revenue or net-income pair.
+
+Company Facts envelope validity is separate from the income scan and each cash
+scan. A malformed or over-limit cash concept preserves valid income and the
+other cash metric; a failed income scan preserves valid cash evidence. Each cash
+concept allows at most 10,000 USD candidates and 100 unique selected-filing
+observations before annual filtering. Exceeding a bound withholds that metric
+without clipping. The existing income limits, eight-MiB source cap, two-MiB
+response cap, scheduler, admission and deadlines remain unchanged.
+
+Original source times, selected filing, observation pointers and exact calculation
+references are available in **Cash sources and calculation inputs**. Historical
+amounts retain their dates and current-use status; the existing seven-day source
+and 485-day report policies apply independently of income. Refresh, cancellation,
+navigation and session retirement use the existing Annual response lifetime.
+This increment adds no cash history, chart, watchlist comparison column or
+Annual-to-note field.
+
+The Annual request/response schema and generation definition are `2.0.0`. The
+route and four request keys are unchanged. Version-1 Annual requests are rejected
+before provider or budget work; version-2 clients reject old responses. A later
+release must coordinate the API, website and Android client. During a mismatched
+rollout, Annual reads are unavailable until the matching client is installed or
+loaded. Saved watchlists and notes require no migration. Current work records
+implementation and acceptance; this guide does not establish deployment.
+
 ## Optional reported annual trend
 
 The managed overview includes an initially collapsed **Reported annual trend**

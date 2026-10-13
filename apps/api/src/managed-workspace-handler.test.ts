@@ -1113,7 +1113,7 @@ describe("managed JSON admission and read-only resolve", () => {
 describe("managed annual read-only POST boundary", () => {
   const path = "/v1/managed/sec-annual-evidence";
   const value = {
-    schemaVersion: "1.0.0",
+    schemaVersion: contracts.PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "listing-demo",
     symbol: "DEMO",
@@ -1154,6 +1154,10 @@ describe("managed annual read-only POST boundary", () => {
   });
   it("strictly owns the four request fields before annual dispatch", async () => {
     const f = setup();
+    expect(
+      (await f.handler(f.post({ ...value, schemaVersion: "1.0.0" }))).status,
+    ).toBe(400);
+    expect(f.load).not.toHaveBeenCalled();
     expect(
       (await f.handler(f.post({ ...value, cik: "0000320193" }))).status,
     ).toBe(400);

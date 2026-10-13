@@ -29,6 +29,10 @@ import {
   response,
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
+import {
+  cashGeneration,
+  cashRow,
+} from "../../src/features/research/sec-annual-cash-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
 import { annualComparisonResponse } from "../../src/clerk-trial/annual-comparison-fixture";
@@ -203,7 +207,7 @@ export async function createFixture(
     | "watchlist-comparison"
     | "watchlist-export" = "default",
 ) {
-  const annual = await response(
+  const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
           observation.metric === "net_income" &&
@@ -213,6 +217,19 @@ export async function createFixture(
         )
       : undefined,
   );
+  const annual =
+    scenario === "annual-note"
+      ? {
+          ...annualBase,
+          evidence: {
+            ...annualBase.evidence,
+            cashGeneration: await cashGeneration(annualBase.evidence, [
+              cashRow("operating_cash_flow", "120.125"),
+              cashRow("ppe_purchases", "20.025"),
+            ]),
+          },
+        }
+      : annualBase;
   const recovered = await response(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
@@ -991,7 +1008,7 @@ export async function createFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "1.0.0" ||
+          request.schemaVersion !== "2.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1026,7 +1043,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "1.0.0" ||
+        request.schemaVersion !== "2.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"

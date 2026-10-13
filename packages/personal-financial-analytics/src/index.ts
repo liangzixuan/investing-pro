@@ -107,10 +107,15 @@ export {
 
 export {
   getPersonalSecAnnualRefusalReason,
+  getPersonalSecAnnualSourceReason,
+  getPersonalSecAnnualUtilityAge,
   resolvePersonalSecAnnualEvidence,
   selectPersonalSecAnnualTarget,
   serializePersonalSecAnnualGeneration,
 } from "./personal-sec-annual-evidence";
+
+export { resolvePersonalSecAnnualCashGeneration } from "./personal-sec-annual-cash-generation";
+export { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 
 export { assessPersonalSecQuarterEvidence } from "./personal-sec-quarter-assessment";
 

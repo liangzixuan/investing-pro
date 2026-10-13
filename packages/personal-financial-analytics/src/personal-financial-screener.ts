@@ -19,6 +19,7 @@ import {
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
+import { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 
 import {
   PERSONAL_FINANCIAL_ANALYTICS_FORMULAS,
@@ -842,14 +843,16 @@ function cashFlowLessPpePurchases(
     sources.some((source) => source.accessionNumber !== first.accessionNumber)
   )
     return unavailable("USD", "filing_mismatch", sources);
-  if (new ScreenDecimal(ppePurchases.value).lt(0))
-    return unavailable("USD", "unsupported_sign", sources);
+  const calculation = calculatePersonalOperatingCashFlowLessPpePurchases(
+    operatingCashFlow.value,
+    ppePurchases.value,
+  );
+  if (calculation.status === "unavailable")
+    return unavailable("USD", calculation.reason, sources);
   return {
     status: "available",
     unit: "USD",
-    value: canonicalDecimal(
-      new ScreenDecimal(operatingCashFlow.value).minus(ppePurchases.value),
-    ),
+    value: calculation.value,
     sources,
   };
 }

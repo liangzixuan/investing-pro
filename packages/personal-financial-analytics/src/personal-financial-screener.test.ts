@@ -838,6 +838,8 @@ describe("PP&E purchases and operating cash flow less PP&E purchases", () => {
     ["0", "0", "0"],
     ["-0.00", "0", "0"],
     ["2.0000001", "0.0000001", "2"],
+    ["9".repeat(64), "1", `${"9".repeat(63)}8`],
+    [`0.${"0".repeat(61)}1`, "0", `0.${"0".repeat(61)}1`],
   ])("subtracts %s less %s exactly as %s", (cashFlow, purchases, expected) => {
     const cells = run(
       [identity("EXACT", 1)],

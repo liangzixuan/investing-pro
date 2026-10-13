@@ -1,4 +1,7 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  type PersonalSecAnnualEvidenceResponseDto,
+} from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import {
   ManagedSecCooldownError,
@@ -161,7 +164,7 @@ export class ManagedAnnualReport {
     try {
       const response = await this.loadReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
           catalogSnapshotSha256: selection.catalogSnapshotSha256,
           listingId: selection.listing.listingId,
           symbol: selection.listing.symbol,

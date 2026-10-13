@@ -122,6 +122,16 @@ The Annual note action validates the complete appended draft and leaves saving
 to the existing coordinator. [The Annual guide](MANAGED_SEC_ANNUAL.md#reported-net-margin-comparison)
 defines unavailable values and provenance.
 
+Annual v2 adds independent cash scans inside the existing evidence response. The
+API's Annual Company Facts normalizer separates envelope validity, income
+normalization and two fixed cash concepts. Shared contracts define bounded scan
+counts; financial analytics owns annual eligibility and exact subtraction. The
+web decoder validates every section and recomputes results before presentation.
+A small exact-decimal helper also serves the existing local cash screen without
+sharing its distinct source-admission rules. Cash adds no request, persistence or
+note-format field. The [Annual guide](MANAGED_SEC_ANNUAL.md#cash-generation)
+describes the coordinated client/API version boundary.
+
 Issuer, security, share class, listing and provider symbol are separate concepts.
 [Contracts](../packages/contracts/src/index.ts) validate wire data; the
 [security-master package](../packages/personal-security-master/) owns catalog
