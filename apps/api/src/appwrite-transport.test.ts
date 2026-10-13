@@ -512,28 +512,68 @@ describe("Appwrite bounded SDK transport", () => {
     expect(f.snapshot().requests).toBe(2);
   });
 
-  it("cancels native socket body consumption at the per-request deadline", async () => {
+  it("cancels native socket body consumption at the per-request deadline", async ({
+    onTestFailed,
+    signal,
+  }) => {
+    const startedAt = performance.now();
+    const phases: { phase: string; elapsedMs: number }[] = [];
+    const record = (phase: string) => {
+      if (phases.length < 12)
+        phases.push({
+          phase,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        });
+    };
+    // The failure hook runs after cleanup; retain the timeout and cleanup boundary.
+    signal.addEventListener(
+      "abort",
+      () => record("test timeout or cancellation"),
+      {
+        once: true,
+      },
+    );
+    onTestFailed(() => {
+      console.error(
+        "Native deadline diagnostic",
+        JSON.stringify({
+          phases,
+          afterCleanup: { calls, closed },
+        }),
+      );
+    });
+    record("listen started");
     let calls = 0;
     let closed = false;
     const dispatcher = await loopbackServer((_request, response) => {
       calls++;
       response.writeHead(200, HEADERS);
       response.write('{"pending":');
+      record("partial body written");
       response.on("close", () => {
         closed = true;
+        record("server response closed");
       });
     });
+    record("listen completed");
     const transport = createAppwriteTransport({
       endpoint: ENDPOINT,
       dispatcher,
       limits: { requestTimeoutMs: 150 },
     });
-    resources.push(() => transport.close());
+    resources.push(async () => {
+      record("cleanup started");
+      await transport.close();
+      record("cleanup completed");
+    });
+    record("awaiting SDK rejection");
     await expect(
       transport.client.call("GET", new URL(ENDPOINT + "/rows"), HEADERS),
     ).rejects.toBeInstanceOf(AppwriteException);
+    record("SDK rejected; awaiting server close");
     await vi.waitFor(() => expect(closed).toBe(true));
     expect(calls).toBe(1);
+    record("assertions completed");
   });
 
   it("cancels active native I/O at the shared deadline and refuses later dispatch", async () => {

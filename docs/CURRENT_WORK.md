@@ -113,10 +113,12 @@ passed, including announcements and export. APK isolation was skipped after the
 failure. Ubuntu also timed out while comparing the complete decompressed license
 Buffer. That test now uses native exact-byte equality and keeps the same timeout
 and remaining assertions. Both original failures remain recorded. The repaired
-revision's original Android run passes all 26 required cases and every workflow
-step, including APK isolation and complete license-byte checks. Ubuntu also
-passes. Windows timed out in an existing native-socket deadline test; its original
-failure is under review. No production cause has been established.
+revision passes five of six required Actions jobs, including Ubuntu and all 26
+Android cases, APK isolation and complete license-byte checks. Windows instead
+times out in an unchanged native-socket deadline test. A focused local run and
+phase trace pass; they do not reproduce or explain the hosted timeout. A diagnostic
+test update records bounded failure phases while preserving the request deadline,
+test timeout and native-close assertions. Its original hosted checks remain pending.
 
 ### Watchlist Annual comparison in development
 
