@@ -17,6 +17,7 @@ export interface FedMonetaryAnnouncementsProps {
   readonly className?: string;
   readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
   readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
 }
@@ -40,6 +41,7 @@ export function FedMonetaryAnnouncements({
   className = "",
   onCancel,
   loadButtonRef,
+  headingRef,
   showingPrevious = false,
   message = "",
 }: FedMonetaryAnnouncementsProps) {
@@ -50,7 +52,13 @@ export function FedMonetaryAnnouncements({
     >
       <header className="fed-announcements-heading">
         <div>
-          <h2 id="fed-announcements-title">Federal Reserve announcements</h2>
+          <h2
+            id="fed-announcements-title"
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+          >
+            Federal Reserve announcements
+          </h2>
           <p>Monetary policy · Announcements from this feed.</p>
         </div>
         <div className="fed-announcements-actions">

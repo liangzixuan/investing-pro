@@ -943,6 +943,7 @@ public class ManagedWorkspaceInstrumentedTest {
         double documentTimeOrigin = readDocumentTimeOrigin();
         prepareBeaDraft();
         assertBeaCounts(0, 0, 0);
+        assertMarketsNavigation(0);
         clickBeaAction("Load agenda");
         assertBeaPacket();
         assertBeaCounts(1, 0, 0);
@@ -950,6 +951,7 @@ public class ManagedWorkspaceInstrumentedTest {
 
         chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
         assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
+        assertMarketsNavigation(1);
         assertBeaCounts(1, 0, 0);
         assertBeaDraft();
         clickBeaAction("Refresh agenda");
@@ -964,6 +966,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("one calendar refresh is held", DIAGNOSTICS + ".calendar === 3" +
             " && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
         assertBeaDate("2026-11-04", "Invented Trade", 1);
+        assertMarketsNavigation(3);
         clickBeaAction("Cancel agenda");
         assertBeaCounts(3, 1, 0);
         assertBeaDate("2026-11-04", "Invented Trade", 1);
@@ -1035,6 +1038,55 @@ public class ManagedWorkspaceInstrumentedTest {
     private void clickBeaAction(String label) {
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[contains(@class,'bea-release-agenda')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertMarketsNavigation(int calendarReads) throws Exception {
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        String packet = "JSON.stringify({draft:" + DRAFT + ", date:document.querySelector('#managed-bea-release-date')?.value ?? ''," +
+            " agenda:document.querySelector('.bea-release-agenda')?.textContent," +
+            " clocks:[...document.querySelectorAll('.bea-release-agenda time')].map(t => t.dateTime)," +
+            " source:document.querySelector('.bea-agenda-source a')?.href," +
+            " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
+        String originalPacket = readFixtureString(packet);
+        awaitPage("Markets offers three labelled native-sized section links",
+            "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
+            " return links.length === 3 && links.map(a => a.textContent).join('|') === 'Company board|Economic calendar|Fed announcements'" +
+            " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
+        for (String section : new String[] {"board", "calendar", "announcements"}) {
+            String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
+            String targetId = section.equals("board") ? "managed-markets-heading" :
+                section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
+            String geometry = readFixtureString(
+                "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +
+                " if (!link) return JSON.stringify(null); link.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+                " const r = link.getBoundingClientRect(), v = visualViewport; const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+                " return JSON.stringify({x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom," +
+                " width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+                " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+                " &&r.width>=44&&r.height>=44&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+                " visible:link.isConnected&&!link.closest('[hidden], [inert]')&&getComputedStyle(link).visibility==='visible'" +
+                " &&r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height," +
+                " hit:link.contains(document.elementFromPoint(x,y))}); })()");
+            touchObservedGeometry("markets-jump-" + section, geometry);
+            awaitPage("native Markets jump focuses its visible owned heading: " + section,
+                "(() => { const target = document.getElementById(" + JSONObject.quote(targetId) + ");" +
+                " const owner = document.querySelector('.managed-markets-content');" +
+                " if (!target || !owner?.contains(target) || document.activeElement !== target || !target.isConnected" +
+                " || target.closest('[hidden], [inert]') || getComputedStyle(target).visibility !== 'visible') return false;" +
+                " const r = target.getBoundingClientRect(), v = visualViewport;" +
+                " const nav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+                " const bottom = Math.min(v.offsetTop + v.height, nav?.top > v.offsetTop ? nav.top : Infinity);" +
+                " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+                " && r.top >= v.offsetTop && r.bottom <= bottom" +
+                " && location.href === " + JSONObject.quote(originalLocation) +
+                " && String(history.length) === " + JSONObject.quote(originalHistoryLength) + "; })()");
+        }
+        assertEquals("Markets jumps preserve the exact agenda, selected date and whole draft", originalPacket, readFixtureString(packet));
+        assertBeaCounts(calendarReads, 0, 0);
+        awaitPage("Markets jumps leave other source and authentication counts unchanged",
+            DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
     }
 
     private void assertBeaPacket() throws Exception {

@@ -723,8 +723,51 @@ One bounded frame checks the Form label and control; a second checks the count
 and complete filtered row. Their combined targets are unchanged. Both use the
 same full-bounds checks before and after capture, with the same deadline and all
 semantic assertions retained. The suite keeps 27 cases and adds one named capture.
-This test-only correction needs execution on the updated source; it does not
-turn either original failure into a pass.
+The initial source-header run also reached the same framing failure before
+cancellation when the repair was pushed. Its report records 26 of 27 cases
+passing; later Filings assertions and APK isolation remain unaccepted. The
+updated source passed all 27 native cases and the APK isolation gate in its
+original hosted attempt. Independent review verified the complete result frame,
+later Filings assertions, source identity and full software notices. Both earlier
+failures remain recorded. The remaining desktop checks are separate.
+
+### Markets section navigation candidate
+
+**On Markets** links reach the company board, economic calendar and Federal
+Reserve announcements on the same page. Each explicit jump focuses the current
+section heading and scrolls it into view. All sections remain visible. The links
+wrap on narrow screens and retain a minimum 44-pixel target height.
+
+Jumps make no request or saved change and do not change the URL or history.
+Loaded source dates, the selected release date, pending work and unsaved notes
+keep their existing state. Current-view and target-ownership checks prevent an
+old callback from moving focus after navigation or session retirement, including
+a view change caused by focus itself. Shared local-profile headings retain their
+previous markup when no navigation ref is supplied.
+
+Focused component and composed Screen tests, full web types, scoped lint and
+formatting pass. The first type check found optional-ref declarations that did
+not allow explicit undefined forwarding; a type-only correction passed the
+affected checks. The existing native agenda journey now taps all three links
+before loading, with a selected date and during a held refresh. It requires
+visible focused headings and unchanged source, request, draft and URL state;
+its case count and screenshot captures are unchanged.
+
+Chrome checks at 1440, 390 and 320 CSS pixels accept wrapping, target size,
+keyboard continuation and visible focused headings above the mobile navigation.
+Exact loaded sources, selected company, chart choices, BEA date and a Unicode
+unsaved draft survive jumps. Held requests remain pending; cancellation and late
+replies retain the previous data. Equal-content agenda replacement keeps focus
+on the chosen heading and resets the date as before. Company visits and top-level
+return preserve their existing state rules. Session retirement clears local data
+and blocks a late reply. No Save or external source request was made.
+
+The exact preview and native fixture builds preserve full software notices and
+the unchanged native asset cap. Independent source and saved-bundle reviews pass.
+One early screenshot captured a stale frame; its settled replacement supports
+the visual check. Hosted native execution for this new navigation remains pending.
+Production is unchanged. See the
+[Markets guide](MANAGED_MARKETS_HOME.md#move-between-markets-sections).
 
 ## Product scope
 
@@ -750,7 +793,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish the Filings filter and source header's original hosted checks and the
+Finish Markets navigation's rendered and native checks, the Filings source
+header's updated hosted checks, and the
 source integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable

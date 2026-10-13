@@ -21,6 +21,7 @@ export interface BeaReleaseAgendaProps {
   readonly onLoad: () => void;
   readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
   readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
   readonly dateView?: {
@@ -47,6 +48,7 @@ export function BeaReleaseAgenda({
   onLoad,
   onCancel,
   loadButtonRef,
+  headingRef,
   showingPrevious = false,
   message = "",
   dateView,
@@ -71,7 +73,13 @@ export function BeaReleaseAgenda({
     >
       <header className="bea-agenda-heading">
         <div>
-          <h2 id="bea-agenda-title">Economic calendar</h2>
+          <h2
+            id="bea-agenda-title"
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+          >
+            Economic calendar
+          </h2>
           <p>
             BEA releases · {PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS}-day agenda
           </p>

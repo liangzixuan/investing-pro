@@ -1,8 +1,14 @@
-import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type Ref } from "react";
 import { FedMonetaryAnnouncements } from "../features/markets/FedMonetaryAnnouncements";
 import type { ManagedFedAnnouncements as Model } from "./managed-fed-announcements";
 
-export function ManagedFedAnnouncements({ model }: { model: Model }) {
+export function ManagedFedAnnouncements({
+  model,
+  headingRef,
+}: {
+  model: Model;
+  headingRef?: Ref<HTMLHeadingElement> | undefined;
+}) {
   const state = useSyncExternalStore(
     model.subscribe,
     model.getSnapshot,
@@ -28,6 +34,7 @@ export function ManagedFedAnnouncements({ model }: { model: Model }) {
   return (
     <FedMonetaryAnnouncements
       {...state}
+      headingRef={headingRef}
       className="trial-panel"
       enabled
       loadButtonRef={load}
