@@ -74,7 +74,7 @@ def validateClientAssets = tasks.register('validateInvestmentClientAssets') {
         if (capacitor.appId != clientProfile.appId || capacitor.appName != clientProfile.appName
             || capacitor.webDir != clientProfile.webDir || capacitor.loggingBehavior != 'none'
             || capacitor.server != [hostname: 'localhost', androidScheme: 'https']
-            || capacitor.android != [allowMixedContent: false, webContentsDebuggingEnabled: false]) {
+            || capacitor.android != [minWebViewVersion: 111, allowMixedContent: false, webContentsDebuggingEnabled: false]) {
             throw new GradleException('The synced Capacitor configuration does not match the Android profile.')
         }
         def publicRoot = new File(assetsRoot, 'public')

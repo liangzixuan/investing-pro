@@ -98,6 +98,13 @@ integrated native fixture build uses 2,198,001 bytes at its largest loader paylo
 below the unchanged 4 MiB limit. Its new announcements journey and extended
 license assertions still require execution in the original hosted Android run.
 
+The first hosted Android attempt stopped before native execution: the strict
+Gradle configuration map had not been updated for the declared WebView minimum.
+The map now includes that exact setting. The original Gradle validation task
+accepts it and rejects missing, altered or extra settings in an isolated check;
+a cross-file regression passes. Whole-app build and native execution still need
+the updated revision's hosted checks. The original failure remains retained.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
