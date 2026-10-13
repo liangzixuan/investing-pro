@@ -21,16 +21,10 @@ import {
   annualComparisonPercentText,
   annualMarginChangeText,
 } from "../../lib/sec-annual-comparison-display";
+import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 type AnnualBasis =
   PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number];
-
-const revenueBasisLabels: Readonly<Record<AnnualBasis["concept"], string>> = {
-  Revenues: "Revenue",
-  RevenueFromContractWithCustomerExcludingAssessedTax:
-    "Customer contract revenue, excluding assessed tax",
-  SalesRevenueNet: "Net sales revenue",
-};
 
 const sourceStatuses = {
   available: "Available",
@@ -321,7 +315,7 @@ function AnnualBases({
           aria-label={`Annual revenue basis ${basis.concept}`}
         >
           <h4>
-            {financial ? revenueBasisLabels[basis.concept] : basis.concept}
+            {financial ? managedAnnualBasisLabel(basis.concept) : basis.concept}
           </h4>
           {(!financial || basis.status !== "eligible") && (
             <AnnualBasisStatus status={basis.status} />
@@ -356,7 +350,7 @@ function MissingAnnualBases({
       <dl>
         {bases.map((basis) => (
           <div key={basis.concept} data-annual-missing-basis={basis.concept}>
-            <dt>{revenueBasisLabels[basis.concept]}</dt>
+            <dt>{managedAnnualBasisLabel(basis.concept)}</dt>
             <dd>Missing from this report's loaded evidence.</dd>
           </div>
         ))}

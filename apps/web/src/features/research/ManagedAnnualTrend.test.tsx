@@ -98,16 +98,77 @@ describe("managed annual trend controls", () => {
         .filter((e) => e.type === "option")
         .map(text),
     ).toEqual([
+      "Customer contract revenue, excluding assessed tax",
+      "Revenue",
+      "Net sales revenue",
+      "Revenue",
+      "Net income",
+    ]);
+    expect(
+      elements(select(tree, 0))
+        .filter((e) => e.type === "option")
+        .map((e) => e.props.value),
+    ).toEqual([
       "RevenueFromContractWithCustomerExcludingAssessedTax",
       "Revenues",
       "SalesRevenueNet",
-      "Revenue",
-      "Net income",
     ]);
     expect(elements(tree).some((e) => e.type === ManagedAnnualTrendChart)).toBe(
       false,
     );
     expect(elements(tree).some((e) => e.type === "table")).toBe(false);
+  });
+
+  it("keeps the full selected label associated through replacement and retains exact source/chart inputs", async () => {
+    const concept = "RevenueFromContractWithCustomerExcludingAssessedTax";
+    const wire = await response(
+      annualHistoryRows().map((item) =>
+        item.concept === "Revenues"
+          ? {
+              ...item,
+              concept,
+              sourceLocator: item.sourceLocator.replace("Revenues", concept),
+            }
+          : item,
+      ),
+    );
+    const before = JSON.stringify(wire);
+    let tree = render(wire);
+    toggle(tree, true);
+    tree = render(wire);
+    const descriptionId = select(tree, 0).props["aria-describedby"];
+    const description = elements(tree).find(
+      (e) => e.props.id === descriptionId,
+    )!;
+    expect(description.type).toBe("p");
+    expect(description.props["data-annual-trend-selected-basis"]).toBe(true);
+    expect(text(description)).toBe(
+      "Selected basis: Customer contract revenue, excluding assessed tax",
+    );
+    const source = elements(tree).find(
+      (e) => e.props.className === "managed-annual-trend-source",
+    )!;
+    expect(text(source)).toContain(
+      `Customer contract revenue, excluding assessed tax · SEC concept ${concept}`,
+    );
+    const chart = elements(tree).find(
+      (e) => e.type === ManagedAnnualTrendChart,
+    )!;
+    expect(chart.props.projection).toMatchObject({
+      concept,
+      periods: [{ revenue: "640" }, { revenue: "800" }, { revenue: "1000" }],
+    });
+    tree = render(await response(annualHistoryRows()));
+    expect(select(tree, 0).props.value).toBe(concept);
+    expect(select(tree, 0).props["aria-describedby"]).toBe(descriptionId);
+    expect(text(elements(tree).find((e) => e.props.id === descriptionId))).toBe(
+      text(description),
+    );
+    expect(text(tree)).toContain("no valid current annual pair");
+    expect(elements(tree).some((e) => e.type === ManagedAnnualTrendChart)).toBe(
+      false,
+    );
+    expect(JSON.stringify(wire)).toBe(before);
   });
 
   it("keeps disclosure/basis/metric choices across missing history and restores only replacement data", async () => {

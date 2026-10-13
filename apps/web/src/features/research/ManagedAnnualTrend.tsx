@@ -11,6 +11,7 @@ import {
   type ManagedAnnualTrendProjection,
 } from "./managed-annual-trend-input";
 import { ManagedAnnualTrendChart } from "./ManagedAnnualTrendChart";
+import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
 
 export function ManagedAnnualTrend({
   response,
@@ -77,26 +78,32 @@ function TrendControls({
 }) {
   return (
     <div className="managed-annual-trend-controls">
-      <label>
-        <span>Revenue basis</span>
-        <select
-          id={`${id}-basis`}
-          data-annual-trend-basis
-          value={concept}
-          onChange={(event) => {
-            const value = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.find(
-              (item) => item === event.currentTarget.value,
-            );
-            if (value) onConcept(value);
-          }}
-        >
-          {PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="managed-annual-trend-basis">
+        <label>
+          <span>Revenue basis</span>
+          <select
+            id={`${id}-basis`}
+            data-annual-trend-basis
+            aria-describedby={`${id}-selected-basis`}
+            value={concept}
+            onChange={(event) => {
+              const value = PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.find(
+                (item) => item === event.currentTarget.value,
+              );
+              if (value) onConcept(value);
+            }}
+          >
+            {PERSONAL_SEC_ANNUAL_REVENUE_CONCEPTS.map((item) => (
+              <option key={item} value={item}>
+                {managedAnnualBasisLabel(item)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p id={`${id}-selected-basis`} data-annual-trend-selected-basis>
+          Selected basis: {managedAnnualBasisLabel(concept)}
+        </p>
+      </div>
       <label>
         <span>Trend metric</span>
         <select
@@ -136,6 +143,7 @@ function TrendResult({
   return (
     <>
       <p className="managed-annual-trend-source">
+        {managedAnnualBasisLabel(projection.concept)} · SEC concept{" "}
         {projection.concept} · {projection.periods.length} periods · filing{" "}
         {projection.accessionNumber} · loaded{" "}
         <time dateTime={projection.completedAt}>{projection.completedAt}</time>
