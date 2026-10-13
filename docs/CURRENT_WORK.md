@@ -687,7 +687,44 @@ uses **Newly observed**, with the full explanation below. The corrected commit
 keyboard focus and no horizontal page overflow. Earlier behavior evidence
 applies to the unchanged logic. Complete software notices remain in the exact
 native bundle, whose largest loader payload is 2,351,050 bytes under the unchanged
-4 MiB cap. Original hosted execution remains pending. Production is unchanged.
+4 MiB cap. The first hosted Android attempt failed during emulator image setup,
+before app work. A targeted repeat ran all 27 cases; 26 passed. The Filings case
+failed while requiring its three-filter header and entire filtered row to fit in
+one screenshot. The saved image shows the row below the viewport; the selected
+form and request counters remained correct. Later assertions in that case were
+not reached, and APK isolation was skipped. Both original failures remain recorded.
+Production is unchanged.
+
+### Compact company Filings source header candidate
+
+The next presentation increment groups routine source details in an initially
+closed **Filings source and coverage** disclosure. The original date window,
+CIK, source link, Retrieved or Checked time and key coverage warnings remain
+visible. Filters, comparison evidence and note actions keep their behavior.
+The default header is about 34 CSS pixels shorter at a 1440-pixel viewport and
+78 pixels shorter at 390 and 320 pixels, measured against the preceding layout
+with the same loaded response. Chrome accepts keyboard opening and closing,
+44-pixel targets, wrapping and visible warnings. Native open state persists
+through filtering, paging, retained requests and response replacement. Replacement
+updates the original metadata; failure and cancellation retain the previous dates.
+Empty and unavailable responses keep their distinct coverage wording.
+
+Affected component tests, full web types, lint, formatting, source boundaries and
+independent source and bundle review pass. Initial test typing errors and stale
+native test selectors were corrected without changing their expected dates.
+Two early screenshots captured stale frames; settled replacements support visual
+acceptance. The exact native fixture bundle preserves complete software notices
+and remains within its unchanged 4 MiB limit. The existing native journey now
+checks the disclosure; original hosted execution is still required. Production
+is unchanged.
+
+The candidate also corrects the inherited Filings screenshot-span assumption.
+One bounded frame checks the Form label and control; a second checks the count
+and complete filtered row. Their combined targets are unchanged. Both use the
+same full-bounds checks before and after capture, with the same deadline and all
+semantic assertions retained. The suite keeps 27 cases and adds one named capture.
+This test-only correction needs execution on the updated source; it does not
+turn either original failure into a pass.
 
 ## Product scope
 
@@ -713,8 +750,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish the newly observed Filings filter's original hosted checks and the source
-integration steps when permission arrives. Preserve explicit source requests,
+Finish the Filings filter and source header's original hosted checks and the
+source integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

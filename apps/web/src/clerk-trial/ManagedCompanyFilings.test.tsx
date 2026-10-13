@@ -2,6 +2,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ManagedFilingsResults } from "./ManagedFilingsResults";
+import { ManagedFilingsSource } from "./ManagedFilingsSource";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import { ManagedCompanyFilings as Model } from "./managed-company-filings";
 import type { ManagedApi } from "./managed-api";
@@ -82,6 +83,9 @@ function page(
     buttons: elements(node).filter((element) => element.type === "button"),
     select: elements(node).find((element) => element.type === "select")!,
     node,
+    source: elements(node).find(
+      (element) => element.type === ManagedFilingsSource,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedFilingsSource>>,
     refreshView: elements(node).find(
       (element) => element.type === ManagedFilingsRefreshView,
     ) as React.ReactElement<
@@ -98,6 +102,129 @@ afterEach(() => {
   hooks.state = undefined;
 });
 describe("company SEC filings presentation", () => {
+  it("keeps the compact source identity visible and complete routine metadata in a closed native disclosure", () => {
+    for (const count of [0, 26]) {
+      const response = filingsResponse(count);
+      const html = renderToStaticMarkup(
+        <ManagedFilingsSource response={response} />,
+      );
+      const detail = html.match(
+        /<details class="managed-filings-source-details">(.*?)<\/details>/u,
+      )![1]!;
+      const outside = html.replace(/<details\b.*?<\/details>/u, "");
+      expect(detail).toContain(
+        "<summary>Filings source and coverage</summary>",
+      );
+      expect(detail).toContain(
+        "<dt>Request started</dt><dd>2026-10-12T00:00:00.000Z</dd>",
+      );
+      expect(detail).toContain(
+        "<dt>Completed</dt><dd>2026-10-12T00:00:01.000Z</dd>",
+      );
+      expect(detail).toContain(
+        "Only the SEC current recent-filings object was checked.",
+      );
+      expect(detail).toContain("Older continuation files were not loaded");
+      expect(detail).toContain("The source lists older continuation files.");
+      expect(outside).toContain("2026-07-15 to 2026-10-12");
+      expect(outside).toContain("90 days · CIK 0000000001");
+      expect(outside).toContain(`href="${response.issuer.sourceUrl}"`);
+      expect(outside).toContain("Retrieved 2026-10-12T00:00:00.500Z");
+      expect(outside).toContain(
+        "Current recent-filings object only; complete 90-day coverage is not established.",
+      );
+      expect(outside).not.toContain("Request started");
+      expect(outside).not.toContain("Completed");
+      expect(outside).not.toContain("continuation files");
+      expect(html).not.toMatch(/<details[^>]*\sopen/u);
+      expect(html).not.toContain('role="status"');
+    }
+  });
+
+  it("keeps the exact truncation warning outside the closed source disclosure", () => {
+    const response = filingsResponse(1000);
+    const packet = parseManagedSecFilingsResponse(
+      {
+        ...response,
+        issuer: { ...response.issuer, matchingFilings: 1004, truncated: true },
+      },
+      {
+        schemaVersion: "1.0.0",
+        catalogSnapshotSha256: filingsSelection.catalogSnapshotSha256,
+        listingId: filingsSelection.listing.listingId,
+        symbol: filingsSelection.listing.symbol,
+      },
+    );
+    expect(packet).not.toBeNull();
+    if (!packet) throw new Error("Invalid invented truncation packet.");
+    const html = renderToStaticMarkup(
+      <ManagedFilingsSource response={packet} />,
+    );
+    const outside = html.replace(/<details\b.*?<\/details>/u, "");
+    expect(outside).toContain('class="managed-filings-warning"');
+    expect(outside).toContain(
+      "Showing 1000 of 1004 matching entries retained from the current source object. The response limit truncated this list.",
+    );
+    expect(html).not.toMatch(/<details[^>]*\sopen/u);
+  });
+
+  it("keeps one uncontrolled source disclosure in the same slot through filters, retention and response replacement", () => {
+    const response = filingsResponse(51);
+    const original = page(response);
+    original.buttons[1]!.props.onClick!();
+    const paged = page(response);
+    paged.select.props.onChange!({ currentTarget: { value: "8-K" } });
+    const filtered = page(response);
+    const retained = page(response);
+    const empty = filingsResponse(0);
+    const next = {
+      ...empty,
+      requestStartedAt: "2026-10-13T00:00:00.000Z",
+      completedAt: "2026-10-13T00:00:01.000Z",
+      window: managedSecFilingsWindow("2026-10-13T00:00:00.000Z")!,
+      issuer: { ...empty.issuer, fetchedAt: "2026-10-13T00:00:00.500Z" },
+    };
+    const parsed = parseManagedSecFilingsResponse(next, {
+      schemaVersion: "1.0.0",
+      catalogSnapshotSha256: filingsSelection.catalogSnapshotSha256,
+      listingId: filingsSelection.listing.listingId,
+      symbol: filingsSelection.listing.symbol,
+    });
+    expect(parsed).not.toBeNull();
+    if (!parsed) throw new Error("Invalid invented replacement packet.");
+    const replacement = page(parsed);
+    const sourceElement = original.source;
+    const disclosure = (source: typeof sourceElement) => {
+      const rendered: React.ReactElement<{ children?: React.ReactNode }> =
+        ManagedFilingsSource(source.props);
+      const node = React.Children.toArray(rendered.props.children).find(
+        (child) => React.isValidElement(child) && child.type === "details",
+      );
+      if (!React.isValidElement<React.ComponentProps<"details">>(node))
+        throw new Error("Missing source disclosure.");
+      return node;
+    };
+    const first = disclosure(sourceElement);
+    for (const shown of [paged, filtered, retained, replacement]) {
+      expect(shown.source.type).toBe(sourceElement.type);
+      expect(shown.source.key).toBe(sourceElement.key);
+      const current = disclosure(shown.source);
+      expect(current.type).toBe("details");
+      expect(current.key).toBe(first.key);
+      expect(current.props.open).toBeUndefined();
+      expect(current.props.onToggle).toBeUndefined();
+      expect(current.props.ref).toBeUndefined();
+      expect(current.props.className).toBe("managed-filings-source-details");
+    }
+    expect(retained.source.props.response).toBe(response);
+    expect(replacement.source.props.response).toBe(parsed);
+    const updated = renderToStaticMarkup(replacement.source);
+    expect(updated).toContain("Retrieved 2026-10-13T00:00:00.500Z");
+    expect(updated).toContain("<dd>2026-10-13T00:00:01.000Z</dd>");
+    expect(updated).not.toContain("2026-10-12T");
+    // This checks React structure. Actual native open state and focus need DOM QA.
+  });
+
   it("uses an enabled native select and filters exact loaded rows before paging", () => {
     const response = filingsResponse();
     let shown = page(response);
@@ -310,10 +437,16 @@ describe("company SEC filings presentation", () => {
       if (status === "available")
         expect(html).toContain("No matching filings were observed");
       else {
+        const outside = html.replace(/<details\b.*?<\/details>/gu, "");
         expect(html).not.toContain("No matching filings");
         expect(html).toContain("Checked 2026-10-12T00:00:00.500Z");
         expect(html).not.toContain("Retrieved");
         expect(html).toContain("contents were not successfully validated");
+        expect(outside).toContain("Checked 2026-10-12T00:00:00.500Z");
+        expect(outside).toContain("Source contents were not validated");
+        expect(outside).toContain(
+          "complete 90-day coverage is not established",
+        );
         expect(html).toContain(
           "Form filtering is unavailable for this response.",
         );
@@ -353,6 +486,13 @@ describe("company SEC filings presentation", () => {
       "Latest source attempt checked 2026-10-12T00:00:00.500Z; completed 2026-10-12T00:00:02.000Z",
     );
     expect(html).toContain("26 of 26 loaded filings");
+    const outside = html.replace(/<details\b.*?<\/details>/gu, "");
+    expect(outside).toContain(
+      "Showing the previous filings response, completed 2026-10-12T00:00:01.000Z",
+    );
+    expect(outside).toContain(
+      "Latest source attempt checked 2026-10-12T00:00:00.500Z; completed 2026-10-12T00:00:02.000Z",
+    );
   });
 });
 

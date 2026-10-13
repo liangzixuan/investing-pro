@@ -152,6 +152,14 @@ focus outline at the destination. Source details opens the existing disclosure.
 Keep this navigator in the document flow, with no new sticky layer or automatic
 scrolling when data changes. It leaves company routes, history and notes intact.
 
+Keep the company Filings source header compact. Show the original window, CIK,
+SEC source link and Retrieved or Checked time above the filters. Keep a short
+incomplete-coverage statement and all truncation, unavailable and retained-result
+warnings visible. Put request start/completion and full routine source detail in
+an initially closed **Filings source and coverage** native disclosure. Use a
+44px summary with the existing focus outline and wrapping metadata; do not add
+an enclosing card. Keep native open state while the results remain mounted.
+
 For a company Filings refresh, put the full-response newly observed count above
 the local filters. Use quiet row text to mark accessions absent from the previous
 loaded list. Keep the incomplete-coverage explanation visible. One initially

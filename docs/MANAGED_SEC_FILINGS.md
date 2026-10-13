@@ -61,6 +61,15 @@ The filters belong to the mounted results view: switching sections or closing
 the visit clears them. Filing-note actions still use the original observed rows,
 and filtering never changes or saves the complete note draft.
 
+The compact header shows the original inclusive window, CIK, SEC link and source
+Retrieved or Checked time. A short coverage limit remains visible with the
+filtered count, page and any truncation, unavailable or retained-result warning.
+Open **Filings source and coverage** for the original request start/completion,
+full coverage explanation and unloaded continuation-file detail. It starts closed;
+keyboard or pointer interaction expands it without a request or saved change.
+Its open state remains while the results are mounted, including local filtering
+and retained refreshes. A replacement updates its fields to the admitted packet.
+
 The result retains its original inclusive window, request start, completion and
 source retrieval time. A failed source attempt has a checked time rather than a
 claimed successful retrieval. A successful response with no matching filings is
