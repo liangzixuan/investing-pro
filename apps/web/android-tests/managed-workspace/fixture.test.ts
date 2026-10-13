@@ -1881,6 +1881,89 @@ describe("bounded invented company filings journey", () => {
     workspace.coordinator.retire();
   });
 
+  it("admits one Annual baseline and one unchanged filings packet only after the complete note save and reload", async () => {
+    const { fixture, workspace } = await readyForNote();
+    const signal = new AbortController().signal;
+    const annualRequest = {
+      schemaVersion: "2.0.0" as const,
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    const filingsRequest = {
+      ...annualRequest,
+      schemaVersion: "1.0.0" as const,
+    };
+    const response = workspace.filings.getSnapshot().response!;
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    workspace.appendFilingReferenceToResearchNote(
+      workspace.getSnapshot().research!.selection,
+      response,
+      response.issuer.filings[25]!,
+    );
+    workspace.closeResearch();
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    await workspace.coordinator.load();
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft!);
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    expect(() =>
+      fixture.api.annualReport(
+        { ...annualRequest, listingId: "listing-one" },
+        signal,
+      ),
+    ).toThrow("Unexpected fixture annual request");
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    await workspace.annual.load();
+    expect(workspace.annual.getSnapshot().response).not.toBeNull();
+    expect(workspace.annual.getSnapshot().error).toBe(false);
+    const annual = workspace.annual.getSnapshot().response!;
+    expect(annual.evidence.target).toMatchObject({
+      accessionNumber: "0000000001-26-000001",
+      filedDate: "2026-02-01",
+    });
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    expect(workspace.filings.getSnapshot().response).toEqual(response);
+    expect(workspace.annual.getSnapshot().response).toBe(annual);
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 1,
+      filings: 7,
+      filingsAborted: 2,
+      filingsLateResolved: 2,
+      aborted: 0,
+      lateResolved: 0,
+      save: 1,
+      load: 2,
+      eod: 0,
+      calendar: 0,
+    });
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft,
+      baseVersion: 2,
+      dirty: false,
+    });
+    workspace.coordinator.retire();
+  });
+
   it("refuses altered filing provenance, unrelated notes, ordering, versions and extra reads in the native fixture", async () => {
     const { fixture, workspace } = await readyForNote();
     const draft = workspace.coordinator.getSnapshot().draft!;

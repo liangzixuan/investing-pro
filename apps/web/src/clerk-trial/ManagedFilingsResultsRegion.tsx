@@ -1,9 +1,13 @@
 import { Component, createRef, type ReactNode } from "react";
-import type { ManagedSecFilingsResponseDto } from "@research-cockpit/contracts";
+import type {
+  ManagedSecFilingsResponseDto,
+  PersonalSecAnnualEvidenceResponseDto,
+} from "@research-cockpit/contracts";
 
 interface RegionProps {
   children: ReactNode;
   response: ManagedSecFilingsResponseDto;
+  baselineResponse?: PersonalSecAnnualEvidenceResponseDto | null;
 }
 
 /** Capture focus before React removes rows, without reading the DOM in render. */
@@ -11,11 +15,20 @@ export class ManagedFilingsResultsRegion extends Component<RegionProps> {
   private readonly region = createRef<HTMLDivElement>();
 
   override getSnapshotBeforeUpdate(previous: RegionProps): Element | null {
-    if (previous.response === this.props.response) return null;
+    if (
+      previous.response === this.props.response &&
+      previous.baselineResponse === this.props.baselineResponse
+    )
+      return null;
     const region = this.region.current;
     const focused = region?.ownerDocument.activeElement;
-    const row = focused?.closest(".managed-filings-list > li") ?? null;
-    return row && region?.contains(row) ? row : null;
+    const previousContent =
+      focused?.closest(
+        ".managed-filings-list > li, .managed-filings-annual-context",
+      ) ?? null;
+    return previousContent && region?.contains(previousContent)
+      ? previousContent
+      : null;
   }
 
   override componentDidUpdate(

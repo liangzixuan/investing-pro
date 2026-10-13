@@ -1804,7 +1804,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-filings-form')?.value === ''" +
             " && document.querySelector('#managed-filings-form')?.disabled === false" +
             " && document.querySelectorAll('#managed-filings-form option').length === 1" +
-            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms from page one.'");
+            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms and All loaded filings from page one.'");
         awaitPage("completed empty response leaves Refresh available",
             "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
@@ -1890,6 +1890,86 @@ public class ManagedWorkspaceInstrumentedTest {
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         assertFixtureBoundary(0, 1);
         Log.i("ManagedFilings", "phase=reference-appended-reviewed-saved-reloaded; " + pageDiagnostic());
+        verifyFilingsAfterAnnual(documentTimeOrigin);
+    }
+
+    private void verifyFilingsAfterAnnual(double documentTimeOrigin) throws Exception {
+        click(ANNUAL);
+        awaitPage("saved company Annual opens without another source read",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
+        assertFilingsNoteDraft(2, false);
+        assertFilingsNoteCounts(1, 2);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("one explicit Annual load supplies the original filing date",
+            DIAGNOSTICS + ".annual === 1" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
+            " && document.querySelector('.managed-annual-report')?.textContent.includes('2026-02-01')");
+        click(".managed-company-sections button[aria-label='Filings section for ZERO']");
+        awaitPage("new Filings visit stays unloaded until its explicit read",
+            "document.querySelector('.managed-filings-results') === null && " + DIAGNOSTICS + ".filings === 6");
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        String source = "document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Request started 2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')";
+        awaitPage("loaded metadata offers a native date choice from the same company Annual", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '26 of 26 loaded filings · Page 1 of 2'" +
+            " && document.querySelector('label[for=managed-filings-date]')?.textContent === 'Filing date'" +
+            " && document.querySelector('#managed-filings-date')?.getBoundingClientRect().height >= 44" +
+            " && Array.from(document.querySelectorAll('#managed-filings-date option')).map(e => e.value).join('|') === 'all|after-annual'");
+        click(".managed-filings-annual-context > summary");
+        awaitPage("Annual baseline retains its original accession and source dates",
+            "document.querySelector('.managed-filings-annual-context')?.open === true" +
+            " && document.querySelector('.managed-filings-annual-details a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Filed 2026-02-01')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Annual cutoff 2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('predates the loaded window')");
+        chooseNativeSelectOption("#managed-filings-date", "after-annual", "Filed after Annual report");
+        awaitPage("date scope excludes the Annual accession from the unchanged loaded packet", source +
+            " && document.activeElement?.id === 'managed-filings-date'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href.endsWith('0000000001-26-000002-index.htm')" +
+            " && document.querySelector('.managed-filings-list > li:last-child a')?.href.endsWith('0000000001-26-000026-index.htm')");
+        assertFilingsAnnualScopeCounts();
+        chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
+        awaitPage("combined filters show a qualified empty result without discarding source metadata", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '0 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
+            " && document.querySelector('.managed-filings-empty')?.textContent.includes('does not establish that no subsequent filings exist')");
+        chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
+        awaitPage("combined date and Form choices preserve the twenty-five original matches", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'");
+        chooseNativeSelectOption("#managed-filings-form", "", "All forms");
+        chooseNativeSelectOption("#managed-filings-date", "all", "All loaded filings");
+        awaitPage("clearing the local choices restores the original first accession", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '26 of 26 loaded filings · Page 1 of 2'" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href.endsWith('0000000001-26-000001-index.htm')");
+        assertFilingsAnnualScopeCounts();
+        assertFilingsNoteDraft(2, false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("Back closes local filings scope and returns focus to its saved-company opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(ANNUAL) + ")");
+        assertFilingsAnnualScopeCounts();
+        assertFilingsNoteDraft(2, false);
+        assertExactHistory(1, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
+        assertEquals("Date filtering preserves the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private void assertFilingsAnnualScopeCounts() throws Exception {
+        awaitPage("local date and Form choices retain only the two explicit post-save source reads",
+            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".filings === 7" +
+            " && " + DIAGNOSTICS + ".filingsAborted === 2 && " + DIAGNOSTICS + ".filingsLateResolved === 2" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".save === 1 && " + DIAGNOSTICS + ".load === 2" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
     }
 
     private void assertFilingsNoteDraft(int version, boolean dirty) throws Exception {

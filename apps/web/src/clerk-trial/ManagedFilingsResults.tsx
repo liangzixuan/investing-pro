@@ -5,6 +5,8 @@ import {
   type ManagedFilingsNoteActions,
 } from "./ManagedFilingsNoteAction";
 import { ManagedFilingsResultsRegion } from "./ManagedFilingsResultsRegion";
+import { ManagedFilingsAnnualScope } from "./ManagedFilingsAnnualScope";
+import type { ManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 
 import {
   MANAGED_FILINGS_PAGE_SIZE,
@@ -13,19 +15,26 @@ import {
   projectManagedFilingsFilter,
   selectManagedFilingsForm,
   selectManagedFilingsPage,
+  selectManagedFilingsScope,
 } from "./managed-filings-filter";
 
 export function ManagedFilingsResults({
   response,
+  baseline = null,
+  annualPrevious = false,
+  annualFromComparison = false,
   noteActions,
 }: {
   response: ManagedSecFilingsResponseDto;
+  baseline?: ManagedFilingsAnnualBaseline | null;
+  annualPrevious?: boolean;
+  annualFromComparison?: boolean;
   noteActions?: ManagedFilingsNoteActions;
 }) {
   const [filter, setFilter] = useState(() =>
-    initialManagedFilingsFilter(response),
+    initialManagedFilingsFilter(response, baseline),
   );
-  const selection = bindManagedFilingsFilter(filter, response);
+  const selection = bindManagedFilingsFilter(filter, response, baseline);
   if (selection !== filter) setFilter(selection);
 
   const { page } = selection;
@@ -33,39 +42,60 @@ export function ManagedFilingsResults({
   const available = response.issuer.status === "available";
 
   return (
-    <ManagedFilingsResultsRegion response={response}>
+    <ManagedFilingsResultsRegion
+      response={response}
+      baselineResponse={baseline?.response ?? null}
+    >
       <FilingsSource response={response} />
-      <div className="managed-filings-filter">
-        <label htmlFor="managed-filings-form">Form</label>
-        <select
-          id="managed-filings-form"
-          className="managed-filings-form-select"
-          value={selection.form}
-          aria-describedby="managed-filings-filter-help"
-          onChange={(event) => {
-            const form = event.currentTarget.value;
+      <div className="managed-filings-filters">
+        <div className="managed-filings-filter">
+          <label htmlFor="managed-filings-form">Form</label>
+          <select
+            id="managed-filings-form"
+            className="managed-filings-form-select"
+            value={selection.form}
+            aria-describedby="managed-filings-filter-help"
+            onChange={(event) => {
+              const form = event.currentTarget.value;
+              setFilter((current) =>
+                selectManagedFilingsForm(current, selection, form),
+              );
+            }}
+          >
+            <option value="">All forms</option>
+            {view.forms.map((form) => (
+              <option key={form} value={form}>
+                {form}
+              </option>
+            ))}
+          </select>
+          <p id="managed-filings-filter-help" className="managed-filings-scope">
+            {available
+              ? "Filter only the filings loaded in this response."
+              : "Form filtering is unavailable for this response."}
+          </p>
+        </div>
+        <ManagedFilingsAnnualScope
+          baseline={baseline}
+          available={available}
+          scope={selection.scope}
+          previous={annualPrevious}
+          fromComparison={annualFromComparison}
+          fromDate={response.window.fromDate}
+          throughDate={response.window.throughDate}
+          onScope={(scope) =>
             setFilter((current) =>
-              selectManagedFilingsForm(current, selection, form),
-            );
-          }}
-        >
-          <option value="">All forms</option>
-          {view.forms.map((form) => (
-            <option key={form} value={form}>
-              {form}
-            </option>
-          ))}
-        </select>
-        <p id="managed-filings-filter-help" className="managed-filings-scope">
-          {available
-            ? "Filter only the filings loaded in this response."
-            : "Form filtering is unavailable for this response."}
-        </p>
+              selectManagedFilingsScope(current, selection, scope),
+            )
+          }
+        />
       </div>
       <p className="managed-filings-filter-reset" role="status">
-        {selection.resetNotice
-          ? "Filings response changed; showing All forms from page one."
-          : ""}
+        {selection.resetNotice === "filings-replaced"
+          ? "Filings response changed; showing All forms and All loaded filings from page one."
+          : selection.resetNotice === "annual-baseline-changed"
+            ? "Annual baseline changed; showing All loaded filings from page one. Your Form filter is unchanged."
+            : ""}
       </p>
       {noteActions && (
         <p id="managed-filings-note-scope" className="managed-filings-scope">
@@ -82,6 +112,13 @@ export function ManagedFilingsResults({
           {view.loadedCount === 0 && (
             <p className="managed-filings-empty">
               No matching filings were observed in the checked source object.
+            </p>
+          )}
+          {view.loadedCount > 0 && view.matchingCount === 0 && (
+            <p className="managed-filings-empty">
+              {selection.scope === "after-annual"
+                ? "No later-dated filings match these filters in this loaded response. This does not establish that no subsequent filings exist."
+                : "No loaded filings match this Form filter."}
             </p>
           )}
           <FilingsList

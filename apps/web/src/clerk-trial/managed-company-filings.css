@@ -20,10 +20,35 @@
 }
 .clerk-trial.managed-frame .managed-filings-filter {
   display: grid;
+  align-content: start;
   grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin-block: 16px;
   min-width: 0;
+}
+.clerk-trial.managed-frame .managed-filings-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.clerk-trial.managed-frame .managed-filings-annual-context {
+  min-width: 0;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-filings-annual-context summary {
+  min-height: 44px;
+  padding-block: 12px;
+  cursor: pointer;
+  color: var(--managed-action);
+}
+.clerk-trial.managed-frame .managed-filings-annual-details {
+  display: grid;
+  gap: 8px;
+}
+.clerk-trial.managed-frame .managed-filings-annual-details a {
+  display: block;
+  min-height: 44px;
 }
 .clerk-trial.managed-frame .managed-filings-filter label {
   color: var(--managed-muted);
@@ -136,6 +161,10 @@
   cursor: default;
 }
 @media (max-width: 760px) {
+  .clerk-trial.managed-frame .managed-filings-filters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
   .clerk-trial.managed-frame .managed-filings-list li {
     grid-template-columns: minmax(0, 1fr);
     gap: 4px;

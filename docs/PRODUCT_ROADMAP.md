@@ -6,11 +6,17 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment opens either loaded Annual comparison report in the
+The current M2 increment adds a local **Filed after Annual report** scope to the
+existing company Filings view. It joins the current checked Annual baseline with
+loaded filings, preserving exact source dates, coverage limits and reference-to-note
+actions without another source request. The [Filings guide](MANAGED_SEC_FILINGS.md#review-filings-after-an-annual-report)
+defines its date-only scope and reset rules.
+
+The preceding increment opens either loaded Annual comparison report in the
 company research view without another source request. Back preserves the pair,
 basis choices and shared note draft; an explicit company refresh leaves the
 comparison unchanged. The [Annual guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison)
-defines its scope. The preceding increment connects income or cash comparison
+defines its scope. The earlier increment connects income or cash comparison
 evidence to one chosen note through the existing full-draft Save. Current work
 distinguishes source, browser, native and delivery acceptance. Broader
 financial statements, valuation and complete company coverage remain open.

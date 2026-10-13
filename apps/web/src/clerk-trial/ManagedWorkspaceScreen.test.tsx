@@ -788,6 +788,7 @@ describe("managed workspace screen", () => {
       (element) => element.type === ManagedCompanyFilings,
     ) as React.ReactElement<React.ComponentProps<typeof ManagedCompanyFilings>>;
     expect(panel.props.noteActions).toBe(company.props.filingsNoteActions);
+    expect(panel.props.annual).toBe(workspace.annual);
     const actions = panel.props.noteActions!;
     const row = response.issuer.filings[1]!;
     workspace.noteResearch(selection, "Latest thesis");
@@ -812,6 +813,74 @@ describe("managed workspace screen", () => {
     expect(api.annualReport).not.toHaveBeenCalled();
     expect(api.eodHistory).not.toHaveBeenCalled();
     expect(api.save).not.toHaveBeenCalled();
+  });
+  it("carries a loaded Annual baseline into Filings without another read and keeps the full note Save", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Existing thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const original = workspace.coordinator.getSnapshot().draft!;
+    vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
+    workspace.openWatchlistAnnual(original.memberships[0]!);
+    await workspace.annual.load();
+    const report = workspace.annual.getSnapshot().response;
+    workspace.switchToFilings();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    expect(html()).toContain("Annual report filed 2026-02-01");
+    expect(html()).toContain("Filed after Annual report");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(original);
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const response = workspace.filings.getSnapshot().response!;
+    expect(
+      company.props.filingsNoteActions.append(
+        response,
+        response.issuer.filings[1]!,
+      ).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships[0]!.note).toContain(
+      "Existing thesis Observed SEC filing reference:",
+    );
+    expect(draft.memberships[1]).toEqual(original.memberships[1]);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(draft);
+    expect(api.save).toHaveBeenCalledOnce();
+    workspace.switchToAnnual();
+    expect(workspace.annual.getSnapshot().response).toBe(report);
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot().response).toBe(response);
+    expect(html()).toContain("Annual report filed 2026-02-01");
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(workspace.filings.getSnapshot().response).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
   });
   it("updates comparative Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
     const { workspace, api, html } = fixture({
