@@ -13,7 +13,9 @@ describe("compressed notices build module", () => {
   it("preserves every canonical byte in deterministic gzip", () => {
     const original = readFileSync(source);
     const payload = readCompressedNotices();
-    expect(gunzipSync(Buffer.from(payload.base64, "base64"))).toEqual(original);
+    expect(
+      gunzipSync(Buffer.from(payload.base64, "base64")).equals(original),
+    ).toBe(true);
     expect(payload.byteLength).toBe(original.byteLength);
     expect(readCompressedNotices()).toEqual(payload);
     expect(generated).toEqual(payload);
