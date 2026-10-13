@@ -3,6 +3,8 @@ import { isValidElement, type ReactNode, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MainWatchlistPayload } from "@research-cockpit/contracts";
+import type { ComponentProps } from "react";
+import type { ManagedWatchlistAnnualComparisonNoteAction } from "./ManagedWatchlistAnnualComparisonNoteAction";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWatchlistAnnualComparison as Model } from "./managed-watchlist-annual-comparison";
@@ -12,6 +14,20 @@ import {
   annualComparisonCashRows as cashRows,
   annualComparisonResponse as packet,
 } from "./annual-comparison-fixture";
+
+const noteAction = vi.hoisted(() => ({
+  props: null as ComponentProps<
+    typeof ManagedWatchlistAnnualComparisonNoteAction
+  > | null,
+}));
+vi.mock("./ManagedWatchlistAnnualComparisonNoteAction", () => ({
+  ManagedWatchlistAnnualComparisonNoteAction: (
+    props: ComponentProps<typeof ManagedWatchlistAnnualComparisonNoteAction>,
+  ) => {
+    noteAction.props = props;
+    return <div data-note-action="outside-table" />;
+  },
+}));
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -94,12 +110,21 @@ function fixture() {
     memberships: [members.left, members.right],
   };
   model.reconcile(draft, digest, true, true);
+  const noteActions = {
+    getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
+    append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
+  };
   const originalMemberships = model.getSnapshot().memberships;
   const originalDraft = structuredClone(draft);
   const render = () => {
     hooks.stateIndex = 0;
     hooks.refIndex = 0;
-    const tree = ManagedWatchlistAnnualComparison({ model });
+    const tree = ManagedWatchlistAnnualComparison({
+      model,
+      active: true,
+      editable: true,
+      noteActions,
+    });
     while (hooks.effects.length) hooks.effects.shift()!();
     return tree;
   };
@@ -121,10 +146,38 @@ function fixture() {
     load,
     originalMemberships,
     originalDraft,
+    noteActions,
   };
 }
 
 describe("watchlist annual comparison controls and presentation", () => {
+  it("forwards the exact current pair, projected basis and action port outside the scrolling table", async () => {
+    const f = fixture();
+    f.choose("left", members.left.listingId);
+    f.choose("right", members.right.listingId);
+    f.read
+      .mockResolvedValueOnce(await packet("left", { mode: "multiple-bases" }))
+      .mockResolvedValueOnce(await packet("right"));
+    await f.load("left");
+    await f.load("right");
+    const before = renderToStaticMarkup(f.render());
+    expect(before.indexOf('data-note-action="outside-table"')).toBeGreaterThan(
+      before.indexOf("</table>"),
+    );
+    expect(noteAction.props?.state).toBe(f.model.getSnapshot());
+    expect(noteAction.props?.actions).toBe(f.noteActions);
+    expect(noteAction.props?.active).toBe(true);
+    expect(noteAction.props?.editable).toBe(true);
+    expect(noteAction.props?.bases.right).toBe("SalesRevenueNet");
+    control(f.render(), "select", "-left-basis").props.onChange!({
+      currentTarget: { value: "Revenues" },
+    } as React.ChangeEvent<HTMLSelectElement>);
+    renderToStaticMarkup(f.render());
+    expect(noteAction.props?.bases.left).toBe("Revenues");
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteActions.append).not.toHaveBeenCalled();
+  });
+
   it("starts with empty labelled choices and makes no request through selection or rendering", () => {
     const f = fixture();
     const html = renderToStaticMarkup(f.render());

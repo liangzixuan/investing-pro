@@ -32,6 +32,16 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
+import {
+  annualComparisonMemberships,
+  annualComparisonResponse,
+} from "./annual-comparison-fixture";
+import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import {
+  getAnnualComparisonNoteEvidence,
+  type AnnualComparisonNoteCapture,
+} from "./managed-watchlist-annual-comparison-note";
 import {
   createManagedWatchlistComparisonSelection,
   selectManagedWatchlistComparisonRow,
@@ -1406,6 +1416,110 @@ describe("managed workspace screen", () => {
       expect(api.annualReport).not.toHaveBeenCalled();
       expect(api.recentFilings).not.toHaveBeenCalled();
       expect(api.economicCalendar).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["income", "ready"],
+    ["cash", "ready"],
+    ["income", "invalid"],
+    ["cash", "invalid"],
+    ["income", "pending"],
+    ["cash", "pending"],
+    ["income", "becomes-pending"],
+    ["cash", "becomes-pending"],
+  ] as const)(
+    "wires %s Annual comparison notes with navigation %s",
+    async (group, route) => {
+      let pending = route === "pending";
+      const initial = {
+        ...payload,
+        memberships: [
+          annualComparisonMemberships.left,
+          {
+            ...annualComparisonMemberships.right,
+            note: "Fiscal company research",
+          },
+        ],
+      };
+      const { workspace, api } = fixture(initial);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const model = workspace.annualComparison;
+      for (const [side, index] of [
+        ["left", 0],
+        ["right", 1],
+      ] as const) {
+        const member = model.getSnapshot().memberships[index]!;
+        model.select(side, model.getSnapshot(), member);
+        vi.mocked(api.annualReport).mockResolvedValueOnce(
+          await annualComparisonResponse(side),
+        );
+        await model.load(side, member);
+      }
+      const current = model.getSnapshot();
+      const side = (key: "left" | "right") => ({
+        member: current[key].selected!,
+        response: current[key].report.response!,
+        selectedBasis: projectAnnualComparison(current[key].report.response)
+          .selectedBasis,
+        showingPrevious: current[key].report.showingPrevious,
+      });
+      const capture: AnnualComparisonNoteCapture = {
+        group,
+        left: side("left"),
+        right: side("right"),
+      };
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn(),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const comparison = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >;
+      expect(comparison.props.active).toBe(
+        route === "ready" || route === "becomes-pending",
+      );
+      expect(comparison.props.editable).toBe(true);
+      const actions = comparison.props.noteActions;
+      const destination = current.right.selected!;
+      expect(actions.getAction(capture, destination).canAppend).toBe(
+        route === "ready" || route === "becomes-pending",
+      );
+      if (route === "becomes-pending") pending = true;
+      const prose = "Latest exact Café 😀 comparison thesis";
+      workspace.note(destination.listing.listingId, prose);
+      const before = workspace.coordinator.getSnapshot().draft!;
+      expect(actions.getAction(capture, destination).canAppend).toBe(
+        route === "ready",
+      );
+      expect(actions.append(capture, destination).appended).toBe(
+        route === "ready",
+      );
+      const after = workspace.coordinator.getSnapshot().draft!;
+      if (route === "ready") {
+        expect(after.memberships[0]).toEqual(before.memberships[0]);
+        expect(after.memberships[1]!.note).toBe(
+          prose + " " + getAnnualComparisonNoteEvidence(capture).excerpt,
+        );
+      } else expect(after).toBe(before);
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
     },
   );
 

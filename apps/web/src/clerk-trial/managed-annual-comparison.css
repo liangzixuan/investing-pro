@@ -136,3 +136,34 @@
   margin: 0 0 8px;
   font-size: 13px;
 }
+
+.managed-frame .managed-annual-comparison-note-action {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 20px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--managed-line);
+  border-bottom: 1px solid var(--managed-line);
+}
+
+.managed-frame .managed-annual-comparison-note-action > button {
+  min-height: 44px;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.managed-frame .managed-annual-comparison-note-help,
+.managed-frame .managed-annual-comparison-note-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--managed-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .managed-frame .managed-annual-comparison-note-action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

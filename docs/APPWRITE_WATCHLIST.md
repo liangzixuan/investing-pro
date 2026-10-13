@@ -166,8 +166,16 @@ Each company has its own basis choice and source disclosure. The
 [Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison)
 defines eligibility and retention.
 
-The comparison does not edit or save the watchlist. Notes, reordering and Save
-preserve unchanged selections. Leaving cancels pending work while accepted
+An explicit **Add Annual comparison to note draft** action copies either income
+or cash evidence from both loaded reports into one chosen listing's latest note.
+The destination starts empty. Both companies keep their own periods, filing
+links and original evidence dates. Duplicate references and invalid or oversized
+complete notes are refused without changing the draft. See
+[Annual comparison notes](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note).
+Review the draft and save all changes explicitly.
+
+Notes, reordering and Save preserve unchanged comparison selections. Leaving
+cancels pending work while accepted
 reports remain in the mounted session. Removed or changed identities, catalog
 invalidation and session retirement clear the affected state. Returning never
 loads automatically.

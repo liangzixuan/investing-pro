@@ -1045,6 +1045,38 @@ export function ManagedWorkspaceScreen({
                     <ManagedUnsavedWatchlistReview state={saved} />
                     <ManagedWatchlistAnnualComparison
                       model={workspace.annualComparison}
+                      editable={editable}
+                      active={
+                        discovery.view === "watchlist" &&
+                        !discovery.research &&
+                        !discovery.companyRoute &&
+                        !navigation?.invalid &&
+                        !navigation?.hasCompanyRoute()
+                      }
+                      noteActions={{
+                        getAction: (capture, destination) =>
+                          navigation?.invalid || navigation?.hasCompanyRoute()
+                            ? {
+                                canAppend: false,
+                                reason:
+                                  "Return to My Watchlist before adding Annual comparison evidence.",
+                              }
+                            : workspace.getAnnualComparisonNoteAction(
+                                capture,
+                                destination,
+                              ),
+                        append: (capture, destination) =>
+                          navigation?.invalid || navigation?.hasCompanyRoute()
+                            ? {
+                                appended: false,
+                                message:
+                                  "Return to My Watchlist before adding Annual comparison evidence.",
+                              }
+                            : workspace.appendAnnualComparisonToNote(
+                                capture,
+                                destination,
+                              ),
+                      }}
                     />
                   </>
                 )}

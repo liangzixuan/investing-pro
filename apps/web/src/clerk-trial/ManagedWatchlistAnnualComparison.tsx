@@ -21,6 +21,10 @@ import type {
 } from "./managed-watchlist-annual-comparison";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
+import {
+  ManagedWatchlistAnnualComparisonNoteAction,
+  type ManagedWatchlistAnnualComparisonNoteActions,
+} from "./ManagedWatchlistAnnualComparisonNoteAction";
 import "./managed-annual-comparison.css";
 
 type Side = "left" | "right";
@@ -31,8 +35,14 @@ const sideLabel = (side: Side) => (side === "left" ? "First" : "Second");
 
 export function ManagedWatchlistAnnualComparison({
   model,
+  active,
+  editable,
+  noteActions,
 }: {
   model: ComparisonModel;
+  active: boolean;
+  editable: boolean;
+  noteActions: ManagedWatchlistAnnualComparisonNoteActions;
 }) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -203,6 +213,16 @@ export function ManagedWatchlistAnnualComparison({
         from operating cash flow for the same filing and period. It does not
         adjust for leases, acquisitions or other investing cash flows.
       </p>
+      <ManagedWatchlistAnnualComparisonNoteAction
+        state={state}
+        bases={{
+          left: projections.left.selectedBasis,
+          right: projections.right.selectedBasis,
+        }}
+        active={active}
+        editable={editable}
+        actions={noteActions}
+      />
       <div className="managed-annual-comparison-sources">
         {sides.map((side) => {
           const p = projections[side];

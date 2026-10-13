@@ -42,6 +42,16 @@ import {
   selectManagedWatchlistComparisonRow,
 } from "./managed-watchlist-comparison";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
+import {
+  annualComparisonMemberships,
+  annualComparisonResponse,
+} from "./annual-comparison-fixture";
+import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import {
+  getAnnualComparisonNoteEvidence,
+  type AnnualComparisonNoteCapture,
+  type AnnualComparisonNoteGroup,
+} from "./managed-watchlist-annual-comparison-note";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
 const nextDigest = `sha256:${"b".repeat(64)}` as const;
@@ -4901,6 +4911,296 @@ describe("watchlist Annual comparison workspace ownership", () => {
     });
     expect(api.save).not.toHaveBeenCalled();
   });
+});
+
+describe("Annual comparison appended to one current draft note", () => {
+  async function noteFixture(group: AnnualComparisonNoteGroup = "cash") {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        annualComparisonMemberships.left,
+        {
+          ...annualComparisonMemberships.right,
+          note: "Fiscal company research",
+        },
+      ],
+    });
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    const comparison = setup.workspace.annualComparison;
+    const [left, right] = comparison.getSnapshot().memberships;
+    comparison.select("left", comparison.getSnapshot(), left!);
+    comparison.select("right", comparison.getSnapshot(), right!);
+    vi.mocked(setup.api.annualReport)
+      .mockResolvedValueOnce(await annualComparisonResponse("left"))
+      .mockResolvedValueOnce(await annualComparisonResponse("right"));
+    await comparison.load("left", left!);
+    await comparison.load("right", right!);
+    const capture = (): AnnualComparisonNoteCapture => {
+      const state = comparison.getSnapshot();
+      const side = (key: "left" | "right") => ({
+        member: state[key].selected!,
+        response: state[key].report.response!,
+        selectedBasis: projectAnnualComparison(state[key].report.response)
+          .selectedBasis,
+        showingPrevious: state[key].report.showingPrevious,
+      });
+      return { group, left: side("left"), right: side("right") };
+    };
+    return { ...setup, comparison, left: left!, right: right!, capture };
+  }
+
+  it.each(["income", "cash"] as const)(
+    "appends %s to the latest exact member, preserves raw prose/order and explicitly saves the full draft",
+    async (group) => {
+      const { workspace, api, session, saved, left, right, capture } =
+        await noteFixture(group);
+      const selected = capture();
+      const evidence = getAnnualComparisonNoteEvidence(selected);
+      expect(evidence.excerpt).not.toBeNull();
+      expect(
+        workspace.getAnnualComparisonNoteAction(selected, right).canAppend,
+      ).toBe(true);
+      const raw = "  Cafe\u0301 changed after rendering 😀  ";
+      workspace.note(right.listing.listingId, raw);
+      workspace.move(right.listing.listingId, -1);
+      const before = workspace.coordinator.getSnapshot().draft!;
+      expect(
+        workspace.appendAnnualComparisonToNote(selected, right).appended,
+      ).toBe(true);
+      const after = workspace.coordinator.getSnapshot().draft!;
+      expect(after).toEqual({
+        ...before,
+        memberships: [
+          { ...before.memberships[0], note: raw + " " + evidence.excerpt },
+          before.memberships[1],
+        ],
+      });
+      expect(after.memberships[1]!.listingId).toBe(left.listing.listingId);
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      await workspace.coordinator.save();
+      expect(api.save).toHaveBeenCalledOnce();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(
+        saved().payload,
+      );
+      expect(saved().payload.memberships[0]!.note).toBe(
+        normalizeWatchlistNote(raw + " " + evidence.excerpt),
+      );
+      const reopened = new ManagedWorkspace(api, session);
+      await reopened.coordinator.load();
+      expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
+    },
+  );
+
+  it("refuses duplicates without changing the draft and permits an explicit remove and re-add", async () => {
+    const { workspace, api, left, capture } = await noteFixture();
+    const selected = capture();
+    expect(
+      workspace.appendAnnualComparisonToNote(selected, left).appended,
+    ).toBe(true);
+    const after = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.appendAnnualComparisonToNote(selected, left)).toEqual({
+      appended: false,
+      message:
+        "This exact Annual comparison reference is already in the note draft.",
+    });
+    expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+    workspace.note(left.listing.listingId, "Original prose restored");
+    expect(
+      workspace.appendAnnualComparisonToNote(selected, left).appended,
+    ).toBe(true);
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "exact code-point limit",
+    "one over limit",
+    "control character",
+  ] as const)(
+    "checks the entire latest note at %s without trimming or truncating the draft",
+    async (boundary) => {
+      const { workspace, api, left, capture } = await noteFixture();
+      const selected = capture();
+      const excerpt = getAnnualComparisonNoteEvidence(selected).excerpt!;
+      expect(excerpt).not.toBeNull();
+      const remaining = 2000 - [...excerpt].length - 1;
+      expect(remaining).toBeGreaterThan(0);
+      const raw =
+        boundary === "control character"
+          ? "Untouched\u0001raw"
+          : "😀".repeat(remaining + (boundary === "one over limit" ? 1 : 0));
+      workspace.note(left.listing.listingId, raw);
+      const before = workspace.coordinator.getSnapshot().draft;
+      const accepted = boundary === "exact code-point limit";
+      expect(
+        workspace.getAnnualComparisonNoteAction(selected, left).canAppend,
+      ).toBe(accepted);
+      expect(
+        workspace.appendAnnualComparisonToNote(selected, left).appended,
+      ).toBe(accepted);
+      if (accepted)
+        expect(
+          workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+        ).toBe(raw + " " + excerpt);
+      else expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["empty", "copied handle", "opposite stale member"] as const)(
+    "refuses the %s destination without falling back to another note",
+    async (kind) => {
+      const { workspace, left, right, comparison, capture } =
+        await noteFixture();
+      const selected = capture();
+      let destination = kind === "empty" ? null : { ...left };
+      if (kind === "opposite stale member") {
+        destination = right;
+        comparison.select("right", comparison.getSnapshot(), null);
+        comparison.select("right", comparison.getSnapshot(), right);
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendAnnualComparisonToNote(selected, destination).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    },
+  );
+
+  it("fences a pending refresh and stale retained qualifier; Cancel permits the newly captured original report", async () => {
+    const { workspace, api, comparison, left, capture } = await noteFixture();
+    const original = capture();
+    const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
+    vi.mocked(api.annualReport).mockReturnValueOnce(held.promise);
+    const refreshing = comparison.load("left", left);
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualComparisonToNote(original, left).appended,
+    ).toBe(false);
+    comparison.getSnapshot().pending!.cancel();
+    expect(
+      workspace.appendAnnualComparisonToNote(original, left).appended,
+    ).toBe(false);
+    const retained = capture();
+    expect(retained.left.response).toBe(original.left.response);
+    expect(retained.left.showingPrevious).toBe(true);
+    expect(
+      workspace.getAnnualComparisonNoteAction(retained, left).canAppend,
+    ).toBe(true);
+    held.resolve(
+      await annualComparisonResponse("left", { mode: "multiple-bases" }),
+    );
+    await refreshing;
+    expect(comparison.getSnapshot().left.report.response).toBe(
+      original.left.response,
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(
+      workspace.appendAnnualComparisonToNote(retained, left).appended,
+    ).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toContain(getAnnualComparisonNoteEvidence(retained).excerpt!);
+    expect(api.annualReport).toHaveBeenCalledTimes(3);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses a replaced response even when the exact pair and values remain the same", async () => {
+    const { workspace, api, comparison, left, capture } = await noteFixture();
+    const previous = capture();
+    vi.mocked(api.annualReport).mockResolvedValueOnce(
+      await annualComparisonResponse("left"),
+    );
+    await comparison.load("left", left);
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualComparisonToNote(previous, left).appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(
+      workspace.getAnnualComparisonNoteAction(capture(), left).canAppend,
+    ).toBe(true);
+  });
+
+  it.each([
+    "discover",
+    "research",
+    "company route",
+    "catalog changed",
+    "member removed",
+    "retired",
+  ] as const)("refuses captured evidence after %s", async (boundary) => {
+    const { workspace, comparison, left, capture } = await noteFixture();
+    const selected = capture();
+    if (boundary === "discover") workspace.setView("discover");
+    else if (boundary === "research")
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+    else if (boundary === "company route")
+      await workspace.setCompanyRoute({
+        kind: "company",
+        listingId: "listing-one",
+        section: "annual",
+      });
+    else if (boundary === "catalog changed")
+      workspace.coordinator.replaceDraft({
+        ...workspace.coordinator.getSnapshot().draft!,
+        snapshotSha256: nextDigest,
+      });
+    else if (boundary === "member removed")
+      workspace.remove(left.listing.listingId);
+    else workspace.coordinator.readError(new TrialApiError("unauthenticated"));
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualComparisonToNote(selected, left).appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    if (boundary === "retired")
+      expect(comparison.getSnapshot().left.report.response).toBeNull();
+  });
+
+  it.each(["loading", "saving", "conflict", "commit_unknown"] as const)(
+    "refuses an otherwise valid note during coordinator %s",
+    async (boundary) => {
+      const { workspace, api, left, capture } = await noteFixture();
+      const selected = capture();
+      workspace.note(
+        left.listing.listingId,
+        "Draft changed before coordinator work",
+      );
+      const held = deferred<never>();
+      let operation: Promise<void> | null = null;
+      if (boundary === "loading") {
+        vi.mocked(api.load).mockReturnValueOnce(held.promise);
+        operation = workspace.coordinator.load();
+      } else if (boundary === "saving") {
+        vi.mocked(api.save).mockReturnValueOnce(held.promise);
+        operation = workspace.coordinator.save();
+      } else {
+        vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError(boundary));
+        await workspace.coordinator.save();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.getAnnualComparisonNoteAction(selected, left).canAppend,
+      ).toBe(false);
+      expect(
+        workspace.appendAnnualComparisonToNote(selected, left).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      if (operation) {
+        held.reject(new TrialApiError("unavailable"));
+        await operation;
+      }
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+    },
+  );
 });
 
 describe("Annual cash generation appended to the shared note", () => {
