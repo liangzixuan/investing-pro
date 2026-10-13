@@ -47,6 +47,7 @@ import {
   annualComparisonResponse,
 } from "./annual-comparison-fixture";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import type { ManagedAnnualComparisonReportCapture } from "./managed-watchlist-annual-comparison";
 import {
   getAnnualComparisonNoteEvidence,
   type AnnualComparisonNoteCapture,
@@ -5501,6 +5502,343 @@ describe("Annual cash generation appended to the shared note", () => {
       const before = workspace.coordinator.getSnapshot().draft;
       expect(append().appended).toBe(false);
       expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("loaded Annual comparison report visits", () => {
+  async function reportFixture() {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        annualComparisonMemberships.left,
+        {
+          ...annualComparisonMemberships.right,
+          note: "Fiscal company research",
+        },
+      ],
+    });
+    await ready(setup.workspace);
+    setup.workspace.setView("watchlist");
+    const model = setup.workspace.annualComparison;
+    for (const [side, index] of [
+      ["left", 0],
+      ["right", 1],
+    ] as const) {
+      const member = model.getSnapshot().memberships[index]!;
+      model.select(side, model.getSnapshot(), member);
+      vi.mocked(setup.api.annualReport).mockResolvedValueOnce(
+        await annualComparisonResponse(side),
+      );
+      await model.load(side, member);
+    }
+    const capture = (
+      side: "left" | "right",
+    ): ManagedAnnualComparisonReportCapture => {
+      const column = model.getSnapshot()[side];
+      return {
+        side,
+        member: column.selected!,
+        response: column.report.response!,
+      };
+    };
+    return { ...setup, model, capture };
+  }
+
+  async function checked(workspace: ManagedWorkspace) {
+    await vi.waitFor(() =>
+      expect(workspace.annual.getSnapshot().checkingSeed).toBe(false),
+    );
+  }
+
+  it.each(["left", "right"] as const)(
+    "opens the %s original packet, shares the current draft and returns without another read",
+    async (side) => {
+      const { workspace, model, capture, api, saved } = await reportFixture();
+      const original = capture(side);
+      const pair = model.getSnapshot();
+      workspace.note(
+        original.member.listing.listingId,
+        "Latest draft before opening Café",
+      );
+      const before = workspace.coordinator.getSnapshot().draft!;
+      workspace.openAnnualComparisonReport(original);
+      expect(workspace.getSnapshot().research).toMatchObject({
+        section: "annual",
+        selection: {
+          origin: "watchlist",
+          cik: null,
+          listing: original.member.listing,
+        },
+      });
+      expect(workspace.annual.getSnapshot().checkingSeed).toBe(true);
+      await checked(workspace);
+      expect(workspace.annual.getSnapshot()).toMatchObject({
+        response: original.response,
+        responseOrigin: "watchlist-comparison",
+        showingPrevious: false,
+        error: false,
+      });
+      expect(workspace.annual.getSnapshot().response).not.toBe(
+        original.response,
+      );
+      const selection = workspace.getSnapshot().research!.selection;
+      expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+        "Latest draft before opening Café",
+      );
+      workspace.noteResearch(selection, "Thesis updated from full Annual");
+      workspace.switchToEod();
+      workspace.switchToAnnual();
+      expect(workspace.annual.getSnapshot().response).toEqual(
+        original.response,
+      );
+      const after = workspace.coordinator.getSnapshot().draft!;
+      expect(after.memberships.map((member) => member.listingId)).toEqual(
+        before.memberships.map((member) => member.listingId),
+      );
+      expect(
+        after.memberships.filter(
+          (member) => member.listingId !== selection.listing.listingId,
+        ),
+      ).toEqual(
+        before.memberships.filter(
+          (member) => member.listingId !== selection.listing.listingId,
+        ),
+      );
+      workspace.closeResearch();
+      expect(workspace.getSnapshot().view).toBe("watchlist");
+      for (const key of ["left", "right"] as const) {
+        expect(model.getSnapshot()[key].selected).toBe(pair[key].selected);
+        expect(model.getSnapshot()[key].report.response).toBe(
+          pair[key].report.response,
+        );
+      }
+      expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+      expect(api.save).not.toHaveBeenCalled();
+      await workspace.coordinator.save();
+      expect(saved()).toEqual({ version: 2, payload: after });
+      await workspace.coordinator.load();
+      expect(workspace.coordinator.getSnapshot().draft).toEqual(after);
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["price-cancel", "seed-publication"] as const)(
+    "rechecks membership after a synchronous %s notification",
+    async (boundary) => {
+      const { workspace, capture, api } = await reportFixture();
+      const original = capture("left");
+      const held = deferred<never>();
+      let pending: Promise<void> | null = null;
+      let triggered = false;
+      let unsubscribe: () => void;
+      if (boundary === "price-cancel") {
+        vi.mocked(api.eodHistory).mockReturnValueOnce(held.promise);
+        const row = workspace.watchlistPrices
+          .getSnapshot()
+          .rows.find(
+            (item) =>
+              item.listing.listingId === original.member.listing.listingId,
+          )!;
+        pending = workspace.loadWatchlistPrice(row.handle);
+        unsubscribe = workspace.watchlistPrices.subscribe(() => {
+          if (!triggered) {
+            triggered = true;
+            workspace.remove(original.member.listing.listingId);
+          }
+        });
+      } else {
+        unsubscribe = workspace.annual.subscribe(() => {
+          if (!triggered && workspace.annual.getSnapshot().checkingSeed) {
+            triggered = true;
+            workspace.remove(original.member.listing.listingId);
+          }
+        });
+      }
+      workspace.openAnnualComparisonReport(original);
+      unsubscribe();
+      expect(triggered).toBe(true);
+      expect(workspace.getSnapshot().research).toBeNull();
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(workspace.annual.getSnapshot().checkingSeed).toBe(false);
+      if (pending) {
+        held.reject(new TrialApiError("unavailable"));
+        await pending;
+      }
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["clear", "inner-close", "seed-publication"] as const)(
+    "keeps a replacement visit opened during %s",
+    async (boundary) => {
+      const { workspace, capture, api } = await reportFixture();
+      let replacement = false;
+      let emptyPublications = 0;
+      const unsubscribe = workspace.annual.subscribe(() => {
+        if (workspace.annual.getSnapshot().selection === null)
+          emptyPublications++;
+        if (
+          !replacement &&
+          (boundary === "clear" ||
+            (boundary === "inner-close" && emptyPublications === 2) ||
+            (boundary === "seed-publication" &&
+              workspace.annual.getSnapshot().checkingSeed))
+        ) {
+          replacement = true;
+          workspace.openWatchlistEod(
+            workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+          );
+        }
+      });
+      workspace.openAnnualComparisonReport(capture("left"));
+      unsubscribe();
+      expect(replacement).toBe(true);
+      expect(workspace.getSnapshot().research).toMatchObject({
+        section: "eod",
+        selection: {
+          listing: { listingId: annualComparisonMemberships.right.listingId },
+        },
+      });
+      expect(workspace.eod.getSnapshot().selection?.listing.listingId).toBe(
+        annualComparisonMemberships.right.listingId,
+      );
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.eodHistory).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refreshes only the company visit and returns to the original checked comparison", async () => {
+    const { workspace, model, capture, api } = await reportFixture();
+    const original = capture("right");
+    workspace.openAnnualComparisonReport(original);
+    await checked(workspace);
+    const refreshed = await annualComparisonResponse("right", {
+      cutoffAt: "2026-10-02T12:00:00.000Z",
+    });
+    vi.mocked(api.annualReport).mockResolvedValueOnce(refreshed);
+    await workspace.annual.load();
+    expect(workspace.annual.getSnapshot()).toMatchObject({
+      response: refreshed,
+      responseOrigin: "request",
+      showingPrevious: false,
+    });
+    workspace.closeResearch();
+    expect(model.getSnapshot().right.report.response).toBe(original.response);
+    expect(api.annualReport).toHaveBeenCalledTimes(3);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["left", "right"] as const)(
+    "retires a pending %s comparison refresh before opening, and fences its late session error",
+    async (pendingSide) => {
+      const { workspace, model, capture, api } = await reportFixture();
+      const original = capture("left");
+      const held = deferred<never>();
+      vi.mocked(api.annualReport).mockReturnValueOnce(held.promise);
+      const pending = model.load(
+        pendingSide,
+        model.getSnapshot()[pendingSide].selected!,
+      );
+      const signal = vi.mocked(api.annualReport).mock.calls.at(-1)![1];
+      workspace.openAnnualComparisonReport(original);
+      expect(signal.aborted).toBe(true);
+      await checked(workspace);
+      expect(workspace.annual.getSnapshot().showingPrevious).toBe(
+        pendingSide === "left",
+      );
+      const accepted = workspace.annual.getSnapshot().response;
+      held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.getSnapshot().research?.section).toBe("annual");
+      expect(workspace.annual.getSnapshot().response).toBe(accepted);
+      expect(workspace.coordinator.getSnapshot().draft).not.toBeNull();
+      expect(api.annualReport).toHaveBeenCalledTimes(3);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows reading accepted evidence during a save conflict while keeping notes read-only", async () => {
+    const { workspace, capture, api } = await reportFixture();
+    const original = capture("left");
+    workspace.note(
+      original.member.listing.listingId,
+      "Draft preserved through conflict",
+    );
+    vi.mocked(api.save).mockRejectedValueOnce(new TrialApiError("conflict"));
+    await workspace.coordinator.save();
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.coordinator.getSnapshot().conflict).toBe(true);
+    workspace.openAnnualComparisonReport(original);
+    await checked(workspace);
+    expect(workspace.annual.getSnapshot().response).toEqual(original.response);
+    const selection = workspace.getSnapshot().research!.selection;
+    expect(workspace.getResearchWatchlist(selection).canEdit).toBe(false);
+    workspace.noteResearch(selection, "Must not replace conflicted draft");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.annualReport).toHaveBeenCalledTimes(2);
+  });
+
+  it.each(["navigation", "view", "removed", "identity", "retired"] as const)(
+    "refuses an old opener after %s changes",
+    async (boundary) => {
+      const { workspace, capture, api } = await reportFixture();
+      const original = capture("left");
+      if (boundary === "navigation") workspace.setNavigationBlocked(true);
+      if (boundary === "view") workspace.setView("markets");
+      if (boundary === "removed")
+        workspace.remove(original.member.listing.listingId);
+      if (boundary === "identity") {
+        const draft = workspace.coordinator.getSnapshot().draft!;
+        workspace.coordinator.replaceDraft({
+          ...draft,
+          memberships: draft.memberships.map((member) =>
+            member.listingId === original.member.listing.listingId
+              ? { ...member, shareClassId: "replacement-class" }
+              : member,
+          ),
+        });
+      }
+      if (boundary === "retired") workspace.coordinator.retire();
+      const before = workspace.coordinator.getSnapshot().draft;
+      workspace.openAnnualComparisonReport(original);
+      expect(workspace.getSnapshot().research).toBeNull();
+      expect(workspace.annual.getSnapshot().selection).toBeNull();
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["close", "switch", "remove", "retire"] as const)(
+    "does not restore a local report check after %s",
+    async (boundary) => {
+      const { workspace, capture, api } = await reportFixture();
+      const original = capture("left");
+      workspace.openAnnualComparisonReport(original);
+      expect(workspace.annual.getSnapshot().checkingSeed).toBe(true);
+      if (boundary === "close") workspace.closeResearch();
+      if (boundary === "switch") workspace.switchToEod();
+      if (boundary === "remove")
+        workspace.remove(original.member.listing.listingId);
+      if (boundary === "retire") workspace.coordinator.retire();
+      const settled = workspace.annual.getSnapshot();
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(workspace.annual.getSnapshot()).toBe(settled);
+      expect(settled.response).toBeNull();
+      expect(settled.checkingSeed).toBe(false);
+      expect(workspace.getSnapshot().research?.section ?? null).toBe(
+        boundary === "switch" ? "eod" : null,
+      );
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
       expect(api.save).not.toHaveBeenCalled();
     },
   );

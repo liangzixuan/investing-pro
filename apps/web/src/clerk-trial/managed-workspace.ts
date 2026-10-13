@@ -22,9 +22,13 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
-import { ManagedAnnualReport } from "./managed-annual-report";
+import {
+  ManagedAnnualReport,
+  type ManagedAnnualReportSeed,
+} from "./managed-annual-report";
 import {
   ManagedWatchlistAnnualComparison,
+  type ManagedAnnualComparisonReportCapture,
   type ManagedWatchlistAnnualComparisonMember,
 } from "./managed-watchlist-annual-comparison";
 import {
@@ -195,6 +199,7 @@ export class ManagedWorkspace {
   private searchOperation: AbortController | null = null;
   private resolveOperation: AbortController | null = null;
   private companyRouteOperation: AbortController | null = null;
+  private researchOperation = Symbol();
   private retired = false;
   private draft: MainWatchlistPayload | null = null;
   private validation: {
@@ -576,6 +581,33 @@ export class ManagedWorkspace {
       "annual",
     );
   }
+  private canOpenAnnualComparisonReport(
+    capture: ManagedAnnualComparisonReportCapture,
+  ) {
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "watchlist" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      draft.memberships.some((member) =>
+        membershipMatchesResult(member, capture.member.listing),
+      ) &&
+      this.annualComparison.canAdmitReport(capture)
+    );
+  }
+  openAnnualComparisonReport(capture: ManagedAnnualComparisonReportCapture) {
+    if (!this.canOpenAnnualComparisonReport(capture)) return;
+    const handoff = this.annualComparison.admitReport(capture);
+    if (!handoff || !this.canOpenAnnualComparisonReport(capture)) return;
+    this.openResearch(handoff.selection, "annual", {
+      annualSeed: handoff.seed,
+      admit: () => this.canOpenAnnualComparisonReport(capture),
+    });
+  }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
@@ -611,8 +643,7 @@ export class ManagedWorkspace {
         origin: "watchlist",
       },
       "eod",
-      null,
-      seed,
+      { priceSeed: seed },
     );
   }
   openMarketResearch(kind: "annual" | "eod" | "filings", listingId?: string) {
@@ -639,14 +670,11 @@ export class ManagedWorkspace {
       .rows.find(
         (entry) => entry.listing.listingId === selection.listing.listingId,
       );
-    this.openResearch(
-      selection,
-      kind,
-      null,
-      row?.response
+    this.openResearch(selection, kind, {
+      priceSeed: row?.response
         ? { response: row.response, showingPrevious: row.showingPrevious }
         : undefined,
-    );
+    });
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (this.retired) return;
@@ -770,7 +798,7 @@ export class ManagedWorkspace {
           origin: "route",
         },
         activeRoute.section,
-        { ...activeRoute, status: "open", message: "" },
+        { companyRoute: { ...activeRoute, status: "open", message: "" } },
       );
     } catch (error) {
       if (!current()) return;
@@ -801,25 +829,44 @@ export class ManagedWorkspace {
   private openResearch(
     selection: ManagedResearchSelection,
     section: ManagedResearchVisit["section"],
-    companyRoute: CompanyRouteState | null = null,
-    priceSeed?: ManagedEodHistorySeed,
+    options: {
+      companyRoute?: CompanyRouteState;
+      priceSeed?: ManagedEodHistorySeed | undefined;
+      annualSeed?: ManagedAnnualReportSeed;
+      admit?: () => boolean;
+    } = {},
   ) {
+    const operation = Symbol();
+    this.researchOperation = operation;
+    const owns = () => this.researchOperation === operation;
+    const admitted = () => !this.retired && (options.admit?.() ?? true);
     this.watchlistPrices.cancel();
-    this.clearResearch();
-    if (section === "eod" || priceSeed) this.eod.open(selection, priceSeed);
-    if (section === "annual") this.annual.open(selection);
+    if (!owns() || !admitted()) return;
+    this.clearResearch(operation);
+    if (!owns() || !admitted()) return;
+    if (section === "eod" || options.priceSeed)
+      this.eod.open(selection, options.priceSeed);
+    if (!owns()) return;
+    if (section === "annual") this.annual.open(selection, options.annualSeed);
+    if (!owns()) return;
     if (section === "filings") this.filings.open(selection);
+    if (!owns()) return;
+    if (!admitted()) {
+      this.clearResearch(operation);
+      return;
+    }
     const captured = this[section].getSnapshot().selection;
     if (captured)
       this.update({
         research: Object.freeze({ selection: captured, section }),
-        companyRoute,
+        companyRoute: options.companyRoute ?? null,
       });
   }
   closeResearch() {
     if (this.clearResearch()) this.update({});
   }
-  private clearResearch() {
+  private clearResearch(operation = Symbol()) {
+    this.researchOperation = operation;
     const hadResearch =
       this.state.research !== null || this.state.companyRoute !== null;
     this.companyRouteOperation?.abort();
@@ -828,7 +875,9 @@ export class ManagedWorkspace {
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
     this.annual.close();
+    if (this.researchOperation !== operation) return hadResearch;
     this.filings.close();
+    if (this.researchOperation !== operation) return hadResearch;
     this.eod.close();
     return hadResearch;
   }

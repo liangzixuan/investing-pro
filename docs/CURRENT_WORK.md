@@ -297,13 +297,29 @@ along with fresh web types, scoped lint, formatting, source boundaries and
 independent source reviews. The Android comparison journey now includes append,
 duplicate refusal, full-note review and explicit Save/reload. Its source syntax
 passes, and the independently reviewed native bundle has a maximum loader payload
-of 2,276,554 bytes under the unchanged 4 MiB cap. Original hosted execution of the
-27-case suite remains pending.
+of 2,276,554 bytes under the unchanged 4 MiB cap. The original hosted Android run
+passed all 27 cases and package isolation; independent artifact review is pending.
 
 Chrome checks and independent review pass for 44 invented-data observations at
 1440, 390 and 320 CSS pixels. They cover complete income and cash Save/reload,
 original evidence dates, note validation, conflict recovery, focus and session
 retirement. Source merge and website, API and Android delivery remain separate.
+
+### Annual comparison report handoff in progress
+
+The next increment opens either loaded comparison column in the full company
+Annual view without another SEC request. It preserves original source dates and
+qualifications, identifies reused comparison evidence, and returns to the same
+pair, bases, note destination and shared draft. An explicit refresh changes only
+the company visit. See the
+[handoff contract](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison).
+
+Focused implementation checks and fresh web types pass. Independent review found synchronous
+opening callbacks that could publish stale evidence or overwrite a replacement
+visit; regression tests reproduced them, and ownership checks now fence those
+paths. UI callbacks now update on commit, and the comparison-origin label remains
+visible after a retained refresh. Source reviews pass. Chrome and native acceptance
+remain pending. No source merge or delivery follows from these local changes.
 
 ## Product scope
 

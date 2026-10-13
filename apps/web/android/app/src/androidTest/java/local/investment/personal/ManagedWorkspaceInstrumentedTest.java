@@ -474,6 +474,15 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(2, 0, 0);
         assertAnnualComparisonDraft();
+        click(".managed-annual-report-opener[aria-label='Open full Annual report for ONE (One Company; Class A; XNAS)']");
+        assertComparisonReportVisit("ONE", "One Company", "0000000002-25-000001", "2025-06-30", false);
+        assertAnnualComparisonCounts(2, 0, 0);
+        pressBack();
+        awaitPage("Back returns focus to the exact second comparison opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement?.getAttribute('aria-label') === 'Open full Annual report for ONE (One Company; Class A; XNAS)'");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonDraft();
         clickAnnualComparisonAction("Refresh first annual report");
         awaitPage("failed refresh retains the selected basis and original completion time",
             "document.querySelector('.managed-annual-comparison-choice:first-child [role=alert]') !== null" +
@@ -496,6 +505,17 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonDraft();
         chooseNativeSelectOption("#managed-annual-comparison-note-group", "cash", "Cash generation");
         chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        click(".managed-annual-report-opener[aria-label='Open full Annual report for ZERO (Zero Company; Class A; XNAS)']");
+        assertComparisonReportVisit("ZERO", "Zero Company", "0000000001-26-000001", "2025-12-31", true);
+        assertAnnualComparisonCounts(4, 1, 1);
+        pressBack();
+        awaitPage("Back keeps the note group and destination with the original comparison opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement?.getAttribute('aria-label') === 'Open full Annual report for ZERO (Zero Company; Class A; XNAS)'" +
+            " && document.querySelector('#managed-annual-comparison-note-group')?.value === 'cash'" +
+            " && document.querySelector('#managed-annual-comparison-note-destination')?.value === 'listing-zero'");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonDraft();
         clickAnnualComparisonAction("Add Annual comparison to note draft");
         assertAnnualComparisonNote(1, true);
         assertAnnualComparisonCounts(4, 1, 1);
@@ -535,6 +555,20 @@ public class ManagedWorkspaceInstrumentedTest {
     private void clickAnnualComparisonAction(String label) {
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[contains(@class,'managed-annual-comparison')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
+    }
+
+    private void assertComparisonReportVisit(String symbol, String issuer, String accession, String periodEnd, boolean previous) throws Exception {
+        awaitPage("full Annual visit reuses the selected company's original checked evidence",
+            "(() => { const panel = document.querySelector('.managed-annual-report'); const text = panel?.textContent ?? '';" +
+            " return document.querySelector('#managed-company-heading')?.textContent === 'Company research · ' + " + JSONObject.quote(symbol) +
+            " && document.querySelector('.managed-company-identity strong')?.textContent === " + JSONObject.quote(issuer) +
+            " && panel?.getAttribute('aria-busy') === 'false'" +
+            " && text.includes('The loaded watchlist comparison report is available in this company visit.')" +
+            " && panel.querySelector('.managed-annual-origin')?.textContent === 'Showing the report loaded in the watchlist comparison. Original source and observation times are unchanged.'" +
+            " && text.includes(" + JSONObject.quote(accession) + ") && text.includes(" + JSONObject.quote(periodEnd) + ")" +
+            " && text.includes('2026-09-20T00:00:00.000Z')" +
+            " && text.includes('Showing the previous report, completed 2026-09-20T00:00:02.000Z') === " + previous +
+            " && [...panel.querySelectorAll('button')].some(b => b.textContent === 'Refresh annual report' && !b.disabled); })()");
     }
 
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {

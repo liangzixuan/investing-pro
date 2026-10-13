@@ -76,7 +76,8 @@ A request already admitted by the managed service may still finish there.
 
 Back, a different listing, a changed or refused catalog, session retirement, or
 an invalidated watchlist identity clears the whole visit. A new visit starts
-unloaded unless opened from a Markets row with an admitted history. A section-specific unavailable or unsupported result follows that
+unloaded unless it explicitly reuses loaded Price history or an Annual comparison
+report as described below. A section-specific unavailable or unsupported result follows that
 section's existing error policy and leaves unrelated validated evidence intact.
 Account or catalog invalidation applies to all three sections.
 
@@ -94,8 +95,19 @@ validated history into Price after cancelling pending board work. This includes
 Annual-first visits; Annual remains unloaded. The copied history retains its
 original dates and previous-result notice, and Price identifies its Markets
 origin. Refreshing Price replaces only the company response. Back restores the
-unchanged board snapshot and chart choice. A row without history, direct links,
-reloads, Forward and Discover/watchlist entry still start unloaded.
+unchanged board snapshot and chart choice. Rows without admitted history, direct
+links, reloads, Forward and Discover entry start unloaded. A watchlist Price
+opener likewise reuses that row's admitted history when available.
+
+**Open full Annual report** on a loaded watchlist comparison column opens that
+exact report in the company visit without another source read. Its original
+dates, availability and retained-report status follow it, with a persistent
+comparison-origin label. An explicit company refresh changes only the visit.
+Back returns to the mounted comparison, selected bases, note destination and
+shared draft, then restores focus to the opening button. The handoff checks the
+current member, response and route across cancellation and opening; a stale
+callback cannot replace a newer visit. See the
+[Annual comparison guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison).
 
 Back uses the same action on screen and on Android. Switching sections preserves
 the original opener. If that control disappears, Back focuses the current view's

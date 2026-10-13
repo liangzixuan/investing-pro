@@ -42,6 +42,11 @@
 .managed-frame .managed-annual-comparison-choice .trial-actions {
   margin: 0;
 }
+.managed-frame .managed-annual-report-opener {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+}
 .managed-frame
   .managed-annual-comparison-choice
   :is([role="status"], [role="alert"]) {

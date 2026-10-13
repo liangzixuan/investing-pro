@@ -14,9 +14,11 @@ import {
 } from "./managed-api";
 import { eodSelection } from "./eod-history-fixture";
 import { ManagedSecAccess } from "./managed-sec-access";
+import { ManagedAnnualReport } from "./managed-annual-report";
 import {
   ManagedWatchlistAnnualComparison,
   type ManagedWatchlistAnnualComparisonSide,
+  type ManagedAnnualComparisonReportCapture,
 } from "./managed-watchlist-annual-comparison";
 
 const digest = eodSelection.catalogSnapshotSha256;
@@ -42,6 +44,206 @@ const sameIssuer: ManagedEodIdentity = {
 const member = (listing = first): WatchlistMembership => ({
   ...listing,
   note: "  Exact unsaved Café 😀  ",
+});
+
+async function loadedHandoff() {
+  const f = fixture();
+  const left = f.choose("left", 0)!;
+  const response = await responseFor();
+  f.read.mockResolvedValueOnce(response);
+  await f.model.load("left", left);
+  const capture: ManagedAnnualComparisonReportCapture = {
+    side: "left",
+    member: left,
+    response,
+  };
+  return { ...f, left, response, capture };
+}
+
+describe("Annual comparison report handoff", () => {
+  it("copies the full identity and settled qualification while notes/order/save state change", async () => {
+    const { model, read, capture } = await loadedHandoff();
+    const before = model.getSnapshot().left;
+    model.reconcile(
+      draft([member(second), { ...member(), note: "Latest unsaved note 😀" }]),
+      digest,
+      true,
+      false,
+    );
+    expect(model.canAdmitReport(capture)).toBe(true);
+    const handoff = model.admitReport(capture)!;
+    expect(handoff.selection).toEqual({
+      listing: first,
+      catalogSnapshotSha256: digest,
+      origin: "watchlist",
+      cik: null,
+    });
+    expect(handoff.selection.listing).not.toBe(capture.member.listing);
+    expect(Object.isFrozen(handoff.selection.listing)).toBe(true);
+    expect(Object.isFrozen(handoff.seed)).toBe(true);
+    expect(handoff.seed.response).toBe(capture.response);
+    expect(handoff.seed.showingPrevious).toBe(false);
+    expect(model.getSnapshot().left).toBe(before);
+    expect(read).toHaveBeenCalledOnce();
+  });
+  it("rejects forged member objects, reused handles and cloned responses", async () => {
+    const { model, capture } = await loadedHandoff();
+    for (const stale of [
+      { ...capture, member: { ...capture.member } },
+      {
+        ...capture,
+        member: {
+          ...capture.member,
+          listing: { ...capture.member.listing, shareClassName: "Class C" },
+        },
+      },
+      { ...capture, response: structuredClone(capture.response) },
+      { ...capture, side: "right" as const },
+    ]) {
+      expect(model.canAdmitReport(stale)).toBe(false);
+      expect(model.admitReport(stale)).toBeNull();
+    }
+  });
+  it("refuses old exact-value response captures after a successful replacement", async () => {
+    const { model, read, left, capture } = await loadedHandoff();
+    const replacement = await responseFor();
+    expect(replacement).toEqual(capture.response);
+    read.mockResolvedValueOnce(replacement);
+    await model.load("left", left);
+    expect(model.admitReport(capture)).toBeNull();
+    expect(
+      model.admitReport({ ...capture, response: replacement })?.seed.response,
+    ).toBe(replacement);
+  });
+  it.each(Object.keys(first) as (keyof ManagedEodIdentity)[])(
+    "refuses a captured report after full-identity field %s changes",
+    async (key) => {
+      const { model, capture } = await loadedHandoff();
+      model.reconcile(
+        draft([{ ...member(), [key]: "changed" }, member(second)]),
+        digest,
+        true,
+        true,
+      );
+      expect(model.admitReport(capture)).toBeNull();
+    },
+  );
+  it.each(["clear", "readd", "catalog", "hidden", "retire"] as const)(
+    "refuses the original capture after %s",
+    async (cause) => {
+      const { model, choose, capture } = await loadedHandoff();
+      if (cause === "clear") choose("left", null);
+      if (cause === "readd") {
+        model.reconcile(draft([]), digest, true, true);
+        model.reconcile(draft(), digest, true, true);
+        choose("left", 0);
+      }
+      if (cause === "catalog")
+        model.reconcile(draft(), `sha256:${"b".repeat(64)}`, true, true);
+      if (cause === "hidden") model.reconcile(draft(), digest, false, false);
+      if (cause === "retire") model.retire();
+      expect(model.admitReport(capture)).toBeNull();
+    },
+  );
+  it("refuses a stale action without cancelling the current pending operation", async () => {
+    const { model, read, left, capture } = await loadedHandoff();
+    const pending = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read.mockReturnValueOnce(pending.promise);
+    const loading = model.load("left", left);
+    const operation = model.getSnapshot().pending;
+    expect(model.admitReport({ ...capture, member: { ...left } })).toBeNull();
+    expect(model.getSnapshot().pending).toBe(operation);
+    expect(read.mock.calls[1]![1].aborted).toBe(false);
+    pending.resolve(await responseFor());
+    await loading;
+  });
+  it.each(["left", "right"] as const)(
+    "cancels pending %s work before capturing the current retained flag",
+    async (side) => {
+      const { model, read, left, choose, capture } = await loadedHandoff();
+      const target = side === "left" ? left : choose("right", 1)!;
+      const pending = deferred<Awaited<ReturnType<typeof responseFor>>>();
+      read.mockReturnValueOnce(pending.promise);
+      const loading = model.load(side, target);
+      const handoff = model.admitReport(capture)!;
+      expect(handoff.seed.response).toBe(capture.response);
+      expect(handoff.seed.showingPrevious).toBe(side === "left");
+      expect(model.getSnapshot().pending).toBeNull();
+      expect(read.mock.calls[1]![1].aborted).toBe(true);
+      pending.resolve(await responseFor(side === "left" ? first : second));
+      await loading;
+      expect(model.getSnapshot().left.report.response).toBe(capture.response);
+      expect(read).toHaveBeenCalledTimes(2);
+    },
+  );
+  it("rechecks membership after cancellation notifies subscribers", async () => {
+    const { model, read, left, capture } = await loadedHandoff();
+    const pending = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read.mockReturnValueOnce(pending.promise);
+    const loading = model.load("left", left);
+    const unsubscribe = model.subscribe(() => {
+      if (!model.getSnapshot().pending) {
+        unsubscribe();
+        model.reconcile(draft([]), digest, true, true);
+      }
+    });
+    expect(model.admitReport(capture)).toBeNull();
+    pending.resolve(await responseFor());
+    await loading;
+    expect(model.getSnapshot().left.selected).toBeNull();
+  });
+  it("keeps company Refresh and cancellation independent of the original pair", async () => {
+    const { model, read, capture } = await loadedHandoff();
+    const handoff = model.admitReport(capture)!;
+    const companyRead = vi.fn<ManagedApi["annualReport"]>();
+    const company = new ManagedAnnualReport(companyRead, vi.fn());
+    company.open(handoff.selection, handoff.seed);
+    model.reconcile(draft(), digest, false, false);
+    await vi.waitFor(() =>
+      expect(company.getSnapshot().checkingSeed).toBe(false),
+    );
+    expect(company.getSnapshot().response).toEqual(capture.response);
+    const fresh = await annualComparisonResponse("left", {
+      mode: "exact-decimal",
+    });
+    companyRead.mockResolvedValueOnce(fresh);
+    await company.load();
+    expect(company.getSnapshot().response).toBe(fresh);
+    company.close();
+    model.reconcile(draft(), digest, true, true);
+    expect(model.getSnapshot().left.report.response).toBe(capture.response);
+    expect(model.getSnapshot().left.selected).toBe(capture.member);
+    expect(read).toHaveBeenCalledOnce();
+    expect(companyRead).toHaveBeenCalledOnce();
+  });
+  it("does not hand off or cancel a newer operation started by a cancellation subscriber", async () => {
+    const { model, read, left, capture } = await loadedHandoff();
+    const previous = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    const next = deferred<Awaited<ReturnType<typeof responseFor>>>();
+    read
+      .mockReturnValueOnce(previous.promise)
+      .mockReturnValueOnce(next.promise);
+    const firstLoading = model.load("left", left);
+    let nextLoading: Promise<void> | undefined;
+    const unsubscribe = model.subscribe(() => {
+      if (!model.getSnapshot().pending) {
+        unsubscribe();
+        nextLoading = model.load("left", left);
+      }
+    });
+    expect(model.canAdmitReport(capture)).toBe(true);
+    expect(read.mock.calls[1]![1].aborted).toBe(false);
+    expect(model.admitReport(capture)).toBeNull();
+    expect(read.mock.calls[1]![1].aborted).toBe(true);
+    expect(read.mock.calls[2]![1].aborted).toBe(false);
+    const packet = await responseFor();
+    previous.resolve(packet);
+    await firstLoading;
+    expect(model.getSnapshot().pending).not.toBeNull();
+    next.resolve(packet);
+    await nextLoading;
+    expect(model.getSnapshot().pending).toBeNull();
+  });
 });
 function draft(
   memberships = [member(), member(second), member(sameIssuer)],

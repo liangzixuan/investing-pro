@@ -18,6 +18,7 @@ import {
 import type {
   ManagedWatchlistAnnualComparison as ComparisonModel,
   ManagedWatchlistAnnualComparisonState as ComparisonState,
+  ManagedAnnualComparisonReportCapture,
 } from "./managed-watchlist-annual-comparison";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
 import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
@@ -30,6 +31,13 @@ import "./managed-annual-comparison.css";
 type Side = "left" | "right";
 type Projection = ReturnType<typeof projectAnnualComparison>;
 type BasisChoice = { handle: symbol | null; basis: string | undefined };
+type ReportAction = {
+  active: boolean;
+  onOpenReport: (
+    capture: ManagedAnnualComparisonReportCapture,
+    opener: HTMLButtonElement,
+  ) => void;
+};
 const sides = ["left", "right"] as const;
 const sideLabel = (side: Side) => (side === "left" ? "First" : "Second");
 
@@ -38,11 +46,16 @@ export function ManagedWatchlistAnnualComparison({
   active,
   editable,
   noteActions,
+  onOpenReport,
 }: {
   model: ComparisonModel;
   active: boolean;
   editable: boolean;
   noteActions: ManagedWatchlistAnnualComparisonNoteActions;
+  onOpenReport: (
+    capture: ManagedAnnualComparisonReportCapture,
+    opener: HTMLButtonElement,
+  ) => void;
 }) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -68,6 +81,14 @@ export function ManagedWatchlistAnnualComparison({
     origin: HTMLButtonElement;
     target: HTMLButtonElement | null;
   } | null>(null);
+  const reportAction = useRef<ReportAction | null>(null);
+  useLayoutEffect(() => {
+    const committed = { active, onOpenReport };
+    reportAction.current = committed;
+    return () => {
+      if (reportAction.current === committed) reportAction.current = null;
+    };
+  }, [active, onOpenReport]);
   useLayoutEffect(() => {
     if (state.pending || !focusRequest.current) return;
     const { origin, target } = focusRequest.current;
@@ -111,6 +132,8 @@ export function ManagedWatchlistAnnualComparison({
             setBasis={setBasis}
             loadButtons={loadButtons}
             focusRequest={focusRequest}
+            reportAction={reportAction}
+            active={active}
             id={id}
           />
         ))}
@@ -315,6 +338,8 @@ function AnnualCompanyControls({
   setBasis,
   loadButtons,
   focusRequest,
+  reportAction,
+  active,
   id,
 }: {
   side: Side;
@@ -327,6 +352,8 @@ function AnnualCompanyControls({
     origin: HTMLButtonElement;
     target: HTMLButtonElement | null;
   } | null>;
+  reportAction: RefObject<ReportAction | null>;
+  active: boolean;
   id: string;
 }) {
   const column = state[side];
@@ -400,8 +427,20 @@ function AnnualCompanyControls({
             Cancel {sideLabel(side).toLowerCase()} annual report
           </button>
         )}
+        <AnnualReportOpener
+          side={side}
+          state={state}
+          model={model}
+          action={reportAction}
+          active={active}
+          description={`${id}-${side}-report-status`}
+        />
       </div>
-      <p role={column.report.error ? "alert" : "status"} aria-live="polite">
+      <p
+        id={`${id}-${side}-report-status`}
+        role={column.report.error ? "alert" : "status"}
+        aria-live="polite"
+      >
         {column.report.message}
       </p>
       {column.report.showingPrevious && column.report.response && (
@@ -471,6 +510,49 @@ function AnnualCompanyControls({
         </div>
       )}
     </div>
+  );
+}
+
+function AnnualReportOpener({
+  side,
+  state,
+  model,
+  action,
+  active,
+  description,
+}: {
+  side: Side;
+  state: ComparisonState;
+  model: ComparisonModel;
+  action: RefObject<ReportAction | null>;
+  active: boolean;
+  description: string;
+}) {
+  const { selected: member, report } = state[side];
+  const capture =
+    member && report.response
+      ? { side, member, response: report.response }
+      : null;
+  const listing = member?.listing;
+  const identity = listing
+    ? `${listing.symbol} (${listing.issuerName}; ${listing.shareClassName}; ${listing.exchangeMic})`
+    : `${sideLabel(side).toLowerCase()} company`;
+  return (
+    <button
+      type="button"
+      className="trial-secondary managed-annual-report-opener"
+      aria-label={`Open full Annual report for ${identity}`}
+      aria-describedby={description}
+      disabled={!active || !capture || !model.canAdmitReport(capture)}
+      onClick={(event) => {
+        const committed = action.current;
+        if (!committed?.active || !capture || !model.canAdmitReport(capture))
+          return;
+        committed.onOpenReport(capture, event.currentTarget);
+      }}
+    >
+      Open full Annual report
+    </button>
   );
 }
 

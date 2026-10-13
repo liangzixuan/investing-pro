@@ -99,6 +99,27 @@ Session retirement clears both columns. Refresh failure, invalid response and
 source eligibility use the existing Annual report rules. This comparison adds
 no field, feed, cohort, API schema, persistence or automatic refresh.
 
+### Open the full report from a comparison
+
+Each loaded column offers **Open full Annual report** beside its load controls.
+The company visit checks a private copy of that column's original report and
+shows its full financial overview and evidence. Opening sends no source request.
+Historical, unavailable and retained reports keep their original qualifications,
+filing references and source dates. The visit identifies reports reused from the
+comparison even if a later refresh fails or is cancelled.
+
+An explicit **Refresh annual report** changes only the company visit. **Back to
+workspace** and Android Back return to the same comparison, basis choices, note
+destination and current draft, then restore focus to the opening button. The
+company note uses the existing shared draft and explicit whole-watchlist Save.
+A conflicted draft stays read-only while its loaded report can still be viewed.
+
+Opening cancels any pending comparison read. Stale buttons, changed membership,
+catalog changes and session retirement cannot reopen old evidence. Cancelling
+the local report check leaves the visit unloaded. Cold company links, page
+reloads and Forward navigation start unloaded; the handoff adds no saved state,
+cache or automatic fallback request. Current work records acceptance separately.
+
 ### Keep Annual comparison evidence in a note
 
 Below the comparison, choose **Revenue and net income** or **Cash generation**,
