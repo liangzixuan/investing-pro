@@ -232,7 +232,7 @@ public class ManagedWorkspaceInstrumentedTest {
         });
         awaitPage("managed fixture ready", "document.querySelector('#fixture-diagnostics') !== null" +
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
-            " && document.querySelector('#managed-note-0')?.disabled === false");
+            " && document.querySelector('#managed-note-0')?.disabled === false", true);
         if (coldCompanyLink)
             awaitPage("cold company metadata admitted without research",
                 DIAGNOSTICS + ".resolve === 1 && document.querySelector('#managed-annual-heading') !== null");
@@ -4407,13 +4407,28 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void awaitPage(String description, String predicate) throws Exception {
+        awaitPage(description, predicate, false);
+    }
+
+    private void awaitPage(String description, String predicate, boolean requireNativeReady) throws Exception {
         long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
         int missedCallbacks = 0;
+        AtomicReference<String> nativeState = new AtomicReference<>("not checked");
         while (SystemClock.uptimeMillis() < deadline) {
             CountDownLatch returned = new CountDownLatch(1);
             AtomicReference<String> result = new AtomicReference<>();
-            scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-                "Boolean(" + predicate + ")", value -> { result.set(value); returned.countDown(); }));
+            scenario.onActivity(activity -> {
+                WebView webView = activity.getBridge().getWebView();
+                if (requireNativeReady && !fixtureNativeReady(activity, webView, nativeState)) {
+                    returned.countDown();
+                    return;
+                }
+                webView.evaluateJavascript("Boolean(" + predicate + ")", value -> {
+                    if (!requireNativeReady || (fixtureNativeReady(activity, webView, nativeState) &&
+                        SystemClock.uptimeMillis() < deadline)) result.set(value);
+                    returned.countDown();
+                });
+            });
             long remaining = deadline - SystemClock.uptimeMillis();
             if (remaining <= 0) break;
             // A loading WebView can miss a callback; keep the same overall page deadline.
@@ -4424,9 +4439,23 @@ public class ManagedWorkspaceInstrumentedTest {
             if ("true".equals(result.get())) return;
             Thread.sleep(50);
         }
-        String diagnostic = "missed callbacks=" + missedCallbacks + "; " + pageDiagnostic();
+        String diagnostic = "missed callbacks=" + missedCallbacks +
+            (requireNativeReady ? "; native=" + nativeState.get() : "") + "; " + pageDiagnostic();
         Log.e("ManagedFixture", "Timed out waiting for " + description + ": " + diagnostic);
         fail("Timed out waiting for " + description + ": " + diagnostic);
+    }
+
+    /** Observe startup admission on the UI thread; never force the Activity to resume. */
+    private boolean fixtureNativeReady(MainActivity activity, WebView webView, AtomicReference<String> diagnostic) {
+        Lifecycle.State state = activity.getLifecycle().getCurrentState();
+        boolean attached = webView.isAttachedToWindow();
+        boolean shown = webView.isShown();
+        boolean hardware = webView.isHardwareAccelerated();
+        boolean focused = activity.hasWindowFocus() && webView.hasWindowFocus();
+        boolean callbacks = activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
+        diagnostic.set("state=" + state + ", attached=" + attached + ", shown=" + shown +
+            ", hardware=" + hardware + ", focused=" + focused + ", callbacks=" + callbacks);
+        return state == Lifecycle.State.RESUMED && attached && shown && hardware && focused && callbacks;
     }
 
     /** Finite observations of this invented fixture only; no model writes or production hooks. */
