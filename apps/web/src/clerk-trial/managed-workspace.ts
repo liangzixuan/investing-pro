@@ -41,6 +41,7 @@ import {
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
 import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
+import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
@@ -1142,6 +1143,79 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Cash generation added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private annualLiquidityNoteProposal(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding liquidity.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose liquidity from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualLiquidityNoteExcerpt(
+      response,
+      annual.showingPrevious,
+    );
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Liquidity needs available nonnegative current assets and liabilities from the same filing and balance date.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason: "This exact liquidity reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualLiquidityNoteAction(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualLiquidityNoteProposal(selection, response);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualLiquidityToResearchNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualLiquidityNoteProposal(selection, response);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Liquidity added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private priceNoteProposal(

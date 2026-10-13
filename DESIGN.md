@@ -100,6 +100,12 @@ decimals at narrow widths. Original instant source fields and calculation inputs
 belong in an initially closed disclosure with 44px summary and link targets.
 Explain missing and rejected values independently of income and cash.
 
+Place **Add liquidity to note draft** after the calculation explanation and before
+source details. Reuse the secondary 44px action, associated reason and live status
+from cash-to-note. Keep an unavailable action focusable so its reason can be read.
+Appending leaves focus on the action; the existing shared editor and explicit
+whole-watchlist Save own the note. Do not add another card or editor.
+
 In the managed Annual overview, name revenue bases in plain language while
 keeping them distinct. Present genuinely missing bases as compact labelled rows
 below the financial tables. Rejected or withheld evidence keeps its explanation;

@@ -86,11 +86,13 @@ export function SecAnnualEvidenceResult({
   response,
   renderPairAction,
   cashAction,
+  liquidityAction,
   appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
   readonly cashAction?: ReactNode;
+  readonly liquidityAction?: ReactNode;
   readonly appearance?: "evidence" | "financial";
 }) {
   if (appearance === "financial")
@@ -119,7 +121,10 @@ export function SecAnnualEvidenceResult({
           />
         </div>
         <SecAnnualCashGeneration response={response} cashAction={cashAction} />
-        <SecAnnualLiquidity response={response} />
+        <SecAnnualLiquidity
+          response={response}
+          liquidityAction={liquidityAction}
+        />
         <details className="managed-annual-provenance">
           <summary>Source and validation details</summary>
           <p className="sec-quarterly-message">

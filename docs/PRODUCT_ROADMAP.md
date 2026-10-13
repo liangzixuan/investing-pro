@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2 increment adds **Liquidity at fiscal year-end** to company Annual:
+The current M2 increment connects the loaded company's liquidity to its existing
+research-note draft. An explicit action preserves exact balances, checked
+calculations or the zero-liabilities ratio refusal, original provenance and
+historical qualifiers. The existing full-draft review and Save make the evidence
+durable. See the [note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
+
+The preceding increment adds **Liquidity at fiscal year-end** to company Annual:
 reported current assets and liabilities, exact working capital and a rounded
 current ratio. It reuses the explicit SEC read and preserves source dates,
 independent unavailable values and the whole-report lifetime. The

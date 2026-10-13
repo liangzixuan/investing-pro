@@ -403,6 +403,21 @@ recovery with zero liabilities. Its prior assertions, case/capture counts and
 deadlines remain intact. Hosted native execution and PR checks for this increment
 are pending. It has not been merged or delivered.
 
+### Liquidity-to-note candidate
+
+The next increment adds **Add liquidity to note draft** to company Annual. It
+appends the exact reported balances, checked calculations and original provenance
+to the existing member's latest note. Zero liabilities retain an explicit
+unavailable-ratio sentence; negative working capital remains valid. Missing or
+rejected inputs block the action. Historical and retained reports keep their
+qualifiers. See the [note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
+
+Implementation preserves current-report and draft guards, exact duplicate refusal,
+the complete 2,000-character policy and explicit whole-watchlist Save. Focused
+model, component and composition checks, fresh web types, source boundaries and
+scoped lint/format pass. Independent source reviews pass. Rendered browser and
+hosted native execution remain pending. This candidate is not merged or delivered.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

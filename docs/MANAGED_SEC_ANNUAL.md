@@ -319,8 +319,26 @@ duration observation remains inspectable as supplied. The seven-day source
 freshness and 485-day report policies still apply; valid older balances remain
 readable with historical labels. The existing whole-response lifetime carries
 liquidity through refresh, cancellation, navigation and comparison-to-company
-handoff. This slice adds no note action, comparison columns, saved fields or
-liquidity history.
+handoff. Liquidity comparison columns and history remain outside this scope.
+
+### Add liquidity to a note
+
+**Add liquidity to note draft** appends one dated paragraph to the existing
+listing's shared note. It includes both exact reported balances, working capital,
+the checked current ratio, original filing and source dates, and historical or
+retained-report qualifiers. If current liabilities are zero, it records that the
+ratio is unavailable while preserving the valid balances and working capital.
+The action requires nonnegative reported inputs from the same filing and date;
+negative working capital remains valid. Missing or rejected inputs block it.
+
+The action rechecks the current report and latest note when activated, refuses an
+identical excerpt, and validates the complete proposed note against the existing
+2,000-character policy. It preserves existing prose and other members. Review and
+explicitly **Save watchlist** to save the whole draft. Appending requests no data
+and adds no saved field. See the
+[liquidity-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
+
+### Version boundary
 
 The Annual request/response schema and generation definition are `3.0.0`. The
 route and four request keys are unchanged. Version-1 and version-2 Annual requests

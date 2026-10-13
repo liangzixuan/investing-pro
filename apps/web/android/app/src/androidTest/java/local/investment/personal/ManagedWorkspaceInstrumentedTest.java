@@ -78,6 +78,37 @@ public class ManagedWorkspaceInstrumentedTest {
         "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows. " +
         "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String NOTE = "Draft survives native Back";
+    private static final String LIQUIDITY_NOTE_INITIAL =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. " +
+        "App calculations: working capital USD 40.1; current ratio 1.50 multiple (two decimal places, half up). " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String LIQUIDITY_NOTE_RETAINED =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. " +
+        "App calculations: working capital USD 40.1; current ratio 1.50 multiple (two decimal places, half up). " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Retained previous report. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String LIQUIDITY_NOTE_ZERO =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 0. " +
+        "App calculations: working capital USD 120.125; current ratio unavailable because current liabilities are zero. " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-21T00:00:00.000Z; completed 2026-09-21T00:00:02.000Z; Company Facts captured 2026-09-21T00:00:01.000Z; Submissions captured 2026-09-21T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
     private static final String WATCHLIST_COMPARISON_EXISTING_NOTE = "Latest ONE research note";
     private static final String WATCHLIST_COMPARISON_NOTE = WATCHLIST_COMPARISON_EXISTING_NOTE + " " +
         "Observed raw-close watchlist comparison: 2026-09-17 to 2026-09-18; " +
@@ -1234,6 +1265,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(1, false, false, false);
         assertRefreshLiquiditySources(false);
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_INITIAL, 1);
         Log.i("ManagedRefresh", "phase=initial; " + pageDiagnostic());
 
         click(".managed-annual-report .trial-actions button:first-child");
@@ -1248,11 +1280,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false");
         Log.i("ManagedRefresh", "phase=failed-retained; " + pageDiagnostic());
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_RETAINED, 2);
         retainRefreshFailureScreenshot();
 
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(3, false, false, true);
         assertRefreshLiquiditySources(true);
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_ZERO, 3);
         awaitPage("successful refresh clears the old failure",
             "document.querySelector('.managed-annual-report [role=alert]') === null");
         Log.i("ManagedRefresh", "phase=recovered; " + pageDiagnostic());
@@ -4123,6 +4157,54 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("catalog screenshot targets visible: " + name, visible);
         retainScreenshot(name);
         awaitPage("catalog screenshot targets remained visible: " + name, visible);
+    }
+
+    private void assertLiquidityNoteDraft(String excerpt, int annualCalls) throws Exception {
+        String action = ".managed-annual-liquidity-note-action > button";
+        String status = ".managed-annual-liquidity-note-status";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String originalCalls = readFixtureString("JSON.stringify(" + DIAGNOSTICS + ")");
+        String prefix = "Latest liquidity research draft " + annualCalls + ".";
+        String complete = prefix + " " + excerpt;
+        awaitPage("liquidity action is labelled, associated, focusable and available",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + ");" +
+            " return b && !b.disabled && b.getAttribute('aria-disabled') === 'false'" +
+            " && b.textContent === 'Add liquidity to note draft' && b.getBoundingClientRect().height >= 44" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('Nothing is saved here.'); })()");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", NOTE, prefix);
+        click(action);
+        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected)" +
+            " && expected.memberships.map(m => m.listingId).join(',') === 'listing-one,listing-zero'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(complete) +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()";
+        awaitPage("liquidity append uses latest prose and exact values, qualification and original dates", exact +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === " +
+                JSONObject.quote("Liquidity added to the note draft. Review and save all changes in My Watchlist."));
+        awaitPage("liquidity duplicate remains focusable with an associated refusal",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent === " +
+                JSONObject.quote("This exact liquidity reference is already in the note draft.") + "; })()");
+        click(action);
+        awaitPage("duplicate liquidity activation leaves the complete draft unchanged", exact +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === " +
+                JSONObject.quote("This exact liquidity reference is already in the note draft."));
+        awaitPage("liquidity drafting adds no source read or durable write",
+            "JSON.stringify(" + DIAGNOSTICS + ") === " + JSONObject.quote(originalCalls) +
+            " && " + DIAGNOSTICS + ".annual === " + annualCalls + " && " + DIAGNOSTICS + ".save === 0" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".aborted === 0" +
+            " && " + DIAGNOSTICS + ".lateResolved === 0");
+        assertFixtureBoundary();
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", complete, NOTE);
+        awaitPage("restoring the original note clears duplicate refusal before inherited checks",
+            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector(" + JSONObject.quote(action) + ")?.getAttribute('aria-disabled') === 'false'" +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === ''");
     }
 
     private void assertRefreshReport(int annualCalls, boolean previous, boolean running, boolean recovered) throws Exception {

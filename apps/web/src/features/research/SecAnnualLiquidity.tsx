@@ -5,6 +5,7 @@ import type {
   PersonalSecAnnualLiquidityUnavailableReason,
   PersonalSecAnnualLiquidityValueDto,
 } from "@research-cockpit/contracts";
+import type { ReactNode } from "react";
 
 const reasons: Record<PersonalSecAnnualLiquidityUnavailableReason, string> = {
   invalid_clock: "The original source times could not be validated.",
@@ -46,8 +47,10 @@ const reasons: Record<PersonalSecAnnualLiquidityUnavailableReason, string> = {
 
 export function SecAnnualLiquidity({
   response,
+  liquidityAction,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly liquidityAction?: ReactNode;
 }) {
   const { liquidity, target } = response.evidence;
   const values = liquidity.resolution;
@@ -103,6 +106,7 @@ export function SecAnnualLiquidity({
         balances from the same filing and date; the ratio requires positive
         liabilities.
       </p>
+      {liquidityAction}
       <details className="sec-quarterly-row-details sec-annual-liquidity-source">
         <summary>Liquidity sources and calculation inputs</summary>
         <LiquiditySources response={response} />

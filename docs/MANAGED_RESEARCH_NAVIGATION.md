@@ -257,6 +257,33 @@ choose evidence and retain its source citation. This implementation uses the
 existing plain-text watchlist and SEC response. [Current work](CURRENT_WORK.md)
 records implementation and delivery acceptance separately.
 
+## Add liquidity to a note draft
+
+**Add liquidity to note draft** appears after the Annual liquidity calculations.
+It uses the current report and exact watchlist member, then appends one plain-text
+paragraph to that member's latest note. The paragraph names `AssetsCurrent` and
+`LiabilitiesCurrent`, preserves exact USD amounts and the checked app calculations,
+and includes the instant balance date, filing link and original source times.
+It labels historical evidence and a retained previous report explicitly.
+
+Both nonnegative reported balances and working capital must be available from
+the same filing and date. Working capital may be negative. Zero current
+liabilities produce an explicit unavailable-ratio sentence; other unavailable
+calculations block the action. Income and cash completeness do not control it.
+
+The control stays keyboard-focusable when unavailable and explains the reason.
+Activation rechecks the current visit, response, session, membership and editable
+draft. A running Annual request, changed identity, conflict or save/recovery state
+blocks appending. Invalid or oversized combined text leaves the draft unchanged.
+Exact duplicate excerpts are refused; deleting that excerpt allows adding it again.
+Raw prose stays intact while the complete proposal is checked against the existing
+2,000 normalized Unicode-code-point limit. Save retains its existing normalization.
+
+Use **Review in My Watchlist**, then **Save watchlist**, to save the complete draft.
+The action does not add a member, refresh sources or save automatically. A report
+opened from the watchlist comparison retains that report's original provenance.
+Current work records browser, native and delivery acceptance separately.
+
 ## Add cash generation to a note draft
 
 The company Annual view also offers **Add cash generation to note draft** after
