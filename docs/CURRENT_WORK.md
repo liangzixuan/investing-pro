@@ -391,10 +391,17 @@ rejection. Managed component and native fixture checks pass. Fresh API/web types
 scoped lint, formatting and source boundaries pass. Independent source reviews
 cover the financial rules, transport, presentation and affected fixtures.
 
+Chrome checks at 1440, 390 and 320 CSS pixels cover exact balances, long values,
+keyboard source inspection, unavailable and historical values, retained refreshes,
+cancellation, late results, comparison handoff and session retirement. Unsaved
+notes survive the company visit. The original preview and native fixture bundles
+match the reviewed source and complete notices; the native bundle remains below
+the unchanged 4 MiB cap.
+
 The existing Android refresh journey now checks retained instant balances and
 recovery with zero liabilities. Its prior assertions, case/capture counts and
-deadlines remain intact. Rendered browser checks and native execution for this
-increment are pending. It has not been merged or delivered.
+deadlines remain intact. Hosted native execution and PR checks for this increment
+are pending. It has not been merged or delivered.
 
 ## Product scope
 
@@ -420,9 +427,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the filing date filter. Preserve the
-original 90-day coverage limits, explicit source
-requests, same-company identity and existing reference-to-note workflow.
+Complete original hosted acceptance for Annual liquidity. Preserve explicit
+source requests, same-company identity and the existing research-note workflow.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
