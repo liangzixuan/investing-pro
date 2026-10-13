@@ -106,3 +106,26 @@
     gap: 6px;
   }
 }
+
+.clerk-trial.managed-frame .managed-bea-release-date {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-block: 16px;
+}
+.clerk-trial.managed-frame .managed-bea-release-date label {
+  color: var(--managed-ink);
+  font-weight: 600;
+}
+.clerk-trial.managed-frame .managed-bea-release-date select {
+  width: 100%;
+  max-width: 360px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.clerk-trial.managed-frame .managed-bea-release-date p {
+  margin: 0;
+  color: var(--managed-muted);
+  overflow-wrap: anywhere;
+}

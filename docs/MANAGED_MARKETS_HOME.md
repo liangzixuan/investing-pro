@@ -51,6 +51,21 @@ within the session; returning, background/resume and opening company research
 make no calendar request. Session retirement clears the agenda immediately.
 Calendar actions do not save, reconcile, reorder or edit the watchlist.
 
+**Release date** focuses the loaded agenda on one Eastern date. **All loaded
+dates** shows the complete packet; each dated option includes its release count.
+The visible count is stated against all loaded BEA releases. Series sharing the
+same instant stay separate and retain their original order. The original loaded
+window, retrieval time, source link and previous-result notice remain visible.
+
+The choice makes no request and changes no saved data. It remains during a
+pending Refresh, failure or Cancel while the same accepted response remains.
+A successful replacement, including equal content, resets to All loaded dates
+and announces the change. An empty response retains the verified-empty message.
+Company visits preserve the mounted choice; leaving Markets for another top-level
+view resets it on return. Session retirement clears the agenda and its choice.
+Filtering does not programmatically move focus or scroll the page. Delivery and rendered
+acceptance are recorded separately in Current work.
+
 The shared parser owns and freezes accepted response data. The local research
 profile retains its separate transport and owner-activity lifetime. See the
 [source specification](../specs/005-bea-release-agenda/spec.md) for normalization

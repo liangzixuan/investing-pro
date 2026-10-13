@@ -559,6 +559,40 @@ The exact native fixture build retains complete notices and fits the unchanged
 asset limit. The existing native note journey now checks the passage and
 accessible description; execution remains required in the original hosted run.
 
+### Loaded agenda date candidate
+
+The next Markets increment adds a labelled **Release date** selector over the
+accepted BEA agenda. All loaded dates remains the default. A selected Eastern
+date shows its releases and the visible count against the complete loaded
+packet, while preserving original source and retrieval details. Pending,
+failed and cancelled refreshes retain the choice; an accepted replacement resets
+it. Company visits retain the mounted choice, top-level navigation resets the
+local view, and session retirement clears the data. The selector makes no request
+and changes no watchlist state. See the
+[agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+Focused component and composed-workspace checks, web types, scoped lint, source
+boundaries and independent source review pass. Chrome accepts keyboard filtering,
+Eastern midnight and daylight-saving dates, retained responses, replacement
+resets, navigation, complete draft Save and session retirement. Desktop and
+390/320-pixel layouts retain 44px controls, visible focus and full text without
+page overflow. These checks use invented RAM data.
+
+The exact native fixture build preserves complete notices and fits the unchanged
+4 MiB loader limit. The existing Android agenda journey now checks date selection
+through failure, cancellation and navigation; execution remains required in the
+original hosted run. No live delivery is claimed.
+
+[PR119](https://github.com/liangzixuan/investing-pro/pull/119) separately integrates
+the candidates through PR118 against accepted main. Its normal local merge keeps
+the exact PR118 tree and adds no conflict-resolution edits. The combined diff
+requires eight Actions checks. Original PR106's Windows custody timeout remains
+unresolved; PR107's database-verifier timeout is retained alongside PR108's
+bounded test partition repair. PR117's five original Actions and native review
+passed. PR118's five original Actions and native review also passed. Aggregate
+acceptance remains in progress. Annual schema 3.0.0
+requires a separate coordinated API, website and Android delivery decision.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -583,8 +617,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish matching-note context acceptance and the preceding filings candidate's
-original hosted checks. Preserve
+Finish hosted agenda date checks and aggregate PR119 acceptance. Preserve
 explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable

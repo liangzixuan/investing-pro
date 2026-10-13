@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current retrieval increment shows a short matching passage in **Research
+The current Markets increment adds a **Release date** selector to the loaded BEA
+agenda. It supports a daily view while retaining the full loaded-window count,
+Eastern dates and original source context. It adds no request, financial field,
+saved preference or source. See the [agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+The preceding retrieval increment shows a short matching passage in **Research
 notes** search results. It helps the owner recognize a saved or unsaved thesis
 before explicitly selecting it, using the existing draft and matching rules.
 Complete notes, draft order and whole-watchlist Save keep their existing behavior.

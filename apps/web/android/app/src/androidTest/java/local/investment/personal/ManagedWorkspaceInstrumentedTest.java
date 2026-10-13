@@ -948,21 +948,33 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaCounts(1, 0, 0);
         assertBeaDraft();
 
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
+        assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
+        assertBeaCounts(1, 0, 0);
+        assertBeaDraft();
         clickBeaAction("Refresh agenda");
         awaitPage("failed refresh labels the original loaded window",
             "document.querySelector('.bea-release-agenda [role=alert]')?.textContent.includes('previous loaded window')");
+        assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
+        chooseNativeSelectOption("#managed-bea-release-date", "", "All loaded dates");
         assertBeaPacket();
         assertBeaCounts(2, 0, 0);
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-11-04", "Wed, Nov 4, 2026 (1)");
         clickBeaAction("Refresh agenda");
         awaitPage("one calendar refresh is held", DIAGNOSTICS + ".calendar === 3" +
             " && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
         clickBeaAction("Cancel agenda");
         assertBeaCounts(3, 1, 0);
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
         click("#settle-cancelled-calendar");
         assertBeaCounts(3, 1, 1);
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
+        chooseNativeSelectOption("#managed-bea-release-date", "", "All loaded dates");
         assertBeaPacket();
         assertBeaDraft();
 
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
         clickBeaAction("Refresh agenda");
         awaitPage("fourth explicit calendar read is pending", DIAGNOSTICS + ".calendar === 4");
         selectWorkspaceView("My Watchlist");
@@ -972,6 +984,9 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaDraft();
         selectWorkspaceView("Markets");
         assertBeaPacket();
+        awaitPage("returning after Markets unmount resets only the local date view",
+            "document.querySelector('#managed-bea-release-date')?.value === ''" +
+            " && document.querySelector('#managed-bea-release-date-count')?.textContent.includes('3 of 3 loaded BEA releases.')");
         assertBeaCounts(4, 2, 2);
         scenario.moveToState(Lifecycle.State.CREATED);
         scenario.moveToState(Lifecycle.State.RESUMED);
@@ -1029,6 +1044,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.bea-agenda-day li time')).map(e => e.dateTime).join('|') === '2026-10-29T12:30:00.000Z|2026-10-29T12:30:00.000Z|2026-11-04T13:30:00.000Z'" +
             " && Array.from(document.querySelectorAll('.bea-agenda-day li time')).map(e => e.textContent).join('|') === '8:30 AM EDT|8:30 AM EDT|8:30 AM EST'" +
             " && document.querySelectorAll('.bea-agenda-day').length === 2" +
+            " && document.querySelector('.bea-agenda-source a')?.href === 'https://www.bea.gov/news/schedule'");
+    }
+
+    private void assertBeaDate(String date, String series, int visible) throws Exception {
+        awaitPage("release date filters only the loaded packet and preserves provenance",
+            "document.querySelector('#managed-bea-release-date')?.value === " + JSONObject.quote(date) +
+            " && document.querySelector('#managed-bea-release-date-count')?.textContent.includes(" + JSONObject.quote(visible + " of 3 loaded BEA releases.") + ")" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li span')).map(e => e.textContent).join('|') === " + JSONObject.quote(series) +
+            " && document.querySelectorAll('.bea-agenda-day').length === 1" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'" +
             " && document.querySelector('.bea-agenda-source a')?.href === 'https://www.bea.gov/news/schedule'");
     }
 
