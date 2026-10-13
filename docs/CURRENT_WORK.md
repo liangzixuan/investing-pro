@@ -244,8 +244,11 @@ These checks use invented RAM data. Chrome's native popup geometry was not
 captured; its option text and selection behavior were verified separately.
 
 The integrated native fixture builds with a largest loader payload of 2,260,259
-bytes, below the unchanged 4 MiB cap. The original hosted picker journeys and
-applicable checks remain pending. Source merge and delivery remain separate.
+bytes, below the unchanged 4 MiB cap. PR105 passes all six applicable Actions
+jobs and CodeScene. Its original hosted Android run passes all 27 cases, including
+four native friendly-label selections with the original raw-value assertions.
+The artifact, package isolation and complete notices have been independently
+accepted. Popup geometry, source merge and delivery remain separate.
 
 ### Cash generation comparison candidate
 
@@ -256,11 +259,21 @@ revenue-basis choice. The existing source disclosures include the cash inputs.
 This reuses the loaded reports and existing company presentation; it adds no
 source request, financial formula, saved state or note action.
 
-Affected component and projection checks, strict fixture validation, fresh web
-types, lint and independent source review pass. The Android comparison journey
-now checks these cash values and source inputs at its existing basis, retained
-response and cancellation checkpoints. Source syntax checks pass; browser,
-hosted native, source merge and delivery acceptance remain separate.
+The 174 affected tests, strict fixture validation, fresh web types, lint,
+boundaries and independent source review pass. Chrome checks at 1440, 390 and
+320 CSS pixels accept exact amounts, per-cell periods and qualifications, cash
+independence from income, full source details and contained table scrolling.
+Selector and results focus survive response replacement. Failed refresh,
+Cancel, late responses and selection changes preserve the existing draft.
+Session retirement clears the draft and reports and fences late responses.
+These checks use invented RAM data.
+
+The Android comparison journey now checks these cash values and source inputs
+at its existing basis, retained-response and cancellation checkpoints. Source
+syntax checks pass. The integrated native fixture builds with a largest loader
+payload of 2,262,962 bytes, below the unchanged 4 MiB cap; complete notices and
+source continuity have been independently verified. Original hosted execution,
+source merge and delivery remain separate.
 
 ## Product scope
 
@@ -286,7 +299,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the cash comparison's responsive browser and original hosted checks.
+Run the cash comparison's original hosted checks.
 PR100 and PR101
 have passed their original hosted checks and remain awaiting source-merge
 approval. Their merges, the later candidates and live delivery are separate actions.
