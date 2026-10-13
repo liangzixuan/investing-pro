@@ -687,7 +687,13 @@ uses **Newly observed**, with the full explanation below. The corrected commit
 keyboard focus and no horizontal page overflow. Earlier behavior evidence
 applies to the unchanged logic. Complete software notices remain in the exact
 native bundle, whose largest loader payload is 2,351,050 bytes under the unchanged
-4 MiB cap. Original hosted execution remains pending. Production is unchanged.
+4 MiB cap. The first hosted Android attempt failed during emulator image setup,
+before app work. A targeted repeat ran all 27 cases; 26 passed. The Filings case
+failed while requiring its three-filter header and entire filtered row to fit in
+one screenshot. The saved image shows the row below the viewport; the selected
+form and request counters remained correct. Later assertions in that case were
+not reached, and APK isolation was skipped. Both original failures remain recorded.
+Production is unchanged.
 
 ### Compact company Filings source header candidate
 
@@ -711,6 +717,14 @@ acceptance. The exact native fixture bundle preserves complete software notices
 and remains within its unchanged 4 MiB limit. The existing native journey now
 checks the disclosure; original hosted execution is still required. Production
 is unchanged.
+
+The candidate also corrects the inherited Filings screenshot-span assumption.
+One bounded frame checks the Form label and control; a second checks the count
+and complete filtered row. Their combined targets are unchanged. Both use the
+same full-bounds checks before and after capture, with the same deadline and all
+semantic assertions retained. The suite keeps 27 cases and adds one named capture.
+This test-only correction needs execution on the updated source; it does not
+turn either original failure into a pass.
 
 ## Product scope
 

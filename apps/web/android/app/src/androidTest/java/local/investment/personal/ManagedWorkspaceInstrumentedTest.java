@@ -1968,7 +1968,9 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-source-details')?.open === false");
         assertFilingsDraftAndCounts(1, 0, 0);
         retainAnnualNoteFrame("companyFilingsFormFilter", "label[for=managed-filings-form]",
-            "label[for=managed-filings-form], #managed-filings-form, .managed-filings-count, .managed-filings-list > li", 4);
+            "label[for=managed-filings-form], #managed-filings-form", 2);
+        retainAnnualNoteFrame("companyFilingsFilteredResult", ".managed-filings-count",
+            ".managed-filings-count, .managed-filings-list > li", 2);
         chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
         awaitPage("second exact form retains all twenty-five matching filings",
             "document.activeElement?.id === 'managed-filings-form'" +
