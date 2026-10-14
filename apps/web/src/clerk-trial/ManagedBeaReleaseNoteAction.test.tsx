@@ -7,6 +7,8 @@ import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { parseManagedEconomicCalendar } from "@research-cockpit/contracts";
 
 import { projectBeaReleaseView } from "../features/markets/bea-release-view";
+import { compareBeaAgendas } from "../features/markets/bea-agenda-comparison";
+import { projectManagedBeaUpdatesView } from "./managed-bea-updates-view";
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -163,6 +165,35 @@ function harness(initial: Partial<Props> = {}) {
 }
 
 describe("BEA release note choices", () => {
+  it("clears a retained release and feedback excluded by Release view, preserving its destination without restoring intent in All", () => {
+    const h = harness();
+    const previous = parseManagedEconomicCalendar({
+      ...h.packet,
+      events: [h.packet.events[0]!],
+    })!;
+    const pair = compareBeaAgendas(previous, h.packet)!;
+    h.choose();
+    h.button().props.onClick!();
+    expect(h.append).toHaveBeenCalledOnce();
+    const all = h.props.view;
+    const updates = projectManagedBeaUpdatesView(all, pair, "new");
+    const node = h.render({ view: updates.view });
+    expect(h.select("release", node).props.value).toBe("");
+    expect(h.select("destination", node).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.review(node)).toBeUndefined();
+    expect(h.html(node)).toContain("The release filters changed");
+    const returned = h.render({ view: all });
+    expect(h.select("release", returned).props.value).toBe("");
+    expect(h.review(returned)).toBeUndefined();
+    h.change("release", "1", returned);
+    h.button().props.onClick!();
+    const matched = h.render({ view: updates.view });
+    expect(h.select("release", matched).props.value).toBe("1");
+    expect(h.review(matched)).toBeDefined();
+    expect(h.append.mock.calls[1]![0]!.event).toBe(h.packet.events[1]);
+  });
   it("offers all 512 admitted events in Eastern groups without shortening labels or renumbering a date view", () => {
     const events = Array.from({ length: 512 }, (_, index) => ({
       series: `Invented ${String(index).padStart(3, "0")} ${"東".repeat(240)}`,

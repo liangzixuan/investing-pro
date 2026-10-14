@@ -6,7 +6,14 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 increment compares consecutive accepted BEA agendas. Exact
+The current M3 increment narrows the loaded BEA agenda to scheduled entries absent
+from its preceding accepted agenda. Release view intersects with series search
+and Eastern date; rows and note choices share one result. Complete comparison
+counts and original windows stay visible. This adds no request, saved preference
+or publication/rescheduling claim. See
+[Release view](MANAGED_MARKETS_HOME.md#inspect-entries-absent-from-the-previous-agenda).
+
+The preceding M3 increment compares consecutive accepted BEA agendas. Exact
 series/time entries absent from the preceding loaded window receive a visible
 marker, while both original retrieval times and windows remain available.
 Series/date filters and explicit note actions retain their existing behavior.

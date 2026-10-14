@@ -2,6 +2,7 @@ import type { PersonalEconomicCalendarDto } from "@research-cockpit/contracts";
 import { groupBeaReleaseDates } from "./bea-release-dates";
 
 type BeaReleaseDateGroup = ReturnType<typeof groupBeaReleaseDates>[number];
+export type BeaReleaseRefreshView = "all" | "new";
 
 export interface BeaReleaseView {
   readonly response: PersonalEconomicCalendarDto | null;

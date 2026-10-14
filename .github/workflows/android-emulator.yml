@@ -121,6 +121,7 @@ jobs:
                   "signOutReviewKeepsDraftAndUpdatesAfterSave",
                   "uncertainSignOutReviewClearsLocalStateAndFencesLateReceipt",
                   "beaAgendaRefreshCancelAndNavigationPreserveDraft",
+                  "beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair",
                   "beaSessionExpiryClearsAgendaAndFencesLateResponse",
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
                   "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",

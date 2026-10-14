@@ -146,6 +146,71 @@ function harness() {
 }
 
 describe("managed BEA date selection", () => {
+  it("requires an accepted pair, shares one final updates/date/series view with note choices and retains it through rejected refreshes", async () => {
+    const h = harness();
+    const previous = parseManagedEconomicCalendar({
+      ...economicCalendarFixture(),
+      events: [h.agenda.events[0]!],
+    })!;
+    h.read.mockResolvedValueOnce(previous);
+    await h.model.load();
+    h.view().updatesView!.onChange("new");
+    expect(h.view().updatesView).toMatchObject({
+      mode: "all",
+      available: false,
+    });
+    await h.model.load();
+    h.view().onDateChange("2026-11-02");
+    h.view().onQueryChange("November");
+    h.view().updatesView!.onChange("new");
+    expect(h.view().view.visibleCount).toBe(1);
+    const node = h.render();
+    const slot = node.props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseNoteAction>
+    >;
+    expect(slot.props.view).toBe(node.props.filterView!.view);
+    expect(slot.props.view.visibleGroups[0]!.events[0]).toBe(
+      h.agenda.events[1],
+    );
+    h.read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    await h.model.load();
+    expect(h.view().updatesView!.mode).toBe("new");
+    expect(h.view().view.query).toBe("November");
+    expect(h.view().view.selectedDate).toBe("2026-11-02");
+    h.read.mockResolvedValueOnce(
+      parseManagedEconomicCalendar(economicCalendarFixture())!,
+    );
+    await h.model.load();
+    expect(h.view().updatesView!.mode).toBe("all");
+    expect(h.view().view.query).toBe("");
+    expect(h.view().view.selectedDate).toBe("");
+    expect(h.view().view.visibleCount).toBe(2);
+    h.view().updatesView!.onChange("new");
+    expect(h.view().view.visibleCount).toBe(0);
+    expect(h.read).toHaveBeenCalledTimes(4);
+  });
+
+  it("fences stale comparison callbacks and resets only Release view when the pair changes on the same response", async () => {
+    const h = harness();
+    await h.model.load();
+    await h.model.load();
+    h.view().onQueryChange("November");
+    h.view().onDateChange("2026-11-02");
+    h.view().updatesView!.onChange("new");
+    const prior = h.view();
+    const snapshot = h.model.getSnapshot();
+    const fresh = { ...snapshot, refreshComparison: null };
+    vi.spyOn(h.model, "getSnapshot").mockReturnValue(fresh);
+    prior.onQueryChange("old callback");
+    prior.onDateChange("");
+    prior.updatesView!.onChange("new");
+    const next = h.view();
+    expect(next.updatesView).toMatchObject({ mode: "all", available: false });
+    expect(next.view.query).toBe("November");
+    expect(next.view.selectedDate).toBe("2026-11-02");
+    prior.onQueryChange("still old");
+    expect(h.view().view.query).toBe("November");
+  });
   it("passes the accepted pair alongside the unchanged current filter and note response across retained attempts", async () => {
     const h = harness();
     await h.model.load();

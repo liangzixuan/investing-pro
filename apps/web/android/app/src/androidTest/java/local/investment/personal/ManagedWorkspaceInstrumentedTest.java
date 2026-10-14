@@ -1147,6 +1147,9 @@ public class ManagedWorkspaceInstrumentedTest {
         clickBeaAction("Load agenda");
         awaitPage("first empty accepted agenda has no comparison", "document.querySelector('.managed-bea-refresh-comparison') === null" +
             " && document.querySelector('.bea-agenda-empty')?.textContent.includes('No BEA releases are listed')");
+        awaitPage("first loaded agenda starts in All with unavailable updates disabled",
+            "document.querySelector('#managed-bea-release-view')?.value === 'all'" +
+            " && document.querySelector('#managed-bea-release-view option[value=new]')?.disabled === true");
         assertBeaCounts(1, 0, 0);
         clickBeaAction("Refresh agenda");
         awaitPage("second accepted agenda marks exact current entries and preserves both windows",
@@ -1155,6 +1158,10 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T17:59:00.000Z|2026-10-20T17:59:00.000Z|2026-11-19T17:59:00.000Z|2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z'" +
             " && document.querySelector('.managed-bea-refresh-comparison summary')?.getBoundingClientRect().height >= 44" +
             " && document.querySelector('.managed-bea-refresh-comparison')?.textContent.includes('Windows move with each load.')");
+        chooseNativeSelectOption("#managed-bea-release-view", "new", "Not in previous agenda");
+        awaitPage("updates view uses the accepted pair without another agenda read",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 3 && " + DIAGNOSTICS + ".calendar === 2");
         typeIntoInput("managed-bea-release-search", "Trade");
         awaitPage("series filter narrows rows and note choices while whole comparison remains",
             "document.querySelectorAll('.bea-agenda-day li').length === 1 && document.querySelectorAll('.bea-agenda-new').length === 1" +
@@ -1167,16 +1174,26 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaCounts(3, 1, 1);
         awaitPage("cancelled late response keeps accepted pair and query", "document.querySelector('#managed-bea-release-search')?.value === 'Trade'" +
             " && document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')");
+        awaitPage("cancel keeps all local release controls on the retained pair",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 1");
         assertBeaDraft();
         selectWorkspaceView("My Watchlist");
         selectWorkspaceView("Markets");
         awaitPage("navigation resets filters while retaining accepted comparison", "document.querySelector('#managed-bea-release-search')?.value === ''" +
             " && document.querySelectorAll('.bea-agenda-new').length === 3");
+        awaitPage("returning to Markets resets only the local Release view",
+            "document.querySelector('#managed-bea-release-view')?.value === 'all'");
         clickBeaAction("Refresh agenda");
         awaitPage("verified empty replacement compares only the preceding accepted agenda",
             "document.querySelector('.managed-bea-refresh-count')?.textContent.includes('0 of 0 scheduled releases.')" +
             " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z|2026-10-20T18:01:00.000Z|2026-10-20T18:01:00.000Z|2026-11-19T18:01:00.000Z'" +
             " && document.querySelectorAll('.bea-agenda-new').length === 0 && document.querySelector('.bea-agenda-days') === null");
+        chooseNativeSelectOption("#managed-bea-release-view", "new", "Not in previous agenda");
+        awaitPage("an empty current agenda retains a valid updates choice and the verified empty explanation",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelector('.bea-agenda-empty')?.textContent.includes('No BEA releases are listed')" +
+            " && !document.querySelector('.bea-agenda-empty')?.textContent.includes('No releases absent from the previous agenda match')");
         assertBeaCounts(4, 1, 1);
         assertBeaDraft();
         assertEquals("Agenda comparisons preserve the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);

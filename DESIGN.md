@@ -147,6 +147,14 @@ controls and wrap help and status text at narrow widths. Keep search and Clear
 mounted when the count changes, without moving focus or scrolling. Announce a
 successful replacement's reset. The local profile keeps its full agenda.
 
+Add a native **Release view** choice for All loaded releases or
+Not in previous agenda above the existing date and series controls. Keep every
+date option and the full comparison visible; one final result must drive both
+rows and note choices. Explain unavailable and zero-match states. Use the existing
+44px select, field, help and focus tokens, with wrapping at narrow widths. New
+accepted data resets all local filters; retained attempts keep them. Default
+local agendas omit the managed selector.
+
 Place the managed BEA comparison between its loaded-window description and
 filters. Show a compact full-agenda count and a native **Compared loaded agendas**
 disclosure. Its two source records retain exact UTC retrieval times, half-open

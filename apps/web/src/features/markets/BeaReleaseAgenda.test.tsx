@@ -77,6 +77,69 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("BEA release agenda presentation", () => {
+  it("offers a managed Release view with disabled unavailable comparison and a distinct zero-intersection state", () => {
+    const agenda = fixture();
+    const view = projectBeaReleaseView(agenda, "", "");
+    const onChange = vi.fn();
+    const filters = {
+      view,
+      resetNotice: false,
+      onDateChange: vi.fn(),
+      onQueryChange: vi.fn(),
+      updatesView: { mode: "all" as const, available: false, onChange },
+    };
+    const unavailable = props({ agenda, filterView: filters });
+    const select = nodes(BeaReleaseAgenda(unavailable)).find(
+      (n) => n.props.id === "managed-bea-release-view",
+    ) as React.ReactElement<React.ComponentProps<"select">>;
+    expect(select.props.value).toBe("all");
+    expect(
+      nodes(select).find((n) => n.props.value === "new")!.props.disabled,
+    ).toBe(true);
+    expect(
+      renderToStaticMarkup(<BeaReleaseAgenda {...unavailable} />),
+    ).toContain("Refresh successfully after loading an agenda");
+    select.props.onChange!({
+      currentTarget: { value: "all" },
+    } as React.ChangeEvent<HTMLSelectElement>);
+    expect(onChange).toHaveBeenCalledExactlyOnceWith("all");
+    const zero = renderToStaticMarkup(
+      <BeaReleaseAgenda
+        {...props({
+          agenda,
+          filterView: {
+            ...filters,
+            view: { ...view, visibleGroups: [], visibleCount: 0 },
+            updatesView: { mode: "new", available: true, onChange },
+          },
+        })}
+      />,
+    );
+    expect(zero).toContain(
+      "No releases absent from the previous agenda match these filters.",
+    );
+    expect(zero).not.toContain("No BEA releases are listed");
+    const empty = { ...agenda, events: [] };
+    const emptyHtml = renderToStaticMarkup(
+      <BeaReleaseAgenda
+        {...props({
+          agenda: empty,
+          filterView: {
+            ...filters,
+            view: projectBeaReleaseView(empty, "", ""),
+            updatesView: { mode: "new", available: true, onChange },
+          },
+        })}
+      />,
+    );
+    expect(emptyHtml).toContain("No BEA releases are listed");
+    expect(emptyHtml).not.toContain(
+      "No releases absent from the previous agenda match",
+    );
+    expect(
+      renderToStaticMarkup(<BeaReleaseAgenda {...props({ agenda })} />),
+    ).not.toContain('id="managed-bea-release-view"');
+  });
   it("keeps whole-agenda comparison dates and counts outside filters and marks only exact current entries", () => {
     const agenda = parseManagedEconomicCalendar(fixture())!;
     const previous = parseManagedEconomicCalendar({
