@@ -49,9 +49,10 @@ source boundaries and Java syntax. Three ordinary callback arity assertions were
 updated without removing their existing checks. Final review separates authored
 field formatting from note appending and identifies an invalid field with its
 2,000-character policy. Equivalent note/preview outcomes are checked against the
-first candidate; the changed validation message remains to be checked in Chrome.
+first candidate across 294 cases. Chrome confirms the changed field-specific
+message for oversized and unsupported text, with the same valid preview and Add.
 Original CodeScene findings and first-head CI results remain recorded separately.
-Native and preview builds pass. The largest synthetic loader is 2,398,223 bytes
+Native and preview builds pass. The largest synthetic loader is 2,398,325 bytes
 under the unchanged 4 MiB limit, with exact software notices preserved.
 
 Chrome at actual 1440, 390 and 320 CSS pixels verifies keyboard disclosure and
