@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   emptyThesisReview,
+  formatThesisReview,
   proposeThesisReview,
 } from "./managed-thesis-review";
 
@@ -14,6 +15,18 @@ const review = {
 };
 
 describe("authored thesis review", () => {
+  it("identifies an oversized field without blaming its line format", () => {
+    const oversized = { ...review, support: "x".repeat(2001) };
+    expect(formatThesisReview(oversized)).toEqual({
+      excerpt: null,
+      reason:
+        "Supporting evidence: use at most 2,000 characters on one line, without unsupported characters.",
+    });
+    expect(proposeThesisReview("Original", oversized).note).toBeNull();
+    expect(formatThesisReview(review).excerpt).toBe(
+      proposeThesisReview("", review).note,
+    );
+  });
   it("keeps existing note bytes and distinguishes authored assessment from evidence", () => {
     const before = "  Cafe\u0301 original 😀  ";
     const result = proposeThesisReview(before, review);

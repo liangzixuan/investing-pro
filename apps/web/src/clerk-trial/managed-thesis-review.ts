@@ -22,27 +22,34 @@ export const emptyThesisReview: ThesisReview = {
   next: "",
 };
 
-/** An authored snapshot appended to a note, never parsed as financial evidence. */
-export function proposeThesisReview(note: string, review: ThesisReview) {
+/** Formats authored fields without reading or changing a note. */
+export function formatThesisReview(review: ThesisReview) {
   const parts: string[] = [];
   for (const field of thesisReviewFields) {
     const value = normalizeWatchlistNote(review[field.key]);
     if (value === null)
       return {
         excerpt: null,
-        note: null,
-        reason:
-          "Use single-line text without unsupported characters in each review field.",
+        reason: `${field.label}: use at most 2,000 characters on one line, without unsupported characters.`,
       };
     if (field.required && !value)
       return {
         excerpt: null,
-        note: null,
         reason: "Complete My thesis, Invalidation condition and Next check.",
       };
     if (value) parts.push(`${field.label}: ${value}`);
   }
-  const excerpt = `Thesis review (my assessment). ${parts.join(" | ")}`;
+  return {
+    excerpt: `Thesis review (my assessment). ${parts.join(" | ")}`,
+    reason: null,
+  };
+}
+
+/** Appends one authored snapshot, never parsed as financial evidence. */
+export function proposeThesisReview(note: string, review: ThesisReview) {
+  const formatted = formatThesisReview(review);
+  if (formatted.excerpt === null) return { ...formatted, note: null };
+  const excerpt = formatted.excerpt;
   if (normalizeWatchlistNote(note) === null)
     return {
       excerpt,

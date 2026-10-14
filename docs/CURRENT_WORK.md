@@ -44,10 +44,13 @@ and next check before an explicit draft append. The existing whole-draft Save,
 search, export and session lifetime remain the persistence path. A stale append
 cannot overwrite an intervening note edit. It preserves existing text and the
 2,000-character policy; invalid and immediate duplicate appends are refused.
-All 545 focused/composed cases and 12 final form cases pass, along with web types,
-scoped lint/format, source boundaries and Java syntax. The unchanged complementary
-editor/screen cases passed during the first test run; three ordinary callback
-arity assertions were updated without removing their existing checks.
+All 737 affected/composed cases pass, along with web types, scoped lint/format,
+source boundaries and Java syntax. Three ordinary callback arity assertions were
+updated without removing their existing checks. Final review separates authored
+field formatting from note appending and identifies an invalid field with its
+2,000-character policy. Equivalent note/preview outcomes are checked against the
+first candidate; the changed validation message remains to be checked in Chrome.
+Original CodeScene findings and first-head CI results remain recorded separately.
 Native and preview builds pass. The largest synthetic loader is 2,398,223 bytes
 under the unchanged 4 MiB limit, with exact software notices preserved.
 
