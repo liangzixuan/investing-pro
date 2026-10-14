@@ -4,7 +4,7 @@ import {
   PERSONAL_FED_MONETARY_SOURCE,
   type PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
-import type { MouseEventHandler, Ref } from "react";
+import type { MouseEventHandler, ReactNode, Ref } from "react";
 import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
 import "./fed-announcements.css";
 
@@ -20,6 +20,7 @@ export interface FedMonetaryAnnouncementsProps {
   readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
+  readonly noteAction?: ReactNode;
 }
 
 const timestamp = new Intl.DateTimeFormat("en-US", {
@@ -44,6 +45,7 @@ export function FedMonetaryAnnouncements({
   headingRef,
   showingPrevious = false,
   message = "",
+  noteAction,
 }: FedMonetaryAnnouncementsProps) {
   return (
     <section
@@ -161,6 +163,7 @@ export function FedMonetaryAnnouncements({
                 ))}
               </ul>
             )}
+            {noteAction}
           </>
         )}
       </div>

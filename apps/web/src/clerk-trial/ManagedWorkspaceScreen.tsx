@@ -513,6 +513,19 @@ export function ManagedWorkspaceScreen({
   const retired = saved.phase === "retired" || saved.phase === "signing_out";
   const busy = saved.phase !== "idle";
   const editable = workspace.canEdit();
+  const isMarketsCurrent = () => {
+    const current = workspace.getSnapshot();
+    const phase = coordinator.getSnapshot().phase;
+    return (
+      phase !== "retired" &&
+      phase !== "signing_out" &&
+      current.view === "markets" &&
+      !current.research &&
+      !current.companyRoute &&
+      !navigation?.invalid &&
+      !hasCompanyRoute?.()
+    );
+  };
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
   const saveIssue = workspace.saveIssue();
@@ -835,19 +848,7 @@ export function ManagedWorkspaceScreen({
                             ref: announcementsHeading,
                           },
                         }}
-                        isCurrent={() => {
-                          const current = workspace.getSnapshot();
-                          const phase = coordinator.getSnapshot().phase;
-                          return (
-                            phase !== "retired" &&
-                            phase !== "signing_out" &&
-                            current.view === "markets" &&
-                            !current.research &&
-                            !current.companyRoute &&
-                            !navigation?.invalid &&
-                            !hasCompanyRoute?.()
-                          );
-                        }}
+                        isCurrent={isMarketsCurrent}
                       />
                     }
                     onResearch={(kind, opener) => {
@@ -867,6 +868,45 @@ export function ManagedWorkspaceScreen({
                   <ManagedFedAnnouncements
                     model={workspace.announcements}
                     headingRef={announcementsHeading}
+                    noteContext={{
+                      members: saved.draft?.memberships ?? [],
+                      active: isMarketsCurrent(),
+                      editable,
+                      actions: {
+                        getAction: (capture, destination) =>
+                          isMarketsCurrent()
+                            ? workspace.getFedAnnouncementNoteAction(
+                                capture,
+                                destination,
+                              )
+                            : {
+                                canAppend: false,
+                                reason:
+                                  "Return to Markets with an editable current watchlist before adding an announcement.",
+                              },
+                        append: (capture, destination) =>
+                          isMarketsCurrent()
+                            ? workspace.appendFedAnnouncementToNote(
+                                capture,
+                                destination,
+                              )
+                            : {
+                                appended: false,
+                                message:
+                                  "Return to Markets with an editable current watchlist before adding an announcement.",
+                              },
+                      },
+                      onReview: () => {
+                        if (
+                          !isMarketsCurrent() ||
+                          !workspace.canEdit() ||
+                          workspace.announcements.getSnapshot().busy ||
+                          !setView("watchlist")
+                        )
+                          return;
+                        watchlistNavigation.current?.focus();
+                      },
+                    }}
                   />
                 </div>
               )}

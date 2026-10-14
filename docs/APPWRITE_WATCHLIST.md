@@ -480,6 +480,17 @@ An isolated Brave check separately observed mounted-screen cleanup and fresh-ses
 loading with invented records. Its navigation attempts showed no leave dialog;
 the browser confirmation and live managed-account recovery remain unaccepted.
 
+## Fed announcement references
+
+Markets can append one explicitly chosen loaded Fed announcement to one chosen
+watchlist note. The reference retains its title, URL, publication time or unknown
+value, original retrieval time, source and any retained-feed qualification.
+It changes only that note in the current full draft. Review and Save use this
+watchlist's existing validation, version and conflict workflow. See
+[announcement references](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note)
+for selection lifetime, duplicate handling and limits. It does not fetch article
+contents or classify the item as company news.
+
 ## References
 
 - [TablesDB transactions](https://appwrite.io/docs/products/databases/tablesdb/transactions)

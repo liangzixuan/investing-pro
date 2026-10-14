@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M1 design increment adds **On Markets** links to the company board,
+The current M1/M4 increment connects one chosen loaded Fed announcement to one
+chosen watchlist note. It appends complete metadata and original dates to the
+latest draft, followed by existing Review and Save. It adds no article fetch,
+automatic relevance judgment, source, schema or persistence path. See
+[announcement references](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
+
+The preceding M1 design increment adds **On Markets** links to the company board,
 economic calendar and Fed announcements. It makes the existing daily sections
 easier to reach while preserving explicit loads, original source dates and the
 watchlist draft. It adds no source, financial field or saved preference. See
