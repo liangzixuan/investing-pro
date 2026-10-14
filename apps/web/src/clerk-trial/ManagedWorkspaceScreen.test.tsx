@@ -63,6 +63,7 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import { projectBeaReleaseView } from "../features/markets/bea-release-view";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
@@ -904,7 +905,7 @@ describe("managed workspace screen", () => {
     return agenda.props.noteContext;
   }
 
-  it("keeps a scheduled BEA reference through exact-note Review outside a search and whole-draft Save/reload", async () => {
+  it("keeps a searched BEA reference through exact-note Review outside a search and whole-draft Save/reload", async () => {
     const { workspace, api } = fixture({
       ...payload,
       memberships: [
@@ -989,9 +990,24 @@ describe("managed workspace screen", () => {
     );
     await workspace.agenda.load();
     const response = workspace.agenda.getSnapshot().agenda!;
+    const beforeSearch = workspace.coordinator.getSnapshot().draft!;
+    const view = projectBeaReleaseView(
+      response,
+      "2026-11-02",
+      "  nOvEmBeR   release  ",
+    );
+    expect(view.visibleCount).toBe(1);
+    expect(view.groups).toHaveLength(2);
+    expect(view.visibleGroups[0]!.events).toEqual([response.events[1]!]);
+    const selectedEvent = view.visibleGroups[0]!.events[0]!;
+    expect(selectedEvent).toBe(response.events[1]);
+    expect(response.events.indexOf(selectedEvent)).toBe(1);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(beforeSearch);
+    expect(api.economicCalendar).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
     const capture = {
       response,
-      event: response.events[1]!,
+      event: selectedEvent,
       showingPrevious: false,
     };
     const before = workspace.coordinator.getSnapshot().draft!;

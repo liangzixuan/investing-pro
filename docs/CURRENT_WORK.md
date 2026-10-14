@@ -934,6 +934,20 @@ below the unchanged 4 MiB limit. Original hosted Android execution for this
 candidate remains pending. See
 [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
 
+### Search loaded BEA releases candidate
+
+The current increment combines a full-series phrase search with the loaded
+agenda's Eastern date filter. The list and note picker share the same result,
+with original event identities, full date counts and all admitted choices intact.
+Filters retain the accepted packet through pending, failed or cancelled reads;
+a successful replacement clears both. Excluding a chosen event clears its choice
+and success without selecting a fallback. Reading filters remain usable while
+note editing is paused and make no request or saved change.
+
+Implementation and affected verification are in progress. Browser, native and
+delivery acceptance remain separate. See the
+[BEA agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

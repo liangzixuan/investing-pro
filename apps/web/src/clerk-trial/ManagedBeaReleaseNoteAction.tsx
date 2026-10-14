@@ -8,10 +8,8 @@ import {
 } from "@research-cockpit/contracts";
 import type { ManagedBeaReleaseAgendaState } from "./managed-bea-release-agenda";
 import type { BeaReleaseNoteCapture } from "./managed-bea-release-note";
-import {
-  formatBeaReleaseDate,
-  groupBeaReleaseDates,
-} from "../features/markets/bea-release-dates";
+import { formatBeaReleaseDate } from "../features/markets/bea-release-dates";
+import type { BeaReleaseView } from "../features/markets/bea-release-view";
 import type { ManagedWorkspace } from "./managed-workspace";
 
 export interface ManagedBeaReleaseNoteActions {
@@ -29,7 +27,7 @@ export interface ManagedBeaReleaseNoteContext {
 
 interface Props extends ManagedBeaReleaseNoteContext {
   state: ManagedBeaReleaseAgendaState;
-  selectedDate: string;
+  view: BeaReleaseView;
 }
 interface Choices {
   response: PersonalEconomicCalendarDto | null;
@@ -84,9 +82,8 @@ export function ManagedBeaReleaseNoteAction(props: Props) {
     member: null,
     excluded: false,
   });
-  const groups = groupBeaReleaseDates(response).filter(
-    (group) => !props.selectedDate || group.key === props.selectedDate,
-  );
+  const groups =
+    props.view.response === response ? props.view.visibleGroups : [];
   const visibleEvents = groups.flatMap((group) => group.events);
   const excluded =
     props.active &&
@@ -243,8 +240,8 @@ export function ManagedBeaReleaseNoteAction(props: Props) {
       </p>
       {exclusionNotice && (
         <p role="status" aria-live="polite">
-          The date view changed, so the release choice was cleared. Choose a
-          release from the displayed dates.
+          The release filters changed, so the release choice was cleared. Choose
+          a displayed release.
         </p>
       )}
       <p id={memberId}>

@@ -6,6 +6,8 @@ import { annualComparisonMemberships as members } from "./annual-comparison-fixt
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { parseManagedEconomicCalendar } from "@research-cockpit/contracts";
 
+import { projectBeaReleaseView } from "../features/markets/bea-release-view";
+
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
   stateIndex: 0,
@@ -82,7 +84,11 @@ function harness(initial: Partial<Props> = {}) {
       message: "",
       showingPrevious: false,
     },
-    selectedDate: "",
+    view: projectBeaReleaseView(
+      initial.state ? initial.state.agenda : packet,
+      "",
+      "",
+    ),
     members: [members.left, members.right],
     active: true,
     editable: true,
@@ -92,7 +98,15 @@ function harness(initial: Partial<Props> = {}) {
   };
   let cleanup: (() => void) | undefined;
   const render = (changes: Partial<Props> = {}, commit = true) => {
-    props = { ...props, ...changes };
+    props = {
+      ...props,
+      ...changes,
+      view:
+        changes.view ??
+        (changes.state && changes.state.agenda !== props.state.agenda
+          ? projectBeaReleaseView(changes.state.agenda, "", "")
+          : props.view),
+    };
     let node: ReturnType<typeof ManagedBeaReleaseNoteAction>;
     for (let i = 0; i < 4; i++) {
       hooks.stateIndex = 0;
@@ -175,7 +189,9 @@ describe("BEA release note choices", () => {
     ).toEqual(["Fri, Oct 30, 2026", "Mon, Nov 2, 2026"]);
     expect(h.html(all)).toContain(`8:30 AM EDT · ${events[0]!.series}`);
     expect(h.html(all)).toContain(`8:30 AM EST · ${events[511]!.series}`);
-    const narrowed = h.render({ selectedDate: "2026-11-02" });
+    const narrowed = h.render({
+      view: projectBeaReleaseView(h.props.state.agenda, "2026-11-02", ""),
+    });
     expect(
       controls(h.select("release", narrowed))
         .filter((node) => node.type === "option")
@@ -184,7 +200,15 @@ describe("BEA release note choices", () => {
       "",
       ...events.slice(256).map((_, index) => String(index + 256)),
     ]);
-    h.change("release", "511", narrowed);
+    const searched = h.render({
+      view: projectBeaReleaseView(agenda, "2026-11-02", "  INVENTED 511  "),
+    });
+    expect(
+      controls(h.select("release", searched))
+        .filter((node) => node.type === "option")
+        .map((node) => node.props.value),
+    ).toEqual(["", "511"]);
+    h.change("release", "511", searched);
     h.change("destination", members.right.listingId);
     h.button().props.onClick!();
     expect(h.append.mock.calls[0]![0]?.event).toBe(agenda!.events[511]);
@@ -219,7 +243,9 @@ describe("BEA release note choices", () => {
         .filter((node) => node.type === "optgroup")
         .map((node) => node.props.label),
     ).toEqual(["Thu, Oct 29, 2026", "Fri, Oct 30, 2026"]);
-    const narrowed = h.render({ selectedDate: "2026-10-30" });
+    const narrowed = h.render({
+      view: projectBeaReleaseView(h.props.state.agenda, "2026-10-30", ""),
+    });
     expect(
       controls(h.select("release", narrowed))
         .filter((node) => node.type === "option")
@@ -236,17 +262,21 @@ describe("BEA release note choices", () => {
     h.choose();
     h.button().props.onClick!();
     const old = h.render();
-    const same = h.render({ selectedDate: "2026-10-30" });
+    const same = h.render({
+      view: projectBeaReleaseView(h.props.state.agenda, "2026-10-30", ""),
+    });
     expect(h.select("release", same).props.value).toBe("0");
     expect(h.review(same)).toBeDefined();
-    const excluded = h.render({ selectedDate: "2026-11-02" });
+    const excluded = h.render({
+      view: projectBeaReleaseView(h.props.state.agenda, "2026-11-02", ""),
+    });
     expect(h.select("release", excluded).props.value).toBe("");
     expect(h.select("destination", excluded).props.value).toBe(
       members.right.listingId,
     );
     expect(h.review(excluded)).toBeUndefined();
     expect(h.html(excluded)).toContain(
-      "The date view changed, so the release choice was cleared.",
+      "The release filters changed, so the release choice was cleared.",
     );
     h.button(old).props.onClick!();
     h.review(old)!.props.onClick!();
@@ -255,14 +285,81 @@ describe("BEA release note choices", () => {
     expect(h.select("release").props.value).toBe("");
     expect(h.append).toHaveBeenCalledOnce();
     expect(h.onReview).not.toHaveBeenCalled();
-    h.render({ selectedDate: "" });
+    h.render({ view: projectBeaReleaseView(h.props.state.agenda, "", "") });
     expect(h.select("release").props.value).toBe("");
     expect(h.html()).toContain(
-      "The date view changed, so the release choice was cleared. Choose a release from the displayed dates.",
+      "The release filters changed, so the release choice was cleared. Choose a displayed release.",
     );
     h.change("release", "1");
     expect(h.select("release").props.value).toBe("1");
     expect(h.html()).not.toContain("release choice was cleared");
+  });
+
+  it("preserves the exact successful capture while search still includes its event, then permanently clears an excluded choice", () => {
+    const h = harness();
+    h.choose();
+    h.button().props.onClick!();
+    const capture = h.append.mock.calls[0]![0];
+    const old = h.render();
+    const visible = h.render({
+      view: projectBeaReleaseView(
+        h.packet,
+        "2026-10-30",
+        "  InVeNtEd   OcToBeR  ",
+      ),
+    });
+    expect(h.select("release", visible).props.value).toBe("0");
+    expect(h.review(visible)).toBeDefined();
+    expect(h.getAction.mock.lastCall?.[0]).toBe(capture);
+    h.review(visible)!.props.onClick!();
+    expect(h.onReview).toHaveBeenCalledExactlyOnceWith(members.right);
+    const noMatch = h.render({
+      view: projectBeaReleaseView(h.packet, "2026-10-30", "not loaded"),
+    });
+    expect(h.select("release", noMatch).props.value).toBe("");
+    expect(h.select("destination", noMatch).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.review(noMatch)).toBeUndefined();
+    expect(h.html(noMatch)).toContain(
+      "The release filters changed, so the release choice was cleared. Choose a displayed release.",
+    );
+    h.button(old).props.onClick!();
+    h.review(old)!.props.onClick!();
+    const cleared = h.render({
+      view: projectBeaReleaseView(h.packet, "2026-10-30", ""),
+    });
+    expect(h.select("release", cleared).props.value).toBe("");
+    expect(h.review(cleared)).toBeUndefined();
+    expect(h.append).toHaveBeenCalledOnce();
+    expect(h.onReview).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an unbound view and old callbacks, retaining only the current destination", () => {
+    const h = harness();
+    h.choose();
+    h.button().props.onClick!();
+    const old = h.render();
+    const copied = parseManagedEconomicCalendar(structuredClone(h.packet))!;
+    const unbound = h.render({ view: projectBeaReleaseView(copied, "", "") });
+    expect(
+      controls(h.select("release", unbound)).filter(
+        (node) => node.type === "option",
+      ),
+    ).toHaveLength(1);
+    expect(h.select("release", unbound).props.value).toBe("");
+    expect(h.select("destination", unbound).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.button(unbound).props["aria-disabled"]).toBe(true);
+    h.button(unbound).props.onClick!();
+    h.button(old).props.onClick!();
+    h.review(old)!.props.onClick!();
+    expect(h.append).toHaveBeenCalledOnce();
+    expect(h.onReview).not.toHaveBeenCalled();
+    h.render({ view: projectBeaReleaseView(h.packet, "", "") });
+    expect(h.select("release").props.value).toBe("");
+    expect(h.review()).toBeUndefined();
   });
 
   it("invalidates successful Review when the retained qualifier changes, even if it later returns", () => {

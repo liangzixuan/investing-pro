@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M2/M4 increment connects price and Annual comparison appends to
+The current M3/M4 increment searches full series names in the loaded BEA schedule.
+Search and Eastern date selection narrow the agenda and note picker together,
+preserving original source text, dates and all admitted events. Filters make no
+request or saved change. See [BEA agenda](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+The preceding M2/M4 increment connects price and Annual comparison appends to
 **Review note**. It opens the exact destination's full note while preserving
 search, draft and loaded evidence. Review remains readable while Save pauses
 editing. See [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).

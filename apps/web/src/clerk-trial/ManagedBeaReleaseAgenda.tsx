@@ -1,12 +1,13 @@
 import {
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type Ref,
 } from "react";
 import { BeaReleaseAgenda } from "../features/markets/BeaReleaseAgenda";
-import { groupBeaReleaseDates } from "../features/markets/bea-release-dates";
+import { projectBeaReleaseView } from "../features/markets/bea-release-view";
 import {
   ManagedBeaReleaseNoteAction,
   type ManagedBeaReleaseNoteContext,
@@ -31,6 +32,7 @@ export function ManagedBeaReleaseAgenda({
     model,
     agenda: state.agenda,
     date: "",
+    query: "",
     resetNotice: false,
   }));
   const selection =
@@ -40,9 +42,14 @@ export function ManagedBeaReleaseAgenda({
           model,
           agenda: state.agenda,
           date: "",
+          query: "",
           resetNotice: choice.agenda !== null && state.agenda !== null,
         };
   if (selection !== choice) setChoice(selection);
+  const view = useMemo(
+    () => projectBeaReleaseView(state.agenda, selection.date, selection.query),
+    [state.agenda, selection.date, selection.query],
+  );
   const committed = useRef<typeof selection | null>(null);
   useLayoutEffect(() => {
     committed.current = selection;
@@ -56,16 +63,22 @@ export function ManagedBeaReleaseAgenda({
       model.getSnapshot().agenda !== selection.agenda
     )
       return;
+    if (date !== "" && !view.groups.some((group) => group.key === date)) return;
+    setChoice((current) =>
+      current === selection
+        ? { ...current, date, resetNotice: false }
+        : current,
+    );
+  };
+  const changeQuery = (query: string) => {
     if (
-      date !== "" &&
-      !groupBeaReleaseDates(selection.agenda).some(
-        (group) => group.key === date,
-      )
+      committed.current !== selection ||
+      model.getSnapshot().agenda !== selection.agenda
     )
       return;
     setChoice((current) =>
       current === selection
-        ? { ...current, date, resetNotice: false }
+        ? { ...current, query, resetNotice: false }
         : current,
     );
   };
@@ -82,16 +95,17 @@ export function ManagedBeaReleaseAgenda({
       {...state}
       headingRef={headingRef}
       className="trial-panel"
-      dateView={{
-        selectedDate: selection.date,
+      filterView={{
+        view,
         resetNotice: selection.resetNotice,
         onDateChange: changeDate,
+        onQueryChange: changeQuery,
       }}
       noteAction={
         <ManagedBeaReleaseNoteAction
           {...noteContext}
           state={state}
-          selectedDate={selection.date}
+          view={view}
         />
       }
       enabled

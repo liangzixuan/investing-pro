@@ -1102,6 +1102,26 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaPacket();
         assertBeaCounts(4, 2, 2);
         assertBeaDraft();
+        typeIntoInput("managed-bea-release-search", "No matching invented series");
+        awaitPage("release search has no match without losing dates or choosing an event",
+            "document.querySelector('#managed-bea-release-date-count')?.textContent.includes('0 of 3 loaded BEA releases.')" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 0" +
+            " && document.querySelectorAll('#managed-bea-release-date option').length === 3" +
+            " && document.querySelectorAll('#managed-bea-note-release option').length === 1" +
+            " && document.querySelector('#managed-bea-note-release')?.value === ''");
+        clickBeaAction("Clear search");
+        assertBeaPacket();
+        awaitPage("Clear search retains its focused control and clears only the query",
+            "document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.activeElement?.textContent === 'Clear search'");
+        typeIntoInput("managed-bea-release-search", "gDp");
+        awaitPage("mixed-case search gives the agenda and picker the same original event",
+            "document.querySelector('#managed-bea-release-date-count')?.textContent.includes('1 of 3 loaded BEA releases.')" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li span')).map(e => e.textContent).join('|') === 'Invented GDP'" +
+            " && Array.from(document.querySelectorAll('#managed-bea-note-release option')).map(e => e.value).join('|') === '|0'" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'");
+        assertBeaCounts(4, 2, 2);
+        assertBeaDraft();
         appendAndReviewBeaReference();
         assertEquals("Calendar actions preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
@@ -1262,7 +1282,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaCounts(4, 2, 2);
         awaitPage("returning to Markets requires fresh BEA choices without reading again",
             "document.querySelector('#managed-bea-note-release')?.value === ''" +
-            " && document.querySelector('#managed-bea-note-destination')?.value === ''");
+            " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
+            " && document.querySelector('#managed-bea-release-search')?.value === ''");
     }
 
     private void assertBeaCounts(int reads, int aborted, int late) throws Exception {
