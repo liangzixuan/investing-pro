@@ -4372,9 +4372,23 @@ describe("managed workspace screen", () => {
     expect(annualHtml.match(/id="managed-company-heading"/gu)).toHaveLength(1);
     section("Annual").onClick();
     expect(workspace.annual.getSnapshot()).toBe(annualState);
+    // The new cross-section snapshot gains Annual data; existing company markup stays exact.
+    const existingCompanyMarkup = (markup: string) =>
+      markup.replace(
+        /<details class="managed-company-snapshot">[\s\S]*?<\/details>/u,
+        "",
+      );
+    expect(priceHtml).toContain("No annual evidence loaded");
+    expect(annualHtml).toContain('aria-label="Snapshot price"');
+    expect(annualHtml).toContain(prices.completedAt);
+    expect(annualHtml).toContain('aria-label="Snapshot annual"');
+    expect(annualHtml).not.toContain("No annual evidence loaded");
     for (let visit = 0; visit < 2; visit++) {
       section("Price").onClick();
-      expect(html()).toBe(priceHtml);
+      expect(existingCompanyMarkup(html())).toBe(
+        existingCompanyMarkup(priceHtml),
+      );
+      expect(html()).toContain(report.evidence.generation.completedAt);
       expect(workspace.eod.getSnapshot()).toBe(priceState);
       section("Annual").onClick();
       expect(html()).toBe(annualHtml);

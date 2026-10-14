@@ -13,7 +13,12 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The current M3 increment narrows the loaded BEA agenda to scheduled entries absent
+The current M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
+Price and Annual keep separate source dates, revenue bases, availability and
+historical qualifications. It uses admitted evidence and explicit section
+navigation, with no automatic request, saved change or model verdict.
+
+The preceding M3 increment narrows the loaded BEA agenda to scheduled entries absent
 from its preceding accepted agenda. Release view intersects with series search
 and Eastern date; rows and note choices share one result. Complete comparison
 counts and original windows stay visible. This adds no request, saved preference

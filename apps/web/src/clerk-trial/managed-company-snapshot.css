@@ -1,0 +1,91 @@
+.managed-frame .managed-company-snapshot {
+  margin: 16px 0 24px;
+  border-block: 1px solid var(--managed-line);
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-company-snapshot > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  color: var(--managed-action);
+  cursor: pointer;
+}
+.managed-frame .managed-snapshot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+  align-items: start;
+  gap: 24px;
+  padding-bottom: 20px;
+}
+.managed-frame .managed-snapshot-grid > section {
+  min-width: 0;
+  border: 1px solid var(--managed-line);
+  border-radius: 8px;
+  padding: 20px;
+  background: var(--managed-surface);
+}
+.managed-frame .managed-snapshot-grid :is(p, dt, small) {
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-snapshot-grid dl {
+  margin: 16px 0;
+}
+.managed-frame .managed-snapshot-grid h3 {
+  margin-top: 0;
+}
+.managed-frame
+  .managed-snapshot-grid
+  section[aria-label^="Snapshot revenue basis"]
+  > div
+  > dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.managed-frame .managed-snapshot-independent {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  border-top: 1px solid var(--managed-line);
+  padding-top: 16px;
+}
+.managed-frame .managed-snapshot-grid dl > div {
+  margin-bottom: 12px;
+}
+.managed-frame .managed-snapshot-grid dd {
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .managed-snapshot-grid small {
+  display: block;
+  margin-top: 4px;
+}
+.managed-frame .managed-snapshot-grid .managed-snapshot-amount {
+  font-size: 28px;
+}
+.managed-frame
+  .managed-snapshot-grid
+  :is(.sec-annual-cash-amount, .sec-annual-liquidity-amount) {
+  font-size: 18px;
+  text-align: left;
+}
+.managed-frame .managed-snapshot-grid .discovery-warning {
+  color: var(--managed-warning, #f3c477);
+}
+@media (max-width: 760px) {
+  .managed-frame .managed-snapshot-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .managed-frame .managed-snapshot-grid > section {
+    padding: 16px;
+  }
+  .managed-frame
+    .managed-snapshot-grid
+    :is(
+      .managed-snapshot-independent,
+      section[aria-label^="Snapshot revenue basis"] > div > dl
+    ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -123,6 +123,7 @@ jobs:
                   "beaAgendaRefreshCancelAndNavigationPreserveDraft",
                   "beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair",
                     "thesisReviewPreviewAppendSaveAndReloadPreservesDraft",
+                  "loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads",
                   "beaSessionExpiryClearsAgendaAndFencesLateResponse",
                   "fedAnnouncementsRetainDatesCancelAndRetireWithSession",
                   "watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft",

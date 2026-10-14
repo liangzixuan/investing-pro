@@ -1,4 +1,5 @@
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
   ManagedResearchVisit,
@@ -90,6 +91,13 @@ export function ManagedCompanyResearch({
         state={companyNavigationState}
         canOpen={canOpenCompany}
         onOpen={onOpenCompany}
+      />
+      <ManagedCompanySnapshot
+        key={`${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
+        selection={research.selection}
+        price={eod}
+        annual={annual}
+        onSection={onSection}
       />
       <div className="managed-research-body">
         <div>
