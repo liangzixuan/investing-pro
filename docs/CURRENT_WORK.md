@@ -28,7 +28,10 @@ Snapshot, filing-renderer, native-fixture and full composed-screen checks pass
 (298 cases). Chrome verifies independent loads, original clocks, refresh recovery, invalid
 replacement and new-visit late-response guards at 1440/390/320 CSS widths. A small
 existing Annual link target found there now uses the same 44px snapshot link
-sizing; final layout verification and new-head native execution remain separate.
+sizing. Final Chrome checks pass all snapshot action targets and no page overflow
+at each width. The exact native bundle has a maximum loader of 2,410,655 bytes
+under the unchanged 4 MiB cap and exact software notices. New-head native
+execution remains separate.
 
 A regression check also reproduced a synthetic fixture mismatch in the preceding
 thesis-context candidate: its strict Save still expected the old note without
@@ -47,7 +50,7 @@ at actual 1440/390/320 CSS widths, including one explicit RAM Save/reload,
 paused editing, complete note preservation and editor reset, without provider
 reads. The new synthetic native bundle has a maximum loader of 2,408,904 bytes
 under the unchanged 4 MiB cap, with exact software notices. The original feature-head Android run passes 29 of 30 cases; its one failure is
-at the strict thesis Save fixture, corrected below. Other original checks retain
+at the strict thesis Save fixture, corrected by this increment. Other original checks retain
 their own outcomes. The bundle is not emulator acceptance.
 This candidate extends the frozen integration source; it is not a live release.
 
