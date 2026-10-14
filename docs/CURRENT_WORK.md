@@ -797,8 +797,13 @@ Independent review accepts the saved Chrome evidence with these limits.
 The existing native Fed journey now adds a reference with an unknown publication
 time, refuses a duplicate, reviews, saves and reloads it before its original
 retirement and late-response checks. The suite retains 27 total cases and 52
-literal capture calls. Original hosted execution for this increment remains
-pending. No new source, API or saved schema is added. Production is unchanged. See the
+literal capture calls. The first Android run passed 26 of 27 cases. The Fed
+journey completed Save, reload and retirement, then failed a final test boundary
+that still expected zero saves. Its one-call correction uses the existing helper
+with one expected save; all other assertions and deadlines remain unchanged.
+Updated hosted execution is pending. APK isolation was skipped in the failed
+run, and the reviewed CodeScene advisory remains recorded. No new source, API or
+saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
 
 ## Product scope

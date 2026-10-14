@@ -894,7 +894,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && !document.body.textContent.includes('Invented monetary policy announcement')" +
             " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
         assertEquals("Announcements preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private void clickFedAction(String label) {
