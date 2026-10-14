@@ -7,7 +7,11 @@ import {
   type Ref,
 } from "react";
 import { BeaReleaseAgenda } from "../features/markets/BeaReleaseAgenda";
-import { projectBeaReleaseView } from "../features/markets/bea-release-view";
+import {
+  projectBeaReleaseView,
+  type BeaReleaseRefreshView,
+} from "../features/markets/bea-release-view";
+import { projectManagedBeaUpdatesView } from "./managed-bea-updates-view";
 import {
   ManagedBeaReleaseNoteAction,
   type ManagedBeaReleaseNoteContext,
@@ -28,28 +32,58 @@ export function ManagedBeaReleaseAgenda({
     model.getSnapshot,
     model.getSnapshot,
   );
-  const [choice, setChoice] = useState(() => ({
+  const comparison =
+    state.refreshComparison?.current === state.agenda
+      ? state.refreshComparison
+      : null;
+  const [choice, setChoice] = useState<{
+    model: Model;
+    agenda: typeof state.agenda;
+    comparison: typeof comparison;
+    date: string;
+    query: string;
+    refreshView: BeaReleaseRefreshView;
+    resetNotice: boolean;
+  }>(() => ({
     model,
     agenda: state.agenda,
+    comparison,
     date: "",
     query: "",
+    refreshView: "all",
     resetNotice: false,
   }));
-  const selection =
+  const selection: typeof choice =
     choice.model === model && choice.agenda === state.agenda
-      ? choice
+      ? choice.comparison === comparison
+        ? choice
+        : { ...choice, comparison, refreshView: "all", resetNotice: false }
       : {
           model,
           agenda: state.agenda,
+          comparison,
           date: "",
           query: "",
+          refreshView: "all",
           resetNotice: choice.agenda !== null && state.agenda !== null,
         };
   if (selection !== choice) setChoice(selection);
-  const view = useMemo(
-    () => projectBeaReleaseView(state.agenda, selection.date, selection.query),
-    [state.agenda, selection.date, selection.query],
+  const updates = useMemo(
+    () =>
+      projectManagedBeaUpdatesView(
+        projectBeaReleaseView(state.agenda, selection.date, selection.query),
+        comparison,
+        selection.refreshView,
+      ),
+    [
+      state.agenda,
+      selection.date,
+      selection.query,
+      comparison,
+      selection.refreshView,
+    ],
   );
+  const view = updates.view;
   const committed = useRef<typeof selection | null>(null);
   useLayoutEffect(() => {
     committed.current = selection;
@@ -57,12 +91,20 @@ export function ManagedBeaReleaseAgenda({
       committed.current = null;
     };
   }, [selection]);
+  const matchesCurrentSelection = () => {
+    const snapshot = model.getSnapshot();
+    const currentComparison =
+      snapshot.refreshComparison?.current === snapshot.agenda
+        ? snapshot.refreshComparison
+        : null;
+    return (
+      committed.current === selection &&
+      snapshot.agenda === selection.agenda &&
+      currentComparison === comparison
+    );
+  };
   const changeDate = (date: string) => {
-    if (
-      committed.current !== selection ||
-      model.getSnapshot().agenda !== selection.agenda
-    )
-      return;
+    if (!matchesCurrentSelection()) return;
     if (date !== "" && !view.groups.some((group) => group.key === date)) return;
     setChoice((current) =>
       current === selection
@@ -71,14 +113,22 @@ export function ManagedBeaReleaseAgenda({
     );
   };
   const changeQuery = (query: string) => {
+    if (!matchesCurrentSelection()) return;
+    setChoice((current) =>
+      current === selection
+        ? { ...current, query, resetNotice: false }
+        : current,
+    );
+  };
+  const changeRefreshView = (refreshView: BeaReleaseRefreshView) => {
     if (
-      committed.current !== selection ||
-      model.getSnapshot().agenda !== selection.agenda
+      !matchesCurrentSelection() ||
+      (refreshView === "new" && !updates.available)
     )
       return;
     setChoice((current) =>
       current === selection
-        ? { ...current, query, resetNotice: false }
+        ? { ...current, refreshView, resetNotice: false }
         : current,
     );
   };
@@ -100,6 +150,11 @@ export function ManagedBeaReleaseAgenda({
         resetNotice: selection.resetNotice,
         onDateChange: changeDate,
         onQueryChange: changeQuery,
+        updatesView: {
+          mode: updates.refreshView,
+          available: updates.available,
+          onChange: changeRefreshView,
+        },
       }}
       noteAction={
         <ManagedBeaReleaseNoteAction

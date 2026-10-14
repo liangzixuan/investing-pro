@@ -65,6 +65,7 @@ import {
 } from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { projectBeaReleaseView } from "../features/markets/bea-release-view";
+import { projectManagedBeaUpdatesView } from "./managed-bea-updates-view";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
 import { projectManagedFedUpdatesView } from "./managed-fed-updates-view";
@@ -1009,11 +1010,13 @@ describe("managed workspace screen", () => {
     expect(pair.current).toBe(response);
     expect(pair.addedEvents[0]).toBe(response.events[1]);
     const beforeSearch = workspace.coordinator.getSnapshot().draft!;
-    const view = projectBeaReleaseView(
-      response,
-      "2026-11-02",
-      "  nOvEmBeR   release  ",
+    const updates = projectManagedBeaUpdatesView(
+      projectBeaReleaseView(response, "2026-11-02", "  nOvEmBeR   release  "),
+      pair,
+      "new",
     );
+    const view = updates.view;
+    expect(updates).toMatchObject({ refreshView: "new", available: true });
     expect(view.visibleCount).toBe(1);
     expect(view.groups).toHaveLength(2);
     expect(view.visibleGroups[0]!.events).toEqual([response.events[1]!]);

@@ -35,7 +35,20 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
-The current candidate compares consecutive accepted BEA agendas by exact series
+The current candidate adds **Release view** to the loaded BEA agenda. Entries
+absent from its preceding accepted agenda require a comparison tied to the exact
+current response. The view intersects with series search and Eastern date;
+the list and note picker share original event objects, order and source metadata.
+Complete comparison counts and both windows remain visible. Excluded choices
+clear without restoration while destinations remain. Retained reads keep the
+view; accepted replacements and navigation reset it. Stale selection, response
+and comparison callbacks are fenced. Reading stays available during Save.
+It adds no request, saved preference or publication/rescheduling claim. Source
+verification is in progress; exact builds, Chrome and original hosted Android
+execution remain required. See the
+[Markets guide](MANAGED_MARKETS_HOME.md#inspect-entries-absent-from-the-previous-agenda).
+
+The preceding candidate compares consecutive accepted BEA agendas by exact series
 name and UTC scheduled time. Current entries absent from the preceding agenda
 receive a visible marker; a compact count and native disclosure retain both
 original retrieval times, complete windows and event counts. Moving-window scope

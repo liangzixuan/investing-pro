@@ -7,7 +7,11 @@ import {
 } from "@research-cockpit/contracts";
 import type { MouseEventHandler, ReactNode, Ref } from "react";
 import { formatBeaReleaseDate } from "./bea-release-dates";
-import { projectBeaReleaseView, type BeaReleaseView } from "./bea-release-view";
+import {
+  projectBeaReleaseView,
+  type BeaReleaseView,
+  type BeaReleaseRefreshView,
+} from "./bea-release-view";
 import { BeaAgendaComparison } from "./BeaAgendaComparison";
 import type { BeaAgendaComparison as Comparison } from "./bea-agenda-comparison";
 import "./bea-release-agenda.css";
@@ -31,6 +35,11 @@ export interface BeaReleaseAgendaProps {
     readonly resetNotice: boolean;
     readonly onDateChange: (date: string) => void;
     readonly onQueryChange: (query: string) => void;
+    readonly updatesView?: {
+      readonly mode: BeaReleaseRefreshView;
+      readonly available: boolean;
+      readonly onChange: (mode: BeaReleaseRefreshView) => void;
+    };
   };
 }
 const time = new Intl.DateTimeFormat("en-US", {
@@ -154,6 +163,36 @@ export function BeaReleaseAgenda({
             {comparison && <BeaAgendaComparison comparison={comparison} />}
             {filters && (
               <div className="managed-bea-release-date">
+                {filters.updatesView && (
+                  <>
+                    <label htmlFor="managed-bea-release-view">
+                      Release view
+                    </label>
+                    <select
+                      id="managed-bea-release-view"
+                      value={filters.updatesView.mode}
+                      aria-describedby="managed-bea-release-view-help"
+                      onChange={(event) =>
+                        filters.updatesView!.onChange(
+                          event.currentTarget.value as BeaReleaseRefreshView,
+                        )
+                      }
+                    >
+                      <option value="all">All loaded releases</option>
+                      <option
+                        value="new"
+                        disabled={!filters.updatesView.available}
+                      >
+                        Not in previous agenda
+                      </option>
+                    </select>
+                    <p id="managed-bea-release-view-help">
+                      {filters.updatesView.available
+                        ? "Uses the preceding loaded agenda. Date and series filters still apply; complete comparison counts remain above."
+                        : "Refresh successfully after loading an agenda to compare scheduled entries."}
+                    </p>
+                  </>
+                )}
                 <label htmlFor="managed-bea-release-date">Release date</label>
                 <select
                   id="managed-bea-release-date"
@@ -225,8 +264,9 @@ export function BeaReleaseAgenda({
               </p>
             ) : visibleCount === 0 ? (
               <p className="bea-agenda-empty">
-                No loaded releases match these filters. Change the date or clear
-                the search.
+                {filters?.updatesView?.mode === "new"
+                  ? "No releases absent from the previous agenda match these filters. Change Release view, change the date or clear the search."
+                  : "No loaded releases match these filters. Change the date or clear the search."}
               </p>
             ) : (
               <div className="bea-agenda-days">

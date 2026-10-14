@@ -108,7 +108,7 @@ No new live authenticated managed read or physical use is established.
 
 ### Compare consecutive loaded agendas
 
-After a second successful **Refresh agenda**, the managed calendar shows how
+After a successful **Refresh agenda** follows a loaded agenda, the managed calendar shows how
 many current scheduled entries were absent from the preceding loaded agenda.
 Each entry uses its exact series name and UTC scheduled time. Different series
 at the same time stay separate; a changed name or time is a different entry.
@@ -128,6 +128,31 @@ pair. Returning to Markets keeps it without another read; retirement clears it
 and rejects late responses. Each successful replacement compares only with the
 preceding accepted response. No comparison is saved and no extra read is made.
 Source, Chrome and native acceptance remain separate in Current work.
+
+### Inspect entries absent from the previous agenda
+
+**Release view** offers All loaded releases and Not in previous agenda. The
+second choice requires a comparison tied to the exact current accepted response;
+it is disabled before that pair exists. It keeps current entries absent from the
+preceding loaded agenda, intersected with the existing series phrase and Eastern
+date. Date options, complete agenda counts, source dates and comparison windows
+remain visible. This adds no request or saved preference.
+
+The agenda and note choices share the same final result. An excluded release and
+its feedback clear while the exact destination remains. Returning to All does
+not restore a release choice; a matching choice and feedback remain. A valid
+comparison with no current-only matches has a separate explanation from a
+verified empty agenda. Reading controls remain available while Save pauses
+note editing.
+
+Pending, failed, invalid and cancelled reads retain the three controls. A new
+accepted response resets Release view to All, clears series search and resets
+the date, including an equal-content replacement. A changed pair on the same
+response resets only Release view. Returning after leaving Markets resets local
+choices while retaining accepted source data. Retirement clears both; stale
+response, selection and comparison callbacks are ignored. The comparison's
+moving-window limits still apply, including entries that newly enter the window.
+It establishes no publication, rescheduling, relevance or complete-history claim.
 
 ## Add a scheduled release to a note
 
