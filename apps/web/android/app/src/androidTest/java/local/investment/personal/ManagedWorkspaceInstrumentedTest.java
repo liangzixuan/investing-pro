@@ -867,6 +867,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
         selectWorkspaceView("My Watchlist");
         assertFedCounts(5, 2, 1, 0, 1);
+        selectWatchlistNote(0);
+        chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
+        typeIntoInput("managed-watchlist-search", "Invented second");
+        awaitPage("Fed review will target a different note outside the retained notes search",
+            "document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-one'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-one'");
         click("#settle-cancelled-announcements");
         assertFedCounts(5, 2, 2, 0, 1);
         assertFedDraft();
@@ -954,9 +961,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
         assertFedCounts(6, 2, 2, 0, 1);
         clickFedAction("Review in My Watchlist");
-        awaitPage("Fed Review uses the existing watchlist navigation and preserves the complete draft", exact +
+        awaitPage("Fed Review opens and focuses its exact destination while preserving the complete draft and search", exact +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')");
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')" +
+            " && document.querySelector('#managed-watchlist-search')?.value === 'Invented second'" +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ZERO is outside this search.')");
+        assertFullNoteReading("managed-note-1", complete, true);
+        assertFedCounts(6, 2, 2, 0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
             "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
         String saved = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
@@ -971,6 +985,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(complete) +
             " && document.querySelector('#managed-note-1')?.disabled === false");
         assertFedCounts(6, 2, 2, 1, 2);
+        assertFullNoteReading("managed-note-1", complete, true);
         selectWorkspaceView("Markets");
         assertFedPacket("2026-10-23T18:00:00.000Z");
         awaitPage("returning to Markets requires fresh choices without another feed read", saved +
@@ -2228,10 +2243,12 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFilingsNoteCounts(0, 1);
         assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to the complete unsaved watchlist",
+        awaitPage("Review returns to the complete unsaved watchlist and focuses the exact filing-note reader",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')");
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
+        assertFullNoteReading("managed-note-1", FILINGS_NOTE, true);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
@@ -3134,13 +3151,17 @@ public class ManagedWorkspaceInstrumentedTest {
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-error", 3);
         assertInvalidCompanyNote("managed-research-note", "managed-research-note-help");
         assertFixtureBoundary();
+        awaitPage("company Review targets ALFA while the watchlist still holds another selected note",
+            "document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.querySelector('#managed-note-2') === null");
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("review closes research and focuses the visible My Watchlist control",
+        awaitPage("review closes research and focuses the exact full invalid company-note reader",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-2')?.dataset.managedNoteListingId === 'listing-alfa'" +
+            " && document.activeElement === document.querySelector('#managed-note-2-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
-        selectWatchlistNote(2);
+        assertFullNoteReading("managed-note-2", INVALID_COMPANY_NOTE, true);
         assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
         retainAnnualNoteFrame("companyNoteInvalidWatchlist", "label[for=managed-note-2]",
             "label[for=managed-note-2], #managed-note-2, #managed-note-2-error", 3);
@@ -3397,11 +3418,13 @@ public class ManagedWorkspaceInstrumentedTest {
         assertPriceNoteCounts(1, 0, 1);
         assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to My Watchlist without another read or save",
+        awaitPage("Review opens the exact price-note reader without another read or save",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-0-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertFullNoteReading("managed-note-0", PRICE_NOTE, true);
         assertPriceNoteDraft(1, true);
         assertPriceNoteCounts(1, 0, 1);
         Log.i("ManagedPriceNote", "phase=appended-reviewed-unsaved, eod=1, save=0; " + pageDiagnostic());
@@ -3586,14 +3609,14 @@ public class ManagedWorkspaceInstrumentedTest {
         touchInput("managed-research-note-reading-toggle");
         assertFullNoteReading("managed-research-note", ANNUAL_NOTE, false);
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to the visible watchlist without a save or research read",
+        awaitPage("Review opens the exact Annual-note reader without a save or research read",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-0-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
-        touchInput("managed-note-0-reading-toggle");
         assertFullNoteReading("managed-note-0", ANNUAL_NOTE, true);
         assertAnnualNoteCounts(1, 0, 1);
         onWebView().withElement(findElement(Locator.XPATH,

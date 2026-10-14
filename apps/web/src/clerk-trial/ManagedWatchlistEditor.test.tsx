@@ -6,6 +6,7 @@ import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
   type ManagedWatchlistEditorProps,
+  type ManagedWatchlistNoteReviewRequest,
 } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
@@ -20,7 +21,7 @@ const hooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
   stateIndex: 0,
   refIndex: 0,
-  effects: [] as Array<() => void>,
+  effects: [] as Array<() => void | (() => void)>,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
@@ -164,6 +165,50 @@ function fixture() {
     getClientRects: () => [{}],
     focus: searchFocus,
   };
+  const summaryFocus = vi.fn(() => {
+    const page = document as unknown as { activeElement: unknown };
+    page.activeElement = summary;
+  });
+  const summary = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    focus: summaryFocus,
+    scrollIntoView: vi.fn(),
+  };
+  const reader = {
+    isConnected: true,
+    open: false,
+    getClientRects: () => [{}],
+    querySelector: () => summary,
+  };
+  const panel = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    querySelector: (selector: string) =>
+      selector.startsWith("textarea")
+        ? field
+        : selector === "[data-watchlist-search]"
+          ? searchField
+          : selector ===
+              "#managed-watchlist-selected-note .managed-note-reading"
+            ? reader
+            : {
+                isConnected: true,
+                getClientRects: () => [{}],
+                focus: emptyFocus,
+              },
+    querySelectorAll: () =>
+      current
+        .filter((entry) => entry.props["data-watchlist-selection"])
+        .map((entry) => ({
+          dataset: {
+            watchlistSelection: entry.props["data-watchlist-selection"],
+          },
+          isConnected: true,
+          getClientRects: () => [{}],
+          focus: selectionFocus,
+        })),
+  };
   let current: ReturnType<typeof elements> = [];
   const render = (changes: Partial<ManagedWatchlistEditorProps> = {}) => {
     props = { ...props, ...changes };
@@ -178,34 +223,15 @@ function fixture() {
       typeof listingId === "string" ? listingId : "";
     field.value = typeof noteValue === "string" ? noteValue : "";
     field.disabled = Boolean(note?.props.disabled);
-    hooks.refs[0]!.current = {
-      isConnected: true,
-      querySelector: (selector: string) =>
-        selector.startsWith("textarea")
-          ? field
-          : selector === "[data-watchlist-search]"
-            ? searchField
-            : {
-                isConnected: true,
-                getClientRects: () => [{}],
-                focus: emptyFocus,
-              },
-      querySelectorAll: () =>
-        current
-          .filter((entry) => entry.props["data-watchlist-selection"])
-          .map((entry) => ({
-            dataset: {
-              watchlistSelection: entry.props["data-watchlist-selection"],
-            },
-            isConnected: true,
-            getClientRects: () => [{}],
-            focus: selectionFocus,
-          })),
-    };
+    hooks.refs[0]!.current = panel;
     return current;
   };
+  let cleanups: Array<() => void> = [];
   const commit = () => {
-    for (const effect of hooks.effects) effect();
+    cleanups = hooks.effects.flatMap((effect) => {
+      const cleanup = effect();
+      return cleanup ? [cleanup] : [];
+    });
   };
   const click = (label: string, opener = {} as HTMLButtonElement) => {
     const button = current.find(
@@ -243,6 +269,11 @@ function fixture() {
     ref,
     props,
     field,
+    panel,
+    reader,
+    summary,
+    summaryFocus,
+    unmount: () => cleanups.forEach((cleanup) => cleanup()),
     focus,
     selectionFocus,
     emptyFocus,
@@ -1117,4 +1148,263 @@ describe("ManagedWatchlistEditor", () => {
         ?.props.disabled,
     ).toBe(true);
   });
+});
+
+describe("exact destination note review", () => {
+  function setup() {
+    const f = fixture();
+    const origin = {} as Element;
+    const page = { activeElement: origin as unknown, body: {} };
+    vi.stubGlobal("document", page);
+    let live = true;
+    const request: ManagedWatchlistNoteReviewRequest = {
+      member: f.props.memberships[1]!,
+      origin,
+      isCurrent: () => live,
+    };
+    return {
+      ...f,
+      page,
+      request,
+      retire: () => {
+        live = false;
+      },
+    };
+  }
+
+  it("opens the exact full invalid raw note read-only outside the retained note search, without changing draft intent", () => {
+    const f = setup();
+    const raw = `  Exact e\u0301 東京 🧭\n${"raw ".repeat(510)}  `;
+    const target = { ...f.request.member, note: raw };
+    const memberships = [f.props.memberships[0]!, target];
+    f.render({ memberships, editable: false });
+    f.scope("notes");
+    f.search("Keep first");
+    f.commit();
+    const request = { ...f.request, member: target };
+    expect(f.ref.current!.reviewNote(request)).toBe(true);
+    expect(f.ref.current!.reviewNote(request)).toBe(false);
+    expect(f.reader.open).toBe(false);
+    const output = f.render();
+    f.commit();
+    expect(searchValue(output)).toBe("Keep first");
+    expect(scopeValue(output)).toBe("notes");
+    expect(choices(output)).toEqual(["one"]);
+    expect(
+      output.some((entry) =>
+        textContent(entry).includes("Selected BETA is outside this search."),
+      ),
+    ).toBe(true);
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props,
+    ).toMatchObject({
+      listingId: "two",
+      note: raw,
+      disabled: true,
+      id: "managed-note-1",
+    });
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(target);
+    expect(f.reader.open).toBe(true);
+    expect(f.summaryFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(f.summary.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "nearest",
+    });
+    expect(f.page.activeElement).toBe(f.summary);
+    expect(f.ref.current!.reviewNote(request)).toBe(false);
+    f.render();
+    f.commit();
+    expect(f.summaryFocus).toHaveBeenCalledOnce();
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+      f.props.onViewFilings,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+      f.props.comparisonNoteActions.append,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "stale predicate",
+    "copied member",
+    "inactive",
+    "hidden",
+    "detached",
+    "other focus",
+    "unmounted",
+  ] as const)("refuses a %s request without selecting a fallback", (change) => {
+    const f = setup();
+    const handle = f.ref.current!;
+    let request = f.request;
+    if (change === "stale predicate") f.retire();
+    if (change === "copied member")
+      request = { ...request, member: { ...request.member } };
+    if (change === "inactive") {
+      f.render({ active: false });
+      f.commit();
+    }
+    if (change === "hidden") f.panel.getClientRects = () => [];
+    if (change === "detached") f.panel.isConnected = false;
+    if (change === "other focus") f.page.activeElement = {};
+    if (change === "unmounted") f.unmount();
+    expect(handle.reviewNote(request)).toBe(false);
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.reader.open).toBe(false);
+    expect(f.summaryFocus).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "retired",
+    "replaced member",
+    "removed member",
+    "inactive",
+    "hidden panel",
+    "detached panel",
+    "hidden reader",
+    "detached reader",
+    "hidden summary",
+    "detached summary",
+    "wrong field",
+    "other focus",
+    "query",
+    "scope",
+    "selection",
+    "unmount",
+  ] as const)(
+    "consumes pending review after %s without opening or focusing another note",
+    (change) => {
+      const f = setup();
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      const changes: Partial<ManagedWatchlistEditorProps> = {};
+      if (change === "retired") f.retire();
+      if (change === "replaced member")
+        changes.memberships = [
+          f.props.memberships[0]!,
+          { ...f.request.member },
+        ];
+      if (change === "removed member")
+        changes.memberships = [f.props.memberships[0]!];
+      if (change === "inactive") changes.active = false;
+      if (change === "query") f.search("ALFA");
+      if (change === "scope") f.scope("notes");
+      if (change === "selection")
+        f.click("Edit research note for ALFA, Class A, XNAS");
+      f.render(changes);
+      if (change === "hidden panel") f.panel.getClientRects = () => [];
+      if (change === "detached panel") f.panel.isConnected = false;
+      if (change === "hidden reader") f.reader.getClientRects = () => [];
+      if (change === "detached reader") f.reader.isConnected = false;
+      if (change === "hidden summary") f.summary.getClientRects = () => [];
+      if (change === "detached summary") f.summary.isConnected = false;
+      if (change === "wrong field")
+        f.field.dataset.managedNoteListingId = "one";
+      if (change === "other focus") f.page.activeElement = {};
+      if (change === "unmount") f.unmount();
+      else f.commit();
+      expect(f.reader.open).toBe(false);
+      expect(f.summaryFocus).not.toHaveBeenCalled();
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+      if (change !== "unmount") {
+        f.render({ active: true });
+        f.commit();
+      }
+      expect(f.summaryFocus).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses committed members rather than an abandoned render and accepts a fresh request after the previous one was consumed", () => {
+    const f = setup();
+    const handle = f.ref.current!;
+    const replacement = {
+      ...f.request.member,
+      note: "Uncommitted replacement",
+    };
+    f.render({ memberships: [f.props.memberships[0]!, replacement] });
+    expect(handle.reviewNote({ ...f.request, member: replacement })).toBe(
+      false,
+    );
+    f.render({ memberships: f.props.memberships });
+    f.commit();
+    expect(handle.reviewNote(f.request)).toBe(true);
+    f.render();
+    f.commit();
+    const first = {
+      ...f.request,
+      member: f.props.memberships[0]!,
+      origin: f.summary as unknown as Element,
+    };
+    expect(f.ref.current!.reviewNote(first)).toBe(true);
+    f.render();
+    f.commit();
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.summaryFocus).toHaveBeenCalledTimes(2);
+    expect(f.ref.current!.reviewNote(first)).toBe(false);
+  });
+
+  it("lets the latest request own selection and allows unchanged member handles through a reorder", () => {
+    const f = setup();
+    expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+    const latest = { ...f.request, member: f.props.memberships[0]! };
+    expect(f.ref.current!.reviewNote(latest)).toBe(true);
+    f.render({ memberships: [...f.props.memberships].reverse() });
+    f.commit();
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.field.value).toBe("Keep first draft");
+    expect(f.summaryFocus).toHaveBeenCalledOnce();
+  });
+
+  it.each(["selection callback", "focus callback"] as const)(
+    "checks the live predicate after a synchronous %s retires the visit",
+    (phase) => {
+      const f = setup();
+      if (phase === "selection callback") {
+        vi.mocked(f.props.onSelectedMember).mockImplementation((selected) => {
+          if (selected === f.request.member) f.retire();
+        });
+      } else {
+        f.summaryFocus.mockImplementation(() => {
+          f.page.activeElement = f.summary;
+          f.retire();
+        });
+      }
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      f.render();
+      f.commit();
+      expect(f.reader.open).toBe(phase === "focus callback");
+      expect(f.summaryFocus).toHaveBeenCalledTimes(
+        phase === "focus callback" ? 1 : 0,
+      );
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+      expect(f.props.onNote).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["moved focus", "unmount", "hidden", "detached"] as const)(
+    "does not scroll after focus synchronously causes %s",
+    (change) => {
+      const f = setup();
+      f.summaryFocus.mockImplementation(() => {
+        f.page.activeElement = f.summary;
+        if (change === "moved focus") f.page.activeElement = {};
+        if (change === "unmount") f.unmount();
+        if (change === "hidden") f.summary.getClientRects = () => [];
+        if (change === "detached") f.summary.isConnected = false;
+      });
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      f.render();
+      f.commit();
+      expect(f.summaryFocus).toHaveBeenCalledOnce();
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+    },
+  );
 });

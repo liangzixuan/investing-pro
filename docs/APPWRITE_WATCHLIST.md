@@ -230,6 +230,27 @@ selection retention, filtered removal and focus cancellation, correction,
 research return and full-payload saves. Actual browser and native execution
 status is recorded in [Current work](CURRENT_WORK.md).
 
+## Review a destination note
+
+**Review in My Watchlist** from company research selects that company's current
+watchlist member. After a successful Fed reference append, it selects the chosen
+destination. The action opens the existing **Read full note** disclosure and
+focuses its summary. The search query and scope stay unchanged. If the destination
+is outside the results, its full identity and note remain visible with the
+existing outside-search explanation.
+
+Review preserves the complete raw draft, including invalid text, other notes and
+membership order. Company review remains available while note editing is paused.
+If the company has no current note, navigation explains that no note is available;
+it does not open another member's reader as a substitute. A stale destination,
+changed view or session, or a later user selection or focus move cancels pending
+reader focus. Ordinary Back keeps its existing return behavior.
+
+Review makes no source or save request and does not change evidence dates.
+**Save watchlist** still validates and saves the complete draft explicitly, using
+the existing normalization and recovery rules. Build, browser and delivery status
+remain in [Current work](CURRENT_WORK.md).
+
 ## Review unsaved changes
 
 **Review unsaved changes** compares the complete current draft with the last

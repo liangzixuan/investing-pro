@@ -801,6 +801,24 @@ literal capture calls. Original hosted execution for this increment remains
 pending. No new source, API or saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
 
+### Exact destination note Review candidate
+
+Company and successful Fed **Review in My Watchlist** actions now select the
+exact current destination, open its existing full-note reader and focus the
+summary. Search query and scope, the complete raw draft, membership order and
+explicit Save stay unchanged. Company notes remain readable while editing is
+paused or their text needs correction. Ordinary Back keeps its existing focus
+behavior. Review adds no source or save request.
+
+Focused component and composed Screen tests, web types and scoped lint pass.
+Independent review found a focus race when the destination changed before the
+company URL finished returning. A failing regression reproduced it; the repair
+reserves that return signal for Review before any later cancellation. The full
+Screen suite passes after the repair. Native assertions now require the exact
+reader, including a destination outside the retained search. Source boundaries
+pass. Exact-build, Chrome and native execution acceptance remain pending.
+See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -825,7 +843,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete the Fed reference candidate's original hosted checks and the source
+Complete exact-note Review acceptance, the Fed candidate's hosted checks and the source
 integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable

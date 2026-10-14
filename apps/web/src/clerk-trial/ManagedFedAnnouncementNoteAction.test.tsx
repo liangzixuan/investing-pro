@@ -73,7 +73,7 @@ function harness(initial: Partial<Props> = {}) {
     appended: true,
     message: "Reference added. Review and save in My Watchlist.",
   }));
-  const onReview = vi.fn();
+  const onReview = vi.fn<Props["onReview"]>();
   let props: Props = {
     state: {
       announcements: packet,
@@ -289,6 +289,7 @@ describe("Fed announcement note choices", () => {
     (kind) => {
       const h = harness();
       h.choose();
+      h.button().props.onClick!();
       const old = h.render();
       const replacement =
         kind === "equal"
@@ -298,7 +299,10 @@ describe("Fed announcement note choices", () => {
       expect(h.select("announcement").props.value).toBe("");
       expect(h.select("destination").props.value).toBe(members.right.listingId);
       h.button(old).props.onClick!();
-      expect(h.append).not.toHaveBeenCalled();
+      h.review(old)!.props.onClick!();
+      expect(h.append).toHaveBeenCalledOnce();
+      expect(h.onReview).not.toHaveBeenCalled();
+      expect(h.review()).toBeUndefined();
       h.render({ state: { ...h.props.state, announcements: h.packet } });
       expect(h.select("announcement").props.value).toBe("");
     },
@@ -341,11 +345,59 @@ describe("Fed announcement note choices", () => {
     expect(h.review(node)).toBeDefined();
     h.review(node)!.props.onClick!();
     expect(h.onReview).toHaveBeenCalledOnce();
+    expect(h.onReview).toHaveBeenCalledWith(updated);
     expect(h.append).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(focused);
     expect(focused.focus).not.toHaveBeenCalled();
     expect(focused.scrollIntoView).not.toHaveBeenCalled();
   });
+
+  it("reviews the exact latest member after another prefix edit and reorder, refusing the old callback", () => {
+    const h = harness();
+    h.choose();
+    h.button().props.onClick!();
+    const appended = { ...members.right, note: "Appended reference" };
+    const old = h.render({ members: [members.left, appended] });
+    const latest = {
+      ...appended,
+      note: "  Latest cafe\u0301 東京 😀 prefix and reference  ",
+    };
+    const other = { ...members.left, note: "Other current draft" };
+    const current = h.render({ members: [latest, other] });
+    h.review(old)!.props.onClick!();
+    expect(h.onReview).not.toHaveBeenCalled();
+    h.review(current)!.props.onClick!();
+    expect(h.onReview).toHaveBeenCalledExactlyOnceWith(latest);
+    expect(h.onReview.mock.calls[0]![0]).toBe(latest);
+    expect(h.append).toHaveBeenCalledOnce();
+    expect(latest.note).toBe(
+      "  Latest cafe\u0301 東京 😀 prefix and reference  ",
+    );
+    expect(other.note).toBe("Other current draft");
+  });
+
+  it.each(["removed", "replaced"] as const)(
+    "clears successful Review when its destination is %s instead of selecting another note",
+    (kind) => {
+      const h = harness();
+      h.choose();
+      h.button().props.onClick!();
+      const old = h.render();
+      const current = h.render({
+        members:
+          kind === "removed"
+            ? [members.left]
+            : [members.left, { ...members.right, securityId: "replacement" }],
+      });
+      h.review(old)!.props.onClick!();
+      expect(h.onReview).not.toHaveBeenCalled();
+      expect(h.review(current)).toBeUndefined();
+      expect(h.select("destination", current).props.value).toBe("");
+      expect(h.append).toHaveBeenCalledOnce();
+      h.render({ members: [members.left, members.right] });
+      expect(h.review()).toBeUndefined();
+    },
+  );
 
   it("checks a live refusal again, announces it without duplicate visible copy and clears obsolete refusal", () => {
     const h = harness();

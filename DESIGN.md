@@ -98,6 +98,14 @@ and announce its result without moving focus. An added reference uses the existi
 note editor and whole-watchlist Save; do not add another editor or card. Response
 replacement and leaving Markets clear the staged announcement choice.
 
+Company and successful Fed **Review in My Watchlist** actions lead to the exact
+current destination's existing full-note reader. Select the member, open its
+native disclosure and focus the 44px summary. Preserve search query and scope;
+keep the outside-search explanation when needed. Show the complete raw note,
+including invalid text, and allow company review while editing is paused. Do not
+add a second reader or editor. Cancel pending focus when the destination, view or
+session becomes stale, or when the user moves focus or selects another listing.
+
 Place the BEA **Release date** native selector between the original loaded-window
 description and the dated releases. Keep a visible label, an All loaded dates
 option, readable Eastern dates with counts and a visible count against the full

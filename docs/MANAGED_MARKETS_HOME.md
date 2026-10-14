@@ -154,10 +154,15 @@ refused without truncation. Exact-reference duplicate comparison also uses NFC s
 a saved and reloaded decomposed title cannot be appended twice. Different original
 retrieval times or retained-feed qualification remain different dated references.
 
-**Review in My Watchlist** uses the existing view and focus path. Review does not
-save. Explicit **Save watchlist** saves the complete draft, including its other
-unsaved changes. Delivery and rendered acceptance remain in
-[Current work](CURRENT_WORK.md).
+After a successful append, **Review in My Watchlist** selects the exact current
+destination, opens its existing full-note reader and focuses the disclosure
+summary. A duplicate refusal keeps Review available for that successful choice;
+an active announcements request blocks it. Search query and scope, raw note text,
+other notes and order stay unchanged. See
+[Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
+Explicit **Save watchlist** saves the complete draft, including its other unsaved
+changes. Review does not save or refresh evidence. Delivery and rendered
+acceptance remain in [Current work](CURRENT_WORK.md).
 
 ## Dated raw-close change
 

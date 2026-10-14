@@ -196,11 +196,19 @@ ID already present under a different identity blocks Add and directs the user to
 review the list. A changed search query does not alter the captured selection.
 Old controls cannot edit a different or reopened visit, even for the same listing.
 
-**Review in My Watchlist** closes research and focuses the watchlist navigation
-control. The existing **Save watchlist** action saves the whole draft, including
-other changes. Its catalog review, conflicts and uncertain-save reconciliation
-remain in that screen. No separate note-save operation is introduced. Notes keep
-the existing 2,000-character validation and save-time normalization.
+**Review in My Watchlist** closes research, selects the company's exact current
+watchlist member and opens its existing full-note reader. Focus moves to the
+reader's summary. The watchlist search query and scope stay unchanged; a note
+outside the results remains visible with its exact identity and an explanation.
+Review can read invalid text or a note whose editing is paused. If no current note
+is available, navigation explains the absence without opening another note.
+
+The existing **Save watchlist** action saves the whole draft, including other
+changes. Catalog review, conflicts and uncertain-save reconciliation remain in
+that screen. No separate note-save operation is introduced. Notes keep their raw
+draft text and the existing 2,000-character validation and save-time normalization.
+See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note)
+for focus cancellation and ordinary Back behavior.
 
 An unavailable watchlist, stale catalog, pending save or reconciliation, conflict,
 retired session or full list blocks the applicable action. An exact matching note

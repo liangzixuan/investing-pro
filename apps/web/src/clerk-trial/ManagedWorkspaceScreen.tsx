@@ -10,6 +10,8 @@ import {
   normalizeWatchlistNote,
   type ManagedCatalogSnapshotDto,
   type ManagedEodIdentity,
+  type MainWatchlistPayload,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import { BrowserRouter } from "react-router";
 import {
@@ -57,6 +59,16 @@ interface SessionProps {
   priceCoverage?: readonly ManagedEodIdentity[];
   warnOnBrowserLeave?: boolean;
   exportDelivery?: WatchlistExportDeliveryAdapter;
+}
+
+interface NoteReviewRequest {
+  workspace: ManagedWorkspace;
+  draft: MainWatchlistPayload;
+  member: WatchlistMembership;
+  origin: Element | null;
+  previousReturn: number;
+  expectedReturn: number;
+  localReturn: number;
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -375,9 +387,18 @@ export function ManagedWorkspaceScreen({
     }
   }, [routeBack, workspace]);
   useEffect(() => {
+    const handled = noteReviewReturn.current;
+    if (
+      handled?.route === (navigation?.returnFocus ?? 0) &&
+      handled.local === localReturnFocus
+    )
+      return;
     if (navigation?.returnFocus || localReturnFocus) return restoreFocus();
   }, [navigation?.returnFocus, localReturnFocus, restoreFocus]);
   const setView = (view: "markets" | "discover" | "watchlist") => {
+    liveNoteReview.current = null;
+    setNoteReview(null);
+    setNoteReviewNotice(null);
     if (navigation) return navigation.view(view);
     workspace.setView(view);
     return true;
@@ -453,6 +474,105 @@ export function ManagedWorkspaceScreen({
   const marketsHeading = useRef<HTMLHeadingElement | null>(null);
   const agendaHeading = useRef<HTMLHeadingElement | null>(null);
   const announcementsHeading = useRef<HTMLHeadingElement | null>(null);
+  const [noteReview, setNoteReview] = useState<NoteReviewRequest | null>(null);
+  const [noteReviewNotice, setNoteReviewNotice] = useState<string | null>(null);
+  const liveNoteReview = useRef<NoteReviewRequest | null>(null);
+  const noteReviewReturn = useRef<{ route: number; local: number } | null>(
+    null,
+  );
+  const reviewNavigation = useRef({ navigation, localReturnFocus });
+  useLayoutEffect(() => {
+    reviewNavigation.current = { navigation, localReturnFocus };
+  }, [navigation, localReturnFocus]);
+  useLayoutEffect(
+    () => () => {
+      liveNoteReview.current = null;
+    },
+    [workspace],
+  );
+  const currentReviewDraft = (request: NoteReviewRequest) => {
+    const current = workspace.getSnapshot();
+    const currentSaved = coordinator.getSnapshot();
+    return (
+      liveNoteReview.current === request &&
+      request.workspace === workspace &&
+      currentSaved.phase !== "retired" &&
+      currentSaved.phase !== "signing_out" &&
+      currentSaved.draft === request.draft &&
+      request.draft.memberships.includes(request.member) &&
+      current.snapshot?.snapshotSha256 === request.draft.snapshotSha256 &&
+      current.view === "watchlist" &&
+      !current.research &&
+      !current.companyRoute
+    );
+  };
+  const currentNoteReview = (request: NoteReviewRequest) => {
+    const route = reviewNavigation.current.navigation;
+    return (
+      currentReviewDraft(request) &&
+      !route?.invalid &&
+      !route?.hasCompanyRoute() &&
+      reviewNavigation.current.localReturnFocus === request.localReturn &&
+      (route?.returnFocus ?? 0) === request.expectedReturn
+    );
+  };
+  useLayoutEffect(() => {
+    const request = liveNoteReview.current;
+    if (!request) return;
+    const route = reviewNavigation.current.navigation;
+    if (
+      noteReview === request &&
+      currentReviewDraft(request) &&
+      !route?.invalid &&
+      reviewNavigation.current.localReturnFocus === request.localReturn &&
+      request.expectedReturn > request.previousReturn &&
+      route?.returnFocus === request.previousReturn
+    )
+      return;
+    if (!currentNoteReview(request)) {
+      liveNoteReview.current = null;
+      setNoteReview(null);
+      return;
+    }
+    if (noteReview !== request) return;
+    setNoteReview(null);
+    watchlistEditor.current?.reviewNote({
+      member: request.member,
+      origin: request.origin,
+      isCurrent: () => currentNoteReview(request),
+    });
+  });
+  const reviewWatchlistNote = (member: WatchlistMembership | null) => {
+    const draft = coordinator.getSnapshot().draft;
+    if (member && !draft?.memberships.includes(member)) return;
+    const origin =
+      typeof document === "undefined" ? null : document.activeElement;
+    const previousReturn = navigation?.returnFocus ?? 0;
+    const expectedReturn = previousReturn + (hasCompanyRoute?.() ? 1 : 0);
+    if (!setView("watchlist")) return;
+    panelOrigin.current = null;
+    if (!member || !draft) {
+      setNoteReviewNotice("No current note is available for this company.");
+      watchlistNavigation.current?.focus();
+      return;
+    }
+    const request = {
+      workspace,
+      draft,
+      member,
+      origin,
+      previousReturn,
+      expectedReturn,
+      localReturn: localReturnFocus,
+    };
+    // This return belongs to Review even if its target changes before commit.
+    noteReviewReturn.current = {
+      route: expectedReturn,
+      local: localReturnFocus,
+    };
+    liveNoteReview.current = request;
+    setNoteReview(request);
+  };
   useLayoutEffect(() => {
     const request = recoveryFocus.current;
     recoveryFocus.current = null;
@@ -801,9 +921,11 @@ export function ManagedWorkspaceScreen({
                       discovery.research!.selection
                     )
                       return;
-                    if (!setView("watchlist")) return;
-                    panelOrigin.current = null;
-                    watchlistNavigation.current?.focus();
+                    reviewWatchlistNote(
+                      workspace.getResearchWatchlist(
+                        discovery.research!.selection,
+                      ).member,
+                    );
                   }}
                   onSection={(section) => {
                     if (
@@ -896,15 +1018,14 @@ export function ManagedWorkspaceScreen({
                                   "Return to Markets with an editable current watchlist before adding an announcement.",
                               },
                       },
-                      onReview: () => {
+                      onReview: (member) => {
                         if (
                           !isMarketsCurrent() ||
                           !workspace.canEdit() ||
-                          workspace.announcements.getSnapshot().busy ||
-                          !setView("watchlist")
+                          workspace.announcements.getSnapshot().busy
                         )
                           return;
-                        watchlistNavigation.current?.focus();
+                        reviewWatchlistNote(member);
                       },
                     }}
                   />
@@ -1027,6 +1148,7 @@ export function ManagedWorkspaceScreen({
                     Load saved watchlist
                   </button>
                 </div>
+                {noteReviewNotice && <p role="status">{noteReviewNotice}</p>}
                 <p>
                   {saved.baseVersion === null
                     ? "Load your watchlist to begin."

@@ -140,7 +140,7 @@ vi.mock("react", async (original) => {
       }
       if (mounted.direct) {
         const index = mounted.screenStateIndex++;
-        if (index >= 2) return [value, vi.fn()];
+        if (index >= 4) return [value, vi.fn()];
         if (!(index in mounted.screenState)) mounted.screenState[index] = value;
         return [
           mounted.screenState[index],
@@ -404,6 +404,38 @@ function commitReturnFocus(
   beforeCommit?.(screen);
   // The first Screen effect restores focus; native listener registration stays mounted.
   mounted.effects[effectIndex]!();
+}
+
+function noteReviewScreen(
+  workspace: ManagedWorkspace,
+  navigation?: ManagedCompanyNavigation,
+) {
+  const layoutStart = mounted.layoutEffects.length;
+  const effectStart = mounted.effects.length;
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const screen = ManagedWorkspaceScreen({
+    workspace,
+    ...(navigation ? { navigation } : {}),
+  });
+  mounted.direct = false;
+  return {
+    screen,
+    commit: () => {
+      for (const effect of mounted.layoutEffects.slice(layoutStart)) effect();
+    },
+    returnFocus: () => mounted.effects[effectStart]!(),
+    bindReview: (
+      reviewNote = vi.fn<ManagedWatchlistEditorHandle["reviewNote"]>(
+        () => true,
+      ),
+    ) => {
+      const ref = watchlistEditor(screen)!.props
+        .ref as React.RefObject<ManagedWatchlistEditorHandle>;
+      ref.current = { reviewNote, focusFirstInvalidNote: vi.fn() };
+      return reviewNote;
+    },
+  };
 }
 
 async function returnedFocusFixture() {
@@ -721,9 +753,15 @@ describe("managed workspace screen", () => {
     expect(api.save).not.toHaveBeenCalled();
     const focus = vi.fn();
     mounted.refs[2]!.current = { focus };
-    context.onReview();
+    context.onReview(after.memberships[0]!);
     expect(workspace.getSnapshot().view).toBe("watchlist");
-    expect(focus).toHaveBeenCalledOnce();
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(after.memberships[0]);
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
     expect(workspace.coordinator.getSnapshot().draft).toBe(after);
     expect(api.save).not.toHaveBeenCalled();
     vi.mocked(api.save).mockImplementationOnce((command) =>
@@ -784,7 +822,7 @@ describe("managed workspace screen", () => {
     expect(
       context.actions.append(capture, draft.memberships[0]!).appended,
     ).toBe(false);
-    context.onReview();
+    context.onReview(draft.memberships[0]!);
     expect(navigation.view).not.toHaveBeenCalled();
     route = false;
     const invalid = fedNoteContext(workspace, { ...navigation, invalid: true });
@@ -792,9 +830,9 @@ describe("managed workspace screen", () => {
     expect(
       invalid.actions.append(capture, draft.memberships[0]!).appended,
     ).toBe(false);
-    invalid.onReview();
+    invalid.onReview(draft.memberships[0]!);
     expect(navigation.view).not.toHaveBeenCalled();
-    context.onReview();
+    context.onReview(draft.memberships[0]!);
     expect(navigation.view).toHaveBeenCalledExactlyOnceWith("watchlist");
     expect(focus).not.toHaveBeenCalled();
     workspace.openWatchlistAnnual(draft.memberships[0]!);
@@ -802,7 +840,7 @@ describe("managed workspace screen", () => {
     expect(
       context.actions.append(capture, draft.memberships[0]!).appended,
     ).toBe(false);
-    context.onReview();
+    context.onReview(draft.memberships[0]!);
     expect(navigation.view).toHaveBeenCalledOnce();
     expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
     expect(api.save).not.toHaveBeenCalled();
@@ -830,7 +868,7 @@ describe("managed workspace screen", () => {
     const pending = deferred<ReturnType<typeof fedAnnouncementsFixture>>();
     vi.mocked(api.monetaryAnnouncements).mockReturnValueOnce(pending.promise);
     const load = workspace.announcements.load();
-    context.onReview();
+    context.onReview(destination);
     expect(workspace.getSnapshot().view).toBe("markets");
     expect(context.actions.append(capture, destination).appended).toBe(false);
     workspace.announcements.cancel();
@@ -845,11 +883,414 @@ describe("managed workspace screen", () => {
       false,
     );
     expect(context.actions.append(capture, destination).appended).toBe(false);
-    context.onReview();
+    context.onReview(destination);
     pending.resolve(fedAnnouncementsFixture());
     await load;
     expect(workspace.coordinator.getSnapshot().draft).toBeNull();
     expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  function companyReview(screen: React.ReactNode) {
+    const company = elements(screen).find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    return company.props.onReview;
+  }
+
+  it.each(["current", "selection-retires", "user-focus"] as const)(
+    "composes exact-note Review with the real editor outside a retained search: %s",
+    async (mode) => {
+      const raw = `  e\u0301 東京 🧭\n${"full raw ".repeat(260)}  `;
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [
+          { ...payload.memberships[0]!, note: "Keep first thesis" },
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            securityId: "security-two",
+            shareClassId: "class-two",
+            symbol: "TWO",
+            note: raw,
+          },
+        ],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      const origin = {};
+      const page = { body: {}, activeElement: origin as unknown };
+      vi.stubGlobal("document", page);
+      const summary = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        focus: vi.fn(() => {
+          page.activeElement = summary;
+        }),
+        scrollIntoView: vi.fn(),
+      };
+      const reader = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        open: false,
+        querySelector: () => summary,
+      };
+      const field = { dataset: { managedNoteListingId: "" }, value: "" };
+      const panel = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        querySelector: (selector: string) =>
+          selector.startsWith("textarea") ? field : reader,
+      };
+      const render = () => {
+        const root = noteReviewScreen(workspace);
+        const nodes = editorElements(root.screen);
+        const note = nodes.find(
+          (node) => node.type === ManagedNoteEditor,
+        ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+        field.dataset.managedNoteListingId = note.props.listingId;
+        field.value = note.props.note;
+        mounted.editorRefs[0]!.current = panel;
+        return {
+          nodes,
+          note,
+          commit: () => {
+            for (const effect of mounted.editorEffects) effect();
+            root.commit();
+          },
+        };
+      };
+      const first = render();
+      first.commit();
+      const scope = first.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id ===
+          "managed-watchlist-search-scope",
+      ) as React.ReactElement<React.ComponentProps<"select">>;
+      scope.props.onChange!({
+        target: { value: "notes" },
+      } as React.ChangeEvent<HTMLSelectElement>);
+      const search = first.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id === "managed-watchlist-search",
+      ) as React.ReactElement<React.ComponentProps<"input">>;
+      search.props.onChange!({
+        target: { value: "Keep first" },
+      } as React.ChangeEvent<HTMLInputElement>);
+      render().commit();
+      workspace.openWatchlistAnnual(draft.memberships[1]!);
+      companyReview(noteReviewScreen(workspace).screen)();
+      const returned = render();
+      returned.commit();
+      if (mode === "selection-retires") {
+        const original = workspace.selectWatchlistFilingsMember.bind(workspace);
+        vi.spyOn(workspace, "selectWatchlistFilingsMember").mockImplementation(
+          (member) => {
+            original(member);
+            if (member === draft.memberships[1]) workspace.coordinator.retire();
+          },
+        );
+      }
+      if (mode === "user-focus") page.activeElement = {};
+      const selected = render();
+      selected.commit();
+      expect(selected.note.props).toMatchObject({
+        listingId: "listing-two",
+        note: raw,
+        id: "managed-note-1",
+      });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id === "managed-watchlist-search",
+        )?.props,
+      ).toMatchObject({ value: "Keep first" });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id ===
+            "managed-watchlist-search-scope",
+        )?.props,
+      ).toMatchObject({ value: "notes" });
+      expect(
+        selected.nodes.some(
+          (node) =>
+            React.Children.toArray(node.props.children)
+              .filter((child) => typeof child === "string")
+              .join("") === "Selected TWO is outside this search.",
+        ),
+      ).toBe(true);
+      expect(reader.open).toBe(mode === "current");
+      expect(summary.focus).toHaveBeenCalledTimes(mode === "current" ? 1 : 0);
+      expect(summary.scrollIntoView).toHaveBeenCalledTimes(
+        mode === "current" ? 1 : 0,
+      );
+      if (mode === "current") {
+        expect(page.activeElement).toBe(summary);
+        expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      }
+      for (const read of [
+        api.annualReport,
+        api.recentFilings,
+        api.eodHistory,
+        api.monetaryAnnouncements,
+        api.economicCalendar,
+        api.save,
+      ])
+        expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("waits for the company URL return, consumes its focus once, and preserves later Back focus", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    let route = true;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>((view) => {
+        workspace.setView(view);
+        return true;
+      }),
+    };
+    const first = noteReviewScreen(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    const target = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    companyReview(first.screen)();
+    const pending = noteReviewScreen(workspace, navigation);
+    const reviewNote = pending.bindReview();
+    pending.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+    route = false;
+    const beforeSignal = noteReviewScreen(workspace, navigation);
+    beforeSignal.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+    navigation.returnFocus = 1;
+    const returned = noteReviewScreen(workspace, navigation);
+    returned.commit();
+    returned.returnFocus();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(target);
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
+    const repeated = noteReviewScreen(workspace, navigation);
+    repeated.commit();
+    repeated.returnFocus();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(focus).not.toHaveBeenCalled();
+    navigation.returnFocus = 2;
+    const ordinary = noteReviewScreen(workspace, navigation);
+    ordinary.commit();
+    ordinary.returnFocus();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(false);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["invalid", "uncertain"] as const)(
+    "reviews a current company note when it is %s",
+    async (mode) => {
+      const { workspace, api } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+      workspace.note(
+        "listing-one",
+        mode === "invalid"
+          ? `  e\u0301 東京 🧭\n${"raw ".repeat(510)}  `
+          : "Keep the uncertain draft",
+      );
+      if (mode === "uncertain") {
+        vi.mocked(api.save).mockRejectedValueOnce(
+          new TrialApiError("commit_unknown"),
+        );
+        await workspace.coordinator.save();
+        expect(workspace.canEdit()).toBe(false);
+      }
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      companyReview(noteReviewScreen(workspace).screen)();
+      const returned = noteReviewScreen(workspace);
+      const reviewNote = returned.bindReview();
+      returned.commit();
+      expect(reviewNote).toHaveBeenCalledOnce();
+      expect(reviewNote.mock.calls[0]![0].member).toBe(draft.memberships[0]);
+      expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.save).toHaveBeenCalledTimes(mode === "uncertain" ? 1 : 0);
+      expect(api.annualReport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not restore navigation focus when its pending company Review becomes stale before the return signal", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    let route = true;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: (view) => {
+        workspace.setView(view);
+        return true;
+      },
+    };
+    const first = noteReviewScreen(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    companyReview(first.screen)();
+    workspace.note("listing-one", "User edits before the return commits");
+    const movedFocus = {};
+    vi.stubGlobal("document", { activeElement: movedFocus, body: {} });
+    const cancelled = noteReviewScreen(workspace, navigation);
+    const reviewNote = cancelled.bindReview();
+    cancelled.commit();
+    route = false;
+    navigation.returnFocus = 1;
+    const returned = noteReviewScreen(workspace, navigation);
+    returned.commit();
+    returned.returnFocus();
+    expect(reviewNote).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(movedFocus);
+    navigation.returnFocus = 2;
+    const laterBack = noteReviewScreen(workspace, navigation);
+    laterBack.commit();
+    laterBack.returnFocus();
+    expect(focus).toHaveBeenCalledOnce();
+  });
+
+  it.each(["draft", "retired", "view", "route", "catalog"] as const)(
+    "cancels a queued Review after %s changes",
+    async (change) => {
+      const { workspace, api } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("markets");
+      const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      const navigation: ManagedCompanyNavigation = {
+        invalid: false,
+        returnFocus: 0,
+        hasCompanyRoute: () => false,
+        open: (action) => action(),
+        section: vi.fn(),
+        back: vi.fn(),
+        view: (view) => {
+          workspace.setView(view);
+          return true;
+        },
+      };
+      fedNoteContext(workspace, navigation).onReview(member);
+      if (change === "draft")
+        workspace.note(
+          member.listingId,
+          "Replacement must not receive old focus",
+        );
+      if (change === "retired") workspace.coordinator.retire();
+      if (change === "view") workspace.setView("discover");
+      if (change === "route") navigation.invalid = true;
+      if (change === "catalog") {
+        vi.mocked(api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: `sha256:${"b".repeat(64)}` },
+        });
+        await workspace.refreshCatalog();
+      }
+      const returned = noteReviewScreen(workspace, navigation);
+      const reviewNote = vi.fn<ManagedWatchlistEditorHandle["reviewNote"]>(
+        () => true,
+      );
+      mounted.refs[5]!.current = { reviewNote, focusFirstInvalidNote: vi.fn() };
+      returned.commit();
+      expect(reviewNote).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rechecks the draft after view navigation and never hands off a replaced member", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => false,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: (view) => {
+        workspace.setView(view);
+        workspace.note(member.listingId, "Changed during navigation");
+        return true;
+      },
+    };
+    fedNoteContext(workspace, navigation).onReview(member);
+    const returned = noteReviewScreen(workspace, navigation);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+  });
+
+  it("explains a company without a current note without handing another note to Review", async () => {
+    const { workspace, api } = fixture();
+    const listing = {
+      ...payload.memberships[0]!,
+      listingId: "listing-other",
+      securityId: "security-other",
+      cik: "0000000001",
+      matchKind: "current_symbol_exact" as const,
+      matchedValue: "DEMO",
+    };
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [listing],
+      totalMatches: 1,
+      limitApplied: 25,
+      normalizedQuery: "DEMO",
+    });
+    await workspace.coordinator.load();
+    await workspace.search();
+    workspace.openDiscoveryAnnual(listing);
+    const first = noteReviewScreen(workspace);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    companyReview(first.screen)();
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(
+      elements(returned.screen).some(
+        (node) =>
+          node.props.children ===
+          "No current note is available for this company.",
+      ),
+    ).toBe(true);
+    expect(reviewNote).not.toHaveBeenCalled();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
     expect(api.save).not.toHaveBeenCalled();
   });
 
@@ -2138,7 +2579,14 @@ describe("managed workspace screen", () => {
     review.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
     expect(workspace.getSnapshot().research).toBeNull();
     expect(workspace.getSnapshot().view).toBe("watchlist");
-    expect(focus).toHaveBeenCalledOnce();
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(
+      workspace.coordinator.getSnapshot().draft!.memberships[0],
+    );
+    expect(focus).not.toHaveBeenCalled();
     expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
     expect(api.save).not.toHaveBeenCalled();
     expect(api.annualReport).not.toHaveBeenCalled();
