@@ -6,10 +6,8 @@ import {
   type PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
 import type { MouseEventHandler, ReactNode, Ref } from "react";
-import {
-  formatBeaReleaseDate,
-  groupBeaReleaseDates,
-} from "./bea-release-dates";
+import { formatBeaReleaseDate } from "./bea-release-dates";
+import { projectBeaReleaseView, type BeaReleaseView } from "./bea-release-view";
 import "./bea-release-agenda.css";
 
 export interface BeaReleaseAgendaProps {
@@ -25,10 +23,11 @@ export interface BeaReleaseAgendaProps {
   readonly showingPrevious?: boolean;
   readonly message?: string;
   readonly noteAction?: ReactNode;
-  readonly dateView?: {
-    readonly selectedDate: string;
+  readonly filterView?: {
+    readonly view: BeaReleaseView;
     readonly resetNotice: boolean;
     readonly onDateChange: (date: string) => void;
+    readonly onQueryChange: (query: string) => void;
   };
 }
 const time = new Intl.DateTimeFormat("en-US", {
@@ -52,22 +51,12 @@ export function BeaReleaseAgenda({
   headingRef,
   showingPrevious = false,
   message = "",
-  dateView,
+  filterView,
   noteAction,
 }: BeaReleaseAgendaProps) {
-  const groups = groupBeaReleaseDates(agenda);
-  const selectedDate = groups.some(
-    (group) => group.key === dateView?.selectedDate,
-  )
-    ? dateView!.selectedDate
-    : "";
-  const visible = selectedDate
-    ? groups.filter((group) => group.key === selectedDate)
-    : groups;
-  const visibleCount = visible.reduce(
-    (count, group) => count + group.events.length,
-    0,
-  );
+  const filters = filterView?.view.response === agenda ? filterView : undefined;
+  const { groups, selectedDate, visibleGroups, visibleCount, query } =
+    filters?.view ?? projectBeaReleaseView(agenda, "", "");
   return (
     <section
       className={`bea-release-agenda ${className}`.trim()}
@@ -155,7 +144,7 @@ export function BeaReleaseAgenda({
               {timestamp(agenda.window.fromInclusive)} until{" "}
               {timestamp(agenda.window.toExclusive)} (end excluded).
             </p>
-            {dateView && (
+            {filters && (
               <div className="managed-bea-release-date">
                 <label htmlFor="managed-bea-release-date">Release date</label>
                 <select
@@ -163,7 +152,7 @@ export function BeaReleaseAgenda({
                   value={selectedDate}
                   aria-describedby="managed-bea-release-date-help managed-bea-release-date-count"
                   onChange={(event) =>
-                    dateView.onDateChange(event.currentTarget.value)
+                    filters.onDateChange(event.currentTarget.value)
                   }
                 >
                   <option value="">All loaded dates</option>
@@ -176,14 +165,38 @@ export function BeaReleaseAgenda({
                 <p id="managed-bea-release-date-help">
                   Filter this loaded window by Eastern release date.
                 </p>
+                <label htmlFor="managed-bea-release-search">
+                  Search loaded releases
+                </label>
+                <div className="managed-bea-release-search-controls">
+                  <input
+                    id="managed-bea-release-search"
+                    type="search"
+                    value={query}
+                    aria-describedby="managed-bea-release-search-help managed-bea-release-date-count"
+                    onChange={(event) =>
+                      filters.onQueryChange(event.currentTarget.value)
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="trial-secondary"
+                    onClick={() => filters.onQueryChange("")}
+                  >
+                    Clear search
+                  </button>
+                </div>
+                <p id="managed-bea-release-search-help">
+                  Search series names in this loaded window.
+                </p>
                 <p
                   id="managed-bea-release-date-count"
                   role="status"
                   aria-live="polite"
                 >
                   {visibleCount} of {agenda.events.length} loaded BEA releases.
-                  {dateView.resetNotice &&
-                    " Agenda response changed; showing All loaded dates."}
+                  {filters.resetNotice &&
+                    " Agenda response changed; showing all loaded releases."}
                 </p>
               </div>
             )}
@@ -192,9 +205,14 @@ export function BeaReleaseAgenda({
               <p className="bea-agenda-empty">
                 No BEA releases are listed in this loaded 30-day window.
               </p>
+            ) : visibleCount === 0 ? (
+              <p className="bea-agenda-empty">
+                No loaded releases match these filters. Change the date or clear
+                the search.
+              </p>
             ) : (
               <div className="bea-agenda-days">
-                {visible.map(({ key, label, events }) => (
+                {visibleGroups.map(({ key, label, events }) => (
                   <section
                     className="bea-agenda-day"
                     key={key}

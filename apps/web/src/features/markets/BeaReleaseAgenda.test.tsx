@@ -11,6 +11,8 @@ import {
   type BeaReleaseAgendaProps,
 } from "./BeaReleaseAgenda";
 
+import { projectBeaReleaseView } from "./bea-release-view";
+
 function fixture(): PersonalEconomicCalendarDto {
   return {
     schemaVersion: "1.0.0",
@@ -76,9 +78,16 @@ function text(node: ReactNode): string {
 describe("BEA release agenda presentation", () => {
   it("places an optional note action after loaded date controls and before releases, without adding it to the local default or unloaded agenda", () => {
     const noteAction = <div data-note-slot="bea">Note controls</div>;
+    const agenda = fixture();
     const input = props({
+      agenda,
       noteAction,
-      dateView: { selectedDate: "", resetNotice: false, onDateChange: vi.fn() },
+      filterView: {
+        view: projectBeaReleaseView(agenda, "", ""),
+        resetNotice: false,
+        onDateChange: vi.fn(),
+        onQueryChange: vi.fn(),
+      },
     });
     const html = renderToStaticMarkup(<BeaReleaseAgenda {...input} />);
     expect(html.indexOf('id="managed-bea-release-date-count"')).toBeLessThan(
@@ -242,14 +251,142 @@ describe("managed BEA release-date presentation", () => {
   function view(
     selectedDate = "",
     overrides: Partial<BeaReleaseAgendaProps> = {},
+    query = "",
   ) {
-    return BeaReleaseAgenda(
-      props({
-        dateView: { selectedDate, resetNotice: false, onDateChange: vi.fn() },
-        ...overrides,
-      }),
-    );
+    const input = props(overrides);
+    return BeaReleaseAgenda({
+      ...input,
+      filterView: overrides.filterView ?? {
+        view: projectBeaReleaseView(input.agenda, selectedDate, query),
+        resetNotice: false,
+        onDateChange: vi.fn(),
+        onQueryChange: vi.fn(),
+      },
+    });
   }
+  it("intersects the series query with the date while keeping every loaded date option and raw series", () => {
+    const agenda = fixture();
+    const current = view("2026-10-30", { agenda }, "  SyNtHeTiC   SeCoNd  ");
+    expect(
+      nodes(current)
+        .filter((node) => node.type === "li")
+        .map(text),
+    ).toEqual(["8:30 AM EDT Synthetic second series"]);
+    expect(text(current)).toContain("1 of 4 loaded BEA releases.");
+    expect(
+      nodes(current)
+        .filter((node) => node.type === "option")
+        .map((node) => node.props.value),
+    ).toEqual(["", "2026-10-29", "2026-10-30", "2026-11-02"]);
+    expect(
+      nodes(current).find((node) => node.type === "input")?.props.value,
+    ).toBe("  SyNtHeTiC   SeCoNd  ");
+    expect(text(current)).toContain("Tue, Oct 20, 2026, 2:00 PM EDT");
+  });
+
+  it("keeps search and Clear mounted while paused and delegates exact raw input without moving focus", () => {
+    const agenda = fixture();
+    const onQueryChange = vi.fn();
+    const onDateChange = vi.fn();
+    const focused = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    vi.stubGlobal("document", { activeElement: focused });
+    try {
+      const filterView = {
+        view: projectBeaReleaseView(agenda, "2026-10-30", " first "),
+        resetNotice: false,
+        onDateChange,
+        onQueryChange,
+      };
+      const input = props({ agenda, enabled: false, busy: true, filterView });
+      const current = BeaReleaseAgenda(input);
+      const search = nodes(current).find((node) => node.type === "input")!;
+      expect(search.props).toMatchObject({
+        id: "managed-bea-release-search",
+        type: "search",
+        value: " first ",
+        "aria-describedby":
+          "managed-bea-release-search-help managed-bea-release-date-count",
+      });
+      expect(search.props.disabled).not.toBe(true);
+      expect(text(current)).toContain(
+        "Search series names in this loaded window.",
+      );
+      (search.props.onChange as React.ChangeEventHandler<HTMLInputElement>)({
+        currentTarget: { value: "  Cafe\u0301 東京  " },
+      } as React.ChangeEvent<HTMLInputElement>);
+      expect(onQueryChange).toHaveBeenLastCalledWith("  Cafe\u0301 東京  ");
+      const clear = nodes(current).find(
+        (node) => node.type === "button" && text(node) === "Clear search",
+      )!;
+      (clear.props.onClick as () => void)();
+      expect(onQueryChange).toHaveBeenLastCalledWith("");
+      expect(onDateChange).not.toHaveBeenCalled();
+      expect(input.onLoad).not.toHaveBeenCalled();
+      const emptyQuery = BeaReleaseAgenda({
+        ...input,
+        filterView: {
+          ...filterView,
+          view: projectBeaReleaseView(agenda, "2026-10-30", ""),
+        },
+      });
+      expect(
+        nodes(emptyQuery).find(
+          (node) => node.type === "button" && text(node) === "Clear search",
+        ),
+      ).toBeDefined();
+      expect(
+        nodes(emptyQuery).find((node) => node.type === "select")?.props.value,
+      ).toBe("2026-10-30");
+      expect(document.activeElement).toBe(focused);
+      expect(focused.focus).not.toHaveBeenCalled();
+      expect(focused.scrollIntoView).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("distinguishes no matching loaded releases from a verified empty packet", () => {
+    const current = view("2026-10-30", {}, "November");
+    expect(text(current)).toContain("0 of 4 loaded BEA releases.");
+    expect(text(current)).toContain(
+      "No loaded releases match these filters. Change the date or clear the search.",
+    );
+    expect(text(current)).not.toContain("No BEA releases are listed");
+    expect(nodes(current).filter((node) => node.type === "li")).toHaveLength(0);
+    const empty = view(
+      "",
+      { agenda: { ...fixture(), events: [] } },
+      "November",
+    );
+    expect(text(empty)).toContain(
+      "No BEA releases are listed in this loaded 30-day window.",
+    );
+    expect(text(empty)).not.toContain("match these filters");
+  });
+
+  it("rejects an unbound view and its callbacks without changing the current local presentation", () => {
+    const agenda = fixture();
+    const other = { ...fixture(), events: [] };
+    const onQueryChange = vi.fn();
+    const onDateChange = vi.fn();
+    const input = props({
+      agenda,
+      filterView: {
+        view: projectBeaReleaseView(other, "", "missing"),
+        resetNotice: true,
+        onQueryChange,
+        onDateChange,
+      },
+    });
+    const html = renderToStaticMarkup(<BeaReleaseAgenda {...input} />);
+    expect(html).toBe(
+      renderToStaticMarkup(<BeaReleaseAgenda {...props({ agenda })} />),
+    );
+    expect(html).not.toContain("managed-bea-release-search");
+    expect(onQueryChange).not.toHaveBeenCalled();
+    expect(onDateChange).not.toHaveBeenCalled();
+  });
+
   it("offers Eastern ISO date keys and exact counts without altering the local profile", () => {
     expect(parseManagedEconomicCalendar(fixture())).not.toBeNull();
     const managed = view();
@@ -348,16 +485,22 @@ describe("managed BEA release-date presentation", () => {
     ).toEqual(["", "2026-03-07", "2026-03-08"]);
   });
   it("keeps verified empty and unloaded states distinct and announces a replacement reset", () => {
+    const agenda = { ...fixture(), events: [] };
     const empty = view("", {
-      agenda: { ...fixture(), events: [] },
-      dateView: { selectedDate: "", resetNotice: true, onDateChange: vi.fn() },
+      agenda,
+      filterView: {
+        view: projectBeaReleaseView(agenda, "", ""),
+        resetNotice: true,
+        onDateChange: vi.fn(),
+        onQueryChange: vi.fn(),
+      },
     });
     expect(text(empty)).toContain("0 of 0 loaded BEA releases.");
     expect(text(empty)).toContain(
       "No BEA releases are listed in this loaded 30-day window.",
     );
     expect(text(empty)).toContain(
-      "Agenda response changed; showing All loaded dates.",
+      "Agenda response changed; showing all loaded releases.",
     );
     const status = nodes(empty).find(
       (node) => node.props.id === "managed-bea-release-date-count",

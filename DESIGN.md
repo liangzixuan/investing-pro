@@ -115,13 +115,15 @@ including invalid text, and allow company review while editing is paused. Do not
 add a second reader or editor. Cancel pending focus when the destination, view or
 session becomes stale, or when the user moves focus or selects another listing.
 
-Place the BEA **Release date** native selector between the original loaded-window
-description and the dated releases. Keep a visible label, an All loaded dates
-option, readable Eastern dates with counts and a visible count against the full
+Place BEA **Search loaded releases** and **Release date** between the original
+loaded-window description and the dated releases. Keep visible labels, a persistent
+**Clear search** action, an All loaded dates option and readable Eastern dates
+with full-packet counts. Show the shared intersection count against the full
 loaded packet. Preserve the original source, dates and previous-result warning.
-Use the existing managed field tokens, 44px height and focus outline; allow help
-and status text to wrap at narrow widths. Announce a successful replacement's
-reset without moving focus or scrolling. The local profile keeps its full agenda.
+Use the existing managed field tokens, 44px height and focus outline. Stack the
+controls and wrap help and status text at narrow widths. Keep search and Clear
+mounted when the count changes, without moving focus or scrolling. Announce a
+successful replacement's reset. The local profile keeps its full agenda.
 
 Place the selected watchlist's Recent filings check after dated price. Keep the
 newest observed filing, date and loaded-row count compact, with source times and

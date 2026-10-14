@@ -904,8 +904,11 @@ cases. It passed exact append, duplicate refusal and full-note Review, then fail
 when restoration typed the old note into the existing paragraph. The test now
 uses the existing guarded native replacement helper, which verifies the full
 prior value and selection before replacing it. Both original failures remain
-recorded. Complete native execution and package isolation still require the
-updated revision's hosted checks. See
+recorded. The updated revision passed all 27 native cases and the actual APK
+isolation gate. Four applicable Actions passed; Windows failed when an unchanged
+PostgreSQL evidence-verifier test exceeded its 5-second deadline. The cause is
+not established, and the original failed run remains recorded without a rerun.
+CodeScene retains its reviewed advisory failure. See
 [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ### Exact Review after a watchlist comparison
@@ -930,9 +933,41 @@ The corrected Chrome build passes at 1440, 390 and 320 CSS pixels. Both producer
 open the exact full note outside search, including while Save pauses editing.
 Whole-draft Save/reload, retained responses, cancellation, changed choices and
 retirement preserve their tested boundaries. The native fixture bundle remains
-below the unchanged 4 MiB limit. Original hosted Android execution for this
-candidate remains pending. See
+below the unchanged 4 MiB limit. All five applicable original Actions passed,
+including both desktop gates and 27 Android cases with the actual APK isolation
+gate. Native assertions verify exact reader text, focus and preserved state;
+the saved end images do not show the loaded reader. CodeScene retains six reviewed
+maintenance warnings and two notices. These results do not replace PR129's
+separate Windows failure. See
 [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+
+### Search loaded BEA releases candidate
+
+The current increment combines a full-series phrase search with the loaded
+agenda's Eastern date filter. The list and note picker share the same result,
+with original event identities, full date counts and all admitted choices intact.
+Filters retain the accepted packet through pending, failed or cancelled reads;
+a successful replacement clears both. Excluding a chosen event clears its choice
+and success without selecting a fallback. Reading filters remain usable while
+note editing is paused and make no request or saved change.
+
+Affected projection, component and composed tests, web types, scoped lint/format,
+source boundaries and independent source review pass. Exact preview and native
+fixture builds passed review; the largest native scenario is 2,383,375 bytes,
+below the unchanged 4 MiB limit.
+
+Chrome checks at 1440, 390 and 320 CSS pixels accept the shared search/date result,
+all 512 original choices, keyboard selection, full Unicode series and 44px controls.
+Equal and empty replacements reset both filters; retained failed responses keep
+them. Exact-note Review opens the chosen full note outside watchlist search.
+One explicit Save and reload preserve the complete payload, including the other
+note and listing order. Reading filters remain usable during Save, and retirement
+rejects late completion. Native popup geometry remains unverified.
+
+The existing native BEA journey now checks no match, Clear and mixed-case series
+search before its unchanged exact append and Review assertions. Execution of
+that updated native journey and hosted checks remain pending. See the
+[BEA agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
 
 ## Product scope
 
@@ -958,8 +993,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Resolve the BEA candidate's original Android failures and complete hosted
-acceptance for comparison note Review. Source integration remains subject
+Complete hosted acceptance for BEA series search and address the observed
+evidence-verifier test timeout without weakening its assertions. Source integration remains subject
 to its existing permission boundary.
 Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101

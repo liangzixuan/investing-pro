@@ -71,16 +71,24 @@ Load, Refresh, Cancel and date selection do not save, reconcile, reorder or edit
 the watchlist. The separate note action below changes only an explicitly chosen
 note draft.
 
-**Release date** focuses the loaded agenda on one Eastern date. **All loaded
-dates** shows the complete packet; each dated option includes its release count.
-The visible count is stated against all loaded BEA releases. Series sharing the
-same instant stay separate and retain their original order. The original loaded
-window, retrieval time, source link and previous-result notice remain visible.
+**Search loaded releases** matches a phrase in the full series name. Matching
+ignores case and extra spaces; it preserves the displayed source text. Combine
+it with **Release date** to show matching releases on one Eastern date. **Clear
+search** clears the phrase and retains the date. Each date option keeps its count
+from the full packet, and **All loaded dates** removes the date restriction.
 
-The choice makes no request and changes no saved data. It remains during a
-pending Refresh, failure or Cancel while the same accepted response remains.
-A successful replacement, including equal content, resets to All loaded dates
-and announces the change. An empty response retains the verified-empty message.
+The visible count is stated against all loaded BEA releases. The agenda and
+Release picker show the same matches, with every admitted event available.
+Series sharing the same instant stay separate and retain their original order.
+The original loaded window, retrieval time, source link and previous-result
+notice remain visible. No matches has a different explanation from a verified
+empty schedule.
+
+The filters make no request and change no saved data. They remain usable while
+note editing is paused. Both remain during a pending Refresh, failure or Cancel
+while the same accepted response remains. A successful replacement, including
+equal content, clears the search, resets to All loaded dates and announces the
+change. An empty response retains the verified-empty message.
 Company visits preserve the mounted choice; leaving Markets for another top-level
 view resets it on return. Session retirement clears the agenda and its choice.
 Filtering does not programmatically move focus or scroll the page. Delivery and rendered
@@ -102,8 +110,8 @@ No new live authenticated managed read or physical use is established.
 
 After loading the BEA agenda, choose a **Release** and an **Add to note**
 destination. Both choices start empty. The release picker keeps all admitted
-events, grouped by Eastern date. **Release date** narrows both the visible agenda
-and the picker; simultaneous series remain separate. Full selected release text
+events, grouped by Eastern date. Search and **Release date** narrow both the visible
+agenda and the picker; simultaneous series remain separate. Full selected release text
 and the destination's listing, share class and exchange wrap below the controls.
 
 **Add release to note draft** appends the complete series name, scheduled Eastern
@@ -121,8 +129,10 @@ whole draft, including other changes.
 
 Pending reads pause choices, Add and Review. Failure or Cancel keeps the loaded
 event choice with the current retained-result qualification. An accepted response,
-including equal content, clears the release choice. A date change clears it only
+including equal content, clears the release choice. A filter change clears it only
 when the selected event is excluded, explains the change and chooses no fallback.
+Clearing a filter does not restore a discarded choice. A still-visible event
+remains selected.
 The destination remains when it still exists; note edits and ordering use the
 current member. Leaving or hiding Markets clears both choices. Stale callbacks,
 catalog changes and session retirement cannot append to another draft.

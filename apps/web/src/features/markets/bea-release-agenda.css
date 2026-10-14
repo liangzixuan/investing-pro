@@ -129,3 +129,24 @@
   color: var(--managed-muted);
   overflow-wrap: anywhere;
 }
+
+.clerk-trial.managed-frame .managed-bea-release-search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.clerk-trial.managed-frame .managed-bea-release-search-controls input {
+  flex: 1 1 240px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.clerk-trial.managed-frame .managed-bea-release-search-controls button {
+  min-height: 44px;
+}
+@media (max-width: 480px) {
+  .clerk-trial.managed-frame .managed-bea-release-search-controls > * {
+    flex: 1 1 100%;
+  }
+}
