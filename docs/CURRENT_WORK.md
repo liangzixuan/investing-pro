@@ -801,7 +801,9 @@ literal capture calls. The first Android run passed 26 of 27 cases. The Fed
 journey completed Save, reload and retirement, then failed a final test boundary
 that still expected zero saves. Its one-call correction uses the existing helper
 with one expected save; all other assertions and deadlines remain unchanged.
-Updated hosted execution is pending. APK isolation was skipped in the failed
+The corrected Android run passes all 27 cases and APK isolation, with independent
+saved-artifact review accepted. Four of five original Actions checks pass,
+including Ubuntu; Windows remains pending. APK isolation was skipped in the failed
 run, and the reviewed CodeScene advisory remains recorded. No new source, API or
 saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
@@ -819,12 +821,19 @@ Focused component and composed Screen tests, web types and scoped lint pass.
 Independent review found a focus race when the destination changed before the
 company URL finished returning. A failing regression reproduced it; the repair
 reserves that return signal for Review before any later cancellation. The full
-Screen suite passes after the repair. Native assertions now require the exact
-reader, including a destination outside the retained search. Source boundaries
-pass. The first exact preview and native fixture builds pass static review.
-Chrome confirmed the exact destination and raw text but showed the open reader
-below the viewport. Review now scrolls its summary to the top so the text begins
-in view. Updated build and Chrome checks, and native execution, remain pending.
+Screen suite and source boundaries pass after the repair. The first preview
+confirmed the exact destination and raw text but left the reader below the
+viewport. That evidence is retained. Review now scrolls its summary to the top.
+The corrected preview and native fixture bundles pass independent static review.
+
+Root-run Chrome checks pass at 1440, 390 and 320 CSS pixels. They verify the exact
+destination outside a retained search, complete invalid raw text, a visible
+reader and focused 44px summary, ordinary Back, and reading while Save is pending.
+Explicit whole-draft Save and reload preserve version 2 and both notes. Fed Review
+selects its different destination; cancellation retains the feed, and late Save
+receipts or source failures cannot restore a retired session. Independent review
+accepts the saved browser evidence. The native suite retains 27 cases and 52 literal captures;
+its updated reader assertions still require original hosted execution.
 See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
 
 ## Product scope
@@ -851,8 +860,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete exact-note Review acceptance, the Fed candidate's hosted checks and the source
-integration steps when permission arrives. Preserve explicit source requests,
+Complete original hosted execution for exact-note Review, the Fed candidate's
+pending Windows check, and source integration when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
