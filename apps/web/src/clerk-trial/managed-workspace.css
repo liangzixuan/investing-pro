@@ -936,6 +936,43 @@
 .managed-frame .managed-results {
   margin-top: 24px;
 }
+
+.managed-frame .managed-thesis-review {
+  margin-block: 16px;
+  border-top: 1px solid var(--managed-line);
+  padding-top: 8px;
+}
+.managed-frame .managed-thesis-review summary {
+  min-height: 44px;
+  padding-block: 12px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+.managed-frame .managed-thesis-review-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  margin-block: 16px;
+}
+.managed-frame .managed-thesis-review-fields > div {
+  min-width: 0;
+}
+.managed-frame .managed-thesis-review-fields label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.clerk-trial.managed-frame .managed-thesis-review-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 7px;
+}
+.managed-frame .managed-thesis-review .trial-saved-note {
+  overflow-wrap: anywhere;
+}
 .managed-frame .managed-results > li {
   padding: 24px 0;
 }

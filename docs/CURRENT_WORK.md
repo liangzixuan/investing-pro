@@ -35,6 +35,24 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
+The owner requested a source review of easy-stock and adoption of useful features
+alongside the full InvestingPro goal. The [review](EASY_STOCK_REVIEW.md) defines
+the adoption order and independent implementation boundary. The current candidate
+adds a thesis-review composer in the managed watchlist and company note editors.
+It previews an authored assessment, evidence, confirmation/invalidation conditions
+and next check before an explicit draft append. The existing whole-draft Save,
+search, export and session lifetime remain the persistence path. A stale append
+cannot overwrite an intervening note edit. It preserves existing text and the
+2,000-character policy; invalid and immediate duplicate appends are refused.
+Focused tests, web types and source boundaries pass. Chrome and the new native
+journey remain to be verified. No upstream code, model entitlement or data source
+was added. Production remains at its accepted release.
+
+The preceding Release view candidate's original Android run failed window-focus
+and fixture-readiness checks. Its Ubuntu, Windows, parser and dependency jobs
+passed. The original Android failure is retained; no rerun or native acceptance
+is claimed. This remains a separate delivery limit from the new thesis review.
+
 The current candidate adds **Release view** to the loaded BEA agenda. Entries
 absent from its preceding accepted agenda require a comparison tied to the exact
 current response. The view intersects with series search and Eastern date;

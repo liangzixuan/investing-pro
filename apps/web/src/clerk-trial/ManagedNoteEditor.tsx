@@ -1,4 +1,5 @@
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
+import { ManagedThesisReview } from "./ManagedThesisReview";
 
 /** Shows save-policy feedback while preserving the raw shared draft. */
 export function ManagedNoteEditor({
@@ -16,7 +17,7 @@ export function ManagedNoteEditor({
   note: string;
   disabled: boolean;
   helpId: string;
-  onChange: (note: string) => void;
+  onChange: (note: string, expectedNote?: string) => void;
 }) {
   const invalid = normalizeWatchlistNote(note) === null;
   const errorId = `${id}-error`;
@@ -48,6 +49,14 @@ export function ManagedNoteEditor({
           {note || "No note in this draft."}
         </p>
       </details>
+      <ManagedThesisReview
+        key={listingId}
+        id={id}
+        symbol={symbol}
+        note={note}
+        disabled={disabled}
+        onChange={onChange}
+      />
     </>
   );
 }

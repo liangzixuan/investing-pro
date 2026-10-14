@@ -12,7 +12,7 @@ export function ManagedResearchNote({
   state: ResearchWatchlistState;
   symbol: string;
   onAdd: () => void;
-  onNote: (note: string) => void;
+  onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
 }) {
   return (

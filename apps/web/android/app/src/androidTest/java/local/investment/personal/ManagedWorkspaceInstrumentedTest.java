@@ -3935,6 +3935,53 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void thesisReviewPreviewAppendSaveAndReloadPreservesDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Original thesis");
+        click(".managed-thesis-review > summary");
+        awaitPage("review requires authored conditions and keeps the note unchanged",
+            "document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'");
+        typeIntoInput("managed-note-0-review-thesis", "Margins can recover");
+        typeIntoInput("managed-note-0-review-support", "Invented report 2026-10-01");
+        typeIntoInput("managed-note-0-review-counter", "Demand remains uncertain");
+        typeIntoInput("managed-note-0-review-confirm", "Two stronger reported periods");
+        typeIntoInput("managed-note-0-review-invalidate", "Cash keeps falling");
+        typeIntoInput("managed-note-0-review-next", "Read the next filed report");
+        String excerpt = "Thesis review (my assessment). My thesis: Margins can recover" +
+            " | Supporting evidence: Invented report 2026-10-01" +
+            " | Opposing evidence: Demand remains uncertain" +
+            " | Confirmation condition: Two stronger reported periods" +
+            " | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
+        String expected = "Original thesis " + excerpt;
+        awaitPage("complete preview precedes the explicit draft append",
+            "document.querySelector('.managed-thesis-review .trial-saved-note')?.textContent === " + JSONObject.quote(excerpt) +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'" +
+            " && " + DIAGNOSTICS + ".save === 0" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === false" +
+            " && [...document.querySelectorAll('.managed-thesis-review input')].every(e => e.getBoundingClientRect().height >= 44)");
+        click(".managed-thesis-review button");
+        awaitPage("one append preserves both identities and blocks an immediate duplicate",
+            "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && " + DIAGNOSTICS + ".save === 0");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("explicit Save keeps the complete authored review",
+            DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected));
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("reload retains the whole note and the other share class",
+            DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".save === 1" +
+            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
+        assertFixtureBoundary(0, 1);
+        assertEquals("Thesis review preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+    }
+
+    @Test
     public void watchlistReplayReviewAndFailedReadPreserveDraft() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         selectWorkspaceView("My Watchlist");

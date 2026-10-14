@@ -62,7 +62,7 @@ export interface ManagedWatchlistEditorProps {
   onLoadPrice: (handle: ManagedWatchlistPriceHandle) => void;
   canOpenAnnual: (member: WatchlistMembership) => boolean;
   canOpenEod: (member: WatchlistMembership) => boolean;
-  onNote: (listingId: string, note: string) => void;
+  onNote: (listingId: string, note: string, expectedNote?: string) => void;
   onMove: (listingId: string, direction: -1 | 1) => void;
   onRemove: (listingId: string) => void;
   onOpenAnnual: (
@@ -525,7 +525,9 @@ function WatchlistDetail({
           note={selected.note}
           disabled={!props.editable}
           helpId="managed-watchlist-note-help"
-          onChange={(note) => props.onNote(selected.listingId, note)}
+          onChange={(note, expectedNote) =>
+            props.onNote(selected.listingId, note, expectedNote)
+          }
         />
       </div>
       <WatchlistOrderActions

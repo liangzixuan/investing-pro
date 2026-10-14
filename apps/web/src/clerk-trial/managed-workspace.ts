@@ -1196,9 +1196,13 @@ export class ManagedWorkspace {
       { ...listingIdentity(selection.listing), note: "" },
     ]);
   }
-  noteResearch(selection: ManagedResearchSelection, note: string) {
+  noteResearch(
+    selection: ManagedResearchSelection,
+    note: string,
+    expectedNote?: string,
+  ) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
-    this.note(selection.listing.listingId, note);
+    this.note(selection.listing.listingId, note, expectedNote);
   }
   private annualNoteProposal(
     selection: ManagedResearchSelection,
@@ -1906,8 +1910,14 @@ export class ManagedWorkspace {
       return;
     this.edit([...draft.memberships, listingMembership(result)]);
   }
-  note(listingId: string, note: string) {
+  note(listingId: string, note: string, expectedNote?: string) {
     const draft = this.coordinator.getSnapshot().draft;
+    if (
+      expectedNote !== undefined &&
+      draft?.memberships.find((member) => member.listingId === listingId)
+        ?.note !== expectedNote
+    )
+      return;
     if (draft)
       this.edit(
         draft.memberships.map((member) =>

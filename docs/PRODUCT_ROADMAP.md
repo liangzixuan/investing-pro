@@ -6,6 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
+The owner also requested adopting useful ideas from easy-stock while retaining
+the full InvestingPro feature goal. The [source review and adoption order](EASY_STOCK_REVIEW.md)
+add thesis reviews, evidence-linked reports, research purpose, resume/freshness,
+portfolio inspection and daily follow-up to M2–M5. The first candidate lets the
+owner preview a thesis, counterevidence, conditions and next check before adding
+an authored review to the existing note draft and saving it explicitly.
+
 The current M3 increment narrows the loaded BEA agenda to scheduled entries absent
 from its preceding accepted agenda. Release view intersects with series search
 and Eastern date; rows and note choices share one result. Complete comparison
