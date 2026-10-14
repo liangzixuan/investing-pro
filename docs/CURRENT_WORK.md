@@ -85,8 +85,17 @@ source, note, request-count and disclosure assertions remain. Real component DOM
 composition reproduces five page-wide spans and the correct three Annual spans;
 Java syntax passes. Application, fixture, workflow and dependency bytes are
 unchanged by this test correction, so their passing local and browser evidence
-remains applicable. Producing-head native execution is still required. The
-original failure and cancelled Windows job remain recorded. CodeScene reports
+remains applicable. Its original producing run now passes all 30 native cases,
+with 27 exact source markers, 84 retained/final images and the original APK gates.
+Ubuntu, dependency and parser checks pass. Windows failed the default five-second
+deadline in an existing test that groups five independent custody rollback phases.
+Each phase now has its own test case, retaining its original body, phase list and
+default deadline. All 232 custody cases pass locally, with the same two skips;
+types, lint and the exact fixture manifest check pass. Only the changed test's
+source hash is updated in that manifest; payload bytes, case inventory, runtime,
+workflow and timeout settings remain unchanged. Original hosted verification of
+this test correction is pending. The earlier native failure and cancelled Windows
+job remain recorded. CodeScene reports
 four reviewed advisories in test setup, test length, the identity guard and the
 Price renderer; no threshold or required check was changed.
 
