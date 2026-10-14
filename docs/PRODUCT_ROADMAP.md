@@ -14,8 +14,9 @@ owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
 The current M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
-Price and Annual keep separate source dates, revenue bases, availability and
-historical qualifications. It uses admitted evidence and explicit section
+Price, Annual and Filings keep separate source dates, revenue bases, availability
+and coverage qualifications. The Filings card reuses the existing admitted list
+and retains its original window, truncation and incomplete-coverage limits. It uses admitted evidence and explicit section
 navigation, with no automatic request, saved change or model verdict.
 
 The next M4 thesis candidate adds optional **Research purpose** and **Time horizon**

@@ -8,6 +8,8 @@ import {
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { ManagedAnnualReport } from "./managed-annual-report";
+import { ManagedCompanyFilings } from "./managed-company-filings";
+import { filingsResponse } from "./sec-filings-fixture";
 import { eodSelection, eodResponse } from "./eod-history-fixture";
 import {
   response,
@@ -25,22 +27,29 @@ import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/con
 import { TrialApiError } from "./api";
 import { CompanySnapshotPrice } from "./CompanySnapshotPrice";
 import { CompanySnapshotAnnual } from "./CompanySnapshotAnnual";
+import { CompanySnapshotFilings } from "./CompanySnapshotFilings";
 
 async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
   const readPrice = vi.fn().mockResolvedValue(eodResponse());
   const readAnnual = vi.fn().mockResolvedValue(packet ?? (await response()));
+  const readFilings = vi
+    .fn()
+    .mockResolvedValue(filingsResponse(2, "available", eodSelection));
   const price = new ManagedEodHistory(readPrice, vi.fn(), undefined, [
     eodSelection.listing,
   ]);
   const annual = new ManagedAnnualReport(readAnnual, vi.fn());
+  const filings = new ManagedCompanyFilings(readFilings, vi.fn());
   price.open(eodSelection);
   annual.open(eodSelection);
+  filings.open(eodSelection);
   const onSection = vi.fn();
   const evidence = () =>
     companySnapshotEvidence(
       eodSelection,
       price.getSnapshot(),
       annual.getSnapshot(),
+      filings.getSnapshot(),
     );
   const html = () =>
     renderToStaticMarkup(
@@ -48,20 +57,33 @@ async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
         selection={eodSelection}
         price={price}
         annual={annual}
+        filings={filings}
         onSection={onSection}
       />,
     );
-  return { price, annual, readPrice, readAnnual, html, evidence, onSection };
+  return {
+    price,
+    annual,
+    filings,
+    readPrice,
+    readAnnual,
+    readFilings,
+    html,
+    evidence,
+    onSection,
+  };
 }
 
 describe("loaded company snapshot", () => {
-  it("starts closed with two independent empty states and makes no read or navigation", async () => {
+  it("starts closed with three independent empty states and makes no read or navigation", async () => {
     const f = await fixture();
     expect(f.html()).toContain("No close history loaded");
     expect(f.html()).toContain("No annual evidence loaded");
+    expect(f.html()).toContain("No filing metadata loaded");
     expect(f.html()).not.toContain("<details open");
     expect(f.readPrice).not.toHaveBeenCalled();
     expect(f.readAnnual).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
     expect(f.onSection).not.toHaveBeenCalled();
   });
 
@@ -84,6 +106,128 @@ describe("loaded company snapshot", () => {
     expect(f.readPrice).toHaveBeenCalledTimes(1);
     expect(f.readAnnual).not.toHaveBeenCalled();
   });
+
+  it("shows loaded filing coordinates and their own original window and source clocks", async () => {
+    const f = await fixture();
+    await f.filings.load();
+    const html = f.html();
+    for (const text of [
+      "Newest observed filing",
+      "Form 10-Q",
+      "2026-10-11",
+      "0000000001-26-000001",
+      "https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm",
+      "2 loaded filings",
+      "2026-07-15 to 2026-10-12",
+      "2026-10-12T00:00:00.000Z",
+      "2026-10-12T00:00:00.500Z",
+      "2026-10-12T00:00:01.000Z",
+      "Older continuation files and filing bodies were not loaded",
+      "does not establish complete coverage",
+      "No close history loaded",
+      "No annual evidence loaded",
+    ])
+      expect(html).toContain(text);
+    expect(f.readFilings).toHaveBeenCalledTimes(1);
+    expect(f.readPrice).not.toHaveBeenCalled();
+    expect(f.readAnnual).not.toHaveBeenCalled();
+  });
+
+  it("keeps an empty checked list distinct from an unloaded source", async () => {
+    const f = await fixture();
+    f.readFilings.mockResolvedValueOnce(
+      filingsResponse(0, "available", eodSelection),
+    );
+    await f.filings.load();
+    expect(f.html()).toContain(
+      "No matching filings were observed in the checked source object.",
+    );
+    expect(f.html()).toContain("0 loaded filings");
+    expect(f.html()).not.toContain("No filing metadata loaded");
+    expect(f.html()).not.toContain("Newest observed filing");
+  });
+
+  it.each([
+    "not_covered",
+    "rate_limited",
+    "upstream_unavailable",
+    "invalid_response",
+  ] as const)(
+    "keeps the checked %s source unavailable instead of reporting an empty successful list",
+    async (status) => {
+      const f = await fixture();
+      f.readFilings.mockResolvedValueOnce(
+        filingsResponse(0, status, eodSelection),
+      );
+      await f.filings.load();
+      const html = f.html();
+      expect(html).toContain("its contents were not successfully validated");
+      expect(html).toContain("2026-10-12T00:00:00.500Z");
+      expect(html).not.toContain("0 loaded filings");
+      expect(html).not.toContain("No matching filings were observed");
+      expect(html).not.toContain("Newest observed filing");
+      expect(html).not.toContain("No filing metadata loaded");
+    },
+  );
+
+  it("preserves the admitted truncation and older-history limits", async () => {
+    const f = await fixture();
+    const packet = filingsResponse(1000, "available", eodSelection);
+    f.readFilings.mockResolvedValueOnce({
+      ...packet,
+      issuer: { ...packet.issuer, matchingFilings: 1001, truncated: true },
+    });
+    await f.filings.load();
+    expect(f.html()).toContain("Showing 1000 of 1001 matching entries");
+    expect(f.html()).toContain("The source lists older continuation files.");
+    expect(f.html()).toContain("does not establish complete coverage");
+  });
+
+  it("retains original filing metadata during refresh and failure, then clears it on invalid replacement", async () => {
+    const f = await fixture();
+    await f.filings.load();
+    let finish!: (value: ReturnType<typeof filingsResponse>) => void;
+    f.readFilings.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const loading = f.filings.load();
+    expect(f.html()).toContain("Showing previous filings metadata");
+    expect(f.html()).toContain("2026-10-12T00:00:01.000Z");
+    finish(filingsResponse(2, "available", eodSelection));
+    await loading;
+    expect(f.html()).not.toContain("Showing previous filings metadata");
+    f.readFilings.mockRejectedValueOnce(new TrialApiError("unavailable"));
+    await f.filings.load();
+    expect(f.html()).toContain("Showing previous filings metadata");
+    expect(f.html()).toContain("Newest observed filing");
+    f.readFilings.mockResolvedValueOnce({
+      ...filingsResponse(2, "available", eodSelection),
+      security: { ...eodSelection.listing, cik: "0000000002" },
+    });
+    await f.filings.load();
+    expect(f.html()).toContain("No filing metadata loaded");
+    expect(f.html()).not.toContain("Newest observed filing");
+    expect(f.readPrice).not.toHaveBeenCalled();
+    expect(f.readAnnual).not.toHaveBeenCalled();
+  });
+
+  it.each(["close", "retire"] as const)(
+    "%s clears filings while other loaded evidence remains",
+    async (action) => {
+      const f = await fixture();
+      await f.price.load();
+      await f.annual.load();
+      await f.filings.load();
+      f.filings[action]();
+      expect(f.html()).toContain("No filing metadata loaded");
+      expect(f.html()).not.toContain("Newest observed filing");
+      expect(f.html()).toContain("101.5");
+      expect(f.html()).toContain("1000");
+    },
+  );
 
   it("shows every revenue basis without choosing a winner or substituting missing cash", async () => {
     const packet = await response([
@@ -210,6 +354,7 @@ describe("loaded company snapshot", () => {
       const f = await fixture();
       await f.price.load();
       await f.annual.load();
+      await f.filings.load();
       const selection = { ...eodSelection };
       if (field === "catalog")
         selection.catalogSnapshotSha256 = `sha256:${"b".repeat(64)}`;
@@ -232,10 +377,12 @@ describe("loaded company snapshot", () => {
           selection,
           f.price.getSnapshot(),
           f.annual.getSnapshot(),
+          f.filings.getSnapshot(),
         ),
-      ).toEqual({ price: null, annual: null });
+      ).toEqual({ price: null, annual: null, filings: null });
       expect(f.evidence().price?.response).not.toBeNull();
       expect(f.evidence().annual?.response).not.toBeNull();
+      expect(f.evidence().filings?.response).not.toBeNull();
     },
   );
 
@@ -248,8 +395,9 @@ describe("loaded company snapshot", () => {
         eodSelection,
         { ...f.price.getSnapshot(), catalogChanged: true },
         { ...f.annual.getSnapshot(), catalogChanged: true },
+        { ...f.filings.getSnapshot(), catalogChanged: true },
       ),
-    ).toEqual({ price: null, annual: null });
+    ).toEqual({ price: null, annual: null, filings: null });
   });
 
   it("section actions only delegate explicit navigation", async () => {
@@ -274,6 +422,12 @@ describe("loaded company snapshot", () => {
             n.props as React.ComponentProps<typeof CompanySnapshotAnnual>,
           ),
         );
+      if (n.type === CompanySnapshotFilings)
+        return elements(
+          CompanySnapshotFilings(
+            n.props as React.ComponentProps<typeof CompanySnapshotFilings>,
+          ),
+        );
       return [
         n,
         ...React.Children.toArray(n.props.children as React.ReactNode).flatMap(
@@ -282,11 +436,12 @@ describe("loaded company snapshot", () => {
       ];
     }
     const buttons = elements(node).filter((n) => n.type === "button");
-    expect(buttons).toHaveLength(2);
+    expect(buttons).toHaveLength(3);
     for (const button of buttons) (button.props.onClick as () => void)();
-    expect(f.onSection.mock.calls).toEqual([["eod"], ["annual"]]);
+    expect(f.onSection.mock.calls).toEqual([["eod"], ["annual"], ["filings"]]);
     expect(f.readAnnual).not.toHaveBeenCalled();
     expect(f.readPrice).not.toHaveBeenCalled();
+    expect(f.readFilings).not.toHaveBeenCalled();
   });
 
   it("keeps an unsupported listing's Price coverage message instead of offering a load", async () => {
@@ -305,6 +460,7 @@ describe("loaded company snapshot", () => {
         selection={selection}
         price={f.price}
         annual={f.annual}
+        filings={f.filings}
         onSection={f.onSection}
       />,
     );

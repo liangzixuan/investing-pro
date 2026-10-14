@@ -1,9 +1,11 @@
 import { CompanySnapshotPrice } from "./CompanySnapshotPrice";
 import { CompanySnapshotAnnual } from "./CompanySnapshotAnnual";
+import { CompanySnapshotFilings } from "./CompanySnapshotFilings";
 import { useSyncExternalStore } from "react";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import type { ManagedAnnualReport } from "./managed-annual-report";
 import type { ManagedEodHistory } from "./managed-eod-history";
+import type { ManagedCompanyFilings } from "./managed-company-filings";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
 import "./managed-company-snapshot.css";
 
@@ -11,12 +13,14 @@ export function ManagedCompanySnapshot({
   selection,
   price,
   annual,
+  filings,
   onSection,
 }: {
   selection: ManagedResearchSelection;
   price: ManagedEodHistory;
   annual: ManagedAnnualReport;
-  onSection: (section: "eod" | "annual") => void;
+  filings: ManagedCompanyFilings;
+  onSection: (section: "eod" | "annual" | "filings") => void;
 }) {
   const priceState = useSyncExternalStore(
     price.subscribe,
@@ -28,9 +32,19 @@ export function ManagedCompanySnapshot({
     annual.getSnapshot,
     annual.getSnapshot,
   );
+  const filingsState = useSyncExternalStore(
+    filings.subscribe,
+    filings.getSnapshot,
+    filings.getSnapshot,
+  );
   return (
     <CompanySnapshotView
-      evidence={companySnapshotEvidence(selection, priceState, annualState)}
+      evidence={companySnapshotEvidence(
+        selection,
+        priceState,
+        annualState,
+        filingsState,
+      )}
       onSection={onSection}
     />
   );
@@ -41,7 +55,7 @@ export function CompanySnapshotView({
   onSection,
 }: {
   evidence: ReturnType<typeof companySnapshotEvidence>;
-  onSection: (section: "eod" | "annual") => void;
+  onSection: (section: "eod" | "annual" | "filings") => void;
 }) {
   return (
     <details className="managed-company-snapshot">
@@ -58,6 +72,10 @@ export function CompanySnapshotView({
         <CompanySnapshotAnnual
           state={evidence.annual}
           onOpen={() => onSection("annual")}
+        />
+        <CompanySnapshotFilings
+          state={evidence.filings}
+          onOpen={() => onSection("filings")}
         />
       </div>
     </details>

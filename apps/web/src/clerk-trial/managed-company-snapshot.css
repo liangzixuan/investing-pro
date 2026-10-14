@@ -33,6 +33,17 @@
 .managed-frame .managed-snapshot-grid h3 {
   margin-top: 0;
 }
+.managed-frame .managed-snapshot-grid > section[aria-label="Snapshot filings"] {
+  grid-column: 1 / -1;
+}
+.managed-frame .managed-snapshot-grid a {
+  display: inline-block;
+  min-height: 44px;
+  max-width: 100%;
+  align-content: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .managed-frame
   .managed-snapshot-grid
   section[aria-label^="Snapshot revenue basis"]
