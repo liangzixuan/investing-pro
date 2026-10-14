@@ -44,9 +44,23 @@ and next check before an explicit draft append. The existing whole-draft Save,
 search, export and session lifetime remain the persistence path. A stale append
 cannot overwrite an intervening note edit. It preserves existing text and the
 2,000-character policy; invalid and immediate duplicate appends are refused.
-Focused tests, web types and source boundaries pass. Chrome and the new native
-journey remain to be verified. No upstream code, model entitlement or data source
-was added. Production remains at its accepted release.
+All 545 focused/composed cases and 12 final form cases pass, along with web types,
+scoped lint/format, source boundaries and Java syntax. The unchanged complementary
+editor/screen cases passed during the first test run; three ordinary callback
+arity assertions were updated without removing their existing checks.
+Native and preview builds pass. The largest synthetic loader is 2,398,223 bytes
+under the unchanged 4 MiB limit, with exact software notices preserved.
+
+Chrome at actual 1440, 390 and 320 CSS pixels verifies keyboard disclosure and
+Add, 44px fields, wrapping, preview before mutation, duplicate/invalid/limit
+refusal, listing reset and the complete first note through one held RAM Save and
+reload. Company research appends a second assessment to the same exact note and
+returns its editor in My Watchlist; the separate full reader remains available.
+Note search matches the new assessment. Two RAM writes, two loads, zero provider
+reads and retirement fencing of the late second receipt are verified. These
+checks use invented data. A separate native journey was added without changing
+any prior journey; original hosted execution remains required. No upstream code,
+model entitlement or data source was added. Production remains unchanged.
 
 The preceding Release view candidate's original Android run failed window-focus
 and fixture-readiness checks. Its Ubuntu, Windows, parser and dependency jobs
