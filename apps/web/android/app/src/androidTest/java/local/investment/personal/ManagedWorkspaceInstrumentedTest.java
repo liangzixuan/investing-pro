@@ -1237,7 +1237,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
         assertFullNoteReading("managed-note-1", complete, true);
         assertBeaCounts(4, 2, 2);
-        typeIntoInput("managed-note-1", NOTE);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", complete, NOTE);
         awaitPage("restoring the original draft preserves every field and save count",
             "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
         selectWorkspaceView("Markets");

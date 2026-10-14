@@ -899,9 +899,13 @@ with their limits. The original Android run passed 26 of 27 cases. The new BEA
 selection failed because its exact native label matcher omitted the four spaces
 that the grouped picker added before the visible release label. The test now uses
 that observed label; its generic picker helper, selected-value check, deadlines
-and remaining assertions are unchanged. The original failure remains recorded.
-Append, duplicate refusal, Review and package isolation still require the updated
-revision's hosted execution. See
+and remaining assertions are unchanged. That corrected run also passed 26 of 27
+cases. It passed exact append, duplicate refusal and full-note Review, then failed
+when restoration typed the old note into the existing paragraph. The test now
+uses the existing guarded native replacement helper, which verifies the full
+prior value and selection before replacing it. Both original failures remain
+recorded. Complete native execution and package isolation still require the
+updated revision's hosted checks. See
 [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ## Product scope
