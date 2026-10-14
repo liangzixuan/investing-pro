@@ -43,9 +43,19 @@ stay visible. An excluded choice clears without restoration; a valid note
 destination remains. Pending, failed and cancelled attempts retain the view;
 accepted replacements and navigation reset it. Reading stays available while
 Save pauses editing. It adds no request, saved preference or publication claim.
-Affected deterministic behavior, composed workspace checks, web types, scoped
-lint/format, source boundaries and Java syntax pass. Exact-build and Chrome review
-are in progress; native execution remains required. See the
+All 98 affected cases and 176 composed workspace cases pass, along with web types,
+scoped lint/format, source boundaries, Java syntax and root diff review. Exact
+preview and native fixture builds pass; the largest native scenario is 2,389,640
+bytes under the unchanged 4 MiB limit. Chrome at 1440, 390 and 320 CSS pixels
+verifies 44px controls, wrapping, keyboard selection/Clear, title intersections,
+choice exclusion without restoration and matching feedback retention. Review
+opens the complete correct note reader. Its exact 1,930 UTF-16-unit text and the
+full payload survive one RAM Save and reload; the other listing stays intact.
+Reading works during a held Save. Pending, failed and cancelled reads retain the
+view; equal and empty replacements reset it; retirement fences late completion.
+These checks use invented data. This browser run does not establish Review focus;
+the existing composed and native focus assertions remain. Original hosted native
+execution of the extended journey is required. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
 
 The preceding design candidate keeps the optional Fed reference form in an initially
