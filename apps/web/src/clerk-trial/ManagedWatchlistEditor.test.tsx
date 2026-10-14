@@ -1214,7 +1214,7 @@ describe("exact destination note review", () => {
     });
     expect(f.summary.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
       behavior: "instant",
-      block: "nearest",
+      block: "start",
     });
     expect(f.page.activeElement).toBe(f.summary);
     expect(f.ref.current!.reviewNote(request)).toBe(false);

@@ -214,7 +214,7 @@ function focusReviewedNote(
     summary.isConnected &&
     summary.getClientRects().length > 0
   )
-    summary.scrollIntoView({ behavior: "instant", block: "nearest" });
+    summary.scrollIntoView({ behavior: "instant", block: "start" });
 }
 
 function WatchlistChoice({

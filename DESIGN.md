@@ -100,7 +100,8 @@ replacement and leaving Markets clear the staged announcement choice.
 
 Company and successful Fed **Review in My Watchlist** actions lead to the exact
 current destination's existing full-note reader. Select the member, open its
-native disclosure and focus the 44px summary. Preserve search query and scope;
+native disclosure and focus the 44px summary near the top of the viewport so the
+note text is visible immediately. Preserve search query and scope;
 keep the outside-search explanation when needed. Show the complete raw note,
 including invalid text, and allow company review while editing is paused. Do not
 add a second reader or editor. Cancel pending focus when the destination, view or

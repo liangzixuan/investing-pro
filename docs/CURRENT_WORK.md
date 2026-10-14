@@ -821,7 +821,10 @@ company URL finished returning. A failing regression reproduced it; the repair
 reserves that return signal for Review before any later cancellation. The full
 Screen suite passes after the repair. Native assertions now require the exact
 reader, including a destination outside the retained search. Source boundaries
-pass. Exact-build, Chrome and native execution acceptance remain pending.
+pass. The first exact preview and native fixture builds pass static review.
+Chrome confirmed the exact destination and raw text but showed the open reader
+below the viewport. Review now scrolls its summary to the top so the text begins
+in view. Updated build and Chrome checks, and native execution, remain pending.
 See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
 
 ## Product scope
