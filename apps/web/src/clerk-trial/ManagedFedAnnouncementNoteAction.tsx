@@ -19,7 +19,7 @@ export interface ManagedFedAnnouncementNoteContext {
   active: boolean;
   editable: boolean;
   actions: ManagedFedAnnouncementNoteActions;
-  onReview: () => void;
+  onReview: (member: WatchlistMembership) => void;
 }
 
 interface Props extends ManagedFedAnnouncementNoteContext {
@@ -121,7 +121,7 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
       (feedback.refusal.canAppend === action.canAppend &&
         feedback.refusal.reason === action.reason));
   const hasAppended = !!sameFeedbackContext && feedback.appended;
-  const canReview = hasAppended && !props.state.busy;
+  const canReview = hasAppended && member !== null && !props.state.busy;
   return (
     <div className="managed-fed-note-action">
       <p>
@@ -227,7 +227,7 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
             className="trial-secondary"
             aria-disabled={!canReview}
             onClick={() => {
-              if (current() && canReview) props.onReview();
+              if (current() && canReview && member) props.onReview(member);
             }}
           >
             Review in My Watchlist

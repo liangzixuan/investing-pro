@@ -38,6 +38,13 @@ import "./managed-watchlist.css";
 
 export interface ManagedWatchlistEditorHandle {
   focusFirstInvalidNote: () => void;
+  reviewNote: (request: ManagedWatchlistNoteReviewRequest) => boolean;
+}
+
+export interface ManagedWatchlistNoteReviewRequest {
+  member: WatchlistMembership;
+  origin: Element | null;
+  isCurrent: () => boolean;
 }
 
 export interface ManagedWatchlistEditorProps {
@@ -69,6 +76,7 @@ export interface ManagedWatchlistEditorProps {
 type FocusRequest = (
   | { kind: "note"; listingId: string; note: string }
   | { kind: "removal"; removedId: string; listingId: string | null }
+  | { kind: "review"; request: ManagedWatchlistNoteReviewRequest }
 ) & { origin: Element | null };
 
 type WatchlistSearchScope = "identity" | "notes";
@@ -165,7 +173,7 @@ function focusAfterRemoval(
   focusVisible(target);
 }
 
-function ownsFocus(request: FocusRequest) {
+function ownsFocus(request: { origin: Element | null }) {
   return (
     request.origin === null ||
     document.activeElement === request.origin ||
@@ -174,6 +182,40 @@ function ownsFocus(request: FocusRequest) {
 }
 const focusOrigin = () =>
   typeof document === "undefined" ? null : document.activeElement;
+
+function focusReviewedNote(
+  panel: HTMLElement,
+  member: WatchlistMembership,
+  isCurrent: () => boolean,
+) {
+  const field = panel.querySelector<HTMLTextAreaElement>(
+    "textarea[data-managed-note-listing-id]",
+  );
+  const reader = panel.querySelector<HTMLDetailsElement>(
+    "#managed-watchlist-selected-note .managed-note-reading",
+  );
+  const summary = reader?.querySelector("summary");
+  if (
+    !isCurrent() ||
+    field?.dataset.managedNoteListingId !== member.listingId ||
+    field.value !== member.note ||
+    !reader?.isConnected ||
+    reader.getClientRects().length === 0 ||
+    !summary?.isConnected ||
+    summary.getClientRects().length === 0
+  )
+    return;
+  reader.open = true;
+  if (!isCurrent()) return;
+  summary.focus({ preventScroll: true });
+  if (
+    isCurrent() &&
+    document.activeElement === summary &&
+    summary.isConnected &&
+    summary.getClientRects().length > 0
+  )
+    summary.scrollIntoView({ behavior: "instant", block: "start" });
+}
 
 function WatchlistChoice({
   member,
@@ -507,6 +549,14 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<WatchlistSearchScope>("identity");
   const editor = useRef<HTMLDivElement | null>(null);
+  const reviewContext = useRef<{
+    active: boolean;
+    memberships: readonly WatchlistMembership[];
+  } | null>(null);
+  const reviewAttempt = useRef<{
+    request: ManagedWatchlistNoteReviewRequest;
+    pending: boolean;
+  } | null>(null);
   const selected =
     memberships.find((member) => member.listingId === selectedId) ??
     memberships[0];
@@ -521,18 +571,45 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
   }, [selected?.listingId, selectedId]);
 
   useLayoutEffect(() => {
+    reviewContext.current = { active, memberships };
+    return () => {
+      reviewContext.current = null;
+    };
+  }, [active, memberships]);
+
+  useLayoutEffect(() => {
     props.onSelectedMember(selected ?? null);
   }, [selected, props.onSelectedMember]);
 
   useImperativeHandle(
     ref,
     () => ({
+      reviewNote(request) {
+        const context = reviewContext.current;
+        const panel = editor.current;
+        if (
+          !request.isCurrent() ||
+          context !== reviewContext.current ||
+          !context?.active ||
+          !context.memberships.includes(request.member) ||
+          reviewAttempt.current?.request === request ||
+          !panel?.isConnected ||
+          panel.getClientRects().length === 0 ||
+          !ownsFocus(request)
+        )
+          return false;
+        reviewAttempt.current = { request, pending: true };
+        setSelectedId(request.member.listingId);
+        setFocusRequest({ kind: "review", request, origin: request.origin });
+        return true;
+      },
       focusFirstInvalidNote() {
         if (!active || !editable) return;
         const invalid = memberships.find(
           (member) => normalizeWatchlistNote(member.note) === null,
         );
         if (!invalid) return;
+        if (reviewAttempt.current) reviewAttempt.current.pending = false;
         setQuery("");
         setSelectedId(invalid.listingId);
         setFocusRequest({
@@ -550,6 +627,24 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
     if (!focusRequest) return;
     setFocusRequest(null);
     const panel = editor.current;
+    if (focusRequest.kind === "review") {
+      const attempt = reviewAttempt.current;
+      const { request } = focusRequest;
+      const current = () =>
+        request.isCurrent() &&
+        reviewAttempt.current === attempt &&
+        attempt?.request === request &&
+        attempt.pending &&
+        reviewContext.current?.active === true &&
+        reviewContext.current.memberships.includes(request.member) &&
+        selected === request.member &&
+        panel?.isConnected === true &&
+        panel.getClientRects().length > 0;
+      if (current() && ownsFocus(request) && panel)
+        focusReviewedNote(panel, request.member, current);
+      if (attempt?.request === request) attempt.pending = false;
+      return;
+    }
     if (!active || !editable || !panel?.isConnected || !ownsFocus(focusRequest))
       return;
     if (focusRequest.kind === "note")
@@ -559,11 +654,13 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
 
   const changeQuery = (value: string) => {
     if (!active) return;
+    if (reviewAttempt.current) reviewAttempt.current.pending = false;
     setFocusRequest(null);
     setQuery(value);
   };
   const changeScope = (value: string) => {
     if (!active || (value !== "identity" && value !== "notes")) return;
+    if (reviewAttempt.current) reviewAttempt.current.pending = false;
     setFocusRequest(null);
     setScope(value);
   };
@@ -578,6 +675,7 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
   };
   const removeSelected = () => {
     if (!active || !editable || !selected) return;
+    if (reviewAttempt.current) reviewAttempt.current.pending = false;
     const next = selectionAfterRemoval(selected, memberships, matches);
     setSelectedId(next.selectedId);
     setFocusRequest({
@@ -601,6 +699,7 @@ export function ManagedWatchlistEditor(props: ManagedWatchlistEditorProps) {
         onScope={changeScope}
         onClear={clearQuery}
         onSelect={(listingId) => {
+          if (reviewAttempt.current) reviewAttempt.current.pending = false;
           setFocusRequest(null);
           setSelectedId(listingId);
         }}
