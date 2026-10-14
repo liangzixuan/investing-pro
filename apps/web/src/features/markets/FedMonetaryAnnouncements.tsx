@@ -21,6 +21,8 @@ export interface FedMonetaryAnnouncementsProps {
   readonly showingPrevious?: boolean;
   readonly message?: string;
   readonly noteAction?: ReactNode;
+  readonly refreshSummary?: ReactNode;
+  readonly newlyObservedUrls?: readonly string[];
 }
 
 const timestamp = new Intl.DateTimeFormat("en-US", {
@@ -46,6 +48,8 @@ export function FedMonetaryAnnouncements({
   showingPrevious = false,
   message = "",
   noteAction,
+  refreshSummary,
+  newlyObservedUrls,
 }: FedMonetaryAnnouncementsProps) {
   return (
     <section
@@ -132,6 +136,7 @@ export function FedMonetaryAnnouncements({
               </time>
               .
             </p>
+            {refreshSummary}
             {announcements.items.length === 0 ? (
               <p className="fed-announcements-note">
                 No announcements were listed in this loaded feed.
@@ -159,6 +164,11 @@ export function FedMonetaryAnnouncements({
                         </>
                       )}
                     </p>
+                    {newlyObservedUrls?.includes(item.url) && (
+                      <p className="fed-announcements-new">
+                        Newly observed in this refresh
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>

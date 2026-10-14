@@ -1,12 +1,18 @@
 # Personal market platform roadmap
 
-Updated October 13, 2026. This document defines the durable product goals and
+Updated October 14, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M1/M4 increment connects one chosen loaded Fed announcement to one
+The current M3 increment compares consecutive accepted Fed lists and marks
+current URLs absent from the preceding loaded list. It retains both retrieval
+times and coverage counts, without a publication alert, relevance claim, new
+request or saved history. Existing note reference, exact Review and Save remain
+available. See [feed comparison](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
+
+The preceding M1/M4 increment connects one chosen loaded Fed announcement to one
 chosen watchlist note. It appends complete metadata and original dates to the
 latest draft, followed by existing Review and Save. It adds no article fetch,
 automatic relevance judgment, source, schema or persistence path. See

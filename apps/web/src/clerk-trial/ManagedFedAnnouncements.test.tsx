@@ -1,4 +1,9 @@
 import type { MouseEvent } from "react";
+import {
+  parseManagedMonetaryAnnouncements,
+  type PersonalMonetaryAnnouncementsDto,
+} from "@research-cockpit/contracts";
+import { renderToStaticMarkup } from "react-dom/server";
 import type * as React from "react";
 import type { FedMonetaryAnnouncementsProps } from "../features/markets/FedMonetaryAnnouncements";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +13,25 @@ import type { ManagedApi } from "./managed-api";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import type { ManagedFedAnnouncementNoteContext } from "./ManagedFedAnnouncementNoteAction";
 import { ManagedFedAnnouncementNoteAction } from "./ManagedFedAnnouncementNoteAction";
+import { ManagedFedRefreshComparisonDetails } from "./ManagedFedRefreshComparisonDetails";
+import { TrialApiError } from "./api";
+
+function parsedFeed(overrides: Partial<PersonalMonetaryAnnouncementsDto> = {}) {
+  const packet = parseManagedMonetaryAnnouncements({
+    ...fedAnnouncementsFixture(),
+    ...overrides,
+  });
+  if (!packet) throw new Error("Invalid invented Fed packet.");
+  return packet;
+}
+
+function comparisonSlot(
+  view: React.ReactElement<FedMonetaryAnnouncementsProps>,
+) {
+  return view.props.refreshSummary as React.ReactElement<
+    React.ComponentProps<typeof ManagedFedRefreshComparisonDetails>
+  >;
+}
 
 const hooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
@@ -75,6 +99,98 @@ function fixture() {
 }
 
 describe("managed announcement controls", () => {
+  it("shows comparison only after replacement and keeps the exact current packet and note state", async () => {
+    const f = fixture();
+    expect(f.render().props.refreshSummary).toBeNull();
+    const previous = parsedFeed();
+    f.read.mockResolvedValueOnce(previous);
+    await f.model.load();
+    expect(f.render().props.refreshSummary).toBeNull();
+    const current = parsedFeed({
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+      items: [
+        previous.items[0]!,
+        {
+          title: "Newly loaded unknown-time item",
+          url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261017a.htm",
+          publishedAt: null,
+        },
+      ],
+    });
+    f.read.mockResolvedValueOnce(current);
+    await f.model.load();
+    const view = f.render();
+    const slot = comparisonSlot(view);
+    const pair = f.model.getSnapshot().refreshComparison;
+    expect(slot.type).toBe(ManagedFedRefreshComparisonDetails);
+    expect(slot.props.comparison).toBe(pair);
+    expect(slot.props.comparison.previous).toBe(previous);
+    expect(slot.props.comparison.current).toBe(current);
+    expect(view.props.announcements).toBe(current);
+    expect(view.props.newlyObservedUrls).toBe(pair!.newUrls);
+    expect(view.props.newlyObservedUrls).toEqual([current.items[1]!.url]);
+    const note = view.props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncementNoteAction>
+    >;
+    expect(note.props.state).toBe(f.model.getSnapshot());
+    expect(note.props.state.announcements?.items).toBe(current.items);
+    expect(f.noteContext.actions.append).not.toHaveBeenCalled();
+    expect(f.noteContext.onReview).not.toHaveBeenCalled();
+    expect(f.button.focus).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalledTimes(2);
+  });
+  it("refuses comparison presentation for an equal-content but different current response", async () => {
+    const f = fixture();
+    f.read.mockResolvedValue(parsedFeed());
+    await f.model.load();
+    await f.model.load();
+    const snapshot = f.model.getSnapshot();
+    const replacement = parsedFeed();
+    expect(replacement).toEqual(snapshot.announcements);
+    expect(replacement).not.toBe(snapshot.announcements);
+    vi.spyOn(f.model, "getSnapshot").mockReturnValue({
+      ...snapshot,
+      announcements: replacement,
+    });
+    const view = f.render();
+    expect(view.props.announcements).toBe(replacement);
+    expect(view.props.refreshSummary).toBeNull();
+    expect(view.props.newlyObservedUrls).toEqual([]);
+    expect(f.read).toHaveBeenCalledTimes(2);
+  });
+  it.each(["pending", "cancel", "failure"] as const)(
+    "keeps the displayed pair and original clocks during %s",
+    async (attempt) => {
+      const f = fixture();
+      f.read
+        .mockResolvedValueOnce(parsedFeed())
+        .mockResolvedValueOnce(
+          parsedFeed({ fetchedAt: "2026-10-21T18:00:00.000Z" }),
+        );
+      await f.model.load();
+      await f.model.load();
+      const pair = f.model.getSnapshot().refreshComparison;
+      if (attempt === "failure")
+        f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+      const pending = f.model.load();
+      if (attempt === "cancel") f.model.cancel();
+      if (attempt === "failure") await pending;
+      const view = f.render();
+      const slot = comparisonSlot(view);
+      expect(slot.props.comparison).toBe(pair);
+      expect(slot.props.showingPrevious).toBe(true);
+      expect(view.props.announcements).toBe(pair!.current);
+      const html = renderToStaticMarkup(slot);
+      expect(html).toContain(
+        "Comparison remains between the last two accepted feeds.",
+      );
+      expect(html).toContain('dateTime="2026-10-20T18:00:00.000Z"');
+      expect(html).toContain('dateTime="2026-10-21T18:00:00.000Z"');
+      expect(f.read).toHaveBeenCalledTimes(3);
+      f.model.retire();
+      expect(f.render().props.refreshSummary).toBeNull();
+    },
+  );
   it("supplies the exact subscribed feed and note context without changing load or note state", async () => {
     const f = fixture();
     f.read.mockResolvedValueOnce(fedAnnouncementsFixture());

@@ -77,6 +77,7 @@ function harness(initial: Partial<Props> = {}) {
   let props: Props = {
     state: {
       announcements: packet,
+      refreshComparison: null,
       busy: false,
       error: null,
       message: "",
@@ -209,6 +210,7 @@ describe("Fed announcement note choices", () => {
     const h = harness({
       state: {
         announcements: packet,
+        refreshComparison: null,
         busy: false,
         error: null,
         message: "",

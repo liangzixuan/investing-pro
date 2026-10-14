@@ -69,6 +69,87 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it("places comparison before the full current list and marks only matching rows after their publication time", () => {
+    const announcements = fixture();
+    const input = props({
+      announcements,
+      refreshSummary: <div data-comparison="test">Compared feeds</div>,
+      newlyObservedUrls: [
+        announcements.items[2]!.url,
+        "https://absent.invalid",
+      ],
+      noteAction: <div data-note-action="test">Current note action</div>,
+    });
+    const view = FedMonetaryAnnouncements(input);
+    const rows = nodes(view).filter((node) => node.type === "li");
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.key)).toEqual(
+      announcements.items.map((item) => item.url),
+    );
+    expect(
+      rows.map((row) => text(row).includes("Newly observed in this refresh")),
+    ).toEqual([false, false, true]);
+    expect(text(rows[2])).toContain(
+      "Unknown publication time Newly observed in this refresh",
+    );
+    const html = renderToStaticMarkup(view);
+    expect(html.indexOf(announcements.fetchedAt)).toBeLessThan(
+      html.indexOf('data-comparison="test"'),
+    );
+    expect(html.indexOf('data-comparison="test"')).toBeLessThan(
+      html.indexOf("<ul"),
+    );
+    expect(html.indexOf("</ul>")).toBeLessThan(
+      html.indexOf('data-note-action="test"'),
+    );
+    expect(
+      nodes(view)
+        .filter((node) => node.type === "a")
+        .slice(1)
+        .map((node) => node.props.href),
+    ).toEqual(announcements.items.map((item) => item.url));
+    expect(input.onLoad).not.toHaveBeenCalled();
+  });
+  it("keeps an empty comparison before its empty result and omits comparison before loading", () => {
+    const refreshSummary = (
+      <div data-comparison="empty">0 of 0 displayed links</div>
+    );
+    const empty = renderToStaticMarkup(
+      <FedMonetaryAnnouncements
+        {...props({
+          refreshSummary,
+          announcements: { ...fixture(), items: [], availableItemCount: 0 },
+        })}
+      />,
+    );
+    expect(empty.indexOf('data-comparison="empty"')).toBeLessThan(
+      empty.indexOf("No announcements were listed"),
+    );
+    expect(
+      renderToStaticMarkup(
+        <FedMonetaryAnnouncements
+          {...props({ refreshSummary, announcements: null })}
+        />,
+      ),
+    ).not.toContain("data-comparison");
+  });
+  it("keeps default local markup when comparison presentation is omitted", () => {
+    const input = props();
+    const original = renderToStaticMarkup(
+      <FedMonetaryAnnouncements {...input} />,
+    );
+    expect(original).toBe(
+      renderToStaticMarkup(
+        <FedMonetaryAnnouncements
+          {...input}
+          refreshSummary={null}
+          newlyObservedUrls={[]}
+        />,
+      ),
+    );
+    expect(original).not.toContain("fed-announcements-new");
+    expect(original).not.toContain("Compared loaded feeds");
+  });
   it("places the managed note slot after the list, keeps it for an empty packet and omits it before loading", () => {
     const noteAction = <div data-note-action="test">Managed note action</div>;
     const loaded = renderToStaticMarkup(

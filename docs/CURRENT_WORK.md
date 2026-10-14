@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 13, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns delivery
+Updated October 14, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns delivery
 order; [architecture](ARCHITECTURE.md) defines runtime boundaries. The
 [preceding status](https://github.com/liangzixuan/investing-pro/blob/997685543b701e30a9e6a3f4c894428746025aa9/docs/CURRENT_WORK.md)
 retains earlier increments, original failures and dated acceptance. Operational
@@ -802,8 +802,8 @@ journey completed Save, reload and retirement, then failed a final test boundary
 that still expected zero saves. Its one-call correction uses the existing helper
 with one expected save; all other assertions and deadlines remain unchanged.
 The corrected Android run passes all 27 cases and APK isolation, with independent
-saved-artifact review accepted. Four of five original Actions checks pass,
-including Ubuntu; Windows remains pending. APK isolation was skipped in the failed
+saved-artifact review accepted. All five original Actions checks pass,
+including both desktop jobs. APK isolation was skipped in the failed
 run, and the reviewed CodeScene advisory remains recorded. No new source, API or
 saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
@@ -832,9 +832,39 @@ reader and focused 44px summary, ordinary Back, and reading while Save is pendin
 Explicit whole-draft Save and reload preserve version 2 and both notes. Fed Review
 selects its different destination; cancellation retains the feed, and late Save
 receipts or source failures cannot restore a retired session. Independent review
-accepts the saved browser evidence. The native suite retains 27 cases and 52 literal captures;
-its updated reader assertions still require original hosted execution.
+accepts the saved browser evidence. All five original Actions checks pass,
+including Ubuntu and Windows verification, 27 native cases and APK isolation.
+Independent review accepts the saved native artifact. CodeScene retains four
+reviewed complexity warnings and one improvement notice; its failed advisory
+remains visible. The native suite retains 52 literal captures.
 See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
+
+### Consecutive Fed feed comparison candidate
+
+The next increment marks current announcement links absent from the preceding
+accepted feed. It compares exact URLs, retains current order and original dates,
+and shows both loaded lists' retrieval times and coverage counts in a native
+disclosure. First load establishes a baseline; equal and empty replacements
+advance it. Pending, failed or canceled attempts retain the accepted pair, while
+retirement clears it. The current list and note workflow remain complete.
+
+Affected model, component and composed tests, web types, scoped lint/format and
+source boundaries pass. Independent source review and exact preview/native
+bundle review pass. Chrome checks at 1440, 390 and 320 CSS pixels verify original
+clocks, complete current rows and note choices, keyboard controls and narrow
+layouts. Pending, canceled, failed and malformed requests retain the accepted
+pair and open disclosure. Equal, empty and returning feeds advance the comparison.
+An unknown-time announcement reaches the exact destination reader, then explicit
+whole-draft Save and reload preserve both notes and version 2. Retirement and late
+responses leave the session cleared. Independent review accepts the saved browser
+evidence; excluded stale captures and tooling limits remain recorded.
+
+The existing native transitions now assert full-to-empty and empty-to-full
+comparison before the unchanged exact reference, Review, Save and reload sequence.
+The bundle stays within the existing asset limit; original hosted execution for
+this candidate remains pending. No request, source, saved schema, stored feed
+history or dependency was added. See
+[Compare consecutive loaded feeds](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
 
 ## Product scope
 
@@ -860,8 +890,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted execution for exact-note Review, the Fed candidate's
-pending Windows check, and source integration when permission arrives. Preserve explicit source requests,
+Complete original hosted acceptance for feed comparison and source integration
+when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

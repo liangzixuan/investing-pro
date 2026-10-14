@@ -90,6 +90,14 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+After an accepted Fed refresh, place a quiet count above the complete list and
+**Newly observed in this refresh** below the dates of matching rows. Use the
+existing text hierarchy and thin rules. Keep the two original retrieval times,
+shown and available counts, and source inside **Compared loaded feeds**, a native
+disclosure with a 44px summary and visible focus. The previous-feed warning still
+qualifies a later unconfirmed attempt. Preserve every row and note choice;
+comparison must not move focus, filter the list or change the local profile.
+
 After the loaded Fed list, provide two native choices: **Announcement** and
 **Add to note**. Start both empty. Show the complete chosen title and destination
 identity in wrapping text below them. Use secondary 44px controls for adding the
