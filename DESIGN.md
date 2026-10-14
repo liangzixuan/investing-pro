@@ -96,7 +96,15 @@ existing text hierarchy and thin rules. Keep the two original retrieval times,
 shown and available counts, and source inside **Compared loaded feeds**, a native
 disclosure with a 44px summary and visible focus. The previous-feed warning still
 qualifies a later unconfirmed attempt. Preserve every row and note choice;
-comparison must not move focus, filter the list or change the local profile.
+comparison must not move focus or change the local profile. Its count describes
+the complete loaded feed even when the owner searches titles.
+
+Place **Search announcement titles** after source metadata and refresh comparison,
+before the list. Use the existing managed field, 44px search and Clear controls,
+focus outline and muted match count. Wrap the controls at narrow widths. Keep
+full titles and dates; show a separate no-match message. The same title view
+drives note choices. An excluded choice requires a fresh selection and retains
+its valid destination. Reading search remains available while editing pauses.
 
 After the loaded Fed list, provide two native choices: **Announcement** and
 **Add to note**. Start both empty. Show the complete chosen title and destination

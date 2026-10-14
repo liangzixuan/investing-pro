@@ -198,6 +198,25 @@ clears it. Comparison makes no request and saves no history. It leaves every
 current item and note choice available, and adds no comparison label to a saved
 reference. See [Current work](CURRENT_WORK.md) for acceptance and delivery status.
 
+### Search loaded announcement titles
+
+**Search announcement titles** matches one phrase in the full titles already
+loaded. Matching ignores case, trims the phrase and treats repeated whitespace
+as one space. It searches titles only. **Clear title search** returns all loaded
+items in their source order. The match count describes the loaded list; the
+source's available count, original retrieval time and full-feed refresh comparison
+remain visible. Search does not fetch article text or other feed entries.
+
+Pending reads, failure and Cancel keep the search. Each accepted replacement,
+including an equal or empty feed, clears it and reports the reset. Leaving Markets
+starts a fresh search on return. Session retirement clears the feed and search.
+Search remains usable while note editing is paused.
+
+The note picker uses the same matching items. If search excludes a chosen
+announcement, the choice and its action feedback clear. A valid note destination
+stays selected. Clear does not restore the excluded choice; choose it again
+explicitly. A still-matching choice and its feedback remain available.
+
 ### Add an announcement reference to a note
 
 After loading the feed, choose an **Announcement** and a current watchlist entry

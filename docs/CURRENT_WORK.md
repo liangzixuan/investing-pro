@@ -35,6 +35,16 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
+The latest candidate adds title search to the loaded Federal Reserve feed.
+The same view drives the list and announcement note choices. Original titles,
+links, publication times, loaded metadata and complete refresh comparison stay
+intact. An excluded note choice clears with its feedback while a valid
+destination stays selected. Retained attempts keep the query; each accepted
+replacement resets it. No request, saved preference or provider change is added.
+See the [Markets guide](MANAGED_MARKETS_HOME.md#search-loaded-announcement-titles).
+Focused behavior checks and web types pass. Final source review, exact builds,
+Chrome and original hosted native acceptance remain pending.
+
 [PR99](https://github.com/liangzixuan/investing-pro/pull/99) adds an optional
 indexed raw-price path to the existing two-listing watchlist comparison. It uses
 only currently loaded shared observations and the chosen interval. Each series

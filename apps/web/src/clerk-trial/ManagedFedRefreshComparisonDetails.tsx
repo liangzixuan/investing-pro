@@ -15,7 +15,7 @@ export function ManagedFedRefreshComparisonDetails({
     <div className="managed-fed-refresh-comparison">
       <p className="managed-fed-refresh-count" role="status">
         Newly observed in this refresh: {comparison.newUrls.length} of{" "}
-        {comparison.current.items.length} links in the displayed feed.
+        {comparison.current.items.length} links in the loaded feed.
       </p>
       <p>These URLs were absent from the previous loaded list.</p>
       {showingPrevious && (

@@ -34,15 +34,50 @@ function comparisonSlot(
 }
 
 const hooks = vi.hoisted(() => ({
+  states: [] as unknown[],
+  stateIndex: 0,
+  changed: false,
+  memos: [] as Array<{ value: unknown; dependencies: readonly unknown[] }>,
+  memoIndex: 0,
   refs: [] as Array<{ current: unknown }>,
   index: 0,
-  effects: [] as Array<() => void>,
+  effects: [] as Array<() => void | (() => void)>,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
+  useState: (initial: unknown) => {
+    const index = hooks.stateIndex++;
+    if (!(index in hooks.states))
+      hooks.states[index] =
+        typeof initial === "function" ? (initial as () => unknown)() : initial;
+    return [
+      hooks.states[index],
+      (next: unknown) => {
+        const value =
+          typeof next === "function"
+            ? (next as (value: unknown) => unknown)(hooks.states[index])
+            : next;
+        hooks.changed ||= value !== hooks.states[index];
+        hooks.states[index] = value;
+      },
+    ];
+  },
+  useMemo: (factory: () => unknown, dependencies: readonly unknown[]) => {
+    const index = hooks.memoIndex++;
+    const previous = hooks.memos[index];
+    if (
+      !previous ||
+      dependencies.some(
+        (value, position) => !Object.is(value, previous.dependencies[position]),
+      )
+    )
+      hooks.memos[index] = { value: factory(), dependencies };
+    return hooks.memos[index]!.value;
+  },
   useRef: (value: unknown) =>
     (hooks.refs[hooks.index++] ??= { current: value }),
-  useLayoutEffect: (effect: () => void) => hooks.effects.push(effect),
+  useLayoutEffect: (effect: () => void | (() => void)) =>
+    hooks.effects.push(effect),
   useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) =>
     getSnapshot(),
 }));
@@ -50,6 +85,8 @@ beforeEach(() => {
   hooks.refs = [];
   hooks.index = 0;
   hooks.effects = [];
+  hooks.states = [];
+  hooks.memos = [];
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -84,21 +121,139 @@ function fixture() {
     },
     onReview: vi.fn(),
   };
-  const render = (headingRef?: React.Ref<HTMLHeadingElement>) => {
-    hooks.index = 0;
-    const view = ManagedFedAnnouncements({
-      model,
-      headingRef,
-      noteContext,
-    }) as React.ReactElement<FedMonetaryAnnouncementsProps>;
+  let cleanups: Array<void | (() => void)> = [];
+  const render = (
+    headingRef?: React.Ref<HTMLHeadingElement>,
+    currentModel = model,
+  ) => {
+    let view!: React.ReactElement<FedMonetaryAnnouncementsProps>;
+    for (let i = 0; i < 5; i++) {
+      hooks.index = 0;
+      hooks.stateIndex = 0;
+      hooks.memoIndex = 0;
+      hooks.effects = [];
+      hooks.changed = false;
+      view = ManagedFedAnnouncements({
+        model: currentModel,
+        headingRef,
+        noteContext,
+      });
+      if (!hooks.changed) break;
+    }
     hooks.refs[0]!.current = button;
-    while (hooks.effects.length) hooks.effects.shift()!();
+    cleanups.forEach((cleanup) => cleanup?.());
+    cleanups = hooks.effects.map((effect) => effect());
     return view;
   };
-  return { read, model, button, cancel, doc, render, noteContext };
+  return {
+    read,
+    model,
+    button,
+    cancel,
+    doc,
+    render,
+    noteContext,
+    unmount: () => cleanups.forEach((cleanup) => cleanup?.()),
+  };
 }
 
 describe("managed announcement controls", () => {
+  it("shares one title view with the list and note choices while keeping full-feed comparison", async () => {
+    const f = fixture();
+    const previous = parsedFeed();
+    f.read.mockResolvedValueOnce(previous);
+    await f.model.load();
+    const current = parsedFeed({ fetchedAt: "2026-10-21T18:00:00.000Z" });
+    f.read.mockResolvedValueOnce(current);
+    await f.model.load();
+    f.render().props.filterView!.onQueryChange("  WITHOUT  A  PUBLICATION  ");
+    const view = f.render();
+    const note = view.props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncementNoteAction>
+    >;
+    expect(view.props.filterView!.view.visibleItems).toEqual([
+      current.items[1],
+    ]);
+    expect(note.props.view).toBe(view.props.filterView!.view);
+    expect(note.props.view.visibleItems[0]).toBe(current.items[1]);
+    expect(comparisonSlot(view).props.comparison.current.items).toBe(
+      current.items,
+    );
+    expect(view.props.announcements).toBe(current);
+    view.props.filterView!.onQueryChange("");
+    expect(f.render().props.filterView!.view.visibleItems).toBe(current.items);
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteContext.actions.append).not.toHaveBeenCalled();
+    expect(f.button.focus).not.toHaveBeenCalled();
+  });
+  it.each(["pending", "cancel", "failure"] as const)(
+    "retains title search through %s",
+    async (attempt) => {
+      const f = fixture();
+      const packet = parsedFeed();
+      f.read.mockResolvedValueOnce(packet);
+      await f.model.load();
+      f.render().props.filterView!.onQueryChange("monetary policy");
+      if (attempt === "failure")
+        f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+      const pending = f.model.load();
+      if (attempt === "cancel") f.model.cancel();
+      if (attempt === "failure") await pending;
+      const view = f.render();
+      expect(view.props.filterView!.view.query).toBe("monetary policy");
+      expect(view.props.filterView!.view.response).toBe(packet);
+      expect(view.props.filterView!.view.visibleItems).toEqual([
+        packet.items[0],
+      ]);
+      expect(f.read).toHaveBeenCalledTimes(2);
+    },
+  );
+  it.each(["equal", "empty", "retired", "model"] as const)(
+    "clears title search and fences stale callbacks after %s",
+    async (change) => {
+      const f = fixture();
+      f.read.mockResolvedValueOnce(parsedFeed());
+      await f.model.load();
+      f.render().props.filterView!.onQueryChange("without");
+      const stale = f.render().props.filterView!.onQueryChange;
+      let model = f.model;
+      if (change === "retired") f.model.retire();
+      else if (change === "model") model = new Model(vi.fn(), vi.fn());
+      else {
+        f.read.mockResolvedValueOnce(
+          parsedFeed(
+            change === "empty" ? { items: [], availableItemCount: 0 } : {},
+          ),
+        );
+        await f.model.load();
+      }
+      stale("must not cross response");
+      const view = f.render(undefined, model);
+      expect(view.props.filterView!.view.query).toBe("");
+      expect(view.props.filterView!.view.visibleItems).toEqual(
+        model.getSnapshot().announcements?.items ?? [],
+      );
+      expect(view.props.filterView!.resetNotice).toBe(
+        change === "equal" || change === "empty",
+      );
+      stale("must not cross commit");
+      expect(f.render(undefined, model).props.filterView!.view.query).toBe("");
+    },
+  );
+  it("refuses callbacks from a previous query and after unmount", async () => {
+    const f = fixture();
+    f.read.mockResolvedValueOnce(parsedFeed());
+    await f.model.load();
+    const stale = f.render().props.filterView!.onQueryChange;
+    stale("without");
+    f.render();
+    stale("monetary");
+    expect(f.render().props.filterView!.view.query).toBe("without");
+    const latest = f.render().props.filterView!.onQueryChange;
+    f.unmount();
+    latest("after unmount");
+    expect(f.render().props.filterView!.view.query).toBe("without");
+  });
   it("shows comparison only after replacement and keeps the exact current packet and note state", async () => {
     const f = fixture();
     expect(f.render().props.refreshSummary).toBeNull();

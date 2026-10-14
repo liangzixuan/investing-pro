@@ -6,6 +6,7 @@ import {
 } from "@research-cockpit/contracts";
 import type { MouseEventHandler, ReactNode, Ref } from "react";
 import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
+import type { FedAnnouncementView } from "./fed-announcement-view";
 import "./fed-announcements.css";
 
 export interface FedMonetaryAnnouncementsProps {
@@ -23,6 +24,11 @@ export interface FedMonetaryAnnouncementsProps {
   readonly noteAction?: ReactNode;
   readonly refreshSummary?: ReactNode;
   readonly newlyObservedUrls?: readonly string[];
+  readonly filterView?: {
+    readonly view: FedAnnouncementView;
+    readonly resetNotice: boolean;
+    readonly onQueryChange: (query: string) => void;
+  };
 }
 
 const timestamp = new Intl.DateTimeFormat("en-US", {
@@ -50,7 +56,11 @@ export function FedMonetaryAnnouncements({
   noteAction,
   refreshSummary,
   newlyObservedUrls,
+  filterView,
 }: FedMonetaryAnnouncementsProps) {
+  const filters =
+    filterView?.view.response === announcements ? filterView : undefined;
+  const items = filters?.view.visibleItems ?? announcements?.items ?? [];
   return (
     <section
       className={`fed-announcements ${className}`.trim()}
@@ -128,7 +138,7 @@ export function FedMonetaryAnnouncements({
         ) : (
           <>
             <p className="fed-announcements-note">
-              Showing {announcements.items.length} of{" "}
+              {filters ? "Loaded" : "Showing"} {announcements.items.length} of{" "}
               {announcements.availableItemCount} announcements from this feed.
               Loaded{" "}
               <time dateTime={announcements.fetchedAt}>
@@ -137,13 +147,56 @@ export function FedMonetaryAnnouncements({
               .
             </p>
             {refreshSummary}
+            {filters && (
+              <div className="managed-fed-title-filter">
+                <label htmlFor="managed-fed-title-search">
+                  Search announcement titles
+                </label>
+                <div className="managed-fed-title-search-controls">
+                  <input
+                    id="managed-fed-title-search"
+                    type="search"
+                    value={filters.view.query}
+                    aria-describedby="managed-fed-title-search-help managed-fed-title-count"
+                    onChange={(event) =>
+                      filters.onQueryChange(event.currentTarget.value)
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="trial-secondary"
+                    onClick={() => filters.onQueryChange("")}
+                  >
+                    Clear title search
+                  </button>
+                </div>
+                <p id="managed-fed-title-search-help">
+                  Search full titles in this loaded feed.
+                </p>
+                <p
+                  id="managed-fed-title-count"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {items.length} of {announcements.items.length} loaded
+                  announcements.
+                  {filters.resetNotice &&
+                    " Feed response changed; showing all loaded announcements."}
+                </p>
+              </div>
+            )}
             {announcements.items.length === 0 ? (
               <p className="fed-announcements-note">
                 No announcements were listed in this loaded feed.
               </p>
+            ) : items.length === 0 ? (
+              <p className="fed-announcements-note">
+                No loaded announcements match this title search. Change or clear
+                the search.
+              </p>
             ) : (
               <ul className="fed-announcements-list">
-                {announcements.items.map((item) => (
+                {items.map((item) => (
                   <li key={item.url}>
                     <a
                       href={item.url}
