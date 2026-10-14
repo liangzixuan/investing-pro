@@ -575,6 +575,21 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("duplicate Annual comparison is refused without changing the exact note",
             "document.querySelector('.managed-annual-comparison-note-action').textContent.includes('This exact Annual comparison reference is already in the note draft.')");
         assertAnnualComparisonNote(1, true);
+        typeIntoInput("managed-watchlist-search", "ONE");
+        selectWatchlistNote(0);
+        String annualReviewState = readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})");
+        awaitPage("duplicate refusal retains the exact Annual destination's Review control",
+            "(() => { const b = [...document.querySelectorAll('.managed-annual-comparison-note-action > button')].find(b => b.textContent === 'Review note');" +
+            " return b && b.getAttribute('aria-disabled') === 'false' && b.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-one'; })()");
+        clickAnnualComparisonAction("Review note");
+        assertComparisonNoteReader("managed-note-1", "listing-zero", "ZERO", ANNUAL_COMPARISON_NOTE, "ONE");
+        assertEquals("Annual Review preserves the complete draft, counters and URL", annualReviewState,
+            readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})"));
+        assertAnnualComparisonCounts(4, 1, 1);
+        click("button[aria-label='Clear watchlist search']");
+        selectWatchlistNote(1);
+        assertAnnualComparisonNote(1, true);
         click("#managed-unsaved-review-summary");
         awaitPage("review exposes the complete comparison note before Save",
             "document.querySelector('#managed-unsaved-review')?.open === true" +
@@ -1875,6 +1890,20 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-note-1')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
             " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
             " && document.querySelector('.managed-watchlist-comparison-note-status')?.textContent === 'Comparison added to the ONE (Class A, XNAS) note draft. Review and save all changes in My Watchlist.'");
+        typeIntoInput("managed-watchlist-search", "ZERO");
+        String priceReviewState = readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})");
+        awaitPage("successful price append exposes a readable exact-destination Review control",
+            "(() => { const b = [...document.querySelectorAll('.managed-watchlist-comparison-note-action > button')].find(b => b.textContent === 'Review note');" +
+            " return b && b.getAttribute('aria-disabled') === 'false' && b.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'; })()");
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//div[contains(@class,'managed-watchlist-comparison-note-action')]/button[normalize-space(.)='Review note']")).perform(webClick());
+        assertComparisonNoteReader("managed-note-0", "listing-one", "ONE", WATCHLIST_COMPARISON_NOTE, "ZERO");
+        assertEquals("price Review preserves the complete draft, counters and URL", priceReviewState,
+            readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})"));
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
+        click("button[aria-label='Clear watchlist search']");
+        selectWatchlistNote(1);
         chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
         typeIntoInput("managed-watchlist-search", "Observed raw-close watchlist comparison");
         awaitPage("note search retrieves the appended comparison while ZERO stays selected",
@@ -3986,6 +4015,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
             " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void assertComparisonNoteReader(String id, String listingId, String symbol, String expected, String query) throws Exception {
+        assertFullNoteReading(id, expected, true);
+        awaitPage("comparison Review keeps search and focuses the exact full-note reader above navigation",
+            "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
+            " const summary = document.getElementById(" + JSONObject.quote(id + "-reading-toggle") + ");" +
+            " const text = document.getElementById(" + JSONObject.quote(id + "-reading-text") + ");" +
+            " const v = visualViewport, r = summary?.getBoundingClientRect(), nav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+            " const range = document.createRange(); if (!text?.firstChild || !r || !v) return false; range.setStart(text.firstChild, 0); range.setEnd(text.firstChild, 1);" +
+            " const first = range.getBoundingClientRect(), bottom = Math.min(v.offsetTop + v.height, nav?.top > v.offsetTop ? nav.top : Infinity);" +
+            " return input?.dataset.managedNoteListingId === " + JSONObject.quote(listingId) + " && input.value === " + JSONObject.quote(expected) +
+            " && document.activeElement === summary && r.height >= 44 && r.top >= v.offsetTop && r.bottom <= bottom" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width && first.height > 0 && first.top >= v.offsetTop && first.bottom <= bottom" +
+            " && document.querySelector('#managed-watchlist-search')?.value === " + JSONObject.quote(query) +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'identity'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ' + " + JSONObject.quote(symbol) + " + ' is outside this search.'); })()");
     }
 
     private void assertFullNoteReading(String id, String expected, boolean open) throws Exception {

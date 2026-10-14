@@ -1,9 +1,11 @@
 import * as React from "react";
+import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ManagedWatchlistComparisonNoteAction,
   type ManagedWatchlistComparisonNoteActions,
+  type WatchlistComparisonNoteReviewCapture,
 } from "./ManagedWatchlistComparisonNoteAction";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
@@ -76,7 +78,17 @@ function pair(): ManagedWatchlistComparisonSelection {
 type Props = React.ComponentProps<typeof ManagedWatchlistComparisonNoteAction>;
 function harness() {
   const selection = pair();
+  const capture: WatchlistComparisonNoteReviewCapture = {
+    selection,
+    leftShowingPrevious: false,
+    rightShowingPrevious: false,
+  };
+  const memberships: readonly WatchlistMembership[] = [
+    selection.left!,
+    selection.right!,
+  ].map((source) => ({ ...source.listing, note: "Raw café 👩🏽‍💻 prefix" }));
   const actions: ManagedWatchlistComparisonNoteActions = {
+    review: vi.fn(),
     getAction: vi.fn((_, destination) => ({
       canAppend: destination !== null,
       reason: destination ? null : "Choose a note.",
@@ -86,7 +98,14 @@ function harness() {
       message: "Added to the chosen draft. Review and Save.",
     })),
   };
-  let props: Props = { selection, active: true, editable: true, actions };
+  let props: Props = {
+    capture,
+    memberships,
+    pending: false,
+    active: true,
+    editable: true,
+    actions,
+  };
   let cleanup: (() => void) | undefined;
   const render = (changes: Partial<Props> = {}) => {
     props = { ...props, ...changes };
@@ -112,12 +131,24 @@ function harness() {
     children(node).find(
       (child) => React.isValidElement(child) && child.type === "button",
     ) as React.ReactElement<{ onClick: () => void }>;
+  const review = (node = render()) =>
+    children(node).find(
+      (child) =>
+        React.isValidElement<{ children?: React.ReactNode }>(child) &&
+        child.type === "button" &&
+        child.props.children === "Review note",
+    ) as
+      | React.ReactElement<{ onClick: () => void; "aria-disabled": boolean }>
+      | undefined;
   const change = (value: string, node = render()) =>
     select(node).props.onChange!({
       currentTarget: { value },
     } as React.ChangeEvent<HTMLSelectElement>);
   return {
     selection,
+    capture,
+    memberships,
+    review,
     actions,
     render,
     select,
@@ -172,7 +203,7 @@ describe("watchlist comparison note destination", () => {
     const old = h.render();
     h.button(old).props.onClick();
     const changed = { ...h.selection, endDate: "2026-09-18" };
-    const fresh = h.render({ selection: changed });
+    const fresh = h.render({ capture: { ...h.capture, selection: changed } });
     expect(h.select(fresh).props.value).toBe(
       h.selection.right!.listing.listingId,
     );
@@ -203,7 +234,7 @@ describe("watchlist comparison note destination", () => {
       if (kind === "handle") next.right.handle = Symbol("readded");
       const changed =
         kind === "retirement" ? { ...next, left: null, right: null } : next;
-      const fresh = h.render({ selection: changed });
+      const fresh = h.render({ capture: { ...h.capture, selection: changed } });
       expect(h.select(fresh).props.value).toBe("");
       h.button(old).props.onClick();
       h.change(right.listing.listingId, old);
@@ -294,4 +325,239 @@ describe("watchlist comparison note destination", () => {
     expect(h.html()).toContain("The destination membership changed.");
     expect(h.select().props.value).toBe(h.selection.right!.listing.listingId);
   });
+});
+
+describe("price comparison exact note Review", () => {
+  it.each([0, 1])(
+    "requires success and reviews exact destination %i without appending again",
+    (index) => {
+      const h = harness();
+      expect(h.review()).toBeUndefined();
+      h.change(h.memberships[index]!.listingId);
+      vi.mocked(h.actions.append).mockReturnValueOnce({
+        appended: false,
+        message: "Refused.",
+      });
+      h.button().props.onClick();
+      expect(h.review()).toBeUndefined();
+      h.button().props.onClick();
+      h.review()!.props.onClick();
+      expect(h.actions.review).toHaveBeenCalledOnce();
+      const [capture, member, isCurrent] = vi.mocked(h.actions.review).mock
+        .calls[0]!;
+      expect(capture).toBe(h.capture);
+      expect(member).toBe(h.memberships[index]);
+      expect(isCurrent()).toBe(true);
+      expect(h.actions.append).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("survives its own synchronous append publication and reads latest raw notes through Save locks and reorder", () => {
+    const h = harness();
+    h.change(h.memberships[1]!.listingId);
+    const appended = h.memberships.map((member) => ({
+      ...member,
+      note: member.note + " appended",
+    }));
+    vi.mocked(h.actions.append).mockImplementationOnce(() => {
+      h.render({ memberships: appended });
+      return { appended: true, message: "Added." };
+    });
+    h.button().props.onClick();
+    const successful = h.render();
+    expect(h.review(successful)).toBeDefined();
+    const latest = [...appended]
+      .reverse()
+      .map((member) => ({ ...member, note: "  raw é\n" + "x".repeat(2000) }));
+    h.render({ memberships: latest, editable: false });
+    h.review(successful)!.props.onClick();
+    const [capture, member, isCurrent] = vi.mocked(h.actions.review).mock
+      .calls[0]!;
+    expect(capture).toBe(h.capture);
+    expect(member).toBe(latest[0]);
+    expect(isCurrent()).toBe(true);
+    const freshPort = {
+      ...h.actions,
+      review: vi.fn<ManagedWatchlistComparisonNoteActions["review"]>(),
+    };
+    h.render({ actions: freshPort });
+    expect(isCurrent()).toBe(true);
+    h.review()!.props.onClick();
+    expect(freshPort.review).toHaveBeenCalledOnce();
+    const [freshCapture, freshMember, freshCurrent] =
+      freshPort.review.mock.calls[0]!;
+    expect(freshCapture).toBe(h.capture);
+    expect(freshMember).toBe(latest[0]);
+    expect(freshCurrent()).toBe(true);
+    h.button(successful).props.onClick();
+    h.change("", successful);
+    expect(h.actions.append).toHaveBeenCalledTimes(1);
+    expect(h.select().props.value).toBe(member.listingId);
+  });
+
+  it("pauses Review during a source request without binding success to edit permission", () => {
+    const h = harness();
+    h.change(h.memberships[0]!.listingId);
+    h.button().props.onClick();
+    const successful = h.render();
+    h.review(successful)!.props.onClick();
+    const isCurrent = vi.mocked(h.actions.review).mock.calls[0]![2];
+    const pending = h.render({ pending: true, editable: false });
+    expect(h.review(pending)!.props["aria-disabled"]).toBe(true);
+    expect(isCurrent()).toBe(false);
+    h.review(successful)!.props.onClick();
+    h.review(pending)!.props.onClick();
+    expect(h.actions.review).toHaveBeenCalledTimes(1);
+    const cancelled = h.render({ pending: false });
+    expect(h.review(cancelled)!.props["aria-disabled"]).toBe(false);
+    h.review(cancelled)!.props.onClick();
+    expect(h.actions.review).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves existing repeated price append behavior and same-context Review after a later length refusal", () => {
+    const h = harness();
+    h.change(h.memberships[0]!.listingId);
+    h.button().props.onClick();
+    h.button().props.onClick();
+    expect(h.actions.append).toHaveBeenCalledTimes(2);
+    vi.mocked(h.actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "The complete note exceeds 2,000 characters.",
+    });
+    h.button().props.onClick();
+    expect(h.html()).toContain("The complete note exceeds 2,000 characters.");
+    h.review()!.props.onClick();
+    expect(h.actions.review).toHaveBeenCalledOnce();
+    const [capture, member, isCurrent] = vi.mocked(h.actions.review).mock
+      .calls[0]!;
+    expect(capture).toBe(h.capture);
+    expect(member).toBe(h.memberships[0]);
+    expect(isCurrent()).toBe(true);
+    expect(h.actions.append).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    "interval",
+    "response",
+    "handle",
+    "catalog",
+    "pair",
+    "left qualifier",
+    "right qualifier",
+    "destination",
+    "active",
+    "unmount",
+  ])(
+    "withdraws success and fences old Review after %s changes, even when the previous context returns",
+    (kind) => {
+      const h = harness();
+      h.change(h.memberships[0]!.listingId);
+      h.button().props.onClick();
+      const successful = h.render();
+      h.review(successful)!.props.onClick();
+      const isCurrent = vi.mocked(h.actions.review).mock.calls[0]![2];
+      const left = h.selection.left!;
+      if (kind === "destination") {
+        h.change(h.memberships[1]!.listingId);
+        h.render();
+      } else if (kind === "active") h.render({ active: false });
+      else if (kind === "unmount") h.unmount();
+      else {
+        const capture = { ...h.capture };
+        if (kind === "interval")
+          capture.selection = { ...h.selection, startDate: "2026-09-18" };
+        if (kind === "response")
+          capture.selection = {
+            ...h.selection,
+            left: { ...left, response: structuredClone(left.response) },
+          };
+        if (kind === "handle")
+          capture.selection = {
+            ...h.selection,
+            left: { ...left, handle: Symbol("new") },
+          };
+        if (kind === "catalog")
+          capture.selection = {
+            ...h.selection,
+            left: {
+              ...left,
+              catalogSnapshotSha256: `sha256:${"c".repeat(64)}`,
+            },
+          };
+        if (kind === "pair")
+          capture.selection = { ...h.selection, left: h.selection.right };
+        if (kind === "left qualifier") capture.leftShowingPrevious = true;
+        if (kind === "right qualifier") capture.rightShowingPrevious = true;
+        h.render({ capture });
+      }
+      expect(isCurrent()).toBe(false);
+      h.review(successful)!.props.onClick();
+      expect(h.actions.review).toHaveBeenCalledTimes(1);
+      if (kind !== "unmount") {
+        h.render({ capture: h.capture, active: true });
+        h.change(h.memberships[0]!.listingId);
+        expect(h.review()).toBeUndefined();
+        expect(isCurrent()).toBe(false);
+      }
+    },
+  );
+
+  it.each([
+    "issuerId",
+    "issuerName",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+    "exchangeMic",
+    "instrumentType",
+    "removed",
+  ])(
+    "does not substitute a current member with changed %s, or revive success after re-add",
+    (field) => {
+      const h = harness();
+      h.change(h.memberships[1]!.listingId);
+      h.button().props.onClick();
+      const successful = h.render();
+      const member = h.memberships[1]!;
+      const replacement =
+        field === "instrumentType"
+          ? { ...member, instrumentType: "adr" as const }
+          : { ...member, [field]: "replacement" };
+      h.render({
+        memberships:
+          field === "removed"
+            ? [h.memberships[0]!]
+            : [h.memberships[0]!, replacement],
+      });
+      h.review(successful)!.props.onClick();
+      expect(h.actions.review).not.toHaveBeenCalled();
+      expect(h.review()).toBeUndefined();
+      h.render({ memberships: h.memberships });
+      expect(h.review()).toBeUndefined();
+    },
+  );
+
+  it.each(["unmount", "response"])(
+    "does not publish successful Review after a synchronous append %s",
+    (kind) => {
+      const h = harness();
+      h.change(h.memberships[0]!.listingId);
+      vi.mocked(h.actions.append).mockImplementationOnce(() => {
+        if (kind === "unmount") h.unmount();
+        else
+          h.render({
+            capture: {
+              ...h.capture,
+              selection: { ...h.selection, endDate: "2026-09-18" },
+            },
+          });
+        return { appended: true, message: "Added to previous context." };
+      });
+      h.button().props.onClick();
+      expect(h.review()).toBeUndefined();
+      expect(h.html()).not.toContain("Added to previous context.");
+    },
+  );
 });

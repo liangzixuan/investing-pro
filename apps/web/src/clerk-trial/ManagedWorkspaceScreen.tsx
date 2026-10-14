@@ -7,6 +7,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
+  membershipMatchesResult,
   normalizeWatchlistNote,
   type ManagedCatalogSnapshotDto,
   type ManagedEodIdentity,
@@ -35,6 +36,8 @@ import { ManagedMarkets } from "./ManagedMarkets";
 import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
 import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
+import type { AnnualComparisonNoteCapture } from "./managed-watchlist-annual-comparison-note";
+import type { WatchlistComparisonNoteReviewCapture } from "./ManagedWatchlistComparisonNoteAction";
 import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { identityLabels, ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedWatchlistReview } from "./ManagedWatchlistReview";
@@ -69,6 +72,77 @@ interface NoteReviewRequest {
   previousReturn: number;
   expectedReturn: number;
   localReturn: number;
+  isCurrentContext?: () => boolean;
+}
+
+function currentPriceNoteReview(
+  workspace: ManagedWorkspace,
+  capture: WatchlistComparisonNoteReviewCapture,
+  member: WatchlistMembership,
+) {
+  const prices = workspace.watchlistPrices.getSnapshot();
+  const digest = workspace.coordinator.getSnapshot().draft?.snapshotSha256;
+  const { left, right } = capture.selection;
+  if (
+    !prices.active ||
+    prices.catalogChanged ||
+    prices.pending ||
+    !left ||
+    !right
+  )
+    return false;
+  if (
+    ![left, right].some((source) =>
+      membershipMatchesResult(member, source.listing),
+    )
+  )
+    return false;
+  return [left, right].every((source, index) => {
+    const row = prices.rows.find((item) => item.handle === source.handle);
+    return (
+      row &&
+      source.response !== null &&
+      source.catalogSnapshotSha256 === digest &&
+      row.history.selection?.catalogSnapshotSha256 === digest &&
+      membershipMatchesResult({ ...source.listing, note: "" }, row.listing) &&
+      row.history.response === source.response &&
+      !row.history.running &&
+      !row.history.catalogChanged &&
+      row.history.showingPrevious ===
+        (index === 0
+          ? capture.leftShowingPrevious
+          : capture.rightShowingPrevious)
+    );
+  });
+}
+
+function currentAnnualNoteReview(
+  workspace: ManagedWorkspace,
+  capture: AnnualComparisonNoteCapture,
+  member: WatchlistMembership,
+) {
+  const comparison = workspace.annualComparison.getSnapshot();
+  const digest = workspace.coordinator.getSnapshot().draft?.snapshotSha256;
+  if (!comparison.active || comparison.catalogChanged || comparison.pending)
+    return false;
+  if (
+    ![capture.left, capture.right].some((side) =>
+      membershipMatchesResult(member, side.member.listing),
+    )
+  )
+    return false;
+  return (["left", "right"] as const).every((side) => {
+    const current = comparison[side];
+    const observed = capture[side];
+    return (
+      current.selected === observed.member &&
+      current.report.response === observed.response &&
+      current.report.showingPrevious === observed.showingPrevious &&
+      !current.report.running &&
+      !current.report.catalogChanged &&
+      observed.response.catalogSnapshotSha256 === digest
+    );
+  });
 }
 
 export function ManagedSessionScreen(props: SessionProps) {
@@ -500,6 +574,7 @@ export function ManagedWorkspaceScreen({
       currentSaved.phase !== "signing_out" &&
       currentSaved.draft === request.draft &&
       request.draft.memberships.includes(request.member) &&
+      (request.isCurrentContext?.() ?? true) &&
       current.snapshot?.snapshotSha256 === request.draft.snapshotSha256 &&
       current.view === "watchlist" &&
       !current.research &&
@@ -542,7 +617,11 @@ export function ManagedWorkspaceScreen({
       isCurrent: () => currentNoteReview(request),
     });
   });
-  const reviewWatchlistNote = (member: WatchlistMembership | null) => {
+  const reviewWatchlistNote = (
+    member: WatchlistMembership | null,
+    isCurrentContext?: () => boolean,
+  ) => {
+    if (isCurrentContext && !isCurrentContext()) return;
     const draft = coordinator.getSnapshot().draft;
     if (member && !draft?.memberships.includes(member)) return;
     const origin =
@@ -564,6 +643,7 @@ export function ManagedWorkspaceScreen({
       previousReturn,
       expectedReturn,
       localReturn: localReturnFocus,
+      ...(isCurrentContext ? { isCurrentContext } : {}),
     };
     // This return belongs to Review even if its target changes before commit.
     noteReviewReturn.current = {
@@ -648,6 +728,22 @@ export function ManagedWorkspaceScreen({
   };
   const currentCatalog =
     discovery.snapshot?.snapshotSha256 === saved.draft?.snapshotSha256;
+  const canReviewWatchlistMember = (member: WatchlistMembership) => {
+    const current = workspace.getSnapshot();
+    const state = coordinator.getSnapshot();
+    const route = reviewNavigation.current.navigation;
+    return (
+      state.phase !== "retired" &&
+      state.phase !== "signing_out" &&
+      state.draft?.memberships.includes(member) === true &&
+      current.snapshot?.snapshotSha256 === state.draft.snapshotSha256 &&
+      current.view === "watchlist" &&
+      !current.research &&
+      !current.companyRoute &&
+      !route?.invalid &&
+      !route?.hasCompanyRoute()
+    );
+  };
   const saveIssue = workspace.saveIssue();
   const hasInvalidNote = saved.draft?.memberships.some(
     (member) => normalizeWatchlistNote(member.note) === null,
@@ -1294,6 +1390,13 @@ export function ManagedWorkspaceScreen({
                         );
                       }}
                       comparisonNoteActions={{
+                        review: (capture, member, isCurrentChoice) => {
+                          const isCurrent = () =>
+                            isCurrentChoice() &&
+                            canReviewWatchlistMember(member) &&
+                            currentPriceNoteReview(workspace, capture, member);
+                          reviewWatchlistNote(member, isCurrent);
+                        },
                         getAction: (selection, destination) =>
                           navigation?.invalid || navigation?.hasCompanyRoute()
                             ? {
@@ -1401,6 +1504,7 @@ export function ManagedWorkspaceScreen({
                     <ManagedUnsavedWatchlistReview state={saved} />
                     <ManagedWatchlistAnnualComparison
                       model={workspace.annualComparison}
+                      memberships={saved.draft.memberships}
                       onOpenReport={(capture, opener) => {
                         if (
                           navigation?.invalid ||
@@ -1420,6 +1524,13 @@ export function ManagedWorkspaceScreen({
                         !navigation?.hasCompanyRoute()
                       }
                       noteActions={{
+                        review: (capture, member, isCurrentChoice) => {
+                          const isCurrent = () =>
+                            isCurrentChoice() &&
+                            canReviewWatchlistMember(member) &&
+                            currentAnnualNoteReview(workspace, capture, member);
+                          reviewWatchlistNote(member, isCurrent);
+                        },
                         getAction: (capture, destination) =>
                           navigation?.invalid || navigation?.hasCompanyRoute()
                             ? {

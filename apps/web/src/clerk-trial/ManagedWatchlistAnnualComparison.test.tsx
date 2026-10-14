@@ -120,6 +120,7 @@ function fixture() {
   const noteActions = {
     getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
     append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
+    review: vi.fn(),
   };
   const originalMemberships = model.getSnapshot().memberships;
   const originalDraft = structuredClone(draft);
@@ -140,6 +141,7 @@ function fixture() {
       active: true,
       editable: true,
       noteActions,
+      memberships: draft.memberships,
       onOpenReport,
       ...props,
     });
@@ -396,6 +398,7 @@ describe("watchlist annual comparison controls and presentation", () => {
     );
     expect(noteAction.props?.state).toBe(f.model.getSnapshot());
     expect(noteAction.props?.actions).toBe(f.noteActions);
+    expect(noteAction.props?.memberships).toBe(f.draft.memberships);
     expect(noteAction.props?.active).toBe(true);
     expect(noteAction.props?.editable).toBe(true);
     expect(noteAction.props?.bases.right).toBe("SalesRevenueNet");

@@ -6,6 +6,7 @@ import {
   PERSONAL_BEA_CALENDAR_SOURCE,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
@@ -437,6 +438,211 @@ function noteReviewScreen(
       return reviewNote;
     },
   };
+}
+
+async function comparisonNoteReviewFixture(
+  kind: "price" | AnnualComparisonNoteCapture["group"],
+) {
+  const listings =
+    kind === "price"
+      ? [eodSelection.listing, payload.memberships[0]!]
+      : [annualComparisonMemberships.left, annualComparisonMemberships.right];
+  const initial = {
+    ...payload,
+    memberships: listings.map((listing, index) => ({
+      ...listing,
+      note: index === 0 ? "Keep first thesis" : "Fresh café 東京 📈 thesis",
+    })),
+  };
+  const f = fixture(initial, initial.memberships);
+  await f.workspace.coordinator.load();
+  await f.workspace.refreshCatalog();
+  f.workspace.setView("watchlist");
+  if (kind === "price") {
+    const priceResponse = (listingId: string) => {
+      const { note: _note, ...security } = initial.memberships.find(
+        (member) => member.listingId === listingId,
+      )!;
+      void _note;
+      return { ...eodResponse(), security };
+    };
+    for (const row of f.workspace.watchlistPrices.getSnapshot().rows) {
+      vi.mocked(f.api.eodHistory).mockResolvedValueOnce(
+        priceResponse(row.listing.listingId),
+      );
+      await f.workspace.loadWatchlistPrice(row.handle);
+    }
+    const prices = f.workspace.watchlistPrices.getSnapshot();
+    expect(prices.rows.every((row) => row.history.response !== null)).toBe(
+      true,
+    );
+    let selection = createManagedWatchlistComparisonSelection();
+    for (const [side, row] of [
+      ["left", prices.rows[0]!],
+      ["right", prices.rows[1]!],
+    ] as const)
+      selection = selectManagedWatchlistComparisonRow(
+        selection,
+        selection,
+        prices,
+        side,
+        row,
+      );
+    const capture = {
+      selection,
+      leftShowingPrevious: false,
+      rightShowingPrevious: false,
+    };
+    const actions = (screen: React.ReactNode) =>
+      watchlistEditor(screen)!.props.comparisonNoteActions;
+    return {
+      ...f,
+      initial,
+      append: (screen: React.ReactNode) =>
+        actions(screen).append(selection, prices.rows[1]!.listing),
+      canAppend: (screen: React.ReactNode) =>
+        actions(screen).getAction(selection, prices.rows[1]!.listing).canAppend,
+      review: (
+        screen: React.ReactNode,
+        member: WatchlistMembership,
+        current: () => boolean,
+      ) => actions(screen).review(capture, member, current),
+      sourceState: () =>
+        f.workspace.watchlistPrices
+          .getSnapshot()
+          .rows.map((row) => row.history.response),
+      replaceSource: async () => {
+        const row = f.workspace.watchlistPrices.getSnapshot().rows[0]!;
+        vi.mocked(f.api.eodHistory).mockResolvedValueOnce(
+          priceResponse(row.listing.listingId),
+        );
+        await f.workspace.loadWatchlistPrice(row.handle);
+      },
+    };
+  }
+  const model = f.workspace.annualComparison;
+  for (const [side, index] of [
+    ["left", 0],
+    ["right", 1],
+  ] as const) {
+    const member = model.getSnapshot().memberships[index]!;
+    model.select(side, model.getSnapshot(), member);
+    vi.mocked(f.api.annualReport).mockResolvedValueOnce(
+      await annualComparisonResponse(side),
+    );
+    await model.load(side, member);
+  }
+  const state = model.getSnapshot();
+  const capture: AnnualComparisonNoteCapture = {
+    group: kind,
+    left: {
+      member: state.left.selected!,
+      response: state.left.report.response!,
+      selectedBasis: projectAnnualComparison(state.left.report.response)
+        .selectedBasis,
+      showingPrevious: false,
+    },
+    right: {
+      member: state.right.selected!,
+      response: state.right.report.response!,
+      selectedBasis: projectAnnualComparison(state.right.report.response)
+        .selectedBasis,
+      showingPrevious: false,
+    },
+  };
+  const actions = (screen: React.ReactNode) =>
+    (
+      elements(screen).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >
+    ).props.noteActions;
+  return {
+    ...f,
+    initial,
+    append: (screen: React.ReactNode) =>
+      actions(screen).append(capture, state.right.selected),
+    canAppend: (screen: React.ReactNode) =>
+      actions(screen).getAction(capture, state.right.selected).canAppend,
+    review: (
+      screen: React.ReactNode,
+      member: WatchlistMembership,
+      current: () => boolean,
+    ) => actions(screen).review(capture, member, current),
+    sourceState: () => [
+      model.getSnapshot().left.report.response,
+      model.getSnapshot().right.report.response,
+    ],
+    replaceSource: async () => {
+      vi.mocked(f.api.annualReport).mockResolvedValueOnce(
+        await annualComparisonResponse("left"),
+      );
+      await model.load("left", model.getSnapshot().left.selected!);
+    },
+  };
+}
+
+function comparisonReaderFixture(workspace: ManagedWorkspace) {
+  const page = { body: {}, activeElement: {} as unknown };
+  vi.stubGlobal("document", page);
+  const summary = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    focus: vi.fn(() => {
+      page.activeElement = summary;
+    }),
+    scrollIntoView: vi.fn(),
+  };
+  const reader = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    open: false,
+    querySelector: () => summary,
+  };
+  const field = { dataset: { managedNoteListingId: "" }, value: "" };
+  const panel = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    querySelector: (selector: string) =>
+      selector.startsWith("textarea") ? field : reader,
+  };
+  const render = () => {
+    const root = noteReviewScreen(workspace);
+    const nodes = editorElements(root.screen);
+    const note = nodes.find(
+      (node) => node.type === ManagedNoteEditor,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+    field.dataset.managedNoteListingId = note.props.listingId;
+    field.value = note.props.note;
+    mounted.editorRefs[0]!.current = panel;
+    return {
+      ...root,
+      nodes,
+      note,
+      commit: () => {
+        for (const effect of mounted.editorEffects) effect();
+        root.commit();
+      },
+    };
+  };
+  const first = render();
+  first.commit();
+  const scope = first.nodes.find(
+    (node) =>
+      (node.props as { id?: string }).id === "managed-watchlist-search-scope",
+  ) as React.ReactElement<React.ComponentProps<"select">>;
+  scope.props.onChange!({
+    target: { value: "notes" },
+  } as React.ChangeEvent<HTMLSelectElement>);
+  const search = first.nodes.find(
+    (node) => (node.props as { id?: string }).id === "managed-watchlist-search",
+  ) as React.ReactElement<React.ComponentProps<"input">>;
+  search.props.onChange!({
+    target: { value: "Keep first" },
+  } as React.ChangeEvent<HTMLInputElement>);
+  render().commit();
+  return { render, page, summary, reader };
 }
 
 async function returnedFocusFixture() {
@@ -2939,6 +3145,144 @@ describe("managed workspace screen", () => {
     mounted.direct = false;
     expect(html()).toContain("Edited from the watchlist row");
   });
+
+  it.each(["price", "income", "cash", "liquidity"] as const)(
+    "reviews the exact %s comparison destination outside search, including during Save",
+    async (kind) => {
+      const f = await comparisonNoteReviewFixture(kind);
+      const ui = comparisonReaderFixture(f.workspace);
+      const first = ui.render();
+      first.commit();
+      expect(first.note.props.listingId).toBe(
+        f.initial.memberships[0]!.listingId,
+      );
+      expect(f.append(first.screen).appended).toBe(true);
+      const draft = f.workspace.coordinator.getSnapshot().draft!;
+      const target = draft.memberships[1]!;
+      expect(draft.memberships[0]).toEqual(f.initial.memberships[0]);
+      expect(target.note).toMatch(/^Fresh café 東京 📈 thesis /);
+      const sources = f.sourceState();
+      const writes = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+      vi.mocked(f.api.save).mockReturnValueOnce(writes.promise);
+      const saving = f.workspace.coordinator.save();
+      const savingDraft = f.workspace.coordinator.getSnapshot().draft!;
+      const currentTarget = savingDraft.memberships[1]!;
+      expect(savingDraft).toEqual(draft);
+      expect(currentTarget).not.toBe(target);
+      const pending = ui.render();
+      pending.commit();
+      expect(f.workspace.canEdit()).toBe(false);
+      expect(f.canAppend(pending.screen)).toBe(false);
+      expect(f.api.save).toHaveBeenCalledOnce();
+      const command = vi.mocked(f.api.save).mock.calls[0]![0];
+      expect(command.payload).toEqual(draft);
+      f.review(pending.screen, currentTarget, () => true);
+      ui.render().commit();
+      const selected = ui.render();
+      selected.commit();
+      expect(selected.note.props).toMatchObject({
+        listingId: target.listingId,
+        note: target.note,
+        disabled: true,
+      });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id === "managed-watchlist-search",
+        )?.props,
+      ).toMatchObject({ value: "Keep first" });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id ===
+            "managed-watchlist-search-scope",
+        )?.props,
+      ).toMatchObject({ value: "notes" });
+      expect(
+        selected.nodes.some(
+          (node) =>
+            React.Children.toArray(node.props.children)
+              .filter((child) => typeof child === "string")
+              .join("") === `Selected ${target.symbol} is outside this search.`,
+        ),
+      ).toBe(true);
+      expect(ui.reader.open).toBe(true);
+      expect(ui.summary.focus).toHaveBeenCalledOnce();
+      expect(ui.summary.scrollIntoView).toHaveBeenCalledOnce();
+      expect(ui.page.activeElement).toBe(ui.summary);
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(savingDraft);
+      expect(f.sourceState()).toEqual(sources);
+      f.sourceState().forEach((response, index) =>
+        expect(response).toBe(sources[index]),
+      );
+      writes.resolve({ version: 2, payload: command.payload, replayed: false });
+      await saving;
+      vi.mocked(f.api.load).mockResolvedValueOnce({
+        version: 2,
+        payload: command.payload,
+      });
+      await f.workspace.coordinator.load();
+      expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+        baseVersion: 2,
+        dirty: false,
+        draft: command.payload,
+      });
+      expect(f.api.eodHistory).toHaveBeenCalledTimes(kind === "price" ? 2 : 0);
+      expect(f.api.annualReport).toHaveBeenCalledTimes(
+        kind === "price" ? 0 : 2,
+      );
+      for (const call of [
+        f.api.recentFilings,
+        f.api.economicCalendar,
+        f.api.monetaryAnnouncements,
+        f.api.resolve,
+        f.api.search,
+      ])
+        expect(call).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["price", "choice"],
+    ["income", "choice"],
+    ["price", "response"],
+    ["income", "response"],
+    ["price", "member"],
+    ["income", "member"],
+    ["price", "retire"],
+    ["income", "retire"],
+  ] as const)(
+    "fences queued %s comparison Review when its %s changes before the reader commits",
+    async (kind, change) => {
+      const f = await comparisonNoteReviewFixture(kind);
+      const first = noteReviewScreen(f.workspace);
+      first.commit();
+      expect(f.append(first.screen).appended).toBe(true);
+      const member =
+        f.workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      let currentChoice = true;
+      f.review(first.screen, member, () => currentChoice);
+      if (change === "choice") currentChoice = false;
+      if (change === "response") await f.replaceSource();
+      if (change === "member")
+        f.workspace.note(
+          member.listingId,
+          "Later raw note must keep its focus",
+        );
+      if (change === "retire") f.workspace.coordinator.retire();
+      const next = noteReviewScreen(f.workspace);
+      const review = change === "retire" ? vi.fn() : next.bindReview();
+      next.commit();
+      expect(review).not.toHaveBeenCalled();
+      expect(f.api.save).not.toHaveBeenCalled();
+      if (change === "member")
+        expect(
+          f.workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+        ).toBe("Later raw note must keep its focus");
+      if (change === "retire")
+        expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+    },
+  );
 
   it.each(["ready", "invalid", "pending", "becomes-pending"] as const)(
     "wires pair evidence to the current full draft with navigation %s",

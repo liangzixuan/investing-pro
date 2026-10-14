@@ -9,6 +9,7 @@ import {
   type SetStateAction,
   type RefObject,
 } from "react";
+import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
 import {
@@ -50,12 +51,14 @@ export function ManagedWatchlistAnnualComparison({
   active,
   editable,
   noteActions,
+  memberships,
   onOpenReport,
 }: {
   model: ComparisonModel;
   active: boolean;
   editable: boolean;
   noteActions: ManagedWatchlistAnnualComparisonNoteActions;
+  memberships: readonly WatchlistMembership[];
   onOpenReport: (
     capture: ManagedAnnualComparisonReportCapture,
     opener: HTMLButtonElement,
@@ -258,6 +261,7 @@ export function ManagedWatchlistAnnualComparison({
         active={active}
         editable={editable}
         actions={noteActions}
+        memberships={memberships}
       />
       <div className="managed-annual-comparison-sources">
         {sides.map((side) => {

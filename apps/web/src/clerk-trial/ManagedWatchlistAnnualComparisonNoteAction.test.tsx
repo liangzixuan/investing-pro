@@ -104,6 +104,7 @@ async function harness(
       canAppend: destination !== null,
       reason: destination ? null : "Choose a note.",
     })),
+    review: vi.fn(),
     append: vi.fn(() => ({
       appended: true,
       message: "Added to the chosen draft. Review and Save.",
@@ -111,6 +112,7 @@ async function harness(
   };
   let props: Props = {
     state,
+    memberships: draft.memberships,
     bases: { left: "Revenues", right: "SalesRevenueNet" },
     active: true,
     editable: true,
@@ -135,6 +137,10 @@ async function harness(
     controls(node).find(
       (item) => item.props.id === `managed-annual-comparison-note-${kind}`,
     )!;
+  const review = (node = render()) =>
+    controls(node).find(
+      (item) => item.type === "button" && item.props.children === "Review note",
+    );
   const button = (node = render()) =>
     controls(node).find((item) => item.type === "button")!;
   const change = (
@@ -154,6 +160,7 @@ async function harness(
     render,
     select,
     button,
+    review,
     change,
     unmount: () => cleanup?.(),
     html: (node = render()) => renderToStaticMarkup(node),
@@ -576,5 +583,282 @@ describe("Annual comparison note action", () => {
     expect(h.html()).toContain("SAME · One Company · Class C · XNYS");
     h.button().props.onClick!();
     expect(vi.mocked(h.actions.append).mock.calls[0]![1]).toBe(right);
+  });
+
+  it("does not offer Review before success or after a refused append alone", async () => {
+    const h = await harness();
+    expect(h.review()).toBeUndefined();
+    h.change("destination", members.left.listingId);
+    vi.mocked(h.actions.append).mockReturnValue({
+      appended: false,
+      message: "The note is too long.",
+    });
+    h.button().props.onClick!();
+    expect(h.review()).toBeUndefined();
+    expect(h.html()).toContain("The note is too long.");
+    expect(h.actions.review).not.toHaveBeenCalled();
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["income", "left"],
+    ["income", "right"],
+    ["cash", "left"],
+    ["cash", "right"],
+    ["liquidity", "left"],
+    ["liquidity", "right"],
+  ] as const)(
+    "reviews the exact current %s destination on the %s side without another append or read",
+    async (group, side) => {
+      const h = await harness();
+      h.change("group", group);
+      h.change("destination", members[side].listingId);
+      h.button().props.onClick!();
+      const focused = { focus: vi.fn() };
+      vi.stubGlobal("document", { activeElement: focused });
+      h.review()!.props.onClick!();
+      const [capture, member, isCurrentChoice] = vi.mocked(h.actions.review)
+        .mock.calls[0]!;
+      expect(capture).toBe(vi.mocked(h.actions.append).mock.calls[0]![0]);
+      expect(capture.group).toBe(group);
+      expect(member).toBe(h.draft.memberships[side === "left" ? 0 : 1]);
+      expect(isCurrentChoice()).toBe(true);
+      h.render({ actions: { ...h.actions } });
+      expect(isCurrentChoice()).toBe(true);
+      expect(h.actions.append).toHaveBeenCalledOnce();
+      expect(h.read).toHaveBeenCalledTimes(2);
+      expect(document.activeElement).toBe(focused);
+      expect(focused.focus).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps success through synchronous append publication, reordered raw notes and read-only Save state", async () => {
+    const h = await harness();
+    h.change("destination", members.right.listingId);
+    const changedMembers = [
+      { ...members.right, note: "  raw invalid \u0001 draft  " },
+      { ...members.left, note: "Fresh café 東京 📈" },
+    ];
+    vi.mocked(h.actions.append).mockImplementation(() => {
+      h.render({
+        memberships: changedMembers,
+        editable: false,
+        state: { ...h.state, canRead: false },
+      });
+      return { appended: true, message: "Added before Save." };
+    });
+    h.button().props.onClick!();
+    const node = h.render();
+    expect(h.select("group", node).props["aria-disabled"]).toBe(true);
+    expect(h.select("destination", node).props["aria-disabled"]).toBe(true);
+    expect(h.button(node).props["aria-disabled"]).toBe(true);
+    expect(h.review(node)!.props["aria-disabled"]).toBe(false);
+    h.review(node)!.props.onClick!();
+    expect(vi.mocked(h.actions.review).mock.calls[0]![1]).toBe(
+      changedMembers[0],
+    );
+    h.change("group", "cash", node);
+    h.button(node).props.onClick!();
+    expect(h.select("group").props.value).toBe("income");
+    expect(h.actions.append).toHaveBeenCalledOnce();
+    expect(h.read).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves Review after duplicate refusal and refreshes the exact member and latest review port", async () => {
+    const h = await harness();
+    h.change("destination", members.left.listingId);
+    h.button().props.onClick!();
+    const oldReview = h.review()!.props.onClick!;
+    vi.mocked(h.actions.getAction).mockReturnValue({
+      canAppend: false,
+      reason: "Already added.",
+    });
+    h.button().props.onClick!();
+    expect(h.html()).toContain("Already added.");
+    const currentMember = { ...members.left, note: "Latest raw note" };
+    const latestActions = {
+      ...h.actions,
+      review: vi.fn<ManagedWatchlistAnnualComparisonNoteActions["review"]>(),
+    };
+    h.render({
+      memberships: [members.right, currentMember],
+      actions: latestActions,
+    });
+    oldReview();
+    expect(latestActions.review.mock.calls[0]![1]).toBe(currentMember);
+    expect(latestActions.review.mock.calls[0]![2]()).toBe(true);
+    expect(h.actions.review).not.toHaveBeenCalled();
+    expect(h.actions.append).toHaveBeenCalledOnce();
+  });
+
+  it.each(["pending", "left", "right"] as const)(
+    "pauses Review for %s reads and restores it only for the same evidence context",
+    async (kind) => {
+      const h = await harness();
+      h.change("destination", members.right.listingId);
+      h.button().props.onClick!();
+      const review = h.review()!.props.onClick!;
+      review();
+      const isCurrentChoice = vi.mocked(h.actions.review).mock.calls[0]![2];
+      const next =
+        kind === "pending"
+          ? { ...h.state, pending: { side: "left" as const, cancel: vi.fn() } }
+          : {
+              ...h.state,
+              [kind]: {
+                ...h.state[kind],
+                report: { ...h.state[kind].report, running: true },
+              },
+            };
+      h.render({ state: next });
+      expect(h.review()!.props["aria-disabled"]).toBe(true);
+      expect(isCurrentChoice()).toBe(false);
+      review();
+      expect(h.actions.review).toHaveBeenCalledOnce();
+      h.render({ state: h.state });
+      expect(h.review()!.props["aria-disabled"]).toBe(false);
+      review();
+      expect(h.actions.review).toHaveBeenCalledTimes(2);
+      expect(h.actions.append).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    "basis",
+    "group",
+    "destination",
+    "retained",
+    "response",
+    "member",
+    "catalog",
+    "active",
+  ] as const)(
+    "withdraws success and queued Review after %s changes, without reviving an old choice",
+    async (kind) => {
+      const h = await harness();
+      h.change("destination", members.right.listingId);
+      h.button().props.onClick!();
+      const review = h.review()!.props.onClick!;
+      review();
+      const isCurrentChoice = vi.mocked(h.actions.review).mock.calls[0]![2];
+      if (kind === "basis")
+        h.render({
+          bases: { left: "SalesRevenueNet", right: "SalesRevenueNet" },
+        });
+      else if (kind === "group") {
+        h.change("group", "cash");
+        h.render();
+      } else if (kind === "destination") {
+        h.change("destination", members.left.listingId);
+        h.render();
+      } else if (kind === "active") h.render({ active: false });
+      else if (kind === "catalog")
+        h.render({ state: { ...h.state, catalogChanged: true } });
+      else if (kind === "member")
+        h.render({
+          state: {
+            ...h.state,
+            right: {
+              ...h.state.right,
+              selected: {
+                ...h.state.right.selected!,
+                handle: Symbol("replacement"),
+              },
+            },
+          },
+        });
+      else
+        h.render({
+          state: {
+            ...h.state,
+            right: {
+              ...h.state.right,
+              report: {
+                ...h.state.right.report,
+                ...(kind === "retained"
+                  ? { showingPrevious: true }
+                  : {
+                      response: structuredClone(h.state.right.report.response),
+                    }),
+              },
+            },
+          },
+        });
+      expect(h.review()).toBeUndefined();
+      expect(isCurrentChoice()).toBe(false);
+      review();
+      h.render({
+        state: h.state,
+        active: true,
+        bases: { left: "Revenues", right: "SalesRevenueNet" },
+      });
+      h.change("group", "income");
+      h.change("destination", members.right.listingId);
+      expect(h.review()).toBeUndefined();
+      review();
+      expect(isCurrentChoice()).toBe(false);
+      expect(h.actions.review).toHaveBeenCalledOnce();
+      expect(h.actions.append).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each(["missing", "identity"] as const)(
+    "clears success for an observed %s destination and never falls back by listing ID",
+    async (kind) => {
+      const h = await harness();
+      h.change("destination", members.right.listingId);
+      h.button().props.onClick!();
+      const review = h.review()!.props.onClick!;
+      h.render({
+        memberships:
+          kind === "missing"
+            ? [members.left]
+            : [
+                members.left,
+                { ...members.right, shareClassId: "replacement-class" },
+              ],
+      });
+      expect(h.review()).toBeUndefined();
+      review();
+      h.render({ memberships: h.draft.memberships });
+      expect(h.review()).toBeUndefined();
+      expect(h.actions.review).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects an unmounted Review callback and its already queued current-choice predicate", async () => {
+    const h = await harness();
+    h.change("destination", members.left.listingId);
+    h.button().props.onClick!();
+    const review = h.review()!.props.onClick!;
+    review();
+    const isCurrentChoice = vi.mocked(h.actions.review).mock.calls[0]![2];
+    h.unmount();
+    expect(isCurrentChoice()).toBe(false);
+    review();
+    expect(h.actions.review).toHaveBeenCalledOnce();
+  });
+
+  it("does not create success if append synchronously replaces the admitted source", async () => {
+    const h = await harness();
+    h.change("destination", members.left.listingId);
+    vi.mocked(h.actions.append).mockImplementation(() => {
+      h.render({
+        state: {
+          ...h.state,
+          left: {
+            ...h.state.left,
+            report: {
+              ...h.state.left.report,
+              response: structuredClone(h.state.left.report.response),
+            },
+          },
+        },
+      });
+      return { appended: true, message: "Added to an earlier context." };
+    });
+    h.button().props.onClick!();
+    expect(h.review()).toBeUndefined();
+    expect(h.actions.review).not.toHaveBeenCalled();
   });
 });

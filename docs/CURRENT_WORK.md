@@ -899,6 +899,20 @@ with their limits. The existing Android journey now checks exact append, duplica
 refusal and Review; its original hosted execution is pending. See
 [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
+### Exact Review after a watchlist comparison
+
+Price and Annual comparison actions now offer **Review note** after a successful
+append. Review selects that exact current listing, preserves the search and opens
+the existing full-note reader. It remains available while Save pauses editing.
+A changed source, comparison choice or destination removes earlier success;
+pending source reads pause Review. The action adds no request or write.
+
+Focused action and composed reader tests, web types, lint and source boundaries
+pass. Checks include all three Annual groups, full-draft Save/reload, search-hidden
+destinations and cancellation of stale reader requests. Independent action source
+reviews pass. Chrome rendering and original hosted Android execution remain
+pending. See [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -923,9 +937,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the BEA note candidate, then connect the
-existing price and Annual comparison append actions to exact-note Review. Source
-integration remains subject to its existing permission boundary.
+Resolve the original BEA candidate's Android failure and complete rendered and
+hosted acceptance for comparison note Review. Source integration remains subject
+to its existing permission boundary.
 Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
