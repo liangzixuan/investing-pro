@@ -23,6 +23,8 @@ import {
 } from "../features/research/sec-annual-liquidity-fixture";
 import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
+import { CompanySnapshotPrice } from "./CompanySnapshotPrice";
+import { CompanySnapshotAnnual } from "./CompanySnapshotAnnual";
 
 async function fixture(packet?: PersonalSecAnnualEvidenceResponseDto) {
   const readPrice = vi.fn().mockResolvedValue(eodResponse());
@@ -260,6 +262,18 @@ describe("loaded company snapshot", () => {
       n: React.ReactNode,
     ): React.ReactElement<Record<string, unknown>>[] {
       if (!React.isValidElement<Record<string, unknown>>(n)) return [];
+      if (n.type === CompanySnapshotPrice)
+        return elements(
+          CompanySnapshotPrice(
+            n.props as React.ComponentProps<typeof CompanySnapshotPrice>,
+          ),
+        );
+      if (n.type === CompanySnapshotAnnual)
+        return elements(
+          CompanySnapshotAnnual(
+            n.props as React.ComponentProps<typeof CompanySnapshotAnnual>,
+          ),
+        );
       return [
         n,
         ...React.Children.toArray(n.props.children as React.ReactNode).flatMap(

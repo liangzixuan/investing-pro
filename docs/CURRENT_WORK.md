@@ -63,6 +63,16 @@ native bundles pass; the largest loader is 2,407,498 bytes under the unchanged
 4 MiB limit, with exact software notices. Original producing-head hosted
 execution remains required. Production and physical-device use are unchanged.
 
+Review of the first hosted candidate flagged the combined source renderer and
+long Annual renderer. Price and Annual now have separate presentation components;
+Annual separates source context, income and cash/liquidity. The same values,
+conditions, source links and DOM structure remain. All 647 affected/composed
+cases and web types pass after this split. Exact static markup matches the prior
+candidate across 36 combinations of empty, unsupported, loaded, refreshing,
+retained and historical source states. Exact builds and fresh rendered
+verification of the modular source remain required; prior check outcomes stay
+recorded separately.
+
 ## Preceding thesis review candidate
 
 The thesis-review composer is implemented in My Watchlist and company notes.
