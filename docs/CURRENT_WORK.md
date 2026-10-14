@@ -54,8 +54,14 @@ failed-refresh retention, unchanged notes, company reset and retirement of a lat
 response at actual 1440/390/320 widths, without horizontal overflow or console
 warnings. It found an unsupported listing's misleading load prompt; the snapshot
 now uses the existing coverage message, with a regression case. The corrected
-build and final browser check, plus original producing-head hosted execution,
-remain required before acceptance.
+exact build and fresh Chrome checks confirm supported/unsupported empty states,
+both explicit loads and exact data at all three widths. The original loaded,
+refresh and lifetime checks remain applicable to unchanged paths. A stale narrow
+bitmap returned after one viewport change is excluded from desktop visual proof;
+the current-width DOM geometry is checked separately. Preview and synthetic
+native bundles pass; the largest loader is 2,407,498 bytes under the unchanged
+4 MiB limit, with exact software notices. Original producing-head hosted
+execution remains required. Production and physical-device use are unchanged.
 
 ## Preceding thesis review candidate
 
