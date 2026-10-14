@@ -35,6 +35,58 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
+The owner requested a source review of easy-stock and adoption of useful features
+alongside the full InvestingPro goal. The [review](EASY_STOCK_REVIEW.md) defines
+the adoption order and independent implementation boundary. The current candidate
+adds a thesis-review composer in the managed watchlist and company note editors.
+It previews an authored assessment, evidence, confirmation/invalidation conditions
+and next check before an explicit draft append. The existing whole-draft Save,
+search, export and session lifetime remain the persistence path. A stale append
+cannot overwrite an intervening note edit. It preserves existing text and the
+2,000-character policy; invalid and immediate duplicate appends are refused.
+All 811 affected/composed and fixture cases pass, along with web types, scoped
+lint/format, source boundaries and Java syntax. The raw editor and its ordinary
+typing assertions are restored unchanged; the review is composed by each note
+screen. Company research keeps its original guidance before the disclosure.
+Final review separates authored
+field formatting from note appending and identifies an invalid field with its
+2,000-character policy. Equivalent note/preview outcomes are checked against the
+first candidate across 294 cases. Chrome confirms the changed field-specific
+message for oversized and unsupported text, with the same valid preview and Add.
+Original CodeScene findings and first-head CI results remain recorded separately.
+The first Android report passed 24 of 29 cases. Four visibility captures included
+the new hidden review button; their selectors now target the original action
+group, preserving the same six-control counts, geometry, text and deadlines.
+The thesis journey now uses a declared fixture that accepts only its exact whole
+draft and refuses other-listing changes. All older fixtures and expected payloads
+remain. Fresh Chrome checks at 360×600 CSS pixels preserve the exact six original
+company controls. Their translation-relative span is 566 pixels; native
+start-scroll execution remains a separate check. Company review fields survive
+section changes, and both company and watchlist appends preserve the same note.
+Ordinary typing retains unadded review fields; changing listing resets them.
+Two held RAM Saves, whole-payload reload, complete reading during Save and
+retirement fencing pass, with no provider reads or console warnings. Revised
+original hosted execution remains required.
+Native and preview builds pass. The largest synthetic loader is 2,399,332 bytes
+under the unchanged 4 MiB limit, with exact software notices preserved.
+
+Chrome at actual 1440, 390 and 320 CSS pixels verifies keyboard disclosure and
+Add, 44px fields, wrapping, preview before mutation, duplicate/invalid/limit
+refusal, listing reset and the complete first note through one held RAM Save and
+reload. Company research appends a second assessment to the same exact note and
+returns its editor in My Watchlist; the separate full reader remains available.
+Note search matches the new assessment. Two RAM writes, two loads, zero provider
+reads and retirement fencing of the late second receipt are verified. These
+checks use invented data. All earlier native cases, counts, bounds, goldens and
+deadlines remain, with four capture selectors scoped to their original controls;
+original hosted execution remains required. No upstream code,
+model entitlement or data source was added. Production remains unchanged.
+
+The preceding Release view candidate's original Android run failed window-focus
+and fixture-readiness checks. Its Ubuntu, Windows, parser and dependency jobs
+passed. The original Android failure is retained; no rerun or native acceptance
+is claimed. This remains a separate delivery limit from the new thesis review.
+
 The current candidate adds **Release view** to the loaded BEA agenda. Entries
 absent from its preceding accepted agenda require a comparison tied to the exact
 current response. The view intersects with series search and Eastern date;

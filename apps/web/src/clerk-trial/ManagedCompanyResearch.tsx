@@ -46,7 +46,7 @@ export function ManagedCompanyResearch({
   onBack: () => void;
   watchlist: ResearchWatchlistState;
   onAdd: () => void;
-  onNote: (note: string) => void;
+  onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
   annualNoteActions: ManagedAnnualNoteActions;
   annualCashNoteActions: ManagedAnnualCashNoteActions;

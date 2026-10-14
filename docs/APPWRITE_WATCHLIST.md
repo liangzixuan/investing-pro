@@ -44,6 +44,26 @@ application-layer encryption. Keep the accepted vault and its recovery material
 unchanged. Only invented records are allowed in the initial cloud proof; owner
 migration follows a reviewed privacy, credential and recovery design.
 
+## Write a thesis review
+
+Open **Write a thesis review for SYMBOL** below the current note in My Watchlist
+or company research. Enter your thesis, what would invalidate it and the next
+check. Supporting evidence, opposing evidence and a confirmation condition are
+optional. Include source links and dates with evidence; these are your authored
+assessments and are not independently verified citations.
+
+The preview shows exactly what **Add review to note draft** will append. The
+original note stays intact. The complete note must pass its existing 2,000-character
+save policy. Invalid text, excess length and an immediate duplicate block Add.
+An intervening note edit blocks a stale append. No provider request or Save occurs
+until explicitly requested. Review and save all changes in My Watchlist to keep
+the result. Reading remains available during Save; editing is paused.
+
+Unadded fields are temporary. They reset when this editor changes listing or
+unmounts. Adding preserves the review as note text, rather than a monitored rule,
+separate condition database or alert. Edit the complete note to change a saved
+review. Research-note search and export include that same text.
+
 ## Dated prices in the watchlist
 
 Select a listing and choose **Load SYMBOL price** to request its one-month raw

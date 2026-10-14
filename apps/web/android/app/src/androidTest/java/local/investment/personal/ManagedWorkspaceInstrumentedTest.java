@@ -251,6 +251,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
+        if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
+            selectFixtureScenario("thesis-review");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
             selectFixtureScenario("watchlist-recovery");
         if (testName.getMethodName().equals("signOutReviewKeepsDraftAndUpdatesAfterSave"))
@@ -2536,7 +2538,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector(" + JSONObject.quote(add) + ")");
         // Exact textarea bytes are checked; this frame shows only the visible controls.
         retainAnnualNoteFrame("companyFilingsNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
@@ -3711,7 +3713,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertPriceNoteCounts(1, 0, 1);
         // Full textarea bytes are asserted; this frame claims only the visible note controls.
         retainAnnualNoteFrame("priceComparisonNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertPriceNoteDraft(1, true);
         assertPriceNoteCounts(1, 0, 1);
@@ -3893,7 +3895,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteCounts(1, 0, 1);
         // The textarea contains the whole exact note, but this frame claims only its visible controls.
         retainAnnualNoteFrame("annualEvidenceNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
@@ -3932,6 +3934,53 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEquals("Annual note review, save and reload preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedAnnualNote", "phase=observed-pair-appended-saved-reloaded, exactNoteLength=" + ANNUAL_NOTE.length() + "; " + pageDiagnostic());
+    }
+
+    @Test
+    public void thesisReviewPreviewAppendSaveAndReloadPreservesDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Original thesis");
+        click(".managed-thesis-review > summary");
+        awaitPage("review requires authored conditions and keeps the note unchanged",
+            "document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'");
+        typeIntoInput("managed-note-0-review-thesis", "Margins can recover");
+        typeIntoInput("managed-note-0-review-support", "Invented report 2026-10-01");
+        typeIntoInput("managed-note-0-review-counter", "Demand remains uncertain");
+        typeIntoInput("managed-note-0-review-confirm", "Two stronger reported periods");
+        typeIntoInput("managed-note-0-review-invalidate", "Cash keeps falling");
+        typeIntoInput("managed-note-0-review-next", "Read the next filed report");
+        String excerpt = "Thesis review (my assessment). My thesis: Margins can recover" +
+            " | Supporting evidence: Invented report 2026-10-01" +
+            " | Opposing evidence: Demand remains uncertain" +
+            " | Confirmation condition: Two stronger reported periods" +
+            " | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
+        String expected = "Original thesis " + excerpt;
+        awaitPage("complete preview precedes the explicit draft append",
+            "document.querySelector('.managed-thesis-review .trial-saved-note')?.textContent === " + JSONObject.quote(excerpt) +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'" +
+            " && " + DIAGNOSTICS + ".save === 0" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === false" +
+            " && [...document.querySelectorAll('.managed-thesis-review input')].every(e => e.getBoundingClientRect().height >= 44)");
+        click(".managed-thesis-review button");
+        awaitPage("one append preserves both identities and blocks an immediate duplicate",
+            "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && " + DIAGNOSTICS + ".save === 0");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("explicit Save keeps the complete authored review",
+            DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected));
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("reload retains the whole note and the other share class",
+            DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".save === 1" +
+            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
+        assertFixtureBoundary(0, 1);
+        assertEquals("Thesis review preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
     }
 
     @Test
@@ -4363,7 +4412,7 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> scrolled.countDown()));
         assertTrue("Company note did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
+            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
             " const v = visualViewport; const note = document.querySelector('#managed-research-note');" +
             " return v && targets.length === 6 && note?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && note.scrollHeight <= note.clientHeight && note.scrollWidth <= note.clientWidth" +
@@ -4840,6 +4889,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
+            scenarioName.equals("thesis-review") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
         File index = new File(fixtureDirectory, "index.html");

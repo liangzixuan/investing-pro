@@ -940,8 +940,12 @@ export function ManagedWorkspaceScreen({
                       discovery.research!.selection,
                     )
                   }
-                  onNote={(note) =>
-                    workspace.noteResearch(discovery.research!.selection, note)
+                  onNote={(note, expectedNote) =>
+                    workspace.noteResearch(
+                      discovery.research!.selection,
+                      note,
+                      expectedNote,
+                    )
                   }
                   annualNoteActions={{
                     getAction: (response, pair) =>
@@ -1438,8 +1442,8 @@ export function ManagedWorkspaceScreen({
                       canOpenEod={(member) =>
                         workspace.canOpenWatchlistEod(member)
                       }
-                      onNote={(listingId, note) =>
-                        workspace.note(listingId, note)
+                      onNote={(listingId, note, expectedNote) =>
+                        workspace.note(listingId, note, expectedNote)
                       }
                       onMove={(listingId, direction) =>
                         workspace.move(listingId, direction)

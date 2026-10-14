@@ -1,4 +1,8 @@
 import { filingsResponse } from "./sec-filings-fixture";
+import {
+  emptyThesisReview,
+  proposeThesisReview,
+} from "./managed-thesis-review";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -203,6 +207,65 @@ async function ready(workspace: ManagedWorkspace) {
   workspace.setQuery("Invented");
   await workspace.search();
 }
+
+describe("thesis review through the shared watchlist draft", () => {
+  it("protects intervening edits, saves the complete draft and reloads the review", async () => {
+    const initial = {
+      ...empty,
+      memberships: [
+        { ...listingMembership(result), note: "Original thesis" },
+        { ...listingMembership(second), note: "Other share class" },
+      ],
+    };
+    const { workspace, api } = fixture(initial);
+    await ready(workspace);
+    const review = {
+      ...emptyThesisReview,
+      thesis: "Cash recovery",
+      invalidate: "Cash keeps falling",
+      next: "Read the next filed report",
+    };
+    const stale = proposeThesisReview("Original thesis", review).note!;
+    workspace.note(result.listingId, "Intervening edit");
+    workspace.note(result.listingId, stale, "Original thesis");
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe("Intervening edit");
+    const next = proposeThesisReview("Intervening edit", review).note!;
+    workspace.note(result.listingId, next, "Intervening edit");
+    expect(api.save).not.toHaveBeenCalled();
+    const saving = workspace.coordinator.save();
+    workspace.note(result.listingId, "Blocked during Save", next);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(next);
+    await saving;
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual({
+      ...initial,
+      memberships: [
+        { ...initial.memberships[0]!, note: next },
+        initial.memberships[1]!,
+      ],
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft!.memberships).toEqual([
+      { ...initial.memberships[0]!, note: next },
+      initial.memberships[1]!,
+    ]);
+    for (const read of [
+      api.eodHistory,
+      api.annualReport,
+      api.recentFilings,
+      api.economicCalendar,
+      api.monetaryAnnouncements,
+    ])
+      expect(read).not.toHaveBeenCalled();
+    workspace.coordinator.retire();
+    workspace.note(result.listingId, stale, next);
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+  });
+});
 
 describe("Fed announcement appended to one current draft note", () => {
   async function noteFixture(raw = fedAnnouncementsFixture()) {
