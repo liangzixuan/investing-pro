@@ -274,4 +274,30 @@ describe("loaded company snapshot", () => {
     expect(f.readAnnual).not.toHaveBeenCalled();
     expect(f.readPrice).not.toHaveBeenCalled();
   });
+
+  it("keeps an unsupported listing's Price coverage message instead of offering a load", async () => {
+    const f = await fixture();
+    const selection = {
+      ...eodSelection,
+      listing: {
+        ...eodSelection.listing,
+        listingId: "listing-unsupported",
+        symbol: "OTHER",
+      },
+    };
+    f.price.open(selection);
+    const html = renderToStaticMarkup(
+      <ManagedCompanySnapshot
+        selection={selection}
+        price={f.price}
+        annual={f.annual}
+        onSection={f.onSection}
+      />,
+    );
+    expect(html).toContain(
+      "Price history is not available for this listing in this workspace.",
+    );
+    expect(html).not.toContain("No close history loaded");
+    expect(f.readPrice).not.toHaveBeenCalled();
+  });
 });

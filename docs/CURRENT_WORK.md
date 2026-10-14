@@ -45,11 +45,17 @@ full evidence without making an automatic request. Company/catalog/session
 lifetime guards prevent another visit's data from appearing. Notes and Save
 remain unchanged. No new calculation, source, entitlement or AI verdict is added.
 
-The first 646 affected and composed cases pass. Web types and Java syntax pass.
+All 647 affected and composed cases pass. Web types and Java syntax pass.
 An additive native journey checks the disclosure, separate explicit loads,
 unchanged source dates and draft, and a fresh visit; all 29 existing required
-cases remain, for 30 total. Browser, exact builds and current producing-head
-hosted execution remain required before acceptance of this candidate.
+cases remain, for 30 total. Chrome on the first exact build confirms keyboard
+disclosure, independent explicit loads, both revenue bases, cash/liquidity,
+failed-refresh retention, unchanged notes, company reset and retirement of a late
+response at actual 1440/390/320 widths, without horizontal overflow or console
+warnings. It found an unsupported listing's misleading load prompt; the snapshot
+now uses the existing coverage message, with a regression case. The corrected
+build and final browser check, plus original producing-head hosted execution,
+remain required before acceptance.
 
 ## Preceding thesis review candidate
 

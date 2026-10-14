@@ -89,8 +89,9 @@ export function CompanySnapshotView({
             </>
           ) : (
             <p>
-              No close history loaded for this company. Open Price to request it
-              explicitly.
+              {evidence.price?.available === false
+                ? evidence.price.message
+                : "No close history loaded for this company. Open Price to request it explicitly."}
             </p>
           )}
           <button className="trial-secondary" onClick={() => onSection("eod")}>
