@@ -31,7 +31,7 @@ This is a source review; upstream tests and live providers were not executed.
 | Resume and freshness                     | Resume interrupted research only for matching identity, inputs and model configuration; keep original evidence dates | Extend existing cancellation/reconciliation boundaries when an eligible research runtime exists                   |
 | Portfolio inspection                     | Explain concentration, dated returns and benchmark comparisons before proposing changes                              | M4; requires admitted holdings, corporate-action basis and explicit ledger input                                  |
 | Daily research review                    | Show the next thesis check alongside relevant filing, earnings and calendar changes                                  | M3/M4; explicit checks first, monitoring requires a separate delivery boundary                                    |
-| Multiple research depths                 | Offer a useful non-AI overview first, then cited assistance                                                          | M2/M5; verify existing zero-additional-cost model access before AI integration                                    |
+| Multiple research depths                 | A loaded company snapshot brings existing Price and Annual evidence together before deeper research                  | M2 candidate; no automatic read or AI. Verify existing zero-additional-cost model access before AI integration    |
 
 ## Implementation and source rights
 

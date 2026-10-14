@@ -247,7 +247,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-price-handoff");
         if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
             selectFixtureScenario("raw-close-comparison");
-        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
+        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource") ||
+                testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads"))
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
@@ -1714,6 +1715,59 @@ public class ManagedWorkspaceInstrumentedTest {
         // Installed App defaults to a no-op at root. It must not exit or reopen Annual.
         assertClosedDraft(true);
         assertReturnedRootHistory("listing-zero", "annual");
+        assertFixtureBoundary();
+    }
+
+    @Test
+    public void loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareDraftAndOpenAnnual();
+        String snapshot = "document.querySelector('.managed-company-snapshot')";
+        awaitPage("snapshot starts closed without fetching either source",
+            snapshot + "?.open === false && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0");
+        click(".managed-company-snapshot > summary");
+        awaitPage("opening snapshot keeps both sources unloaded", snapshot + ".open && " +
+            snapshot + ".textContent.includes('No close history loaded') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded') && " +
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0");
+        click(".managed-snapshot-grid > section[aria-label='Snapshot price'] > button");
+        awaitPage("snapshot Price action navigates without fetching",
+            "document.querySelector('#managed-eod-heading') !== null && " + DIAGNOSTICS + ".eod === 0");
+        clickEodAction("Load one-month close history");
+        awaitPage("snapshot keeps exact loaded raw-close dates and basis",
+            snapshot + ".open && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " +
+            "document.querySelector('[aria-label=\"Snapshot price\"] dl')?.textContent === 'Last raw close · USD101.5Trading date2026-09-19' && " +
+            snapshot + ".textContent.includes('2026-08-20 to 2026-09-20') && " +
+            snapshot + ".textContent.includes('2026-09-20T00:00:01.000Z') && " +
+            snapshot + ".textContent.includes('unadjusted for splits or dividends') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded')");
+        retainAnnualNoteFrame("companySnapshotPrice", "[aria-label='Snapshot price'] h3",
+            "[aria-label='Snapshot price'] h3, [aria-label='Snapshot price'] dl", 2);
+        click(".managed-snapshot-grid > section[aria-label='Snapshot annual'] > button");
+        awaitPage("snapshot Annual action navigates without fetching",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
+        click(".managed-annual-report .trial-actions button:first-child");
+        String basis = "[aria-label='Snapshot revenue basis Revenues']";
+        awaitPage("snapshot combines separately loaded evidence without changing original dates",
+            snapshot + ".open && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " +
+            "Array.from(document.querySelectorAll(\"" + basis + " dd\")).map(e => e.textContent).join('|') === '1000|100|10%' && " +
+            snapshot + ".textContent.includes('2025-01-01 to 2025-12-31') && " +
+            snapshot + ".textContent.includes('2026-09-20T00:00:02.000Z') && " +
+            snapshot + ".textContent.includes('101.5') && " +
+            snapshot + ".textContent.includes('Operating cash flow') && " +
+            snapshot + ".textContent.includes('Current ratio') && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
+        retainAnnualNoteFrame("companySnapshotAnnualBasis", basis + " > h4",
+            basis + " > h4, " + basis + " > div > p, " + basis + " > div > dl", 3);
+        pressBack();
+        assertClosedDraft(true);
+        awaitPage("leaving company removes its snapshot", snapshot + " === null");
+        click(ANNUAL);
+        awaitPage("a new company visit does not restore prior snapshot evidence",
+            snapshot + "?.open === false && " + snapshot + ".textContent.includes('No close history loaded') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded') && " +
+            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
+        assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
     }
 
@@ -4226,7 +4280,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("cash reports exact independent amounts and a same-period subtraction",
             "document.querySelector('.sec-annual-cash')?.getAttribute('aria-label') === 'Annual cash generation'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
             " && document.querySelector('.sec-annual-cash > p:last-of-type')?.textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.')" +
@@ -4254,7 +4308,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(source + " > summary");
         awaitPage("closing cash details preserves values and the existing unsaved note",
             "document.querySelector('.sec-annual-cash-source')?.open === false" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
     }
 
