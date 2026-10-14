@@ -69,9 +69,12 @@ Annual separates source context, income and cash/liquidity. The same values,
 conditions, source links and DOM structure remain. All 647 affected/composed
 cases and web types pass after this split. Exact static markup matches the prior
 candidate across 36 combinations of empty, unsupported, loaded, refreshing,
-retained and historical source states. Exact builds and fresh rendered
-verification of the modular source remain required; prior check outcomes stay
-recorded separately.
+retained and historical source states. Exact modular preview/native bundles pass;
+the current maximum loader is 2,407,934 bytes under the unchanged limit. Fresh
+Chrome checks at all three widths reproduce the complete loaded text, separate
+explicit source loads, section retention and unsupported coverage. No console
+warning, extra source request or saved write occurred. Original hosted execution
+of this source remains required; prior check outcomes stay recorded separately.
 
 ## Preceding thesis review candidate
 
