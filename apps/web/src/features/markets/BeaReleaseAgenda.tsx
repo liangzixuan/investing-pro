@@ -200,7 +200,17 @@ export function BeaReleaseAgenda({
                 </p>
               </div>
             )}
-            {noteAction}
+            {noteAction ? (
+              <details
+                id="managed-bea-note-disclosure"
+                className="managed-bea-note-disclosure"
+              >
+                <summary id="managed-bea-note-disclosure-toggle">
+                  Add a release to a note
+                </summary>
+                {noteAction}
+              </details>
+            ) : null}
             {groups.length === 0 ? (
               <p className="bea-agenda-empty">
                 No BEA releases are listed in this loaded 30-day window.

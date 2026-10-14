@@ -90,6 +90,19 @@ describe("BEA release agenda presentation", () => {
       },
     });
     const html = renderToStaticMarkup(<BeaReleaseAgenda {...input} />);
+    const disclosure = nodes(BeaReleaseAgenda(input)).find(
+      (node) => node.props.id === "managed-bea-note-disclosure",
+    );
+    expect(disclosure?.type).toBe("details");
+    expect(disclosure?.key).toBeNull();
+    expect(disclosure?.props).not.toHaveProperty("open");
+    expect(disclosure?.props).not.toHaveProperty("defaultOpen");
+    expect(disclosure?.props).not.toHaveProperty("onToggle");
+    expect(nodes(disclosure)).toContain(noteAction);
+    const summary = nodes(disclosure).find((node) => node.type === "summary");
+    expect(summary?.props.id).toBe("managed-bea-note-disclosure-toggle");
+    expect(text(summary)).toBe("Add a release to a note");
+    expect(summary?.props).not.toHaveProperty("onClick");
     expect(html.indexOf('id="managed-bea-release-date-count"')).toBeLessThan(
       html.indexOf('data-note-slot="bea"'),
     );
@@ -115,6 +128,69 @@ describe("BEA release agenda presentation", () => {
     expect(empty.indexOf('data-note-slot="bea"')).toBeLessThan(
       empty.indexOf('class="bea-agenda-empty"'),
     );
+  });
+  it("omits the disclosure without an agenda or note slot", () => {
+    for (const input of [
+      props(),
+      props({ noteAction: null }),
+      props({ noteAction: false }),
+      props({ agenda: null, noteAction: <div>Note controls</div> }),
+    ]) {
+      expect(
+        renderToStaticMarkup(<BeaReleaseAgenda {...input} />),
+      ).not.toContain("managed-bea-note-disclosure");
+      expect(input.onLoad).not.toHaveBeenCalled();
+    }
+  });
+  it("keeps original source dates, timezone, warnings and release rows outside the note disclosure", () => {
+    const noteAction = <div data-note-slot="bea">Note controls</div>;
+    const agenda = fixture();
+    const input = props({
+      agenda,
+      noteAction,
+      busy: true,
+      showingPrevious: true,
+      error: "invalid_response",
+      message: "Refreshing BEA agenda…",
+    });
+    const view = BeaReleaseAgenda(input);
+    const disclosure = nodes(view).find(
+      (node) => node.props.id === "managed-bea-note-disclosure",
+    );
+    expect(text(disclosure)).toBe("Add a release to a note Note controls");
+    expect(text(view)).toContain(PERSONAL_BEA_CALENDAR_SOURCE.name);
+    expect(text(view)).toContain("All times Eastern.");
+    expect(text(view)).toContain("Previous agenda.");
+    expect(text(view)).toContain("could not be verified");
+    expect(text(view)).toContain("Tue, Oct 20, 2026, 2:00 PM EDT");
+    expect(text(view)).toContain("Thu, Nov 19, 2026, 1:00 PM EST");
+    expect(text(view)).toContain("(end excluded)");
+    expect(text(view)).toContain("Scheduled times may change.");
+    for (const event of agenda.events)
+      expect(text(view)).toContain(event.series);
+    expect(nodes(disclosure).some((node) => node.type === "time")).toBe(false);
+    expect(input.onLoad).not.toHaveBeenCalled();
+  });
+  it("keeps the unkeyed note slot in the same native disclosure across retained and replaced packet renders", () => {
+    const noteAction = <div data-note-slot="bea">Current note controls</div>;
+    const agenda = fixture();
+    for (const state of [
+      { agenda },
+      { agenda, busy: true, showingPrevious: true },
+      { agenda, showingPrevious: true, error: "unavailable" as const },
+      { agenda: { ...agenda } },
+      { agenda: { ...agenda, events: [] } },
+    ]) {
+      const input = props({ ...state, noteAction });
+      const disclosure = nodes(BeaReleaseAgenda(input)).find(
+        (node) => node.props.id === "managed-bea-note-disclosure",
+      );
+      expect(disclosure?.type).toBe("details");
+      expect(disclosure?.key).toBeNull();
+      expect(disclosure?.props).not.toHaveProperty("open");
+      expect(nodes(disclosure)).toContain(noteAction);
+      expect(input.onLoad).not.toHaveBeenCalled();
+    }
   });
   it("makes only an opted-in heading focusable and preserves the local heading markup", () => {
     const headingRef = React.createRef<HTMLHeadingElement>();

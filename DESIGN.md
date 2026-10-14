@@ -125,6 +125,13 @@ controls and wrap help and status text at narrow widths. Keep search and Clear
 mounted when the count changes, without moving focus or scrolling. Announce a
 successful replacement's reset. The local profile keeps its full agenda.
 
+Keep the managed BEA note form in an initially closed native disclosure after
+the filters and count, before the release rows. Use **Add a release to a note**
+as its 44px summary, with the native marker and visible keyboard focus. Keep the
+form mounted when closed so toggling preserves current choices and feedback.
+Original source dates, timezone, warnings and release rows stay outside it.
+Use the existing spacing and tokens without another enclosing card.
+
 Place the selected watchlist's Recent filings check after dated price. Keep the
 newest observed filing, date and loaded-row count compact, with source times and
 coverage limits in one disclosure. Load, Refresh, Cancel and View filings retain
