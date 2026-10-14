@@ -72,7 +72,8 @@ candidate across 36 combinations of empty, unsupported, loaded, refreshing,
 retained and historical source states. Exact modular preview/native bundles pass;
 the current maximum loader is 2,407,934 bytes under the unchanged limit. Fresh
 Chrome checks at all three widths reproduce the complete loaded text, separate
-explicit source loads, section retention and unsupported coverage. No console
+explicit source loads, section retention and new-company reset. Earlier known
+coverage checks remain applicable through unchanged models and exact markup. No console
 warning, extra source request or saved write occurred. Original hosted execution
 of this source remains required; prior check outcomes stay recorded separately.
 
