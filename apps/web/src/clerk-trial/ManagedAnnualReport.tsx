@@ -6,13 +6,25 @@ import {
   ManagedAnnualNoteAction,
   type ManagedAnnualNoteActions,
 } from "./ManagedAnnualNoteAction";
+import {
+  ManagedAnnualCashNoteAction,
+  type ManagedAnnualCashNoteActions,
+} from "./ManagedAnnualCashNoteAction";
+import {
+  ManagedAnnualLiquidityNoteAction,
+  type ManagedAnnualLiquidityNoteActions,
+} from "./ManagedAnnualLiquidityNoteAction";
 
 export function ManagedAnnualReport({
   model,
   noteActions,
+  cashNoteActions,
+  liquidityNoteActions,
 }: {
   model: AnnualReportModel;
   noteActions?: ManagedAnnualNoteActions;
+  cashNoteActions?: ManagedAnnualCashNoteActions;
+  liquidityNoteActions?: ManagedAnnualLiquidityNoteActions;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -48,7 +60,11 @@ export function ManagedAnnualReport({
             disabled={state.running || state.catalogChanged}
             onClick={() => void model.load()}
           >
-            {annualLoadLabel(state.running, state.response !== null)}
+            {annualLoadLabel(
+              state.running,
+              state.response !== null,
+              state.checkingSeed,
+            )}
           </button>
           {state.running && (
             <button
@@ -65,7 +81,8 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Observed SEC revenue, net income and margin for each reported basis.
+        Reported revenue, net income, cash generation and liquidity from SEC
+        Company Facts.
       </p>
       <p
         className="managed-annual-status"
@@ -74,6 +91,12 @@ export function ManagedAnnualReport({
       >
         {state.message}
       </p>
+      {state.response && state.responseOrigin === "watchlist-comparison" && (
+        <p className="managed-annual-help managed-annual-origin">
+          Showing the report loaded in the watchlist comparison. Original source
+          and observation times are unchanged.
+        </p>
+      )}
       {state.showingPrevious && state.response && (
         <p className="managed-annual-help">
           Showing the previous report, completed{" "}
@@ -85,6 +108,22 @@ export function ManagedAnnualReport({
         <SecAnnualEvidenceResult
           response={state.response}
           appearance="financial"
+          liquidityAction={
+            liquidityNoteActions ? (
+              <ManagedAnnualLiquidityNoteAction
+                response={state.response}
+                actions={liquidityNoteActions}
+              />
+            ) : null
+          }
+          cashAction={
+            cashNoteActions ? (
+              <ManagedAnnualCashNoteAction
+                response={state.response}
+                actions={cashNoteActions}
+              />
+            ) : null
+          }
           renderPairAction={(pair) =>
             noteActions && state.response ? (
               <ManagedAnnualNoteAction
@@ -98,15 +137,20 @@ export function ManagedAnnualReport({
         />
       )}
       <p className="managed-annual-help">
-        Loading leaves your watchlist unchanged. Cancel stops this screen's
-        pending load and keeps any previous report shown here. A request already
-        admitted by the service may finish there.
+        {state.checkingSeed
+          ? "Checking the loaded comparison report does not request new evidence. Cancel stops this local check."
+          : "Loading leaves your watchlist unchanged. Cancel stops this screen's pending load and keeps any previous report shown here. A request already admitted by the service may finish there."}
       </p>
     </section>
   );
 }
 
-function annualLoadLabel(running: boolean, hasResponse: boolean) {
+function annualLoadLabel(
+  running: boolean,
+  hasResponse: boolean,
+  checkingSeed: boolean,
+) {
+  if (checkingSeed) return "Checking loaded report…";
   if (running)
     return hasResponse ? "Refreshing annual report…" : "Loading annual report…";
   return hasResponse ? "Refresh annual report" : "Load annual report";

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createSecPersonalQuarterlyEvidenceProvider,
+  normalizePersonalSecCompanyFacts,
+  parsePersonalSecSourceJson,
   PersonalSecQuarterlyEvidenceProviderError,
 } from "./personal-sec-quarterly-evidence-provider";
 import {
@@ -127,6 +129,56 @@ describe("selected-company SEC quarterly evidence provider", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("preserves the four original quarterly IDs and classifications while ignoring cash concepts", () => {
+    const concepts = [
+      ...PERSONAL_SEC_QUARTERLY_CONCEPTS,
+      "NetCashProvidedByUsedInOperatingActivities",
+      "PaymentsToAcquirePropertyPlantAndEquipment",
+    ];
+    const source = {
+      cik: 42,
+      facts: {
+        "us-gaap": Object.fromEntries(
+          concepts.map((concept) => [concept, { units: { USD: [fact()] } }]),
+        ),
+      },
+    };
+    const result = normalizePersonalSecCompanyFacts(
+      parsePersonalSecSourceJson(JSON.stringify(source)),
+      CIK,
+    );
+    expect(result.inspectedRows).toBe(4);
+    expect(
+      result.observations.map(({ concept, metric, id }) => ({
+        concept,
+        metric,
+        id,
+      })),
+    ).toEqual([
+      {
+        concept: "NetIncomeLoss",
+        metric: "net_income",
+        id: "sec-fact:41d2de106677f3722d428fb53e9133bec03e842af6c596e9b5c06a11fec9ee04",
+      },
+      {
+        concept: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        metric: "revenue",
+        id: "sec-fact:8ce0fda6e573fb54e8ce92ad47616b89ba26d83254a9a632e0d46eaa9b58006c",
+      },
+      {
+        concept: "Revenues",
+        metric: "revenue",
+        id: "sec-fact:c0065ee27c1101c1746270dc016f441c26e9d5bbb22dd8af829c6be5a544b8a1",
+      },
+      {
+        concept: "SalesRevenueNet",
+        metric: "revenue",
+        id: "sec-fact:25a63883a98d98d36bce157add95c2451e7336732a9905c0ce089723d7c53285",
+      },
+    ]);
+    expect(result.invalidRows).toBe(0);
   });
 
   it("requires an independently configured SEC contact and does no implicit requests", async () => {

@@ -4,8 +4,12 @@ import {
   PERSONAL_FED_MONETARY_SOURCE,
   type PersonalMonetaryAnnouncementsDto,
 } from "@research-cockpit/contracts";
-import type { MouseEventHandler, Ref } from "react";
+import type { MouseEventHandler, ReactNode, Ref } from "react";
 import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
+import type {
+  FedAnnouncementRefreshView,
+  FedAnnouncementView,
+} from "./fed-announcement-view";
 import "./fed-announcements.css";
 
 export interface FedMonetaryAnnouncementsProps {
@@ -17,8 +21,22 @@ export interface FedMonetaryAnnouncementsProps {
   readonly className?: string;
   readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
   readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
+  readonly noteAction?: ReactNode;
+  readonly refreshSummary?: ReactNode;
+  readonly newlyObservedUrls?: readonly string[];
+  readonly filterView?: {
+    readonly view: FedAnnouncementView;
+    readonly resetNotice: boolean;
+    readonly onQueryChange: (query: string) => void;
+    readonly updatesView?: {
+      readonly mode: FedAnnouncementRefreshView;
+      readonly available: boolean;
+      readonly onChange: (mode: FedAnnouncementRefreshView) => void;
+    };
+  };
 }
 
 const timestamp = new Intl.DateTimeFormat("en-US", {
@@ -40,9 +58,17 @@ export function FedMonetaryAnnouncements({
   className = "",
   onCancel,
   loadButtonRef,
+  headingRef,
   showingPrevious = false,
   message = "",
+  noteAction,
+  refreshSummary,
+  newlyObservedUrls,
+  filterView,
 }: FedMonetaryAnnouncementsProps) {
+  const filters =
+    filterView?.view.response === announcements ? filterView : undefined;
+  const items = filters?.view.visibleItems ?? announcements?.items ?? [];
   return (
     <section
       className={`fed-announcements ${className}`.trim()}
@@ -50,7 +76,13 @@ export function FedMonetaryAnnouncements({
     >
       <header className="fed-announcements-heading">
         <div>
-          <h2 id="fed-announcements-title">Federal Reserve announcements</h2>
+          <h2
+            id="fed-announcements-title"
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+          >
+            Federal Reserve announcements
+          </h2>
           <p>Monetary policy · Announcements from this feed.</p>
         </div>
         <div className="fed-announcements-actions">
@@ -114,7 +146,7 @@ export function FedMonetaryAnnouncements({
         ) : (
           <>
             <p className="fed-announcements-note">
-              Showing {announcements.items.length} of{" "}
+              {filters ? "Loaded" : "Showing"} {announcements.items.length} of{" "}
               {announcements.availableItemCount} announcements from this feed.
               Loaded{" "}
               <time dateTime={announcements.fetchedAt}>
@@ -122,13 +154,91 @@ export function FedMonetaryAnnouncements({
               </time>
               .
             </p>
+            {refreshSummary}
+            {filters && (
+              <div className="managed-fed-title-filter">
+                {filters.updatesView && (
+                  <div className="managed-fed-updates-view">
+                    <label htmlFor="managed-fed-updates-view">
+                      Announcement view
+                    </label>
+                    <select
+                      id="managed-fed-updates-view"
+                      value={filters.updatesView.mode}
+                      aria-describedby="managed-fed-updates-view-help managed-fed-title-count"
+                      onChange={(event) => {
+                        const mode = event.currentTarget.value;
+                        if (
+                          mode === "all" ||
+                          (mode === "new" && filters.updatesView!.available)
+                        )
+                          filters.updatesView!.onChange(mode);
+                      }}
+                    >
+                      <option value="all">All loaded announcements</option>
+                      <option
+                        value="new"
+                        disabled={!filters.updatesView.available}
+                      >
+                        Newly observed links
+                      </option>
+                    </select>
+                    <p id="managed-fed-updates-view-help">
+                      {filters.updatesView.available
+                        ? "Newly observed links were absent from the previous loaded list. This does not establish a new publication."
+                        : "A successful refresh of a loaded feed provides the link comparison."}
+                    </p>
+                  </div>
+                )}
+                <label htmlFor="managed-fed-title-search">
+                  Search announcement titles
+                </label>
+                <div className="managed-fed-title-search-controls">
+                  <input
+                    id="managed-fed-title-search"
+                    type="search"
+                    value={filters.view.query}
+                    aria-describedby="managed-fed-title-search-help managed-fed-title-count"
+                    onChange={(event) =>
+                      filters.onQueryChange(event.currentTarget.value)
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="trial-secondary"
+                    onClick={() => filters.onQueryChange("")}
+                  >
+                    Clear title search
+                  </button>
+                </div>
+                <p id="managed-fed-title-search-help">
+                  Search full titles in this loaded feed.
+                </p>
+                <p
+                  id="managed-fed-title-count"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {items.length} of {announcements.items.length} loaded
+                  announcements.
+                  {filters.resetNotice &&
+                    " Feed response changed; showing all loaded announcements."}
+                </p>
+              </div>
+            )}
             {announcements.items.length === 0 ? (
               <p className="fed-announcements-note">
                 No announcements were listed in this loaded feed.
               </p>
+            ) : items.length === 0 ? (
+              <p className="fed-announcements-note">
+                {filters?.updatesView?.mode === "new"
+                  ? "No loaded announcements match these filters. Change the announcement view or clear the title search."
+                  : "No loaded announcements match this title search. Change or clear the search."}
+              </p>
             ) : (
               <ul className="fed-announcements-list">
-                {announcements.items.map((item) => (
+                {items.map((item) => (
                   <li key={item.url}>
                     <a
                       href={item.url}
@@ -149,10 +259,26 @@ export function FedMonetaryAnnouncements({
                         </>
                       )}
                     </p>
+                    {newlyObservedUrls?.includes(item.url) && (
+                      <p className="fed-announcements-new">
+                        Newly observed in this refresh
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
             )}
+            {noteAction ? (
+              <details
+                id="managed-fed-note-disclosure"
+                className="managed-fed-note-disclosure"
+              >
+                <summary id="managed-fed-note-disclosure-toggle">
+                  Add an announcement to a note
+                </summary>
+                {noteAction}
+              </details>
+            ) : null}
           </>
         )}
       </div>

@@ -1,9 +1,14 @@
 import type { PersonalEconomicCalendarDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
+import {
+  compareBeaAgendas,
+  type BeaAgendaComparison,
+} from "../features/markets/bea-agenda-comparison";
 
 export interface ManagedBeaReleaseAgendaState {
   readonly agenda: PersonalEconomicCalendarDto | null;
+  readonly refreshComparison: BeaAgendaComparison | null;
   readonly busy: boolean;
   readonly showingPrevious: boolean;
   readonly error: "invalid_response" | "unavailable" | null;
@@ -11,6 +16,7 @@ export interface ManagedBeaReleaseAgendaState {
 }
 const empty = (): ManagedBeaReleaseAgendaState => ({
   agenda: null,
+  refreshComparison: null,
   busy: false,
   showingPrevious: false,
   error: null,
@@ -89,6 +95,7 @@ export class ManagedBeaReleaseAgenda {
       if (!current()) return;
       this.update({
         agenda,
+        refreshComparison: compareBeaAgendas(this.state.agenda, agenda),
         showingPrevious: false,
         message: "BEA agenda loaded. Refresh explicitly to check again.",
       });

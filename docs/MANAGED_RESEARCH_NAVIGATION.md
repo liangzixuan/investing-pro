@@ -51,6 +51,29 @@ resolves metadata, stays unloaded and returns to Markets through Android Back.
 External Android app links and process-death restoration are not implemented.
 Physical installation and use of signed Android 1.7 remain unperformed.
 
+## Choose another watchlist company
+
+**Company in My Watchlist** lists the full current draft in its current order,
+including unsaved additions and separate share classes. Choose a listing, check
+its company, share class and exchange, then select **Open company**. Choosing an
+option alone changes no company, source response or note. A new visit selects
+the current company when it is in the draft; otherwise the control starts at
+**Choose company**. Adding that company later keeps the existing choice.
+An unavailable draft or catalog has an explicit explanation.
+
+Open keeps the current Price, Annual or Filings section. A different company
+closes the previous visit and starts unloaded; source reads remain explicit.
+Opening the same company preserves its loaded evidence. A replaced or removed
+member, old visit or retired session cannot be opened through a stale action.
+Navigation remains available for a readable draft with invalid notes or readonly
+note controls; it does not repair, save or discard those notes.
+
+The existing URL entry is replaced for each company change. Back returns once
+to the original workspace destination and control. A visit that began from a
+direct link keeps its Markets fallback. Notes and order remain in the shared
+draft through all company changes. Use **Review in My Watchlist** and the
+existing whole-draft **Save watchlist** action when ready.
+
 ## Source and screen contract
 
 | Section | Source and identity                                                                     | Content and limits                                                                                                           | Loading                  |
@@ -76,7 +99,8 @@ A request already admitted by the managed service may still finish there.
 
 Back, a different listing, a changed or refused catalog, session retirement, or
 an invalidated watchlist identity clears the whole visit. A new visit starts
-unloaded unless opened from a Markets row with an admitted history. A section-specific unavailable or unsupported result follows that
+unloaded unless it explicitly reuses loaded Price history, an Annual comparison
+report or the selected watchlist Filings packet. A section-specific unavailable or unsupported result follows that
 section's existing error policy and leaves unrelated validated evidence intact.
 Account or catalog invalidation applies to all three sections.
 
@@ -94,13 +118,44 @@ validated history into Price after cancelling pending board work. This includes
 Annual-first visits; Annual remains unloaded. The copied history retains its
 original dates and previous-result notice, and Price identifies its Markets
 origin. Refreshing Price replaces only the company response. Back restores the
-unchanged board snapshot and chart choice. A row without history, direct links,
-reloads, Forward and Discover/watchlist entry still start unloaded.
+unchanged board snapshot and chart choice. Rows without admitted history, direct
+links, reloads, Forward and Discover entry start unloaded. A watchlist Price
+opener likewise reuses that row's admitted history when available.
+
+The selected watchlist **View filings** action independently validates and copies
+its current packet into the company Filings section without a source request.
+The copy retains original dates and any previous-result qualification. Company
+Refresh leaves the watchlist packet unchanged; Back restores its selected control
+and draft. It does not supply an Annual baseline. See the
+[selected filing check](MANAGED_SEC_FILINGS.md#check-a-selected-watchlist-company).
+
+**Open full Annual report** on a loaded watchlist comparison column opens that
+exact report in the company visit without another source read. Its original
+dates, availability and retained-report status follow it, with a persistent
+comparison-origin label. An explicit company refresh changes only the visit.
+Back returns to the mounted comparison, selected bases, note destination and
+shared draft, then restores focus to the opening button. The handoff checks the
+current member, response and route across cancellation and opening; a stale
+callback cannot replace a newer visit. See the
+[Annual comparison guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison).
+
+The comparison's **Evidence** selector also offers **Liquidity**. Choose either
+compared listing as the note destination, then append both companies' complete
+liquidity evidence to that listing's latest draft. Separate balance dates and
+original source clocks stay in the text. The existing whole-note limit, duplicate
+refusal and explicit Save apply; longer evidence is refused without truncation.
 
 Back uses the same action on screen and on Android. Switching sections preserves
 the original opener. If that control disappears, Back focuses the current view's
 navigation control or the visible Discover heading. There is no persistent cache,
 automatic load, prefetch, save or source request on resume.
+
+After a responsive layout change, the return control must remain visible above
+the mobile navigation. A bounded follow-up checks the control that still owns
+focus and scrolls it into view only when obscured. An already visible control
+keeps its position. A new visit, retired session, removed or hidden target, or
+focus moved elsewhere cancels that correction. The existing route and history
+behavior remains unchanged; [Current work](CURRENT_WORK.md) records acceptance.
 
 ## Keyboard bypass
 
@@ -141,11 +196,19 @@ ID already present under a different identity blocks Add and directs the user to
 review the list. A changed search query does not alter the captured selection.
 Old controls cannot edit a different or reopened visit, even for the same listing.
 
-**Review in My Watchlist** closes research and focuses the watchlist navigation
-control. The existing **Save watchlist** action saves the whole draft, including
-other changes. Its catalog review, conflicts and uncertain-save reconciliation
-remain in that screen. No separate note-save operation is introduced. Notes keep
-the existing 2,000-character validation and save-time normalization.
+**Review in My Watchlist** closes research, selects the company's exact current
+watchlist member and opens its existing full-note reader. Focus moves to the
+reader's summary. The watchlist search query and scope stay unchanged; a note
+outside the results remains visible with its exact identity and an explanation.
+Review can read invalid text or a note whose editing is paused. If no current note
+is available, navigation explains the absence without opening another note.
+
+The existing **Save watchlist** action saves the whole draft, including other
+changes. Catalog review, conflicts and uncertain-save reconciliation remain in
+that screen. No separate note-save operation is introduced. Notes keep their raw
+draft text and the existing 2,000-character validation and save-time normalization.
+See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note)
+for focus cancellation and ordinary Back behavior.
 
 An unavailable watchlist, stale catalog, pending save or reconciliation, conflict,
 retired session or full list blocks the applicable action. An exact matching note
@@ -244,6 +307,54 @@ The interaction follows the explicit source-to-note pattern in
 choose evidence and retain its source citation. This implementation uses the
 existing plain-text watchlist and SEC response. [Current work](CURRENT_WORK.md)
 records implementation and delivery acceptance separately.
+
+## Add liquidity to a note draft
+
+**Add liquidity to note draft** appears after the Annual liquidity calculations.
+It uses the current report and exact watchlist member, then appends one plain-text
+paragraph to that member's latest note. The paragraph names `AssetsCurrent` and
+`LiabilitiesCurrent`, preserves exact USD amounts and the checked app calculations,
+and includes the instant balance date, filing link and original source times.
+It labels historical evidence and a retained previous report explicitly.
+
+Both nonnegative reported balances and working capital must be available from
+the same filing and date. Working capital may be negative. Zero current
+liabilities produce an explicit unavailable-ratio sentence; other unavailable
+calculations block the action. Income and cash completeness do not control it.
+
+The control stays keyboard-focusable when unavailable and explains the reason.
+Activation rechecks the current visit, response, session, membership and editable
+draft. A running Annual request, changed identity, conflict or save/recovery state
+blocks appending. Invalid or oversized combined text leaves the draft unchanged.
+Exact duplicate excerpts are refused; deleting that excerpt allows adding it again.
+Raw prose stays intact while the complete proposal is checked against the existing
+2,000 normalized Unicode-code-point limit. Save retains its existing normalization.
+
+Use **Review in My Watchlist**, then **Save watchlist**, to save the complete draft.
+The action does not add a member, refresh sources or save automatically. A report
+opened from the watchlist comparison retains that report's original provenance.
+Current work records browser, native and delivery acceptance separately.
+
+## Add cash generation to a note draft
+
+The company Annual view also offers **Add cash generation to note draft** after
+the calculation explanation. It copies reported operating cash flow, reported
+PP&E purchases and their same-filing, same-period difference together. All three
+must be available from the observed report. Negative operating cash flow and
+zero purchases remain valid. The excerpt is independent of income evidence.
+
+Exact USD amounts, raw SEC concepts, the app-calculation label and limits, CIK,
+listing symbol and exchange, annual period, filing link and original load/source
+dates remain in the paragraph. Historical current-use status and a retained
+previous report are explicitly qualified. Copying does not refresh those dates.
+
+The latest note is checked when clicked. An exact duplicate, invalid characters
+or a complete note over 2,000 normalized Unicode code points leaves the draft
+unchanged. The control stays focusable with an associated reason; feedback
+belongs to the actual displayed response. Existing membership, identity,
+catalog, coordinator, visit and session guards apply. It adds no member and
+makes no provider or save request. Review the text and use **Save watchlist** for
+the whole draft. Saved-note fields and aggregate save limits are unchanged.
 
 ## Acceptance
 

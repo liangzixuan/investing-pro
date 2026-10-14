@@ -44,6 +44,26 @@ application-layer encryption. Keep the accepted vault and its recovery material
 unchanged. Only invented records are allowed in the initial cloud proof; owner
 migration follows a reviewed privacy, credential and recovery design.
 
+## Write a thesis review
+
+Open **Write a thesis review for SYMBOL** below the current note in My Watchlist
+or company research. Enter your thesis, what would invalidate it and the next
+check. Supporting evidence, opposing evidence and a confirmation condition are
+optional. Include source links and dates with evidence; these are your authored
+assessments and are not independently verified citations.
+
+The preview shows exactly what **Add review to note draft** will append. The
+original note stays intact. The complete note must pass its existing 2,000-character
+save policy. Invalid text, excess length and an immediate duplicate block Add.
+An intervening note edit blocks a stale append. No provider request or Save occurs
+until explicitly requested. Review and save all changes in My Watchlist to keep
+the result. Reading remains available during Save; editing is paused.
+
+Unadded fields are temporary. They reset when this editor changes listing or
+unmounts. Adding preserves the review as note text, rather than a monitored rule,
+separate condition database or alert. Edit the complete note to change a saved
+review. Research-note search and export include that same text.
+
 ## Dated prices in the watchlist
 
 Select a listing and choose **Load SYMBOL price** to request its one-month raw
@@ -152,9 +172,13 @@ Both the comparison and destination are checked again when the action runs.
 Retired selections, pending navigation, catalog changes and blocked edits refuse
 the append. If the complete resulting note fails the existing 2,000-code-point
 note contract, the action leaves it unchanged and explains why. It never truncates
-evidence. Review the draft, use Research notes search to find its text, and choose
-**Save watchlist** to save the complete draft explicitly. Save keeps its existing
-note normalization and recovery rules.
+evidence. After a successful append, **Review note** selects that exact listing
+and opens its full note, even outside the current search. Search and scope stay
+unchanged. Review remains available while Save pauses editing, provided the
+comparison and destination still match. A new source, interval or destination
+withdraws that success; a pending source read pauses Review. It sends no request
+or write. Choose **Save watchlist** to save the complete draft explicitly. Save
+keeps its existing note normalization and recovery rules.
 
 ## Compare two companies' annual results
 
@@ -166,8 +190,16 @@ Each company has its own basis choice and source disclosure. The
 [Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison)
 defines eligibility and retention.
 
-The comparison does not edit or save the watchlist. Notes, reordering and Save
-preserve unchanged selections. Leaving cancels pending work while accepted
+An explicit **Add Annual comparison to note draft** action copies either income
+or cash evidence from both loaded reports into one chosen listing's latest note.
+The destination starts empty. Both companies keep their own periods, filing
+links and original evidence dates. Duplicate references and invalid or oversized
+complete notes are refused without changing the draft. See
+[Annual comparison notes](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note).
+Review the draft and save all changes explicitly.
+
+Notes, reordering and Save preserve unchanged comparison selections. Leaving
+cancels pending work while accepted
 reports remain in the mounted session. Removed or changed identities, catalog
 invalidation and session retirement clear the affected state. Returning never
 loads automatically.
@@ -186,6 +218,14 @@ share class from `Class A`, while `nova class c` does not combine separate field
 Internal identifiers are excluded. The count shows matching listings and the full
 draft total in the draft's existing order. An empty query shows all memberships.
 Use Discover to find and add a company that is not in the draft.
+
+A nonempty Research notes search shows a short passage from each matching note
+below its listing identity. The passage keeps the original text around the first
+match, with ellipses where content is omitted. It is limited to 180 Unicode code
+points and keeps combined characters intact; a longer match may itself be
+shortened. Whitespace wraps normally in the result. Select the listing to read or
+edit its complete note. The result's accessible description includes the passage
+alongside any price status, while its name keeps the exact listing identity.
 
 Typing or changing scope never changes the selected listing. If the selection
 falls outside the results, including after editing its note, its exact identity
@@ -213,6 +253,27 @@ Focused tests cover identity and note phrases, distinct share classes, raw note 
 selection retention, filtered removal and focus cancellation, correction,
 research return and full-payload saves. Actual browser and native execution
 status is recorded in [Current work](CURRENT_WORK.md).
+
+## Review a destination note
+
+**Review in My Watchlist** from company research selects that company's current
+watchlist member. After a successful Fed reference append, it selects the chosen
+destination. The action opens the existing **Read full note** disclosure and
+focuses its summary. The search query and scope stay unchanged. If the destination
+is outside the results, its full identity and note remain visible with the
+existing outside-search explanation.
+
+Review preserves the complete raw draft, including invalid text, other notes and
+membership order. Company review remains available while note editing is paused.
+If the company has no current note, navigation explains that no note is available;
+it does not open another member's reader as a substitute. A stale destination,
+changed view or session, or a later user selection or focus move cancels pending
+reader focus. Ordinary Back keeps its existing return behavior.
+
+Review makes no source or save request and does not change evidence dates.
+**Save watchlist** still validates and saves the complete draft explicitly, using
+the existing normalization and recovery rules. Build, browser and delivery status
+remain in [Current work](CURRENT_WORK.md).
 
 ## Review unsaved changes
 
@@ -463,6 +524,28 @@ Clerk expiry detection, real network loss or simultaneous cloud transactions.
 An isolated Brave check separately observed mounted-screen cleanup and fresh-session
 loading with invented records. Its navigation attempts showed no leave dialog;
 the browser confirmation and live managed-account recovery remain unaccepted.
+
+## Fed announcement references
+
+Markets can append one explicitly chosen loaded Fed announcement to one chosen
+watchlist note. The reference retains its title, URL, publication time or unknown
+value, original retrieval time, source and any retained-feed qualification.
+It changes only that note in the current full draft. Review and Save use this
+watchlist's existing validation, version and conflict workflow. See
+[announcement references](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note)
+for selection lifetime, duplicate handling and limits. It does not fetch article
+contents or classify the item as company news.
+
+## Scheduled BEA release references
+
+Markets can add one chosen loaded BEA release to one chosen watchlist note. The
+reference keeps its scheduled time, full series, original agenda dates, source
+and retained-result qualification. It describes scheduled metadata without
+claiming a released value, forecast, reminder or company relevance. Existing
+text and other notes remain in the complete draft. Exact-note Review and explicit
+whole-watchlist Save use the existing validation and recovery rules. See
+[scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note)
+for choices, lifetimes, duplicate handling and limits.
 
 ## References
 

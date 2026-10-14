@@ -270,12 +270,37 @@ and save counts. Scoped captures show the pair action and note controls; they do
 not claim to display the entire long note at once. This case requires its own
 successful emulator run before native acceptance.
 
+The report-navigation extension activates all four **On this report** links in
+that same Annual-note journey. It checks linked target identity, 44-pixel touch
+height, focus and visibility above the mobile navigation, unchanged URL/history,
+the complete note draft and source-read/save counts. The source link opens the
+existing disclosure; the test closes it before continuing the original note
+journey. Cases, captures and loader limits stay unchanged. Static checks do not
+establish emulator acceptance for this extension.
+
 The watchlist Annual comparison adds a separate invented two-company journey.
 It uses the actual company and revenue-basis controls, checks independent fiscal
 periods and filing details, and preserves the reordered note draft through
 failed refresh, cancellation and late completion. Session retirement clears the
 draft and both reports. It adds no provider connection or Save action. Its source and fixture checks do not establish
 native acceptance; the original hosted run must execute the new required case.
+
+The liquidity comparison extension keeps that journey and adds four rows to its
+existing value assertions. It checks each company's exact balances, working
+capital, rounded ratio, separate balance date and current-use text through basis
+changes and report lifetimes. Its source assertions retain original instant
+observations, capture clocks, filing links and calculation references. The case
+and capture sets, loader limit and APK isolation gates stay unchanged. Source and
+syntax checks do not establish emulator acceptance for this extension.
+
+The liquidity comparison note extension selects Liquidity and ONE as the
+explicit destination, edits ONE's latest prefix, then appends while ZERO remains
+selected in the editor. It checks the whole separately dated paragraph, the
+retained qualifier on ZERO only, unchanged order and other note, duplicate
+refusal, and source/read/save counts. It restores the original draft before the
+existing cash comparison Save and reload checks. Liquidity Save and reload are
+covered separately by composed workspace and browser checks; this native
+extension covers append and refusal. Its own hosted execution remains required.
 
 The earlier-date comparison case uses the native date control in the shared
 chart. It checks the chosen observed close, fixed latest endpoint, exact change,

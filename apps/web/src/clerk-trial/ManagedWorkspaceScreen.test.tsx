@@ -3,8 +3,11 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
+  parseManagedEconomicCalendar,
+  PERSONAL_BEA_CALENDAR_SOURCE,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
+  type WatchlistMembership,
 } from "@research-cockpit/contracts";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
@@ -22,11 +25,35 @@ import {
   annualComparativeRows,
 } from "../features/research/sec-annual-evidence-fixture";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
+import {
+  cashResponse,
+  cashRow,
+} from "../features/research/sec-annual-cash-fixture";
+import {
+  liquidityResponse,
+  liquidityRow,
+} from "../features/research/sec-annual-liquidity-fixture";
+import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
+import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
 import { ManagedCompanyResearch } from "./ManagedCompanyResearch";
 import { ManagedMarkets } from "./ManagedMarkets";
+import { ManagedMarketsNavigation } from "./ManagedMarketsNavigation";
+import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
+import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
+import { ManagedWatchlistAnnualComparison } from "./ManagedWatchlistAnnualComparison";
+import {
+  annualComparisonMemberships,
+  annualComparisonResponse,
+} from "./annual-comparison-fixture";
+import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import {
+  getAnnualComparisonNoteEvidence,
+  type AnnualComparisonNoteCapture,
+} from "./managed-watchlist-annual-comparison-note";
 import {
   createManagedWatchlistComparisonSelection,
   selectManagedWatchlistComparisonRow,
@@ -37,9 +64,18 @@ import {
   type ManagedWatchlistEditorHandle,
 } from "./ManagedWatchlistEditor";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import { projectBeaReleaseView } from "../features/markets/bea-release-view";
+import { projectManagedBeaUpdatesView } from "./managed-bea-updates-view";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
+import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
+import { projectManagedFedUpdatesView } from "./managed-fed-updates-view";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import {
+  initialManagedFilingsFilter,
+  projectManagedFilingsFilter,
+  selectManagedFilingsRefreshView,
+} from "./managed-filings-filter";
 import type { ManagedCompanyNavigation } from "./useManagedCompanyNavigation";
 
 // Run the screen's actual listener effect explicitly; model and binder stay real.
@@ -111,7 +147,7 @@ vi.mock("react", async (original) => {
       }
       if (mounted.direct) {
         const index = mounted.screenStateIndex++;
-        if (index >= 2) return [value, vi.fn()];
+        if (index >= 4) return [value, vi.fn()];
         if (!(index in mounted.screenState)) mounted.screenState[index] = value;
         return [
           mounted.screenState[index],
@@ -336,7 +372,8 @@ function editorElements(node: React.ReactNode) {
       const rendered =
         typeof node.type === "function" &&
         node.type !== ManagedNoteEditor &&
-        node.type !== ManagedWatchlistComparison
+        node.type !== ManagedWatchlistComparison &&
+        node.type !== ManagedWatchlistFilings
           ? expand(
               (
                 node.type as (props: {
@@ -374,6 +411,325 @@ function commitReturnFocus(
   beforeCommit?.(screen);
   // The first Screen effect restores focus; native listener registration stays mounted.
   mounted.effects[effectIndex]!();
+}
+
+function noteReviewScreen(
+  workspace: ManagedWorkspace,
+  navigation?: ManagedCompanyNavigation,
+) {
+  const layoutStart = mounted.layoutEffects.length;
+  const effectStart = mounted.effects.length;
+  mounted.direct = true;
+  mounted.refIndex = 0;
+  const screen = ManagedWorkspaceScreen({
+    workspace,
+    ...(navigation ? { navigation } : {}),
+  });
+  mounted.direct = false;
+  return {
+    screen,
+    commit: () => {
+      for (const effect of mounted.layoutEffects.slice(layoutStart)) effect();
+    },
+    returnFocus: () => mounted.effects[effectStart]!(),
+    bindReview: (
+      reviewNote = vi.fn<ManagedWatchlistEditorHandle["reviewNote"]>(
+        () => true,
+      ),
+    ) => {
+      const ref = watchlistEditor(screen)!.props
+        .ref as React.RefObject<ManagedWatchlistEditorHandle>;
+      ref.current = { reviewNote, focusFirstInvalidNote: vi.fn() };
+      return reviewNote;
+    },
+  };
+}
+
+async function comparisonNoteReviewFixture(
+  kind: "price" | AnnualComparisonNoteCapture["group"],
+) {
+  const listings =
+    kind === "price"
+      ? [eodSelection.listing, payload.memberships[0]!]
+      : [annualComparisonMemberships.left, annualComparisonMemberships.right];
+  const initial = {
+    ...payload,
+    memberships: listings.map((listing, index) => ({
+      ...listing,
+      note: index === 0 ? "Keep first thesis" : "Fresh café 東京 📈 thesis",
+    })),
+  };
+  const f = fixture(initial, initial.memberships);
+  await f.workspace.coordinator.load();
+  await f.workspace.refreshCatalog();
+  f.workspace.setView("watchlist");
+  if (kind === "price") {
+    const priceResponse = (listingId: string) => {
+      const { note: _note, ...security } = initial.memberships.find(
+        (member) => member.listingId === listingId,
+      )!;
+      void _note;
+      return { ...eodResponse(), security };
+    };
+    for (const row of f.workspace.watchlistPrices.getSnapshot().rows) {
+      vi.mocked(f.api.eodHistory).mockResolvedValueOnce(
+        priceResponse(row.listing.listingId),
+      );
+      await f.workspace.loadWatchlistPrice(row.handle);
+    }
+    const prices = f.workspace.watchlistPrices.getSnapshot();
+    expect(prices.rows.every((row) => row.history.response !== null)).toBe(
+      true,
+    );
+    let selection = createManagedWatchlistComparisonSelection();
+    for (const [side, row] of [
+      ["left", prices.rows[0]!],
+      ["right", prices.rows[1]!],
+    ] as const)
+      selection = selectManagedWatchlistComparisonRow(
+        selection,
+        selection,
+        prices,
+        side,
+        row,
+      );
+    const capture = {
+      selection,
+      leftShowingPrevious: false,
+      rightShowingPrevious: false,
+    };
+    const actions = (screen: React.ReactNode) =>
+      watchlistEditor(screen)!.props.comparisonNoteActions;
+    return {
+      ...f,
+      initial,
+      append: (screen: React.ReactNode) =>
+        actions(screen).append(selection, prices.rows[1]!.listing),
+      canAppend: (screen: React.ReactNode) =>
+        actions(screen).getAction(selection, prices.rows[1]!.listing).canAppend,
+      review: (
+        screen: React.ReactNode,
+        member: WatchlistMembership,
+        current: () => boolean,
+      ) => actions(screen).review(capture, member, current),
+      sourceState: () =>
+        f.workspace.watchlistPrices
+          .getSnapshot()
+          .rows.map((row) => row.history.response),
+      replaceSource: async () => {
+        const row = f.workspace.watchlistPrices.getSnapshot().rows[0]!;
+        vi.mocked(f.api.eodHistory).mockResolvedValueOnce(
+          priceResponse(row.listing.listingId),
+        );
+        await f.workspace.loadWatchlistPrice(row.handle);
+      },
+    };
+  }
+  const model = f.workspace.annualComparison;
+  for (const [side, index] of [
+    ["left", 0],
+    ["right", 1],
+  ] as const) {
+    const member = model.getSnapshot().memberships[index]!;
+    model.select(side, model.getSnapshot(), member);
+    vi.mocked(f.api.annualReport).mockResolvedValueOnce(
+      await annualComparisonResponse(side),
+    );
+    await model.load(side, member);
+  }
+  const state = model.getSnapshot();
+  const capture: AnnualComparisonNoteCapture = {
+    group: kind,
+    left: {
+      member: state.left.selected!,
+      response: state.left.report.response!,
+      selectedBasis: projectAnnualComparison(state.left.report.response)
+        .selectedBasis,
+      showingPrevious: false,
+    },
+    right: {
+      member: state.right.selected!,
+      response: state.right.report.response!,
+      selectedBasis: projectAnnualComparison(state.right.report.response)
+        .selectedBasis,
+      showingPrevious: false,
+    },
+  };
+  const actions = (screen: React.ReactNode) =>
+    (
+      elements(screen).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >
+    ).props.noteActions;
+  return {
+    ...f,
+    initial,
+    append: (screen: React.ReactNode) =>
+      actions(screen).append(capture, state.right.selected),
+    canAppend: (screen: React.ReactNode) =>
+      actions(screen).getAction(capture, state.right.selected).canAppend,
+    review: (
+      screen: React.ReactNode,
+      member: WatchlistMembership,
+      current: () => boolean,
+    ) => actions(screen).review(capture, member, current),
+    sourceState: () => [
+      model.getSnapshot().left.report.response,
+      model.getSnapshot().right.report.response,
+    ],
+    replaceSource: async () => {
+      vi.mocked(f.api.annualReport).mockResolvedValueOnce(
+        await annualComparisonResponse("left"),
+      );
+      await model.load("left", model.getSnapshot().left.selected!);
+    },
+  };
+}
+
+function comparisonReaderFixture(workspace: ManagedWorkspace) {
+  const page = { body: {}, activeElement: {} as unknown };
+  vi.stubGlobal("document", page);
+  const summary = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    focus: vi.fn(() => {
+      page.activeElement = summary;
+    }),
+    scrollIntoView: vi.fn(),
+  };
+  const reader = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    open: false,
+    querySelector: () => summary,
+  };
+  const field = { dataset: { managedNoteListingId: "" }, value: "" };
+  const panel = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    querySelector: (selector: string) =>
+      selector.startsWith("textarea") ? field : reader,
+  };
+  const render = () => {
+    const root = noteReviewScreen(workspace);
+    const nodes = editorElements(root.screen);
+    const note = nodes.find(
+      (node) => node.type === ManagedNoteEditor,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+    field.dataset.managedNoteListingId = note.props.listingId;
+    field.value = note.props.note;
+    mounted.editorRefs[0]!.current = panel;
+    return {
+      ...root,
+      nodes,
+      note,
+      commit: () => {
+        for (const effect of mounted.editorEffects) effect();
+        root.commit();
+      },
+    };
+  };
+  const first = render();
+  first.commit();
+  const scope = first.nodes.find(
+    (node) =>
+      (node.props as { id?: string }).id === "managed-watchlist-search-scope",
+  ) as React.ReactElement<React.ComponentProps<"select">>;
+  scope.props.onChange!({
+    target: { value: "notes" },
+  } as React.ChangeEvent<HTMLSelectElement>);
+  const search = first.nodes.find(
+    (node) => (node.props as { id?: string }).id === "managed-watchlist-search",
+  ) as React.ReactElement<React.ComponentProps<"input">>;
+  search.props.onChange!({
+    target: { value: "Keep first" },
+  } as React.ChangeEvent<HTMLInputElement>);
+  render().commit();
+  return { render, page, summary, reader };
+}
+
+async function returnedFocusFixture() {
+  const { workspace, api } = fixture();
+  await workspace.coordinator.load();
+  await workspace.refreshCatalog();
+  workspace.setView("watchlist");
+  workspace.note("listing-one", "Keep this responsive return draft");
+  const before = workspace.coordinator.getSnapshot().draft;
+  const document = {
+    activeElement: null as unknown,
+    defaultView: null as unknown,
+  };
+  let rectangle = { top: 355, bottom: 399, left: 30, right: 155 };
+  const navigation = {
+    getBoundingClientRect: () => ({ top: 773, bottom: 844 }),
+    contains: vi.fn(() => false),
+  };
+  const target = {
+    isConnected: true,
+    ownerDocument: document,
+    getClientRects: vi.fn(() => [{}]),
+    getBoundingClientRect: vi.fn(() => rectangle),
+    closest: () => ({ querySelector: () => navigation }),
+    focus: vi.fn(() => {
+      document.activeElement = target;
+    }),
+    scrollIntoView: vi.fn(),
+  };
+  let frame: FrameRequestCallback | undefined;
+  const view = {
+    innerHeight: 844,
+    innerWidth: 320,
+    visualViewport: { offsetTop: 0, offsetLeft: 0, height: 844, width: 308 },
+    getComputedStyle: vi.fn(() => ({ position: "fixed" })),
+    requestAnimationFrame: vi.fn((callback: FrameRequestCallback) => {
+      frame = callback;
+      return 42;
+    }),
+    cancelAnimationFrame: vi.fn(),
+  };
+  document.defaultView = view;
+  const nav: ManagedCompanyNavigation = {
+    invalid: false,
+    returnFocus: 1,
+    hasCompanyRoute: () => false,
+    open: (action) => action(),
+    section: vi.fn(),
+    view: vi.fn<ManagedCompanyNavigation["view"]>().mockReturnValue(true),
+    back: vi.fn(),
+  };
+  const render = (current = workspace) => {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const index = mounted.effects.length;
+    ManagedWorkspaceScreen({ workspace: current, navigation: nav });
+    return () => mounted.effects[index]!();
+  };
+  const commit = render();
+  mounted.refs[0]!.current = target;
+  mounted.refs[2]!.current = target;
+  return {
+    workspace,
+    api,
+    before,
+    document,
+    target,
+    navigation,
+    view,
+    render,
+    commit,
+    offscreen: () => {
+      rectangle = { top: 1198, bottom: 1242, left: 30, right: 155 };
+    },
+    covered: () => {
+      rectangle = { top: 760, bottom: 804, left: 30, right: 155 };
+    },
+    placeAt: (top: number) => {
+      rectangle = { ...rectangle, top, bottom: top + 44 };
+    },
+    frame: () => frame?.(0),
+  };
 }
 
 async function recoveryFocusFixture(navigation?: ManagedCompanyNavigation) {
@@ -534,6 +890,1120 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  function beaNoteContext(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const agenda = elements(screen).find(
+      (node) => node.type === ManagedBeaReleaseAgenda,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseAgenda>
+    >;
+    return agenda.props.noteContext;
+  }
+
+  it("keeps a searched BEA reference through exact-note Review outside a search and whole-draft Save/reload", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        { ...payload.memberships[0]!, note: "Keep first thesis" },
+        {
+          ...payload.memberships[0]!,
+          listingId: "listing-two",
+          securityId: "security-two",
+          shareClassId: "class-two",
+          shareClassName: "Class B",
+          symbol: "TWO",
+          note: "Saved second thesis",
+        },
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const page = { body: {}, activeElement: {} as unknown };
+    vi.stubGlobal("document", page);
+    const summary = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      focus: vi.fn(() => {
+        page.activeElement = summary;
+      }),
+      scrollIntoView: vi.fn(),
+    };
+    const reader = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      open: false,
+      querySelector: () => summary,
+    };
+    const field = { dataset: { managedNoteListingId: "" }, value: "" };
+    const panel = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      querySelector: (selector: string) =>
+        selector.startsWith("textarea") ? field : reader,
+    };
+    const render = () => {
+      const root = noteReviewScreen(workspace);
+      const nodes = editorElements(root.screen);
+      const note = nodes.find(
+        (node) => node.type === ManagedNoteEditor,
+      ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+      field.dataset.managedNoteListingId = note.props.listingId;
+      field.value = note.props.note;
+      mounted.editorRefs[0]!.current = panel;
+      return {
+        nodes,
+        note,
+        commit: () => {
+          for (const effect of mounted.editorEffects) effect();
+          root.commit();
+        },
+      };
+    };
+    const initial = render();
+    initial.commit();
+    const scope = initial.nodes.find(
+      (node) =>
+        (node.props as { id?: string }).id === "managed-watchlist-search-scope",
+    ) as React.ReactElement<React.ComponentProps<"select">>;
+    scope.props.onChange!({
+      target: { value: "notes" },
+    } as React.ChangeEvent<HTMLSelectElement>);
+    const search = initial.nodes.find(
+      (node) =>
+        (node.props as { id?: string }).id === "managed-watchlist-search",
+    ) as React.ReactElement<React.ComponentProps<"input">>;
+    search.props.onChange!({
+      target: { value: "Keep first" },
+    } as React.ChangeEvent<HTMLInputElement>);
+    render().commit();
+    workspace.note("listing-two", "  Fresh Cafe\u0301 東京 🧭 thesis");
+    workspace.move("listing-two", -1);
+    workspace.setView("markets");
+    const priorAgenda = parseManagedEconomicCalendar({
+      ...economicCalendarFixture(),
+      fetchedAt: "2026-10-20T17:59:00.000Z",
+      window: {
+        fromInclusive: "2026-10-20T17:59:00.000Z",
+        toExclusive: "2026-11-19T17:59:00.000Z",
+      },
+      events: [economicCalendarFixture().events[0]!],
+    })!;
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(priorAgenda);
+    await workspace.agenda.load();
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const pair = workspace.agenda.getSnapshot().refreshComparison!;
+    expect(pair.previous).toBe(priorAgenda);
+    expect(pair.current).toBe(response);
+    expect(pair.addedEvents[0]).toBe(response.events[1]);
+    const beforeSearch = workspace.coordinator.getSnapshot().draft!;
+    const updates = projectManagedBeaUpdatesView(
+      projectBeaReleaseView(response, "2026-11-02", "  nOvEmBeR   release  "),
+      pair,
+      "new",
+    );
+    const view = updates.view;
+    expect(updates).toMatchObject({ refreshView: "new", available: true });
+    expect(view.visibleCount).toBe(1);
+    expect(view.groups).toHaveLength(2);
+    expect(view.visibleGroups[0]!.events).toEqual([response.events[1]!]);
+    const selectedEvent = view.visibleGroups[0]!.events[0]!;
+    expect(selectedEvent).toBe(response.events[1]);
+    expect(response.events.indexOf(selectedEvent)).toBe(1);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(beforeSearch);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
+    expect(api.save).not.toHaveBeenCalled();
+    const capture = {
+      response,
+      event: selectedEvent,
+      showingPrevious: false,
+    };
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const context = beaNoteContext(workspace);
+    expect(context.members).toBe(before.memberships);
+    expect(context.active && context.editable).toBe(true);
+    expect(context.actions.getAction(capture, null).canAppend).toBe(false);
+    expect(
+      context.actions.append(capture, before.memberships[0]!).appended,
+    ).toBe(true);
+    const expected =
+      "  Fresh Cafe\u0301 東京 🧭 thesis Scheduled BEA release: Invented November release. Scheduled time: Mon, Nov 2, 2026, 8:30 AM EST (America/New_York); 2026-11-02T13:30:00.000Z (UTC). " +
+      `Source: U.S. Bureau of Economic Analysis; official schedule ${PERSONAL_BEA_CALENDAR_SOURCE.scheduleUrl}. ` +
+      "Original agenda retrieved at: 2026-10-20T18:00:00.000Z (UTC). Loaded window: 2026-10-20T18:00:00.000Z inclusive to 2026-11-19T18:00:00.000Z exclusive (UTC). Only schedule metadata was loaded; forecasts and released values were not supplied. Scheduled times may change; this reference does not confirm a release or company relevance. Evidence dates are unchanged; this action does not refresh sources.";
+    const after = workspace.coordinator.getSnapshot().draft!;
+    expect(after).toEqual({
+      ...before,
+      memberships: [
+        { ...before.memberships[0]!, note: expected },
+        before.memberships[1]!,
+      ],
+    });
+    context.onReview(after.memberships[0]!);
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    render().commit();
+    const selected = render();
+    selected.commit();
+    expect(selected.note.props).toMatchObject({
+      listingId: "listing-two",
+      note: expected,
+    });
+    expect(
+      selected.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id === "managed-watchlist-search",
+      )?.props,
+    ).toMatchObject({ value: "Keep first" });
+    expect(
+      selected.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id ===
+          "managed-watchlist-search-scope",
+      )?.props,
+    ).toMatchObject({ value: "notes" });
+    expect(reader.open).toBe(true);
+    expect(summary.focus).toHaveBeenCalledOnce();
+    expect(summary.scrollIntoView).toHaveBeenCalledOnce();
+    expect(page.activeElement).toBe(summary);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    const saved = vi.mocked(api.save).mock.calls[0]![0].payload;
+    expect(saved).toEqual({
+      ...after,
+      memberships: [
+        { ...after.memberships[0]!, note: expected.trim().normalize("NFC") },
+        after.memberships[1]!,
+      ],
+    });
+    vi.mocked(api.load).mockResolvedValueOnce({ version: 2, payload: saved });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: saved,
+      baseVersion: 2,
+      dirty: false,
+    });
+    expect(workspace.agenda.getSnapshot().agenda).toBe(response);
+    expect(workspace.agenda.getSnapshot().refreshComparison).toBe(pair);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
+    expect(api.load).toHaveBeenCalledTimes(2);
+    expect(api.save).toHaveBeenCalledOnce();
+    for (const read of [
+      api.eodHistory,
+      api.annualReport,
+      api.recentFilings,
+      api.monetaryAnnouncements,
+    ])
+      expect(read).not.toHaveBeenCalled();
+  });
+
+  it("fences BEA note callbacks on hidden or invalid Markets routes", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const capture = {
+      response,
+      event: response.events[0]!,
+      showingPrevious: false,
+    };
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    let route = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn(() => false),
+    };
+    const context = beaNoteContext(workspace, navigation);
+    route = true;
+    expect(
+      context.actions.getAction(capture, draft.memberships[0]!).canAppend,
+    ).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    route = false;
+    const invalid = beaNoteContext(workspace, { ...navigation, invalid: true });
+    expect(invalid.active).toBe(false);
+    expect(
+      invalid.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    invalid.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    expect(beaNoteContext(workspace).active).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("blocks BEA Review during a pending request and discards callbacks after retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const capture = {
+      response,
+      event: response.events[0]!,
+      showingPrevious: false,
+    };
+    const destination =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const context = beaNoteContext(workspace);
+    const pending = deferred<ReturnType<typeof economicCalendarFixture>>();
+    vi.mocked(api.economicCalendar).mockReturnValueOnce(pending.promise);
+    const load = workspace.agenda.load();
+    context.onReview(destination);
+    expect(workspace.getSnapshot().view).toBe("markets");
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    workspace.agenda.cancel();
+    expect(
+      context.actions.getAction(
+        { ...capture, showingPrevious: true },
+        destination,
+      ).canAppend,
+    ).toBe(true);
+    workspace.coordinator.retire();
+    expect(context.actions.getAction(capture, destination).canAppend).toBe(
+      false,
+    );
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    context.onReview(destination);
+    pending.resolve(economicCalendarFixture());
+    await load;
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  function fedNoteContext(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const fed = elements(screen).find(
+      (node) => node.type === ManagedFedAnnouncements,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncements>
+    >;
+    return fed.props.noteContext;
+  }
+
+  it("adds a newly observed current Fed reference and preserves the complete draft through Review, Save and reload", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        payload.memberships[0]!,
+        {
+          ...payload.memberships[0]!,
+          listingId: "listing-two",
+          securityId: "security-two",
+          shareClassId: "class-two",
+          shareClassName: "Class B",
+          note: "Keep this other thesis",
+        },
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    const current = fedAnnouncementsFixture();
+    const previous = {
+      ...current,
+      fetchedAt: "2026-10-19T19:00:00.000Z",
+      availableItemCount: 1,
+      items: [current.items[0]!],
+    };
+    vi.mocked(api.monetaryAnnouncements)
+      .mockResolvedValueOnce(previous)
+      .mockResolvedValueOnce(current);
+    await workspace.announcements.load();
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBeNull();
+    await workspace.announcements.load();
+    const comparison = workspace.announcements.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(previous);
+    expect(comparison.current).toBe(current);
+    expect(comparison.newUrls).toEqual([current.items[1]!.url]);
+    workspace.note("listing-two", "  Latest Café 東京 😀 thesis");
+    workspace.move("listing-two", -1);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const readingView = projectManagedFedUpdatesView(
+      projectFedAnnouncementView(response, "without a publication"),
+      comparison,
+      "new",
+    ).view;
+    expect(readingView.response).toBe(response);
+    expect(readingView.visibleItems).toEqual([response.items[1]]);
+    expect(readingView.visibleItems[0]).toBe(response.items[1]);
+    const capture = {
+      response,
+      item: readingView.visibleItems[0]!,
+      showingPrevious: false,
+    };
+    const context = fedNoteContext(workspace);
+    expect(context.active).toBe(true);
+    expect(context.editable).toBe(true);
+    expect(context.members).toBe(before.memberships);
+    expect(context.actions.getAction(capture, null).canAppend).toBe(false);
+    expect(context.actions.append(capture, context.members[0]!).appended).toBe(
+      true,
+    );
+    const after = workspace.coordinator.getSnapshot().draft!;
+    expect(after.memberships[0]!.note).toContain(
+      "  Latest Café 東京 😀 thesis Observed Federal Reserve announcement: Invented announcement without a publication time.",
+    );
+    expect(after.memberships[0]!.note).toContain(
+      "Source publication time: unknown.",
+    );
+    expect(after.memberships[0]!.note).toContain(
+      "Original feed retrieved at: 2026-10-20T18:00:00.000Z (UTC).",
+    );
+    expect(after.memberships[1]).toEqual(before.memberships[1]);
+    expect(after.memberships.map((member) => member.listingId)).toEqual(
+      before.memberships.map((member) => member.listingId),
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    context.onReview(after.memberships[0]!);
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(after.memberships[0]);
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    const savedPayload = vi.mocked(api.save).mock.calls[0]![0].payload;
+    expect(savedPayload.memberships).toEqual(
+      after.memberships.map((member) => ({
+        ...member,
+        note: member.note.trim().normalize("NFC"),
+      })),
+    );
+    vi.mocked(api.load).mockResolvedValueOnce({
+      version: 2,
+      payload: savedPayload,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(savedPayload);
+    expect(workspace.coordinator.getSnapshot().baseVersion).toBe(2);
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(false);
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.load).toHaveBeenCalledTimes(2);
+    expect(api.monetaryAnnouncements).toHaveBeenCalledTimes(2);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+  });
+
+  it("refuses Fed note and Review callbacks during pending or invalid routes and hidden company research", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.announcements.load();
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const capture = {
+      response,
+      item: response.items[0]!,
+      showingPrevious: false,
+    };
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    let route = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn(() => false),
+    };
+    const context = fedNoteContext(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    route = true;
+    expect(
+      context.actions.getAction(capture, draft.memberships[0]!).canAppend,
+    ).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    route = false;
+    const invalid = fedNoteContext(workspace, { ...navigation, invalid: true });
+    expect(invalid.active).toBe(false);
+    expect(
+      invalid.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    invalid.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).toHaveBeenCalledExactlyOnceWith("watchlist");
+    expect(focus).not.toHaveBeenCalled();
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    expect(fedNoteContext(workspace).active).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("blocks Review while a feed request is pending and fences all note callbacks on retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.announcements.load();
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const capture = {
+      response,
+      item: response.items[0]!,
+      showingPrevious: false,
+    };
+    const destination =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const context = fedNoteContext(workspace);
+    const pending = deferred<ReturnType<typeof fedAnnouncementsFixture>>();
+    vi.mocked(api.monetaryAnnouncements).mockReturnValueOnce(pending.promise);
+    const load = workspace.announcements.load();
+    context.onReview(destination);
+    expect(workspace.getSnapshot().view).toBe("markets");
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    workspace.announcements.cancel();
+    expect(
+      context.actions.getAction(
+        { ...capture, showingPrevious: true },
+        destination,
+      ).canAppend,
+    ).toBe(true);
+    workspace.coordinator.retire();
+    expect(context.actions.getAction(capture, destination).canAppend).toBe(
+      false,
+    );
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    context.onReview(destination);
+    pending.resolve(fedAnnouncementsFixture());
+    await load;
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  function companyReview(screen: React.ReactNode) {
+    const company = elements(screen).find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    return company.props.onReview;
+  }
+
+  it.each(["current", "selection-retires", "user-focus"] as const)(
+    "composes exact-note Review with the real editor outside a retained search: %s",
+    async (mode) => {
+      const raw = `  e\u0301 東京 🧭\n${"full raw ".repeat(260)}  `;
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [
+          { ...payload.memberships[0]!, note: "Keep first thesis" },
+          {
+            ...payload.memberships[0]!,
+            listingId: "listing-two",
+            securityId: "security-two",
+            shareClassId: "class-two",
+            symbol: "TWO",
+            note: raw,
+          },
+        ],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      const origin = {};
+      const page = { body: {}, activeElement: origin as unknown };
+      vi.stubGlobal("document", page);
+      const summary = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        focus: vi.fn(() => {
+          page.activeElement = summary;
+        }),
+        scrollIntoView: vi.fn(),
+      };
+      const reader = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        open: false,
+        querySelector: () => summary,
+      };
+      const field = { dataset: { managedNoteListingId: "" }, value: "" };
+      const panel = {
+        isConnected: true,
+        getClientRects: () => [{}],
+        querySelector: (selector: string) =>
+          selector.startsWith("textarea") ? field : reader,
+      };
+      const render = () => {
+        const root = noteReviewScreen(workspace);
+        const nodes = editorElements(root.screen);
+        const note = nodes.find(
+          (node) => node.type === ManagedNoteEditor,
+        ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+        field.dataset.managedNoteListingId = note.props.listingId;
+        field.value = note.props.note;
+        mounted.editorRefs[0]!.current = panel;
+        return {
+          nodes,
+          note,
+          commit: () => {
+            for (const effect of mounted.editorEffects) effect();
+            root.commit();
+          },
+        };
+      };
+      const first = render();
+      first.commit();
+      const scope = first.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id ===
+          "managed-watchlist-search-scope",
+      ) as React.ReactElement<React.ComponentProps<"select">>;
+      scope.props.onChange!({
+        target: { value: "notes" },
+      } as React.ChangeEvent<HTMLSelectElement>);
+      const search = first.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id === "managed-watchlist-search",
+      ) as React.ReactElement<React.ComponentProps<"input">>;
+      search.props.onChange!({
+        target: { value: "Keep first" },
+      } as React.ChangeEvent<HTMLInputElement>);
+      render().commit();
+      workspace.openWatchlistAnnual(draft.memberships[1]!);
+      companyReview(noteReviewScreen(workspace).screen)();
+      const returned = render();
+      returned.commit();
+      if (mode === "selection-retires") {
+        const original = workspace.selectWatchlistFilingsMember.bind(workspace);
+        vi.spyOn(workspace, "selectWatchlistFilingsMember").mockImplementation(
+          (member) => {
+            original(member);
+            if (member === draft.memberships[1]) workspace.coordinator.retire();
+          },
+        );
+      }
+      if (mode === "user-focus") page.activeElement = {};
+      const selected = render();
+      selected.commit();
+      expect(selected.note.props).toMatchObject({
+        listingId: "listing-two",
+        note: raw,
+        id: "managed-note-1",
+      });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id === "managed-watchlist-search",
+        )?.props,
+      ).toMatchObject({ value: "Keep first" });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id ===
+            "managed-watchlist-search-scope",
+        )?.props,
+      ).toMatchObject({ value: "notes" });
+      expect(
+        selected.nodes.some(
+          (node) =>
+            React.Children.toArray(node.props.children)
+              .filter((child) => typeof child === "string")
+              .join("") === "Selected TWO is outside this search.",
+        ),
+      ).toBe(true);
+      expect(reader.open).toBe(mode === "current");
+      expect(summary.focus).toHaveBeenCalledTimes(mode === "current" ? 1 : 0);
+      expect(summary.scrollIntoView).toHaveBeenCalledTimes(
+        mode === "current" ? 1 : 0,
+      );
+      if (mode === "current") {
+        expect(page.activeElement).toBe(summary);
+        expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      }
+      for (const read of [
+        api.annualReport,
+        api.recentFilings,
+        api.eodHistory,
+        api.monetaryAnnouncements,
+        api.economicCalendar,
+        api.save,
+      ])
+        expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("waits for the company URL return, consumes its focus once, and preserves later Back focus", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    let route = true;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn<ManagedCompanyNavigation["view"]>((view) => {
+        workspace.setView(view);
+        return true;
+      }),
+    };
+    const first = noteReviewScreen(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    const target = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    companyReview(first.screen)();
+    const pending = noteReviewScreen(workspace, navigation);
+    const reviewNote = pending.bindReview();
+    pending.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+    route = false;
+    const beforeSignal = noteReviewScreen(workspace, navigation);
+    beforeSignal.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+    navigation.returnFocus = 1;
+    const returned = noteReviewScreen(workspace, navigation);
+    returned.commit();
+    returned.returnFocus();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(target);
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+    expect(focus).not.toHaveBeenCalled();
+    const repeated = noteReviewScreen(workspace, navigation);
+    repeated.commit();
+    repeated.returnFocus();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(focus).not.toHaveBeenCalled();
+    navigation.returnFocus = 2;
+    const ordinary = noteReviewScreen(workspace, navigation);
+    ordinary.commit();
+    ordinary.returnFocus();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(false);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["invalid", "uncertain"] as const)(
+    "reviews a current company note when it is %s",
+    async (mode) => {
+      const { workspace, api } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.openWatchlistAnnual(
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+      );
+      workspace.note(
+        "listing-one",
+        mode === "invalid"
+          ? `  e\u0301 東京 🧭\n${"raw ".repeat(510)}  `
+          : "Keep the uncertain draft",
+      );
+      if (mode === "uncertain") {
+        vi.mocked(api.save).mockRejectedValueOnce(
+          new TrialApiError("commit_unknown"),
+        );
+        await workspace.coordinator.save();
+        expect(workspace.canEdit()).toBe(false);
+      }
+      const draft = workspace.coordinator.getSnapshot().draft!;
+      companyReview(noteReviewScreen(workspace).screen)();
+      const returned = noteReviewScreen(workspace);
+      const reviewNote = returned.bindReview();
+      returned.commit();
+      expect(reviewNote).toHaveBeenCalledOnce();
+      expect(reviewNote.mock.calls[0]![0].member).toBe(draft.memberships[0]);
+      expect(reviewNote.mock.calls[0]![0].isCurrent()).toBe(true);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.save).toHaveBeenCalledTimes(mode === "uncertain" ? 1 : 0);
+      expect(api.annualReport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not restore navigation focus when its pending company Review becomes stale before the return signal", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    let route = true;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: (view) => {
+        workspace.setView(view);
+        return true;
+      },
+    };
+    const first = noteReviewScreen(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    companyReview(first.screen)();
+    workspace.note("listing-one", "User edits before the return commits");
+    const movedFocus = {};
+    vi.stubGlobal("document", { activeElement: movedFocus, body: {} });
+    const cancelled = noteReviewScreen(workspace, navigation);
+    const reviewNote = cancelled.bindReview();
+    cancelled.commit();
+    route = false;
+    navigation.returnFocus = 1;
+    const returned = noteReviewScreen(workspace, navigation);
+    returned.commit();
+    returned.returnFocus();
+    expect(reviewNote).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(movedFocus);
+    navigation.returnFocus = 2;
+    const laterBack = noteReviewScreen(workspace, navigation);
+    laterBack.commit();
+    laterBack.returnFocus();
+    expect(focus).toHaveBeenCalledOnce();
+  });
+
+  it.each(["draft", "retired", "view", "route", "catalog"] as const)(
+    "cancels a queued Review after %s changes",
+    async (change) => {
+      const { workspace, api } = fixture();
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("markets");
+      const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      const navigation: ManagedCompanyNavigation = {
+        invalid: false,
+        returnFocus: 0,
+        hasCompanyRoute: () => false,
+        open: (action) => action(),
+        section: vi.fn(),
+        back: vi.fn(),
+        view: (view) => {
+          workspace.setView(view);
+          return true;
+        },
+      };
+      fedNoteContext(workspace, navigation).onReview(member);
+      if (change === "draft")
+        workspace.note(
+          member.listingId,
+          "Replacement must not receive old focus",
+        );
+      if (change === "retired") workspace.coordinator.retire();
+      if (change === "view") workspace.setView("discover");
+      if (change === "route") navigation.invalid = true;
+      if (change === "catalog") {
+        vi.mocked(api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: `sha256:${"b".repeat(64)}` },
+        });
+        await workspace.refreshCatalog();
+      }
+      const returned = noteReviewScreen(workspace, navigation);
+      const reviewNote = vi.fn<ManagedWatchlistEditorHandle["reviewNote"]>(
+        () => true,
+      );
+      mounted.refs[5]!.current = { reviewNote, focusFirstInvalidNote: vi.fn() };
+      returned.commit();
+      expect(reviewNote).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rechecks the draft after view navigation and never hands off a replaced member", async () => {
+    const { workspace } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => false,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: (view) => {
+        workspace.setView(view);
+        workspace.note(member.listingId, "Changed during navigation");
+        return true;
+      },
+    };
+    fedNoteContext(workspace, navigation).onReview(member);
+    const returned = noteReviewScreen(workspace, navigation);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).not.toHaveBeenCalled();
+  });
+
+  it("explains a company without a current note without handing another note to Review", async () => {
+    const { workspace, api } = fixture();
+    const listing = {
+      ...payload.memberships[0]!,
+      listingId: "listing-other",
+      securityId: "security-other",
+      cik: "0000000001",
+      matchKind: "current_symbol_exact" as const,
+      matchedValue: "DEMO",
+    };
+    vi.mocked(api.search).mockResolvedValue({
+      snapshot,
+      results: [listing],
+      totalMatches: 1,
+      limitApplied: 25,
+      normalizedQuery: "DEMO",
+    });
+    await workspace.coordinator.load();
+    await workspace.search();
+    workspace.openDiscoveryAnnual(listing);
+    const first = noteReviewScreen(workspace);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    companyReview(first.screen)();
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(
+      elements(returned.screen).some(
+        (node) =>
+          node.props.children ===
+          "No current note is available for this company.",
+      ),
+    ).toBe(true);
+    expect(reviewNote).not.toHaveBeenCalled();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  function marketsNavigation(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const nodes = elements(screen);
+    const board = nodes.find(
+      (node) => node.type === ManagedMarkets,
+    ) as React.ReactElement<React.ComponentProps<typeof ManagedMarkets>>;
+    const nav = board.props.sectionNavigation as React.ReactElement<
+      React.ComponentProps<typeof ManagedMarketsNavigation>
+    >;
+    expect(nav.type).toBe(ManagedMarketsNavigation);
+    const agenda = nodes.find(
+      (node) => node.type === ManagedBeaReleaseAgenda,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseAgenda>
+    >;
+    const fed = nodes.find(
+      (node) => node.type === ManagedFedAnnouncements,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncements>
+    >;
+    expect(nav.props.targets.board.ref).toBe(board.props.headingRef);
+    expect(nav.props.targets.calendar.ref).toBe(agenda.props.headingRef);
+    expect(nav.props.targets.announcements.ref).toBe(fed.props.headingRef);
+    return nav.props;
+  }
+
+  it("keeps Markets jumps current through explicit loads and pending refresh without changing data or draft", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-one", "Unsaved Markets note: Café 😀");
+    workspace.setView("markets");
+    const draft = workspace.coordinator.getSnapshot().draft;
+    const nav = marketsNavigation(workspace);
+    expect(nav.isCurrent()).toBe(true);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    vi.mocked(api.economicCalendar).mockResolvedValue(
+      economicCalendarFixture(),
+    );
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValue(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.agenda.load();
+    await workspace.announcements.load();
+    const agenda = workspace.agenda.getSnapshot().agenda;
+    const announcements = workspace.announcements.getSnapshot().announcements;
+    let release!: (value: ReturnType<typeof economicCalendarFixture>) => void;
+    vi.mocked(api.economicCalendar).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    const pending = workspace.agenda.load();
+    expect(workspace.agenda.getSnapshot().busy).toBe(true);
+    expect(nav.isCurrent()).toBe(true);
+    expect(marketsNavigation(workspace).isCurrent()).toBe(true);
+    expect(workspace.agenda.getSnapshot().agenda).toBe(agenda);
+    expect(workspace.announcements.getSnapshot().announcements).toBe(
+      announcements,
+    );
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    workspace.agenda.cancel();
+    release(economicCalendarFixture());
+    await pending;
+    expect(nav.isCurrent()).toBe(true);
+    expect(workspace.agenda.getSnapshot().agenda).toBe(agenda);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
+    expect(api.monetaryAnnouncements).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses a previous Markets jump as soon as navigation or company research starts", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    let pendingRoute = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 1,
+      hasCompanyRoute: () => pendingRoute,
+      open: (action) => action(),
+      section: vi.fn(),
+      view: vi.fn(() => true),
+      back: vi.fn(),
+    };
+    const nav = marketsNavigation(workspace, navigation);
+    expect(nav.isCurrent()).toBe(true);
+    pendingRoute = true;
+    expect(nav.isCurrent()).toBe(false);
+    pendingRoute = false;
+    expect(
+      marketsNavigation(workspace, {
+        ...navigation,
+        invalid: true,
+      }).isCurrent(),
+    ).toBe(false);
+    workspace.setView("watchlist");
+    expect(nav.isCurrent()).toBe(false);
+    workspace.setView("markets");
+    expect(nav.isCurrent()).toBe(true);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    expect(workspace.getSnapshot().research).not.toBeNull();
+    expect(nav.isCurrent()).toBe(false);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses the previous Markets jump immediately after shared retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    workspace.setView("markets");
+    const nav = marketsNavigation(workspace);
+    expect(nav.isCurrent()).toBe(true);
+    workspace.coordinator.retire();
+    expect(nav.isCurrent()).toBe(false);
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   it("keeps explicitly loaded Fed metadata separate from the calendar and clears it on retirement", async () => {
     const { workspace, api, html } = fixture();
     workspace.setView("markets");
@@ -550,18 +2020,43 @@ describe("managed workspace screen", () => {
     expect(loaded).toContain('dateTime="2026-10-19T18:00:00.000Z"');
     expect(loaded).not.toContain("local access");
     expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(loaded).not.toContain("Compared loaded feeds");
+    const previous = workspace.announcements.getSnapshot().announcements!;
+    const current = {
+      ...fedAnnouncementsFixture(),
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+    };
+    read.mockResolvedValueOnce(current);
+    await workspace.announcements.load();
+    const comparison = workspace.announcements.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(previous);
+    expect(comparison.current).toBe(current);
+    expect(comparison.newUrls).toEqual([]);
+    expect(html()).toContain("Compared loaded feeds");
+    expect(html()).toContain(
+      "Newly observed in this refresh: 0 of 2 links in the loaded feed.",
+    );
     read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
     await workspace.announcements.load();
     expect(html()).toContain("Previous announcements");
     expect(html()).toContain("could not be verified");
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
+    expect(html()).toContain('dateTime="2026-10-20T18:00:00.000Z"');
+    expect(html()).toContain('dateTime="2026-10-21T18:00:00.000Z"');
     workspace.setView("watchlist");
     expect(html()).not.toContain("fed-announcements");
     workspace.setView("markets");
     expect(html()).toContain("Invented monetary policy announcement");
-    expect(read).toHaveBeenCalledTimes(2);
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
     workspace.coordinator.retire();
     expect(html()).not.toContain("fed-announcements");
     expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBeNull();
     expect(api.save).not.toHaveBeenCalled();
   });
   it("shows the explicitly loaded dated agenda in Markets and hides it after shared retirement", async () => {
@@ -575,6 +2070,10 @@ describe("managed workspace screen", () => {
     await workspace.agenda.load();
     const loaded = html();
     expect(loaded).toContain("Refresh agenda");
+    expect(loaded).toContain('id="managed-bea-release-date"');
+    expect(loaded).toContain('value="2026-10-30"');
+    expect(loaded).toContain('value="2026-11-02"');
+    expect(loaded).toContain("2 of 2 loaded BEA releases.");
     expect(loaded).toContain("Invented October release");
     expect(loaded).toContain("8:30 AM EDT");
     expect(loaded).toContain("8:30 AM EST");
@@ -586,6 +2085,7 @@ describe("managed workspace screen", () => {
     expect(previous).toContain("Previous agenda");
     expect(previous).toContain("could not be verified");
     expect(previous).toContain("Invented October release");
+    expect(previous).toContain("2 of 2 loaded BEA releases.");
     workspace.setView("watchlist");
     expect(html()).not.toContain("bea-release-agenda");
     workspace.setView("markets");
@@ -594,6 +2094,10 @@ describe("managed workspace screen", () => {
     workspace.coordinator.retire();
     expect(html()).not.toContain("bea-release-agenda");
     expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    expect(html()).not.toContain('id="managed-bea-release-date"');
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
   });
   it("keeps Annual, the shared note and Back usable for a listing outside declared price coverage", async () => {
     const { workspace, api, html } = fixture(payload, []);
@@ -773,6 +2277,7 @@ describe("managed workspace screen", () => {
       (element) => element.type === ManagedCompanyFilings,
     ) as React.ReactElement<React.ComponentProps<typeof ManagedCompanyFilings>>;
     expect(panel.props.noteActions).toBe(company.props.filingsNoteActions);
+    expect(panel.props.annual).toBe(workspace.annual);
     const actions = panel.props.noteActions!;
     const row = response.issuer.filings[1]!;
     workspace.noteResearch(selection, "Latest thesis");
@@ -797,6 +2302,177 @@ describe("managed workspace screen", () => {
     expect(api.annualReport).not.toHaveBeenCalled();
     expect(api.eodHistory).not.toHaveBeenCalled();
     expect(api.save).not.toHaveBeenCalled();
+  });
+  it("carries a loaded Annual baseline into Filings without another read and keeps the full note Save", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Existing thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const original = workspace.coordinator.getSnapshot().draft!;
+    vi.mocked(api.annualReport).mockResolvedValueOnce(await annualResponse());
+    workspace.openWatchlistAnnual(original.memberships[0]!);
+    await workspace.annual.load();
+    const report = workspace.annual.getSnapshot().response;
+    workspace.switchToFilings();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    expect(html()).toContain("Annual report filed 2026-02-01");
+    expect(html()).toContain("Filed after Annual report");
+    expect(workspace.coordinator.getSnapshot().draft).toBe(original);
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const response = workspace.filings.getSnapshot().response!;
+    expect(
+      company.props.filingsNoteActions.append(
+        response,
+        response.issuer.filings[1]!,
+      ).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships[0]!.note).toContain(
+      "Existing thesis Observed SEC filing reference:",
+    );
+    expect(draft.memberships[1]).toEqual(original.memberships[1]);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(draft);
+    expect(api.save).toHaveBeenCalledOnce();
+    workspace.switchToAnnual();
+    expect(workspace.annual.getSnapshot().response).toBe(report);
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot().response).toBe(response);
+    expect(html()).toContain("Annual report filed 2026-02-01");
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledOnce();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    expect(workspace.annual.getSnapshot().response).toBeNull();
+    expect(workspace.filings.getSnapshot().response).toBeNull();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+  });
+  it("filters a company refresh from its watchlist handoff and saves only the filtered current reference", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Existing thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const original = workspace.coordinator.getSnapshot().draft!;
+    workspace.selectWatchlistFilingsMember(original.memberships[0]!);
+    const selected = workspace.watchlistFilings.getSnapshot();
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(1, "available", selected.filings.selection!),
+    );
+    await workspace.watchlistFilings.load(selected.selected!);
+    const seed = workspace.watchlistFilings.getSnapshot().filings.response!;
+    workspace.openWatchlistFilings({
+      member: selected.selected!,
+      response: seed,
+    });
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
+    expect(html()).not.toContain("Compared loaded lists");
+    const selection = workspace.getSnapshot().research!.selection;
+    vi.mocked(api.recentFilings).mockResolvedValueOnce(
+      filingsResponse(2, "available", selection),
+    );
+    await workspace.filings.load();
+    const current = workspace.filings.getSnapshot().response!;
+    expect(html()).toContain(
+      "Newly observed in this refresh: 1 of 2 filings in the displayed response.",
+    );
+    expect(html()).toContain(
+      'data-filings-new-accession="0000000001-26-000002"',
+    );
+    const pair = workspace.filings.getSnapshot().refreshComparison;
+    const allFilings = initialManagedFilingsFilter(current, null, pair);
+    const newlyObserved = selectManagedFilingsRefreshView(
+      allFilings,
+      allFilings,
+      "new",
+    );
+    const filtered = projectManagedFilingsFilter(newlyObserved);
+    expect(filtered.rows).toEqual([current.issuer.filings[1]!]);
+    expect(filtered.rows[0]).toBe(current.issuer.filings[1]);
+    expect(filtered.matchingCount).toBe(1);
+    expect(filtered.loadedCount).toBe(2);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(original);
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.switchToAnnual();
+    workspace.switchToFilings();
+    expect(workspace.filings.getSnapshot().refreshComparison).toBe(pair);
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    expect(
+      company.props.filingsNoteActions.append(seed, seed.issuer.filings[0]!)
+        .appended,
+    ).toBe(false);
+    workspace.noteResearch(selection, "Latest thesis after filtering");
+    expect(
+      company.props.filingsNoteActions.append(current, filtered.rows[0]!)
+        .appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    expect(draft.memberships[0]!.note).toContain(
+      "Latest thesis after filtering Observed SEC filing reference:",
+    );
+    expect(draft.memberships[0]!.note).toContain("0000000001-26-000002");
+    expect(draft.memberships[0]!.note).not.toContain("Newly observed");
+    expect(draft.memberships[1]).toEqual(original.memberships[1]);
+    expect(api.save).not.toHaveBeenCalled();
+    workspace.closeResearch();
+    expect(workspace.filings.getSnapshot().refreshComparison).toBeNull();
+    expect(workspace.watchlistFilings.getSnapshot().filings.response).toBe(
+      seed,
+    );
+    expect(
+      workspace.watchlistFilings.getSnapshot().filings.refreshComparison,
+    ).toBeNull();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(draft);
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.recentFilings).toHaveBeenCalledTimes(2);
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
   });
   it("updates comparative Annual action capacity after typing and appends to the latest shared draft without saving", async () => {
     const { workspace, api, html } = fixture({
@@ -914,6 +2590,204 @@ describe("managed workspace screen", () => {
     expect(api.annualReport).toHaveBeenCalledTimes(2);
     expect(api.save).not.toHaveBeenCalled();
     expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("wires cash generation to the latest shared note and updates guarded capacity without saving", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Original thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    const report = await cashResponse([
+      cashRow("operating_cash_flow", "120.125"),
+      cashRow("ppe_purchases", "20"),
+    ]);
+    vi.mocked(api.annualReport).mockResolvedValue(report);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    const company = () => {
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const node = ManagedWorkspaceScreen({ workspace });
+      mounted.direct = false;
+      return elements(node).find(
+        (element) => element.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const captured = company().props.annualCashNoteActions;
+    expect(captured.getAction(report).canAppend).toBe(true);
+    company().props.onNote("x".repeat(2000));
+    expect(html()).toMatch(
+      /<button[^>]*aria-disabled="true"[^>]*>Add cash generation to note draft<\/button>/u,
+    );
+    const tooLong = workspace.coordinator.getSnapshot().draft;
+    expect(captured.append(report).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(tooLong);
+    company().props.onNote("  Latest Cafe\u0301 thesis  ");
+    const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
+    expect(captured.append(report).appended).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(
+      "  Latest Cafe\u0301 thesis   " + annualCashNoteExcerpt(report, false),
+    );
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1],
+    ).toStrictEqual(other);
+    expect(captured.getAction(report)).toEqual({
+      canAppend: false,
+      reason:
+        "This exact cash-generation reference is already in the note draft.",
+    });
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("fences cash-note callbacks after response replacement and a reopened visit", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep my thesis" }],
+    });
+    const report = await cashResponse([
+      cashRow("operating_cash_flow", "123"),
+      cashRow("ppe_purchases", "23"),
+    ]);
+    const next = structuredClone(report);
+    vi.mocked(api.annualReport)
+      .mockResolvedValueOnce(report)
+      .mockResolvedValue(next);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const actions = company.props.annualCashNoteActions;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    await workspace.annual.load();
+    expect(actions.append(report).appended).toBe(false);
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    expect(actions.append(next).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.annualReport).toHaveBeenCalledTimes(3);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("wires liquidity to the latest shared note and updates guarded capacity without saving", async () => {
+    const { workspace, api, html } = fixture({
+      ...payload,
+      memberships: [
+        { ...eodSelection.listing, note: "Original thesis" },
+        payload.memberships[0]!,
+      ],
+    });
+    const report = await liquidityResponse([
+      liquidityRow("current_assets", "120.125"),
+      liquidityRow("current_liabilities", "20"),
+    ]);
+    vi.mocked(api.annualReport).mockResolvedValue(report);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!,
+    );
+    await workspace.annual.load();
+    const company = () => {
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const node = ManagedWorkspaceScreen({ workspace });
+      mounted.direct = false;
+      return elements(node).find(
+        (element) => element.type === ManagedCompanyResearch,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedCompanyResearch>
+      >;
+    };
+    const captured = company().props.annualLiquidityNoteActions;
+    expect(captured.getAction(report).canAppend).toBe(true);
+    company().props.onNote("x".repeat(2000));
+    expect(html()).toMatch(
+      /<button[^>]*aria-disabled="true"[^>]*>Add liquidity to note draft<\/button>/u,
+    );
+    const tooLong = workspace.coordinator.getSnapshot().draft;
+    expect(captured.append(report).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(tooLong);
+    company().props.onNote("  Latest Cafe\u0301 thesis  ");
+    const other = workspace.coordinator.getSnapshot().draft!.memberships[1];
+    expect(captured.append(report).appended).toBe(true);
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!.note,
+    ).toBe(
+      "  Latest Cafe\u0301 thesis   " +
+        annualLiquidityNoteExcerpt(report, false),
+    );
+    expect(
+      workspace.coordinator.getSnapshot().draft!.memberships[1],
+    ).toStrictEqual(other);
+    expect(captured.getAction(report)).toEqual({
+      canAppend: false,
+      reason: "This exact liquidity reference is already in the note draft.",
+    });
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.resolve).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+  });
+
+  it("fences liquidity-note callbacks after response replacement and a reopened visit", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [{ ...eodSelection.listing, note: "Keep my thesis" }],
+    });
+    const report = await liquidityResponse([
+      liquidityRow("current_assets", "123"),
+      liquidityRow("current_liabilities", "23"),
+    ]);
+    const next = structuredClone(report);
+    vi.mocked(api.annualReport)
+      .mockResolvedValueOnce(report)
+      .mockResolvedValue(next);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const member = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    mounted.direct = true;
+    const company = elements(ManagedWorkspaceScreen({ workspace })).find(
+      (element) => element.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    mounted.direct = false;
+    const actions = company.props.annualLiquidityNoteActions;
+    const draft = workspace.coordinator.getSnapshot().draft;
+    await workspace.annual.load();
+    expect(actions.append(report).appended).toBe(false);
+    workspace.closeResearch();
+    workspace.openWatchlistAnnual(member);
+    await workspace.annual.load();
+    expect(actions.append(next).appended).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.annualReport).toHaveBeenCalledTimes(3);
+    expect(api.save).not.toHaveBeenCalled();
   });
 
   it("coordinates company section, Back and watchlist review through URL navigation", async () => {
@@ -1089,6 +2963,111 @@ describe("managed workspace screen", () => {
     expect(mounted.refs[0]!.current).toBeNull();
   });
 
+  it("reveals the focused return target once if later responsive restoration moves it offscreen", async () => {
+    const h = await returnedFocusFixture();
+    h.commit();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    h.offscreen();
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "instant",
+    });
+    expect(h.view.requestAnimationFrame).toHaveBeenCalledOnce();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.workspace.coordinator.getSnapshot().draft).toBe(h.before);
+    expect(h.api.load).toHaveBeenCalledOnce();
+    expect(h.api.status).toHaveBeenCalledOnce();
+    expect(h.api.annualReport).not.toHaveBeenCalled();
+    expect(h.api.eodHistory).not.toHaveBeenCalled();
+    expect(h.api.recentFilings).not.toHaveBeenCalled();
+    expect(h.api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["visible", "desktop sidebar"])(
+    "does not scroll an already visible return target (%s)",
+    async (layout) => {
+      const h = await returnedFocusFixture();
+      if (layout === "desktop sidebar") {
+        h.covered();
+        h.view.getComputedStyle.mockReturnValue({ position: "static" });
+      }
+      h.commit();
+      h.frame();
+      expect(h.target.focus).toHaveBeenCalledOnce();
+      expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reveals an opener covered by the fixed mobile navigation", async () => {
+    const h = await returnedFocusFixture();
+    h.commit();
+    h.covered();
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a smaller visual viewport authoritative when navigation lies below it", async () => {
+    const h = await returnedFocusFixture();
+    h.view.visualViewport.height = 400;
+    h.commit();
+    h.placeAt(500);
+    h.frame();
+    expect(h.target.scrollIntoView).toHaveBeenCalledOnce();
+  });
+
+  it("focuses the visible fallback inside mobile navigation without scrolling when the opener is gone", async () => {
+    const h = await returnedFocusFixture();
+    mounted.refs[0]!.current = { isConnected: false, focus: vi.fn() };
+    h.navigation.contains.mockReturnValue(true);
+    h.commit();
+    h.covered();
+    h.frame();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "moved focus",
+    "detached",
+    "hidden",
+    "new visit",
+    "retired",
+    "unmount",
+  ])("discards a deferred return correction after %s", async (change) => {
+    const h = await returnedFocusFixture();
+    const cleanup = h.commit();
+    h.offscreen();
+    if (change === "moved focus") h.document.activeElement = {};
+    if (change === "detached") h.target.isConnected = false;
+    if (change === "hidden") h.target.getClientRects.mockReturnValue([]);
+    if (change === "new visit") {
+      h.workspace.openWatchlistAnnual(h.before!.memberships[0]!);
+      h.workspace.closeResearch();
+    }
+    if (change === "retired") h.workspace.coordinator.retire();
+    if (change === "unmount") cleanup?.();
+    h.frame();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    expect(h.target.focus).toHaveBeenCalledOnce();
+    expect(h.view.requestAnimationFrame).toHaveBeenCalledOnce();
+    if (change === "unmount")
+      expect(h.view.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(42);
+  });
+
+  it("cancels a prior workspace's return frame when its effect is replaced", async () => {
+    const h = await returnedFocusFixture();
+    const cleanup = h.commit();
+    h.offscreen();
+    cleanup?.();
+    h.render(fixture().workspace);
+    h.frame();
+    expect(h.target.scrollIntoView).not.toHaveBeenCalled();
+    expect(h.view.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(42);
+  });
+
   it("uses the route Back action while company metadata is still pending", async () => {
     const { workspace, api } = fixture();
     const native = nativeBackFixture();
@@ -1197,7 +3176,14 @@ describe("managed workspace screen", () => {
     review.props.onClick!({} as React.MouseEvent<HTMLButtonElement>);
     expect(workspace.getSnapshot().research).toBeNull();
     expect(workspace.getSnapshot().view).toBe("watchlist");
-    expect(focus).toHaveBeenCalledOnce();
+    const returned = noteReviewScreen(workspace);
+    const reviewNote = returned.bindReview();
+    returned.commit();
+    expect(reviewNote).toHaveBeenCalledOnce();
+    expect(reviewNote.mock.calls[0]![0].member).toBe(
+      workspace.coordinator.getSnapshot().draft!.memberships[0],
+    );
+    expect(focus).not.toHaveBeenCalled();
     expect(workspace.coordinator.getSnapshot().dirty).toBe(true);
     expect(api.save).not.toHaveBeenCalled();
     expect(api.annualReport).not.toHaveBeenCalled();
@@ -1205,6 +3191,144 @@ describe("managed workspace screen", () => {
     mounted.direct = false;
     expect(html()).toContain("Edited from the watchlist row");
   });
+
+  it.each(["price", "income", "cash", "liquidity"] as const)(
+    "reviews the exact %s comparison destination outside search, including during Save",
+    async (kind) => {
+      const f = await comparisonNoteReviewFixture(kind);
+      const ui = comparisonReaderFixture(f.workspace);
+      const first = ui.render();
+      first.commit();
+      expect(first.note.props.listingId).toBe(
+        f.initial.memberships[0]!.listingId,
+      );
+      expect(f.append(first.screen).appended).toBe(true);
+      const draft = f.workspace.coordinator.getSnapshot().draft!;
+      const target = draft.memberships[1]!;
+      expect(draft.memberships[0]).toEqual(f.initial.memberships[0]);
+      expect(target.note).toMatch(/^Fresh café 東京 📈 thesis /);
+      const sources = f.sourceState();
+      const writes = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+      vi.mocked(f.api.save).mockReturnValueOnce(writes.promise);
+      const saving = f.workspace.coordinator.save();
+      const savingDraft = f.workspace.coordinator.getSnapshot().draft!;
+      const currentTarget = savingDraft.memberships[1]!;
+      expect(savingDraft).toEqual(draft);
+      expect(currentTarget).not.toBe(target);
+      const pending = ui.render();
+      pending.commit();
+      expect(f.workspace.canEdit()).toBe(false);
+      expect(f.canAppend(pending.screen)).toBe(false);
+      expect(f.api.save).toHaveBeenCalledOnce();
+      const command = vi.mocked(f.api.save).mock.calls[0]![0];
+      expect(command.payload).toEqual(draft);
+      f.review(pending.screen, currentTarget, () => true);
+      ui.render().commit();
+      const selected = ui.render();
+      selected.commit();
+      expect(selected.note.props).toMatchObject({
+        listingId: target.listingId,
+        note: target.note,
+        disabled: true,
+      });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id === "managed-watchlist-search",
+        )?.props,
+      ).toMatchObject({ value: "Keep first" });
+      expect(
+        selected.nodes.find(
+          (node) =>
+            (node.props as { id?: string }).id ===
+            "managed-watchlist-search-scope",
+        )?.props,
+      ).toMatchObject({ value: "notes" });
+      expect(
+        selected.nodes.some(
+          (node) =>
+            React.Children.toArray(node.props.children)
+              .filter((child) => typeof child === "string")
+              .join("") === `Selected ${target.symbol} is outside this search.`,
+        ),
+      ).toBe(true);
+      expect(ui.reader.open).toBe(true);
+      expect(ui.summary.focus).toHaveBeenCalledOnce();
+      expect(ui.summary.scrollIntoView).toHaveBeenCalledOnce();
+      expect(ui.page.activeElement).toBe(ui.summary);
+      expect(f.workspace.coordinator.getSnapshot().draft).toBe(savingDraft);
+      expect(f.sourceState()).toEqual(sources);
+      f.sourceState().forEach((response, index) =>
+        expect(response).toBe(sources[index]),
+      );
+      writes.resolve({ version: 2, payload: command.payload, replayed: false });
+      await saving;
+      vi.mocked(f.api.load).mockResolvedValueOnce({
+        version: 2,
+        payload: command.payload,
+      });
+      await f.workspace.coordinator.load();
+      expect(f.workspace.coordinator.getSnapshot()).toMatchObject({
+        baseVersion: 2,
+        dirty: false,
+        draft: command.payload,
+      });
+      expect(f.api.eodHistory).toHaveBeenCalledTimes(kind === "price" ? 2 : 0);
+      expect(f.api.annualReport).toHaveBeenCalledTimes(
+        kind === "price" ? 0 : 2,
+      );
+      for (const call of [
+        f.api.recentFilings,
+        f.api.economicCalendar,
+        f.api.monetaryAnnouncements,
+        f.api.resolve,
+        f.api.search,
+      ])
+        expect(call).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["price", "choice"],
+    ["income", "choice"],
+    ["price", "response"],
+    ["income", "response"],
+    ["price", "member"],
+    ["income", "member"],
+    ["price", "retire"],
+    ["income", "retire"],
+  ] as const)(
+    "fences queued %s comparison Review when its %s changes before the reader commits",
+    async (kind, change) => {
+      const f = await comparisonNoteReviewFixture(kind);
+      const first = noteReviewScreen(f.workspace);
+      first.commit();
+      expect(f.append(first.screen).appended).toBe(true);
+      const member =
+        f.workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      let currentChoice = true;
+      f.review(first.screen, member, () => currentChoice);
+      if (change === "choice") currentChoice = false;
+      if (change === "response") await f.replaceSource();
+      if (change === "member")
+        f.workspace.note(
+          member.listingId,
+          "Later raw note must keep its focus",
+        );
+      if (change === "retire") f.workspace.coordinator.retire();
+      const next = noteReviewScreen(f.workspace);
+      const review = change === "retire" ? vi.fn() : next.bindReview();
+      next.commit();
+      expect(review).not.toHaveBeenCalled();
+      expect(f.api.save).not.toHaveBeenCalled();
+      if (change === "member")
+        expect(
+          f.workspace.coordinator.getSnapshot().draft!.memberships[1]!.note,
+        ).toBe("Later raw note must keep its focus");
+      if (change === "retire")
+        expect(f.workspace.coordinator.getSnapshot().draft).toBeNull();
+    },
+  );
 
   it.each(["ready", "invalid", "pending", "becomes-pending"] as const)(
     "wires pair evidence to the current full draft with navigation %s",
@@ -1304,6 +3428,438 @@ describe("managed workspace screen", () => {
       expect(api.economicCalendar).not.toHaveBeenCalled();
     },
   );
+
+  it.each([
+    ["income", "ready"],
+    ["cash", "ready"],
+    ["liquidity", "ready"],
+    ["income", "invalid"],
+    ["cash", "invalid"],
+    ["liquidity", "invalid"],
+    ["income", "pending"],
+    ["cash", "pending"],
+    ["liquidity", "pending"],
+    ["income", "becomes-pending"],
+    ["cash", "becomes-pending"],
+    ["liquidity", "becomes-pending"],
+  ] as const)(
+    "wires %s Annual comparison notes with navigation %s",
+    async (group, route) => {
+      let pending = route === "pending";
+      const initial = {
+        ...payload,
+        memberships: [
+          annualComparisonMemberships.left,
+          {
+            ...annualComparisonMemberships.right,
+            note: "Fiscal company research",
+          },
+        ],
+      };
+      const { workspace, api } = fixture(initial);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const model = workspace.annualComparison;
+      for (const [side, index] of [
+        ["left", 0],
+        ["right", 1],
+      ] as const) {
+        const member = model.getSnapshot().memberships[index]!;
+        model.select(side, model.getSnapshot(), member);
+        vi.mocked(api.annualReport).mockResolvedValueOnce(
+          await annualComparisonResponse(side),
+        );
+        await model.load(side, member);
+      }
+      const current = model.getSnapshot();
+      const side = (key: "left" | "right") => ({
+        member: current[key].selected!,
+        response: current[key].report.response!,
+        selectedBasis: projectAnnualComparison(current[key].report.response)
+          .selectedBasis,
+        showingPrevious: current[key].report.showingPrevious,
+      });
+      const capture: AnnualComparisonNoteCapture = {
+        group,
+        left: side("left"),
+        right: side("right"),
+      };
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn(),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const comparison = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >;
+      expect(comparison.props.active).toBe(
+        route === "ready" || route === "becomes-pending",
+      );
+      expect(comparison.props.editable).toBe(true);
+      const actions = comparison.props.noteActions;
+      const destination = current.right.selected!;
+      expect(actions.getAction(capture, destination).canAppend).toBe(
+        route === "ready" || route === "becomes-pending",
+      );
+      if (route === "becomes-pending") pending = true;
+      const prose = "Latest exact Café 😀 comparison thesis";
+      workspace.note(destination.listing.listingId, prose);
+      const before = workspace.coordinator.getSnapshot().draft!;
+      expect(actions.getAction(capture, destination).canAppend).toBe(
+        route === "ready",
+      );
+      expect(actions.append(capture, destination).appended).toBe(
+        route === "ready",
+      );
+      const after = workspace.coordinator.getSnapshot().draft!;
+      if (route === "ready") {
+        expect(after.memberships[0]).toEqual(before.memberships[0]);
+        expect(after.memberships[1]!.note).toBe(
+          prose + " " + getAnnualComparisonNoteEvidence(capture).excerpt,
+        );
+      } else expect(after).toBe(before);
+      expect(api.annualReport).toHaveBeenCalledTimes(2);
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.recentFilings).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "ready",
+    "invalid",
+    "pending",
+    "becomes-pending",
+    "navigation-refuses",
+  ] as const)(
+    "opens a checked comparison report through the existing navigation owner: %s",
+    async (route) => {
+      let pending = route === "pending";
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [
+          annualComparisonMemberships.left,
+          {
+            ...annualComparisonMemberships.right,
+            note: "Fiscal company research",
+          },
+        ],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const model = workspace.annualComparison;
+      const member = model.getSnapshot().memberships[0]!;
+      model.select("left", model.getSnapshot(), member);
+      vi.mocked(api.annualReport).mockResolvedValueOnce(
+        await annualComparisonResponse("left"),
+      );
+      await model.load("left", member);
+      const response = model.getSnapshot().left.report.response!;
+      const draftBeforeVisit = workspace.coordinator.getSnapshot().draft;
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn<ManagedCompanyNavigation["open"]>((action) => {
+          if (route !== "navigation-refuses") action();
+        }),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const comparison = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistAnnualComparison,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistAnnualComparison>
+      >;
+      const focus = vi.fn();
+      const origin = {
+        isConnected: true,
+        focus,
+      } as unknown as HTMLButtonElement;
+      if (route === "becomes-pending") pending = true;
+      comparison.props.onOpenReport({ side: "left", member, response }, origin);
+      if (route === "ready") {
+        expect(navigation.open).toHaveBeenCalledOnce();
+        expect(workspace.getSnapshot().research?.section).toBe("annual");
+        expect(mounted.refs[0]!.current).toBe(origin);
+        await vi.waitFor(() =>
+          expect(workspace.annual.getSnapshot().checkingSeed).toBe(false),
+        );
+        expect(workspace.annual.getSnapshot().response).toEqual(response);
+        mounted.refIndex = 0;
+        const company = elements(
+          ManagedWorkspaceScreen({ workspace, navigation }),
+        ).find((node) => node.type === ManagedCompanyResearch)!;
+        mounted.direct = false;
+        try {
+          const report = renderToStaticMarkup(company);
+          expect(report).toContain('aria-label="On this report"');
+          expect(report).toContain(response.evidence.generation.completedAt);
+        } finally {
+          mounted.direct = true;
+        }
+        workspace.closeResearch();
+        const effectIndex = mounted.effects.length;
+        mounted.refIndex = 0;
+        ManagedWorkspaceScreen({
+          workspace,
+          navigation: { ...navigation, returnFocus: 1 },
+        });
+        expect(focus).not.toHaveBeenCalled();
+        mounted.effects[effectIndex]!();
+        expect(focus).toHaveBeenCalledOnce();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(model.getSnapshot().left.selected).toBe(member);
+        expect(model.getSnapshot().left.report.response).toBe(response);
+      } else {
+        expect(workspace.getSnapshot().research).toBeNull();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(focus).not.toHaveBeenCalled();
+        expect(navigation.open).toHaveBeenCalledTimes(
+          route === "navigation-refuses" ? 1 : 0,
+        );
+      }
+      expect(api.annualReport).toHaveBeenCalledOnce();
+      expect(api.save).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.resolve).not.toHaveBeenCalled();
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeVisit);
+    },
+  );
+
+  it.each([
+    "ready",
+    "invalid",
+    "pending",
+    "becomes-pending",
+    "navigation-refuses",
+  ] as const)(
+    "opens selected watchlist Filings through the navigation owner: %s",
+    async (route) => {
+      const { workspace, api } = fixture(payload);
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      const selected =
+        workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      workspace.selectWatchlistFilingsMember(selected);
+      const model = workspace.watchlistFilings;
+      const member = model.getSnapshot().selected!;
+      vi.mocked(api.recentFilings).mockResolvedValueOnce(
+        filingsResponse(2, "available", model.getSnapshot().filings.selection!),
+      );
+      await model.load(member);
+      const response = model.getSnapshot().filings.response!;
+      const draft = workspace.coordinator.getSnapshot().draft;
+      let pending = route === "pending";
+      const navigation: ManagedCompanyNavigation = {
+        hasCompanyRoute: () => pending,
+        invalid: route === "invalid",
+        returnFocus: 0,
+        open: vi.fn<ManagedCompanyNavigation["open"]>((action) => {
+          if (route !== "navigation-refuses") action();
+        }),
+        section: vi.fn(),
+        view: vi.fn(),
+        back: vi.fn(),
+      };
+      mounted.direct = true;
+      mounted.refIndex = 0;
+      const editor = elements(
+        ManagedWorkspaceScreen({ workspace, navigation }),
+      ).find(
+        (node) => node.type === ManagedWatchlistEditor,
+      ) as React.ReactElement<
+        React.ComponentProps<typeof ManagedWatchlistEditor>
+      >;
+      expect(editor.props.filings).toBe(model);
+      const focus = vi.fn();
+      const opener = {
+        isConnected: true,
+        focus,
+      } as unknown as HTMLButtonElement;
+      if (route === "becomes-pending") pending = true;
+      editor.props.onViewFilings({ member, response }, opener);
+      if (route === "ready") {
+        expect(navigation.open).toHaveBeenCalledOnce();
+        expect(workspace.getSnapshot().research?.section).toBe("filings");
+        expect(workspace.filings.getSnapshot().response).toEqual(response);
+        expect(mounted.refs[0]!.current).toBe(opener);
+        workspace.closeResearch();
+        const effectIndex = mounted.effects.length;
+        mounted.refIndex = 0;
+        ManagedWorkspaceScreen({
+          workspace,
+          navigation: { ...navigation, returnFocus: 1 },
+        });
+        mounted.effects[effectIndex]!();
+        expect(focus).toHaveBeenCalledOnce();
+        expect(model.getSnapshot().selected).toBe(member);
+        expect(model.getSnapshot().filings.response).toBe(response);
+      } else {
+        expect(workspace.getSnapshot().research).toBeNull();
+        expect(mounted.refs[0]!.current).toBeNull();
+        expect(navigation.open).toHaveBeenCalledTimes(
+          route === "navigation-refuses" ? 1 : 0,
+        );
+      }
+      expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+      expect(api.recentFilings).toHaveBeenCalledOnce();
+      expect(api.annualReport).not.toHaveBeenCalled();
+      expect(api.eodHistory).not.toHaveBeenCalled();
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["annual", "eod", "filings"] as const)(
+    "opens watchlist companies in %s, keeps the first opener and saves all notes",
+    async (section) => {
+      const other = {
+        ...payload.memberships[0]!,
+        listingId: "listing-two",
+        securityId: "security-two",
+        shareClassId: "class-two",
+        shareClassName: "Class B",
+        symbol: "DEMB",
+        note: "Other class note",
+      };
+      const { workspace, api } = fixture({
+        ...payload,
+        memberships: [...payload.memberships, other],
+      });
+      await workspace.coordinator.load();
+      await workspace.refreshCatalog();
+      workspace.setView("watchlist");
+      mounted.direct = true;
+      const render = () => {
+        mounted.refIndex = 0;
+        return ManagedWorkspaceScreen({ workspace });
+      };
+      const origin = { isConnected: true, focus: vi.fn() };
+      const opener = editorElements(render()).find(
+        (node) =>
+          (node.props as { "aria-label"?: string })["aria-label"] ===
+          "Annual report for saved DEMO",
+      ) as React.ReactElement<{
+        onClick: (event: { currentTarget: unknown }) => void;
+      }>;
+      opener.props.onClick({ currentTarget: origin });
+      const company = () =>
+        elements(render()).find(
+          (node) => node.type === ManagedCompanyResearch,
+        ) as React.ReactElement<
+          React.ComponentProps<typeof ManagedCompanyResearch>
+        >;
+      company().props.onSection(section);
+      company().props.onNote("First complete note: Café 😀");
+      const before = company();
+      const second = workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      expect(before.props.canOpenCompany(before.props.research, second)).toBe(
+        true,
+      );
+      before.props.onOpenCompany(before.props.research, second);
+      const after = company();
+      expect(after.props.research.section).toBe(section);
+      expect(after.props.research.selection.listing.listingId).toBe(
+        "listing-two",
+      );
+      expect(after.props.watchlist.member?.note).toBe("Other class note");
+      expect(mounted.refs[0]!.current).toBe(origin);
+      before.props.onOpenCompany(before.props.research, second);
+      before.props.onNote("Stale note must not write");
+      expect(workspace.getSnapshot().research).toBe(after.props.research);
+      after.props.onNote("Second complete note");
+      const latest = company();
+      const first = workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      latest.props.onOpenCompany(latest.props.research, first);
+      expect(company().props.watchlist.member?.note).toBe(
+        "First complete note: Café 😀",
+      );
+      expect(company().props.research.section).toBe(section);
+      expect(mounted.refs[0]!.current).toBe(origin);
+      company().props.onBack();
+      commitReturnFocus(workspace);
+      expect(origin.focus).toHaveBeenCalledOnce();
+      expect(workspace.getSnapshot().research).toBeNull();
+      workspace.move("listing-two", -1);
+      const expected = workspace.coordinator.getSnapshot().draft!;
+      expect(expected.memberships.map((m) => [m.listingId, m.note])).toEqual([
+        ["listing-two", "Second complete note"],
+        ["listing-one", "First complete note: Café 😀"],
+      ]);
+      vi.mocked(api.save).mockResolvedValue({
+        version: 2,
+        payload: expected,
+        replayed: false,
+      });
+      await workspace.coordinator.save();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(expected);
+      expect(workspace.coordinator.getSnapshot().saved?.payload).toEqual(
+        expected,
+      );
+      for (const read of [
+        api.annualReport,
+        api.eodHistory,
+        api.recentFilings,
+        api.resolve,
+      ])
+        expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("lets the navigation owner refuse a company change without replacing the opener", async () => {
+    const { workspace } = fixture({
+      ...payload,
+      memberships: Object.values(annualComparisonMemberships),
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    const members = workspace.coordinator.getSnapshot().draft!.memberships;
+    workspace.openWatchlistAnnual(members[0]!);
+    const visit = workspace.getSnapshot().research!;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => true,
+      open: vi.fn(),
+      section: vi.fn(),
+      view: vi.fn(),
+      back: vi.fn(),
+    };
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const company = elements(
+      ManagedWorkspaceScreen({ workspace, navigation }),
+    ).find(
+      (node) => node.type === ManagedCompanyResearch,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedCompanyResearch>
+    >;
+    const original = { isConnected: true, focus: vi.fn() };
+    mounted.refs[0]!.current = original;
+    company.props.onOpenCompany(visit, members[1]!);
+    expect(navigation.open).toHaveBeenCalledOnce();
+    expect(workspace.getSnapshot().research).toBe(visit);
+    expect(mounted.refs[0]!.current).toBe(original);
+  });
 
   it("adds from a captured discovery visit and fences old note and review controls", async () => {
     const { workspace, api, html } = fixture({ ...payload, memberships: [] });
@@ -1467,6 +4023,24 @@ describe("managed workspace screen", () => {
       } as React.ChangeEvent<HTMLInputElement>);
       expect(searchInput(first).props.value).toBe(query);
       expect(searchScope(first).props.value).toBe(scope);
+      const assertNoteContext = () => {
+        const contexts = editorElements(render()).filter(
+          (node) =>
+            (node.props as { "data-watchlist-note-context"?: string })[
+              "data-watchlist-note-context"
+            ],
+        );
+        expect(contexts).toHaveLength(scope === "notes" ? 1 : 0);
+        if (scope === "notes") {
+          expect(contexts[0]!.props).toMatchObject({
+            "data-watchlist-note-context": "listing-two",
+          });
+          expect(renderToStaticMarkup(contexts[0])).toContain(
+            "Note: Private research note",
+          );
+        }
+      };
+      assertNoteContext();
       const opener = editorElements(first).find(
         (node) =>
           node.type === "button" &&
@@ -1550,6 +4124,7 @@ describe("managed workspace screen", () => {
       const returnedEditor = editorElements(render());
       expect(searchInput(render()).props.value).toBe(query);
       expect(searchScope(render()).props.value).toBe(scope);
+      assertNoteContext();
       expect(
         returnedEditor
           .filter(
@@ -1586,6 +4161,7 @@ describe("managed workspace screen", () => {
       );
       expect(searchInput(render()).props.value).toBe(query);
       expect(searchScope(render()).props.value).toBe(scope);
+      assertNoteContext();
       expect(api.load).toHaveBeenCalledOnce();
       expect(api.status).toHaveBeenCalledOnce();
       if (native) {
@@ -1670,6 +4246,18 @@ describe("managed workspace screen", () => {
       expect(matches()).toEqual([
         choice === "Use saved version" ? "listing-two" : "listing-one",
       ]);
+      const contexts = editorElements(render()).filter(
+        (node) =>
+          (node.props as { "data-watchlist-note-context"?: string })[
+            "data-watchlist-note-context"
+          ],
+      );
+      expect(contexts).toHaveLength(1);
+      expect(renderToStaticMarkup(contexts[0])).toContain(
+        choice === "Use saved version"
+          ? "Note: Café saved on another device"
+          : "Note: Café 東京 thesis draft",
+      );
       expect(field("managed-watchlist-search-scope").props.value).toBe("notes");
       expect(field("managed-watchlist-search").props.value).toBe("CAFÉ");
       expect(workspace.coordinator.getSnapshot().draft).toEqual(
@@ -1712,6 +4300,7 @@ describe("managed workspace screen", () => {
     vi.mocked(api.annualReport).mockResolvedValue(report);
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
+    const draftBeforeSections = workspace.coordinator.getSnapshot().draft;
     mounted.direct = true;
     const render = () => {
       mounted.refIndex = 0;
@@ -1765,24 +4354,41 @@ describe("managed workspace screen", () => {
     expect(priceHtml).toContain(prices.completedAt);
     expect(priceHtml).toContain(prices.window.startDate);
     expect(priceHtml).not.toContain('class="managed-annual-report"');
+    expect(priceHtml).not.toContain('aria-label="On this report"');
     section("Price").onClick();
     expect(workspace.eod.getSnapshot()).toBe(priceState);
     section("Annual").onClick();
     expect(section("Annual")["aria-pressed"]).toBe(true);
     expect(section("Price")["aria-pressed"]).toBe(false);
     expect(html()).not.toContain('class="managed-eod-history"');
+    expect(html()).not.toContain('aria-label="On this report"');
     expect(api.annualReport).not.toHaveBeenCalled();
     await workspace.annual.load();
     const annualState = workspace.annual.getSnapshot();
     const annualHtml = html();
+    expect(annualHtml).toContain('aria-label="On this report"');
     expect(annualHtml).toContain(report.evidence.generation.completedAt);
     expect(annualHtml.match(/Back to workspace/gu)).toHaveLength(1);
     expect(annualHtml.match(/id="managed-company-heading"/gu)).toHaveLength(1);
     section("Annual").onClick();
     expect(workspace.annual.getSnapshot()).toBe(annualState);
+    // The new cross-section snapshot gains Annual data; existing company markup stays exact.
+    const existingCompanyMarkup = (markup: string) =>
+      markup.replace(
+        /<details class="managed-company-snapshot">[\s\S]*?<\/details>/u,
+        "",
+      );
+    expect(priceHtml).toContain("No annual evidence loaded");
+    expect(annualHtml).toContain('aria-label="Snapshot price"');
+    expect(annualHtml).toContain(prices.completedAt);
+    expect(annualHtml).toContain('aria-label="Snapshot annual"');
+    expect(annualHtml).not.toContain("No annual evidence loaded");
     for (let visit = 0; visit < 2; visit++) {
       section("Price").onClick();
-      expect(html()).toBe(priceHtml);
+      expect(existingCompanyMarkup(html())).toBe(
+        existingCompanyMarkup(priceHtml),
+      );
+      expect(html()).toContain(report.evidence.generation.completedAt);
       expect(workspace.eod.getSnapshot()).toBe(priceState);
       section("Annual").onClick();
       expect(html()).toBe(annualHtml);
@@ -1792,6 +4398,7 @@ describe("managed workspace screen", () => {
     expect(api.eodHistory).toHaveBeenCalledOnce();
     expect(api.annualReport).toHaveBeenCalledOnce();
     expect(api.save).not.toHaveBeenCalled();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeSections);
     expect(mounted.refs[0]!.current).toBe(origin);
     company().props.onBack();
     expect(workspace.getSnapshot().research).toBeNull();
@@ -1800,6 +4407,7 @@ describe("managed workspace screen", () => {
     expect(origin.focus).not.toHaveBeenCalled();
     commitReturnFocus(workspace);
     expect(origin.focus).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draftBeforeSections);
   });
   it("opens EOD explicitly beside the unchanged draft and gates stale catalog entries", async () => {
     const { workspace, api, html } = fixture();

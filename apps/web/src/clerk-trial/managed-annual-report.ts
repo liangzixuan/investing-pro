@@ -1,5 +1,9 @@
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  type PersonalSecAnnualEvidenceResponseDto,
+} from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
+import { parseSecAnnualEvidenceResponse } from "../lib/sec-annual-evidence-response";
 import {
   ManagedSecCooldownError,
   ManagedAnnualReportError,
@@ -13,11 +17,18 @@ import {
   managedSecCooldownMessage,
 } from "./managed-sec-access";
 
+export interface ManagedAnnualReportSeed {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly showingPrevious: boolean;
+}
+
 export interface ManagedAnnualReportState {
   readonly selection: ManagedResearchSelection | null;
   readonly response: PersonalSecAnnualEvidenceResponseDto | null;
+  readonly responseOrigin: "request" | "watchlist-comparison" | null;
   readonly showingPrevious: boolean;
   readonly running: boolean;
+  readonly checkingSeed: boolean;
   readonly catalogChanged: boolean;
   readonly message: string;
   readonly error: boolean;
@@ -25,8 +36,10 @@ export interface ManagedAnnualReportState {
 const empty = (): ManagedAnnualReportState => ({
   selection: null,
   response: null,
+  responseOrigin: null,
   showingPrevious: false,
   running: false,
+  checkingSeed: false,
   catalogChanged: false,
   message: "",
   error: false,
@@ -51,6 +64,33 @@ function matchesSelection(
   );
 }
 
+async function parseReportSeed(
+  selection: ManagedResearchSelection,
+  seed: ManagedAnnualReportSeed,
+  signal: AbortSignal,
+): Promise<ManagedAnnualReportSeed> {
+  if (
+    selection.origin !== "watchlist" ||
+    selection.cik !== null ||
+    typeof seed.showingPrevious !== "boolean"
+  )
+    throw new TrialApiError("invalid_response");
+  const showingPrevious = seed.showingPrevious;
+  const response = await parseSecAnnualEvidenceResponse(
+    seed.response,
+    {
+      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+      catalogSnapshotSha256: selection.catalogSnapshotSha256,
+      listingId: selection.listing.listingId,
+      symbol: selection.listing.symbol,
+    },
+    signal,
+  );
+  if (!response || !matchesSelection(response, selection))
+    throw new TrialApiError("invalid_response");
+  return Object.freeze({ response, showingPrevious });
+}
+
 function errorMessage(error: unknown, showingPrevious: boolean): string {
   if (showingPrevious)
     return error instanceof ManagedAnnualReportError
@@ -72,6 +112,7 @@ export class ManagedAnnualReport {
   private state = empty();
   private readonly listeners = new Set<() => void>();
   private operation: AbortController | null = null;
+  private lifetime = Symbol();
   private retired = false;
 
   constructor(
@@ -88,22 +129,74 @@ export class ManagedAnnualReport {
     this.state = { ...this.state, ...next };
     for (const listener of this.listeners) listener();
   }
-  open(selection: ManagedResearchSelection) {
+  open(selection: ManagedResearchSelection, seed?: ManagedAnnualReportSeed) {
     if (this.retired) return;
-    this.close();
-    this.update({
-      selection: Object.freeze({
-        ...selection,
-        listing: Object.freeze({ ...selection.listing }),
-      }),
-      message: "Load the observed annual report when you are ready.",
+    const lifetime = this.closeVisit();
+    if (this.retired || this.lifetime !== lifetime) return;
+    const captured = Object.freeze({
+      ...selection,
+      listing: Object.freeze({ ...selection.listing }),
     });
+    const operation = seed === undefined ? null : new AbortController();
+    this.operation = operation;
+    this.update({
+      selection: captured,
+      running: operation !== null,
+      checkingSeed: operation !== null,
+      message: operation
+        ? "Checking the loaded watchlist comparison report…"
+        : "Load the observed annual report when you are ready.",
+    });
+    if (operation && seed !== undefined)
+      void this.acceptSeed(captured, seed, operation);
+  }
+  private async acceptSeed(
+    selection: ManagedResearchSelection,
+    seed: ManagedAnnualReportSeed,
+    operation: AbortController,
+  ) {
+    const current = () =>
+      !this.retired &&
+      this.operation === operation &&
+      this.state.selection === selection &&
+      !operation.signal.aborted;
+    try {
+      if (!current()) return;
+      const accepted = await parseReportSeed(selection, seed, operation.signal);
+      if (!current()) return;
+      this.update({
+        ...accepted,
+        responseOrigin: "watchlist-comparison",
+        message:
+          "The loaded watchlist comparison report is available in this company visit. Refresh explicitly to check again.",
+      });
+    } catch {
+      if (!current()) return;
+      this.update({
+        error: true,
+        message:
+          "The loaded watchlist comparison report could not be validated. Load the annual report when you are ready.",
+      });
+    } finally {
+      if (current()) {
+        this.operation = null;
+        this.update({ running: false, checkingSeed: false });
+      }
+    }
   }
   close() {
-    this.operation?.abort();
+    this.closeVisit();
+  }
+  private closeVisit() {
+    const lifetime = Symbol();
+    this.lifetime = lifetime;
+    const operation = this.operation;
     this.operation = null;
     this.state = empty();
-    for (const listener of this.listeners) listener();
+    operation?.abort();
+    if (this.lifetime === lifetime)
+      for (const listener of this.listeners) listener();
+    return lifetime;
   }
   retire() {
     this.retired = true;
@@ -111,15 +204,19 @@ export class ManagedAnnualReport {
   }
   cancel() {
     if (!this.operation) return;
+    const checkingSeed = this.state.checkingSeed;
     this.operation.abort();
     this.operation = null;
     this.update({
       running: false,
+      checkingSeed: false,
       showingPrevious: this.state.response !== null,
       error: false,
-      message: this.state.response
-        ? "Annual report refresh cancelled. Refresh again when ready."
-        : "Annual report load cancelled. Load again when ready.",
+      message: checkingSeed
+        ? "Checking the loaded report was cancelled. Load the annual report when you are ready."
+        : this.state.response
+          ? "Annual report refresh cancelled. Refresh again when ready."
+          : "Annual report load cancelled. Load again when ready.",
     });
   }
   async load() {
@@ -161,7 +258,7 @@ export class ManagedAnnualReport {
     try {
       const response = await this.loadReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
           catalogSnapshotSha256: selection.catalogSnapshotSha256,
           listingId: selection.listing.listingId,
           symbol: selection.listing.symbol,
@@ -173,6 +270,7 @@ export class ManagedAnnualReport {
         throw new TrialApiError("invalid_response");
       this.update({
         response,
+        responseOrigin: "request",
         showingPrevious: false,
         message: `Annual report loaded for ${selection.listing.symbol}. Refresh explicitly to check again.`,
       });
@@ -199,6 +297,7 @@ export class ManagedAnnualReport {
         } catch {
           this.update({
             response: null,
+            responseOrigin: null,
             showingPrevious: false,
             error: true,
             message: errorMessage(new TrialApiError("invalid_response"), false),
@@ -210,8 +309,14 @@ export class ManagedAnnualReport {
           ((error instanceof ManagedAnnualReportError &&
             error.code === "request_timeout") ||
             (error instanceof TrialApiError && error.code === "unavailable"));
+        const retained = showingPrevious
+          ? {
+              response: this.state.response,
+              responseOrigin: this.state.responseOrigin,
+            }
+          : { response: null, responseOrigin: null };
         this.update({
-          response: showingPrevious ? this.state.response : null,
+          ...retained,
           showingPrevious,
           error: true,
           message: errorMessage(error, showingPrevious),

@@ -122,6 +122,12 @@
   font-size: 0.8125rem;
 }
 
+.clerk-trial.managed-frame .managed-watchlist-note-preview {
+  font-size: 0.8125rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .clerk-trial.managed-frame .managed-watchlist-choice:hover {
   background: var(--managed-surface-raised, #22252b);
 }
@@ -167,6 +173,65 @@
 
 .clerk-trial.managed-frame .managed-watchlist-research-actions {
   margin-block: 20px 24px;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings {
+  min-width: 0;
+  margin-block: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--managed-line, #2c2f36);
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings h4 {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings button,
+.clerk-trial.managed-frame .managed-watchlist-filings summary,
+.clerk-trial.managed-frame .managed-watchlist-filings a {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings a {
+  display: inline-block;
+  align-content: center;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings-summary > a span {
+  display: block;
+  font-size: 0.8125rem;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings-summary,
+.clerk-trial.managed-frame .managed-watchlist-filings-status,
+.clerk-trial.managed-frame .managed-watchlist-filings-help,
+.clerk-trial.managed-frame .managed-watchlist-filings-source {
+  color: var(--managed-muted, #aeb4c0);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings-warning,
+.clerk-trial.managed-frame .managed-watchlist-filings-status[role="alert"] {
+  color: #ffbd80;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings-source summary {
+  align-content: center;
+  cursor: pointer;
+}
+
+.clerk-trial.managed-frame .managed-watchlist-filings-help {
+  margin-bottom: 0;
 }
 
 .clerk-trial.managed-frame .managed-watchlist-price-readout {

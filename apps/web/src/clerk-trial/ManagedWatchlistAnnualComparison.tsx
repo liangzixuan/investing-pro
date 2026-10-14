@@ -9,25 +9,60 @@ import {
   type SetStateAction,
   type RefObject,
 } from "react";
+import type { WatchlistMembership } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { SecAnnualSourceDetails } from "../features/research/SecAnnualEvidenceResult";
+import {
+  SecAnnualCashSourceBody,
+  SecAnnualCashValueContent,
+} from "../features/research/SecAnnualCashGeneration";
+import {
+  SecAnnualLiquiditySourceBody,
+  SecAnnualLiquidityValueContent,
+} from "../features/research/SecAnnualLiquidity";
 import type {
   ManagedWatchlistAnnualComparison as ComparisonModel,
   ManagedWatchlistAnnualComparisonState as ComparisonState,
+  ManagedAnnualComparisonReportCapture,
 } from "./managed-watchlist-annual-comparison";
 import { projectAnnualComparison } from "./managed-annual-comparison-display";
+import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
+import {
+  ManagedWatchlistAnnualComparisonNoteAction,
+  type ManagedWatchlistAnnualComparisonNoteActions,
+} from "./ManagedWatchlistAnnualComparisonNoteAction";
 import "./managed-annual-comparison.css";
 
 type Side = "left" | "right";
 type Projection = ReturnType<typeof projectAnnualComparison>;
 type BasisChoice = { handle: symbol | null; basis: string | undefined };
+type ReportAction = {
+  active: boolean;
+  onOpenReport: (
+    capture: ManagedAnnualComparisonReportCapture,
+    opener: HTMLButtonElement,
+  ) => void;
+};
 const sides = ["left", "right"] as const;
 const sideLabel = (side: Side) => (side === "left" ? "First" : "Second");
 
 export function ManagedWatchlistAnnualComparison({
   model,
+  active,
+  editable,
+  noteActions,
+  memberships,
+  onOpenReport,
 }: {
   model: ComparisonModel;
+  active: boolean;
+  editable: boolean;
+  noteActions: ManagedWatchlistAnnualComparisonNoteActions;
+  memberships: readonly WatchlistMembership[];
+  onOpenReport: (
+    capture: ManagedAnnualComparisonReportCapture,
+    opener: HTMLButtonElement,
+  ) => void;
 }) {
   const id = useId();
   const state = useSyncExternalStore(
@@ -53,6 +88,14 @@ export function ManagedWatchlistAnnualComparison({
     origin: HTMLButtonElement;
     target: HTMLButtonElement | null;
   } | null>(null);
+  const reportAction = useRef<ReportAction | null>(null);
+  useLayoutEffect(() => {
+    const committed = { active, onOpenReport };
+    reportAction.current = committed;
+    return () => {
+      if (reportAction.current === committed) reportAction.current = null;
+    };
+  }, [active, onOpenReport]);
   useLayoutEffect(() => {
     if (state.pending || !focusRequest.current) return;
     const { origin, target } = focusRequest.current;
@@ -83,7 +126,8 @@ export function ManagedWatchlistAnnualComparison({
       <h3 id={`${id}-heading`}>Compare annual results</h3>
       <p className="managed-annual-comparison-help">
         Choose two different companies from your full watchlist draft. Load each
-        report explicitly. Fiscal periods and revenue bases may differ.
+        report explicitly. Fiscal periods, balance dates and revenue bases may
+        differ.
       </p>
       <div className="managed-annual-comparison-choices">
         {sides.map((side) => (
@@ -96,6 +140,8 @@ export function ManagedWatchlistAnnualComparison({
             setBasis={setBasis}
             loadButtons={loadButtons}
             focusRequest={focusRequest}
+            reportAction={reportAction}
+            active={active}
             id={id}
           />
         ))}
@@ -104,9 +150,9 @@ export function ManagedWatchlistAnnualComparison({
         {state.message}
       </p>
       <p id={`${id}-scroll`} className="managed-annual-comparison-help">
-        Exact, unscaled USD. Each company keeps its own reported period and
-        basis. Scroll the results horizontally when needed, or focus them and
-        use the arrow keys.
+        Exact, unscaled USD amounts; current ratio is a rounded multiple. Each
+        company keeps its own period, balance date and revenue basis. Scroll the
+        results horizontally when needed, or focus them and use the arrow keys.
       </p>
       <div
         className="managed-annual-comparison-scroll"
@@ -116,10 +162,10 @@ export function ManagedWatchlistAnnualComparison({
         tabIndex={0}
       >
         <table className="managed-annual-comparison-table">
-          <caption>Reported annual results · separate company filings</caption>
+          <caption>Annual results · separate company filings</caption>
           <thead>
             <tr>
-              <th scope="col">Reported measure</th>
+              <th scope="col">Measure</th>
               {sides.map((side) => (
                 <th scope="col" key={side}>
                   {state[side].selected ? (
@@ -132,7 +178,10 @@ export function ManagedWatchlistAnnualComparison({
             </tr>
           </thead>
           <tbody>
-            <ComparisonRow label="Annual period" projections={projections}>
+            <ComparisonRow
+              label="Revenue / net income period"
+              projections={projections}
+            >
               {(p) =>
                 p.current ? (
                   <Period start={p.current.startDate} end={p.current.endDate} />
@@ -142,7 +191,11 @@ export function ManagedWatchlistAnnualComparison({
               }
             </ComparisonRow>
             <ComparisonRow label="Revenue basis" projections={projections}>
-              {(p) => p.selectedBasis ?? "Not loaded"}
+              {(p) =>
+                p.selectedBasis === null
+                  ? "Not loaded"
+                  : managedAnnualBasisLabel(p.selectedBasis)
+              }
             </ComparisonRow>
             <ComparisonRow label="Revenue · USD" projections={projections}>
               {(p) => p.current?.revenueUSD ?? unavailable(p)}
@@ -182,9 +235,34 @@ export function ManagedWatchlistAnnualComparison({
                 )
               }
             </ComparisonRow>
+            <CashComparisonRows state={state} />
+            <LiquidityComparisonRows state={state} />
           </tbody>
         </table>
       </div>
+      <p className="managed-annual-comparison-help">
+        The app calculation subtracts purchases of property, plant and equipment
+        from operating cash flow for the same filing and period. It does not
+        adjust for leases, acquisitions or other investing cash flows.
+      </p>
+      <p className="managed-annual-comparison-help">
+        Working capital subtracts current liabilities from current assets.
+        Current ratio divides current assets by current liabilities and rounds
+        to two decimal places, half up. Both calculations require nonnegative
+        balances from the same filing and date; the ratio requires positive
+        liabilities. Current assets are not all cash.
+      </p>
+      <ManagedWatchlistAnnualComparisonNoteAction
+        state={state}
+        bases={{
+          left: projections.left.selectedBasis,
+          right: projections.right.selectedBasis,
+        }}
+        active={active}
+        editable={editable}
+        actions={noteActions}
+        memberships={memberships}
+      />
       <div className="managed-annual-comparison-sources">
         {sides.map((side) => {
           const p = projections[side];
@@ -208,7 +286,7 @@ export function ManagedWatchlistAnnualComparison({
               )}
               {response && p.currentReason && (
                 <p className="discovery-warning">
-                  Annual amounts unavailable. {p.currentReason}
+                  Revenue and net income unavailable. {p.currentReason}
                 </p>
               )}
               {p.source && (
@@ -239,7 +317,27 @@ export function ManagedWatchlistAnnualComparison({
                   <summary>
                     {sideLabel(side)} company source and validation details
                   </summary>
+                  {p.selectedBasis !== null && (
+                    <p data-annual-comparison-source-basis={side}>
+                      Selected SEC revenue concept:{" "}
+                      <code>{p.selectedBasis}</code>
+                    </p>
+                  )}
                   <SecAnnualSourceDetails response={response} />
+                  <div
+                    className="managed-annual-comparison-cash-source"
+                    data-annual-comparison-cash-source={side}
+                  >
+                    <h4>Cash sources and calculation inputs</h4>
+                    <SecAnnualCashSourceBody response={response} />
+                  </div>
+                  <div
+                    className="managed-annual-comparison-liquidity-source"
+                    data-annual-comparison-liquidity-source={side}
+                  >
+                    <h4>Liquidity sources and calculation inputs</h4>
+                    <SecAnnualLiquiditySourceBody response={response} />
+                  </div>
                 </details>
               )}
             </section>
@@ -264,6 +362,8 @@ function AnnualCompanyControls({
   setBasis,
   loadButtons,
   focusRequest,
+  reportAction,
+  active,
   id,
 }: {
   side: Side;
@@ -276,6 +376,8 @@ function AnnualCompanyControls({
     origin: HTMLButtonElement;
     target: HTMLButtonElement | null;
   } | null>;
+  reportAction: RefObject<ReportAction | null>;
+  active: boolean;
   id: string;
 }) {
   const column = state[side];
@@ -349,8 +451,20 @@ function AnnualCompanyControls({
             Cancel {sideLabel(side).toLowerCase()} annual report
           </button>
         )}
+        <AnnualReportOpener
+          side={side}
+          state={state}
+          model={model}
+          action={reportAction}
+          active={active}
+          description={`${id}-${side}-report-status`}
+        />
       </div>
-      <p role={column.report.error ? "alert" : "status"} aria-live="polite">
+      <p
+        id={`${id}-${side}-report-status`}
+        role={column.report.error ? "alert" : "status"}
+        aria-live="polite"
+      >
         {column.report.message}
       </p>
       {column.report.showingPrevious && column.report.response && (
@@ -365,48 +479,104 @@ function AnnualCompanyControls({
         </p>
       )}
       {column.report.response && (
-        <label htmlFor={`${id}-${side}-basis`}>
-          {sideLabel(side)} company revenue basis
-          <select
-            id={`${id}-${side}-basis`}
-            disabled={!state.active}
-            value={projection.selectedBasis ?? ""}
-            onChange={(event) => {
-              const current = model.getSnapshot();
-              if (!current.active || current[side].selected !== selected)
-                return;
-              const value = event.currentTarget.value;
-              setBasis((previous) => ({
-                ...previous,
-                [side]: {
-                  handle: selected?.handle ?? null,
-                  basis: value,
-                },
-              }));
-            }}
-          >
-            {!projection.selectedBasis && (
-              <option value="">No revenue basis</option>
-            )}
-            {projection.selectedBasis &&
-              !projection.basisChoices.some(
-                (choice) => choice.concept === projection.selectedBasis,
-              ) && (
-                <option value={projection.selectedBasis}>
-                  {projection.selectedBasis} · unavailable in this report
-                </option>
+        <div>
+          <label htmlFor={`${id}-${side}-basis`}>
+            {sideLabel(side)} company revenue basis
+            <select
+              id={`${id}-${side}-basis`}
+              aria-describedby={`${id}-${side}-selected-basis`}
+              disabled={!state.active}
+              value={projection.selectedBasis ?? ""}
+              onChange={(event) => {
+                const current = model.getSnapshot();
+                if (!current.active || current[side].selected !== selected)
+                  return;
+                const value = event.currentTarget.value;
+                setBasis((previous) => ({
+                  ...previous,
+                  [side]: {
+                    handle: selected?.handle ?? null,
+                    basis: value,
+                  },
+                }));
+              }}
+            >
+              {!projection.selectedBasis && (
+                <option value="">No revenue basis</option>
               )}
-            {projection.basisChoices.map((choice) => (
-              <option key={choice.concept} value={choice.concept}>
-                {choice.concept}
-                {choice.status !== "eligible" &&
-                  " · unavailable in this report"}
-              </option>
-            ))}
-          </select>
-        </label>
+              {projection.selectedBasis &&
+                !projection.basisChoices.some(
+                  (choice) => choice.concept === projection.selectedBasis,
+                ) && (
+                  <option value={projection.selectedBasis}>
+                    {managedAnnualBasisLabel(projection.selectedBasis)} ·
+                    unavailable in this report
+                  </option>
+                )}
+              {projection.basisChoices.map((choice) => (
+                <option key={choice.concept} value={choice.concept}>
+                  {managedAnnualBasisLabel(choice.concept)}
+                  {choice.status !== "eligible" &&
+                    " · unavailable in this report"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p
+            id={`${id}-${side}-selected-basis`}
+            data-annual-comparison-selected-basis={side}
+          >
+            Selected basis:{" "}
+            {projection.selectedBasis === null
+              ? "No revenue basis"
+              : managedAnnualBasisLabel(projection.selectedBasis)}
+          </p>
+        </div>
       )}
     </div>
+  );
+}
+
+function AnnualReportOpener({
+  side,
+  state,
+  model,
+  action,
+  active,
+  description,
+}: {
+  side: Side;
+  state: ComparisonState;
+  model: ComparisonModel;
+  action: RefObject<ReportAction | null>;
+  active: boolean;
+  description: string;
+}) {
+  const { selected: member, report } = state[side];
+  const capture =
+    member && report.response
+      ? { side, member, response: report.response }
+      : null;
+  const listing = member?.listing;
+  const identity = listing
+    ? `${listing.symbol} (${listing.issuerName}; ${listing.shareClassName}; ${listing.exchangeMic})`
+    : `${sideLabel(side).toLowerCase()} company`;
+  return (
+    <button
+      type="button"
+      className="trial-secondary managed-annual-report-opener"
+      aria-label={`Open full Annual report for ${identity}`}
+      aria-describedby={description}
+      disabled={!active || !capture || !model.canAdmitReport(capture)}
+      onClick={(event) => {
+        const committed = action.current;
+        if (!committed?.active || !capture || !model.canAdmitReport(capture))
+          return;
+        committed.onOpenReport(capture, event.currentTarget);
+      }}
+    >
+      Open full Annual report
+    </button>
   );
 }
 
@@ -445,4 +615,73 @@ function ComparisonRow({
       ))}
     </tr>
   );
+}
+
+const cashRows = [
+  ["operatingCashFlow", "Operating cash flow", "Reported"],
+  ["ppePurchases", "PP&E purchases", "Reported"],
+  [
+    "operatingCashFlowLessPpePurchases",
+    "Operating cash flow less PP&E purchases",
+    "App calculation",
+  ],
+] as const;
+
+function CashComparisonRows({ state }: { state: ComparisonState }) {
+  return cashRows.map(([metric, label, kind]) => (
+    <tr key={metric} data-annual-comparison-cash={metric}>
+      <th scope="row">
+        {label}
+        <small>{kind} · USD</small>
+      </th>
+      {sides.map((side) => {
+        const response = state[side].report.response;
+        return (
+          <td key={side}>
+            {response ? (
+              <SecAnnualCashValueContent
+                value={response.evidence.cashGeneration.resolution[metric]}
+              />
+            ) : (
+              "Not loaded"
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  ));
+}
+
+const liquidityRows = [
+  ["currentAssets", "Current assets", "Reported", "USD"],
+  ["currentLiabilities", "Current liabilities", "Reported", "USD"],
+  ["workingCapital", "Working capital", "App calculation", "USD"],
+  ["currentRatio", "Current ratio", "App calculation", "multiple"],
+] as const;
+
+function LiquidityComparisonRows({ state }: { state: ComparisonState }) {
+  return liquidityRows.map(([metric, label, kind, unit]) => (
+    <tr key={metric} data-annual-comparison-liquidity={metric}>
+      <th scope="row">
+        {label}
+        <small>
+          {kind} · {unit}
+        </small>
+      </th>
+      {sides.map((side) => {
+        const response = state[side].report.response;
+        return (
+          <td key={side}>
+            {response ? (
+              <SecAnnualLiquidityValueContent
+                value={response.evidence.liquidity.resolution[metric]}
+              />
+            ) : (
+              "Not loaded"
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  ));
 }

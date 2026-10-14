@@ -5708,6 +5708,7 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
     "apps/api/src/personal-owner-account.ts",
     "apps/api/src/personal-owner-session-routes.ts",
     "apps/api/src/personal-owner-session.ts",
+    "apps/api/src/personal-sec-annual-company-facts.ts",
     "apps/api/src/personal-sec-annual-evidence-provider.ts",
     "apps/api/src/personal-sec-filing-context-parser.ts",
     "apps/api/src/personal-sec-filing-context-provider.ts",
@@ -6330,14 +6331,30 @@ async function personalWorkspaceApiBoundaryViolations(): Promise<string[]> {
       "scheduler: unreviewedScheduler,",
     ),
     annualProvider.replace(
-      "normalizePersonalSecCompanyFacts(value, cik)",
-      "normalizePersonalSecCompanyFacts(value, unreviewedCik)",
+      `normalizePersonalSecAnnualCompanyFacts(
+            value,
+            cik,
+            targetAccession(target),
+          )`,
+      `normalizePersonalSecAnnualCompanyFacts(
+            value,
+            unreviewedCik,
+            targetAccession(target),
+          )`,
     ),
     annualProvider.replace(
       "normalizePersonalSecSubmissions(value, cik)",
       "normalizePersonalSecSubmissions(value, unreviewedCik)",
     ),
     annualProvider.replace("this.#active?.abort()", "void this.#active"),
+    annualProvider.replace(
+      "resolvePersonalSecAnnualCashGeneration({",
+      "unreviewedCashResolution({",
+    ),
+    annualProvider.replace(
+      "        incomeScanStatus,",
+      "        incomeScanStatus: unreviewedStatus,",
+    ),
     annualProvider.replace('if (this.#active !== undefined) fail("busy");', ""),
     annualProvider.replace(
       "getPersonalSecAnnualRefusalReason({",
@@ -9130,6 +9147,7 @@ function personalSecAnnualEvidenceProviderViolation(
       "node:crypto",
       "@research-cockpit/contracts",
       "@research-cockpit/personal-financial-analytics",
+      "./personal-sec-annual-company-facts",
       "./personal-sec-quarterly-evidence-provider",
       "./personal-sec-request-scheduler",
     ])
@@ -9139,11 +9157,12 @@ function personalSecAnnualEvidenceProviderViolation(
   const required = [
     'fetchPersonalSecSourceBytes({sourceUrl,fetch:this.#fetch,scheduler:this.#scheduler,userAgent:this.#userAgent!,signal,maximumBytes:LIMITS.responseBytes,accept:"application/json"})',
     "normalize(parsePersonalSecSourceJson(decodePersonalSecSourceUtf8(bytes)))",
-    "normalizePersonalSecCompanyFacts(value,cik)",
+    "normalizePersonalSecAnnualCompanyFacts(value,cik,targetAccession(target))",
     "normalizePersonalSecSubmissions(value,cik)",
     "selectPersonalSecAnnualTarget(filings,cutoffAt,submissions.source.fetchedAt!)",
-    "getPersonalSecAnnualRefusalReason({generation:boundGeneration,target,coverage:preliminaryCoverage})",
+    "getPersonalSecAnnualRefusalReason({generation:boundGeneration,target,incomeScanStatus,coverage:preliminaryCoverage})",
     "resolution:resolvePersonalSecAnnualEvidence(input)",
+    "resolution:resolvePersonalSecAnnualCashGeneration({cik,generation:boundGeneration,target,cashGeneration})",
     "this.#active?.abort()",
     'if(this.#active!==undefined)fail("busy");',
     'if(controller.signal.aborted||this.#closed)fail("aborted");',

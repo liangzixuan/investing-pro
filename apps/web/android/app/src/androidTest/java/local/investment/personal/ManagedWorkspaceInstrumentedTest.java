@@ -67,7 +67,68 @@ import org.junit.runner.RunWith;
 @RunWith(AndroidJUnit4.class)
 public class ManagedWorkspaceInstrumentedTest {
     private static final String FIXTURE = "managed-workspace";
+    private static final String ANNUAL_COMPARISON_NOTE =
+        "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment. " +
+        "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750. " +
+        "CIK 0000000001; filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. Retained previous report. " +
+        "ONE (One Company; One Class A; Class A; XNAS, US): 10-K 2024-07-01 to 2025-06-30; reported OCF USD 900; reported PP&E USD 300; app calculation OCF less PP&E USD 600. " +
+        "CIK 0000000002; filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm. " +
+        "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. " +
+        "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows. " +
+        "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String ANNUAL_COMPARISON_LIQUIDITY_PREFIX = "Latest ONE liquidity thesis";
+    private static final String ANNUAL_COMPARISON_LIQUIDITY_NOTE = ANNUAL_COMPARISON_LIQUIDITY_PREFIX + " " +
+        "Observed Annual liquidity comparison; exact, unscaled USD; current ratio is a multiple. " +
+        "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 1500; reported current liabilities (LiabilitiesCurrent) USD 600. " +
+        "App calculations: working capital USD 900; current ratio 2.50 multiple (two decimal places, half up). " +
+        "Same filing and date. Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. Retained previous report. " +
+        "Evidence dates are unchanged; this action does not refresh sources. " +
+        "ONE (One Company; One Class A; Class A; XNAS, US): Observed Annual liquidity: ONE (XNAS); CIK 0000000002; 10-K balances at 2025-06-30. " +
+        "Reported current assets (AssetsCurrent) USD 900; reported current liabilities (LiabilitiesCurrent) USD 1200. " +
+        "App calculations: working capital USD -300; current ratio 0.75 multiple (two decimal places, half up). " +
+        "Same filing and date. Current assets are not all cash. " +
+        "Filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources. " +
+        "Company balance dates may differ; no cross-company calculation or ranking.";
     private static final String NOTE = "Draft survives native Back";
+    private static final String LIQUIDITY_NOTE_INITIAL =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. " +
+        "App calculations: working capital USD 40.1; current ratio 1.50 multiple (two decimal places, half up). " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String LIQUIDITY_NOTE_RETAINED =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. " +
+        "App calculations: working capital USD 40.1; current ratio 1.50 multiple (two decimal places, half up). " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Retained previous report. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String LIQUIDITY_NOTE_ZERO =
+        "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
+        "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 0. " +
+        "App calculations: working capital USD 120.125; current ratio unavailable because current liabilities are zero. " +
+        "Same filing and date. " +
+        "Current assets are not all cash. " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-21T00:00:00.000Z; completed 2026-09-21T00:00:02.000Z; Company Facts captured 2026-09-21T00:00:01.000Z; Submissions captured 2026-09-21T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. " +
+        "Evidence dates are unchanged; this action does not refresh sources.";
     private static final String WATCHLIST_COMPARISON_EXISTING_NOTE = "Latest ONE research note";
     private static final String WATCHLIST_COMPARISON_NOTE = WATCHLIST_COMPARISON_EXISTING_NOTE + " " +
         "Observed raw-close watchlist comparison: 2026-09-17 to 2026-09-18; " +
@@ -118,6 +179,17 @@ public class ManagedWorkspaceInstrumentedTest {
         "NetIncomeLoss USD 32; net margin 5%. " +
         "Earlier same-filing annual comparison: prior 2023-01-01 to 2023-12-31; current 2024-01-01 to 2024-12-31; " +
         "Revenues revenue change USD 160 (25%); NetIncomeLoss change USD -112 (-350%). " +
+        "Filed 2026-02-01; accession 0000000001-26-000001; " +
+        "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+        "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
+        "Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+        "Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
+    private static final String ANNUAL_CASH_NOTE = "Cash research draft " +
+        "Observed Annual cash generation: ZERO (XNAS); CIK 0000000001; 10-K 2025-01-01 to 2025-12-31. " +
+        "Reported operating cash flow (NetCashProvidedByUsedInOperatingActivities) USD 120.125; " +
+        "reported PP&E purchases (PaymentsToAcquirePropertyPlantAndEquipment) USD 20.025. " +
+        "App calculation: operating cash flow less PP&E purchases USD 100.1. " +
+        "Same filing and period; no adjustments for leases, acquisitions or other investing cash flows. " +
         "Filed 2026-02-01; accession 0000000001-26-000001; " +
         "filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
         "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; " +
@@ -175,10 +247,13 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-price-handoff");
         if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
             selectFixtureScenario("raw-close-comparison");
-        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
+        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource") ||
+                testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads"))
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
+        if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
+            selectFixtureScenario("thesis-review");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
             selectFixtureScenario("watchlist-recovery");
         if (testName.getMethodName().equals("signOutReviewKeepsDraftAndUpdatesAfterSave"))
@@ -187,6 +262,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("signout-uncertain-review");
         if (testName.getMethodName().equals("beaAgendaRefreshCancelAndNavigationPreserveDraft"))
             selectFixtureScenario("bea-agenda");
+        if (testName.getMethodName().equals("beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair"))
+            selectFixtureScenario("bea-agenda-comparison");
         if (testName.getMethodName().equals("beaSessionExpiryClearsAgendaAndFencesLateResponse"))
             selectFixtureScenario("bea-session-retirement");
         if (testName.getMethodName().equals("watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft"))
@@ -211,7 +288,7 @@ public class ManagedWorkspaceInstrumentedTest {
         });
         awaitPage("managed fixture ready", "document.querySelector('#fixture-diagnostics') !== null" +
             " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".status === 1" +
-            " && document.querySelector('#managed-note-0')?.disabled === false");
+            " && document.querySelector('#managed-note-0')?.disabled === false", true);
         if (coldCompanyLink)
             awaitPage("cold company metadata admitted without research",
                 DIAGNOSTICS + ".resolve === 1 && document.querySelector('#managed-annual-heading') !== null");
@@ -421,7 +498,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("My Watchlist");
         awaitPage("Annual comparison starts without selections or automatic source reads",
             "(() => { const p = document.querySelector('.managed-annual-comparison');" +
-            " const selects = p?.querySelectorAll('select'); return selects?.length === 2" +
+            " const selects = p?.querySelectorAll('.managed-annual-comparison-choice select'); return selects?.length === 2" +
             " && [...selects].every(s => s.value === '' && !s.disabled && s.getBoundingClientRect().height >= 44)" +
             " && p.querySelectorAll('time').length === 0; })()");
         assertAnnualComparisonCounts(0, 0, 0);
@@ -437,8 +514,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("first explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-left-basis\"]') !== null");
         clickAnnualComparisonAction("Load second annual report");
         awaitPage("second explicitly loaded report exposes its own basis", "document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'");
-        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenues");
-        assertAnnualComparisonValues("1000", "10%", "25%");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenue");
+        assertAnnualComparisonValues("1000", "10%", "25%", "Revenues", "Revenue");
         assertAnnualComparisonSources();
         click(".managed-annual-comparison-source:first-child details > summary");
         click(".managed-annual-comparison-source:last-child details > summary");
@@ -449,15 +526,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && p.textContent.includes('2026-09-20T00:00:00.000Z'))" +
             " && panels[0].textContent.includes('CIK 0000000001') && panels[0].textContent.includes('Accession 0000000001-26-000001')" +
             " && panels[1].textContent.includes('CIK 0000000002') && panels[1].textContent.includes('Accession 0000000002-25-000001'); })()");
-        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "RevenueFromContractWithCustomerExcludingAssessedTax");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(2, 0, 0);
+        assertAnnualComparisonDraft();
+        click(".managed-annual-report-opener[aria-label='Open full Annual report for ONE (One Company; Class A; XNAS)']");
+        assertComparisonReportVisit("ONE", "One Company", "0000000002-25-000001", "2025-06-30", false);
+        assertAnnualComparisonCounts(2, 0, 0);
+        pressBack();
+        awaitPage("Back returns focus to the exact second comparison opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement?.getAttribute('aria-label') === 'Open full Annual report for ONE (One Company; Class A; XNAS)'");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonDraft();
         clickAnnualComparisonAction("Refresh first annual report");
         awaitPage("failed refresh retains the selected basis and original completion time",
             "document.querySelector('.managed-annual-comparison-choice:first-child [role=alert]') !== null" +
             " && document.querySelector('.managed-annual-comparison-choice:first-child .discovery-warning time')?.dateTime === '2026-09-20T00:00:02.000Z'");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(3, 0, 0);
         clickAnnualComparisonAction("Refresh first annual report");
         awaitPage("one first-company report is pending", DIAGNOSTICS + ".annual === 4" +
@@ -466,13 +552,59 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonCounts(4, 1, 0);
         click("#settle-cancelled-annual-comparison");
         assertAnnualComparisonCounts(4, 1, 1);
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonSources();
         selectWorkspaceView("Markets");
         selectWorkspaceView("My Watchlist");
-        assertAnnualComparisonValues("500", "20%", "100%");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         assertAnnualComparisonCounts(4, 1, 1);
         assertAnnualComparisonDraft();
+        assertAnnualComparisonLiquidityNote();
+        chooseNativeSelectOption("#managed-annual-comparison-note-group", "cash", "Cash generation");
+        chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        click(".managed-annual-report-opener[aria-label='Open full Annual report for ZERO (Zero Company; Class A; XNAS)']");
+        assertComparisonReportVisit("ZERO", "Zero Company", "0000000001-26-000001", "2025-12-31", true);
+        assertAnnualComparisonCounts(4, 1, 1);
+        pressBack();
+        awaitPage("Back keeps the note group and destination with the original comparison opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement?.getAttribute('aria-label') === 'Open full Annual report for ZERO (Zero Company; Class A; XNAS)'" +
+            " && document.querySelector('#managed-annual-comparison-note-group')?.value === 'cash'" +
+            " && document.querySelector('#managed-annual-comparison-note-destination')?.value === 'listing-zero'");
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonDraft();
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        assertAnnualComparisonNote(1, true);
+        assertAnnualComparisonCounts(4, 1, 1);
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        awaitPage("duplicate Annual comparison is refused without changing the exact note",
+            "document.querySelector('.managed-annual-comparison-note-action').textContent.includes('This exact Annual comparison reference is already in the note draft.')");
+        assertAnnualComparisonNote(1, true);
+        typeIntoInput("managed-watchlist-search", "ONE");
+        selectWatchlistNote(0);
+        String annualReviewState = readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})");
+        awaitPage("duplicate refusal retains the exact Annual destination's Review control",
+            "(() => { const b = [...document.querySelectorAll('.managed-annual-comparison-note-action > button')].find(b => b.textContent === 'Review note');" +
+            " return b && b.getAttribute('aria-disabled') === 'false' && b.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-one'; })()");
+        clickAnnualComparisonAction("Review note");
+        assertComparisonNoteReader("managed-note-1", "listing-zero", "ZERO", ANNUAL_COMPARISON_NOTE, "ONE");
+        assertEquals("Annual Review preserves the complete draft, counters and URL", annualReviewState,
+            readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})"));
+        assertAnnualComparisonCounts(4, 1, 1);
+        click("button[aria-label='Clear watchlist search']");
+        selectWatchlistNote(1);
+        assertAnnualComparisonNote(1, true);
+        click("#managed-unsaved-review-summary");
+        awaitPage("review exposes the complete comparison note before Save",
+            "document.querySelector('#managed-unsaved-review')?.open === true" +
+            " && document.querySelector('#managed-unsaved-review').textContent.includes(" + JSONObject.quote(ANNUAL_COMPARISON_NOTE) + ")");
+        clickWatchlistAction("Save watchlist");
+        assertAnnualComparisonNote(2, false);
+        clickWatchlistAction("Load saved watchlist");
+        assertAnnualComparisonNote(2, false);
+        assertAnnualComparisonCounts(4, 1, 1, 1, 2);
+        assertAnnualComparisonValues("500", "20%", "100%", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax");
         clickAnnualComparisonAction("Refresh second annual report");
         awaitPage("second-company report is pending before retirement", DIAGNOSTICS + ".annual === 5" +
             " && [...document.querySelectorAll('.managed-annual-comparison button')].some(b => b.textContent === 'Cancel second annual report')");
@@ -483,13 +615,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
             " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false");
         click("#settle-cancelled-annual-comparison");
-        assertAnnualComparisonCounts(5, 2, 2);
+        assertAnnualComparisonCounts(5, 2, 2, 1, 2);
         awaitPage("late Annual completion cannot restore retired evidence or notes",
             "document.querySelector('.managed-annual-comparison') === null && document.querySelector('.managed-navigation') === null" +
             " && !document.body.textContent.includes('0000000002-25-000001')" +
             " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
         assertEquals("Annual comparison preserves the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private void clickAnnualComparisonAction(String label) {
@@ -497,19 +629,62 @@ public class ManagedWorkspaceInstrumentedTest {
             "//section[contains(@class,'managed-annual-comparison')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
     }
 
-    private void assertAnnualComparisonValues(String revenue, String margin, String change) throws Exception {
+    private void assertComparisonReportVisit(String symbol, String issuer, String accession, String periodEnd, boolean previous) throws Exception {
+        awaitPage("full Annual visit reuses the selected company's original checked evidence",
+            "(() => { const panel = document.querySelector('.managed-annual-report'); const text = panel?.textContent ?? '';" +
+            " return document.querySelector('#managed-company-heading')?.textContent === 'Company research · ' + " + JSONObject.quote(symbol) +
+            " && document.querySelector('.managed-company-identity strong')?.textContent === " + JSONObject.quote(issuer) +
+            " && panel?.getAttribute('aria-busy') === 'false'" +
+            " && text.includes('The loaded watchlist comparison report is available in this company visit.')" +
+            " && panel.querySelector('.managed-annual-origin')?.textContent === 'Showing the report loaded in the watchlist comparison. Original source and observation times are unchanged.'" +
+            " && text.includes(" + JSONObject.quote(accession) + ") && text.includes(" + JSONObject.quote(periodEnd) + ")" +
+            " && text.includes('2026-09-20T00:00:00.000Z')" +
+            " && text.includes('Showing the previous report, completed 2026-09-20T00:00:02.000Z') === " + previous +
+            " && [...panel.querySelectorAll('button')].some(b => b.textContent === 'Refresh annual report' && !b.disabled); })()");
+    }
+
+    private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 6" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 13" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
-            " && cells(1)[1].textContent === 'SalesRevenueNet'" +
+            " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
+            " && cells(1)[1].textContent === 'Net sales revenue'" +
+            " && document.querySelector('.managed-annual-comparison select[id$=\"-left-basis\"]')?.value === " + JSONObject.quote(rawBasis) +
+            " && document.querySelector('.managed-annual-comparison select[id$=\"-right-basis\"]')?.value === 'SalesRevenueNet'" +
+            " && document.querySelector('[data-annual-comparison-selected-basis=left]')?.textContent === 'Selected basis: ' + " + JSONObject.quote(basisLabel) +
+            " && document.querySelector('[data-annual-comparison-selected-basis=right]')?.textContent === 'Selected basis: Net sales revenue'" +
+            " && ['left', 'right'].every(side => { const select = document.querySelector('.managed-annual-comparison select[id$=\"-' + side + '-basis\"]');" +
+            " const full = document.querySelector('[data-annual-comparison-selected-basis=' + side + ']');" +
+            " return full?.id && select?.getAttribute('aria-describedby')?.split(' ').includes(full.id); })" +
             " && cells(2)[0].textContent === " + JSONObject.quote(revenue) + " && cells(2)[1].textContent === '750'" +
             " && cells(3)[0].textContent === '100' && cells(3)[1].textContent === '150'" +
             " && cells(4)[0].textContent === " + JSONObject.quote(margin) + " && cells(4)[1].textContent === '20%'" +
             " && cells(5)[0].firstChild.textContent === " + JSONObject.quote(change) + " && cells(5)[1].firstChild.textContent === '25%'" +
             " && cells(5)[0].textContent.includes('2024-01-01 to 2024-12-31')" +
             " && cells(5)[1].textContent.includes('2023-07-01 to 2024-06-30'); })()");
+        assertAnnualComparisonCash();
+        assertAnnualComparisonLiquidity();
+    }
+
+    private void assertAnnualComparisonCash() throws Exception {
+        awaitPage("cash values keep each company's exact period and remain independent of the revenue basis",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-cash]')];" +
+            " const keys = ['operatingCashFlow', 'ppePurchases', 'operatingCashFlowLessPpePurchases'];" +
+            " const labels = ['Operating cash flow', 'PP&E purchases', 'Operating cash flow less PP&E purchases'];" +
+            " const expected = [['1000', '900'], ['250', '300'], ['750', '600']];" +
+            " const periods = ['2025-01-01 to 2025-12-31', '2024-07-01 to 2025-06-30'];" +
+            " return rows.length === 3 && rows.every((row, i) => { const header = row.querySelector('th');" +
+            " const cells = [...row.querySelectorAll('td')]; return row.dataset.annualComparisonCash === keys[i]" +
+            " && header?.scope === 'row' && header.firstChild.textContent === labels[i]" +
+            " && header.querySelector('small')?.textContent === (i === 2 ? 'App calculation' : 'Reported') + ' · USD'" +
+            " && cells.length === 2 && cells.every((cell, side) => cell.querySelector('.sec-annual-cash-amount')?.textContent === expected[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === periods[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'" +
+            " && !cell.querySelector('.sec-annual-cash-unavailable')); })" +
+            " && document.querySelector('.managed-annual-comparison-table tbody th')?.textContent === 'Revenue / net income period'" +
+            " && document.querySelector('.managed-annual-comparison').textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.'); })()");
     }
 
     private void assertAnnualComparisonSources() throws Exception {
@@ -519,7 +694,121 @@ public class ManagedWorkspaceInstrumentedTest {
             " && sources[0].querySelector(':scope > a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && sources[1].querySelector(':scope > a')?.href === 'https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm'" +
             " && sources.every(s => s.querySelector(':scope > a')?.target === '_blank' && s.querySelector(':scope > a')?.rel === 'noopener noreferrer')" +
-            " && sources[0].textContent.includes('filed 2026-02-01') && sources[1].textContent.includes('filed 2025-08-01'); })()");
+            " && sources[0].textContent.includes('filed 2026-02-01') && sources[1].textContent.includes('filed 2025-08-01')" +
+            " && sources.every((source, i) => { const side = i === 0 ? 'left' : 'right';" +
+            " const raw = document.querySelector('.managed-annual-comparison select[id$=\"-' + side + '-basis\"]')?.value;" +
+            " return source.querySelector('[data-annual-comparison-source-basis=' + side + ']')?.textContent === 'Selected SEC revenue concept: ' + raw; })" +
+            " && sources.every((source, side) => { const cash = source.querySelector('[data-annual-comparison-cash-source]');" +
+            " const inputs = cash?.querySelectorAll('section');" +
+            " const concepts = ['NetCashProvidedByUsedInOperatingActivities', 'PaymentsToAcquirePropertyPlantAndEquipment'];" +
+            " const values = side === 0 ? ['1000', '250'] : ['900', '300'];" +
+            " const period = side === 0 ? '2025-01-01 to 2025-12-31' : '2024-07-01 to 2025-06-30';" +
+            " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " const ids = []; return cash?.closest('details') === source.querySelector('details')" +
+            " && cash.dataset.annualComparisonCashSource === (side === 0 ? 'left' : 'right')" +
+            " && cash.textContent.includes('Company Facts captured 2026-09-20T00:00:01.000Z')" +
+            " && cash.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z')" +
+            " && cash.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && inputs.length === 2 && [...inputs].every((input, i) => { const pairs = [...input.querySelectorAll('dl > div')];" +
+            " const field = label => pairs.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); ids.push(id); return id && input.querySelectorAll('ol > li').length === 1" +
+            " && input.querySelector('summary')?.textContent === concepts[i] + ' · ' + period + ' · ' + values[i] + ' USD'" +
+            " && input.textContent.includes('Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.')" +
+            " && field('Exact USD observation') === values[i] && field('Accession') === accession" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
+            " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
+        assertAnnualComparisonLiquiditySources();
+    }
+
+    private void assertAnnualComparisonLiquidity() throws Exception {
+        awaitPage("liquidity keeps exact balances, independent dates and units through basis and report lifetimes",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-liquidity]')];" +
+            " const keys = ['currentAssets', 'currentLiabilities', 'workingCapital', 'currentRatio'];" +
+            " const labels = ['Current assets', 'Current liabilities', 'Working capital', 'Current ratio'];" +
+            " const expected = [['1500', '900'], ['600', '1200'], ['900', '-300'], ['2.50×', '0.75×']];" +
+            " const dates = ['2025-12-31', '2025-06-30'];" +
+            " return rows.length === 4 && rows.every((row, i) => { const header = row.querySelector('th');" +
+            " const cells = [...row.querySelectorAll('td')]; return row.dataset.annualComparisonLiquidity === keys[i]" +
+            " && header?.scope === 'row' && header.firstChild.textContent === labels[i]" +
+            " && header.querySelector('small')?.textContent === (i < 2 ? 'Reported' : 'App calculation') + ' · ' + (i === 3 ? 'multiple' : 'USD')" +
+            " && cells.length === 2 && cells.every((cell, side) => cell.querySelector('.sec-annual-liquidity-amount')?.textContent === expected[i][side]" +
+            " && cell.querySelectorAll('small')[0]?.textContent === 'At ' + dates[side]" +
+            " && cell.querySelectorAll('small')[1]?.textContent === 'Within current-use limits at this load.'" +
+            " && !cell.querySelector('.sec-annual-liquidity-unavailable')); }); })()");
+    }
+
+    private void assertAnnualComparisonLiquiditySources() throws Exception {
+        awaitPage("each liquidity disclosure retains original instant observations and calculation references",
+            "(() => { const sources = [...document.querySelectorAll('.managed-annual-comparison-source')];" +
+            " return sources.length === 2 && sources.every((source, side) => {" +
+            " const liquidity = source.querySelector('[data-annual-comparison-liquidity-source]');" +
+            " const inputs = liquidity?.querySelectorAll(':scope > section');" +
+            " const concepts = ['AssetsCurrent', 'LiabilitiesCurrent'];" +
+            " const values = side === 0 ? ['1500', '600'] : ['900', '1200'];" +
+            " const date = side === 0 ? '2025-12-31' : '2025-06-30';" +
+            " const filed = side === 0 ? '2026-02-01' : '2025-08-01';" +
+            " const accession = side === 0 ? '0000000001-26-000001' : '0000000002-25-000001';" +
+            " const url = 'https://www.sec.gov/Archives/edgar/data/' + (side + 1) + '/' + accession + '-index.htm';" +
+            " const ids = []; return liquidity?.closest('details') === source.querySelector('details')" +
+            " && liquidity.dataset.annualComparisonLiquiditySource === (side === 0 ? 'left' : 'right')" +
+            " && liquidity.querySelector(':scope > p')?.textContent === 'Annual cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && inputs.length === 2 && [...inputs].every((input, i) => { const pairs = [...input.querySelectorAll('dl > div')];" +
+            " const field = label => pairs.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const id = field('Observation identifier'); ids.push(id); return id && input.querySelectorAll('ol > li').length === 1" +
+            " && input.querySelector('summary')?.textContent === concepts[i] + ' · Source end ' + date + ' · ' + values[i] + ' USD'" +
+            " && input.querySelector(':scope > p')?.textContent === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && field('Exact USD observation') === values[i] && field('Source end date') === date" +
+            " && field('Source start date') === 'Not supplied' && field('Source duration') === 'Not supplied; an instant balance requires no duration.'" +
+            " && field('Accession') === accession && field('Reported form / filed date') === '10-K · ' + filed" +
+            " && field('Joined report / accepted time') === date + ' · ' + filed + 'T00:00:00.000Z'" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'" +
+            " && input.querySelector('a')?.href === url && input.querySelector('a')?.target === '_blank'" +
+            " && input.querySelector('a')?.rel === 'noreferrer'; })" +
+            " && ids[0] !== ids[1] && [...liquidity.querySelectorAll(':scope > p')].slice(-2).map(p => p.textContent).join('|') === 'Working capital references: ' + ids.join(' · ') + '|Current ratio references: ' + ids.join(' · '); }); })()");
+    }
+
+    private void assertAnnualComparisonLiquidityNote() throws Exception {
+        chooseNativeSelectOption("#managed-annual-comparison-note-group", "liquidity", "Liquidity");
+        chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-one", "ONE · One Company · Class A · XNAS");
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", "Invented second note", ANNUAL_COMPARISON_LIQUIDITY_PREFIX);
+        closeSoftKeyboard();
+        selectWatchlistNote(1);
+        awaitPage("liquidity action keeps the chosen destination after editing its latest prefix",
+            "document.querySelector('#managed-annual-comparison-note-group')?.value === 'liquidity'" +
+            " && document.querySelector('#managed-annual-comparison-note-destination')?.value === 'listing-one'" +
+            " && document.querySelector('.managed-annual-comparison-note-action button')?.getAttribute('aria-disabled') === 'false'");
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        assertAnnualComparisonLiquidityDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        awaitPage("duplicate liquidity comparison retains the whole note and exposes its refusal",
+            "document.querySelector('.managed-annual-comparison-note-help')?.textContent === 'This exact Annual comparison reference is already in the note draft.'" +
+            " && document.querySelector('.managed-annual-comparison-note-status')?.textContent === 'This exact Annual comparison reference is already in the note draft.'" +
+            " && document.querySelector('.managed-annual-comparison-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        assertAnnualComparisonLiquidityDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+        selectWatchlistNote(0);
+        touchInput("managed-note-0");
+        replaceFocusedInput("managed-note-0", ANNUAL_COMPARISON_LIQUIDITY_NOTE, "Invented second note");
+        closeSoftKeyboard();
+        selectWatchlistNote(1);
+        assertAnnualComparisonDraft();
+        assertAnnualComparisonCounts(4, 1, 1);
+    }
+
+    private void assertAnnualComparisonLiquidityDraft() throws Exception {
+        awaitPage("liquidity appends exact separately dated evidence to ONE while ZERO remains selected",
+            DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_COMPARISON_LIQUIDITY_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
+            " && " + DRAFT + ".memberships?.map(member => member.listingId).join(',') === 'listing-one,listing-zero'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-zero'" +
+            " && document.querySelectorAll('.managed-watchlist-choice[aria-pressed=true]').length === 1");
     }
 
     private void assertAnnualComparisonDraft() throws Exception {
@@ -530,11 +819,23 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
     }
 
+    private void assertAnnualComparisonNote(int version, boolean dirty) throws Exception {
+        awaitPage("Annual comparison note keeps complete order, other prose and explicit saved state",
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(ANNUAL_COMPARISON_NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty);
+    }
+
     private void assertAnnualComparisonCounts(int reads, int aborted, int late) throws Exception {
-        awaitPage("bounded Annual reads without other providers or Save",
+        assertAnnualComparisonCounts(reads, aborted, late, 0, 1);
+    }
+
+    private void assertAnnualComparisonCounts(int reads, int aborted, int late, int saves, int loads) throws Exception {
+        awaitPage("bounded Annual reads and explicit saves without other providers",
             DIAGNOSTICS + ".annual === " + reads + " && " + DIAGNOSTICS + ".aborted === " + aborted +
-            " && " + DIAGNOSTICS + ".lateResolved === " + late + " && " + DIAGNOSTICS + ".save === 0" +
-            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0" +
+            " && " + DIAGNOSTICS + ".lateResolved === " + late + " && " + DIAGNOSTICS + ".save === " + saves +
+            " && " + DIAGNOSTICS + ".load === " + loads + " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0" +
             " && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
     }
 
@@ -546,7 +847,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.fed-announcements') !== null && document.querySelector('.fed-announcements time') === null" +
             " && document.querySelector('.fed-announcements-actions > button')?.textContent === 'Load announcements'" +
             " && document.querySelector('.fed-announcements-actions > button')?.getBoundingClientRect().height >= 44");
-        assertFedCounts(0, 0, 0);
+        assertFedCounts(0, 0, 0, 0, 1);
         selectWorkspaceView("My Watchlist");
         click("button[aria-label='Move ZERO down']");
         awaitPage("announcements test reorders the draft before editing",
@@ -556,49 +857,127 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedDraft();
         clickFedAction("Load announcements");
         assertFedPacket("2026-10-20T18:00:00.000Z");
-        assertFedCounts(1, 0, 0);
+        awaitPage("first admitted feed establishes only a baseline",
+            "document.querySelector('.managed-fed-refresh-comparison') === null" +
+            " && document.querySelectorAll('.fed-announcements-new').length === 0" +
+            " && document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
+            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === true" +
+            " && document.querySelector('#managed-fed-updates-view')?.getBoundingClientRect().height >= 44");
+        assertFedCounts(1, 0, 0, 0, 1);
+        awaitPage("loaded Fed note tools start closed with original sources and titles outside",
+            "document.querySelector('#managed-fed-note-disclosure')?.open === false" +
+            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.textContent === 'Add an announcement to a note'" +
+            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-fed-note-disclosure #managed-fed-note-announcement') !== null" +
+            " && document.querySelector('.fed-announcements-source')?.closest('details') === null" +
+            " && document.querySelector('.fed-announcements-list')?.closest('details') === null");
+        typeIntoInput("managed-fed-title-search", "no matching invented title");
+        awaitPage("title search shares an empty view with the note picker without a read",
+            "document.querySelector('#managed-fed-title-count')?.textContent.includes('0 of 2 loaded announcements.')" +
+            " && document.querySelector('.fed-announcements-list') === null" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 1" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('No loaded announcements match this title search.')" +
+            " && document.querySelector('#managed-fed-title-search')?.getBoundingClientRect().height >= 44");
+        clickFedAction("Clear title search");
+        assertFedPacket("2026-10-20T18:00:00.000Z");
+        typeIntoInput("managed-fed-title-search", "  INVENTED  ");
+        assertFedCounts(1, 0, 0, 0, 1);
         clickFedAction("Refresh announcements");
         awaitPage("failed refresh qualifies the retained original feed",
             "document.querySelector('.fed-announcements [role=alert]')?.textContent.includes('previously loaded announcements')" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements. This attempt has not confirmed a newer feed.')");
         assertFedPacket("2026-10-20T18:00:00.000Z");
-        assertFedCounts(2, 0, 0);
+        assertFedCounts(2, 0, 0, 0, 1);
         clickFedAction("Refresh announcements");
         awaitPage("third announcements read is held", DIAGNOSTICS + ".fed === 3" +
             " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
         clickFedAction("Cancel announcements");
-        assertFedCounts(3, 1, 0);
+        assertFedCounts(3, 1, 0, 0, 1);
         click("#settle-cancelled-announcements");
-        assertFedCounts(3, 1, 1);
+        assertFedCounts(3, 1, 1, 0, 1);
         assertFedPacket("2026-10-20T18:00:00.000Z");
+        awaitPage("failure, held read, Cancel and late settlement preserve the title query",
+            "document.querySelector('#managed-fed-title-search')?.value === '  INVENTED  '" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('2 of 2 loaded announcements.')");
         awaitPage("Cancel preserves the original fetchedAt and qualifies retained content",
             "document.querySelector('.fed-announcements [role=status]')?.textContent === 'Announcements refresh cancelled. Refresh again when ready.'" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements.')");
         assertFedDraft();
         clickFedAction("Refresh announcements");
         assertFedEmpty();
-        assertFedCounts(4, 1, 1);
+        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
+        awaitPage("accepted empty replacement clears the query with an explicit reset notice",
+            "document.querySelector('#managed-fed-title-search')?.value === ''" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('Feed response changed; showing all loaded announcements.')");
+        click(".managed-fed-refresh-comparison summary");
+        awaitPage("comparison disclosure opens with an accessible native target",
+            "document.querySelector('.managed-fed-refresh-comparison details')?.open === true" +
+            " && document.querySelector('.managed-fed-refresh-comparison summary')?.getBoundingClientRect().height >= 44");
+        assertFedCounts(4, 1, 1, 0, 1);
         awaitPage("valid empty replacement clears old failures and retained qualification",
             "document.querySelector('.fed-announcements [role=alert]') === null" +
             " && !document.querySelector('.fed-announcements').textContent.includes('Previous announcements.')");
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        awaitPage("empty comparison remains an available zero-result updates view",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === false" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
         clickFedAction("Refresh announcements");
         awaitPage("fifth announcements read is pending before navigation", DIAGNOSTICS + ".fed === 5" +
-            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null" +
+            " && document.querySelector('#managed-fed-updates-view')?.value === 'new'");
         selectWorkspaceView("My Watchlist");
-        assertFedCounts(5, 2, 1);
+        assertFedCounts(5, 2, 1, 0, 1);
+        selectWatchlistNote(0);
+        chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
+        typeIntoInput("managed-watchlist-search", "Invented second");
+        awaitPage("Fed review will target a different note outside the retained notes search",
+            "document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-one'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-one'");
         click("#settle-cancelled-announcements");
-        assertFedCounts(5, 2, 2);
+        assertFedCounts(5, 2, 2, 0, 1);
         assertFedDraft();
         selectWorkspaceView("Markets");
         assertFedEmpty();
-        assertFedCounts(5, 2, 2);
+        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
+        awaitPage("navigation remount resets the reading view without another feed request",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
+            " && document.querySelector('#managed-fed-title-search')?.value === ''");
+        assertFedCounts(5, 2, 2, 0, 1);
         clickFedAction("Refresh announcements");
         assertFedPacket("2026-10-23T18:00:00.000Z");
-        assertFedCounts(6, 2, 2);
+        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
+        awaitPage("newly observed markers preserve both current links and note choices",
+            "Array.from(document.querySelectorAll('.fed-announcements-new')).every(label => label.textContent === 'Newly observed in this refresh')" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 2" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
+        assertFedCounts(6, 2, 2, 0, 1);
         assertFedDraft();
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        typeIntoInput("managed-fed-title-search", "WITHOUT A PUBLICATION");
+        awaitPage("updates and title search share one current reference while full comparison remains visible",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('1 of 2 loaded announcements.')" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
+            " && document.querySelector('.fed-announcements-list li > a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 2" +
+            " && document.querySelector('.managed-fed-refresh-count')?.textContent === 'Newly observed in this refresh: 2 of 2 links in the loaded feed.'" +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
+        clickFedAction("Clear title search");
+        awaitPage("clearing the title search retains the explicitly selected updates view",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 2");
+        chooseNativeSelectOption("#managed-fed-updates-view", "all", "All loaded announcements");
+        assertFedCounts(6, 2, 2, 0, 1);
+        appendAndSaveFedReference();
         clickFedAction("Refresh announcements");
         awaitPage("seventh announcements read is held before session expiry", DIAGNOSTICS + ".fed === 7" +
             " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        awaitPage("the retained comparison remains readable during a pending feed request",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-updates-view')?.disabled === false");
         click(CATALOG_REFRESH);
         awaitPage("expired session removes the loaded feed and unsaved draft",
             DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
@@ -606,13 +985,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
             " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false");
         click("#settle-cancelled-announcements");
-        assertFedCounts(7, 3, 3);
+        assertFedCounts(7, 3, 3, 1, 2);
         awaitPage("late announcements cannot remount a retired session",
             "document.querySelector('.fed-announcements') === null && document.querySelector('.managed-navigation') === null" +
             " && !document.body.textContent.includes('Invented monetary policy announcement')" +
             " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
         assertEquals("Announcements preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary();
+        assertFixtureBoundary(0, 1);
     }
 
     private void clickFedAction(String label) {
@@ -628,14 +1007,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.fed-announcements-list li:last-child p')?.textContent === 'Unknown publication time'" +
             " && document.querySelector('.fed-announcements-list li:first-child a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261019a.htm'" +
             " && document.querySelector('.fed-announcements-source a')?.href === 'https://www.federalreserve.gov/feeds/feeds.htm'" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 2 of 2 announcements from this feed.')");
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 2 of 2 announcements from this feed.')");
+    }
+
+    private void assertFedComparison(String previousAt, String currentAt, int newlyObserved, int currentCount) throws Exception {
+        awaitPage("compared feeds retain both original clocks and the complete current-list count",
+            "document.querySelector('.managed-fed-refresh-count')?.textContent === " +
+            JSONObject.quote("Newly observed in this refresh: " + newlyObserved + " of " + currentCount + " links in the loaded feed.") +
+            " && Array.from(document.querySelectorAll('.managed-fed-refresh-comparison time')).map(time => time.dateTime).join('|') === " +
+            JSONObject.quote(previousAt + "|" + currentAt) +
+            " && document.querySelector('.managed-fed-refresh-comparison summary')?.textContent === 'Compared loaded feeds'" +
+            " && document.querySelectorAll('.fed-announcements-new').length === " + newlyObserved);
     }
 
     private void assertFedEmpty() throws Exception {
         awaitPage("valid empty feed replaces prior items with its own exact fetchedAt",
             "document.querySelector('.fed-announcements-note time')?.dateTime === '2026-10-21T18:00:00.000Z'" +
             " && document.querySelector('.fed-announcements-list') === null" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 0 of 0 announcements from this feed.')" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 0 of 0 announcements from this feed.')" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
     }
 
@@ -647,41 +1036,221 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
     }
 
-    private void assertFedCounts(int reads, int aborted, int late) throws Exception {
-        awaitPage("bounded Fed reads without any other source request or Save",
+    private void appendAndSaveFedReference() throws Exception {
+        String complete = "Draft survives native Back Observed Federal Reserve announcement: Invented announcement without a publication time. Announcement URL: https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm. Source publication time: unknown. Source: Board of Governors of the Federal Reserve System; monetary-policy feed https://www.federalreserve.gov/feeds/press_monetary.xml. Original feed retrieved at: 2026-10-23T18:00:00.000Z (UTC). Only feed metadata was loaded; article contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        awaitPage("Fed reference starts with two explicit empty choices",
+            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
+            " && document.querySelector('.managed-fed-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("Fed note tools open explicitly before a reference choice",
+            "document.querySelector('#managed-fed-note-disclosure')?.open === true");
+        chooseNativeSelectOption("#managed-fed-note-announcement",
+            "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
+            "Invented announcement without a publication time");
+        chooseNativeSelectOption("#managed-fed-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        typeIntoInput("managed-fed-title-search", " MONETARY   POLICY ");
+        awaitPage("excluding the chosen announcement clears it while preserving its exact destination and whole-feed count",
+            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
+            " && document.querySelector('.managed-fed-note-action')?.textContent.includes('The chosen announcement is outside the current announcement view.')" +
+            " && document.querySelector('.managed-fed-refresh-count')?.textContent.includes('2 of 2 links in the loaded feed.')");
+        clickFedAction("Clear title search");
+        awaitPage("Clear requires a fresh announcement choice without a fallback",
+            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
+        typeIntoInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ");
+        chooseNativeSelectOption("#managed-fed-note-announcement",
+            "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
+            "Invented announcement without a publication time");
+        assertFedDraft();
+        assertFedCounts(6, 2, 2, 0, 1);
+        clickFedAction("Add announcement to note draft");
+        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
+        awaitPage("Fed reference appends only the chosen note and retains all original metadata", exact +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'Announcement reference added to the ZERO (Class A, XNAS) note draft. Review and save all changes in My Watchlist.'" +
+            " && document.activeElement === document.querySelector('.managed-fed-note-action button')");
+        clickFedAction("Add announcement to note draft");
+        awaitPage("an identical Fed reference cannot append twice", exact +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
+        assertFedCounts(6, 2, 2, 0, 1);
+        touchInput("managed-fed-title-search");
+        replaceFocusedInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ", " WITHOUT ");
+        awaitPage("a matching query keeps the selected announcement and duplicate feedback for Review", exact +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("closing Fed tools preserves exact choices feedback and the whole draft", exact +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false" +
+            " && document.activeElement === document.querySelector('#managed-fed-note-disclosure-toggle')" +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("reopening Fed tools keeps the chosen reference and Review", exact +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === true" +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && Array.from(document.querySelectorAll('.managed-fed-note-action button')).some(button => button.textContent === 'Review in My Watchlist')");
+        clickFedAction("Review in My Watchlist");
+        awaitPage("Fed Review opens and focuses its exact destination while preserving the complete draft and search", exact +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')" +
+            " && document.querySelector('#managed-watchlist-search')?.value === 'Invented second'" +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ZERO is outside this search.')");
+        assertFullNoteReading("managed-note-1", complete, true);
+        assertFedCounts(6, 2, 2, 0, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
+        String saved = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + "; expected.baseVersion = 2; expected.dirty = false;" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
+        awaitPage("explicit Save acknowledges the exact Fed note and full reordered payload", saved +
+            " && document.body.textContent.includes('Version 2 · Saved')");
+        assertFedCounts(6, 2, 2, 1, 1);
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
+        awaitPage("reload preserves the full saved Fed reference and other note", saved +
+            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(complete) +
+            " && document.querySelector('#managed-note-1')?.disabled === false");
+        assertFedCounts(6, 2, 2, 1, 2);
+        assertFullNoteReading("managed-note-1", complete, true);
+        selectWorkspaceView("Markets");
+        assertFedPacket("2026-10-23T18:00:00.000Z");
+        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
+        awaitPage("returning to Markets requires fresh choices without another feed read", saved +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
+        assertFedCounts(6, 2, 2, 1, 2);
+    }
+
+    private void assertFedCounts(int reads, int aborted, int late, int saves, int loads) throws Exception {
+        awaitPage("bounded Fed reads and explicit watchlist operations without another source request",
             DIAGNOSTICS + ".fed === " + reads + " && " + DIAGNOSTICS + ".fedAborted === " + aborted +
-            " && " + DIAGNOSTICS + ".fedLateResolved === " + late + " && " + DIAGNOSTICS + ".save === 0" +
-            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".fedLateResolved === " + late + " && " + DIAGNOSTICS + ".save === " + saves +
+            " && " + DIAGNOSTICS + ".load === " + loads + " && " + DIAGNOSTICS + ".calendar === 0" +
             " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
             " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
     }
 
 
     @Test
+    public void beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareBeaDraft();
+        clickBeaAction("Load agenda");
+        awaitPage("first empty accepted agenda has no comparison", "document.querySelector('.managed-bea-refresh-comparison') === null" +
+            " && document.querySelector('.bea-agenda-empty')?.textContent.includes('No BEA releases are listed')");
+        awaitPage("first loaded agenda starts in All with unavailable updates disabled",
+            "document.querySelector('#managed-bea-release-view')?.value === 'all'" +
+            " && document.querySelector('#managed-bea-release-view option[value=new]')?.disabled === true");
+        assertBeaCounts(1, 0, 0);
+        clickBeaAction("Refresh agenda");
+        awaitPage("second accepted agenda marks exact current entries and preserves both windows",
+            "document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 3" +
+            " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T17:59:00.000Z|2026-10-20T17:59:00.000Z|2026-11-19T17:59:00.000Z|2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z'" +
+            " && document.querySelector('.managed-bea-refresh-comparison summary')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('.managed-bea-refresh-comparison')?.textContent.includes('Windows move with each load.')");
+        chooseNativeSelectOption("#managed-bea-release-view", "new", "Not in previous agenda");
+        awaitPage("updates view uses the accepted pair without another agenda read",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 3 && " + DIAGNOSTICS + ".calendar === 2");
+        typeIntoInput("managed-bea-release-search", "Trade");
+        awaitPage("series filter narrows rows and note choices while whole comparison remains",
+            "document.querySelectorAll('.bea-agenda-day li').length === 1 && document.querySelectorAll('.bea-agenda-new').length === 1" +
+            " && document.querySelectorAll('#managed-bea-note-release option').length === 2" +
+            " && document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')");
+        clickBeaAction("Refresh agenda");
+        awaitPage("third read retains the accepted pair while pending", DIAGNOSTICS + ".calendar === 3 && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        clickBeaAction("Cancel agenda");
+        click("#settle-cancelled-calendar");
+        assertBeaCounts(3, 1, 1);
+        awaitPage("cancelled late response keeps accepted pair and query", "document.querySelector('#managed-bea-release-search')?.value === 'Trade'" +
+            " && document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')");
+        awaitPage("cancel keeps all local release controls on the retained pair",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 1");
+        assertBeaDraft();
+        selectWorkspaceView("My Watchlist");
+        selectWorkspaceView("Markets");
+        awaitPage("navigation resets filters while retaining accepted comparison", "document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 3");
+        awaitPage("returning to Markets resets only the local Release view",
+            "document.querySelector('#managed-bea-release-view')?.value === 'all'");
+        clickBeaAction("Refresh agenda");
+        awaitPage("verified empty replacement compares only the preceding accepted agenda",
+            "document.querySelector('.managed-bea-refresh-count')?.textContent.includes('0 of 0 scheduled releases.')" +
+            " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z|2026-10-20T18:01:00.000Z|2026-10-20T18:01:00.000Z|2026-11-19T18:01:00.000Z'" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 0 && document.querySelector('.bea-agenda-days') === null");
+        chooseNativeSelectOption("#managed-bea-release-view", "new", "Not in previous agenda");
+        awaitPage("an empty current agenda retains a valid updates choice and the verified empty explanation",
+            "document.querySelector('#managed-bea-release-view')?.value === 'new'" +
+            " && document.querySelector('.bea-agenda-empty')?.textContent.includes('No BEA releases are listed')" +
+            " && !document.querySelector('.bea-agenda-empty')?.textContent.includes('No releases absent from the previous agenda match')");
+        assertBeaCounts(4, 1, 1);
+        assertBeaDraft();
+        assertEquals("Agenda comparisons preserve the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    @Test
     public void beaAgendaRefreshCancelAndNavigationPreserveDraft() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         prepareBeaDraft();
         assertBeaCounts(0, 0, 0);
+        assertMarketsNavigation(0);
         clickBeaAction("Load agenda");
         assertBeaPacket();
         assertBeaCounts(1, 0, 0);
         assertBeaDraft();
 
+        awaitPage("loaded agenda starts with note tools closed and source dates outside",
+            "document.querySelector('#managed-bea-note-disclosure')?.open === false" +
+            " && document.querySelector('#managed-bea-note-disclosure-toggle')?.textContent === 'Add a release to a note'" +
+            " && document.querySelector('#managed-bea-note-disclosure-toggle')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-bea-note-disclosure #managed-bea-note-release') !== null" +
+            " && document.querySelector('.bea-agenda-source')?.closest('details') === null" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.closest('details') === null");
+
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
+        assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
+        assertMarketsNavigation(1);
+        assertBeaCounts(1, 0, 0);
+        assertBeaDraft();
         clickBeaAction("Refresh agenda");
         awaitPage("failed refresh labels the original loaded window",
             "document.querySelector('.bea-release-agenda [role=alert]')?.textContent.includes('previous loaded window')");
+        assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
+        chooseNativeSelectOption("#managed-bea-release-date", "", "All loaded dates");
         assertBeaPacket();
         assertBeaCounts(2, 0, 0);
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-11-04", "Wed, Nov 4, 2026 (1)");
         clickBeaAction("Refresh agenda");
         awaitPage("one calendar refresh is held", DIAGNOSTICS + ".calendar === 3" +
             " && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
+        assertMarketsNavigation(3);
         clickBeaAction("Cancel agenda");
         assertBeaCounts(3, 1, 0);
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
         click("#settle-cancelled-calendar");
         assertBeaCounts(3, 1, 1);
+        assertBeaDate("2026-11-04", "Invented Trade", 1);
+        chooseNativeSelectOption("#managed-bea-release-date", "", "All loaded dates");
         assertBeaPacket();
         assertBeaDraft();
 
+        chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
         clickBeaAction("Refresh agenda");
         awaitPage("fourth explicit calendar read is pending", DIAGNOSTICS + ".calendar === 4");
         selectWorkspaceView("My Watchlist");
@@ -691,12 +1260,36 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaDraft();
         selectWorkspaceView("Markets");
         assertBeaPacket();
+        awaitPage("returning after Markets unmount resets only the local date view",
+            "document.querySelector('#managed-bea-release-date')?.value === ''" +
+            " && document.querySelector('#managed-bea-release-date-count')?.textContent.includes('3 of 3 loaded BEA releases.')");
         assertBeaCounts(4, 2, 2);
         scenario.moveToState(Lifecycle.State.CREATED);
         scenario.moveToState(Lifecycle.State.RESUMED);
         assertBeaPacket();
         assertBeaCounts(4, 2, 2);
         assertBeaDraft();
+        typeIntoInput("managed-bea-release-search", "No matching invented series");
+        awaitPage("release search has no match without losing dates or choosing an event",
+            "document.querySelector('#managed-bea-release-date-count')?.textContent.includes('0 of 3 loaded BEA releases.')" +
+            " && document.querySelectorAll('.bea-agenda-day li').length === 0" +
+            " && document.querySelectorAll('#managed-bea-release-date option').length === 3" +
+            " && document.querySelectorAll('#managed-bea-note-release option').length === 1" +
+            " && document.querySelector('#managed-bea-note-release')?.value === ''");
+        clickBeaAction("Clear search");
+        assertBeaPacket();
+        awaitPage("Clear search retains its focused control and clears only the query",
+            "document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.activeElement?.textContent === 'Clear search'");
+        typeIntoInput("managed-bea-release-search", "gDp");
+        awaitPage("mixed-case search gives the agenda and picker the same original event",
+            "document.querySelector('#managed-bea-release-date-count')?.textContent.includes('1 of 3 loaded BEA releases.')" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li span')).map(e => e.textContent).join('|') === 'Invented GDP'" +
+            " && Array.from(document.querySelectorAll('#managed-bea-note-release option')).map(e => e.value).join('|') === '|0'" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'");
+        assertBeaCounts(4, 2, 2);
+        assertBeaDraft();
+        appendAndReviewBeaReference();
         assertEquals("Calendar actions preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
     }
@@ -741,6 +1334,55 @@ public class ManagedWorkspaceInstrumentedTest {
             "//section[contains(@class,'bea-release-agenda')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
     }
 
+    private void assertMarketsNavigation(int calendarReads) throws Exception {
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        String packet = "JSON.stringify({draft:" + DRAFT + ", date:document.querySelector('#managed-bea-release-date')?.value ?? ''," +
+            " agenda:document.querySelector('.bea-release-agenda')?.textContent," +
+            " clocks:[...document.querySelectorAll('.bea-release-agenda time')].map(t => t.dateTime)," +
+            " source:document.querySelector('.bea-agenda-source a')?.href," +
+            " busy:document.querySelector('.bea-release-agenda [aria-busy]')?.getAttribute('aria-busy')})";
+        String originalPacket = readFixtureString(packet);
+        awaitPage("Markets offers three labelled native-sized section links",
+            "(() => { const links = [...document.querySelectorAll('nav[aria-label=\"On Markets\"] > a')];" +
+            " return links.length === 3 && links.map(a => a.textContent).join('|') === 'Company board|Economic calendar|Fed announcements'" +
+            " && links.every(a => { const r = a.getBoundingClientRect(); return r.height >= 44 && r.width >= 44; }); })()");
+        for (String section : new String[] {"board", "calendar", "announcements"}) {
+            String selector = "nav[aria-label='On Markets'] > a[data-markets-jump='" + section + "']";
+            String targetId = section.equals("board") ? "managed-markets-heading" :
+                section.equals("calendar") ? "bea-agenda-title" : "fed-announcements-title";
+            String geometry = readFixtureString(
+                "(() => { const link = document.querySelector(" + JSONObject.quote(selector) + ");" +
+                " if (!link) return JSON.stringify(null); link.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});" +
+                " const r = link.getBoundingClientRect(), v = visualViewport; const x = r.left + r.width / 2, y = r.top + r.height / 2;" +
+                " return JSON.stringify({x,y,left:r.left,top:r.top,right:r.right,bottom:r.bottom," +
+                " width:v.width,height:v.height,offsetLeft:v.offsetLeft,offsetTop:v.offsetTop,scale:v.scale,ratio:devicePixelRatio," +
+                " finite:[x,y,r.left,r.top,r.right,r.bottom,r.width,r.height,v.width,v.height,v.offsetLeft,v.offsetTop,v.scale,devicePixelRatio].every(Number.isFinite)" +
+                " &&r.width>=44&&r.height>=44&&v.width>0&&v.height>0&&v.scale>0&&devicePixelRatio>0," +
+                " visible:link.isConnected&&!link.closest('[hidden], [inert]')&&getComputedStyle(link).visibility==='visible'" +
+                " &&r.left>=v.offsetLeft&&r.top>=v.offsetTop&&r.right<=v.offsetLeft+v.width&&r.bottom<=v.offsetTop+v.height," +
+                " hit:link.contains(document.elementFromPoint(x,y))}); })()");
+            touchObservedGeometry("markets-jump-" + section, geometry);
+            awaitPage("native Markets jump focuses its visible owned heading: " + section,
+                "(() => { const target = document.getElementById(" + JSONObject.quote(targetId) + ");" +
+                " const owner = document.querySelector('.managed-markets-content');" +
+                " if (!target || !owner?.contains(target) || document.activeElement !== target || !target.isConnected" +
+                " || target.closest('[hidden], [inert]') || getComputedStyle(target).visibility !== 'visible') return false;" +
+                " const r = target.getBoundingClientRect(), v = visualViewport;" +
+                " const nav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+                " const bottom = Math.min(v.offsetTop + v.height, nav?.top > v.offsetTop ? nav.top : Infinity);" +
+                " return r.width > 0 && r.height > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width" +
+                " && r.top >= v.offsetTop && r.bottom <= bottom" +
+                " && location.href === " + JSONObject.quote(originalLocation) +
+                " && String(history.length) === " + JSONObject.quote(originalHistoryLength) + "; })()");
+        }
+        assertEquals("Markets jumps preserve the exact agenda, selected date and whole draft", originalPacket, readFixtureString(packet));
+        assertBeaCounts(calendarReads, 0, 0);
+        awaitPage("Markets jumps leave other source and authentication counts unchanged",
+            DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".filings === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
     private void assertBeaPacket() throws Exception {
         awaitPage("BEA packet preserves both simultaneous releases, DST and original dates",
             "document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'" +
@@ -751,12 +1393,82 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.bea-agenda-source a')?.href === 'https://www.bea.gov/news/schedule'");
     }
 
+    private void assertBeaDate(String date, String series, int visible) throws Exception {
+        awaitPage("release date filters only the loaded packet and preserves provenance",
+            "document.querySelector('#managed-bea-release-date')?.value === " + JSONObject.quote(date) +
+            " && document.querySelector('#managed-bea-release-date-count')?.textContent.includes(" + JSONObject.quote(visible + " of 3 loaded BEA releases.") + ")" +
+            " && Array.from(document.querySelectorAll('.bea-agenda-day li span')).map(e => e.textContent).join('|') === " + JSONObject.quote(series) +
+            " && document.querySelectorAll('.bea-agenda-day').length === 1" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.dateTime === '2026-10-20T18:00:00.000Z'" +
+            " && document.querySelector('.bea-agenda-source a')?.href === 'https://www.bea.gov/news/schedule'");
+    }
+
     private void assertBeaDraft() throws Exception {
         awaitPage("calendar preserves unsaved watchlist order, notes and base version",
             "" + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void appendAndReviewBeaReference() throws Exception {
+        String complete = "Draft survives native Back Scheduled BEA release: Invented GDP. Scheduled time: Thu, Oct 29, 2026, 8:30 AM EDT (America/New_York); 2026-10-29T12:30:00.000Z (UTC). Source: U.S. Bureau of Economic Analysis; official schedule https://www.bea.gov/news/schedule. Original agenda retrieved at: 2026-10-20T18:00:00.000Z (UTC). Loaded window: 2026-10-20T18:00:00.000Z inclusive to 2026-11-19T18:00:00.000Z exclusive (UTC). Only schedule metadata was loaded; forecasts and released values were not supplied. Scheduled times may change; this reference does not confirm a release or company relevance. Retained previous agenda; a newer schedule was not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        awaitPage("BEA reference requires two explicit empty choices",
+            "document.querySelector('#managed-bea-note-release')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
+            " && document.querySelector('.managed-bea-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("note tools open explicitly before choosing a release",
+            "document.querySelector('#managed-bea-note-disclosure')?.open === true");
+        chooseNativeSelectOption("#managed-bea-note-release", "0", "    8:30 AM EDT · Invented GDP");
+        chooseNativeSelectOption("#managed-bea-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        assertBeaDraft();
+        assertBeaCounts(4, 2, 2);
+        clickBeaAction("Add release to note draft");
+        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
+        awaitPage("BEA append preserves the exact retained schedule and every other draft field", exact +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('note draft')" +
+            " && document.activeElement === document.querySelector('.managed-bea-note-action button')");
+        clickBeaAction("Add release to note draft");
+        awaitPage("duplicate BEA reference is refused without losing Review", exact +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('already in the note draft')");
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("closing note tools retains exact choices, feedback and draft", exact +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === false" +
+            " && document.activeElement === document.querySelector('#managed-bea-note-disclosure-toggle')" +
+            " && document.querySelector('#managed-bea-note-release')?.value === '0'" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('already in the note draft')");
+        assertBeaCounts(4, 2, 2);
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("reopening note tools retains exact choices and Review", exact +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === true" +
+            " && document.querySelector('#managed-bea-note-release')?.value === '0'" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === 'listing-zero'" +
+            " && [...document.querySelectorAll('.managed-bea-note-action button')].some(b => b.textContent === 'Review in My Watchlist' && b.getAttribute('aria-disabled') === 'false')");
+        clickBeaAction("Review in My Watchlist");
+        awaitPage("BEA Review opens and focuses the exact current destination", exact +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
+        assertFullNoteReading("managed-note-1", complete, true);
+        assertBeaCounts(4, 2, 2);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", complete, NOTE);
+        awaitPage("restoring the original draft preserves every field and save count",
+            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        selectWorkspaceView("Markets");
+        assertBeaPacket();
+        assertBeaDraft();
+        assertBeaCounts(4, 2, 2);
+        awaitPage("returning to Markets requires fresh BEA choices without reading again",
+            "document.querySelector('#managed-bea-note-release')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
+            " && document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === false");
     }
 
     private void assertBeaCounts(int reads, int aborted, int late) throws Exception {
@@ -1007,6 +1719,59 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareDraftAndOpenAnnual();
+        String snapshot = "document.querySelector('.managed-company-snapshot')";
+        awaitPage("snapshot starts closed without fetching either source",
+            snapshot + "?.open === false && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0");
+        click(".managed-company-snapshot > summary");
+        awaitPage("opening snapshot keeps both sources unloaded", snapshot + ".open && " +
+            snapshot + ".textContent.includes('No close history loaded') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded') && " +
+            DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".eod === 0");
+        click(".managed-snapshot-grid > section[aria-label='Snapshot price'] > button");
+        awaitPage("snapshot Price action navigates without fetching",
+            "document.querySelector('#managed-eod-heading') !== null && " + DIAGNOSTICS + ".eod === 0");
+        clickEodAction("Load one-month close history");
+        awaitPage("snapshot keeps exact loaded raw-close dates and basis",
+            snapshot + ".open && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".annual === 0 && " +
+            "document.querySelector('[aria-label=\"Snapshot price\"] dl')?.textContent === 'Last raw close · USD101.5Trading date2026-09-19' && " +
+            snapshot + ".textContent.includes('2026-08-20 to 2026-09-20') && " +
+            snapshot + ".textContent.includes('2026-09-20T00:00:01.000Z') && " +
+            snapshot + ".textContent.includes('unadjusted for splits or dividends') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded')");
+        retainAnnualNoteFrame("companySnapshotPrice", "[aria-label='Snapshot price'] h3",
+            "[aria-label='Snapshot price'] h3, [aria-label='Snapshot price'] dl", 2);
+        click(".managed-snapshot-grid > section[aria-label='Snapshot annual'] > button");
+        awaitPage("snapshot Annual action navigates without fetching",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
+        click(".managed-annual-report .trial-actions button:first-child");
+        String basis = "[aria-label='Snapshot revenue basis Revenues']";
+        awaitPage("snapshot combines separately loaded evidence without changing original dates",
+            snapshot + ".open && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " +
+            "Array.from(document.querySelectorAll(\"" + basis + " dd\")).map(e => e.textContent).join('|') === '1000|100|10%' && " +
+            snapshot + ".textContent.includes('2025-01-01 to 2025-12-31') && " +
+            snapshot + ".textContent.includes('2026-09-20T00:00:02.000Z') && " +
+            snapshot + ".textContent.includes('101.5') && " +
+            snapshot + ".textContent.includes('Operating cash flow') && " +
+            snapshot + ".textContent.includes('Current ratio') && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
+        retainAnnualNoteFrame("companySnapshotAnnualBasis", basis + " > h4",
+            basis + " > h4, " + basis + " > div > p, " + basis + " > div > dl", 3);
+        pressBack();
+        assertClosedDraft(true);
+        awaitPage("leaving company removes its snapshot", snapshot + " === null");
+        click(ANNUAL);
+        awaitPage("a new company visit does not restore prior snapshot evidence",
+            snapshot + "?.open === false && " + snapshot + ".textContent.includes('No close history loaded') && " +
+            snapshot + ".textContent.includes('No annual evidence loaded') && " +
+            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
+        assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    @Test
     public void annualBackAbortsPendingReadAndDiscardsLateResult() throws Exception {
         prepareDraftAndOpenAnnual();
         click(".managed-annual-report .trial-actions button:first-child");
@@ -1097,6 +1862,8 @@ public class ManagedWorkspaceInstrumentedTest {
         prepareDraftAndOpenAnnual();
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(1, false, false, false);
+        assertRefreshLiquiditySources(false);
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_INITIAL, 1);
         Log.i("ManagedRefresh", "phase=initial; " + pageDiagnostic());
 
         click(".managed-annual-report .trial-actions button:first-child");
@@ -1111,10 +1878,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
             " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.disabled === false");
         Log.i("ManagedRefresh", "phase=failed-retained; " + pageDiagnostic());
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_RETAINED, 2);
         retainRefreshFailureScreenshot();
 
         click(".managed-annual-report .trial-actions button:first-child");
         assertRefreshReport(3, false, false, true);
+        assertRefreshLiquiditySources(true);
+        assertLiquidityNoteDraft(LIQUIDITY_NOTE_ZERO, 3);
         awaitPage("successful refresh clears the old failure",
             "document.querySelector('.managed-annual-report [role=alert]') === null");
         Log.i("ManagedRefresh", "phase=recovered; " + pageDiagnostic());
@@ -1380,6 +2150,20 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-note-1')?.getAttribute('data-managed-note-listing-id') === 'listing-zero'" +
             " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(NOTE) +
             " && document.querySelector('.managed-watchlist-comparison-note-status')?.textContent === 'Comparison added to the ONE (Class A, XNAS) note draft. Review and save all changes in My Watchlist.'");
+        typeIntoInput("managed-watchlist-search", "ZERO");
+        String priceReviewState = readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})");
+        awaitPage("successful price append exposes a readable exact-destination Review control",
+            "(() => { const b = [...document.querySelectorAll('.managed-watchlist-comparison-note-action > button')].find(b => b.textContent === 'Review note');" +
+            " return b && b.getAttribute('aria-disabled') === 'false' && b.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'; })()");
+        onWebView().withElement(findElement(Locator.XPATH,
+            "//div[contains(@class,'managed-watchlist-comparison-note-action')]/button[normalize-space(.)='Review note']")).perform(webClick());
+        assertComparisonNoteReader("managed-note-0", "listing-one", "ONE", WATCHLIST_COMPARISON_NOTE, "ZERO");
+        assertEquals("price Review preserves the complete draft, counters and URL", priceReviewState,
+            readFixtureString("JSON.stringify({draft:" + DRAFT + ",calls:" + DIAGNOSTICS + ",href:location.href})"));
+        assertWatchlistComparisonDraft(true, WATCHLIST_COMPARISON_NOTE);
+        click("button[aria-label='Clear watchlist search']");
+        selectWatchlistNote(1);
         chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
         typeIntoInput("managed-watchlist-search", "Observed raw-close watchlist comparison");
         awaitPage("note search retrieves the appended comparison while ZERO stays selected",
@@ -1578,13 +2362,42 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-toolbar .trial-actions > button')?.textContent === 'Load filings'");
         assertFilingsDraftAndCounts(0, 0, 0);
         assertCompanyHistory("listing-zero", "filings", false);
-        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        pressBack();
+        assertClosedDraft(true);
+        assertReturnedRootHistory("listing-zero", "filings");
+        String selectedFilings = ".managed-watchlist-filings";
+        String viewFilings = selectedFilings + " button[aria-label^='View filings for ZERO (']";
+        awaitPage("selected filing check starts unloaded without a source read",
+            "document.querySelector('[data-watchlist-filings-load]')?.textContent === 'Load filings'" +
+            " && document.querySelector('[data-watchlist-filings-load]')?.disabled === false" +
+            " && document.querySelector('.managed-watchlist-filings-summary') === null");
+        assertFilingsDraftAndCounts(0, 0, 0);
+        click("[data-watchlist-filings-load]");
+        String selectedPacket = "document.querySelector('.managed-watchlist-filings-summary')?.textContent.includes('26 loaded filings')" +
+            " && document.querySelector('.managed-watchlist-filings-summary')?.textContent.includes('2026-06-23 to 2026-09-20')" +
+            " && document.querySelector('.managed-watchlist-filings-summary a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-watchlist-filings-summary a')?.textContent.includes('Form 10-Q')" +
+            " && document.querySelector('.managed-watchlist-filings-summary time')?.textContent === '2026-09-19'" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:01.000Z')" +
+            " && document.querySelector('.managed-watchlist-filings-source')?.textContent.includes('2026-09-20T00:00:02.000Z')";
+        awaitPage("selected filing read shows exact original dates and coverage", selectedPacket);
+        assertFilingsDraftAndCounts(1, 0, 0);
+        click(viewFilings);
+        awaitPage("View filings hands off the same packet without another read",
+            "document.activeElement?.id === 'managed-filings-heading'" +
+            " && document.querySelector('.managed-filings-status')?.textContent.includes('loaded watchlist filings')");
+        awaitPage("a watchlist handoff establishes a baseline without a refresh claim",
+            "document.querySelector('.managed-filings-refresh-comparison') === null" +
+            " && document.querySelector('[data-filings-new-accession]') === null");
+        assertCompanyHistory("listing-zero", "filings", false);
+        assertFilingsDraftAndCounts(1, 0, 0);
         String loaded = "document.querySelector('.managed-filings-count')?.textContent.includes('26 of 26 loaded filings')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
             " && document.querySelector('.managed-filings-period')?.textContent.includes('CIK 0000000001')" +
             " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Request started 2026-09-20T00:00:00.000Z')" +
-            " && document.querySelector('.managed-filings-source')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Request started' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:00.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Completed' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:02.000Z')" +
             " && document.querySelector('.managed-filings-source a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json'";
         awaitPage("explicit load shows exact dates, identity and original SEC index link", loaded +
             " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
@@ -1597,6 +2410,22 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-filings-form')?.value === ''" +
             " && Array.from(document.querySelectorAll('#managed-filings-form option')).map(e => e.value).join('|') === '|10-Q|8-K'" +
             " && (document.querySelector('.managed-filings-filter-reset')?.textContent ?? '') === ''");
+        awaitPage("first loaded list offers no fabricated refresh difference",
+            "document.querySelector('#managed-filings-refresh-view')?.value === 'all'" +
+            " && document.querySelector('#managed-filings-refresh-view')?.disabled === false" +
+            " && document.querySelector('#managed-filings-refresh-view option[value=new]')?.disabled === true" +
+            " && document.querySelector('#managed-filings-refresh-view')?.getBoundingClientRect().height >= 44");
+        awaitPage("source detail starts closed while the dated result remains visible", loaded +
+            " && document.querySelector('.managed-filings-source-details')?.open === false" +
+            " && document.querySelector('.managed-filings-source-details > summary')?.textContent === 'Filings source and coverage'" +
+            " && document.querySelector('.managed-filings-source-details > summary')?.getBoundingClientRect().height >= 44" +
+            " && !document.querySelector('.managed-filings-source')?.closest('details')");
+        click(".managed-filings-source-details > summary");
+        awaitPage("opening source detail retains exact clocks and complete coverage limits", loaded +
+            " && document.querySelector('.managed-filings-source-details')?.open === true" +
+            " && document.querySelector('.managed-filings-source-details')?.textContent.includes('Older continuation files were not loaded')" +
+            " && document.querySelector('.managed-filings-source-details')?.textContent.includes('The source lists older continuation files.')");
+        assertFilingsDraftAndCounts(1, 0, 0);
         chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
         awaitPage("native form selection shows one observed quarterly filing without losing focus",
             "document.activeElement?.id === 'managed-filings-form'" +
@@ -1605,8 +2434,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-filings-list a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
             " && document.querySelector('.managed-filings-pagination > button:last-child')?.getAttribute('aria-disabled') === 'true'");
         assertFilingsDraftAndCounts(1, 0, 0);
+        awaitPage("local filtering preserves the open source detail",
+            "document.querySelector('.managed-filings-source-details')?.open === true");
+        click(".managed-filings-source-details > summary");
+        awaitPage("source detail closes without removing dated result context", loaded.replace("26 of 26 loaded filings", "1 of 26 loaded filings") +
+            " && document.querySelector('.managed-filings-source-details')?.open === false");
+        assertFilingsDraftAndCounts(1, 0, 0);
         retainAnnualNoteFrame("companyFilingsFormFilter", "label[for=managed-filings-form]",
-            "label[for=managed-filings-form], #managed-filings-form, .managed-filings-count, .managed-filings-list > li", 4);
+            "label[for=managed-filings-form], #managed-filings-form", 2);
+        retainAnnualNoteFrame("companyFilingsFilteredResult", ".managed-filings-count",
+            ".managed-filings-count, .managed-filings-list > li", 2);
         chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
         awaitPage("second exact form retains all twenty-five matching filings",
             "document.activeElement?.id === 'managed-filings-form'" +
@@ -1668,12 +2505,35 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-filings-form')?.value === ''" +
             " && document.querySelector('#managed-filings-form')?.disabled === false" +
             " && document.querySelectorAll('#managed-filings-form option').length === 1" +
-            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms from page one.'");
+            " && document.querySelector('.managed-filings-filter-reset')?.textContent === 'Filings response changed; showing All forms, all filing dates and All loaded filings from page one.'");
         awaitPage("completed empty response leaves Refresh available",
             "document.querySelector('.managed-filings-toolbar .trial-actions > button:first-child')?.disabled === false");
         assertFilingsDraftAndCounts(4, 1, 1);
+        String emptyComparison = "document.querySelector('.managed-filings-refresh-count')?.textContent === 'Newly observed in this refresh: 0 of 0 filings in the displayed response.'" +
+            " && document.querySelector('[data-filings-new-accession]') === null" +
+            " && document.querySelector('.managed-filings-refresh-comparison')?.textContent.includes('This does not establish when they were published or that either list is complete.')";
+        awaitPage("an empty successful refresh still compares the two admitted lists", emptyComparison +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === false" +
+            " && document.querySelector('.managed-filings-refresh-comparison summary')?.getBoundingClientRect().height >= 44");
+        click(".managed-filings-refresh-comparison summary");
+        awaitPage("native disclosure exposes both original lists and their incomplete coverage", emptyComparison +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === true" +
+            " && document.querySelector('[aria-label=\"Previous loaded list\"]')?.textContent.includes('26 of 26 matching entries')" +
+            " && document.querySelector('[aria-label=\"Current loaded list\"]')?.textContent.includes('0 of 0 matching entries')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-compared-lists section')).every(s => s.textContent.includes('2026-06-23 to 2026-09-20') && s.textContent.includes('2026-09-20T00:00:00.000Z') && s.textContent.includes('2026-09-20T00:00:01.000Z') && s.textContent.includes('2026-09-20T00:00:02.000Z') && s.textContent.includes('Listed by the source; not loaded.') && s.querySelector('a')?.href === 'https://data.sec.gov/submissions/CIK0000000001.json')");
+        assertFilingsDraftAndCounts(4, 1, 1);
+        chooseNativeSelectOption("#managed-filings-refresh-view", "new", "Newly observed");
+        awaitPage("zero-new comparison is selectable and retains exact source context", emptyComparison +
+            " && document.activeElement?.id === 'managed-filings-refresh-view'" +
+            " && document.querySelector('#managed-filings-refresh-view')?.value === 'new'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '0 of 0 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
+            " && document.querySelector('.managed-filings-refresh-comparison details')?.open === true");
+        assertFilingsDraftAndCounts(4, 1, 1);
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("last refresh is pending before native Back", "document.querySelector('.managed-company-filings')?.getAttribute('aria-busy') === 'true'");
+        awaitPage("pending refresh retains the last accepted comparison and refresh view", emptyComparison +
+            " && document.querySelector('#managed-filings-refresh-view')?.value === 'new'");
         assertCompanyHistory("listing-zero", "filings", false);
         closeSoftKeyboard();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
@@ -1691,7 +2551,9 @@ public class ManagedWorkspaceInstrumentedTest {
             assertFalse("Filings Back requires the native keyboard to be hidden", imeVisible);
         });
         pressBack();
-        assertClosedDraft(true);
+        assertClosedDraft(false);
+        awaitPage("Back restores the selected filing opener and its unchanged original packet", selectedPacket +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(viewFilings) + ")");
         assertFilingsDraftAndCounts(5, 2, 1);
         click("#settle-cancelled-filings");
         awaitPage("late filings cannot recreate a closed visit", "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-filings-results') === null");
@@ -1703,6 +2565,8 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-filings-toolbar .trial-actions > button:first-child");
         awaitPage("reopened Filings requires one fresh explicit read", loaded +
             " && document.querySelectorAll('.managed-filings-list > li').length === 25");
+        awaitPage("a reopened visit clears its prior comparison",
+            "document.querySelector('.managed-filings-refresh-comparison') === null");
         assertFilingsDraftAndCounts(6, 2, 2);
         click(".managed-filings-pagination > button:last-child");
         String add = ".managed-filings-list button[aria-label='Add Form 8-K filing 0000000001-26-000026 reference to note draft']";
@@ -1728,16 +2592,18 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector(" + JSONObject.quote(add) + ")");
         // Exact textarea bytes are checked; this frame shows only the visible controls.
         retainAnnualNoteFrame("companyFilingsNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
         assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to the complete unsaved watchlist",
+        awaitPage("Review returns to the complete unsaved watchlist and focuses the exact filing-note reader",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')");
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
+        assertFullNoteReading("managed-note-1", FILINGS_NOTE, true);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
@@ -1754,6 +2620,86 @@ public class ManagedWorkspaceInstrumentedTest {
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         assertFixtureBoundary(0, 1);
         Log.i("ManagedFilings", "phase=reference-appended-reviewed-saved-reloaded; " + pageDiagnostic());
+        verifyFilingsAfterAnnual(documentTimeOrigin);
+    }
+
+    private void verifyFilingsAfterAnnual(double documentTimeOrigin) throws Exception {
+        click(ANNUAL);
+        awaitPage("saved company Annual opens without another source read",
+            "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
+        assertFilingsNoteDraft(2, false);
+        assertFilingsNoteCounts(1, 2);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("one explicit Annual load supplies the original filing date",
+            DIAGNOSTICS + ".annual === 1" +
+            " && document.querySelector('.managed-annual-report .trial-actions button:first-child')?.textContent === 'Refresh annual report'" +
+            " && document.querySelector('.managed-annual-report')?.textContent.includes('2026-02-01')");
+        click(".managed-company-sections button[aria-label='Filings section for ZERO']");
+        awaitPage("new Filings visit stays unloaded until its explicit read",
+            "document.querySelector('.managed-filings-results') === null && " + DIAGNOSTICS + ".filings === 6");
+        click(".managed-filings-toolbar .trial-actions > button:first-child");
+        String source = "document.querySelector('.managed-filings-period')?.textContent.includes('2026-06-23 to 2026-09-20')" +
+            " && document.querySelector('.managed-filings-source')?.textContent.includes('Retrieved 2026-09-20T00:00:01.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Request started' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:00.000Z')" +
+            " && Array.from(document.querySelectorAll('.managed-filings-source-details dt')).some(dt => dt.textContent === 'Completed' && dt.nextElementSibling?.textContent === '2026-09-20T00:00:02.000Z')";
+        awaitPage("loaded metadata offers a native date choice from the same company Annual", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '26 of 26 loaded filings · Page 1 of 2'" +
+            " && document.querySelector('label[for=managed-filings-date]')?.textContent === 'Filing date'" +
+            " && document.querySelector('#managed-filings-date')?.getBoundingClientRect().height >= 44" +
+            " && Array.from(document.querySelectorAll('#managed-filings-date option')).map(e => e.value).join('|') === 'all|after-annual'");
+        click(".managed-filings-annual-context > summary");
+        awaitPage("Annual baseline retains its original accession and source dates",
+            "document.querySelector('.managed-filings-annual-context')?.open === true" +
+            " && document.querySelector('.managed-filings-annual-details a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm'" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Filed 2026-02-01')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Annual cutoff 2026-09-20T00:00:00.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Completed 2026-09-20T00:00:02.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('Submissions captured 2026-09-20T00:00:02.000Z')" +
+            " && document.querySelector('.managed-filings-annual-details')?.textContent.includes('predates the loaded window')");
+        chooseNativeSelectOption("#managed-filings-date", "after-annual", "Filed after Annual report");
+        awaitPage("date scope excludes the Annual accession from the unchanged loaded packet", source +
+            " && document.activeElement?.id === 'managed-filings-date'" +
+            " && document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 25" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href.endsWith('0000000001-26-000002-index.htm')" +
+            " && document.querySelector('.managed-filings-list > li:last-child a')?.href.endsWith('0000000001-26-000026-index.htm')");
+        assertFilingsAnnualScopeCounts();
+        chooseNativeSelectOption("#managed-filings-form", "10-Q", "10-Q");
+        awaitPage("combined filters show a qualified empty result without discarding source metadata", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '0 of 26 loaded filings · Page 1 of 1'" +
+            " && document.querySelectorAll('.managed-filings-list > li').length === 0" +
+            " && document.querySelector('.managed-filings-empty')?.textContent.includes('does not establish that no subsequent filings exist')");
+        chooseNativeSelectOption("#managed-filings-form", "8-K", "8-K");
+        awaitPage("combined date and Form choices preserve the twenty-five original matches", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '25 of 26 loaded filings · Page 1 of 1'");
+        chooseNativeSelectOption("#managed-filings-form", "", "All forms");
+        chooseNativeSelectOption("#managed-filings-date", "all", "All loaded filings");
+        awaitPage("clearing the local choices restores the original first accession", source +
+            " && document.querySelector('.managed-filings-count')?.textContent === '26 of 26 loaded filings · Page 1 of 2'" +
+            " && document.querySelector('.managed-filings-list > li:first-child a')?.href.endsWith('0000000001-26-000001-index.htm')");
+        assertFilingsAnnualScopeCounts();
+        assertFilingsNoteDraft(2, false);
+        closeSoftKeyboard();
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        pressBack();
+        awaitPage("Back closes local filings scope and returns focus to its saved-company opener",
+            "document.querySelector('.managed-company-visit') === null" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(ANNUAL) + ")");
+        assertFilingsAnnualScopeCounts();
+        assertFilingsNoteDraft(2, false);
+        assertExactHistory(1, "https://localhost/", "https://localhost/", companyUrl("listing-zero", "filings"));
+        assertEquals("Date filtering preserves the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private void assertFilingsAnnualScopeCounts() throws Exception {
+        awaitPage("local date and Form choices retain only the two explicit post-save source reads",
+            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".filings === 7" +
+            " && " + DIAGNOSTICS + ".filingsAborted === 2 && " + DIAGNOSTICS + ".filingsLateResolved === 2" +
+            " && " + DIAGNOSTICS + ".aborted === 0 && " + DIAGNOSTICS + ".lateResolved === 0" +
+            " && " + DIAGNOSTICS + ".save === 1 && " + DIAGNOSTICS + ".load === 2" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".calendar === 0" +
+            " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
     }
 
     private void assertFilingsNoteDraft(int version, boolean dirty) throws Exception {
@@ -2506,6 +3452,40 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.activeElement?.id === 'managed-eod-heading'" +
             " && document.querySelector('.managed-eod-history .managed-metadata') === null" +
             " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        String companyChoice = "#managed-research-company-select";
+        String openCompany = ".managed-research-company-controls button";
+        awaitPage("company choices include the unsaved addition in full draft order",
+            "document.querySelector('label[for=managed-research-company-select]')?.textContent === 'Company in My Watchlist'" +
+            " && document.querySelector(" + JSONObject.quote(companyChoice) + ")?.value === ''" +
+            " && [...document.querySelector(" + JSONObject.quote(companyChoice) + ").options].map(o => o.value).join(',') === ',listing-zero,listing-one,listing-alfa'" +
+            " && document.querySelector(" + JSONObject.quote(openCompany) + ")?.getAttribute('aria-disabled') === 'true'" +
+            " && [document.querySelector(" + JSONObject.quote(companyChoice) + "), document.querySelector(" + JSONObject.quote(openCompany) + ")].every(e => e.getBoundingClientRect().height >= 44)");
+        chooseNativeSelectOption(companyChoice, "listing-alfa", "ALFA · Alfa Company · Common Stock · XNAS");
+        awaitPage("choosing the current company keeps Open unavailable",
+            "document.querySelector(" + JSONObject.quote(openCompany) + ")?.getAttribute('aria-disabled') === 'true'");
+        click(openCompany);
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
+        chooseNativeSelectOption(companyChoice, "listing-one", "ONE · One Company · Class A · XNAS");
+        awaitPage("choosing another company leaves the current company and note intact",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteCounts(0, 1);
+        click(openCompany);
+        awaitPage("explicit Open shows the other exact note in the same unloaded Price section",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ONE'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Invented second note'" +
+            " && document.querySelector('.managed-eod-history .managed-metadata') === null");
+        assertCompanyNoteCounts(0, 1);
+        chooseNativeSelectOption(companyChoice, "listing-alfa", "ALFA · Alfa Company · Common Stock · XNAS");
+        click(openCompany);
+        awaitPage("returning to the unsaved company restores its complete draft without a read",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ALFA'" +
+            " && document.activeElement?.id === 'managed-eod-heading'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        assertCompanyNoteDraft(1, true);
+        assertCompanyNoteCounts(0, 1);
         retainCompanyNoteScreenshot();
         assertFixtureBoundary();
         pressBack();
@@ -2526,13 +3506,17 @@ public class ManagedWorkspaceInstrumentedTest {
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-error", 3);
         assertInvalidCompanyNote("managed-research-note", "managed-research-note-help");
         assertFixtureBoundary();
+        awaitPage("company Review targets ALFA while the watchlist still holds another selected note",
+            "document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.querySelector('#managed-note-2') === null");
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("review closes research and focuses the visible My Watchlist control",
+        awaitPage("review closes research and focuses the exact full invalid company-note reader",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-2')?.dataset.managedNoteListingId === 'listing-alfa'" +
+            " && document.activeElement === document.querySelector('#managed-note-2-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
-        selectWatchlistNote(2);
+        assertFullNoteReading("managed-note-2", INVALID_COMPANY_NOTE, true);
         assertInvalidCompanyNote("managed-note-2", "managed-watchlist-note-help");
         retainAnnualNoteFrame("companyNoteInvalidWatchlist", "label[for=managed-note-2]",
             "label[for=managed-note-2], #managed-note-2, #managed-note-2-error", 3);
@@ -2608,6 +3592,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === ''" +
             " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
             " && " + DRAFT + ".memberships?.[2]?.note === " + JSONObject.quote(COMPANY_NOTE));
+        String noteContext = "[data-watchlist-note-context='listing-alfa']";
+        awaitPage("the result explains its match with the exact original note and accessible description",
+            "(() => { const preview = document.querySelector(" + JSONObject.quote(noteContext) + ");" +
+            " const choice = document.querySelector(\"[data-watchlist-selection='listing-alfa']\");" +
+            " return preview?.textContent === " + JSONObject.quote("Note: " + COMPANY_NOTE) +
+            " && choice?.getAttribute('aria-describedby')?.split(/\\s+/).includes(preview.id)" +
+            " && choice?.getAttribute('aria-label') === 'Edit research note for ALFA, Common Stock, XNAS'; })()");
         assertCompanyNoteCounts(0, 1);
         touchInput("managed-note-2");
         replaceFocusedInput("managed-note-2", COMPANY_NOTE, NOTE);
@@ -2622,6 +3613,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-watchlist-search')?.value === 'Captured in research'" +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '0 of 3 listings'" +
             " && document.querySelectorAll('.managed-watchlist-choices li > button').length === 0; })()");
+        awaitPage("editing out of the results removes the stale note context",
+            "document.querySelectorAll('[data-watchlist-note-context]').length === 0");
         assertCompanyNoteCounts(0, 1);
         replaceFocusedInput("managed-note-2", NOTE, COMPANY_NOTE);
         awaitPage("restoring the original note restores its match without moving focus",
@@ -2629,6 +3622,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 3 listings'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ALFA'");
+        awaitPage("restored result shows the exact note context again",
+            "document.querySelector(" + JSONObject.quote(noteContext) + ")?.textContent === " + JSONObject.quote("Note: " + COMPANY_NOTE));
         awaitPage("filtered note search preserves the complete draft and unrelated notes",
             DRAFT + ".memberships.map(member => member.listingId + ':' + member.symbol).join('|') === 'listing-zero:ZERO|listing-one:ONE|listing-alfa:ALFA'" +
             " && " + DRAFT + ".memberships[0].note === ''" +
@@ -2643,6 +3638,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-watchlist-search-count')?.textContent === '3 of 3 listings'" +
             " && document.activeElement === document.querySelector('#managed-watchlist-search')" +
             " && document.querySelector('#managed-note-2')?.value === " + JSONObject.quote(COMPANY_NOTE));
+        awaitPage("clearing the phrase removes all search-only note excerpts",
+            "document.querySelectorAll('[data-watchlist-note-context]').length === 0");
         chooseNativeSelectOption("#managed-watchlist-search-scope", "identity", "Listing identity");
         assertCompanyNoteDraft(1, true);
         assertCompanyNoteCounts(0, 1);
@@ -2770,17 +3767,19 @@ public class ManagedWorkspaceInstrumentedTest {
         assertPriceNoteCounts(1, 0, 1);
         // Full textarea bytes are asserted; this frame claims only the visible note controls.
         retainAnnualNoteFrame("priceComparisonNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertPriceNoteDraft(1, true);
         assertPriceNoteCounts(1, 0, 1);
         assertFixtureBoundary();
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to My Watchlist without another read or save",
+        awaitPage("Review opens the exact price-note reader without another read or save",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-0-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
+        assertFullNoteReading("managed-note-0", PRICE_NOTE, true);
         assertPriceNoteDraft(1, true);
         assertPriceNoteCounts(1, 0, 1);
         Log.i("ManagedPriceNote", "phase=appended-reviewed-unsaved, eod=1, save=0; " + pageDiagnostic());
@@ -2849,12 +3848,22 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(report.querySelectorAll('.managed-annual-values tbody tr td:first-of-type')).map(e => e.textContent).join(',') === '1000,100,10%'" +
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(amounts + " thead th:nth-child(2) time") + ")).map(e => e.dateTime).join(',') === '2025-01-01,2025-12-31'" +
             " && document.querySelector('#managed-annual-heading')?.textContent === 'Annual report'" +
-            " && document.querySelector('.managed-annual-summary .managed-annual-age')?.textContent === 'Within current-use limits at this load.'" +
+            " && document.querySelector('.managed-annual-summary .managed-annual-age')?.textContent === 'Revenue and income are within current-use limits at this load.'" +
             " && document.querySelector('.managed-annual-financial-region')?.getAttribute('aria-label') === 'Annual financial results'" +
             " && document.querySelector('.managed-annual-financial-region')?.tabIndex === 0" +
             " && Array.from(report.querySelectorAll('a')).some(a => a.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm')" +
             " && document.querySelector(" + JSONObject.quote(add) + ")?.disabled === false; })()";
         awaitPage("one observed Annual pair has exact values, period and filing link", exactReport);
+        awaitPage("friendly revenue heading and compact missing bases preserve separate concepts",
+            "document.querySelector(" + JSONObject.quote(basis + " > h4") + ")?.textContent === 'Revenue'" +
+            " && document.querySelector('.managed-annual-missing-bases > h4')?.textContent === 'Other revenue bases'" +
+            " && document.querySelectorAll('.managed-annual-missing-bases [data-annual-missing-basis]').length === 2" +
+            " && Array.from(document.querySelectorAll('.managed-annual-missing-bases [data-annual-missing-basis]')).map(e => e.getAttribute('data-annual-missing-basis') + '|' + e.querySelector('dt')?.textContent + '|' + e.querySelector('dd')?.textContent).join(';') === " +
+                JSONObject.quote("RevenueFromContractWithCustomerExcludingAssessedTax|Customer contract revenue, excluding assessed tax|Missing from this report's loaded evidence.;SalesRevenueNet|Net sales revenue|Missing from this report's loaded evidence.") +
+            " && document.querySelector(\"section[aria-label='Annual revenue basis RevenueFromContractWithCustomerExcludingAssessedTax']\") === null" +
+            " && document.querySelector(\"section[aria-label='Annual revenue basis SalesRevenueNet']\") === null" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualCashGeneration();
         String comparison = basis + " .managed-annual-changes[aria-label='Reported annual comparison Revenues']";
         awaitPage("same-filing annual comparison retains exact dates, amounts and both changes",
             "document.querySelector(" + JSONObject.quote(comparison) + ")?.getAttribute('aria-label') === 'Reported annual comparison Revenues'" +
@@ -2866,6 +3875,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(history + " > section > ol") + ")).slice(0,2).map(e => e.children.length).join(',') === '2,2'" +
             " && document.querySelector('.managed-annual-provenance')?.open === false");
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualReportNavigation();
         assertAnnualTrendPresentation();
         awaitPage("trend presentation preserves the exact report and draft", exactReport +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
@@ -2916,6 +3926,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click(".managed-annual-provenance > summary");
         awaitPage("financial methodology remains inspectable without another read",
             "document.querySelector('.managed-annual-provenance')?.open === true" +
+            " && document.querySelectorAll('.managed-annual-provenance .managed-annual-basis-sources [data-annual-source-basis]').length === 3" +
+            " && Array.from(document.querySelectorAll('.managed-annual-provenance .managed-annual-basis-sources [data-annual-source-basis]')).map(e => e.getAttribute('data-annual-source-basis') + '|' + e.querySelector('dt')?.textContent + '|' + e.querySelector('dd')?.textContent).sort().join(';') === " +
+                JSONObject.quote("RevenueFromContractWithCustomerExcludingAssessedTax|RevenueFromContractWithCustomerExcludingAssessedTax|missing;Revenues|Revenues|eligible;SalesRevenueNet|SalesRevenueNet|missing") +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Percentage change is (current − prior) ÷ prior × 100')" +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('Margin change subtracts the unrounded ratios')" +
             " && document.querySelector('.managed-annual-provenance > p.sec-quarterly-caveat:last-of-type')?.textContent.includes('unusual items in NetIncomeLoss')");
@@ -2925,16 +3938,18 @@ public class ManagedWorkspaceInstrumentedTest {
         retainAnnualNoteFrame("annualEvidenceNoteAction", add, add, 1);
         awaitPage("source pair remains unchanged through comparison and action captures", exactReport);
         assertAnnualNoteCounts(1, 0, 1);
+        assertAnnualCashNoteDraft();
         click(add);
         awaitPage("explicit chosen pair appends exact provenance to the existing draft",
             "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
             " && document.querySelector('.managed-annual-note-action [role=status]')?.textContent === " +
                 JSONObject.quote("Annual evidence added to the note draft. Review and save all changes in My Watchlist."));
         assertAnnualNoteDraft(1, true);
+        assertAnnualCashNoteCapacity();
         assertAnnualNoteCounts(1, 0, 1);
         // The textarea contains the whole exact note, but this frame claims only its visible controls.
         retainAnnualNoteFrame("annualEvidenceNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
@@ -2949,14 +3964,14 @@ public class ManagedWorkspaceInstrumentedTest {
         touchInput("managed-research-note-reading-toggle");
         assertFullNoteReading("managed-research-note", ANNUAL_NOTE, false);
         click("[aria-labelledby=managed-research-note-heading] button:nth-child(2)");
-        awaitPage("Review returns to the visible watchlist without a save or research read",
+        awaitPage("Review opens the exact Annual-note reader without a save or research read",
             "document.querySelector('.managed-company-visit') === null" +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.activeElement === document.querySelector('.managed-navigation [aria-current=page]')" +
+            " && document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-0-reading-toggle')" +
             " && document.querySelector('#managed-watchlist-heading')?.closest('section')?.hidden === false");
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
-        touchInput("managed-note-0-reading-toggle");
         assertFullNoteReading("managed-note-0", ANNUAL_NOTE, true);
         assertAnnualNoteCounts(1, 0, 1);
         onWebView().withElement(findElement(Locator.XPATH,
@@ -2973,6 +3988,53 @@ public class ManagedWorkspaceInstrumentedTest {
         assertEquals("Annual note review, save and reload preserve document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertExactHistory(1, "https://localhost/", "https://localhost/");
         Log.i("ManagedAnnualNote", "phase=observed-pair-appended-saved-reloaded, exactNoteLength=" + ANNUAL_NOTE.length() + "; " + pageDiagnostic());
+    }
+
+    @Test
+    public void thesisReviewPreviewAppendSaveAndReloadPreservesDraft() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", "Original thesis");
+        click(".managed-thesis-review > summary");
+        awaitPage("review requires authored conditions and keeps the note unchanged",
+            "document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'");
+        typeIntoInput("managed-note-0-review-thesis", "Margins can recover");
+        typeIntoInput("managed-note-0-review-support", "Invented report 2026-10-01");
+        typeIntoInput("managed-note-0-review-counter", "Demand remains uncertain");
+        typeIntoInput("managed-note-0-review-confirm", "Two stronger reported periods");
+        typeIntoInput("managed-note-0-review-invalidate", "Cash keeps falling");
+        typeIntoInput("managed-note-0-review-next", "Read the next filed report");
+        String excerpt = "Thesis review (my assessment). My thesis: Margins can recover" +
+            " | Supporting evidence: Invented report 2026-10-01" +
+            " | Opposing evidence: Demand remains uncertain" +
+            " | Confirmation condition: Two stronger reported periods" +
+            " | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
+        String expected = "Original thesis " + excerpt;
+        awaitPage("complete preview precedes the explicit draft append",
+            "document.querySelector('.managed-thesis-review .trial-saved-note')?.textContent === " + JSONObject.quote(excerpt) +
+            " && document.querySelector('#managed-note-0')?.value === 'Original thesis'" +
+            " && " + DIAGNOSTICS + ".save === 0" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === false" +
+            " && [...document.querySelectorAll('.managed-thesis-review input')].every(e => e.getBoundingClientRect().height >= 44)");
+        click(".managed-thesis-review button");
+        awaitPage("one append preserves both identities and blocks an immediate duplicate",
+            "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && document.querySelector('.managed-thesis-review button')?.disabled === true" +
+            " && " + DIAGNOSTICS + ".save === 0");
+        clickWatchlistAction("Save watchlist");
+        awaitPage("explicit Save keeps the complete authored review",
+            DIAGNOSTICS + ".save === 1 && document.body.textContent.includes('Version 2 · Saved')" +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expected));
+        clickWatchlistAction("Load saved watchlist");
+        awaitPage("reload retains the whole note and the other share class",
+            DIAGNOSTICS + ".load === 2 && " + DIAGNOSTICS + ".save === 1" +
+            " && document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'");
+        assertFixtureBoundary(0, 1);
+        assertEquals("Thesis review preserves the mounted document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
     }
 
     @Test
@@ -3077,6 +4139,57 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-version-review + .trial-actions > button')).map(b => b.textContent).join(',') === 'Use saved version,Keep my draft'; })()");
     }
 
+    private void assertAnnualCashNoteDraft() throws Exception {
+        String action = ".managed-annual-cash-note-action > button";
+        awaitPage("cash action is labelled, associated and available at the original load",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + ");" +
+            " return b && !b.disabled && b.getAttribute('aria-disabled') === 'false'" +
+            " && b.textContent === 'Add cash generation to note draft'" +
+            " && b.getBoundingClientRect().height >= 44" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('Nothing is saved here.'); })()");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", "Annual research draft", "Cash research draft");
+        click(action);
+        String exact = "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_CASH_NOTE) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(ANNUAL_CASH_NOTE) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
+            " && document.querySelectorAll('.managed-watchlist-choices li').length === 2";
+        awaitPage("cash append uses the latest prefix and exact amounts, calculation and original provenance", exact +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent === " +
+                JSONObject.quote("Cash generation added to the note draft. Review and save all changes in My Watchlist."));
+        assertAnnualNoteCounts(1, 0, 1);
+        awaitPage("exact duplicate remains focusable and has its associated refusal",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('already in the note draft'); })()");
+        click(action);
+        awaitPage("duplicate cash action cannot append again", exact);
+        assertAnnualNoteCounts(1, 0, 1);
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", ANNUAL_CASH_NOTE, "Annual research draft");
+        awaitPage("editing the note clears obsolete duplicate feedback before the original pair journey",
+            "document.querySelector('#managed-research-note')?.value === 'Annual research draft'" +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Annual research draft'" +
+            " && document.querySelector(" + JSONObject.quote(action) + ")?.getAttribute('aria-disabled') === 'false'" +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent === ''");
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
+    private void assertAnnualCashNoteCapacity() throws Exception {
+        String action = ".managed-annual-cash-note-action > button";
+        awaitPage("cash action rechecks capacity against the latest complete Annual note",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('complete note must fit within 2,000 characters'); })()");
+        click(action);
+        awaitPage("capacity refusal leaves the latest raw note unchanged",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(ANNUAL_NOTE) +
+            " && document.querySelector('.managed-annual-cash-note-status')?.textContent.includes('complete note must fit within 2,000 characters')");
+        assertAnnualNoteDraft(1, true);
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
     private void assertAnnualNoteDraft(int version, boolean dirty) throws Exception {
         awaitPage("Annual note preserves the full exact paragraph, identities, other note and order",
             "Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ZERO,ONE'" +
@@ -3086,14 +4199,50 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.body.textContent.includes(" + JSONObject.quote("Version " + version + (dirty ? " · Unsaved changes" : " · Saved")) + ")");
     }
 
+    private void assertAnnualReportNavigation() throws Exception {
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String originalLocation = readFixtureString("location.href");
+        String originalHistoryLength = readFixtureString("String(history.length)");
+        awaitPage("loaded report has four explicit destinations and initially closed source details",
+            "(() => { const nav = document.querySelector('nav[aria-label=\"On this report\"]');" +
+            " const links = [...(nav?.querySelectorAll('a') || [])];" +
+            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Cash generation|Liquidity|Report source details'" +
+            " && links.every(a => a.getBoundingClientRect().height >= 44 && document.getElementById(a.getAttribute('href').slice(1))?.getAttribute('data-annual-report-target') === a.getAttribute('data-annual-report-jump'))" +
+            " && document.querySelector('.managed-annual-provenance')?.open === false; })()");
+        for (String section : new String[] {"income", "cash", "liquidity", "sources"}) {
+            click("a[data-annual-report-jump='" + section + "']");
+            awaitPage("report jump focuses its visible destination without changing history or draft: " + section,
+                "(() => { const target = document.querySelector('[data-annual-report-target=\"" + section + "\"]');" +
+                " if (!target || document.activeElement !== target) return false;" +
+                " const r = target.getBoundingClientRect(); const v = visualViewport;" +
+                " const bottomNav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+                " const bottom = Math.min(v.offsetTop + v.height, bottomNav?.top > v.offsetTop ? bottomNav.top : Infinity);" +
+                " return r.top >= v.offsetTop && Math.min(r.bottom, r.top + 30) <= bottom" +
+                " && location.href === " + JSONObject.quote(originalLocation) +
+                " && String(history.length) === " + JSONObject.quote(originalHistoryLength) +
+                " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+                " && document.querySelector('.managed-annual-provenance').open === " + section.equals("sources") + "; })()");
+            assertAnnualNoteCounts(1, 0, 1);
+        }
+        click(".managed-annual-provenance > summary");
+        awaitPage("explicit close restores the source disclosure before the original note journey",
+            "document.querySelector('.managed-annual-provenance')?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        assertAnnualNoteCounts(1, 0, 1);
+    }
+
     private void assertAnnualTrendPresentation() throws Exception {
         String controls = "document.querySelector('[data-annual-trend-basis]')?.disabled === false" +
             " && document.querySelector('[data-annual-trend-metric]')?.disabled === false";
         awaitPage("annual trend starts collapsed with explicit basis and metric choices",
             "document.querySelector('.managed-annual-trend')?.open === false" +
             " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'revenue'" +
             " && Array.from(document.querySelectorAll('[data-annual-trend-basis] option')).map(e => e.value).join(',') === 'RevenueFromContractWithCustomerExcludingAssessedTax,Revenues,SalesRevenueNet'" +
+            " && Array.from(document.querySelectorAll('[data-annual-trend-basis] option')).map(e => e.textContent).join('|') === 'Customer contract revenue, excluding assessed tax|Revenue|Net sales revenue'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.id" +
+            " && document.querySelector('[data-annual-trend-basis]')?.getAttribute('aria-describedby')?.split(' ').includes(document.querySelector('[data-annual-trend-selected-basis]').id)" +
             " && document.querySelector('.managed-annual-trend-canvas') === null && " + controls);
         click(".managed-annual-trend > summary");
         awaitPage("opening trend renders only the admitted three-period revenue basis",
@@ -3104,12 +4253,14 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("native metric choice renders the same periods for signed net income",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
-        chooseNativeSelectOption("[data-annual-trend-basis]", "SalesRevenueNet", "SalesRevenueNet");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "SalesRevenueNet", "Net sales revenue");
         awaitPage("missing basis removes the old chart and preserves both selectors",
             "document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('.managed-annual-trend [role=status]')?.textContent.includes('no valid current annual pair')" +
+            " && document.querySelector('[data-annual-trend-basis]')?.value === 'SalesRevenueNet'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Net sales revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income' && " + controls);
-        chooseNativeSelectOption("[data-annual-trend-basis]", "Revenues", "Revenues");
+        chooseNativeSelectOption("[data-annual-trend-basis]", "Revenues", "Revenue");
         awaitPage("returning to the admitted basis keeps the chosen metric",
             "document.querySelector('.managed-annual-trend-canvas')?.getAttribute('aria-label').startsWith('Revenues: Net income in USD across 3 reported annual periods')" +
             " && document.querySelector('.managed-annual-trend-canvas canvas') !== null");
@@ -3118,7 +4269,47 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-annual-trend')?.open === false" +
             " && document.querySelector('.managed-annual-trend-canvas') === null" +
             " && document.querySelector('[data-annual-trend-basis]')?.value === 'Revenues'" +
+            " && document.querySelector('[data-annual-trend-selected-basis]')?.textContent === 'Selected basis: Revenue'" +
             " && document.querySelector('[data-annual-trend-metric]')?.value === 'net_income'");
+    }
+
+    private void assertAnnualCashGeneration() throws Exception {
+        String cash = ".sec-annual-cash";
+        String source = cash + " > .sec-annual-cash-source";
+        String inputs = source + " > section > ol > li > details";
+        awaitPage("cash reports exact independent amounts and a same-period subtraction",
+            "document.querySelector('.sec-annual-cash')?.getAttribute('aria-label') === 'Annual cash generation'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
+            " && document.querySelector('.sec-annual-cash > p:last-of-type')?.textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.')" +
+            " && document.querySelector('.sec-annual-cash-source')?.open === false" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
+        click(source + " > summary");
+        awaitPage("cash disclosure retains original capture times and complete bounded inputs",
+            "document.querySelector('.sec-annual-cash-source')?.open === true" +
+            " && document.querySelector('.sec-annual-cash-source > p:first-of-type')?.textContent === 'Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(inputs + " > summary") + ")).map(e => e.textContent).join('|') === 'NetCashProvidedByUsedInOperatingActivities · 2025-01-01 to 2025-12-31 · 120.125 USD|PaymentsToAcquirePropertyPlantAndEquipment · 2025-01-01 to 2025-12-31 · 20.025 USD'");
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        awaitPage("both cash operands keep exact filing coordinates and calculation references",
+            "(() => { const rows = Array.from(document.querySelectorAll(" + JSONObject.quote(inputs) + "));" +
+            " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
+            " const shared = '|365 days|2025 · FY|CY2025|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|';" +
+            " const ids = values.map(row => row[9]);" +
+            " return rows.length === 2 && rows.every(row => row.open)" +
+            " && values[0].slice(0, 9).join('|') === '120.125' + shared + '/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0'" +
+            " && values[1].slice(0, 9).join('|') === '20.025' + shared + '/facts/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment/units/USD/0'" +
+            " && ids.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && ids[0] !== ids[1]" +
+            " && document.querySelector('.sec-annual-cash-source > p:last-of-type')?.textContent === 'Calculation references: ' + ids.join(' · '); })()");
+        assertAnnualNoteCounts(1, 0, 1);
+        click(source + " > summary");
+        awaitPage("closing cash details preserves values and the existing unsaved note",
+            "document.querySelector('.sec-annual-cash-source')?.open === false" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
     }
 
     private void assertAnnualNoteCounts(int annual, int saves, int loads) throws Exception {
@@ -3131,6 +4322,24 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".eodAborted === 0 && " + DIAGNOSTICS + ".eodLateResolved === 0" +
             " && " + DIAGNOSTICS + ".marketsAborted === 0 && " + DIAGNOSTICS + ".marketsLateResolved === 0" +
             " && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    private void assertComparisonNoteReader(String id, String listingId, String symbol, String expected, String query) throws Exception {
+        assertFullNoteReading(id, expected, true);
+        awaitPage("comparison Review keeps search and focuses the exact full-note reader above navigation",
+            "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
+            " const summary = document.getElementById(" + JSONObject.quote(id + "-reading-toggle") + ");" +
+            " const text = document.getElementById(" + JSONObject.quote(id + "-reading-text") + ");" +
+            " const v = visualViewport, r = summary?.getBoundingClientRect(), nav = document.querySelector('.managed-navigation')?.getBoundingClientRect();" +
+            " const range = document.createRange(); if (!text?.firstChild || !r || !v) return false; range.setStart(text.firstChild, 0); range.setEnd(text.firstChild, 1);" +
+            " const first = range.getBoundingClientRect(), bottom = Math.min(v.offsetTop + v.height, nav?.top > v.offsetTop ? nav.top : Infinity);" +
+            " return input?.dataset.managedNoteListingId === " + JSONObject.quote(listingId) + " && input.value === " + JSONObject.quote(expected) +
+            " && document.activeElement === summary && r.height >= 44 && r.top >= v.offsetTop && r.bottom <= bottom" +
+            " && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width && first.height > 0 && first.top >= v.offsetTop && first.bottom <= bottom" +
+            " && document.querySelector('#managed-watchlist-search')?.value === " + JSONObject.quote(query) +
+            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'identity'" +
+            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
+            " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ' + " + JSONObject.quote(symbol) + " + ' is outside this search.'); })()");
     }
 
     private void assertFullNoteReading(String id, String expected, boolean open) throws Exception {
@@ -3257,7 +4466,7 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> scrolled.countDown()));
         assertTrue("Company note did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
+            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
             " const v = visualViewport; const note = document.querySelector('#managed-research-note');" +
             " return v && targets.length === 6 && note?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && note.scrollHeight <= note.clientHeight && note.scrollWidth <= note.clientWidth" +
@@ -3734,7 +4943,8 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
+            scenarioName.equals("thesis-review") ||
+            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());
@@ -3795,6 +5005,54 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("catalog screenshot targets remained visible: " + name, visible);
     }
 
+    private void assertLiquidityNoteDraft(String excerpt, int annualCalls) throws Exception {
+        String action = ".managed-annual-liquidity-note-action > button";
+        String status = ".managed-annual-liquidity-note-status";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        String originalCalls = readFixtureString("JSON.stringify(" + DIAGNOSTICS + ")");
+        String prefix = "Latest liquidity research draft " + annualCalls + ".";
+        String complete = prefix + " " + excerpt;
+        awaitPage("liquidity action is labelled, associated, focusable and available",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + ");" +
+            " return b && !b.disabled && b.getAttribute('aria-disabled') === 'false'" +
+            " && b.textContent === 'Add liquidity to note draft' && b.getBoundingClientRect().height >= 44" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent.includes('Nothing is saved here.'); })()");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", NOTE, prefix);
+        click(action);
+        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected)" +
+            " && expected.memberships.map(m => m.listingId).join(',') === 'listing-one,listing-zero'" +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(complete) +
+            " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()";
+        awaitPage("liquidity append uses latest prose and exact values, qualification and original dates", exact +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === " +
+                JSONObject.quote("Liquidity added to the note draft. Review and save all changes in My Watchlist."));
+        awaitPage("liquidity duplicate remains focusable with an associated refusal",
+            "(() => { const b = document.querySelector(" + JSONObject.quote(action) + "); return b && !b.disabled" +
+            " && b.getAttribute('aria-disabled') === 'true'" +
+            " && document.getElementById(b.getAttribute('aria-describedby'))?.textContent === " +
+                JSONObject.quote("This exact liquidity reference is already in the note draft.") + "; })()");
+        click(action);
+        awaitPage("duplicate liquidity activation leaves the complete draft unchanged", exact +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === " +
+                JSONObject.quote("This exact liquidity reference is already in the note draft."));
+        awaitPage("liquidity drafting adds no source read or durable write",
+            "JSON.stringify(" + DIAGNOSTICS + ") === " + JSONObject.quote(originalCalls) +
+            " && " + DIAGNOSTICS + ".annual === " + annualCalls + " && " + DIAGNOSTICS + ".save === 0" +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".aborted === 0" +
+            " && " + DIAGNOSTICS + ".lateResolved === 0");
+        assertFixtureBoundary();
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", complete, NOTE);
+        awaitPage("restoring the original note clears duplicate refusal before inherited checks",
+            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+            " && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE) +
+            " && document.querySelector(" + JSONObject.quote(action) + ")?.getAttribute('aria-disabled') === 'false'" +
+            " && document.querySelector(" + JSONObject.quote(status) + ")?.textContent === ''");
+    }
+
     private void assertRefreshReport(int annualCalls, boolean previous, boolean running, boolean recovered) throws Exception {
         String generation = recovered ? "recovered" : "initial";
         awaitPage("Annual refresh evidence: calls=" + annualCalls + ", previous=" + previous + ", running=" + running,
@@ -3822,6 +5080,58 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#workspace-company-query')?.value === 'ZERO'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes'); })()");
+        assertRefreshLiquidity(recovered);
+    }
+
+    private void assertRefreshLiquidity(boolean recovered) throws Exception {
+        awaitPage("Annual liquidity retains exact balances and independently bounds current ratio",
+            "(() => { const panel = document.querySelector('.sec-annual-liquidity');" +
+            " const rows = Array.from(panel?.querySelectorAll('tbody tr') ?? []);" +
+            " const amounts = rows.map(row => row.querySelector('.sec-annual-liquidity-amount')?.textContent ?? 'Unavailable');" +
+            " return panel?.getAttribute('aria-label') === 'Annual liquidity' && rows.length === 4" +
+            " && panel.querySelector('caption')?.textContent === 'Balances at 2025-12-31'" +
+            " && rows.map(row => row.querySelector('th').textContent).join('|') === 'Current assetsReported · USD|Current liabilitiesReported · USD|Working capitalApp calculation · USD|Current ratioApp calculation · multiple'" +
+            " && amounts.join(',') === " + JSONObject.quote(recovered ? "120.125,0,120.125,Unavailable" : "120.125,80.025,40.1,1.50×") +
+            " && rows.slice(0, " + (recovered ? 3 : 4) + ").every(row => row.querySelector('td > small:first-of-type')?.textContent === 'At 2025-12-31' && row.querySelector('td > small:last-of-type')?.textContent === 'Within current-use limits at this load.')" +
+            " && (rows[3].querySelector('.sec-annual-liquidity-unavailable')?.textContent ?? '') === " + JSONObject.quote(recovered ? "Unavailable. Current ratio requires current liabilities greater than zero." : "") +
+            " && panel.querySelector('p').textContent.includes('Current ratio is a rounded multiple.')" +
+            " && panel.querySelector('p:last-of-type').textContent.includes('rounds to two decimal places, half up.'); })()");
+    }
+
+    private void assertRefreshLiquiditySources(boolean recovered) throws Exception {
+        String source = ".sec-annual-liquidity-source";
+        String inputs = source + " > section > ol > li > details";
+        String capturedDay = recovered ? "2026-09-21" : "2026-09-20";
+        awaitPage("liquidity provenance starts closed",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === false");
+        click(source + " > summary");
+        awaitPage("liquidity shows its original cutoff and bounded instant observations",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === true" +
+            " && document.querySelector('.sec-annual-liquidity-source > p:first-of-type')?.textContent === " + JSONObject.quote("Annual cutoff " + capturedDay + "T00:00:00.000Z. Company Facts captured " + capturedDay + "T00:00:01.000Z. Submissions captured " + capturedDay + "T00:00:02.000Z. Completed " + capturedDay + "T00:00:02.000Z.") +
+            " && Array.from(document.querySelectorAll('.sec-annual-liquidity-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            " && Array.from(document.querySelectorAll(" + JSONObject.quote(inputs + " > summary") + ")).map(e => e.textContent).join('|') === " + JSONObject.quote("AssetsCurrent · Source end 2025-12-31 · 120.125 USD|LiabilitiesCurrent · Source end 2025-12-31 · " + (recovered ? "0" : "80.025") + " USD"));
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        awaitPage("instant operands retain exact filing coordinates and both calculation references",
+            "(() => { const rows = Array.from(document.querySelectorAll(" + JSONObject.quote(inputs) + "));" +
+            " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
+            " const shared = '|2025-12-31|Not supplied|Not supplied; an instant balance requires no duration.|2025 · FY|CY2025Q4I|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|Open original filing index|';" +
+            " const ids = values.map(row => row[12]);" +
+            " const paragraphs = Array.from(document.querySelectorAll('.sec-annual-liquidity-source > p'));" +
+            " return rows.length === 2 && rows.every(row => row.open)" +
+            " && values[0].slice(0, 12).join('|') === '120.125' + shared + '/facts/us-gaap/AssetsCurrent/units/USD/0'" +
+            " && values[1].slice(0, 12).join('|') === " + JSONObject.quote(recovered ? "0" : "80.025") + " + shared + '/facts/us-gaap/LiabilitiesCurrent/units/USD/0'" +
+            " && rows.every(row => row.querySelector('a')?.href === 'https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm' && row.querySelector('a')?.target === '_blank' && row.querySelector('a')?.rel === 'noreferrer')" +
+            " && ids.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id)) && ids[0] !== ids[1]" +
+            " && paragraphs.at(-2)?.textContent === 'Working capital references: ' + ids.join(' · ')" +
+            " && paragraphs.at(-1)?.textContent === 'Current ratio references: ' + ids.join(' · '); })()");
+        click(source + " > section:nth-of-type(1) > ol > li > details > summary");
+        click(source + " > section:nth-of-type(2) > ol > li > details > summary");
+        click(source + " > summary");
+        awaitPage("closing liquidity provenance preserves the native draft and read count",
+            "document.querySelector('.sec-annual-liquidity-source')?.open === false" +
+            " && " + DIAGNOSTICS + ".annual === " + (recovered ? 3 : 1) +
+            " && " + DIAGNOSTICS + ".save === 0 && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
     }
 
     private void retainRefreshFailureScreenshot() throws Exception {
@@ -4193,13 +5503,28 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void awaitPage(String description, String predicate) throws Exception {
+        awaitPage(description, predicate, false);
+    }
+
+    private void awaitPage(String description, String predicate, boolean requireNativeReady) throws Exception {
         long deadline = SystemClock.uptimeMillis() + PAGE_TIMEOUT_MS;
         int missedCallbacks = 0;
+        AtomicReference<String> nativeState = new AtomicReference<>("not checked");
         while (SystemClock.uptimeMillis() < deadline) {
             CountDownLatch returned = new CountDownLatch(1);
             AtomicReference<String> result = new AtomicReference<>();
-            scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
-                "Boolean(" + predicate + ")", value -> { result.set(value); returned.countDown(); }));
+            scenario.onActivity(activity -> {
+                WebView webView = activity.getBridge().getWebView();
+                if (requireNativeReady && !fixtureNativeReady(activity, webView, nativeState)) {
+                    returned.countDown();
+                    return;
+                }
+                webView.evaluateJavascript("Boolean(" + predicate + ")", value -> {
+                    if (!requireNativeReady || (fixtureNativeReady(activity, webView, nativeState) &&
+                        SystemClock.uptimeMillis() < deadline)) result.set(value);
+                    returned.countDown();
+                });
+            });
             long remaining = deadline - SystemClock.uptimeMillis();
             if (remaining <= 0) break;
             // A loading WebView can miss a callback; keep the same overall page deadline.
@@ -4210,9 +5535,23 @@ public class ManagedWorkspaceInstrumentedTest {
             if ("true".equals(result.get())) return;
             Thread.sleep(50);
         }
-        String diagnostic = "missed callbacks=" + missedCallbacks + "; " + pageDiagnostic();
+        String diagnostic = "missed callbacks=" + missedCallbacks +
+            (requireNativeReady ? "; native=" + nativeState.get() : "") + "; " + pageDiagnostic();
         Log.e("ManagedFixture", "Timed out waiting for " + description + ": " + diagnostic);
         fail("Timed out waiting for " + description + ": " + diagnostic);
+    }
+
+    /** Observe startup admission on the UI thread; never force the Activity to resume. */
+    private boolean fixtureNativeReady(MainActivity activity, WebView webView, AtomicReference<String> diagnostic) {
+        Lifecycle.State state = activity.getLifecycle().getCurrentState();
+        boolean attached = webView.isAttachedToWindow();
+        boolean shown = webView.isShown();
+        boolean hardware = webView.isHardwareAccelerated();
+        boolean focused = activity.hasWindowFocus() && webView.hasWindowFocus();
+        boolean callbacks = activity.getOnBackPressedDispatcher().hasEnabledCallbacks();
+        diagnostic.set("state=" + state + ", attached=" + attached + ", shown=" + shown +
+            ", hardware=" + hardware + ", focused=" + focused + ", callbacks=" + callbacks);
+        return state == Lifecycle.State.RESUMED && attached && shown && hardware && focused && callbacks;
     }
 
     /** Finite observations of this invented fixture only; no model writes or production hooks. */

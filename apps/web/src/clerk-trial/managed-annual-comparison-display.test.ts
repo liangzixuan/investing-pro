@@ -65,6 +65,9 @@ describe("managed Annual comparison display", () => {
     expect(display.currentReason).toBeNull();
     expect(display.revenueChangeReason).toBeNull();
     expect(display.currentUse?.eligible).toBe(true);
+    expect(display.currentUse?.message).toBe(
+      "Revenue and net income are within current-use limits at this load.",
+    );
     expect(display.source).toEqual({
       cik: "0000000001",
       catalogSnapshotSha256: request().catalogSnapshotSha256,
@@ -218,6 +221,9 @@ describe("managed Annual comparison display", () => {
       netMarginPercent: "10",
     });
     expect(display.currentUse?.eligible).toBe(false);
+    expect(display.currentUse?.message).toContain(
+      "Revenue and net income are unavailable under the current-use policy",
+    );
     expect(display.currentUse?.message).toContain("remain historical");
     expect(display.revenueChange).toBeNull();
     expect(display.revenueChangeReason).toContain("at its original load");
@@ -282,6 +288,7 @@ describe("managed Annual comparison display", () => {
       ...raw,
       evidence: {
         ...raw.evidence,
+        incomeScanStatus: "source_unavailable",
         completeness: { status: "refused", reason: "source_unavailable" },
         observations: [],
         coverage: null,
@@ -304,6 +311,9 @@ describe("managed Annual comparison display", () => {
     expect(display.current).toBeNull();
     expect(display.revenueChange).toBeNull();
     expect(display.currentReason).toContain("evidence is incomplete");
+    expect(display.currentReason).toContain(
+      "Revenue and net income are withheld",
+    );
     expect(display.source?.generation.sources.companyFacts).toEqual(
       input.evidence.generation.sources.companyFacts,
     );

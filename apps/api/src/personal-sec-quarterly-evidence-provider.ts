@@ -346,6 +346,8 @@ export {
   validClock as isPersonalSecClock,
   validUserAgent as isPersonalSecUserAgent,
   normalizeDecimal as normalizePersonalSecSourceDecimal,
+  normalizeCik as normalizePersonalSecSourceCik,
+  isRecord as isPersonalSecSourceRecord,
 };
 
 /** Exact source JSON number spelling; ordinary numbers and strings are not evidence. */
@@ -429,6 +431,27 @@ function normalizeObservation(
   concept: PersonalSecQuarterlyConcept,
   index: number,
 ): RawObservation | null {
+  const source = normalizePersonalSecSourceFactFields(value);
+  if (source === null) return null;
+  const fields = {
+    metric:
+      concept === "NetIncomeLoss"
+        ? ("net_income" as const)
+        : ("revenue" as const),
+    taxonomy: "us-gaap" as const,
+    concept,
+    unit: "USD" as const,
+    ...source,
+  };
+  return Object.freeze({
+    id: `sec-fact:${createHash("sha256").update(JSON.stringify(fields)).digest("hex")}`,
+    ...fields,
+    sourceLocator: `/facts/us-gaap/${concept}/units/USD/${index}`,
+  });
+}
+
+/** Shared source metadata only; each caller retains its fixed metric admission. */
+export function normalizePersonalSecSourceFactFields(value: unknown) {
   if (!isRecord(value)) return null;
   const startDate =
     value.start === undefined || value.start === null ? null : value.start;
@@ -451,14 +474,7 @@ function normalizeObservation(
     !validDate(value.filed)
   )
     return null;
-  const fields = {
-    metric:
-      concept === "NetIncomeLoss"
-        ? ("net_income" as const)
-        : ("revenue" as const),
-    taxonomy: "us-gaap" as const,
-    concept,
-    unit: "USD" as const,
+  return Object.freeze({
     value: decimal,
     startDate,
     endDate,
@@ -473,11 +489,6 @@ function normalizeObservation(
     accessionNumber: value.accn,
     form: value.form,
     filedDate: value.filed,
-  };
-  return Object.freeze({
-    id: `sec-fact:${createHash("sha256").update(JSON.stringify(fields)).digest("hex")}`,
-    ...fields,
-    sourceLocator: `/facts/us-gaap/${concept}/units/USD/${index}`,
   });
 }
 

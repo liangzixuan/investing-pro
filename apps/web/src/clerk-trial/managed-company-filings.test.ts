@@ -11,7 +11,10 @@ import {
   ManagedSecFilingsError,
   type ManagedApi,
 } from "./managed-api";
-import { ManagedCompanyFilings } from "./managed-company-filings";
+import {
+  captureManagedCompanyFilingsSeed,
+  ManagedCompanyFilings,
+} from "./managed-company-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
 import { filingsResponse, filingsSelection } from "./sec-filings-fixture";
 function deferred<T>() {
@@ -26,7 +29,9 @@ function deferred<T>() {
 function fixture(access = new ManagedSecAccess()) {
   const read = vi.fn<ManagedApi["recentFilings"]>();
   const readError = vi.fn();
-  const model = new ManagedCompanyFilings(read, readError, access);
+  const model = new ManagedCompanyFilings(read, readError, access, {
+    compareRefresh: true,
+  });
   model.open(filingsSelection);
   return { read, readError, model, access };
 }
@@ -259,4 +264,466 @@ it("keeps the greatest checked SEC deadline when current Annual and Filings resp
   expect(annualRead).toHaveBeenCalledOnce();
   access.retire();
   expect(access.getNextAllowedAt()).toBeNull();
+});
+
+describe("owned watchlist filings handoff", () => {
+  const selection = {
+    ...filingsSelection,
+    origin: "watchlist" as const,
+    cik: null,
+  };
+  it("decodes an independent frozen copy with original coverage, clocks and retained qualification without a read", () => {
+    const { model, read } = fixture();
+    const packet = filingsResponse();
+    const wire = {
+      ...packet,
+      issuer: { ...packet.issuer, filings: [...packet.issuer.filings] },
+    };
+    const seed = { response: wire, showingPrevious: true };
+    model.open(selection, seed);
+    expect(read).not.toHaveBeenCalled();
+    const state = model.getSnapshot();
+    expect(state.response).toEqual(wire);
+    expect(state.response).not.toBe(wire);
+    expect(state.response?.issuer.filings).not.toBe(wire.issuer.filings);
+    expect(Object.isFrozen(state.response?.issuer.filings)).toBe(true);
+    expect(state).toMatchObject({
+      responseOrigin: "watchlist",
+      showingPrevious: true,
+      running: false,
+      error: false,
+    });
+    wire.issuer.filings.splice(0);
+    expect(state.response?.issuer.filings).toHaveLength(26);
+  });
+  it.each([
+    "available",
+    "not_covered",
+    "invalid_response",
+    "rate_limited",
+    "upstream_unavailable",
+  ] as const)(
+    "preserves a checked %s seed's source status without a request",
+    (status) => {
+      const { model, read } = fixture();
+      const response = filingsResponse(0, status);
+      model.open(selection, { response, showingPrevious: false });
+      expect(model.getSnapshot()).toMatchObject({
+        response,
+        responseOrigin: "watchlist",
+        error: status !== "available",
+        showingPrevious: false,
+      });
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+  it.each([
+    "country",
+    "exchangeMic",
+    "instrumentType",
+    "issuerId",
+    "issuerName",
+    "listingId",
+    "securityId",
+    "securityName",
+    "shareClassId",
+    "shareClassName",
+    "symbol",
+  ] as const)(
+    "refuses mismatched %s even when a wire packet is otherwise admitted",
+    async (field) => {
+      const { model, read } = fixture();
+      const changed = {
+        ...selection,
+        listing: {
+          ...selection.listing,
+          [field]: field === "instrumentType" ? ("adr" as const) : "OTHER",
+        },
+      };
+      model.open(changed, {
+        response: filingsResponse(),
+        showingPrevious: false,
+      });
+      expect(model.getSnapshot()).toMatchObject({
+        selection: null,
+        response: null,
+        responseOrigin: null,
+        error: true,
+      });
+      await model.load();
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+  it("refuses malformed seed bytes, old catalog, wrong CIK/origin and nonboolean qualification without fallback", async () => {
+    const { model, read } = fixture();
+    const response = filingsResponse();
+    const seed = { response, showingPrevious: false };
+    expect(
+      captureManagedCompanyFilingsSeed(
+        { ...selection, cik: "0000000002" },
+        seed,
+      ),
+    ).toBeNull();
+    expect(captureManagedCompanyFilingsSeed(filingsSelection, seed)).toBeNull();
+    expect(
+      captureManagedCompanyFilingsSeed(
+        { ...selection, catalogSnapshotSha256: `sha256:${"b".repeat(64)}` },
+        seed,
+      ),
+    ).toBeNull();
+    for (const invalid of [
+      { ...seed, showingPrevious: null },
+      { ...seed, response: { ...response, extra: true } },
+      { ...seed, response: { ...response, completedAt: "not-a-date" } },
+    ]) {
+      model.open(selection, invalid as unknown as typeof seed);
+      expect(model.getSnapshot().selection).toBeNull();
+      expect(model.getSnapshot().response).toBeNull();
+      await model.load();
+    }
+    expect(read).not.toHaveBeenCalled();
+  });
+  it("retains watchlist origin through failed refresh and replaces it only after a checked request", async () => {
+    const { model, read } = fixture();
+    model.open(selection, {
+      response: filingsResponse(),
+      showingPrevious: false,
+    });
+    const original = model.getSnapshot().response;
+    read.mockRejectedValueOnce(new ManagedSecFilingsError("unavailable"));
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      response: original,
+      responseOrigin: "watchlist",
+      showingPrevious: true,
+    });
+    read.mockResolvedValueOnce(filingsResponse(0));
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      responseOrigin: "request",
+      showingPrevious: false,
+    });
+    expect(model.getSnapshot().response?.issuer.filings).toEqual([]);
+    model.close();
+    expect(model.getSnapshot().responseOrigin).toBeNull();
+  });
+  it("keeps a newer open published during the internal close notification", () => {
+    const { model } = fixture();
+    const newer = {
+      ...selection,
+      listing: {
+        ...selection.listing,
+        listingId: "listing-one",
+        symbol: "ONE",
+      },
+    };
+    let replaced = false;
+    model.subscribe(() => {
+      if (!replaced && model.getSnapshot().selection === null) {
+        replaced = true;
+        model.open(newer);
+      }
+    });
+    model.open(selection, {
+      response: filingsResponse(),
+      showingPrevious: false,
+    });
+    expect(model.getSnapshot().selection).toEqual(newer);
+    expect(model.getSnapshot().response).toBeNull();
+  });
+  it.each(["close", "retire"] as const)(
+    "does not resurrect a seed when internal close notifies %s",
+    (method) => {
+      const { model } = fixture();
+      let stopped = false;
+      model.subscribe(() => {
+        if (!stopped && model.getSnapshot().selection === null) {
+          stopped = true;
+          model[method]();
+        }
+      });
+      model.open(selection, {
+        response: filingsResponse(),
+        showingPrevious: false,
+      });
+      expect(model.getSnapshot().selection).toBeNull();
+      expect(model.getSnapshot().response).toBeNull();
+    },
+  );
+  it("does not dispatch a source read after running publication synchronously closes the visit", async () => {
+    const { model, read } = fixture();
+    model.subscribe(() => {
+      if (model.getSnapshot().running) model.close();
+    });
+    await model.load();
+    expect(read).not.toHaveBeenCalled();
+    expect(model.getSnapshot().selection).toBeNull();
+  });
+  it("preserves a newer seeded visit installed by an aborted request's listener", async () => {
+    const { model, read } = fixture();
+    const held = deferred<ManagedSecFilingsResponseDto>();
+    const newer = {
+      ...selection,
+      listing: {
+        ...selection.listing,
+        listingId: "listing-one",
+        symbol: "ONE",
+      },
+    };
+    const newerPacket = filingsResponse(1, "available", newer);
+    read.mockImplementationOnce((_request, signal) => {
+      signal.addEventListener(
+        "abort",
+        () =>
+          model.open(newer, { response: newerPacket, showingPrevious: false }),
+        { once: true },
+      );
+      return held.promise;
+    });
+    const pending = model.load();
+    model.cancel();
+    held.resolve(filingsResponse());
+    await pending;
+    expect(model.getSnapshot()).toMatchObject({
+      selection: newer,
+      response: newerPacket,
+      responseOrigin: "watchlist",
+      showingPrevious: false,
+    });
+    expect(read).toHaveBeenCalledOnce();
+  });
+});
+
+describe("visit-owned successful refresh comparison", () => {
+  async function compared() {
+    const f = fixture();
+    f.read
+      .mockResolvedValueOnce(filingsResponse(1))
+      .mockResolvedValueOnce(filingsResponse(2));
+    await f.model.load();
+    const first = f.model.getSnapshot().response!;
+    expect(f.model.getSnapshot().refreshComparison).toBeNull();
+    await f.model.load();
+    const comparison = f.model.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(first);
+    expect(comparison.current).toBe(f.model.getSnapshot().response);
+    return { ...f, comparison };
+  }
+
+  it("advances exactly one successful packet at a time, including equal and empty replacements", async () => {
+    const { model, read, comparison } = await compared();
+    expect(comparison.newAccessions).toEqual(["0000000001-26-000002"]);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const next = model.getSnapshot().refreshComparison!;
+    expect(next.previous).toBe(comparison.current);
+    expect(next.newAccessions).toEqual(["0000000001-26-000003"]);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const equal = model.getSnapshot().refreshComparison!;
+    expect(equal.previous).toBe(next.current);
+    expect(equal.current).toEqual(next.current);
+    expect(equal.current).not.toBe(next.current);
+    expect(equal.newAccessions).toEqual([]);
+    read.mockResolvedValueOnce(filingsResponse(0));
+    await model.load();
+    const empty = model.getSnapshot().refreshComparison!;
+    expect(empty.previous).toBe(equal.current);
+    expect(empty.newAccessions).toEqual([]);
+    read.mockResolvedValueOnce(filingsResponse(1));
+    await model.load();
+    expect(model.getSnapshot().refreshComparison).toMatchObject({
+      previous: empty.current,
+      current: model.getSnapshot().response,
+      newAccessions: ["0000000001-26-000001"],
+    });
+    expect(read).toHaveBeenCalledTimes(6);
+  });
+
+  it.each([0, 2])(
+    "starts a seeded visit with one %i-row baseline and no read or carried pair",
+    async (count) => {
+      const { model, read } = await compared();
+      model.open(
+        { ...filingsSelection, origin: "watchlist", cik: null },
+        { response: filingsResponse(count), showingPrevious: true },
+      );
+      const seed = model.getSnapshot().response;
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      expect(model.getSnapshot().showingPrevious).toBe(true);
+      expect(read).toHaveBeenCalledTimes(2);
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison?.previous).toBe(seed);
+      expect(model.getSnapshot().refreshComparison?.newAccessions).toHaveLength(
+        3 - count,
+      );
+      model.close();
+      model.open(filingsSelection);
+      read.mockResolvedValueOnce(filingsResponse(1));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it.each(["rate_limited", "upstream_unavailable"] as const)(
+    "keeps the pair through checked %s without using lastCheck as the next baseline",
+    async (status) => {
+      const { model, read, comparison } = await compared();
+      const failed = filingsResponse(0, status);
+      read.mockResolvedValueOnce(failed);
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBe(comparison);
+      expect(model.getSnapshot().lastCheck).toEqual(failed);
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison?.previous).toBe(
+        comparison.current,
+      );
+      expect(model.getSnapshot().refreshComparison?.newAccessions).toEqual([
+        "0000000001-26-000003",
+      ]);
+    },
+  );
+
+  it.each([
+    new ManagedSecFilingsError("request_timeout"),
+    new ManagedSecFilingsError("unavailable"),
+    new TrialApiError("unavailable"),
+  ])("retains the exact pair after transient %s", async (error) => {
+    const { model, read, comparison } = await compared();
+    read.mockRejectedValueOnce(error);
+    await model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    expect(model.getSnapshot().response).toBe(comparison.current);
+    expect(model.getSnapshot().showingPrevious).toBe(true);
+  });
+
+  it("retains pending/Cancel and ignores a cancelled reply after another successful refresh", async () => {
+    const { model, read, comparison } = await compared();
+    const held = deferred<ManagedSecFilingsResponseDto>();
+    read.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(3);
+    model.cancel();
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    const accepted = model.getSnapshot().refreshComparison;
+    held.resolve(filingsResponse(0));
+    await pending;
+    expect(model.getSnapshot().refreshComparison).toBe(accepted);
+    expect(read.mock.calls[2]![1].aborted).toBe(true);
+  });
+
+  it("retains the pair through a checked cooldown and blocks a read until that deadline", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime("2026-10-12T00:00:00.000Z");
+    const { model, read, comparison } = await compared();
+    read.mockRejectedValueOnce(
+      new ManagedSecCooldownError("2026-10-12T00:02:00.000Z"),
+    );
+    await model.load();
+    await model.load();
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(model.getSnapshot().refreshComparison).toBe(comparison);
+    vi.setSystemTime("2026-10-12T00:02:01.000Z");
+    read.mockResolvedValueOnce(filingsResponse(3));
+    await model.load();
+    expect(model.getSnapshot().refreshComparison?.previous).toBe(
+      comparison.current,
+    );
+  });
+
+  it.each(["not_covered", "invalid_response"] as const)(
+    "clears comparison on admitted %s and establishes a fresh next baseline",
+    async (status) => {
+      const { model, read } = await compared();
+      read.mockResolvedValueOnce(filingsResponse(0, status));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      read.mockResolvedValueOnce(filingsResponse(3));
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+      expect(model.getSnapshot().response?.issuer.filings).toHaveLength(3);
+    },
+  );
+
+  it.each([
+    new TrialApiError("invalid_response"),
+    new ManagedCatalogChangedError(),
+    new ManagedSecFilingsError("not_configured"),
+    new ManagedSecCooldownError("invalid"),
+    new TrialApiError("access_denied"),
+  ])("clears the pair with unusable evidence on %s", async (error) => {
+    const { model, read } = await compared();
+    read.mockRejectedValueOnce(error);
+    await model.load();
+    expect(model.getSnapshot().response).toBeNull();
+    expect(model.getSnapshot().refreshComparison).toBeNull();
+  });
+
+  it.each(["catalog", "issuer", "share class"] as const)(
+    "does not retain a pair when a current packet changes %s",
+    async (field) => {
+      const { model, read } = await compared();
+      const response = filingsResponse();
+      read.mockResolvedValueOnce({
+        ...response,
+        ...(field === "catalog"
+          ? { catalogSnapshotSha256: `sha256:${"b".repeat(64)}` as const }
+          : {
+              security: {
+                ...response.security,
+                ...(field === "issuer"
+                  ? { cik: "0000000002" }
+                  : { shareClassId: "other-class" }),
+              },
+            }),
+      });
+      await model.load();
+      expect(model.getSnapshot().response).toBeNull();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it.each(["close", "retire"] as const)(
+    "clears both packets on %s and rejects a late refresh",
+    async (method) => {
+      const { model, read } = await compared();
+      const held = deferred<ManagedSecFilingsResponseDto>();
+      read.mockReturnValueOnce(held.promise);
+      const pending = model.load();
+      model[method]();
+      held.resolve(filingsResponse(4));
+      await pending;
+      expect(model.getSnapshot().response).toBeNull();
+      expect(model.getSnapshot().refreshComparison).toBeNull();
+    },
+  );
+
+  it("cannot overwrite a new seeded visit during comparison publication", async () => {
+    const { model, read } = fixture();
+    read.mockResolvedValueOnce(filingsResponse(1));
+    await model.load();
+    const seed = filingsResponse(0);
+    model.subscribe(() => {
+      if (model.getSnapshot().refreshComparison)
+        model.open(
+          { ...filingsSelection, origin: "watchlist" },
+          { response: seed, showingPrevious: true },
+        );
+    });
+    read.mockResolvedValueOnce(filingsResponse(2));
+    await model.load();
+    expect(model.getSnapshot()).toMatchObject({
+      response: seed,
+      responseOrigin: "watchlist",
+      refreshComparison: null,
+      showingPrevious: true,
+      running: false,
+    });
+  });
 });

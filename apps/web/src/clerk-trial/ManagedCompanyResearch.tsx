@@ -1,7 +1,9 @@
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
   ManagedResearchVisit,
+  ResearchCompanyNavigationState,
   ResearchWatchlistState,
 } from "./managed-workspace";
 import type { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
@@ -10,8 +12,12 @@ import { ManagedAnnualReport } from "./ManagedAnnualReport";
 import { ManagedEodHistory } from "./ManagedEodHistory";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import type { ManagedAnnualNoteActions } from "./ManagedAnnualNoteAction";
+import type { ManagedAnnualCashNoteActions } from "./ManagedAnnualCashNoteAction";
+import type { ManagedAnnualLiquidityNoteActions } from "./ManagedAnnualLiquidityNoteAction";
 import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
+import type { WatchlistMembership } from "@research-cockpit/contracts";
+import { ManagedResearchCompanyNavigation } from "./ManagedResearchCompanyNavigation";
 
 export function ManagedCompanyResearch({
   research,
@@ -25,8 +31,13 @@ export function ManagedCompanyResearch({
   onNote,
   onReview,
   annualNoteActions,
+  annualCashNoteActions,
+  annualLiquidityNoteActions,
   priceNoteActions,
   filingsNoteActions,
+  companyNavigationState,
+  canOpenCompany,
+  onOpenCompany,
 }: {
   research: ManagedResearchVisit;
   annual: AnnualModel;
@@ -36,11 +47,22 @@ export function ManagedCompanyResearch({
   onBack: () => void;
   watchlist: ResearchWatchlistState;
   onAdd: () => void;
-  onNote: (note: string) => void;
+  onNote: (note: string, expectedNote?: string) => void;
   onReview: () => void;
   annualNoteActions: ManagedAnnualNoteActions;
+  annualCashNoteActions: ManagedAnnualCashNoteActions;
+  annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
   filingsNoteActions: ManagedFilingsNoteActions;
+  companyNavigationState: ResearchCompanyNavigationState;
+  canOpenCompany: (
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) => boolean;
+  onOpenCompany: (
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) => void;
 }) {
   const labels = { eod: "Price", annual: "Annual", filings: "Filings" };
   const listing = research.selection.listing;
@@ -64,6 +86,19 @@ export function ManagedCompanyResearch({
           {listing.exchangeMic}
         </span>
       </p>
+      <ManagedResearchCompanyNavigation
+        research={research}
+        state={companyNavigationState}
+        canOpen={canOpenCompany}
+        onOpen={onOpenCompany}
+      />
+      <ManagedCompanySnapshot
+        key={`${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
+        selection={research.selection}
+        price={eod}
+        annual={annual}
+        onSection={onSection}
+      />
       <div className="managed-research-body">
         <div>
           <nav
@@ -88,12 +123,15 @@ export function ManagedCompanyResearch({
               <ManagedAnnualReport
                 model={annual}
                 noteActions={annualNoteActions}
+                cashNoteActions={annualCashNoteActions}
+                liquidityNoteActions={annualLiquidityNoteActions}
               />
             ) : research.section === "eod" ? (
               <ManagedEodHistory model={eod} noteActions={priceNoteActions} />
             ) : research.section === "filings" ? (
               <ManagedCompanyFilings
                 model={filings}
+                annual={annual}
                 noteActions={filingsNoteActions}
               />
             ) : null}

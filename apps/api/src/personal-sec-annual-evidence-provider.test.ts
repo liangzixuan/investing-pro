@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
+  type PersonalSecAnnualCashConcept,
+  type PersonalSecAnnualLiquidityConcept,
   type PersonalSecQuarterlyConcept,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -44,7 +46,14 @@ function fact(
 function companyFacts(
   revenue: readonly unknown[] = [fact()],
   income: readonly unknown[] = [fact({ val: -30 })],
-  extras: Partial<Record<PersonalSecQuarterlyConcept, unknown>> = {},
+  extras: Partial<
+    Record<
+      | PersonalSecQuarterlyConcept
+      | PersonalSecAnnualCashConcept
+      | PersonalSecAnnualLiquidityConcept,
+      unknown
+    >
+  > = {},
 ): Record<string, unknown> {
   return {
     cik: 42,
@@ -562,18 +571,6 @@ describe("explicit observed annual SEC evidence provider", () => {
       "response_too_large",
       false,
     ],
-    [
-      "raw candidate cap",
-      () =>
-        Response.json(
-          companyFacts(
-            Array.from({ length: LIMITS.candidateRows + 1 }, () => fact()),
-            [],
-          ),
-        ),
-      "candidate_limit",
-      true,
-    ],
   ] as const)(
     "retains truthful source failure metadata for %s",
     async (_name, response, status, captured) => {
@@ -590,9 +587,142 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.coverage).toBeNull();
       expect(result.completeness.reason).toBe("source_unavailable");
       expect(result.observations).toEqual([]);
+      expect(result.incomeScanStatus).toBe("source_unavailable");
+      expect(result.cashGeneration.operatingCashFlow.scan.status).toBe(
+        "source_unavailable",
+      );
+      expect(
+        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "unavailable", reason: "source_unavailable" });
       expect(JSON.stringify(result)).not.toContain("private-canary");
     },
   );
+
+  it("joins independent exact cash rows to the selected filing without adding source reads", async () => {
+    const text = JSON.stringify(
+      companyFacts(undefined, undefined, {
+        NetCashProvidedByUsedInOperatingActivities: {
+          units: { USD: [fact({ val: 42 }), fact({ accn: OLDER, val: 500 })] },
+        },
+        PaymentsToAcquirePropertyPlantAndEquipment: {
+          units: { USD: [fact({ val: 41 })] },
+        },
+      }),
+    )
+      .replace('"val":42', '"val":-0.000000000000000002')
+      .replace('"val":41', '"val":1.000000000000000001');
+    const { provider, fetch } = setup(() => new Response(text));
+    const result = await finish(provider.loadEvidence(CIK));
+    const cash = result.cashGeneration;
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+    expect(result.generation.definitionVersion).toBe("3.0.0");
+    expect(result.incomeScanStatus).toBe("available");
+    expect(cash.operatingCashFlow.scan).toMatchObject({
+      coverage: {
+        full: { candidateRows: 2 },
+        selected: 1,
+        otherAccessions: 1,
+        returned: 1,
+        omittedSelected: 0,
+      },
+    });
+    expect(cash.operatingCashFlow.observations[0]).toMatchObject({
+      value: "-0.000000000000000002",
+      filing: {
+        status: "matched",
+        reportDate: "2025-12-31",
+        acceptedAt: "2026-02-01T12:00:00.000Z",
+      },
+    });
+    expect(cash.resolution.operatingCashFlowLessPpePurchases).toEqual({
+      status: "available",
+      value: "-1.000000000000000003",
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      accessionNumber: ACCESSION,
+      observationIds: [
+        cash.operatingCashFlow.observations[0]!.id,
+        cash.ppePurchases.observations[0]!.id,
+      ],
+      currentUseEligible: true,
+    });
+    expect(result.resolution.currentTargetEligible).toBe(true);
+  });
+
+  it.each(["invalid_response", "candidate_limit"] as const)(
+    "retains cash evidence when the income scan has %s",
+    async (status) => {
+      const extras = {
+        Revenues:
+          status === "invalid_response"
+            ? null
+            : {
+                units: {
+                  USD: Array.from({ length: LIMITS.candidateRows + 1 }, () =>
+                    fact(),
+                  ),
+                },
+              },
+        NetCashProvidedByUsedInOperatingActivities: {
+          units: { USD: [fact({ val: 9 })] },
+        },
+        PaymentsToAcquirePropertyPlantAndEquipment: {
+          units: { USD: [fact({ val: 4 })] },
+        },
+      };
+      const { provider } = setup(() =>
+        Response.json(companyFacts([], [], extras)),
+      );
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(result.generation.sources.companyFacts.status).toBe("available");
+      expect(result.generation.sources.companyFacts.sha256).toMatch(
+        /^sha256:/u,
+      );
+      expect(result.incomeScanStatus).toBe(status);
+      expect(result.coverage).toBeNull();
+      expect(result.completeness).toEqual({
+        status: "refused",
+        reason: "source_unavailable",
+      });
+      expect(
+        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "available", value: "5" });
+    },
+  );
+
+  it("retains income and PP&E when operating cash flow is malformed, without accepting an invalid cash value", async () => {
+    const { provider } = setup(() =>
+      Response.json(
+        companyFacts(undefined, undefined, {
+          NetCashProvidedByUsedInOperatingActivities: {
+            units: { USD: [fact({ val: "120" }), fact({ val: 9 })] },
+          },
+          PaymentsToAcquirePropertyPlantAndEquipment: {
+            units: { USD: [fact({ val: 4 })] },
+          },
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(result.cashGeneration.operatingCashFlow.scan).toMatchObject({
+      coverage: { full: { invalidRows: 1 }, returned: 1 },
+    });
+    expect(result.cashGeneration.operatingCashFlow.observations).toHaveLength(
+      1,
+    );
+    expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+      status: "unavailable",
+      reason: "invalid_source_rows",
+    });
+    expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
+      status: "available",
+      value: "4",
+    });
+  });
 
   it("rejects over-cap or conflicting Submissions before selecting a target", async () => {
     for (const packet of [
@@ -619,6 +749,39 @@ describe("explicit observed annual SEC evidence provider", () => {
       expect(result.completeness.reason).toBe("source_unavailable");
     }
   });
+
+  it.each([
+    [101, "selected_report_overflow"],
+    [10_001, "candidate_limit"],
+  ] as const)(
+    "refuses %i operating cash-flow rows without clipping, losing income or PP&E",
+    async (length, reason) => {
+      const { provider } = setup(() =>
+        Response.json(
+          companyFacts(undefined, undefined, {
+            NetCashProvidedByUsedInOperatingActivities: {
+              units: { USD: Array.from({ length }, (_, val) => fact({ val })) },
+            },
+            PaymentsToAcquirePropertyPlantAndEquipment: {
+              units: { USD: [fact({ val: 4 })] },
+            },
+          }),
+        ),
+      );
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(result.generation.sources.companyFacts.status).toBe("available");
+      expect(result.resolution.currentTargetEligible).toBe(true);
+      expect(result.cashGeneration.operatingCashFlow.observations).toEqual([]);
+      expect(result.cashGeneration.resolution.operatingCashFlow).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(result.cashGeneration.resolution.ppePurchases).toMatchObject({
+        status: "available",
+        value: "4",
+      });
+    },
+  );
 
   it.each([0, 1, 2, 3])(
     "rejects an invalid operation clock at capture %i without emitting annual data",
@@ -729,5 +892,310 @@ describe("explicit observed annual SEC evidence provider", () => {
       code: "aborted",
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+  const instant = (overrides: Record<string, unknown> = {}) =>
+    fact({ start: undefined, ...overrides });
+  const liquidityFacts = (extras: Parameters<typeof companyFacts>[2] = {}) =>
+    companyFacts(undefined, undefined, {
+      AssetsCurrent: { units: { USD: [instant({ val: 120 })] } },
+      LiabilitiesCurrent: { units: { USD: [instant({ val: 80 })] } },
+      NetCashProvidedByUsedInOperatingActivities: {
+        units: { USD: [fact({ val: 9 })] },
+      },
+      PaymentsToAcquirePropertyPlantAndEquipment: {
+        units: { USD: [fact({ val: 4 })] },
+      },
+      ...extras,
+    });
+
+  it("joins exact instant filing evidence and calculates liquidity from the same two source packets", async () => {
+    const { provider, fetch } = setup(() => Response.json(liquidityFacts()));
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+    expect(result.liquidity.currentAssets.observations[0]).toMatchObject({
+      metric: "current_assets",
+      concept: "AssetsCurrent",
+      startDate: null,
+      durationDays: null,
+      endDate: "2025-12-31",
+      value: "120",
+      sourceLocator: "/facts/us-gaap/AssetsCurrent/units/USD/0",
+      filing: {
+        status: "matched",
+        reportDate: "2025-12-31",
+        filedDate: "2026-02-01",
+        acceptedAt: "2026-02-01T12:00:00.000Z",
+        sourceUrl:
+          "https://www.sec.gov/Archives/edgar/data/42/0000999999-26-000001-index.htm",
+      },
+    });
+    expect(result.liquidity.resolution).toMatchObject({
+      currentAssets: {
+        status: "available",
+        unit: "USD",
+        value: "120",
+        asOfDate: "2025-12-31",
+        accessionNumber: ACCESSION,
+      },
+      currentLiabilities: {
+        status: "available",
+        value: "80",
+        asOfDate: "2025-12-31",
+      },
+      workingCapital: {
+        status: "available",
+        unit: "USD",
+        value: "40",
+        currentUseEligible: true,
+      },
+      currentRatio: {
+        status: "available",
+        unit: "multiple",
+        value: "1.50",
+        currentUseEligible: true,
+      },
+    });
+    expect(result.resolution.currentTargetEligible).toBe(true);
+    expect(
+      result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+    ).toMatchObject({ status: "available", value: "5" });
+  });
+
+  it.each([
+    ["missing", undefined, "concept_missing"],
+    ["malformed", null, "invalid_response"],
+    [
+      "invalid row",
+      { units: { USD: [instant({ val: "120" }), instant()] } },
+      "invalid_source_rows",
+    ],
+    [
+      "selected cap",
+      {
+        units: {
+          USD: Array.from({ length: 101 }, (_, val) => instant({ val })),
+        },
+      },
+      "selected_report_overflow",
+    ],
+    [
+      "candidate cap",
+      { units: { USD: Array.from({ length: 10_001 }, () => instant()) } },
+      "candidate_limit",
+    ],
+    [
+      "comparative only",
+      { units: { USD: [instant({ end: "2024-12-31" })] } },
+      "no_report_date",
+    ],
+    ["duration shaped", { units: { USD: [fact()] } }, "invalid_instant_period"],
+    [
+      "filing conflict",
+      { units: { USD: [instant({ filed: "2026-02-02" })] } },
+      "filing_unmatched_or_conflicted",
+    ],
+    [
+      "conflicting values",
+      { units: { USD: [instant(), instant({ val: 121 })] } },
+      "ambiguous_value",
+    ],
+  ] as const)(
+    "isolates %s assets without losing liabilities, income or cash",
+    async (_label, entry, reason) => {
+      const { provider, fetch } = setup(() =>
+        Response.json(liquidityFacts({ AssetsCurrent: entry })),
+      );
+      const result = await finish(provider.loadEvidence(CIK));
+      expect(result.generation.sources.companyFacts.status).toBe("available");
+      expect(result.liquidity.resolution.currentAssets).toMatchObject({
+        status: "unavailable",
+        reason,
+      });
+      expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+        status: "available",
+        value: "80",
+      });
+      expect(result.liquidity.resolution.workingCapital.status).toBe(
+        "unavailable",
+      );
+      expect(result.resolution.currentTargetEligible).toBe(true);
+      expect(
+        result.cashGeneration.resolution.operatingCashFlowLessPpePurchases,
+      ).toMatchObject({ status: "available", value: "5" });
+      expect(fetch).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("admits instant balances when income and cash scans independently fail", async () => {
+    const { provider } = setup(() =>
+      Response.json(
+        liquidityFacts({
+          Revenues: null,
+          NetCashProvidedByUsedInOperatingActivities: null,
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.incomeScanStatus).toBe("invalid_response");
+    expect(result.cashGeneration.operatingCashFlow.scan.status).toBe(
+      "invalid_response",
+    );
+    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+      status: "available",
+      value: "40",
+    });
+    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+      status: "available",
+      value: "1.50",
+    });
+  });
+
+  it("retains all selected comparative evidence but resolves only the target date", async () => {
+    const { provider } = setup(() =>
+      Response.json(
+        liquidityFacts({
+          AssetsCurrent: {
+            units: {
+              USD: [
+                instant({ end: "2024-12-31", val: 5 }),
+                instant({ val: 120 }),
+                instant({ val: 120 }),
+                instant({ accn: OLDER, val: 999 }),
+              ],
+            },
+          },
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.liquidity.currentAssets.scan).toMatchObject({
+      coverage: {
+        full: { candidateRows: 4, duplicateRows: 1 },
+        selected: 2,
+        otherAccessions: 1,
+        returned: 2,
+      },
+    });
+    expect(
+      result.liquidity.currentAssets.observations.map((row) => row.endDate),
+    ).toEqual(["2025-12-31", "2024-12-31"]);
+    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      status: "available",
+      value: "120",
+      observationIds: [result.liquidity.currentAssets.observations[0]!.id],
+    });
+  });
+
+  it("preserves lossless operands and long derived values without the source-input length cap", async () => {
+    const integer = "9".repeat(64),
+      tiny = `0.${"0".repeat(61)}1`;
+    const text = JSON.stringify(
+      liquidityFacts({
+        AssetsCurrent: { units: { USD: [instant({ val: 42 })] } },
+        LiabilitiesCurrent: { units: { USD: [instant({ val: 43 })] } },
+      }),
+    )
+      .replace('"val":42', `"val":${integer}`)
+      .replace('"val":43', `"val":${tiny}`);
+    const { provider } = setup(() => new Response(text));
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      status: "available",
+      value: integer,
+    });
+    expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+      status: "available",
+      value: tiny,
+    });
+    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+      status: "available",
+      value: `${"9".repeat(63)}8.${"9".repeat(62)}`,
+    });
+    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+      status: "available",
+      value: `${integer}${"0".repeat(62)}.00`,
+    });
+  });
+
+  it("retains negative reported balances and independently refuses dependent calculations", async () => {
+    const { provider } = setup(() =>
+      Response.json(
+        liquidityFacts({
+          AssetsCurrent: { units: { USD: [instant({ val: -1 })] } },
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      status: "available",
+      value: "-1",
+    });
+    expect(result.liquidity.resolution.currentLiabilities).toMatchObject({
+      status: "available",
+      value: "80",
+    });
+    expect(result.liquidity.resolution.workingCapital).toMatchObject({
+      status: "unavailable",
+      reason: "unsupported_sign",
+    });
+    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "unsupported_sign",
+    });
+  });
+
+  it("retains historical instant balances with captured age and refuses stale source use", async () => {
+    const historical = setup(
+      () => Response.json(liquidityFacts()),
+      undefined,
+      () => new Date("2027-06-01T12:00:00.000Z"),
+    );
+    const old = await finish(historical.provider.loadEvidence(CIK));
+    expect(old.liquidity.resolution.currentAssets).toMatchObject({
+      status: "available",
+      asOfDate: "2025-12-31",
+      currentUseEligible: false,
+    });
+    const moments = [NOW, NOW, NOW, new Date(NOW.getTime() + 8 * 86_400_000)];
+    const stale = setup(
+      () => Response.json(liquidityFacts()),
+      undefined,
+      () => moments.shift()!,
+    );
+    const result = await finish(stale.provider.loadEvidence(CIK));
+    expect(result.liquidity.currentAssets.observations).toHaveLength(1);
+    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      status: "unavailable",
+      reason: "source_stale",
+    });
+  });
+
+  it("does not manufacture balances when the shared source envelope or Submissions fails", async () => {
+    const invalid = setup(() => Response.json({ cik: 7, facts: {} }));
+    const result = await finish(invalid.provider.loadEvidence(CIK));
+    expect(result.generation.sources.companyFacts.status).toBe(
+      "invalid_response",
+    );
+    expect(result.liquidity.currentAssets).toMatchObject({
+      scan: { status: "source_unavailable", coverage: null },
+      observations: [],
+    });
+    expect(result.liquidity.resolution.currentRatio).toMatchObject({
+      status: "unavailable",
+      reason: "source_unavailable",
+    });
+    const noTarget = setup(
+      () => Response.json(liquidityFacts()),
+      () => new Response("{invalid"),
+    );
+    const failed = await finish(noTarget.provider.loadEvidence(CIK));
+    expect(failed.liquidity.currentAssets).toMatchObject({
+      scan: { coverage: { selected: null, returned: 0 } },
+      observations: [],
+    });
+    expect(noTarget.fetch).toHaveBeenCalledTimes(2);
   });
 });

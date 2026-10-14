@@ -4,6 +4,7 @@ import {
   useRef,
   useSyncExternalStore,
   type MouseEventHandler,
+  type ReactNode,
   type Ref,
 } from "react";
 import { RawCloseChange } from "./RawCloseChange";
@@ -17,6 +18,8 @@ import type {
 
 interface ManagedMarketsProps {
   model: Model;
+  headingRef?: Ref<HTMLHeadingElement> | undefined;
+  sectionNavigation?: ReactNode;
   onResearch: (kind: "annual" | "eod", opener: HTMLButtonElement) => void;
   onWatchlist: () => void;
 }
@@ -250,6 +253,8 @@ function SelectedHistory({
 
 export function ManagedMarkets({
   model,
+  headingRef,
+  sectionNavigation,
   onResearch,
   onWatchlist,
 }: ManagedMarketsProps) {
@@ -282,7 +287,7 @@ export function ManagedMarkets({
     >
       <div className="trial-toolbar managed-markets-toolbar">
         <div>
-          <h2 id="managed-markets-heading" tabIndex={-1}>
+          <h2 id="managed-markets-heading" ref={headingRef} tabIndex={-1}>
             Markets
           </h2>
           <p className="managed-markets-subtitle">Your company board</p>
@@ -298,6 +303,7 @@ export function ManagedMarkets({
           loadingSelected={loadingSelected.current}
         />
       </div>
+      {sectionNavigation}
       <p className="managed-markets-scope">
         Three listings, two companies. Raw USD closes from Tiingo, with each
         listing's own trading date. These are end-of-day observations, not live

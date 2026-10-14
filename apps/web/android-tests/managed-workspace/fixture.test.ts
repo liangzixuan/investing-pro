@@ -6,6 +6,7 @@ import {
 } from "@research-cockpit/contracts";
 import {
   annualNoteDraft,
+  annualComparisonNoteDraft,
   createFixture,
   filingsNoteDraft,
   marketsPriceNoteDraft,
@@ -15,9 +16,12 @@ import {
   signOutNoteDraft,
   beaAgenda,
   fedAnnouncements,
+  fedNoteDraft,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
+import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
 import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
+import type { AnnualComparisonNoteCapture } from "../../src/clerk-trial/managed-watchlist-annual-comparison-note";
 
 const fixtureDigest = `sha256:${"a".repeat(64)}` as const;
 
@@ -165,7 +169,7 @@ describe("bounded invented Federal Reserve journey", () => {
     await workspace.refreshCatalog();
     workspace.setView("watchlist");
     workspace.move("listing-zero", 1);
-    workspace.note("listing-zero", "Fed research draft");
+    workspace.note("listing-zero", "Draft survives native Back");
     const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
     workspace.setView("markets");
     expect(fixture.getSnapshot().fed).toBe(0);
@@ -214,6 +218,38 @@ describe("bounded invented Federal Reserve journey", () => {
       ...fedAnnouncements,
       fetchedAt: "2026-10-23T18:00:00.000Z",
     });
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const before = workspace.coordinator.getSnapshot().draft!;
+    expect(
+      workspace.appendFedAnnouncementToNote(
+        { response, item: response.items[1]!, showingPrevious: false },
+        before.memberships[1]!,
+      ).appended,
+    ).toBe(true);
+    const expected = {
+      ...before,
+      memberships: [
+        before.memberships[0]!,
+        { ...before.memberships[1]!, note: fedNoteDraft },
+      ],
+    };
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(expected);
+    expect(fixture.getSnapshot().save).toBe(0);
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      draft: expected,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      draft: expected,
+    });
+    workspace.setView("markets");
+    expect(workspace.announcements.getSnapshot().announcements).toBe(response);
     const retired = workspace.announcements.load();
     await workspace.refreshCatalog();
     expect(workspace.coordinator.getSnapshot()).toMatchObject({
@@ -232,8 +268,8 @@ describe("bounded invented Federal Reserve journey", () => {
       fedAborted: 3,
       fedLateResolved: 3,
       status: 2,
-      load: 1,
-      save: 0,
+      load: 2,
+      save: 1,
       calendar: 0,
       annual: 0,
       filings: 0,
@@ -799,7 +835,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "3.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-beta-a",
           symbol: "BETA",
@@ -921,7 +957,7 @@ describe("Android managed fixture startup", () => {
     expect(() =>
       fixture.api.annualReport(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: "3.0.0",
           catalogSnapshotSha256: fixtureDigest,
           listingId: "listing-zero",
           symbol: "ZERO",
@@ -1006,13 +1042,82 @@ describe("Android managed fixture startup", () => {
     const original = await fixture.api.load(signal);
     expect(original.payload.snapshotSha256).toBe(fixtureDigest);
     const request = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "3.0.0" as const,
       catalogSnapshotSha256: fixtureDigest,
       listingId: "listing-zero",
       symbol: "ZERO",
     };
     const report = await fixture.api.annualReport(request, signal);
     expect(report.evidence.generation).toEqual(fixture.generations.initial);
+    expect(
+      await parseSecAnnualEvidenceResponse(report, request, signal),
+    ).toEqual(report);
+    const cash = report.evidence.cashGeneration;
+    const operating = cash.operatingCashFlow.observations[0]!;
+    const purchases = cash.ppePurchases.observations[0]!;
+    const period = {
+      status: "available",
+      startDate: "2025-01-01",
+      endDate: "2025-12-31",
+      accessionNumber: "0000000001-26-000001",
+      currentUseEligible: true,
+    };
+    expect(cash.resolution).toMatchObject({
+      operatingCashFlow: {
+        ...period,
+        value: "120.125",
+        observationIds: [operating.id],
+      },
+      ppePurchases: {
+        ...period,
+        value: "20.025",
+        observationIds: [purchases.id],
+      },
+      operatingCashFlowLessPpePurchases: {
+        ...period,
+        value: "100.1",
+        observationIds: [operating.id, purchases.id],
+      },
+    });
+    expect(
+      [operating, purchases].map((item) => ({
+        concept: item.concept,
+        value: item.value,
+        sourceLocator: item.sourceLocator,
+        filing: item.filing,
+      })),
+    ).toEqual([
+      {
+        concept: "NetCashProvidedByUsedInOperatingActivities",
+        value: "120.125",
+        sourceLocator:
+          "/facts/us-gaap/NetCashProvidedByUsedInOperatingActivities/units/USD/0",
+        filing: {
+          status: "matched",
+          form: "10-K",
+          filedDate: "2026-02-01",
+          reportDate: "2025-12-31",
+          acceptedAt: "2026-02-01T00:00:00.000Z",
+          sourceUrl:
+            "https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm",
+        },
+      },
+      {
+        concept: "PaymentsToAcquirePropertyPlantAndEquipment",
+        value: "20.025",
+        sourceLocator:
+          "/facts/us-gaap/PaymentsToAcquirePropertyPlantAndEquipment/units/USD/0",
+        filing: {
+          status: "matched",
+          form: "10-K",
+          filedDate: "2026-02-01",
+          reportDate: "2025-12-31",
+          acceptedAt: "2026-02-01T00:00:00.000Z",
+          sourceUrl:
+            "https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm",
+        },
+      },
+    ]);
     const pair = report.evidence.resolution.bases.find(
       (basis) => basis.status === "eligible",
     )!.pairs[0]!;
@@ -1098,7 +1203,7 @@ describe("Android managed fixture startup", () => {
       if (invalid !== "unloaded")
         await fixture.api.annualReport(
           {
-            schemaVersion: "1.0.0",
+            schemaVersion: "3.0.0",
             catalogSnapshotSha256: fixtureDigest,
             listingId: "listing-zero",
             symbol: "ZERO",
@@ -1322,7 +1427,7 @@ describe("Android managed fixture startup", () => {
   it("serves one fresh Annual response after the cancelled visit read settles", async () => {
     const fixture = await createFixture();
     const request = {
-      schemaVersion: "1.0.0" as const,
+      schemaVersion: "3.0.0" as const,
       catalogSnapshotSha256: `sha256:${"a".repeat(64)}` as const,
       listingId: "listing-zero",
       symbol: "ZERO",
@@ -1339,6 +1444,30 @@ describe("Android managed fixture startup", () => {
       new AbortController().signal,
     );
     expect(fresh.evidence.generation).toEqual(fixture.generations.recovered);
+    expect(
+      await parseSecAnnualEvidenceResponse(
+        fresh,
+        request,
+        new AbortController().signal,
+      ),
+    ).toEqual(fresh);
+    expect(fresh.evidence.cashGeneration.resolution).toMatchObject({
+      operatingCashFlow: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+      ppePurchases: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+      operatingCashFlowLessPpePurchases: {
+        status: "unavailable",
+        reason: "concept_missing",
+        observationIds: [],
+      },
+    });
     expect(fixture.getSnapshot()).toMatchObject({
       annual: 2,
       aborted: 1,
@@ -1670,6 +1799,158 @@ describe("Android managed fixture startup", () => {
   });
 });
 
+describe("bounded invented Annual liquidity refresh", () => {
+  it("retains exact instant balances on failure and replaces only the explicit recovered response", async () => {
+    const fixture = await createFixture();
+    fixture.enableRefreshScenario();
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.note("listing-zero", "Draft survives native Back");
+    workspace.move("listing-zero", 1);
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft!);
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    expect(fixture.getSnapshot().annual).toBe(0);
+    await workspace.annual.load();
+    const initial = workspace.annual.getSnapshot().response!;
+    expect(initial).not.toBeNull();
+    const balances = initial.evidence.liquidity;
+    const assets = balances.currentAssets.observations[0]!;
+    const liabilities = balances.currentLiabilities.observations[0]!;
+    const instant = {
+      status: "available",
+      asOfDate: "2025-12-31",
+      accessionNumber: "0000000001-26-000001",
+      currentUseEligible: true,
+    };
+    expect(balances.resolution).toMatchObject({
+      currentAssets: {
+        ...instant,
+        unit: "USD",
+        value: "120.125",
+        observationIds: [assets.id],
+      },
+      currentLiabilities: {
+        ...instant,
+        unit: "USD",
+        value: "80.025",
+        observationIds: [liabilities.id],
+      },
+      workingCapital: {
+        ...instant,
+        unit: "USD",
+        value: "40.1",
+        observationIds: [assets.id, liabilities.id],
+      },
+      currentRatio: {
+        ...instant,
+        unit: "multiple",
+        value: "1.50",
+        observationIds: [assets.id, liabilities.id],
+      },
+    });
+    for (const observation of [assets, liabilities])
+      expect(observation).toMatchObject({
+        startDate: null,
+        durationDays: null,
+        endDate: "2025-12-31",
+        unit: "USD",
+        filing: { status: "matched", reportDate: "2025-12-31" },
+      });
+    expect(assets.sourceLocator).toBe(
+      "/facts/us-gaap/AssetsCurrent/units/USD/0",
+    );
+    expect(liabilities.sourceLocator).toBe(
+      "/facts/us-gaap/LiabilitiesCurrent/units/USD/0",
+    );
+    const pending = workspace.annual.load();
+    expect(workspace.annual.getSnapshot()).toMatchObject({
+      running: true,
+      showingPrevious: true,
+    });
+    expect(workspace.annual.getSnapshot().response).toBe(initial);
+    fixture.failRefresh();
+    await pending;
+    expect(workspace.annual.getSnapshot()).toMatchObject({
+      running: false,
+      showingPrevious: true,
+      error: true,
+    });
+    expect(workspace.annual.getSnapshot().response).toBe(initial);
+    expect(initial.evidence.generation).toEqual(fixture.generations.initial);
+    await workspace.annual.load();
+    const recovered = workspace.annual.getSnapshot().response!;
+    expect(recovered).not.toBe(initial);
+    expect(recovered.evidence.generation).toEqual(
+      fixture.generations.recovered,
+    );
+    expect(recovered.evidence.liquidity.resolution).toMatchObject({
+      currentAssets: { ...instant, unit: "USD", value: "120.125" },
+      currentLiabilities: { ...instant, unit: "USD", value: "0" },
+      workingCapital: { ...instant, unit: "USD", value: "120.125" },
+      currentRatio: {
+        status: "unavailable",
+        unit: "multiple",
+        reason: "nonpositive_current_liabilities",
+      },
+    });
+    expect(workspace.annual.getSnapshot()).toMatchObject({
+      running: false,
+      showingPrevious: false,
+      error: false,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 3,
+      refreshFailed: 1,
+      aborted: 0,
+      lateResolved: 0,
+      save: 0,
+      eod: 0,
+      filings: 0,
+      calendar: 0,
+      fed: 0,
+      load: 1,
+      status: 1,
+      token: 0,
+      signOut: 0,
+    });
+    workspace.closeResearch();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+    expect(() =>
+      fixture.api.annualReport(
+        {
+          schemaVersion: "3.0.0",
+          catalogSnapshotSha256: fixtureDigest,
+          listingId: "listing-zero",
+          symbol: "ZERO",
+        },
+        new AbortController().signal,
+      ),
+    ).toThrow("Unexpected extra fixture annual refresh");
+    workspace.coordinator.retire();
+  });
+
+  it.each(["default", "annual-comparison"] as const)(
+    "refuses obsolete v2 Annual requests before any %s read",
+    async (scenario) => {
+      const fixture = await createFixture(scenario);
+      const request = {
+        schemaVersion: "3.0.0" as const,
+        catalogSnapshotSha256: fixtureDigest,
+        listingId: "listing-zero",
+        symbol: "ZERO",
+      };
+      Reflect.set(request, "schemaVersion", "2.0.0");
+      expect(() =>
+        fixture.api.annualReport(request, new AbortController().signal),
+      ).toThrow();
+      expect(fixture.getSnapshot().annual).toBe(0);
+    },
+  );
+});
+
 describe("bounded invented company filings journey", () => {
   async function readyForNote() {
     const fixture = await createFixture("company-filings");
@@ -1781,6 +2062,89 @@ describe("bounded invented company filings journey", () => {
       load: 2,
       token: 0,
       signOut: 0,
+    });
+    workspace.coordinator.retire();
+  });
+
+  it("admits one Annual baseline and one unchanged filings packet only after the complete note save and reload", async () => {
+    const { fixture, workspace } = await readyForNote();
+    const signal = new AbortController().signal;
+    const annualRequest = {
+      schemaVersion: "3.0.0" as const,
+      catalogSnapshotSha256: fixtureDigest,
+      listingId: "listing-zero",
+      symbol: "ZERO",
+    };
+    const filingsRequest = {
+      ...annualRequest,
+      schemaVersion: "1.0.0" as const,
+    };
+    const response = workspace.filings.getSnapshot().response!;
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    workspace.appendFilingReferenceToResearchNote(
+      workspace.getSnapshot().research!.selection,
+      response,
+      response.issuer.filings[25]!,
+    );
+    workspace.closeResearch();
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    await workspace.coordinator.load();
+    const draft = structuredClone(workspace.coordinator.getSnapshot().draft!);
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    expect(() =>
+      fixture.api.annualReport(
+        { ...annualRequest, listingId: "listing-one" },
+        signal,
+      ),
+    ).toThrow("Unexpected fixture annual request");
+    workspace.openWatchlistAnnual(
+      workspace.coordinator.getSnapshot().draft!.memberships[1]!,
+    );
+    await workspace.annual.load();
+    expect(workspace.annual.getSnapshot().response).not.toBeNull();
+    expect(workspace.annual.getSnapshot().error).toBe(false);
+    const annual = workspace.annual.getSnapshot().response!;
+    expect(annual.evidence.target).toMatchObject({
+      accessionNumber: "0000000001-26-000001",
+      filedDate: "2026-02-01",
+    });
+    expect(() => fixture.api.annualReport(annualRequest, signal)).toThrow(
+      "Annual baseline requires the saved filings note",
+    );
+    workspace.switchToFilings();
+    await workspace.filings.load();
+    expect(workspace.filings.getSnapshot().response).toEqual(response);
+    expect(workspace.annual.getSnapshot().response).toBe(annual);
+    expect(() => fixture.api.recentFilings(filingsRequest, signal)).toThrow(
+      "Unexpected invented company filings request",
+    );
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 1,
+      filings: 7,
+      filingsAborted: 2,
+      filingsLateResolved: 2,
+      aborted: 0,
+      lateResolved: 0,
+      save: 1,
+      load: 2,
+      eod: 0,
+      calendar: 0,
+    });
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft,
+      baseVersion: 2,
+      dirty: false,
     });
     workspace.coordinator.retire();
   });
@@ -1950,10 +2314,179 @@ describe("bounded invented company filings journey", () => {
 });
 describe("bounded invented Annual comparison", () => {
   const request = (second = false) => ({
-    schemaVersion: "1.0.0" as const,
+    schemaVersion: "3.0.0" as const,
     catalogSnapshotSha256: fixtureDigest,
     listingId: second ? "listing-one" : "listing-zero",
     symbol: second ? "ONE" : "ZERO",
+  });
+
+  async function noteReady() {
+    const fixture = await createFixture("annual-comparison");
+    const signal = new AbortController().signal;
+    const initial = await fixture.api.load(signal);
+    await fixture.api.status(signal);
+    const left = await fixture.api.annualReport(request(), signal);
+    const right = await fixture.api.annualReport(request(true), signal);
+    await expect(fixture.api.annualReport(request(), signal)).rejects.toThrow();
+    const controller = new AbortController();
+    const held = fixture.api.annualReport(request(), controller.signal);
+    controller.abort();
+    fixture.settleCancelledAnnualComparison();
+    await held;
+    const payload = {
+      ...initial.payload,
+      memberships: [
+        { ...initial.payload.memberships[1]! },
+        { ...initial.payload.memberships[0]!, note: annualComparisonNoteDraft },
+      ],
+    };
+    return {
+      fixture,
+      signal,
+      left,
+      right,
+      initial,
+      command: {
+        idempotencyKey: "12345678-1234-4123-8123-123456789012",
+        expectedVersion: 1,
+        payload,
+      },
+    };
+  }
+
+  it("admits exactly one complete comparison-note save and reload without changing the source sequence", async () => {
+    const { fixture, signal, command, left, right } = await noteReady();
+    const receipt = await fixture.api.save(command, signal);
+    expect(parseManagedWatchlistReceipt(receipt, command)).toEqual(receipt);
+    expect(receipt).toEqual({
+      version: 2,
+      payload: command.payload,
+      replayed: false,
+    });
+    expect(await fixture.api.load(signal)).toEqual({
+      version: 2,
+      payload: command.payload,
+    });
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 4,
+      aborted: 1,
+      lateResolved: 1,
+      save: 1,
+      load: 2,
+      status: 1,
+      eod: 0,
+      filings: 0,
+    });
+    const retirement = new AbortController();
+    const last = fixture.api.annualReport(request(true), retirement.signal);
+    await expect(fixture.api.status(signal)).rejects.toThrow();
+    retirement.abort();
+    fixture.settleCancelledAnnualComparison();
+    await last;
+    expect(left.evidence.target.status).toBe("target");
+    expect(right.evidence.target.status).toBe("target");
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 5,
+      aborted: 2,
+      lateResolved: 2,
+      save: 1,
+      load: 2,
+      status: 2,
+    });
+  });
+
+  it.each([
+    "aborted",
+    "version",
+    "note",
+    "other note",
+    "order",
+    "digest",
+  ] as const)(
+    "rejects a comparison-note save with changed %s",
+    async (kind) => {
+      const { fixture, signal, command, initial } = await noteReady();
+      if (kind === "version") command.expectedVersion = 2;
+      else if (kind === "note")
+        command.payload.memberships[1]!.note += " altered";
+      else if (kind === "other note")
+        command.payload.memberships[0]!.note = "Changed other note";
+      else if (kind === "order") command.payload.memberships.reverse();
+      else if (kind === "digest")
+        command.payload.snapshotSha256 = `sha256:${"b".repeat(64)}`;
+      await expect(
+        fixture.api.save(
+          command,
+          kind === "aborted" ? AbortSignal.abort() : signal,
+        ),
+      ).rejects.toThrow("Unexpected fixture operation: save");
+      expect(await fixture.api.load(signal)).toEqual(initial);
+    },
+  );
+
+  it("uses the real note action for exact retained text, duplicate refusal and explicit full-draft Save", async () => {
+    const fixture = await createFixture("annual-comparison");
+    const workspace = new ManagedWorkspace(fixture.api, fixture.session);
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    workspace.note("listing-zero", "Draft survives native Back");
+    workspace.move("listing-zero", 1);
+    const model = workspace.annualComparison;
+    const left = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ZERO")!;
+    const right = model
+      .getSnapshot()
+      .memberships.find((m) => m.listing.symbol === "ONE")!;
+    model.select("left", model.getSnapshot(), left);
+    model.select("right", model.getSnapshot(), right);
+    await model.load("left", left);
+    await model.load("right", right);
+    await model.load("left", left);
+    const held = model.load("left", left);
+    model.getSnapshot().pending!.cancel();
+    fixture.settleCancelledAnnualComparison();
+    await held;
+    const captured: AnnualComparisonNoteCapture = {
+      group: "cash",
+      left: {
+        member: left,
+        response: model.getSnapshot().left.report.response!,
+        selectedBasis: "RevenueFromContractWithCustomerExcludingAssessedTax",
+        showingPrevious: true,
+      },
+      right: {
+        member: right,
+        response: model.getSnapshot().right.report.response!,
+        selectedBasis: "SalesRevenueNet",
+        showingPrevious: false,
+      },
+    };
+    expect(
+      workspace.appendAnnualComparisonToNote(captured, left).appended,
+    ).toBe(true);
+    const draft = workspace.coordinator.getSnapshot().draft;
+    expect(draft!.memberships[1]!.note).toBe(annualComparisonNoteDraft);
+    expect(
+      workspace.appendAnnualComparisonToNote(captured, left).appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(fixture.getSnapshot().save).toBe(0);
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      saved: { version: 2, payload: draft },
+      dirty: false,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(draft);
+    expect(fixture.getSnapshot()).toMatchObject({
+      annual: 4,
+      aborted: 1,
+      lateResolved: 1,
+      save: 1,
+      load: 2,
+    });
   });
 
   it("keeps separate filings, raw draft and original dates through failure, Cancel and retirement", async () => {

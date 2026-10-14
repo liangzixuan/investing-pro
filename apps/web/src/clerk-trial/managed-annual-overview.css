@@ -7,6 +7,51 @@
 .managed-frame .managed-annual-summary {
   margin: 12px 0;
 }
+.managed-frame .managed-annual-report-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+  padding-block: 12px;
+  border-block: 1px solid var(--managed-line);
+}
+.managed-frame .managed-annual-report-navigation > p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .managed-annual-report-navigation > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--managed-line);
+  border-radius: 7px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  font-size: 13px;
+  line-height: 1.5;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-annual-report-navigation > a:hover {
+  background: var(--managed-surface-raised);
+  border-color: var(--managed-field-border);
+}
+.managed-frame [data-annual-report-target] {
+  scroll-margin-block: 16px;
+}
+.clerk-trial.managed-frame [data-annual-report-target]:focus {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .managed-frame .managed-annual-report-navigation > a {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
 .managed-frame .managed-annual-trend {
   margin: 12px 0;
   min-width: 0;
@@ -23,6 +68,16 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 12px;
+  align-items: start;
+}
+.managed-frame .managed-annual-trend-basis {
+  min-width: 0;
+}
+.managed-frame [data-annual-trend-selected-basis] {
+  margin: 6px 0 0;
+  color: var(--managed-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 .managed-frame .managed-annual-trend-controls label {
   display: grid;
@@ -100,6 +155,57 @@
 .managed-frame .managed-annual-financial-region {
   min-width: 0;
 }
+.managed-frame .managed-annual-missing-bases {
+  border-top: 1px solid var(--managed-line);
+  padding: 12px 0;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources) {
+  min-width: 0;
+  font-size: 13px;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  h4 {
+  margin: 0;
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dl {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dl
+  > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 16px;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  :is(dt, dd) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.managed-frame
+  :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+  dd {
+  margin: 0;
+  color: var(--managed-muted);
+}
+@media (max-width: 640px) {
+  .managed-frame
+    :is(.managed-annual-missing-bases, .managed-annual-basis-sources)
+    dl
+    > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .clerk-trial.managed-frame
   .managed-annual-overview
   .managed-annual-financial-region:focus-visible {
@@ -174,4 +280,158 @@
   color: var(--managed-muted);
   background: transparent;
   border-color: var(--managed-line);
+}
+.managed-frame .sec-annual-cash-values {
+  margin: 0;
+}
+.managed-frame .sec-annual-cash {
+  min-width: 0;
+  border-top: 1px solid var(--managed-line);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+.managed-frame .sec-annual-cash h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.managed-frame .sec-annual-cash-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.managed-frame .sec-annual-cash-values > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px 0;
+}
+.managed-frame .sec-annual-cash-values dt {
+  font-size: 13px;
+  color: var(--managed-ink);
+}
+.managed-frame .sec-annual-cash-values dd {
+  margin: auto 0 0;
+  padding-top: 10px;
+}
+.managed-frame .sec-annual-cash-values small {
+  display: block;
+  font-size: 12px;
+  color: var(--managed-muted);
+  margin-top: 4px;
+}
+.managed-frame .sec-annual-cash-amount {
+  display: block;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.managed-frame .sec-annual-cash :is(dd, p, summary, li) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .sec-annual-cash-unavailable {
+  color: var(--managed-muted);
+  font-size: 13px;
+}
+.managed-frame .sec-annual-cash-source > summary {
+  min-height: 44px;
+  padding: 12px 0;
+}
+.managed-frame .sec-annual-cash-source {
+  font-size: 13px;
+  color: var(--managed-muted);
+}
+.managed-frame .sec-annual-cash-values .discovery-warning {
+  color: var(--managed-warning, #f3c477);
+}
+.managed-frame .sec-annual-liquidity {
+  min-width: 0;
+  border-top: 1px solid var(--managed-line);
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.managed-frame .sec-annual-liquidity h4 {
+  margin: 0;
+  font-size: 15px;
+}
+.managed-frame .sec-annual-liquidity-results {
+  min-width: 0;
+  border-radius: 4px;
+}
+.managed-frame .sec-annual-liquidity-results:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .sec-annual-liquidity table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .sec-annual-liquidity caption {
+  padding: 0 0 12px;
+  text-align: left;
+  color: var(--managed-ink);
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity :is(th, td) {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--managed-line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity th {
+  font-weight: 500;
+}
+.managed-frame .sec-annual-liquidity th:first-child {
+  width: 43%;
+}
+.managed-frame .sec-annual-liquidity thead th:last-child {
+  text-align: right;
+}
+.managed-frame .sec-annual-liquidity thead th {
+  color: var(--managed-muted);
+  font-size: 12px;
+}
+.managed-frame .sec-annual-liquidity small {
+  display: block;
+  margin-top: 4px;
+  color: var(--managed-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.managed-frame .sec-annual-liquidity-amount {
+  display: block;
+  font-size: 20px;
+  text-align: right;
+}
+.managed-frame .sec-annual-liquidity :is(p, summary, li, dd) {
+  overflow-wrap: anywhere;
+}
+.managed-frame .sec-annual-liquidity-unavailable,
+.managed-frame .sec-annual-liquidity-source {
+  color: var(--managed-muted);
+  font-size: 13px;
+}
+.managed-frame .sec-annual-liquidity-source summary,
+.managed-frame .sec-annual-liquidity-source a {
+  display: block;
+  min-height: 44px;
+  padding: 12px 0;
+}
+.managed-frame .sec-annual-liquidity-source summary {
+  display: list-item;
+}
+.managed-frame .sec-annual-liquidity .discovery-warning {
+  color: var(--managed-warning, #f3c477);
+}
+@media (max-width: 640px) {
+  .managed-frame .sec-annual-cash-values {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .managed-frame .sec-annual-cash-values > div + div {
+    border-top: 1px solid var(--managed-line);
+  }
 }

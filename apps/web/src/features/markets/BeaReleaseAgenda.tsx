@@ -4,30 +4,44 @@ import {
   PERSONAL_BEA_CALENDAR_SOURCE,
   PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS,
   type PersonalEconomicCalendarDto,
-  type PersonalEconomicCalendarEventDto,
 } from "@research-cockpit/contracts";
-import type { MouseEventHandler, Ref } from "react";
+import type { MouseEventHandler, ReactNode, Ref } from "react";
+import { formatBeaReleaseDate } from "./bea-release-dates";
+import {
+  projectBeaReleaseView,
+  type BeaReleaseView,
+  type BeaReleaseRefreshView,
+} from "./bea-release-view";
+import { BeaAgendaComparison } from "./BeaAgendaComparison";
+import type { BeaAgendaComparison as Comparison } from "./bea-agenda-comparison";
 import "./bea-release-agenda.css";
 
 export interface BeaReleaseAgendaProps {
   readonly className?: string;
   readonly agenda: PersonalEconomicCalendarDto | null;
+  readonly refreshComparison?: Comparison | null;
   readonly busy: boolean;
   readonly error: "invalid_response" | "rate_limited" | "unavailable" | null;
   readonly enabled: boolean;
   readonly onLoad: () => void;
   readonly onCancel?: MouseEventHandler<HTMLButtonElement>;
   readonly loadButtonRef?: Ref<HTMLButtonElement>;
+  readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
+  readonly noteAction?: ReactNode;
+  readonly filterView?: {
+    readonly view: BeaReleaseView;
+    readonly resetNotice: boolean;
+    readonly onDateChange: (date: string) => void;
+    readonly onQueryChange: (query: string) => void;
+    readonly updatesView?: {
+      readonly mode: BeaReleaseRefreshView;
+      readonly available: boolean;
+      readonly onChange: (mode: BeaReleaseRefreshView) => void;
+    };
+  };
 }
-const date = new Intl.DateTimeFormat("en-US", {
-  timeZone: PERSONAL_BEA_CALENDAR_SOURCE.timeZone,
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
 const time = new Intl.DateTimeFormat("en-US", {
   timeZone: PERSONAL_BEA_CALENDAR_SOURCE.timeZone,
   hour: "numeric",
@@ -35,27 +49,30 @@ const time = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 const timestamp = (instant: string) =>
-  `${date.format(new Date(instant))}, ${time.format(new Date(instant))}`;
+  `${formatBeaReleaseDate(instant)}, ${time.format(new Date(instant))}`;
 
 export function BeaReleaseAgenda({
   className = "",
   agenda,
+  refreshComparison,
   busy,
   error,
   enabled,
   onLoad,
   onCancel,
   loadButtonRef,
+  headingRef,
   showingPrevious = false,
   message = "",
+  filterView,
+  noteAction,
 }: BeaReleaseAgendaProps) {
-  const groups = new Map<string, PersonalEconomicCalendarEventDto[]>();
-  for (const event of agenda?.events ?? []) {
-    const day = date.format(new Date(event.scheduledAt));
-    const group = groups.get(day) ?? [];
-    group.push(event);
-    groups.set(day, group);
-  }
+  const filters = filterView?.view.response === agenda ? filterView : undefined;
+  const comparison =
+    refreshComparison?.current === agenda ? refreshComparison : null;
+  const added = new Set(comparison?.addedEvents);
+  const { groups, selectedDate, visibleGroups, visibleCount, query } =
+    filters?.view ?? projectBeaReleaseView(agenda, "", "");
   return (
     <section
       className={`bea-release-agenda ${className}`.trim()}
@@ -63,7 +80,13 @@ export function BeaReleaseAgenda({
     >
       <header className="bea-agenda-heading">
         <div>
-          <h2 id="bea-agenda-title">Economic calendar</h2>
+          <h2
+            id="bea-agenda-title"
+            ref={headingRef}
+            tabIndex={headingRef ? -1 : undefined}
+          >
+            Economic calendar
+          </h2>
           <p>
             BEA releases · {PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS}-day agenda
           </p>
@@ -137,26 +160,141 @@ export function BeaReleaseAgenda({
               {timestamp(agenda.window.fromInclusive)} until{" "}
               {timestamp(agenda.window.toExclusive)} (end excluded).
             </p>
-            {groups.size === 0 ? (
+            {comparison && <BeaAgendaComparison comparison={comparison} />}
+            {filters && (
+              <div className="managed-bea-release-date">
+                {filters.updatesView && (
+                  <>
+                    <label htmlFor="managed-bea-release-view">
+                      Release view
+                    </label>
+                    <select
+                      id="managed-bea-release-view"
+                      value={filters.updatesView.mode}
+                      aria-describedby="managed-bea-release-view-help"
+                      onChange={(event) =>
+                        filters.updatesView!.onChange(
+                          event.currentTarget.value as BeaReleaseRefreshView,
+                        )
+                      }
+                    >
+                      <option value="all">All loaded releases</option>
+                      <option
+                        value="new"
+                        disabled={!filters.updatesView.available}
+                      >
+                        Not in previous agenda
+                      </option>
+                    </select>
+                    <p id="managed-bea-release-view-help">
+                      {filters.updatesView.available
+                        ? "Uses the preceding loaded agenda. Date and series filters still apply; complete comparison counts remain above."
+                        : "Refresh successfully after loading an agenda to compare scheduled entries."}
+                    </p>
+                  </>
+                )}
+                <label htmlFor="managed-bea-release-date">Release date</label>
+                <select
+                  id="managed-bea-release-date"
+                  value={selectedDate}
+                  aria-describedby="managed-bea-release-date-help managed-bea-release-date-count"
+                  onChange={(event) =>
+                    filters.onDateChange(event.currentTarget.value)
+                  }
+                >
+                  <option value="">All loaded dates</option>
+                  {groups.map((group) => (
+                    <option key={group.key} value={group.key}>
+                      {group.label} ({group.events.length})
+                    </option>
+                  ))}
+                </select>
+                <p id="managed-bea-release-date-help">
+                  Filter this loaded window by Eastern release date.
+                </p>
+                <label htmlFor="managed-bea-release-search">
+                  Search loaded releases
+                </label>
+                <div className="managed-bea-release-search-controls">
+                  <input
+                    id="managed-bea-release-search"
+                    type="search"
+                    value={query}
+                    aria-describedby="managed-bea-release-search-help managed-bea-release-date-count"
+                    onChange={(event) =>
+                      filters.onQueryChange(event.currentTarget.value)
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="trial-secondary"
+                    onClick={() => filters.onQueryChange("")}
+                  >
+                    Clear search
+                  </button>
+                </div>
+                <p id="managed-bea-release-search-help">
+                  Search series names in this loaded window.
+                </p>
+                <p
+                  id="managed-bea-release-date-count"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {visibleCount} of {agenda.events.length} loaded BEA releases.
+                  {filters.resetNotice &&
+                    " Agenda response changed; showing all loaded releases."}
+                </p>
+              </div>
+            )}
+            {noteAction ? (
+              <details
+                id="managed-bea-note-disclosure"
+                className="managed-bea-note-disclosure"
+              >
+                <summary id="managed-bea-note-disclosure-toggle">
+                  Add a release to a note
+                </summary>
+                {noteAction}
+              </details>
+            ) : null}
+            {groups.length === 0 ? (
               <p className="bea-agenda-empty">
                 No BEA releases are listed in this loaded 30-day window.
               </p>
+            ) : visibleCount === 0 ? (
+              <p className="bea-agenda-empty">
+                {filters?.updatesView?.mode === "new"
+                  ? "No releases absent from the previous agenda match these filters. Change Release view, change the date or clear the search."
+                  : "No loaded releases match these filters. Change the date or clear the search."}
+              </p>
             ) : (
               <div className="bea-agenda-days">
-                {[...groups].map(([day, events]) => (
+                {visibleGroups.map(({ key, label, events }) => (
                   <section
                     className="bea-agenda-day"
-                    key={day}
-                    aria-label={day}
+                    key={key}
+                    aria-label={label}
                   >
-                    <h3>{day}</h3>
+                    <h3>{label}</h3>
                     <ul>
                       {events.map((event) => (
                         <li key={`${event.scheduledAt}:${event.series}`}>
                           <time dateTime={event.scheduledAt}>
                             {time.format(new Date(event.scheduledAt))}
                           </time>
-                          <span>{event.series}</span>
+                          <span>
+                            {added.has(event) ? (
+                              <>
+                                {event.series}
+                                <small className="bea-agenda-new">
+                                  Not in previous loaded agenda
+                                </small>
+                              </>
+                            ) : (
+                              event.series
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>

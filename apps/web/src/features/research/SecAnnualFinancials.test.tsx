@@ -15,6 +15,10 @@ const render = (wire: Awaited<ReturnType<typeof response>>) =>
   );
 const overview = (html: string) =>
   html.split('<details class="managed-annual-provenance">')[0]!;
+const incomeRegion = (html: string) =>
+  html
+    .split('<div class="managed-annual-financial-region"')[1]!
+    .split('<section class="sec-annual-cash"')[0]!;
 
 describe("managed annual financial overview", () => {
   it.each([
@@ -41,9 +45,15 @@ describe("managed annual financial overview", () => {
       expect(visible).toContain("2026-09-20T00:00:02.000Z");
       if (wire.evidence.target.status === "target")
         expect(visible).toContain(`filed ${wire.evidence.target.filedDate}`);
-      expect(visible).toContain("Within current-use limits at this load.");
+      expect(visible).toContain(
+        "Revenue and income are within current-use limits at this load.",
+      );
       expect(visible).not.toContain("Source ages at completion:");
-      expect(visible).not.toContain("Report age at cutoff:");
+      expect(
+        visible.split(
+          '<details class="sec-quarterly-row-details sec-annual-cash-source">',
+        )[0],
+      ).not.toContain("Report age at cutoff:");
       expect(visible).not.toContain("485-day");
       expect(visible).not.toContain("Reported annual financials");
       expect(visible).toContain(
@@ -52,10 +62,10 @@ describe("managed annual financial overview", () => {
       expect(visible).toContain("data-annual-trend-basis");
       expect(visible).toContain("data-annual-trend-metric");
       expect(visible).not.toContain("managed-annual-trend-canvas");
-      expect(html).toContain(
-        '<details class="managed-annual-provenance"><summary>Source and validation details</summary>',
+      expect(html).toMatch(
+        /<details class="managed-annual-provenance"><summary[^>]*data-annual-report-target="sources"[^>]*>Source and validation details<\/summary>/u,
       );
-      expect(visible).not.toContain("Full source scan:");
+      expect(visible).not.toContain("Revenue and income scan:");
       expect(html).toContain(wire.evidence.generation.sha256);
       const provenance = html.slice(visible.length);
       expect(provenance).toContain("Source ages at completion:");
@@ -89,7 +99,7 @@ describe("managed annual financial overview", () => {
     const html = renderToStaticMarkup(
       <SecAnnualEvidenceResult response={wire} />,
     );
-    expect(html.indexOf("Complete selected evidence")).toBeLessThan(
+    expect(html.indexOf("Revenue and income evidence")).toBeLessThan(
       html.indexOf("Revenue · USD"),
     );
     expect(html).toContain(
@@ -132,19 +142,24 @@ describe("managed annual financial overview", () => {
         basis.pairs.filter((pair) => pair.status === "eligible"),
       ),
     );
-    expect(visible).toContain("Unknown: this revenue basis is missing");
+    expect(visible).toContain(
+      "Missing from this report&#x27;s loaded evidence.",
+    );
     expect(
       wire.evidence.resolution.bases.map((basis) => basis.concept),
     ).toEqual(originalOrder);
     expect(
       visible.match(/aria-label="Annual financial results"/gu),
     ).toHaveLength(1);
-    expect(visible.match(/tabindex="0"/gu)).toHaveLength(1);
+    expect(incomeRegion(visible).match(/tabindex="0"/gu)).toHaveLength(1);
+    expect(visible).toContain(
+      'aria-label="Annual liquidity results" tabindex="0"><table>',
+    );
     expect(
       visible.indexOf('aria-label="Annual revenue basis Revenues"'),
     ).toBeLessThan(
       visible.indexOf(
-        'aria-label="Annual revenue basis RevenueFromContractWithCustomerExcludingAssessedTax"',
+        'data-annual-missing-basis="RevenueFromContractWithCustomerExcludingAssessedTax"',
       ),
     );
     const local = renderToStaticMarkup(
@@ -214,7 +229,7 @@ describe("managed annual financial overview", () => {
       render(await response(annualHistoryRows(), "2027-09-20T00:00:00.000Z")),
     );
     expect(visible).toContain(
-      "Unavailable under the current-use policy at this load.",
+      "Revenue and income are unavailable under the current-use policy at this load.",
     );
     expect(visible).toContain(
       "outside the current-use policy at its original load",
@@ -225,7 +240,7 @@ describe("managed annual financial overview", () => {
     expect(visible).not.toContain("Earlier reported annual comparison");
   });
 
-  it("keeps a complete-but-missing pair visible as unavailable and offers no action or table", async () => {
+  it("keeps a complete-but-missing pair visible as unavailable and offers no income action or table", async () => {
     const wire = await response([row()]);
     const action = vi.fn(() => <button>Add to note draft</button>);
     const visible = overview(
@@ -243,7 +258,10 @@ describe("managed annual financial overview", () => {
     expect(visible).toContain(
       'aria-label="Annual financial results" tabindex="0"',
     );
-    expect(visible).not.toContain("<table");
+    expect(incomeRegion(visible)).not.toContain("<table");
+    expect(visible).toContain(
+      'aria-label="Annual liquidity results" tabindex="0"><table>',
+    );
     expect(action).not.toHaveBeenCalled();
   });
 });

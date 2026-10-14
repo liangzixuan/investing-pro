@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 
 import { ManagedFilingsResults } from "./ManagedFilingsResults";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
+import type { ManagedAnnualReport as AnnualModel } from "./managed-annual-report";
+import { getManagedFilingsAnnualBaseline } from "./managed-filings-annual-baseline";
 
 import {
   type ManagedCompanyFilingsState,
@@ -18,9 +20,11 @@ function loadLabel(running: boolean, hasResponse: boolean) {
 
 export function ManagedCompanyFilings({
   model,
+  annual,
   noteActions,
 }: {
   model: FilingsModel;
+  annual: AnnualModel;
   noteActions?: ManagedFilingsNoteActions;
 }) {
   const state = useSyncExternalStore(
@@ -28,6 +32,12 @@ export function ManagedCompanyFilings({
     model.getSnapshot,
     model.getSnapshot,
   );
+  const annualState = useSyncExternalStore(
+    annual.subscribe,
+    annual.getSnapshot,
+    annual.getSnapshot,
+  );
+  const baseline = getManagedFilingsAnnualBaseline(annualState, state);
 
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -100,6 +110,16 @@ export function ManagedCompanyFilings({
       {state.response && (
         <ManagedFilingsResults
           response={state.response}
+          refreshComparison={
+            state.refreshComparison?.current === state.response
+              ? state.refreshComparison
+              : null
+          }
+          baseline={baseline}
+          annualPrevious={annualState.showingPrevious}
+          annualFromComparison={
+            annualState.responseOrigin === "watchlist-comparison"
+          }
           {...(noteActions ? { noteActions } : {})}
         />
       )}

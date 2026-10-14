@@ -1,6 +1,9 @@
 "use client";
 
-import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/contracts";
+import {
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
+  type PersonalSecAnnualEvidenceResponseDto,
+} from "@research-cockpit/contracts";
 import { useEffect, useRef, useState } from "react";
 
 import { fetchPersonalSecAnnualEvidence } from "../../lib/personal-sec-annual-evidence-api";
@@ -136,7 +139,7 @@ export function PersonalSecAnnualEvidence({
     try {
       const response = await fetchPersonalSecAnnualEvidence(
         {
-          schemaVersion: "1.0.0",
+          schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
           catalogSnapshotSha256,
           listingId: selection.listingId,
           symbol: selection.symbol,

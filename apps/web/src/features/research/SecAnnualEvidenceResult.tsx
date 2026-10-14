@@ -1,9 +1,13 @@
+import { ObservationDetails } from "./SecAnnualObservation";
+import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
+import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
-import type { ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
+import { ManagedAnnualReportNavigation } from "./ManagedAnnualReportNavigation";
 import { ManagedAnnualTrend } from "./ManagedAnnualTrend";
 import {
   SecAnnualFinancials,
@@ -19,6 +23,10 @@ import {
   annualComparisonPercentText,
   annualMarginChangeText,
 } from "../../lib/sec-annual-comparison-display";
+import { managedAnnualBasisLabel } from "./managed-annual-basis-label";
+
+type AnnualBasis =
+  PersonalSecAnnualEvidenceResponseDto["evidence"]["resolution"]["bases"][number];
 
 const sourceStatuses = {
   available: "Available",
@@ -33,7 +41,7 @@ const sourceStatuses = {
 const reasons: Readonly<Record<string, string>> = {
   source_unavailable: "A required SEC source is unavailable.",
   invalid_source_rows:
-    "The source contains invalid observations; annual values are withheld.",
+    "The income scan contains invalid observations; revenue and net income are withheld.",
   target_unresolved: "The observed annual report could not be resolved.",
   selected_report_overflow:
     "The selected report exceeds the 100 revenue or 100 net-income reference limit.",
@@ -78,58 +86,118 @@ const reasons: Readonly<Record<string, string>> = {
 export function SecAnnualEvidenceResult({
   response,
   renderPairAction,
+  cashAction,
+  liquidityAction,
   appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
+  readonly cashAction?: ReactNode;
+  readonly liquidityAction?: ReactNode;
   readonly appearance?: "evidence" | "financial";
 }) {
   if (appearance === "financial")
     return (
-      <div className="sec-quarterly-comparison managed-annual-overview">
-        <AnnualOverviewSummary
-          response={response}
-          targetMessage={
-            response.evidence.target.status === "unresolved"
-              ? reason(response.evidence.target.reason)
-              : null
-          }
-          completenessMessage={
-            response.evidence.completeness.status === "complete"
-              ? null
-              : reason(response.evidence.completeness.reason)
-          }
-        />
-        <ManagedAnnualTrend response={response} />
-        <div
-          className="managed-annual-financial-region"
-          role="region"
-          aria-label="Annual financial results"
-          tabIndex={0}
-        >
-          <AnnualBases
-            response={response}
-            renderPairAction={renderPairAction}
-            financial
-          />
-        </div>
-        <details className="managed-annual-provenance">
-          <summary>Source and validation details</summary>
-          <p className="sec-quarterly-message">
-            Observed SEC annual revenue, net income and net margin in USD.
-            Revenue concepts stay separate. This view covers the observed report
-            in current submissions; it does not provide complete filing history
-            or prices.
-          </p>
-          <SecAnnualSourceDetails response={response} />
-        </details>
-      </div>
+      <ManagedAnnualFinancialResult
+        response={response}
+        renderPairAction={renderPairAction}
+        cashAction={cashAction}
+        liquidityAction={liquidityAction}
+      />
     );
   return (
     <div className="sec-quarterly-comparison">
       <AnnualEvidenceContext response={response} />
       <AnnualBases response={response} renderPairAction={renderPairAction} />
+      <SecAnnualCashGeneration response={response} />
       <AnnualEvidenceSources response={response} />
+    </div>
+  );
+}
+
+function ManagedAnnualFinancialResult({
+  response,
+  renderPairAction,
+  cashAction,
+  liquidityAction,
+}: {
+  readonly response: PersonalSecAnnualEvidenceResponseDto;
+  readonly renderPairAction:
+    ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
+  readonly cashAction: ReactNode;
+  readonly liquidityAction: ReactNode;
+}) {
+  const id = useId();
+  const income = useRef<HTMLDivElement>(null);
+  const cash = useRef<HTMLHeadingElement>(null);
+  const liquidity = useRef<HTMLHeadingElement>(null);
+  const sources = useRef<HTMLElement>(null);
+  const sourceDetails = useRef<HTMLDetailsElement>(null);
+  const targets = {
+    income: { id: `${id}-income`, ref: income },
+    cash: { id: `${id}-cash`, ref: cash },
+    liquidity: { id: `${id}-liquidity`, ref: liquidity },
+    sources: { id: `${id}-sources`, ref: sources },
+  };
+  return (
+    <div className="sec-quarterly-comparison managed-annual-overview">
+      <AnnualOverviewSummary
+        response={response}
+        targetMessage={
+          response.evidence.target.status === "unresolved"
+            ? reason(response.evidence.target.reason)
+            : null
+        }
+        completenessMessage={incomeCompletenessMessage(response.evidence)}
+      />
+      <ManagedAnnualReportNavigation
+        response={response}
+        targets={targets}
+        sourceDetails={sourceDetails}
+      />
+      <ManagedAnnualTrend response={response} />
+      <div
+        className="managed-annual-financial-region"
+        role="region"
+        aria-label="Annual financial results"
+        tabIndex={0}
+        id={targets.income.id}
+        ref={income}
+        data-annual-report-target="income"
+      >
+        <AnnualBases
+          response={response}
+          renderPairAction={renderPairAction}
+          financial
+        />
+      </div>
+      <SecAnnualCashGeneration
+        response={response}
+        cashAction={cashAction}
+        headingTarget={targets.cash}
+      />
+      <SecAnnualLiquidity
+        response={response}
+        liquidityAction={liquidityAction}
+        headingTarget={targets.liquidity}
+      />
+      <details className="managed-annual-provenance" ref={sourceDetails}>
+        <summary
+          id={targets.sources.id}
+          ref={sources}
+          data-annual-report-target="sources"
+        >
+          Source and validation details
+        </summary>
+        <p className="sec-quarterly-message">
+          Observed SEC annual revenue, net income, net margin and cash
+          generation, plus liquidity balances and calculations. Revenue concepts
+          stay separate. This view covers the observed report in current
+          submissions; it does not provide complete filing history or prices.
+        </p>
+        <AnnualBasisSources bases={response.evidence.resolution.bases} />
+        <SecAnnualSourceDetails response={response} />
+      </details>
     </div>
   );
 }
@@ -188,8 +256,8 @@ function AnnualEvidenceContext({
         </p>
       )}
       <p className="sec-quarterly-caveat">
-        Complete selected evidence does not mean complete issuer history or a
-        valid annual pair. The observed report is chosen from current
+        Complete selected income evidence does not mean complete issuer history
+        or a valid annual pair. The observed report is chosen from current
         submissions before examining values; a missing pair is not replaced by
         an older report. Annual net margin uses NetIncomeLoss ÷ the named
         revenue basis × 100, rounded half up to two decimal places. No
@@ -197,7 +265,7 @@ function AnnualEvidenceContext({
       </p>
       {coverage === null ? null : (
         <p className="sec-quarterly-message">
-          Full source scan: {coverage.full.inspectedRows} requested rows;{" "}
+          Revenue and income scan: {coverage.full.inspectedRows} requested rows;{" "}
           {coverage.full.invalidRows} invalid and {coverage.full.duplicateRows}{" "}
           identical duplicates. Selected evidence returned:{" "}
           {coverage.returned.observations}
@@ -238,11 +306,15 @@ function AnnualReportCoordinates({
         </dd>
       </div>
       <div>
-        <dt>Complete selected evidence</dt>
+        <dt>Revenue and income scan</dt>
+        <dd>{evidenceIncomeScanStatus(response.evidence.incomeScanStatus)}</dd>
+      </div>
+      <div>
+        <dt>Revenue and income evidence</dt>
         <dd>
           {completeness.status === "complete"
             ? "Complete for the four requested USD concepts"
-            : `Unavailable. ${reason(completeness.reason)}`}
+            : `Unavailable. ${incomeCompletenessMessage(response.evidence)}`}
         </dd>
       </div>
       <div>
@@ -285,12 +357,15 @@ function AnnualBases({
 }) {
   const evidence = response.evidence;
   const { resolution } = evidence;
+  const missing = financial ? resolution.bases.filter(isMissingBasis) : [];
   const bases = financial
-    ? [...resolution.bases].sort(
-        (left, right) =>
-          Number(right.status === "eligible") -
-          Number(left.status === "eligible"),
-      )
+    ? resolution.bases
+        .filter((basis) => !isMissingBasis(basis))
+        .sort(
+          (left, right) =>
+            Number(right.status === "eligible") -
+            Number(left.status === "eligible"),
+        )
     : resolution.bases;
   return (
     <>
@@ -300,14 +375,71 @@ function AnnualBases({
           key={basis.concept}
           aria-label={`Annual revenue basis ${basis.concept}`}
         >
-          <h4>{basis.concept}</h4>
+          <h4>
+            {financial ? managedAnnualBasisLabel(basis.concept) : basis.concept}
+          </h4>
           {(!financial || basis.status !== "eligible") && (
             <AnnualBasisStatus status={basis.status} />
           )}
           {renderPairs(basis.pairs, evidence, renderPairAction, financial)}
         </section>
       ))}
+      {missing.length > 0 && (
+        <MissingAnnualBases bases={missing} hasOtherBases={bases.length > 0} />
+      )}
     </>
+  );
+}
+
+function isMissingBasis(basis: AnnualBasis): boolean {
+  return basis.status === "missing" && basis.pairs.length === 0;
+}
+
+function MissingAnnualBases({
+  bases,
+  hasOtherBases,
+}: {
+  readonly bases: readonly AnnualBasis[];
+  readonly hasOtherBases: boolean;
+}) {
+  return (
+    <section
+      className="managed-annual-missing-bases"
+      aria-label="Missing revenue bases"
+    >
+      <h4>{hasOtherBases ? "Other revenue bases" : "Revenue bases"}</h4>
+      <dl>
+        {bases.map((basis) => (
+          <div key={basis.concept} data-annual-missing-basis={basis.concept}>
+            <dt>{managedAnnualBasisLabel(basis.concept)}</dt>
+            <dd>Missing from this report's loaded evidence.</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function AnnualBasisSources({
+  bases,
+}: {
+  readonly bases: readonly AnnualBasis[];
+}) {
+  return (
+    <section
+      className="managed-annual-basis-sources"
+      aria-label="Revenue basis source status"
+    >
+      <h4>Revenue basis source status</h4>
+      <dl>
+        {bases.map((basis) => (
+          <div key={basis.concept} data-annual-source-basis={basis.concept}>
+            <dt>{basis.concept}</dt>
+            <dd>{basis.status}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
@@ -323,7 +455,7 @@ function AnnualBasisStatus({
         : status === "missing"
           ? "Unknown: this revenue basis is missing for the observed report."
           : status === "withheld"
-            ? "Annual values withheld because complete selected evidence is unavailable."
+            ? "Revenue and net income withheld because their complete selected evidence is unavailable."
             : "Unknown: this revenue basis cannot form a valid annual pair."}
     </p>
   );
@@ -366,7 +498,7 @@ function AnnualEvidenceSources({
   return (
     <details className="sec-quarterly-row-details sec-filing-context">
       <summary>
-        Inspect selected-report evidence ({evidence.observations.length}{" "}
+        Inspect selected-report income evidence ({evidence.observations.length}{" "}
         observations)
       </summary>
       <p className="sec-quarterly-message">
@@ -807,80 +939,32 @@ function AnnualComparisonMethodology() {
   );
 }
 
-function ObservationDetails({
-  row,
-}: {
-  readonly row: PersonalSecQuarterlyObservationDto;
-}) {
-  return (
-    <details className="sec-quarterly-row-details">
-      <summary>
-        {row.concept} · {row.startDate ?? "Unknown start"} to {row.endDate} ·{" "}
-        {row.value} USD
-      </summary>
-      <dl className="sec-quarterly-comparison-coordinates">
-        <div>
-          <dt>Exact USD observation</dt>
-          <dd>{row.value}</dd>
-        </div>
-        <div>
-          <dt>Inclusive duration</dt>
-          <dd>
-            {row.durationDays === null ? "Unknown" : `${row.durationDays} days`}
-          </dd>
-        </div>
-        <div>
-          <dt>Filing focus, not observation year</dt>
-          <dd>
-            {row.filingFocusYear ?? "Unknown"} ·{" "}
-            {row.filingFocusPeriod ?? "Unknown"}
-          </dd>
-        </div>
-        <div>
-          <dt>Calendar frame</dt>
-          <dd>{row.frame ?? "Not supplied"}</dd>
-        </div>
-        <div>
-          <dt>Reported form / filed date</dt>
-          <dd>
-            {row.form} · {row.filedDate}
-          </dd>
-        </div>
-        <div>
-          <dt>Accession</dt>
-          <dd>{row.accessionNumber}</dd>
-        </div>
-        <div>
-          <dt>Joined filing metadata</dt>
-          <dd>
-            {row.filing.status === "matched"
-              ? "Matched to current submissions"
-              : "Filing metadata conflict"}{" "}
-            · {row.filing.form} · {row.filing.filedDate}
-          </dd>
-        </div>
-        <div>
-          <dt>Joined report / accepted time</dt>
-          <dd>
-            {row.filing.reportDate ?? "Unknown"} ·{" "}
-            {row.filing.acceptedAt ?? "Unknown"}
-          </dd>
-        </div>
-        <div>
-          <dt>Company Facts source pointer</dt>
-          <dd>{row.sourceLocator}</dd>
-        </div>
-        <div>
-          <dt>Observation identifier</dt>
-          <dd>{row.id}</dd>
-        </div>
-      </dl>
-    </details>
-  );
-}
-
 function reason(value: string | null): string {
   return value === null
     ? "Unavailable"
     : (reasons[value] ?? "The evidence cannot be admitted.");
+}
+
+function evidenceIncomeScanStatus(
+  status: PersonalSecAnnualEvidenceResponseDto["evidence"]["incomeScanStatus"],
+) {
+  return {
+    available: "Complete source scan",
+    source_unavailable: "Source unavailable",
+    invalid_response: "Income concepts could not be validated",
+    candidate_limit: "Income concepts exceed the bounded scan limit",
+  }[status];
+}
+
+function incomeCompletenessMessage(
+  evidence: PersonalSecAnnualEvidenceResponseDto["evidence"],
+): string | null {
+  if (evidence.completeness.status === "complete") return null;
+  if (evidence.completeness.reason === "source_unavailable") {
+    if (evidence.incomeScanStatus === "invalid_response")
+      return "Revenue and income could not be validated.";
+    if (evidence.incomeScanStatus === "candidate_limit")
+      return "The revenue and income scan exceeds its source limit.";
+  }
+  return reason(evidence.completeness.reason);
 }

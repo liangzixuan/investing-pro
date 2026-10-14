@@ -4,6 +4,7 @@ import {
   encodeMainWatchlistPayload,
   MANAGED_ECONOMIC_CALENDAR_PATH,
   MANAGED_MONETARY_ANNOUNCEMENTS_PATH,
+  PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
   parseManagedMonetaryAnnouncements,
   parseManagedEconomicCalendar,
   type ManagedWatchlistCommand,
@@ -819,7 +820,7 @@ describe("managed annual composed function", () => {
       .search(symbol)!
       .results.find((row) => row.symbol === symbol)!;
     return {
-      schemaVersion: "1.0.0",
+      schemaVersion: PERSONAL_SEC_ANNUAL_EVIDENCE_SCHEMA_VERSION,
       catalogSnapshotSha256: service.status().snapshot.snapshotSha256,
       listingId: selected.listingId,
       symbol,
@@ -956,6 +957,12 @@ describe("managed annual composed function", () => {
           "us-gaap": {
             Revenues: { units: { USD: [fact] } },
             NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+            AssetsCurrent: {
+              units: { USD: [{ ...fact, start: undefined, val: 120 }] },
+            },
+            LiabilitiesCurrent: {
+              units: { USD: [{ ...fact, start: undefined, val: 80 }] },
+            },
           },
         },
       },
@@ -975,7 +982,19 @@ describe("managed annual composed function", () => {
       status: 200,
       body: {
         security: { symbol: "AAPL", cik: "0000320193" },
-        evidence: { resolution: { currentTargetEligible: true } },
+        evidence: {
+          resolution: { currentTargetEligible: true },
+          liquidity: {
+            resolution: {
+              workingCapital: { status: "available", unit: "USD", value: "40" },
+              currentRatio: {
+                status: "available",
+                unit: "multiple",
+                value: "1.50",
+              },
+            },
+          },
+        },
       },
     });
     expect(fetch.mock.calls.map(([url]) => url)).toEqual([

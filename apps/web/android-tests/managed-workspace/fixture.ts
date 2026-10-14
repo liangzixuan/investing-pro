@@ -16,6 +16,7 @@ import {
   parseManagedEconomicCalendar,
   parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
+  PERSONAL_FED_MONETARY_SOURCE,
   parseManagedMonetaryAnnouncements,
 } from "@research-cockpit/contracts";
 import {
@@ -29,12 +30,33 @@ import {
   response,
   row,
 } from "../../src/features/research/sec-annual-evidence-fixture";
+import {
+  cashGeneration,
+  cashRow,
+} from "../../src/features/research/sec-annual-cash-fixture";
+import {
+  liquidity,
+  liquidityRow,
+} from "../../src/features/research/sec-annual-liquidity-fixture";
 import { TrialApiError } from "../../src/clerk-trial/api";
 import { inventedFilingsPacket } from "./filings-fixture";
 import { annualComparisonResponse } from "../../src/clerk-trial/annual-comparison-fixture";
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const thesisReviewNoteDraft =
+  "Original thesis Thesis review (my assessment). My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
+export const annualComparisonNoteDraft = [
+  "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment.",
+  "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750.",
+  "CIK 0000000001; filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm.",
+  "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load. Retained previous report.",
+  "ONE (One Company; One Class A; Class A; XNAS, US): 10-K 2024-07-01 to 2025-06-30; reported OCF USD 900; reported PP&E USD 300; app calculation OCF less PP&E USD 600.",
+  "CIK 0000000002; filed 2025-08-01; accession 0000000002-25-000001; filing https://www.sec.gov/Archives/edgar/data/2/0000000002-25-000001-index.htm.",
+  "Original cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. Current use eligible at original load.",
+  "The app calculation uses each company's same filing and period; no adjustment for leases, acquisitions or other investing cash flows.",
+  "Company periods may differ; no cross-company calculation or ranking. Evidence dates are unchanged; this action does not refresh sources.",
+].join(" ");
 export const signOutNoteDraft = "Sign-out review draft";
 export const filingsNoteDraft =
   "Draft survives native Back Observed SEC filing reference: ZERO (XNAS); CIK 0000000001; Form 8-K; accession 0000000001-26-000026; filed 2026-09-19; report date unavailable; filing index https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000026-index.htm. Source: SEC Submissions; requested window 2026-06-23 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; retrieved 2026-09-20T00:00:01.000Z; completed 2026-09-20T00:00:02.000Z. Only the current recent-filings object was checked; older continuation files were not loaded; complete window coverage is not established. The source lists older continuation files. Filing contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
@@ -45,6 +67,10 @@ export const priceNoteDraft =
 export const marketsPriceNoteDraft =
   "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoveryNoteDraft = "Retained recovery draft";
+export const fedNoteDraft =
+  "Draft survives native Back Observed Federal Reserve announcement: Invented announcement without a publication time. Announcement URL: https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm. Source publication time: unknown. Source: Board of Governors of the Federal Reserve System; monetary-policy feed " +
+  PERSONAL_FED_MONETARY_SOURCE.feedUrl +
+  ". Original feed retrieved at: 2026-10-23T18:00:00.000Z (UTC). Only feed metadata was loaded; article contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoverySavedNote = "New saved research note";
 export const beaAgenda = parseManagedEconomicCalendar({
   schemaVersion: "1.0.0",
@@ -188,6 +214,7 @@ export async function createFixture(
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "thesis-review"
     | "price-comparison-note"
     | "company-filings"
     | "markets-price-handoff"
@@ -196,6 +223,7 @@ export async function createFixture(
     | "signout-uncertain-review"
     | "raw-close-comparison"
     | "bea-agenda"
+    | "bea-agenda-comparison"
     | "bea-session-retirement"
     | "fed-announcements"
     | "annual-comparison"
@@ -203,7 +231,7 @@ export async function createFixture(
     | "watchlist-comparison"
     | "watchlist-export" = "default",
 ) {
-  const annual = await response(
+  const annualBase = await response(
     scenario === "annual-note"
       ? annualHistoryRows().map((observation) =>
           observation.metric === "net_income" &&
@@ -213,10 +241,43 @@ export async function createFixture(
         )
       : undefined,
   );
+  const annual =
+    scenario === "annual-note"
+      ? {
+          ...annualBase,
+          evidence: {
+            ...annualBase.evidence,
+            cashGeneration: await cashGeneration(annualBase.evidence, [
+              cashRow("operating_cash_flow", "120.125"),
+              cashRow("ppe_purchases", "20.025"),
+            ]),
+          },
+        }
+      : annualBase;
   const recovered = await response(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
   );
+  const refreshAnnual = {
+    ...annual,
+    evidence: {
+      ...annual.evidence,
+      liquidity: await liquidity(annual.evidence, [
+        liquidityRow("current_assets", "120.125"),
+        liquidityRow("current_liabilities", "80.025"),
+      ]),
+    },
+  };
+  const refreshRecovered = {
+    ...recovered,
+    evidence: {
+      ...recovered.evidence,
+      liquidity: await liquidity(recovered.evidence, [
+        liquidityRow("current_assets", "120.125"),
+        liquidityRow("current_liabilities", "0"),
+      ]),
+    },
+  };
   const comparisonReports =
     scenario === "annual-comparison"
       ? await Promise.all([
@@ -492,6 +553,12 @@ export async function createFixture(
       { ...payload.memberships[0]!, note: recoverySavedNote },
     ],
   };
+  const completedFilingsNote = () =>
+    state.filings === 6 &&
+    state.filingsAborted === 2 &&
+    state.filingsLateResolved === 2 &&
+    state.save === 1 &&
+    state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
       const request = parseManagedSecFilingsRequest(input);
@@ -502,11 +569,11 @@ export async function createFixture(
         request?.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO" ||
-        state.filings >= 6
+        (state.filings >= 6 && !(completedFilingsNote() && state.annual === 1))
       )
         throw new Error("Unexpected invented company filings request");
       count("filings");
-      if (state.filings === 1 || state.filings === 6)
+      if (state.filings === 1 || state.filings === 6 || state.filings === 7)
         return Promise.resolve(inventedFilingsPacket(identity));
       if (state.filings === 3)
         return Promise.reject(new TrialApiError("unavailable"));
@@ -614,14 +681,39 @@ export async function createFixture(
       });
     },
     economicCalendar: (signal) => {
+      const comparison = scenario === "bea-agenda-comparison";
       if (
         signal.aborted ||
-        (scenario !== "bea-agenda" && scenario !== "bea-session-retirement") ||
+        (scenario !== "bea-agenda" &&
+          scenario !== "bea-session-retirement" &&
+          !comparison) ||
         pendingCalendar ||
-        state.calendar >= (scenario === "bea-agenda" ? 4 : 2)
+        state.calendar >= (comparison ? 4 : scenario === "bea-agenda" ? 4 : 2)
       )
         throw new Error("Unexpected invented calendar read");
       count("calendar");
+      if (comparison && (state.calendar === 1 || state.calendar === 4)) {
+        const fetchedAt =
+          state.calendar === 1
+            ? "2026-10-20T17:59:00.000Z"
+            : "2026-10-20T18:01:00.000Z";
+        const empty = parseManagedEconomicCalendar({
+          ...beaAgenda!,
+          fetchedAt,
+          window: {
+            fromInclusive: fetchedAt,
+            toExclusive:
+              state.calendar === 1
+                ? "2026-11-19T17:59:00.000Z"
+                : "2026-11-19T18:01:00.000Z",
+          },
+          events: [],
+        });
+        if (!empty) throw new Error("Invalid invented comparison agenda");
+        return Promise.resolve(empty);
+      }
+      if (comparison && state.calendar === 2)
+        return Promise.resolve(structuredClone(beaAgenda!));
       if (state.calendar === 1)
         return Promise.resolve(structuredClone(beaAgenda!));
       if (scenario === "bea-agenda" && state.calendar === 2)
@@ -647,12 +739,76 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
-      if (
-        scenario === "watchlist-comparison" ||
-        scenario === "annual-comparison"
-      )
-        return unexpected("save");
+      if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
+      if (scenario === "thesis-review") {
+        const expected = {
+          ...payload,
+          memberships: payload.memberships.map((member, index) =>
+            index === 0 ? { ...member, note: thesisReviewNoteDraft } : member,
+          ),
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 0 ||
+          state.eod !== 0 ||
+          state.marketsEod !== 0 ||
+          state.resolve !== 0 ||
+          state.filings !== 0 ||
+          state.calendar !== 0 ||
+          state.fed !== 0 ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
+      if (scenario === "annual-comparison") {
+        const expected: MainWatchlistPayload = {
+          ...payload,
+          memberships: [
+            payload.memberships[1]!,
+            { ...payload.memberships[0]!, note: annualComparisonNoteDraft },
+          ],
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 4 ||
+          state.aborted !== 1 ||
+          state.lateResolved !== 1 ||
+          pendingAnnualComparison ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
       if (signOutScenario) {
         if (
           signal.aborted ||
@@ -748,10 +904,16 @@ export async function createFixture(
       const expected = {
         ...payload,
         memberships:
-          scenario === "company-filings"
+          scenario === "company-filings" || scenario === "fed-announcements"
             ? [
                 payload.memberships[1]!,
-                { ...payload.memberships[0]!, note: filingsNoteDraft },
+                {
+                  ...payload.memberships[0]!,
+                  note:
+                    scenario === "company-filings"
+                      ? filingsNoteDraft
+                      : fedNoteDraft,
+                },
               ]
             : scenario === "markets-price-handoff"
               ? [
@@ -788,6 +950,17 @@ export async function createFixture(
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
         (scenario === "price-comparison-note" && state.eod !== 1) ||
+        (scenario === "fed-announcements" &&
+          (state.fed !== 6 ||
+            state.fedAborted !== 2 ||
+            state.fedLateResolved !== 2 ||
+            state.load !== 1 ||
+            state.status !== 1 ||
+            state.annual !== 0 ||
+            state.filings !== 0 ||
+            state.eod !== 0 ||
+            state.marketsEod !== 0 ||
+            state.calendar !== 0)) ||
         (scenario === "company-filings" &&
           (state.filings !== 6 ||
             state.filingsAborted !== 2 ||
@@ -991,7 +1164,7 @@ export async function createFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "1.0.0" ||
+          request.schemaVersion !== "3.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1026,7 +1199,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "1.0.0" ||
+        request.schemaVersion !== "3.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"
@@ -1035,6 +1208,12 @@ export async function createFixture(
       if (scenario === "annual-note") {
         if (state.annual !== 0)
           throw new Error("Unexpected extra fixture annual note read");
+        count("annual");
+        return Promise.resolve(structuredClone(annual));
+      }
+      if (scenario === "company-filings") {
+        if (!completedFilingsNote() || state.annual !== 0)
+          throw new Error("Annual baseline requires the saved filings note");
         count("annual");
         return Promise.resolve(structuredClone(annual));
       }
@@ -1048,7 +1227,8 @@ export async function createFixture(
         throw new Error("Unexpected extra fixture annual read");
       signal.addEventListener("abort", () => count("aborted"), { once: true });
       if (state.refreshScenario) {
-        if (state.annual === 1) return Promise.resolve(structuredClone(annual));
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(refreshAnnual));
         if (state.annual === 2)
           return new Promise<PersonalSecAnnualEvidenceResponseDto>(
             (_resolve, reject) => {
@@ -1056,7 +1236,7 @@ export async function createFixture(
             },
           );
         if (state.annual === 3)
-          return Promise.resolve(structuredClone(recovered));
+          return Promise.resolve(structuredClone(refreshRecovered));
         throw new Error("Unexpected extra fixture annual refresh");
       }
       // Deliberately ignores cancellation: the real model must reject this late completion.

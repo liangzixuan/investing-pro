@@ -106,7 +106,7 @@ function input(
   return {
     cik: "0000000042",
     generation: {
-      definitionVersion: "1.0.0",
+      definitionVersion: "3.0.0",
       cutoffAt,
       completedAt,
       sha256: `sha256:${"a".repeat(64)}`,
@@ -134,6 +134,7 @@ function input(
       annualFilings: 1,
       olderHistoryAvailable: false,
     },
+    incomeScanStatus: "available",
     completeness: { status: "complete", reason: null },
     coverage: coverage(rows),
     observations: rows,

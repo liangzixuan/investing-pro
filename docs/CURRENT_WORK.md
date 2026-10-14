@@ -1,193 +1,116 @@
 # Current work
 
-Updated October 13, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns delivery
-order; [architecture](ARCHITECTURE.md) defines runtime boundaries. The
-[preceding status](https://github.com/liangzixuan/investing-pro/blob/997685543b701e30a9e6a3f4c894428746025aa9/docs/CURRENT_WORK.md)
-retains earlier increments, original failures and dated acceptance. Operational
-receipts remain outside this public repository.
+Updated October 14, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns the full
+InvestingPro feature goal. [Architecture](ARCHITECTURE.md) defines the runtime
+boundaries. Implementation, original CI, source integration, live publication
+and physical-device use are separate acceptance events.
 
 ## Accepted release
 
-Release `5b2715e` is published on the managed website and API. Android 1.26.0
-(code 27) is delivered with the existing production signer. Previous website,
-API and Android 1.25 releases remain preserved. Physical installation of 1.26
-was not performed.
+Release `5b2715e` remains published on the managed website and API. Signed Android
+1.26.0, code 27, is delivered; physical installation was not performed. Previous
+website, API and Android releases remain preserved for rollback. The last checked
+main source is `9cc3423`, after the approved PR100 and PR101 merges.
 
-The release includes watchlist note search, an explicit comparison-to-note
-action and the compact workspace footer. Software licenses follow the main
-content; session scope appears with the sign-out review. Private fixture controls
-are excluded from production. Source, exact-build staging and Android package
-checks passed before the approved release.
+That release includes watchlist note search, explicit comparison-to-note actions
+and the compact workspace footer. Software licenses follow the main content;
+session scope appears with sign-out review. Private fixture controls are excluded
+from production. Its source, staging and Android package checks retain their
+original scope. A separate Chrome check confirmed the signed-in Markets layout
+and footer after one explicit catalog recovery, without provider reads or writes.
 
-A separate Chrome check confirmed the signed-in Markets layout and compact footer.
-An initial catalog failure recovered after one explicit refresh. The three board
-listings then rendered with prices unloaded. No provider read, note inspection or
-owner write was performed, and the initial failure's cause is unknown.
+## Consolidated research candidate
 
-### Delivery status
+The candidate brings the accumulated company-research and daily-review work
+together for source integration. It includes:
 
-| Surface         | Accepted status                                         | Limits                                                                                     |
-| --------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Website and API | Release `5b2715e` active; previous deployments retained | Inert staging and bounded live checks do not establish sustained authenticated reliability |
-| Android         | Signed 1.26.0, code 27, delivered                       | No physical installation or upgrade acceptance for this version                            |
-| Main source     | PR99 merged as `b59c92a`; actual-main checks pass       | Published release stays unchanged                                                          |
-| Chart candidate | PR99 source and original hosted checks accepted         | Live chart delivery and physical Android use remain unaccepted                             |
+- [Annual research](MANAGED_SEC_ANNUAL.md): reported cash generation and year-end
+  liquidity, checked calculations, optional reported trends and comparisons of
+  already-loaded income, cash and liquidity evidence. Sources retain their own
+  filing coordinates, dates, coverage limits and unavailable values.
+- [Company navigation and notes](MANAGED_RESEARCH_NAVIGATION.md): explicit report
+  navigation, another watchlist company, evidence-to-note actions and exact-note
+  Review. Ordinary navigation preserves the mounted draft; changing company or
+  retiring a session clears the appropriate evidence.
+- [Filing review](MANAGED_SEC_FILINGS.md): explicit selected-company reads, local
+  form/date and refresh filters, comparison with the preceding loaded list and
+  a date-only scope after the loaded Annual filing.
+- [Markets reading](MANAGED_MARKETS_HOME.md): BEA date/series filters, Fed title
+  search, comparisons of consecutive loaded lists and explicit note references.
+  These describe observations in loaded windows and add no automatic monitoring,
+  publication alert, forecast or released economic value.
+- [Authored thesis review](EASY_STOCK_REVIEW.md): preview a thesis, supporting and
+  opposing evidence, confirmation, invalidation and next check before adding it
+  to the existing note draft. The existing whole-draft Save and note limit apply.
+  Authored links and dates are not automatically verified citations.
+- [Loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md): one initially closed
+  view of admitted Price and Annual evidence. Each source keeps its own dates,
+  revenue bases and historical qualifications. Opening it makes no request,
+  calculation or saved change; its section actions use normal navigation.
 
-## Current task and next acceptance
+The easy-stock ideas are independently implemented alongside M2–M5. No upstream
+code, assets, prompts or dependencies were copied or executed. Its source review
+and license limits remain explicit. These increments do not complete InvestingPro
+parity, broaden price coverage or add an AI investment verdict.
 
-[PR99](https://github.com/liangzixuan/investing-pro/pull/99) adds an optional
-indexed raw-price path to the existing two-listing watchlist comparison. It uses
-only currently loaded shared observations and the chosen interval. Each series
-starts at 100; exact source closes, rounded indices, complete listing identities
-and original provenance remain available in a semantic table. The chart adds no
-request, saved state or broader coverage. See the
-[watchlist guide](APPWRITE_WATCHLIST.md#inspect-raw-price-paths).
+## Verification and remaining source acceptance
 
-A short guide stays above the chart. Its complete calculation explanation is in
-the initially closed **Chart method and limits** disclosure, after the plot and
-before exact data. The explanation remains available when data is unavailable.
-This presentation change preserves the renderer, calculations and data lifetime.
+The preceding exact source, [PR142](https://github.com/liangzixuan/investing-pro/pull/142)
+at `3e1f0f4`, passed all six original Actions jobs and its own CodeScene review.
+Ubuntu and Windows run the full source checks. Its original Android execution
+passes all 30 synthetic cases, with 27 exact producer markers, 84 retained/final
+images and the unchanged APK exclusion gate. The original synthetic custody
+artifact passes strict canonical parsing and all 29 committed source hashes;
+the producing job also records its full offline review.
 
-Focused model and component checks, web types, lint, formatting, source boundaries
-and independent source review pass. Chrome checks at 1440, 390 and 320 CSS pixels
-accept the chart, readable endpoint labels, full method, keyboard controls and
-contained table scrolling. Missing data, retained responses, cancellation, late
-completion, navigation and session retirement retain their tested contracts.
-The latest native fixture build remains within the unchanged asset limit.
+The snapshot's 647 affected/composed cases, package types, scoped lint and source
+boundaries pass. The custody correction passes 232 cases with the same two
+POSIX-only skips. Its five independent rollback phases now have separate test
+cases with the same executable body, assertions and default deadline. Only that
+test's source hash changes in the existing manifest; payload and fixture-case
+bytes, validators, runtime, workflows and timeout settings remain unchanged.
 
-The original PR99 hosted attempt passed five Actions jobs. Android passed 24 of
-25 cases: the export test rejected one accessibility click on its invented root
-in the system file picker, after earlier Save and exact-byte checks passed.
-Screenshot cleanup then failed while the picker covered the app. A separate
-actual-main attempt had failed a root click earlier in the same export journey.
-Neither attempt establishes a production export defect or the rejection's cause.
-Original failures remain retained; CodeScene's failed advisory was reviewed
-without an actionable correctness finding.
+Exact application builds and Chrome evidence remain applicable because the latest
+corrections change tests, source-hash metadata and status only. The largest native
+fixture loader is 2,407,934 bytes under the unchanged 4 MiB cap, with exact software
+notices. Chrome covers actual 1440/390/320 widths, keyboard disclosure, explicit
+independent loads, retained failed reads, unchanged notes, company reset and late
+response retirement. One stale bitmap after resizing is excluded; current-width
+geometry and the current desktop image have separate proof.
 
-The test-only repair replaces that root interaction with one checked native
-touch through AndroidX UI Automator, using a freshly resolved and bounded target.
-The existing readiness deadline, actual system Save, provider output, exact bytes,
-permissions, cancellation and recreation assertions remain required. Updated
-head `e39b54d` passed all six required Actions jobs across five original workflows.
-Android passed all 25 cases and its APK isolation gate, including five successful
-guarded picker touches and the existing saved-byte assertions. CodeScene retains
-its reviewed advisory failure. After owner approval, PR99 merged into main as
-`b59c92a`. The separate actual-main run also passed all six Actions jobs,
-including the 25 Android cases and APK isolation gate.
-Live delivery of the chart is not accepted.
+The whole diff against main requires seven original workflows and eight Actions
+jobs: Android, Ubuntu/Windows CI, dependency review, parser isolation, parser
+normalization, payload custody and PostgreSQL. Those integration checks and the
+actual integration CodeScene review remain required. Parent-based passes alone
+do not establish acceptance against main. Prior failed and cancelled runs remain
+recorded. PR141's four reviewed maintainability advisories remain part of that
+history; PR142's narrower review does not erase them.
 
-### Federal Reserve announcements candidate
+## Coordinated version boundary
 
-The next increment adds an explicit official monetary-policy feed read below the
-BEA agenda. It reuses the existing provider and metadata contract. The managed
-API and client preserve source links, publication times, the original retrieval
-time, retained responses and session retirement. Company and pending navigation
-cancel active requests. [Markets scope](MANAGED_MARKETS_HOME.md#federal-reserve-announcements)
-describes the limits; broader news remains roadmap work.
+Annual request/response and generation schema `3.0.0` require matching API,
+website and Android clients. Older Annual requests are refused before provider
+or budget work; current clients reject old responses. A later live release must
+coordinate all three surfaces. During a mismatch, Annual reads are unavailable.
+Saved watchlists and notes need no migration. Source integration does not publish
+these artifacts or install an Android upgrade.
 
-Affected API, client, navigation and fixture checks and independent source review
-pass. Chrome accepts explicit loading, retained original dates after failure or
-cancellation, empty replacement, navigation with an unsaved note, invalid-link
-recovery and session retirement. Final layouts pass at 1440, 390 and 320 CSS
-pixels, with keyboard controls and no horizontal overflow. The preview uses
-invented data; live authentication and provider acceptance remain separate.
+## Next outcome and limits
 
-A prerequisite compresses the unchanged complete software-license text into a
-lazy module. Source, round-trip, decoding, lifetime and Chrome checks pass,
-including full displayed text equality and recovery after decoder failure. The
-integrated native fixture build uses 2,198,001 bytes at its largest loader payload,
-below the unchanged 4 MiB limit. Its new announcements journey and extended
-license assertions still require execution in the original hosted Android run.
+Finish the original whole-main checks and review the cumulative source before
+source integration. Keep live delivery separate under the [website/API](APPWRITE_DELIVERY.md)
+and [Android](ANDROID_CLIENT.md) procedures. Continue the roadmap with admitted
+sources, exact identity, explicit reads and saved-draft/session boundaries.
 
-The first hosted Android attempt stopped before native execution: the strict
-Gradle configuration map had not been updated for the declared WebView minimum.
-The map now includes that exact setting. The original Gradle validation task
-accepts it and rejects missing, altered or extra settings in an isolated check;
-a cross-file regression passes. Whole-app build and native execution still need
-the updated revision's hosted checks. The original failure remains retained.
+M4's next useful layer is an evidence-linked company report with exact loaded
+values, all bases, source dates and separate authored assessment. Its export needs
+its own document purpose and provenance; the saved-watchlist export contract must
+remain specific to saved watchlists. No report export is implemented here.
 
-The updated run executed all 26 Android cases. One failed at an added license
-check because its boundary assertion expected zero saves after the test's
-intentional save; the assertion now expects that one save. The other 25 cases
-passed, including announcements and export. APK isolation was skipped after the
-failure. Ubuntu also timed out while comparing the complete decompressed license
-Buffer. That test now uses native exact-byte equality and keeps the same timeout
-and remaining assertions. Both original failures remain recorded. The repaired
-revision passes five of six required Actions jobs, including Ubuntu and all 26
-Android cases, APK isolation and complete license-byte checks. Windows instead
-times out in an unchanged native-socket deadline test. A focused local run and
-phase trace pass; they do not reproduce or explain the hosted timeout. A diagnostic
-test update records bounded failure phases while preserving the request deadline,
-test timeout and native-close assertions. Its original hosted checks remain pending.
-
-### Watchlist Annual comparison in development
-
-The next increment compares two different companies from the full watchlist
-draft. Both choices start empty, and each report loads explicitly through the
-existing SEC access boundary. Each column keeps its own fiscal period, revenue
-basis, exact USD amounts, available annual revenue change and complete evidence.
-There is no cross-company calculation, new source or saved-payload change. See
-the [Annual comparison guide](MANAGED_SEC_ANNUAL.md#watchlist-annual-comparison).
-
-Affected model, projection, UI and workspace checks, web types, scoped lint and
-independent source review pass. Regressions cover basis resets after changing
-companies or clearing a choice; refreshes and unchanged membership edits retain
-the selected basis. Chrome checks at 1440, 390 and 320 CSS pixels accept explicit
-reads, separate filing periods, exact amounts, full-draft Save and recovery,
-cancellation, late replies, navigation and session retirement. Controls retain
-44px targets, and the results table scrolls by keyboard without page overflow.
-The checks use invented RAM data and do not establish live SEC access.
-
-The integrated native fixture's largest static loader payload is 2,234,308 bytes,
-below the unchanged 4 MiB cap. Source and bundle checks pass; the new Annual
-journey still requires its original hosted Android execution.
-
-## Product scope
-
-The managed website and Android client share the Precision Desk presentation,
-Discover, a private watchlist with notes and ordering, company research and a
-small Markets board. [Price history](MANAGED_EOD_HISTORY.md) covers AAPL, GOOG and
-GOOGL, three listings for two issuers, with explicit reads and dated raw USD
-closes. It supplies no adjusted returns or whole-market ranking.
-
-[Annual research](MANAGED_SEC_ANNUAL.md) shows admitted same-filing evidence and
-available adjacent annual comparisons. [Recent filings](MANAGED_SEC_FILINGS.md)
-provides explicit metadata reads, original links, local paging and exact form
-filtering. Both connect eligible evidence to the current research-note draft.
-The [BEA agenda](MANAGED_MARKETS_HOME.md#bea-release-agenda) supplies an explicitly
-loaded 30-day official release schedule, with source and Eastern timezone labels.
-Forecasts, reported values and non-BEA events remain outside that schedule.
-
-[Watchlist](APPWRITE_WATCHLIST.md) changes use explicit whole-draft Save and conflict
-recovery. Ordinary navigation preserves the mounted draft; session retirement
-clears it. The local research profile and encrypted vault remain separate from
-managed storage. These increments advance the roadmap without completing M1,
-M2 or M3.
-
-## Next acceptance and open limits
-
-Resolve the announcements revision's Windows check and complete
-the Annual comparison's applicable hosted checks, including its new Android
-journey. Local Annual source, Chrome and native bundle acceptance are complete;
-hosted runtime and live delivery remain separate. Continue with the next complete
-product outcome from the roadmap and relevant feature guide, using existing
-subscriptions and permitted free sources. Broader fields and cohorts need
-verified source rights, cost, quotas and identity handling.
-
-Controlled real-account expiry and two-session conflict acceptance, authenticated
-browser coverage, screen-reader review, physical upgrades and an isolated managed
-backup/restore exercise remain separate work. The owner's October 10 report
-covers the requested Android 1.19 and Brave checklist on Pixel 10 Pro XL/Android
-17; it does not establish later physical acceptance or per-step measurements.
-Mounted-session retention does not establish offline editing, process-death
-restoration or cloud-data recovery.
-
-The existing synthetic recovery suites, inert BrowserStack checks and native
-journeys retain their individual scopes. Broader company fields, valuation,
-peers, news, asset classes and daily reliability remain roadmap work. Native iOS,
-store distribution and owner-data migration are not accepted. Repomix PR27 stays
-held under Option A; CodeScene remains advisory.
-
-Read [AGENTS.md](../AGENTS.md) and the relevant guide before each bounded increment.
-[Website delivery](APPWRITE_DELIVERY.md) and [Android delivery](ANDROID_CLIENT.md)
-keep source, configuration, artifacts, activation and physical use separate.
+Price history still covers AAPL, GOOG and GOOGL, three listings for two issuers,
+with dated raw USD closes. Broader fields/cohorts, valuation, portfolio tools,
+AI research and asset classes remain roadmap work with separate data eligibility.
+Controlled real-account expiry/conflict, screen-reader review, physical upgrades
+and an isolated managed backup/restore exercise retain their open acceptance
+limits. Synthetic checks do not establish sustained production reliability,
+offline editing, process-death restoration or cloud-data recovery.

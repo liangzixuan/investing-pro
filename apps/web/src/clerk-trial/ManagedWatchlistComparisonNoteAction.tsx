@@ -1,6 +1,16 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
-import type { ManagedEodIdentity } from "@research-cockpit/contracts";
+import {
+  membershipMatchesResult,
+  type ManagedEodIdentity,
+  type WatchlistMembership,
+} from "@research-cockpit/contracts";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
+
+export interface WatchlistComparisonNoteReviewCapture {
+  readonly selection: ManagedWatchlistComparisonSelection;
+  readonly leftShowingPrevious: boolean;
+  readonly rightShowingPrevious: boolean;
+}
 
 export interface ManagedWatchlistComparisonNoteActions {
   getAction: (
@@ -11,10 +21,17 @@ export interface ManagedWatchlistComparisonNoteActions {
     selection: ManagedWatchlistComparisonSelection,
     destination: ManagedEodIdentity | null,
   ) => { appended: boolean; message: string };
+  review: (
+    capture: WatchlistComparisonNoteReviewCapture,
+    member: WatchlistMembership,
+    isCurrentChoice: () => boolean,
+  ) => void;
 }
 
 interface Props {
-  selection: ManagedWatchlistComparisonSelection;
+  capture: WatchlistComparisonNoteReviewCapture;
+  memberships: readonly WatchlistMembership[];
+  pending: boolean;
   active: boolean;
   editable: boolean;
   actions: ManagedWatchlistComparisonNoteActions;
@@ -25,12 +42,16 @@ interface Destination {
   listing: ManagedEodIdentity | null;
 }
 interface Feedback {
-  selection: ManagedWatchlistComparisonSelection;
+  capture: WatchlistComparisonNoteReviewCapture;
   destination: Destination;
   message: string;
   refusal: ReturnType<
     ManagedWatchlistComparisonNoteActions["getAction"]
   > | null;
+}
+interface Success {
+  capture: WatchlistComparisonNoteReviewCapture;
+  destination: Destination;
 }
 
 function currentAction(props: Props, destination: Destination) {
@@ -39,12 +60,13 @@ function currentAction(props: Props, destination: Destination) {
       canAppend: false,
       reason: "Return to an editable watchlist to add this comparison.",
     };
-  return props.actions.getAction(props.selection, destination.listing);
+  return props.actions.getAction(props.capture.selection, destination.listing);
 }
 
 /** Destination is local presentation state; the workspace owns note admission. */
 export function ManagedWatchlistComparisonNoteAction(props: Props) {
-  const { selection, active, editable } = props;
+  const { capture, active, editable } = props;
+  const { selection } = capture;
   const helpId = useId();
   const [stored, setDestination] = useState<Destination>({
     left: selection.left,
@@ -57,20 +79,49 @@ export function ManagedWatchlistComparisonNoteAction(props: Props) {
       : { left: selection.left, right: selection.right, listing: null };
   if (stored !== destination) setDestination(destination);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const latest = useRef<{ props: Props; destination: Destination } | null>(
-    null,
-  );
+  const [storedSuccess, setSuccess] = useState<Success | null>(null);
+  const member = destination.listing
+    ? (props.memberships.find((candidate) =>
+        membershipMatchesResult(candidate, destination.listing!),
+      ) ?? null)
+    : null;
+  const success =
+    active &&
+    member &&
+    storedSuccess?.capture === capture &&
+    storedSuccess.destination === destination
+      ? storedSuccess
+      : null;
+  if (storedSuccess !== success) setSuccess(success);
+  const latest = useRef<{
+    props: Props;
+    destination: Destination;
+    member: WatchlistMembership | null;
+    success: Success | null;
+  } | null>(null);
   useLayoutEffect(() => {
-    latest.current = { props, destination };
+    latest.current = { props, destination, member, success };
     return () => {
       latest.current = null;
     };
-  }, [props, destination]);
+  }, [props, destination, member, success]);
   const capturedCurrent = () => {
     const current = latest.current;
     return current?.props.active &&
       current.props.editable &&
-      current.props.selection === selection &&
+      current.props.capture === capture &&
+      current.destination === destination
+      ? current
+      : null;
+  };
+  const currentReview = () => {
+    const current = latest.current;
+    return success &&
+      current?.success === success &&
+      current.props.active &&
+      !current.props.pending &&
+      current.member &&
+      current.props.capture === capture &&
       current.destination === destination
       ? current
       : null;
@@ -123,8 +174,16 @@ export function ManagedWatchlistComparisonNoteAction(props: Props) {
                 message:
                   admitted.reason ?? "This comparison cannot be added now.",
               };
+          const after = latest.current;
+          if (
+            !after?.props.active ||
+            after.props.capture !== capture ||
+            after.destination !== destination
+          )
+            return;
+          if (result.appended) setSuccess({ capture, destination });
           setFeedback({
-            selection,
+            capture,
             destination,
             message: result.message,
             refusal: result.appended ? null : admitted,
@@ -133,13 +192,31 @@ export function ManagedWatchlistComparisonNoteAction(props: Props) {
       >
         Add comparison to note draft
       </button>
+      {success && (
+        <button
+          type="button"
+          className="trial-secondary"
+          aria-disabled={props.pending}
+          onClick={() => {
+            const current = currentReview();
+            if (current)
+              current.props.actions.review(
+                capture,
+                current.member!,
+                () => currentReview() !== null,
+              );
+          }}
+        >
+          Review note
+        </button>
+      )}
       <p id={helpId}>
         {action.reason ??
           "Adds both listings, exact endpoints and original source dates to the chosen note draft. Review and Save separately."}
       </p>
       <FeedbackMessage
         feedback={feedback}
-        selection={selection}
+        capture={capture}
         destination={destination}
         action={action}
       />
@@ -149,17 +226,17 @@ export function ManagedWatchlistComparisonNoteAction(props: Props) {
 
 function FeedbackMessage({
   feedback,
-  selection,
+  capture,
   destination,
   action,
 }: {
   feedback: Feedback | null;
-  selection: ManagedWatchlistComparisonSelection;
+  capture: WatchlistComparisonNoteReviewCapture;
   destination: Destination;
   action: ReturnType<ManagedWatchlistComparisonNoteActions["getAction"]>;
 }) {
   const current =
-    feedback?.selection === selection &&
+    feedback?.capture === capture &&
     feedback.destination === destination &&
     (feedback.refusal === null ||
       (feedback.refusal.canAppend === action.canAppend &&

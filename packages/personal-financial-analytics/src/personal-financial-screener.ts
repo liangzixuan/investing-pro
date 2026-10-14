@@ -19,6 +19,11 @@ import {
   type PersonalSecurityMasterScreenRowDto,
 } from "@research-cockpit/contracts";
 import Decimal from "decimal.js";
+import {
+  calculatePersonalCurrentAssetsLessCurrentLiabilities,
+  calculatePersonalCurrentRatio,
+} from "./personal-liquidity";
+import { calculatePersonalOperatingCashFlowLessPpePurchases } from "./personal-cash-generation";
 
 import {
   PERSONAL_FINANCIAL_ANALYTICS_FORMULAS,
@@ -674,27 +679,16 @@ function currentAssetsToLiabilities(
     return instantUnavailable("multiple", "balance_date_mismatch", sources);
   if (sources.some((ref) => ref.accessionNumber !== first.accessionNumber))
     return instantUnavailable("multiple", "filing_mismatch", sources);
-  const denominator = new ScreenDecimal(liabilities.value);
-  if (!denominator.gt(0))
-    return instantUnavailable(
-      "multiple",
-      "nonpositive_current_liabilities",
-      sources,
-    );
-  if (new ScreenDecimal(assets.value).lt(0))
-    return instantUnavailable("multiple", "unsupported_sign", sources);
-  const rounded = new ScreenDecimal(assets.value)
-    .div(denominator)
-    .toDecimalPlaces(
-      PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces,
-      Decimal.ROUND_HALF_UP,
-    );
+  const calculation = calculatePersonalCurrentRatio(
+    assets.value,
+    liabilities.value,
+  );
+  if (calculation.status === "unavailable")
+    return instantUnavailable("multiple", calculation.reason, sources);
   return {
     status: "available",
     unit: "multiple",
-    value: rounded.isZero()
-      ? "0.00"
-      : rounded.toFixed(PERSONAL_FINANCIAL_ANALYTICS_ROUNDING.decimalPlaces),
+    value: calculation.value,
     sources,
   };
 }
@@ -714,14 +708,16 @@ function currentAssetsLessCurrentLiabilities(
     return instantUnavailable("USD", "balance_date_mismatch", sources);
   if (sources.some((ref) => ref.accessionNumber !== first.accessionNumber))
     return instantUnavailable("USD", "filing_mismatch", sources);
-  const assetValue = new ScreenDecimal(assets.value);
-  const liabilityValue = new ScreenDecimal(liabilities.value);
-  if (assetValue.lt(0) || liabilityValue.lt(0))
-    return instantUnavailable("USD", "unsupported_sign", sources);
+  const calculation = calculatePersonalCurrentAssetsLessCurrentLiabilities(
+    assets.value,
+    liabilities.value,
+  );
+  if (calculation.status === "unavailable")
+    return instantUnavailable("USD", calculation.reason, sources);
   return {
     status: "available",
     unit: "USD",
-    value: canonicalDecimal(assetValue.minus(liabilityValue)),
+    value: calculation.value,
     sources,
   };
 }
@@ -842,14 +838,16 @@ function cashFlowLessPpePurchases(
     sources.some((source) => source.accessionNumber !== first.accessionNumber)
   )
     return unavailable("USD", "filing_mismatch", sources);
-  if (new ScreenDecimal(ppePurchases.value).lt(0))
-    return unavailable("USD", "unsupported_sign", sources);
+  const calculation = calculatePersonalOperatingCashFlowLessPpePurchases(
+    operatingCashFlow.value,
+    ppePurchases.value,
+  );
+  if (calculation.status === "unavailable")
+    return unavailable("USD", calculation.reason, sources);
   return {
     status: "available",
     unit: "USD",
-    value: canonicalDecimal(
-      new ScreenDecimal(operatingCashFlow.value).minus(ppePurchases.value),
-    ),
+    value: calculation.value,
     sources,
   };
 }

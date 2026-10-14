@@ -8,6 +8,24 @@ and narrow bottom navigation. It retains our branding and permitted inputs.
 [DESIGN.md](../DESIGN.md) records the presentation; delivery is recorded separately
 in [Current work](CURRENT_WORK.md).
 
+## Move between Markets sections
+
+**On Markets** offers **Company board**, **Economic calendar** and **Fed
+announcements** below the Markets toolbar. Each link moves focus to that
+section's heading and scrolls it into view. All sections stay on the same page.
+The links wrap on narrow screens and have a minimum target height of 44 pixels.
+
+A jump uses the current visible Markets view. It does not load or refresh data,
+change the URL or create a history entry. Loaded responses keep their original
+dates, source context and pending or previous-result notices. The selected
+company, chart choices, BEA release date and watchlist draft keep their existing
+state. Load, Refresh and Cancel remain separate controls.
+
+The app checks the heading and view again after focus moves. It stops if the
+view changes or the target is hidden, detached or no longer belongs to Markets.
+Loading a response does not trigger a jump. Browser and native verification,
+and delivery status, remain in [Current work](CURRENT_WORK.md).
+
 ## Inputs and scope
 
 The browser declares the three exact listing identities and resolves them against
@@ -49,7 +67,32 @@ window visible. Late responses cannot replace it. Cancel restores focus to Load
 or Refresh. Leaving Markets cancels pending work and retains accepted results
 within the session; returning, background/resume and opening company research
 make no calendar request. Session retirement clears the agenda immediately.
-Calendar actions do not save, reconcile, reorder or edit the watchlist.
+Load, Refresh, Cancel and date selection do not save, reconcile, reorder or edit
+the watchlist. The separate note action below changes only an explicitly chosen
+note draft.
+
+**Search loaded releases** matches a phrase in the full series name. Matching
+ignores case and extra spaces; it preserves the displayed source text. Combine
+it with **Release date** to show matching releases on one Eastern date. **Clear
+search** clears the phrase and retains the date. Each date option keeps its count
+from the full packet, and **All loaded dates** removes the date restriction.
+
+The visible count is stated against all loaded BEA releases. The agenda and
+Release picker show the same matches, with every admitted event available.
+Series sharing the same instant stay separate and retain their original order.
+The original loaded window, retrieval time, source link and previous-result
+notice remain visible. No matches has a different explanation from a verified
+empty schedule.
+
+The filters make no request and change no saved data. They remain usable while
+note editing is paused. Both remain during a pending Refresh, failure or Cancel
+while the same accepted response remains. A successful replacement, including
+equal content, clears the search, resets to All loaded dates and announces the
+change. An empty response retains the verified-empty message.
+Company visits preserve the mounted choice; leaving Markets for another top-level
+view resets it on return. Session retirement clears the agenda and its choice.
+Filtering does not programmatically move focus or scroll the page. Delivery and rendered
+acceptance are recorded separately in Current work.
 
 The shared parser owns and freezes accepted response data. The local research
 profile retains its separate transport and owner-activity lifetime. See the
@@ -62,6 +105,93 @@ Java assertions. Invented-data Brave desktop and 390-pixel checks cover the shar
 agenda layout. Actual-main checks include a separately accepted 22-case native
 gate. API, website and signed Android delivery are accepted.
 No new live authenticated managed read or physical use is established.
+
+### Compare consecutive loaded agendas
+
+After a successful **Refresh agenda** follows a loaded agenda, the managed calendar shows how
+many current scheduled entries were absent from the preceding loaded agenda.
+Each entry uses its exact series name and UTC scheduled time. Different series
+at the same time stay separate; a changed name or time is a different entry.
+Marked rows retain their original source text, dates and note metadata.
+
+**Compared loaded agendas** opens both original retrieval times, window bounds
+and full event counts. The windows move with each load. A current-only entry
+can result from that movement or a schedule change; this does not establish
+publication, rescheduling or complete history. It does not match old and new
+entries into reschedule pairs or infer removed releases.
+
+The count describes the complete current agenda while series and date filters
+narrow only its visible rows and note choices. A successful empty replacement
+keeps a comparison and the separate verified-empty message. First load has no
+comparison. Pending, failed, invalid and cancelled attempts retain the accepted
+pair. Returning to Markets keeps it without another read; retirement clears it
+and rejects late responses. Each successful replacement compares only with the
+preceding accepted response. No comparison is saved and no extra read is made.
+Source, Chrome and native acceptance remain separate in Current work.
+
+### Inspect entries absent from the previous agenda
+
+**Release view** offers All loaded releases and Not in previous agenda. The
+second choice requires a comparison tied to the exact current accepted response;
+it is disabled before that pair exists. It keeps current entries absent from the
+preceding loaded agenda, intersected with the existing series phrase and Eastern
+date. Date options, complete agenda counts, source dates and comparison windows
+remain visible. This adds no request or saved preference.
+
+The agenda and note choices share the same final result. An excluded release and
+its feedback clear while the exact destination remains. Returning to All does
+not restore a release choice; a matching choice and feedback remain. A valid
+comparison with no current-only matches has a separate explanation from a
+verified empty agenda. Reading controls remain available while Save pauses
+note editing.
+
+Pending, failed, invalid and cancelled reads retain the three controls. A new
+accepted response resets Release view to All, clears series search and resets
+the date, including an equal-content replacement. A changed pair on the same
+response resets only Release view. Returning after leaving Markets resets local
+choices while retaining accepted source data. Retirement clears both; stale
+response, selection and comparison callbacks are ignored. The comparison's
+moving-window limits still apply, including entries that newly enter the window.
+It establishes no publication, rescheduling, relevance or complete-history claim.
+
+## Add a scheduled release to a note
+
+After loading the BEA agenda, open **Add a release to a note**, then choose a
+**Release** and an **Add to note** destination. The form starts closed so the
+release list is easier to reach. Closing and reopening it keeps current choices
+and feedback; it makes no request or draft change. Source dates, timezone,
+warnings and release rows remain visible outside the form.
+
+Both choices start empty. The release picker keeps all admitted
+events, grouped by Eastern date. Search and **Release date** narrow both the visible
+agenda and the picker; simultaneous series remain separate. Full selected release text
+and the destination's listing, share class and exchange wrap below the controls.
+
+**Add release to note draft** appends the complete series name, scheduled Eastern
+time and exact UTC instant, original retrieval time, loaded window and official
+source link to that member's latest note. A retained agenda is identified in the
+reference. It describes a schedule that may change; it does not confirm a release,
+report a value or forecast, or establish company relevance. Adding makes no request.
+
+The action changes only the selected note. It preserves existing raw text and
+membership order. An identical reference is refused, including after saved text
+normalization. If the complete note exceeds its limit, nothing is clipped or
+appended. **Review in My Watchlist** opens that exact note's full reader, even
+outside a retained search. **Save watchlist** remains explicit and saves the
+whole draft, including other changes.
+
+Pending reads pause choices, Add and Review. Failure or Cancel keeps the loaded
+event choice with the current retained-result qualification. An accepted response,
+including equal content, clears the release choice. A filter change clears it only
+when the selected event is excluded, explains the change and chooses no fallback.
+Clearing a filter does not restore a discarded choice. A still-visible event
+remains selected.
+The destination remains when it still exists; note edits and ordering use the
+current member. Leaving or hiding Markets clears both choices. Stale callbacks,
+catalog changes and session retirement cannot append to another draft.
+
+This action adds no reminder, event history or separate save path. Source,
+browser, native and delivery acceptance are recorded in [Current work](CURRENT_WORK.md).
 
 ## Federal Reserve announcements
 
@@ -90,9 +220,118 @@ or retire a newer session. Current authentication failures retire the shared
 session, clearing the feed and draft through the existing coordinator.
 
 Cancel returns focus to Load or Refresh when Cancel had focus and the current
-control remains visible. Announcements actions do not edit notes, save, reorder
+control remains visible. Load, Refresh and Cancel do not edit notes, save, reorder
 or reconcile the watchlist. Ordinary source links open separately with their
 original validated URLs; the app does not fetch article contents.
+
+### Compare consecutive loaded feeds
+
+After a successful **Refresh announcements**, **Newly observed in this refresh**
+marks current links absent from the preceding accepted list. The count covers
+all current loaded items. The first accepted feed establishes a baseline without
+a comparison. Each later accepted feed, including an equal or empty response,
+advances that baseline. A changed title or publication time at the same URL does
+not create a newly observed link.
+
+**Compared loaded feeds** retains both original retrieval times, each list's
+shown and available counts, and the source. Only these two loaded lists are
+compared. Their ten-item limit can omit other feed entries; absence from the
+previous list does not establish a new publication, changed article or personal
+relevance. A removed link is not described as a retraction.
+
+Pending reads, failure and Cancel keep the last accepted pair and its original
+dates. The previous-feed notice still explains that the latest attempt has not
+confirmed a newer feed. Ordinary navigation preserves the pair; retirement
+clears it. Comparison makes no request and saves no history. It leaves every
+current item and note choice available, and adds no comparison label to a saved
+reference. See [Current work](CURRENT_WORK.md) for acceptance and delivery status.
+
+### Search loaded announcement titles
+
+**Search announcement titles** matches one phrase in the full titles already
+loaded. Matching ignores case, trims the phrase and treats repeated whitespace
+as one space. It searches titles only. **Clear title search** removes the phrase
+while retaining the selected Announcement view. Items keep their source order.
+The match count describes the loaded list; the
+source's available count, original retrieval time and full-feed refresh comparison
+remain visible. Search does not fetch article text or other feed entries.
+
+### Inspect newly observed links
+
+**Announcement view** offers **All loaded announcements** and **Newly observed
+links**. The latter becomes available after a successful refresh compares two
+accepted lists. It includes current URLs absent from the previous loaded list.
+This observation does not establish a new publication, article change, company
+relevance or complete history. The source may expose more entries than are loaded.
+
+Title search narrows the selected view. Rows and announcement note choices use
+the same result. Original titles, links, dates and source order stay intact.
+The match count describes this result; feed coverage and the complete comparison
+remain visible. Zero matching links and an empty loaded feed have separate messages.
+
+An excluded announcement choice clears with its feedback. A valid note destination
+stays selected. Returning to All does not restore an excluded choice. Choose another
+announcement. A matching choice and its feedback remain available.
+The note disclosure keeps its open or closed state through reading filters.
+
+Pending, failed and cancelled requests retain the view and phrase. Each accepted
+replacement, including equal or empty content, resets to All with a blank phrase.
+Navigation remount, model replacement and session retirement reset the view.
+Reading filters remain usable while Save pauses note editing. Selection and search
+make no request or saved preference. The local research profile stays unfiltered.
+
+Pending reads, failure and Cancel keep the search. Each accepted replacement,
+including an equal or empty feed, clears it and reports the reset. Leaving Markets
+starts a fresh search on return. Session retirement clears the feed and search.
+Search remains usable while note editing is paused.
+
+The note picker uses the same matching items. If search excludes a chosen
+announcement, the choice and its action feedback clear. A valid note destination
+stays selected. Clear does not restore the excluded choice; choose it again
+explicitly. A still-matching choice and its feedback remain available.
+
+### Add an announcement reference to a note
+
+After loading the feed, open **Add an announcement to a note**, a native disclosure
+after the announcement list. It starts closed. Closing and reopening keeps the
+current form mounted with its choices, feedback and note draft. Source metadata,
+search, refresh comparison, announcements and warnings remain outside it. A new
+Markets visit starts with the disclosure closed.
+
+Choose an **Announcement** and a current watchlist entry
+under **Add to note**. Both choices start empty. The complete chosen title and
+destination identity appear below the controls. **Add announcement to note draft**
+appends the reference to that entry's latest note without changing its existing
+text, other notes or membership order. The choice is the owner's relevance
+judgment; it does not identify company news or infer an investment effect.
+
+The reference includes the complete title and original URL, source publication
+time or an explicit unknown value, the fixed Fed source and feed URL, and the
+original retrieval time. A retained previous feed is labelled. Only feed metadata
+was loaded; the action does not fetch the article or refresh its dates.
+
+An active refresh blocks adding the reference. Cancel or failure retains the
+loaded choice with its current previous-feed qualification. A successful
+replacement, including equal content, clears the announcement choice. Leaving
+Markets for company research or another view clears both choices; returning needs
+fresh intent. Current session, catalog, feed and complete destination identity
+are checked again on each action. A stale or removed destination is refused.
+
+The complete note must fit the existing 2,000-code-point limit after trim and NFC
+normalization and contain no forbidden control characters. Oversized text is
+refused without truncation. Exact-reference duplicate comparison also uses NFC so
+a saved and reloaded decomposed title cannot be appended twice. Different original
+retrieval times or retained-feed qualification remain different dated references.
+
+After a successful append, **Review in My Watchlist** selects the exact current
+destination, opens its existing full-note reader and focuses the disclosure
+summary. A duplicate refusal keeps Review available for that successful choice;
+an active announcements request blocks it. Search query and scope, raw note text,
+other notes and order stay unchanged. See
+[Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
+Explicit **Save watchlist** saves the complete draft, including its other unsaved
+changes. Review does not save or refresh evidence. Delivery and rendered
+acceptance remain in [Current work](CURRENT_WORK.md).
 
 ## Dated raw-close change
 

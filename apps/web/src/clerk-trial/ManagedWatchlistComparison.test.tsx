@@ -29,6 +29,8 @@ const hooks = vi.hoisted(() => ({
   initialized: false,
   state: undefined as ManagedWatchlistComparisonSelection | undefined,
   changed: false,
+  memo: undefined as
+    undefined | { value: unknown; dependencies: React.DependencyList },
   ref: undefined as undefined | { current: unknown },
   effect: undefined as undefined | (() => void),
 }));
@@ -62,6 +64,18 @@ vi.mock("react", async (original) => {
         },
       ];
     },
+    useMemo: (create: () => unknown, dependencies: React.DependencyList) => {
+      if (!hooks.enabled) return actual.useMemo(create, dependencies);
+      if (
+        !hooks.memo ||
+        dependencies.some(
+          (dependency, index) =>
+            !Object.is(dependency, hooks.memo!.dependencies[index]),
+        )
+      )
+        hooks.memo = { value: create(), dependencies };
+      return hooks.memo.value;
+    },
     useRef: (initial: unknown) =>
       hooks.enabled
         ? (hooks.ref ??= { current: initial })
@@ -82,10 +96,12 @@ afterEach(() => {
   hooks.ref = undefined;
   hooks.effect = undefined;
   hooks.changed = false;
+  hooks.memo = undefined;
 });
 
 const dates = ["2026-09-17", "2026-09-18", "2026-09-19"];
 const noteActions = () => ({
+  review: vi.fn(),
   getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
   append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
 });
@@ -385,7 +401,9 @@ describe("watchlist comparison selection lifetime", () => {
       React.ComponentProps<typeof ManagedWatchlistComparisonNoteAction>
     >;
     expect(action.type).toBe(ManagedWatchlistComparisonNoteAction);
-    expect(action.props.selection).toBe(view.projection.selection);
+    expect(action.props.capture.selection).toBe(view.projection.selection);
+    expect(action.props.memberships).toBe(h.memberships);
+    expect(action.props.pending).toBe(false);
     expect(action.props.active).toBe(true);
     expect(action.props.editable).toBe(true);
     const rendered = renderToStaticMarkup(
@@ -513,4 +531,49 @@ describe("watchlist comparison selection lifetime", () => {
     expect(reopened.projection.left).toBeNull();
     expect(reopened.projection.right).toBeNull();
   });
+});
+
+it("keeps the Review capture stable across draft copies and source pending, but replaces it for changed retained qualifications", () => {
+  const h = harness();
+  type Action = React.ReactElement<
+    React.ComponentProps<typeof ManagedWatchlistComparisonNoteAction>
+  >;
+  const first = h.pair().noteAction as Action;
+  const memberships = [...h.memberships]
+    .reverse()
+    .map((member) => ({ ...member, note: "edited raw é" }));
+  const pending = {
+    listing: h.left.listing,
+    cancel: vi.fn(),
+  };
+  const blockedPrices = { ...h.prices, canRead: false, pending };
+  const blocked = h.render({
+    memberships,
+    editable: false,
+    prices: blockedPrices,
+  }).noteAction as Action;
+  expect(blocked.props.capture).toBe(first.props.capture);
+  expect(blocked.props.memberships).toBe(memberships);
+  expect(blocked.props.pending).toBe(true);
+  expect(blocked.props.editable).toBe(false);
+  const cancelled = h.render({ prices: { ...blockedPrices, pending: null } })
+    .noteAction as Action;
+  expect(cancelled.props.capture).toBe(first.props.capture);
+  const retained = h.render({
+    prices: {
+      ...h.prices,
+      rows: h.prices.rows.map((row) => ({
+        ...row,
+        history: { ...row.history, showingPrevious: row === h.left },
+      })),
+    },
+  }).noteAction as Action;
+  expect(retained.props.capture).not.toBe(first.props.capture);
+  expect(retained.props.capture).toEqual({
+    ...first.props.capture,
+    leftShowingPrevious: true,
+  });
+  expect((h.render().noteAction as Action).props.capture).toBe(
+    retained.props.capture,
+  );
 });

@@ -73,6 +73,20 @@ restrictions remain visible, and valid historical amounts do not enable an
 ineligible growth comparison. Different fiscal calendars and accounting bases
 are shown without adjustment or cross-company ranking.
 
+Basis choices and the comparison table use the same distinct readable names as
+the financial overview. A wrapping line below each native selector shows the
+complete selected name even when that basis is unavailable. The control references
+that line for assistive technology. Exact source concepts remain in each
+column's source details; selecting a readable name still selects that exact
+concept.
+
+Invented-data Chrome checks at 1440, 390 and 320 CSS pixels accept these labels,
+wrapping selected names, exact source keys and separate amounts. The basis
+selector and results region retain keyboard focus through report replacement.
+Changing or clearing a company resets its basis; selecting a name adds no
+request or note change. Native popup geometry and hosted picker execution are
+separate acceptance in current work.
+
 Full source and validation details remain available for each column. Long values
 wrap inside a contained table scroll region; keyboard users can focus the region
 and use arrow keys. Controls stack at narrow widths with the managed 44px targets.
@@ -85,15 +99,131 @@ Session retirement clears both columns. Refresh failure, invalid response and
 source eligibility use the existing Annual report rules. This comparison adds
 no field, feed, cohort, API schema, persistence or automatic refresh.
 
-Implementation and acceptance are recorded in [Current work](CURRENT_WORK.md).
+### Compare liquidity between companies
+
+Four rows after cash generation show **Current assets**, **Current liabilities**,
+**Working capital** and **Current ratio** from each loaded report. Balances and
+working capital retain exact, unscaled USD strings. Current ratio is a multiple
+rounded to two decimal places, half up. Each value shows its own balance date and
+current-use qualification; the companies may have different fiscal year ends.
+
+Working capital subtracts current liabilities from current assets. Current ratio
+divides current assets by current liabilities. Both require nonnegative balances
+from the same filing and date; the ratio also requires positive liabilities.
+Zero liabilities leave working capital available with an explicit ratio refusal.
+Negative working capital is a valid result. Missing or rejected values retain
+their own explanation, independent of income, cash and the selected revenue basis.
+
+Each company's existing source disclosure includes the original instant
+observations, filing links, source captures and calculation references. Refresh,
+failure, cancellation, selection and session retirement follow the existing
+report owner. Rendering and changing a basis send no extra request. Choose
+**Liquidity** in the comparison note action to keep both companies' admitted
+balances and calculations with their original provenance.
+
+### Open the full report from a comparison
+
+Each loaded column offers **Open full Annual report** beside its load controls.
+The company visit checks a private copy of that column's original report and
+shows its full financial overview and evidence. Opening sends no source request.
+Historical, unavailable and retained reports keep their original qualifications,
+filing references and source dates. The visit identifies reports reused from the
+comparison even if a later refresh fails or is cancelled.
+
+An explicit **Refresh annual report** changes only the company visit. **Back to
+workspace** and Android Back return to the same comparison, basis choices, note
+destination and current draft, then restore focus to the opening button. The
+company note uses the existing shared draft and explicit whole-watchlist Save.
+A conflicted draft stays read-only while its loaded report can still be viewed.
+
+Opening cancels any pending comparison read. Stale buttons, changed membership,
+catalog changes and session retirement cannot reopen old evidence. Cancelling
+the local report check leaves the visit unloaded. Cold company links, page
+reloads and Forward navigation start unloaded; the handoff adds no saved state,
+cache or automatic fallback request. Current work records acceptance separately.
+
+### Keep Annual comparison evidence in a note
+
+Below the comparison, choose **Revenue and net income**, **Cash generation** or **Liquidity**,
+then choose one of the two listings in **Add Annual comparison to**. The
+destination starts empty and identifies the company, share class and exchange.
+**Add Annual comparison to note draft** appends both companies' selected evidence
+to that listing's latest note. It preserves each company's fiscal period or balance
+date, exact USD values, raw concepts, filing link and original source and completion dates.
+Historical and retained reports keep their qualifications.
+
+Income copies the selected revenue basis, net income, available net margin and
+reported revenue change, or the reason that change is unavailable. Cash copies
+both reported inputs and their admitted same-filing, same-period difference.
+Liquidity copies current assets, current liabilities, working capital and the
+checked current ratio. Zero liabilities keep the explicit ratio refusal; negative
+working capital remains valid. Its complete source details and separate balance
+dates are retained. Both companies must have the chosen group's evidence; missing
+income or cash does not block valid liquidity. No field is substituted, rounded
+further or loaded by this action.
+
+Changing a company or replacing a report clears the note destination. Changing
+the revenue basis or evidence group keeps the destination but discards earlier
+action feedback. Note edits, ordering and Save preserve it. Refresh must finish
+or be cancelled before appending; a retained report uses its original dates.
+
+The action rechecks the current pair, reports, route and editable draft when
+clicked. It preserves existing prose, refuses an identical excerpt and validates
+the complete resulting note against the existing 2,000-character policy. An
+oversized or invalid note stays unchanged, without truncation. Review unsaved
+changes and choose **Save watchlist** to save the complete draft. Appending makes
+no source or save request. Current work records browser, native and delivery
+acceptance separately.
+
+After a successful append, **Review note** opens that exact listing's full note
+and focuses its reader. The current search and scope remain, even if the listing
+is outside the results. Review can read the unchanged draft while Save or recovery
+pauses editing. A pending source read pauses Review; a changed report, company,
+basis, evidence group or destination removes the earlier success. Refusing a
+duplicate in the same context keeps Review available. Review does not append,
+load a report or save.
+
+### Compare cash generation
+
+The same table adds reported operating cash flow, reported PP&E purchases and
+**Operating cash flow less PP&E purchases**, labelled as an app calculation.
+Each company's cell retains its own exact unscaled USD amount, annual period
+and current-use status. Missing or refused values show their reason; unloaded
+columns remain unloaded. The existing income period and warnings apply to
+revenue and net income only.
+
+Cash uses each currently loaded report's independently validated resolution.
+Changing revenue basis cannot change it, and unavailable income cannot hide valid
+cash. When the operands cover different periods, each remains readable but their
+subtraction is unavailable. Historical cash retains its own qualification.
+There is no adjustment for leases, acquisitions or other investing cash flows,
+and no cross-company calculation, annualization or ranking.
+
+Each company's existing source disclosure includes both raw cash concepts,
+scan status, observation references and original source dates. Refresh failure
+and Cancel retain the previous values and dates. Selection and session boundaries
+apply to the entire response. This adds no source request, saved state, cash
+history or note action. Source, browser and native acceptance are recorded in
+[Current work](CURRENT_WORK.md).
 
 ## Financial overview
+
+Once a managed Annual report is loaded, **On this report** links to Revenue and
+net income, Cash generation, Liquidity and Report source details. Each jump
+moves keyboard focus to the existing content. Report source details also opens
+its disclosure. All sections remain visible, including their unavailable states.
+These links read no sources, change no notes and add no browser-history entries.
+Replacing or retaining a report does not automatically move focus or scroll.
 
 The managed Annual view leads with reported financial results. Each eligible
 revenue basis has a table of exact USD revenue, net income and available net
 margin across up to three admitted periods, newest first. Dated reported changes
-follow without repeating the current amounts. Eligible bases lead, with missing
-or rejected bases separately visible below. The local research profile retains
+follow without repeating the current amounts. Eligible bases lead with readable,
+distinct labels: **Revenue**, **Customer contract revenue, excluding assessed
+tax**, and **Net sales revenue**. Genuinely missing bases appear as compact rows
+below the tables. Rejected or withheld evidence retains its visible explanation.
+Exact concept identifiers and statuses remain in **Source and validation
+details**; the labels do not combine or replace bases. The local research profile retains
 its existing evidence-first presentation and basis order.
 
 Exact filed and completed dates, current-use status and retained previous-report
@@ -127,6 +257,138 @@ Price was unavailable. Native execution for the financial layout passed its
 exact-head hosted check; release acceptance remains separate in
 [Current work](CURRENT_WORK.md).
 
+A later Chrome check accepts the readable basis labels and compact missing rows
+at 1440, 390 and 320 CSS pixels. Exact raw concepts and statuses remain available
+by keyboard. The same financial-results region keeps focus during delayed
+replacement from populated bases to missing ones and back. Rejected, withheld
+and historical evidence, explicit note appending and whole-draft Save retain
+their behavior. This check uses invented RAM data; it makes no live-source claim.
+
+## Cash generation
+
+The company Annual view shows reported operating cash flow and purchases of
+property, plant and equipment (PP&E) independently. It also shows **Operating
+cash flow less PP&E purchases**, explicitly labelled as an app calculation.
+Amounts remain exact, unscaled USD with their actual annual periods. The
+calculation requires both operands from the same filing and period. Negative
+operating cash flow and zero purchases are valid; negative reported purchases
+remain visible but withhold the subtraction. This is a narrow calculation, with
+no adjustment for leases, acquisitions or other investing cash flows.
+
+The source uses only `NetCashProvidedByUsedInOperatingActivities` and
+`PaymentsToAcquirePropertyPlantAndEquipment` in SEC Company Facts. It reuses the
+existing Submissions target and the same two explicit source requests. Missing,
+conflicting or invalid amounts stay unavailable. Another concept, filing or
+currency cannot fill a gap. Each amount must establish FY focus, an unamended
+annual filing and a 335–395 day period ending at the selected report date.
+Cash eligibility does not require a revenue or net-income pair.
+
+Company Facts envelope validity is separate from the income scan and each cash
+scan. A malformed or over-limit cash concept preserves valid income and the
+other cash metric; a failed income scan preserves valid cash evidence. Each cash
+concept allows at most 10,000 USD candidates and 100 unique selected-filing
+observations before annual filtering. Exceeding a bound withholds that metric
+without clipping. The existing income limits, eight-MiB source cap, two-MiB
+response cap, scheduler, admission and deadlines remain unchanged.
+
+Original source times, selected filing, observation pointers and exact calculation
+references are available in **Cash sources and calculation inputs**. Historical
+amounts retain their dates and current-use status; the existing seven-day source
+and 485-day report policies apply independently of income. Refresh, cancellation,
+navigation and session retirement use the existing Annual response lifetime.
+Cash history and charts remain outside this scope. The watchlist's
+[cash comparison](#compare-cash-generation) uses these same loaded amounts.
+
+**Add cash generation to note draft** copies the three available amounts as one
+plain-text paragraph into the existing listing's note. It retains exact raw
+concept names, the app-calculation label and limits, filing identity and link,
+annual period, original source and load dates, and current-use status. Historical
+and retained reports carry explicit qualifiers. Cash can be copied when income
+evidence is unavailable; missing or incompatible cash inputs block the action.
+
+The action reads the latest note at click time, preserves its prose, refuses an
+identical excerpt and checks the whole proposed note against the existing
+2,000-character policy. It remains keyboard-focusable when unavailable so its
+associated reason can be read. Appending neither refreshes evidence nor saves
+changes. Review and explicitly save the whole watchlist draft. See the
+[cash-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-cash-generation-to-a-note-draft).
+
+Focused source checks and invented-data Chrome acceptance cover exact note text,
+latest-prose and duplicate guards, full-note limits, explicit Save/reload,
+unavailable and historical cash, and report/session lifetime. The action fits at
+1440, 390 and 320 CSS pixels and remains keyboard-accessible with a 44px target.
+The native fixture builds; hosted execution and delivery are recorded separately
+in current work.
+
+## Liquidity at fiscal year-end
+
+Company Annual shows independently reported **Current assets** and **Current
+liabilities**, followed by two labelled app calculations: **Working capital**
+and **Current ratio**. The amounts retain exact, unscaled USD; the ratio is a
+multiple rounded to two decimal places, half up. Working capital subtracts
+current liabilities from current assets. Current ratio divides the same inputs.
+
+Only `AssetsCurrent` and `LiabilitiesCurrent` USD observations are used. Both
+are instant balances: the source must supply no start date or duration, and its
+end date must equal the selected annual report date. FY filing focus and the
+exact unamended 10-K or 20-F accession must match current Submissions metadata.
+The filing-focus year need not equal the balance's calendar year. Annual-flow
+duration rules and calendar-quarter tolerances do not apply to these balances.
+
+Each reported amount can remain available without the other. Calculations require
+nonnegative operands from the same filing and date; current ratio also requires
+positive current liabilities. Negative reported operands remain visible with an
+explanation that the calculations are withheld. Working capital itself can be
+negative. Missing or conflicting values stay unavailable, with no fallback to a
+different concept, currency or filing. Current assets are not all cash.
+
+Liquidity reuses the existing explicit Submissions and Company Facts read. Its
+two bounded scans are independent of each other, income and cash. Each allows
+10,000 USD source candidates and 100 unique observations from the selected filing,
+counted before date filtering. Invalid rows or an exceeded bound withhold that
+metric without clipping. Source decimal strings allow 64 characters; exact
+working-capital and ratio outputs allow 128 and 129 characters respectively.
+The decoder recomputes every result, reference and qualification from the admitted
+observations. Existing request, source, response, cancellation and session bounds
+remain unchanged.
+
+The initially closed **Liquidity sources and calculation inputs** disclosure
+contains the original cutoff, capture and completion times, scan coverage, raw
+period fields, filing join, source pointers and calculation references. A rejected
+duration observation remains inspectable as supplied. The seven-day source
+freshness and 485-day report policies still apply; valid older balances remain
+readable with historical labels. The existing whole-response lifetime carries
+liquidity through refresh, cancellation, navigation and comparison-to-company
+handoff. The [comparison rows](#compare-liquidity-between-companies) reuse these
+checked balances and calculations. Liquidity history remains outside this scope.
+
+### Add liquidity to a note
+
+**Add liquidity to note draft** appends one dated paragraph to the existing
+listing's shared note. It includes both exact reported balances, working capital,
+the checked current ratio, original filing and source dates, and historical or
+retained-report qualifiers. If current liabilities are zero, it records that the
+ratio is unavailable while preserving the valid balances and working capital.
+The action requires nonnegative reported inputs from the same filing and date;
+negative working capital remains valid. Missing or rejected inputs block it.
+
+The action rechecks the current report and latest note when activated, refuses an
+identical excerpt, and validates the complete proposed note against the existing
+2,000-character policy. It preserves existing prose and other members. Review and
+explicitly **Save watchlist** to save the whole draft. Appending requests no data
+and adds no saved field. See the
+[liquidity-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
+
+### Version boundary
+
+The Annual request/response schema and generation definition are `3.0.0`. The
+route and four request keys are unchanged. Version-1 and version-2 Annual requests
+are rejected before provider or budget work; version-3 clients reject old responses. A later
+release must coordinate the API, website and Android client. During a mismatched
+rollout, Annual reads are unavailable until the matching client is installed or
+loaded. Saved watchlists and notes require no migration. Current work records
+implementation and acceptance; this guide does not establish deployment.
+
 ## Optional reported annual trend
 
 The managed overview includes an initially collapsed **Reported annual trend**
@@ -134,6 +396,13 @@ disclosure. It plots Revenue or Net income in USD for two or three admitted
 periods from one named revenue basis and filing, oldest first. The exact tables
 remain visible. Selecting a basis or metric makes no request and changes no note,
 board selection or saved state. The local research profile is unchanged.
+
+The basis selector and trend source summary share the overview's readable names.
+A wrapping selected-basis line keeps the complete name visible on narrow screens
+and describes the native selector. Raw concept values and source identifiers
+remain unchanged, including when the chosen basis has no available trend.
+Invented-data Chrome checks accept the full name at narrow widths and the same
+focused selector through replacement with missing evidence and back.
 
 The summary and both native selectors remain mounted while the loaded Annual view
 is present. The initial basis is the first with a trend, otherwise the first with

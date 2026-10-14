@@ -22,18 +22,38 @@ import {
 } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import { ManagedCatalogChangedError, type ManagedApi } from "./managed-api";
-import { ManagedAnnualReport } from "./managed-annual-report";
-import { ManagedWatchlistAnnualComparison } from "./managed-watchlist-annual-comparison";
+import {
+  ManagedAnnualReport,
+  type ManagedAnnualReportSeed,
+} from "./managed-annual-report";
+import {
+  ManagedWatchlistAnnualComparison,
+  type ManagedAnnualComparisonReportCapture,
+  type ManagedWatchlistAnnualComparisonMember,
+} from "./managed-watchlist-annual-comparison";
+import {
+  getAnnualComparisonNoteEvidence,
+  type AnnualComparisonNoteCapture,
+} from "./managed-watchlist-annual-comparison-note";
 import {
   ManagedEodHistory,
   type ManagedEodHistorySeed,
 } from "./managed-eod-history";
 import { annualNoteExcerpt } from "./managed-annual-note";
+import { annualCashNoteExcerpt } from "./managed-annual-cash-note";
+import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
 import { priceComparisonNoteExcerpt } from "./managed-price-note";
 import { getManagedWatchlistComparisonNoteEvidence } from "./managed-watchlist-comparison-note";
 import type { ManagedWatchlistComparisonSelection } from "./managed-watchlist-comparison";
 import { filingReferenceNoteExcerpt } from "./managed-filings-note";
-import { ManagedCompanyFilings } from "./managed-company-filings";
+import {
+  ManagedCompanyFilings,
+  type ManagedCompanyFilingsSeed,
+} from "./managed-company-filings";
+import {
+  ManagedWatchlistFilings,
+  type ManagedWatchlistFilingsCapture,
+} from "./managed-watchlist-filings";
 import { ManagedSecAccess } from "./managed-sec-access";
 import { ManagedEodAccess } from "./managed-eod-access";
 import { ManagedMarkets } from "./managed-markets";
@@ -42,6 +62,14 @@ import {
   type ManagedWatchlistPriceHandle,
 } from "./managed-watchlist-prices";
 import { ManagedFedAnnouncements } from "./managed-fed-announcements";
+import {
+  getBeaReleaseNoteEvidence,
+  type BeaReleaseNoteCapture,
+} from "./managed-bea-release-note";
+import {
+  getFedAnnouncementNoteEvidence,
+  type FedAnnouncementNoteCapture,
+} from "./managed-fed-announcement-note";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import {
@@ -59,6 +87,10 @@ export interface CatalogReview {
 export interface ManagedResearchVisit {
   readonly selection: ManagedResearchSelection;
   readonly section: "annual" | "eod" | "filings";
+}
+export interface ResearchCompanyNavigationState {
+  readonly members: readonly WatchlistMembership[];
+  readonly reason: string;
 }
 export interface ResearchWatchlistState {
   readonly member: WatchlistMembership | null;
@@ -175,6 +207,7 @@ export class ManagedWorkspace {
   readonly annual: ManagedAnnualReport;
   readonly annualComparison: ManagedWatchlistAnnualComparison;
   readonly filings: ManagedCompanyFilings;
+  readonly watchlistFilings: ManagedWatchlistFilings;
   private readonly secAccess = new ManagedSecAccess();
   readonly eod: ManagedEodHistory;
   readonly markets: ManagedMarkets;
@@ -182,11 +215,13 @@ export class ManagedWorkspace {
   readonly agenda: ManagedBeaReleaseAgenda;
   readonly announcements: ManagedFedAnnouncements;
   private navigationBlocked = false;
+  private navigationRevision = 0;
   private state = emptyDiscovery();
   private readonly listeners = new Set<() => void>();
   private searchOperation: AbortController | null = null;
   private resolveOperation: AbortController | null = null;
   private companyRouteOperation: AbortController | null = null;
+  private researchOperation = Symbol();
   private retired = false;
   private draft: MainWatchlistPayload | null = null;
   private validation: {
@@ -234,9 +269,19 @@ export class ManagedWorkspace {
       (request, signal) => api.recentFilings(request, signal),
       (error) => this.coordinator.readError(error),
       this.secAccess,
+      { compareRefresh: true },
     );
     this.filings.subscribe(() => {
       if (this.filings.getSnapshot().catalogChanged) this.invalidateCatalog();
+    });
+    this.watchlistFilings = new ManagedWatchlistFilings(
+      (request, signal) => api.recentFilings(request, signal),
+      (error) => this.coordinator.readError(error),
+      this.secAccess,
+    );
+    this.watchlistFilings.subscribe(() => {
+      if (this.watchlistFilings.getSnapshot().catalogChanged)
+        this.invalidateCatalog();
     });
     this.announcements = new ManagedFedAnnouncements(
       (signal) => api.monetaryAnnouncements(signal),
@@ -282,6 +327,7 @@ export class ManagedWorkspace {
       const saved = this.coordinator.getSnapshot();
       this.syncWatchlistPrices();
       this.syncAnnualComparison();
+      this.syncWatchlistFilings();
       const selection = this.state.research?.selection;
       if (
         selection?.origin === "watchlist" &&
@@ -309,12 +355,51 @@ export class ManagedWorkspace {
     this.syncAnnouncements();
     this.syncWatchlistPrices();
     this.syncAnnualComparison();
+    this.syncWatchlistFilings();
     for (const listener of this.listeners) listener();
   }
   setNavigationBlocked(blocked: boolean) {
+    this.navigationRevision++;
     this.navigationBlocked = blocked;
     this.syncAnnouncements();
     this.syncAnnualComparison();
+    this.syncWatchlistFilings();
+  }
+  private syncWatchlistFilings() {
+    if (this.retired || this.state.view !== "watchlist") {
+      this.watchlistFilings.leave();
+      return;
+    }
+    this.watchlistFilings.reconcile(
+      this.coordinator.getSnapshot().draft,
+      this.state.snapshot?.snapshotSha256 ?? null,
+      !this.navigationBlocked &&
+        !this.state.research &&
+        !this.state.companyRoute,
+      this.canEdit(),
+    );
+  }
+  selectWatchlistFilingsMember(member: WatchlistMembership | null) {
+    if (
+      this.retired ||
+      this.navigationBlocked ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute
+    )
+      return;
+    this.syncWatchlistFilings();
+    const current = this.watchlistFilings.getSnapshot();
+    if (member === null) {
+      this.watchlistFilings.select(current, null);
+      return;
+    }
+    if (!this.coordinator.getSnapshot().draft?.memberships.includes(member))
+      return;
+    const selected = current.memberships.find((entry) =>
+      membershipMatchesResult(member, entry.listing),
+    );
+    if (selected) this.watchlistFilings.select(current, selected);
   }
   private syncAnnouncements() {
     if (
@@ -366,6 +451,7 @@ export class ManagedWorkspace {
     this.annual.retire();
     this.annualComparison.retire();
     this.filings.retire();
+    this.watchlistFilings.retire();
     this.secAccess.retire();
     this.eod.retire();
     this.markets.retire();
@@ -447,6 +533,7 @@ export class ManagedWorkspace {
     this.cancelReview();
     this.markets.leave();
     this.watchlistPrices.leave();
+    this.watchlistFilings.leave();
     this.closeResearch();
     this.update({
       snapshot: null,
@@ -568,6 +655,58 @@ export class ManagedWorkspace {
       "annual",
     );
   }
+  private canOpenAnnualComparisonReport(
+    capture: ManagedAnnualComparisonReportCapture,
+  ) {
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "watchlist" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      draft.memberships.some((member) =>
+        membershipMatchesResult(member, capture.member.listing),
+      ) &&
+      this.annualComparison.canAdmitReport(capture)
+    );
+  }
+  openAnnualComparisonReport(capture: ManagedAnnualComparisonReportCapture) {
+    if (!this.canOpenAnnualComparisonReport(capture)) return;
+    const handoff = this.annualComparison.admitReport(capture);
+    if (!handoff || !this.canOpenAnnualComparisonReport(capture)) return;
+    this.openResearch(handoff.selection, "annual", {
+      annualSeed: handoff.seed,
+      admit: () => this.canOpenAnnualComparisonReport(capture),
+    });
+  }
+  private canOpenWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
+    const draft = this.coordinator.getSnapshot().draft;
+    return (
+      !this.retired &&
+      !this.navigationBlocked &&
+      this.state.view === "watchlist" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256 &&
+      draft.memberships.some((member) =>
+        membershipMatchesResult(member, capture.member.listing),
+      ) &&
+      this.watchlistFilings.canAdmitFilings(capture)
+    );
+  }
+  openWatchlistFilings(capture: ManagedWatchlistFilingsCapture) {
+    if (!this.canOpenWatchlistFilings(capture)) return;
+    const handoff = this.watchlistFilings.admitFilings(capture);
+    if (!handoff || !this.canOpenWatchlistFilings(capture)) return;
+    this.openResearch(handoff.selection, "filings", {
+      filingsSeed: handoff.seed,
+      admit: () => this.canOpenWatchlistFilings(capture),
+    });
+  }
   openDiscoveryEod(result: PersonalSecurityMasterSearchResultDto) {
     const snapshot = this.state.snapshot;
     if (this.retired || !snapshot || !this.state.results.includes(result))
@@ -603,8 +742,7 @@ export class ManagedWorkspace {
         origin: "watchlist",
       },
       "eod",
-      null,
-      seed,
+      { priceSeed: seed },
     );
   }
   openMarketResearch(kind: "annual" | "eod" | "filings", listingId?: string) {
@@ -631,14 +769,11 @@ export class ManagedWorkspace {
       .rows.find(
         (entry) => entry.listing.listingId === selection.listing.listingId,
       );
-    this.openResearch(
-      selection,
-      kind,
-      null,
-      row?.response
+    this.openResearch(selection, kind, {
+      priceSeed: row?.response
         ? { response: row.response, showingPrevious: row.showingPrevious }
         : undefined,
-    );
+    });
   }
   async setCompanyRoute(route: ManagedCompanyRoute | null) {
     if (this.retired) return;
@@ -762,7 +897,7 @@ export class ManagedWorkspace {
           origin: "route",
         },
         activeRoute.section,
-        { ...activeRoute, status: "open", message: "" },
+        { companyRoute: { ...activeRoute, status: "open", message: "" } },
       );
     } catch (error) {
       if (!current()) return;
@@ -790,28 +925,142 @@ export class ManagedWorkspace {
         this.companyRouteOperation = null;
     }
   }
+  getResearchCompanyNavigation(
+    visit: ManagedResearchVisit,
+  ): ResearchCompanyNavigationState {
+    if (
+      this.retired ||
+      this.state.research !== visit ||
+      !this.canSwitchResearch(visit.selection)
+    )
+      return { members: [], reason: "Open a current company visit first." };
+    const choices = this.researchCompanyChoices(visit);
+    if (choices.reason) return choices;
+    const route = this.state.companyRoute;
+    if (
+      this.navigationBlocked &&
+      (route?.status !== "open" ||
+        route.listingId !== visit.selection.listing.listingId ||
+        route.section !== visit.section)
+    )
+      return { ...choices, reason: "Wait for company navigation to finish." };
+    return choices;
+  }
+  private researchCompanyChoices(
+    visit: ManagedResearchVisit,
+  ): ResearchCompanyNavigationState {
+    if (
+      visit.selection.catalogSnapshotSha256 !==
+        this.state.snapshot?.snapshotSha256 ||
+      this.annual.getSnapshot().catalogChanged ||
+      this.filings.getSnapshot().catalogChanged ||
+      this.eod.getSnapshot().catalogChanged
+    )
+      return { members: [], reason: "Load the current catalog first." };
+    const draft = this.coordinator.getSnapshot().draft;
+    if (draft?.snapshotSha256 !== visit.selection.catalogSnapshotSha256)
+      return {
+        members: [],
+        reason: "Load My Watchlist from the current catalog first.",
+      };
+    return {
+      members: draft.memberships,
+      reason: draft.memberships.length ? "" : "My Watchlist has no companies.",
+    };
+  }
+  canOpenResearchCompany(
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) {
+    const choices = this.getResearchCompanyNavigation(visit);
+    return (
+      !choices.reason &&
+      choices.members.includes(member) &&
+      !membershipMatchesResult(member, visit.selection.listing)
+    );
+  }
+  openResearchCompany(
+    visit: ManagedResearchVisit,
+    member: WatchlistMembership,
+  ) {
+    if (!this.canOpenResearchCompany(visit, member)) return;
+    const navigationRevision = this.navigationRevision;
+    const selection: ManagedResearchSelection = {
+      catalogSnapshotSha256: visit.selection.catalogSnapshotSha256,
+      listing: listingIdentity(member),
+      cik: null,
+      origin: "watchlist",
+    };
+    this.openResearch(selection, visit.section, {
+      admit: (phase) => {
+        if (
+          this.navigationRevision !== navigationRevision ||
+          !membershipMatchesResult(member, selection.listing)
+        )
+          return false;
+        if (phase === "before-clear")
+          return this.canOpenResearchCompany(visit, member);
+        return (
+          this.state.research === null &&
+          this.state.companyRoute === null &&
+          this.canSwitchResearch(visit.selection) &&
+          this.researchCompanyChoices(visit).members.includes(member)
+        );
+      },
+    });
+  }
   private openResearch(
     selection: ManagedResearchSelection,
     section: ManagedResearchVisit["section"],
-    companyRoute: CompanyRouteState | null = null,
-    priceSeed?: ManagedEodHistorySeed,
+    options: {
+      companyRoute?: CompanyRouteState;
+      priceSeed?: ManagedEodHistorySeed | undefined;
+      annualSeed?: ManagedAnnualReportSeed;
+      filingsSeed?: ManagedCompanyFilingsSeed;
+      admit?: (phase: "before-clear" | "after-clear") => boolean;
+    } = {},
   ) {
+    const operation = Symbol();
+    this.researchOperation = operation;
+    const owns = () => this.researchOperation === operation;
+    let phase: "before-clear" | "after-clear" = "before-clear";
+    const admitted = () => !this.retired && (options.admit?.(phase) ?? true);
     this.watchlistPrices.cancel();
-    this.clearResearch();
-    if (section === "eod" || priceSeed) this.eod.open(selection, priceSeed);
-    if (section === "annual") this.annual.open(selection);
-    if (section === "filings") this.filings.open(selection);
+    if (!owns() || !admitted()) return;
+    this.watchlistFilings.cancel();
+    if (!owns() || !admitted()) return;
+    phase = "after-clear";
+    this.clearResearch(operation);
+    if (!owns()) return;
+    if (!admitted()) {
+      this.update({});
+      return;
+    }
+    if (section === "eod" || options.priceSeed)
+      this.eod.open(selection, options.priceSeed);
+    if (!owns()) return;
+    if (section === "annual") this.annual.open(selection, options.annualSeed);
+    if (!owns()) return;
+    if (section === "filings")
+      this.filings.open(selection, options.filingsSeed);
+    if (!owns()) return;
+    if (!admitted()) {
+      this.clearResearch(operation);
+      if (owns()) this.update({});
+      return;
+    }
     const captured = this[section].getSnapshot().selection;
     if (captured)
       this.update({
         research: Object.freeze({ selection: captured, section }),
-        companyRoute,
+        companyRoute: options.companyRoute ?? null,
       });
   }
   closeResearch() {
     if (this.clearResearch()) this.update({});
   }
-  private clearResearch() {
+  private clearResearch(operation = Symbol()) {
+    this.researchOperation = operation;
     const hadResearch =
       this.state.research !== null || this.state.companyRoute !== null;
     this.companyRouteOperation?.abort();
@@ -820,7 +1069,9 @@ export class ManagedWorkspace {
     if (hadResearch)
       this.state = { ...this.state, research: null, companyRoute: null };
     this.annual.close();
+    if (this.researchOperation !== operation) return hadResearch;
     this.filings.close();
+    if (this.researchOperation !== operation) return hadResearch;
     this.eod.close();
     return hadResearch;
   }
@@ -945,9 +1196,13 @@ export class ManagedWorkspace {
       { ...listingIdentity(selection.listing), note: "" },
     ]);
   }
-  noteResearch(selection: ManagedResearchSelection, note: string) {
+  noteResearch(
+    selection: ManagedResearchSelection,
+    note: string,
+    expectedNote?: string,
+  ) {
     if (!this.getResearchWatchlist(selection).canEdit) return;
-    this.note(selection.listing.listingId, note);
+    this.note(selection.listing.listingId, note, expectedNote);
   }
   private annualNoteProposal(
     selection: ManagedResearchSelection,
@@ -1014,6 +1269,150 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Annual evidence added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private annualCashNoteProposal(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding cash generation.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose cash generation from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualCashNoteExcerpt(response, annual.showingPrevious);
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Cash generation needs available operating cash flow and PP&E purchases from the same filing and annual period.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason:
+          "This exact cash-generation reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualCashNoteAction(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualCashNoteProposal(selection, response);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualCashToResearchNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualCashNoteProposal(selection, response);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Cash generation added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private annualLiquidityNoteProposal(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { note: string | null; reason: string | null } {
+    const watchlist = this.getResearchWatchlist(selection);
+    if (!watchlist.canEdit || !watchlist.member)
+      return {
+        note: null,
+        reason:
+          watchlist.reason ??
+          "Add this company to the watchlist draft before adding liquidity.",
+      };
+    const annual = this.annual.getSnapshot();
+    if (
+      this.state.research?.section !== "annual" ||
+      annual.response !== response
+    )
+      return {
+        note: null,
+        reason:
+          "Choose liquidity from the current Annual report before adding it.",
+      };
+    if (annual.running)
+      return {
+        note: null,
+        reason: "Wait for the Annual report request to finish or cancel it.",
+      };
+    const excerpt = annualLiquidityNoteExcerpt(
+      response,
+      annual.showingPrevious,
+    );
+    if (excerpt === null)
+      return {
+        note: null,
+        reason:
+          "Liquidity needs available nonnegative current assets and liabilities from the same filing and balance date.",
+      };
+    const current = watchlist.member.note;
+    if (current.includes(excerpt))
+      return {
+        note: null,
+        reason: "This exact liquidity reference is already in the note draft.",
+      };
+    const note = current + (current ? " " : "") + excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return {
+        note: null,
+        reason:
+          "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      };
+    return { note, reason: null };
+  }
+  getAnnualLiquidityNoteAction(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualLiquidityNoteProposal(selection, response);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualLiquidityToResearchNote(
+    selection: ManagedResearchSelection,
+    response: PersonalSecAnnualEvidenceResponseDto,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualLiquidityNoteProposal(selection, response);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason! };
+    this.noteResearch(selection, proposal.note);
+    return {
+      appended: true,
+      message:
+        "Liquidity added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
   private priceNoteProposal(
@@ -1172,6 +1571,94 @@ export class ManagedWorkspace {
       message: `Comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
+  private annualComparisonNoteProposal(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const draft = this.coordinator.getSnapshot().draft;
+    const comparison = this.annualComparison.getSnapshot();
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    if (
+      !this.canEdit() ||
+      !draft ||
+      this.state.view !== "watchlist" ||
+      this.state.research ||
+      this.state.companyRoute ||
+      !comparison.active ||
+      !comparison.canRead ||
+      comparison.catalogChanged ||
+      this.state.snapshot?.snapshotSha256 !== draft.snapshotSha256
+    )
+      return refuse(
+        "Return to an editable watchlist before adding Annual comparison evidence.",
+      );
+    if (comparison.pending)
+      return refuse(
+        "Wait for the Annual comparison request to finish or cancel it.",
+      );
+    for (const side of ["left", "right"] as const) {
+      const current = comparison[side];
+      const observed = capture[side];
+      if (
+        current.selected !== observed.member ||
+        current.report.response !== observed.response ||
+        current.report.showingPrevious !== observed.showingPrevious ||
+        current.report.running ||
+        observed.response.catalogSnapshotSha256 !== draft.snapshotSha256
+      )
+        return refuse(
+          "Choose evidence from the current Annual comparison before adding it.",
+        );
+    }
+    if (
+      !destination ||
+      ![capture.left.member, capture.right.member].includes(destination)
+    )
+      return refuse(
+        "Choose one of these two listings as the note destination.",
+      );
+    const member = draft.memberships.find((item) =>
+      membershipMatchesResult(item, destination.listing),
+    );
+    if (!member)
+      return refuse(
+        "Choose one of these two listings as the note destination.",
+      );
+    const evidence = getAnnualComparisonNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason!);
+    if (member.note.includes(evidence.excerpt))
+      return refuse(
+        "This exact Annual comparison reference is already in the note draft.",
+      );
+    const note = member.note + (member.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member, reason: null };
+  }
+  getAnnualComparisonNoteAction(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.annualComparisonNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendAnnualComparisonToNote(
+    capture: AnnualComparisonNoteCapture,
+    destination: ManagedWatchlistAnnualComparisonMember | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.annualComparisonNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Annual comparison added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
+    };
+  }
   private filingsNoteProposal(
     selection: ManagedResearchSelection,
     response: ManagedSecFilingsResponseDto,
@@ -1248,6 +1735,142 @@ export class ManagedWorkspace {
         "Filing reference added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
+  private marketsNoteDraft(): MainWatchlistPayload | null {
+    const draft = this.coordinator.getSnapshot().draft;
+    return this.canEdit() &&
+      !this.navigationBlocked &&
+      this.state.view === "markets" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256
+      ? draft
+      : null;
+  }
+  private fedAnnouncementNoteProposal(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    const draft = this.marketsNoteDraft();
+    if (!draft)
+      return refuse(
+        "Return to Markets with an editable current watchlist before adding an announcement.",
+      );
+    const current = this.announcements.getSnapshot();
+    if (current.busy)
+      return refuse(
+        "Wait for the announcements request to finish or cancel it.",
+      );
+    if (!capture) return refuse("Choose a loaded announcement.");
+    if (
+      current.announcements !== capture.response ||
+      current.showingPrevious !== capture.showingPrevious
+    )
+      return refuse("Choose an announcement from the current loaded feed.");
+    const evidence = getFedAnnouncementNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason);
+    if (!destination || !draft.memberships.includes(destination))
+      return refuse("Choose a current watchlist note.");
+    if (
+      destination.note
+        .normalize("NFC")
+        .includes(evidence.excerpt.normalize("NFC"))
+    )
+      return refuse(
+        "This exact announcement reference is already in the note draft.",
+      );
+    const note =
+      destination.note + (destination.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member: destination, reason: null };
+  }
+  getFedAnnouncementNoteAction(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.fedAnnouncementNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendFedAnnouncementToNote(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.fedAnnouncementNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Announcement reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
+    };
+  }
+  private beaReleaseNoteProposal(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    const draft = this.marketsNoteDraft();
+    if (!draft)
+      return refuse(
+        "Return to Markets with an editable current watchlist before adding a release.",
+      );
+    const current = this.agenda.getSnapshot();
+    if (current.busy)
+      return refuse("Wait for the agenda request to finish or cancel it.");
+    if (!capture) return refuse("Choose a loaded release.");
+    if (
+      current.agenda !== capture.response ||
+      current.showingPrevious !== capture.showingPrevious
+    )
+      return refuse("Choose a release from the current loaded agenda.");
+    const evidence = getBeaReleaseNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason);
+    if (!destination || !draft.memberships.includes(destination))
+      return refuse("Choose a current watchlist note.");
+    if (
+      destination.note
+        .normalize("NFC")
+        .includes(evidence.excerpt.normalize("NFC"))
+    )
+      return refuse(
+        "This exact release reference is already in the note draft.",
+      );
+    const note =
+      destination.note + (destination.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member: destination, reason: null };
+  }
+  getBeaReleaseNoteAction(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.beaReleaseNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendBeaReleaseToNote(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.beaReleaseNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Release reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
+    };
+  }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {
     const digest = this.state.snapshot?.snapshotSha256 ?? null;
     if (this.validation?.draft === draft && this.validation.digest === digest)
@@ -1287,8 +1910,14 @@ export class ManagedWorkspace {
       return;
     this.edit([...draft.memberships, listingMembership(result)]);
   }
-  note(listingId: string, note: string) {
+  note(listingId: string, note: string, expectedNote?: string) {
     const draft = this.coordinator.getSnapshot().draft;
+    if (
+      expectedNote !== undefined &&
+      draft?.memberships.find((member) => member.listingId === listingId)
+        ?.note !== expectedNote
+    )
+      return;
     if (draft)
       this.edit(
         draft.memberships.map((member) =>

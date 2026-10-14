@@ -1,10 +1,180 @@
 # Personal market platform roadmap
 
-Updated October 12, 2026. This document defines the durable product goals and
+Updated October 14, 2026. This document defines the durable product goals and
 capability milestones. [Current work](./CURRENT_WORK.md) records the accepted
 release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
+
+The owner also requested adopting useful ideas from easy-stock while retaining
+the full InvestingPro feature goal. The [source review and adoption order](EASY_STOCK_REVIEW.md)
+add thesis reviews, evidence-linked reports, research purpose, resume/freshness,
+portfolio inspection and daily follow-up to M2–M5. The first candidate lets the
+owner preview a thesis, counterevidence, conditions and next check before adding
+an authored review to the existing note draft and saving it explicitly.
+
+The current M2 research candidate adds a [loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md).
+Price and Annual keep separate source dates, revenue bases, availability and
+historical qualifications. It uses admitted evidence and explicit section
+navigation, with no automatic request, saved change or model verdict.
+
+The preceding M3 increment narrows the loaded BEA agenda to scheduled entries absent
+from its preceding accepted agenda. Release view intersects with series search
+and Eastern date; rows and note choices share one result. Complete comparison
+counts and original windows stay visible. This adds no request, saved preference
+or publication/rescheduling claim. See
+[Release view](MANAGED_MARKETS_HOME.md#inspect-entries-absent-from-the-previous-agenda).
+
+The preceding M3 increment compares consecutive accepted BEA agendas. Exact
+series/time entries absent from the preceding loaded window receive a visible
+marker, while both original retrieval times and windows remain available.
+Series/date filters and explicit note actions retain their existing behavior.
+The comparison explains moving-window scope and establishes no reschedule or
+publication claim. It adds no request or saved history. See
+[agenda comparison](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-agendas).
+
+The preceding M3 increment narrows the loaded Fed feed to links absent from the
+preceding accepted list. Announcement view combines with title search and note
+choices, preserving complete comparison counts and original dates. It adds no
+request, publication alert, relevance claim or saved preference. See
+[newly observed links](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
+
+The preceding M3 design increment keeps the optional Fed reference form inside
+an initially closed native disclosure after the list. It preserves note choices
+and feedback across toggling, with the full feed's reading controls and source
+details outside. This follows the accepted BEA note-tools pattern.
+
+The preceding M3/M4 increment searches full titles in the loaded Fed feed. One
+phrase filters rows and note choices while full-feed counts, source dates and
+refresh comparison remain visible. Retained reads keep the query; accepted
+replacement resets it. An excluded note choice clears without a fallback.
+This advances daily reading and explicit note connections using existing data.
+
+The preceding M3 design increment keeps the BEA note form in a native disclosure.
+The release list is easier to reach, while original source dates, warnings and
+filters stay visible. Opening and closing the form preserves current note choices
+and feedback. See [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
+The preceding M3/M4 increment searches full series names in the loaded BEA schedule.
+Search and Eastern date selection narrow the agenda and note picker together,
+preserving original source text, dates and all admitted events. Filters make no
+request or saved change. See [BEA agenda](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+The preceding M2/M4 increment connects price and Annual comparison appends to
+**Review note**. It opens the exact destination's full note while preserving
+search, draft and loaded evidence. Review remains readable while Save pauses
+editing. See [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+
+The preceding M3/M4 increment connects one chosen loaded BEA release to one chosen
+watchlist note, followed by exact-note Review and whole-draft Save. It keeps the
+full scheduled series, original UTC/Eastern time and agenda source context. It
+adds no reminder, forecast, released value, request or saved schema. See
+[scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
+The preceding M3 increment compares consecutive accepted Fed lists and marks
+current URLs absent from the preceding loaded list. It retains both retrieval
+times and coverage counts, without a publication alert, relevance claim, new
+request or saved history. Existing note reference, exact Review and Save remain
+available. See [feed comparison](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
+
+The preceding M1/M4 increment connects one chosen loaded Fed announcement to one
+chosen watchlist note. It appends complete metadata and original dates to the
+latest draft, followed by existing Review and Save. It adds no article fetch,
+automatic relevance judgment, source, schema or persistence path. See
+[announcement references](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
+
+The preceding M1 design increment adds **On Markets** links to the company board,
+economic calendar and Fed announcements. It makes the existing daily sections
+easier to reach while preserving explicit loads, original source dates and the
+watchlist draft. It adds no source, financial field or saved preference. See
+[Markets navigation](MANAGED_MARKETS_HOME.md#move-between-markets-sections).
+
+The preceding design increment compacts the company Filings source header. Key dates,
+identity and warnings remain visible; full routine source metadata moves into a
+native disclosure. Filters and results become easier to reach without changing
+loaded evidence or note actions. See the [Filings guide](MANAGED_SEC_FILINGS.md#read-the-company-result).
+
+The preceding M3/M4 increment filters newly observed accessions in the loaded company
+Filings comparison. Refresh view combines with Form and Filing date before paging,
+keeping original rows, source limits and the existing filing-to-note workflow.
+It adds no request, saved state or source. See the
+[filter guide](MANAGED_SEC_FILINGS.md#filter-newly-observed-filings).
+
+The preceding M2/M4 increment opens another watchlist company from within research.
+An explicit choice keeps the current section, exact listing identity, each note
+and the original workspace return. New company visits start unloaded. It adds no
+request, saved state or source. See the [navigation guide](MANAGED_RESEARCH_NAVIGATION.md#choose-another-watchlist-company).
+
+The preceding M3 increment compares consecutive loaded company filing lists. After
+an explicit successful refresh, it marks accessions absent from the previous
+accepted list and keeps both original source records available. The comparison
+describes observations within those lists; it adds no monitoring, complete-history
+claim or automatic request. See the [comparison guide](MANAGED_SEC_FILINGS.md#compare-consecutive-loaded-lists).
+
+The preceding Markets increment adds a **Release date** selector to the loaded BEA
+agenda. It supports a daily view while retaining the full loaded-window count,
+Eastern dates and original source context. It adds no request, financial field,
+saved preference or source. See the [agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
+
+The preceding retrieval increment shows a short matching passage in **Research
+notes** search results. It helps the owner recognize a saved or unsaved thesis
+before explicitly selecting it, using the existing draft and matching rules.
+Complete notes, draft order and whole-watchlist Save keep their existing behavior.
+See [watchlist search](APPWRITE_WATCHLIST.md#search-the-current-watchlist-draft).
+
+The preceding M3 increment adds an explicit **Recent filings** check to the selected
+watchlist listing. **View filings** opens that same evidence in company research
+without another request, connecting the saved thesis to the existing filing
+reference and note-save workflow. The result retains its original dates and
+coverage limits. It adds no monitoring, batch requests or persistent cache. See
+the [selected filing check](MANAGED_SEC_FILINGS.md#check-a-selected-watchlist-company).
+
+The preceding M2 increment adds **On this report** navigation to the managed Annual
+view. Users can jump to income, cash, liquidity and source details while keeping
+all evidence visible. It connects existing evidence and note actions without
+another source read, route change or financial field. See the
+[financial overview](MANAGED_SEC_ANNUAL.md#financial-overview).
+
+The preceding M2 increment adds **Liquidity** to the Annual comparison's existing
+note evidence selector. It connects both companies' checked balances, calculations
+and original source details to one chosen research-note draft, followed by explicit
+whole-watchlist Save. It reuses the company excerpt and preserves the full-note
+limit without another source read. See the
+[comparison note workflow](MANAGED_SEC_ANNUAL.md#keep-annual-comparison-evidence-in-a-note).
+
+The preceding M2 increment compares already-loaded liquidity between two watchlist
+companies. Exact balances, working capital and current ratio retain each company's
+own balance date, availability and source evidence. This extends the existing
+Annual comparison without another request or financial calculation. See the
+[comparison guide](MANAGED_SEC_ANNUAL.md#compare-liquidity-between-companies).
+
+The preceding M2 increment connects the loaded company's liquidity to its existing
+research-note draft. An explicit action preserves exact balances, checked
+calculations or the zero-liabilities ratio refusal, original provenance and
+historical qualifiers. The existing full-draft review and Save make the evidence
+durable. See the [note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
+
+The preceding increment adds **Liquidity at fiscal year-end** to company Annual:
+reported current assets and liabilities, exact working capital and a rounded
+current ratio. It reuses the explicit SEC read and preserves source dates,
+independent unavailable values and the whole-report lifetime. The
+[Annual guide](MANAGED_SEC_ANNUAL.md#liquidity-at-fiscal-year-end) defines the
+instant-balance rules and coordinated version-3 API/client boundary.
+
+The preceding increment adds a local **Filed after Annual report** scope to the
+existing company Filings view. It joins the current checked Annual baseline with
+loaded filings, preserving exact source dates, coverage limits and reference-to-note
+actions without another source request. The [Filings guide](MANAGED_SEC_FILINGS.md#review-filings-after-an-annual-report)
+defines its date-only scope and reset rules.
+
+An earlier increment opens either loaded Annual comparison report in the
+company research view without another source request. Back preserves the pair,
+basis choices and shared note draft; an explicit company refresh leaves the
+comparison unchanged. The [Annual guide](MANAGED_SEC_ANNUAL.md#open-the-full-report-from-a-comparison)
+defines its scope. The earlier increment connects income or cash comparison
+evidence to one chosen note through the existing full-draft Save. Current work
+distinguishes source, browser, native and delivery acceptance. Broader
+financial statements, valuation and complete company coverage remain open.
 
 ## Goal and constraints
 

@@ -391,6 +391,97 @@ describe("managed company URL navigation", () => {
     ).toBe("Unsent invented note");
   });
 
+  it.each(["annual", "eod", "filings"] as const)(
+    "replaces companies in %s and returns once to the original watchlist",
+    async (section) => {
+      const f = fixture();
+      await f.ready();
+      f.workspace.setView("watchlist");
+      let nav = f.render();
+      const members = f.workspace.coordinator.getSnapshot().draft!.memberships;
+      nav.open(() => f.workspace.openWatchlistAnnual(members[0]!));
+      nav = f.render();
+      nav.section(section);
+      nav = f.render();
+      const origin = mount.entries[1]!.state;
+      const first = f.workspace.getSnapshot().research!;
+      f.workspace.noteResearch(
+        first.selection,
+        "First draft kept through visits",
+      );
+      const currentOther =
+        f.workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+      nav.open(() => f.workspace.openResearchCompany(first, currentOther));
+      nav = f.render();
+      const second = f.workspace.getSnapshot().research!;
+      expect(second.selection.listing.listingId).toBe("listing-other");
+      expect(second.section).toBe(section);
+      expect(mount.entries).toHaveLength(2);
+      expect(mount.entries[1]!.state).toEqual(origin);
+      expect(mount.action).toBe("REPLACE");
+      f.workspace.noteResearch(
+        second.selection,
+        "Second draft kept through visits",
+      );
+      const currentFirst =
+        f.workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+      nav.open(() => f.workspace.openResearchCompany(second, currentFirst));
+      nav = f.render();
+      expect(
+        f.workspace.getSnapshot().research!.selection.listing.listingId,
+      ).toBe(currentFirst.listingId);
+      expect(mount.entries).toHaveLength(2);
+      expect(mount.entries[1]!.state).toEqual(origin);
+      nav.back();
+      f.render();
+      expect(mount.cursor).toBe(0);
+      expect(mount.navigate).toHaveBeenLastCalledWith(-1);
+      expect(f.workspace.getSnapshot().view).toBe("watchlist");
+      expect(f.workspace.getSnapshot().research).toBeNull();
+      expect(
+        f.workspace.coordinator
+          .getSnapshot()
+          .draft!.memberships.map((m) => m.note),
+      ).toEqual([
+        "First draft kept through visits",
+        "Second draft kept through visits",
+      ]);
+      for (const read of [
+        f.api.eodHistory,
+        f.api.annualReport,
+        f.api.recentFilings,
+        f.api.resolve,
+        f.api.save,
+      ])
+        expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps the direct-link fallback when choosing another watchlist company", async () => {
+    direct("?company=listing-zero&section=annual");
+    const f = fixture();
+    await f.ready();
+    f.render();
+    await settle();
+    let nav = f.render();
+    const visit = f.workspace.getSnapshot().research!;
+    const other = f.workspace.coordinator.getSnapshot().draft!.memberships[1]!;
+    nav.open(() => f.workspace.openResearchCompany(visit, other));
+    nav = f.render();
+    expect(
+      f.workspace.getSnapshot().research!.selection.listing.listingId,
+    ).toBe("listing-other");
+    expect(mount.entries).toHaveLength(1);
+    expect(mount.entries[0]!.state).toBeNull();
+    expect(f.api.resolve).toHaveBeenCalledOnce();
+    nav.back();
+    f.render();
+    expect(mount.entries[0]!.search).toBe("");
+    expect(f.workspace.getSnapshot().view).toBe("markets");
+    expect(f.api.annualReport).not.toHaveBeenCalled();
+    expect(f.api.save).not.toHaveBeenCalled();
+  });
+
   it.each([
     "?company=listing-zero&section=price",
     "?company=listing-zero&section=bad",

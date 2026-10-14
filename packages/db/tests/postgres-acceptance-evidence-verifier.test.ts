@@ -1670,47 +1670,71 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("rejects image target, version, runner, and reviewed-input inconsistencies", () => {
-    const changes: Array<(value: Record<string, unknown>) => void> = [
+  it.each<[string, (value: Record<string, unknown>) => void]>([
+    [
+      "a mismatched index digest",
       (value) => {
         value.indexDigest = `sha256:${"0".repeat(64)}`;
       },
+    ],
+    [
+      "a mismatched image reference",
       (value) => {
         value.reference = `docker.io/library/postgres:17.11-bookworm@sha256:${"0".repeat(64)}`;
       },
+    ],
+    [
+      "a different server version number",
       (value) => {
         value.expectedServerVersionNumber = 170012;
       },
+    ],
+    [
+      "a different database name",
       (value) => {
         value.databaseName = "another_database";
       },
+    ],
+    [
+      "a mismatched workflow hash",
       (value) => {
         value.workflowSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched query-plan fixture hash",
       (value) => {
         value.queryPlanLoadFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched privacy-retention fixture hash",
       (value) => {
         value.privacyRetentionFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched populated-cutover fixture hash",
       (value) => {
         value.populatedCutoverFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a different runner architecture",
       (value) => {
         (value.runner as Record<string, unknown>).architecture = "arm64";
       },
-    ];
-    for (const change of changes) {
-      const input = replaceCanonicalSourceJson(
-        cloneInput(),
-        "imageConfig",
-        change,
-        false,
-      );
-      expectValueFreeFailure(() =>
-        verifyPostgresAcceptanceEvidenceOffline(input),
-      );
-    }
+    ],
+  ])("rejects an image configuration with %s", (_name, change) => {
+    const input = replaceCanonicalSourceJson(
+      cloneInput(),
+      "imageConfig",
+      change,
+      false,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(input),
+    );
   });
 
   it("requires canonical exact-schema image config bytes", () => {
@@ -2094,62 +2118,97 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("validates the exact populated-cutover base, target, phases, and every manifest-named body", () => {
-    const changes: Array<(value: Record<string, unknown>) => void> = [
+  it.each<[string, (value: Record<string, unknown>) => void]>([
+    [
+      "an unsupported plan version",
       (value) => {
         value.planVersion = 2;
       },
+    ],
+    [
+      "a different platform file",
       (value) => {
         (value.platform as Record<string, unknown>).file = "wrong.sql";
       },
+    ],
+    [
+      "a mismatched platform hash",
       (value) => {
         (value.platform as Record<string, unknown>).sha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched base manifest hash",
       (value) => {
         (value.base as Record<string, unknown>).manifestSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "reordered base migrations",
       (value) => {
         const base = value.base as Record<string, unknown>;
         (base.selectedMigrations as unknown[]).reverse();
       },
+    ],
+    [
+      "a different base exclusion reason",
       (value) => {
         const base = value.base as Record<string, unknown>;
         (base.excludedMigration as Record<string, unknown>).reason = "wrong";
       },
+    ],
+    [
+      "a mismatched target policy hash",
       (value) => {
         (value.target as Record<string, unknown>).policySha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched target application hash",
       (value) => {
         (value.target as Record<string, unknown>).applicationSha256 =
           "0".repeat(64);
       },
+    ],
+    [
+      "reordered cutover phases",
       (value) => {
         (value.migrations as unknown[]).reverse();
       },
+    ],
+    [
+      "a different migration phase",
       (value) => {
         const migrations = value.migrations as Array<Record<string, unknown>>;
         migrations[0]!.phase = "wrong";
       },
+    ],
+    [
+      "a mismatched migration body hash",
       (value) => {
         const migrations = value.migrations as Array<Record<string, unknown>>;
         migrations[0]!.sha256 = "0".repeat(64);
       },
+    ],
+    [
+      "an extra manifest field",
       (value) => {
         value.secret = SECRET_CANARY;
       },
-    ];
-    for (const change of changes) {
-      const input = replaceCanonicalSourceJson(
-        cloneInput(),
-        "populatedCutoverPlanManifestV1",
-        change,
-        true,
-      );
-      expectValueFreeFailure(() =>
-        verifyPostgresAcceptanceEvidenceOffline(input),
-      );
-    }
+    ],
+  ])("rejects a populated-cutover manifest with %s", (_name, change) => {
+    const input = replaceCanonicalSourceJson(
+      cloneInput(),
+      "populatedCutoverPlanManifestV1",
+      change,
+      true,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(input),
+    );
+  });
 
+  it("rejects noncanonical populated-cutover manifest bytes", () => {
     const noncanonical = cloneInput();
     const replacement = bytes(
       ` ${decoder.decode(noncanonical.sources.populatedCutoverPlanManifestV1)}`,

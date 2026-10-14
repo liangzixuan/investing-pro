@@ -1,13 +1,17 @@
 import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WatchlistMembership } from "@research-cockpit/contracts";
 import {
   ManagedWatchlistEditor,
   type ManagedWatchlistEditorHandle,
   type ManagedWatchlistEditorProps,
+  type ManagedWatchlistNoteReviewRequest,
 } from "./ManagedWatchlistEditor";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
+import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
+import { ManagedWatchlistFilings as FilingsModel } from "./managed-watchlist-filings";
 import { ManagedEodHistory } from "./managed-eod-history";
 import { eodResponse, eodSelection } from "./eod-history-fixture";
 
@@ -17,7 +21,7 @@ const hooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
   stateIndex: 0,
   refIndex: 0,
-  effects: [] as Array<() => void>,
+  effects: [] as Array<() => void | (() => void)>,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
@@ -76,6 +80,7 @@ function elements(
     node,
     ...(typeof node.type === "function" &&
     node.type !== ManagedNoteEditor &&
+    node.type !== ManagedWatchlistFilings &&
     node.type !== ManagedWatchlistComparison
       ? elements(
           (node.type as (props: Record<string, unknown>) => React.ReactNode)(
@@ -118,7 +123,11 @@ function fixture() {
     ],
     editable: true,
     active: true,
+    filings: new FilingsModel(vi.fn(), vi.fn()),
+    onSelectedMember: vi.fn(),
+    onViewFilings: vi.fn(),
     comparisonNoteActions: {
+      review: vi.fn(),
       getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
       append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
     },
@@ -157,6 +166,50 @@ function fixture() {
     getClientRects: () => [{}],
     focus: searchFocus,
   };
+  const summaryFocus = vi.fn(() => {
+    const page = document as unknown as { activeElement: unknown };
+    page.activeElement = summary;
+  });
+  const summary = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    focus: summaryFocus,
+    scrollIntoView: vi.fn(),
+  };
+  const reader = {
+    isConnected: true,
+    open: false,
+    getClientRects: () => [{}],
+    querySelector: () => summary,
+  };
+  const panel = {
+    isConnected: true,
+    getClientRects: () => [{}],
+    querySelector: (selector: string) =>
+      selector.startsWith("textarea")
+        ? field
+        : selector === "[data-watchlist-search]"
+          ? searchField
+          : selector ===
+              "#managed-watchlist-selected-note .managed-note-reading"
+            ? reader
+            : {
+                isConnected: true,
+                getClientRects: () => [{}],
+                focus: emptyFocus,
+              },
+    querySelectorAll: () =>
+      current
+        .filter((entry) => entry.props["data-watchlist-selection"])
+        .map((entry) => ({
+          dataset: {
+            watchlistSelection: entry.props["data-watchlist-selection"],
+          },
+          isConnected: true,
+          getClientRects: () => [{}],
+          focus: selectionFocus,
+        })),
+  };
   let current: ReturnType<typeof elements> = [];
   const render = (changes: Partial<ManagedWatchlistEditorProps> = {}) => {
     props = { ...props, ...changes };
@@ -171,34 +224,15 @@ function fixture() {
       typeof listingId === "string" ? listingId : "";
     field.value = typeof noteValue === "string" ? noteValue : "";
     field.disabled = Boolean(note?.props.disabled);
-    hooks.refs[0]!.current = {
-      isConnected: true,
-      querySelector: (selector: string) =>
-        selector.startsWith("textarea")
-          ? field
-          : selector === "[data-watchlist-search]"
-            ? searchField
-            : {
-                isConnected: true,
-                getClientRects: () => [{}],
-                focus: emptyFocus,
-              },
-      querySelectorAll: () =>
-        current
-          .filter((entry) => entry.props["data-watchlist-selection"])
-          .map((entry) => ({
-            dataset: {
-              watchlistSelection: entry.props["data-watchlist-selection"],
-            },
-            isConnected: true,
-            getClientRects: () => [{}],
-            focus: selectionFocus,
-          })),
-    };
+    hooks.refs[0]!.current = panel;
     return current;
   };
+  let cleanups: Array<() => void> = [];
   const commit = () => {
-    for (const effect of hooks.effects) effect();
+    cleanups = hooks.effects.flatMap((effect) => {
+      const cleanup = effect();
+      return cleanup ? [cleanup] : [];
+    });
   };
   const click = (label: string, opener = {} as HTMLButtonElement) => {
     const button = current.find(
@@ -236,6 +270,11 @@ function fixture() {
     ref,
     props,
     field,
+    panel,
+    reader,
+    summary,
+    summaryFocus,
+    unmount: () => cleanups.forEach((cleanup) => cleanup()),
     focus,
     selectionFocus,
     emptyFocus,
@@ -250,6 +289,185 @@ function fixture() {
 }
 
 describe("ManagedWatchlistEditor", () => {
+  it("describes each matching listing with its exact raw note context beside the unchanged price description", () => {
+    const f = fixture();
+    const memberships = [
+      member("one", "ALFA", "Company draft captured in research"),
+      member("two", "BETA", "  Captured\nIN research <b>raw</b>  "),
+      member("three", "HIDDEN", "Hidden complete note"),
+    ];
+    f.render({ memberships });
+    f.search("CAPTURED in research");
+    const output = f.scope("notes");
+    expect(choices(output)).toEqual(["one", "two"]);
+    for (const selected of memberships.slice(0, 2)) {
+      const choice = output.find(
+        (entry) =>
+          entry.props["data-watchlist-selection"] === selected.listingId,
+      )!;
+      const context = output.find(
+        (entry) =>
+          entry.props["data-watchlist-note-context"] === selected.listingId,
+      )!;
+      expect(choice.props["aria-label"]).toBe(
+        `Edit research note for ${selected.symbol}, Class A, XNAS`,
+      );
+      expect(choice.props["aria-describedby"]).toBe(
+        `managed-watchlist-price-${selected.listingId} managed-watchlist-note-context-${selected.listingId}`,
+      );
+      expect(context.props.id).toBe(
+        `managed-watchlist-note-context-${selected.listingId}`,
+      );
+      expect(textContent(context)).toBe(`Note: ${selected.note}`);
+      expect(context.props.dangerouslySetInnerHTML).toBeUndefined();
+    }
+    const raw = output.find(
+      (entry) => entry.props["data-watchlist-note-context"] === "two",
+    )!;
+    expect(renderToStaticMarkup(raw)).toContain("&lt;b&gt;raw&lt;/b&gt;");
+    expect(
+      output.some((entry) => textContent(entry) === "Note needs correction"),
+    ).toBe(true);
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(memberships[0]!.note);
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+      f.props.onViewFilings,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("omits note context and its description for empty queries, identity scope and retired membership bytes", () => {
+    const f = fixture();
+    f.scope("notes");
+    expect(
+      f
+        .search("Keep")
+        .some((entry) => entry.props["data-watchlist-note-context"]),
+    ).toBe(true);
+    for (const output of [
+      f.search(" \t "),
+      f.search(""),
+      f.scope("identity"),
+      f.search("ALFA"),
+      f.render({ memberships: [] }),
+    ]) {
+      expect(
+        output.some((entry) => entry.props["data-watchlist-note-context"]),
+      ).toBe(false);
+      for (const choice of output.filter(
+        (entry) => entry.props["data-watchlist-selection"],
+      ))
+        expect(choice.props["aria-describedby"]).toBe(
+          `managed-watchlist-price-${String(choice.props["data-watchlist-selection"])}`,
+        );
+    }
+  });
+
+  it("updates context from the current draft while keeping selection, field focus and complete raw note intent", () => {
+    const f = fixture();
+    f.scope("notes");
+    const before = f.search("Keep");
+    const note = before.find((entry) => entry.type === ManagedNoteEditor)!;
+    const page = { activeElement: f.field, body: {} };
+    vi.stubGlobal("document", page);
+    const raw = `Keep latest ${"exact 🧭 ".repeat(40)} ending`;
+    (note.props.onChange as (value: string) => void)(raw);
+    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith("one", raw);
+    const memberships = [
+      { ...f.props.memberships[0]!, note: raw },
+      f.props.memberships[1]!,
+    ];
+    const output = f.render({ memberships });
+    f.commit();
+    const context = output.find(
+      (entry) => entry.props["data-watchlist-note-context"] === "one",
+    )!;
+    expect(textContent(context)).toBe(
+      `Note: ${Array.from(raw).slice(0, 180).join("")}…`,
+    );
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props.note,
+    ).toBe(raw);
+    expect(output.find((entry) => entry.type === ManagedNoteEditor)?.key).toBe(
+      note.key,
+    );
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(memberships[1]).toBe(f.props.memberships[1]);
+    expect(page.activeElement).toBe(f.field);
+    expect(f.focus).not.toHaveBeenCalled();
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+  });
+
+  it("publishes only committed selected detail and forwards its filings owner without loading or changing notes", () => {
+    const f = fixture();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[0],
+    );
+    const calls = vi.mocked(f.props.onSelectedMember).mock.calls.length;
+    f.click("Edit research note for BETA, Class A, XNAS");
+    const output = f.render();
+    expect(vi.mocked(f.props.onSelectedMember).mock.calls).toHaveLength(calls);
+    const filings = output.find(
+      (entry) => entry.type === ManagedWatchlistFilings,
+    )!;
+    expect(filings.props).toMatchObject({
+      selected: f.props.memberships[1],
+      model: f.props.filings,
+      active: true,
+      onViewFilings: f.props.onViewFilings,
+    });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[1],
+    );
+    expect(f.props.onNote).not.toHaveBeenCalled();
+    expect(f.props.onLoadPrice).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+    expect(f.focus).not.toHaveBeenCalled();
+  });
+
+  it("keeps filings bound to the selected editor outside search and notifies replacement, removal and empty selection", () => {
+    const f = fixture();
+    const output = f.search("BETA");
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistFilings)?.props
+        .selected,
+    ).toBe(f.props.memberships[0]);
+    f.commit();
+    const replacement = {
+      ...f.props.memberships[0]!,
+      shareClassName: "Class C",
+    };
+    f.render({ memberships: [replacement, f.props.memberships[1]!] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(replacement);
+    f.render({ memberships: [f.props.memberships[1]!] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(
+      f.props.memberships[1],
+    );
+    f.render({ memberships: [] });
+    f.commit();
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(null);
+    expect(f.props.onNote).not.toHaveBeenCalled();
+    expect(f.props.onViewFilings).not.toHaveBeenCalled();
+  });
+
   it("keeps the full comparison cohort available through search and edit locks", () => {
     const f = fixture();
     const filtered = f.search("BETA");
@@ -491,6 +709,9 @@ describe("ManagedWatchlistEditor", () => {
       note: changed,
     });
     expect(choices(output)).toEqual([]);
+    expect(
+      output.some((entry) => entry.props["data-watchlist-note-context"]),
+    ).toBe(false);
     expect(
       textContent(
         output.find(
@@ -928,4 +1149,263 @@ describe("ManagedWatchlistEditor", () => {
         ?.props.disabled,
     ).toBe(true);
   });
+});
+
+describe("exact destination note review", () => {
+  function setup() {
+    const f = fixture();
+    const origin = {} as Element;
+    const page = { activeElement: origin as unknown, body: {} };
+    vi.stubGlobal("document", page);
+    let live = true;
+    const request: ManagedWatchlistNoteReviewRequest = {
+      member: f.props.memberships[1]!,
+      origin,
+      isCurrent: () => live,
+    };
+    return {
+      ...f,
+      page,
+      request,
+      retire: () => {
+        live = false;
+      },
+    };
+  }
+
+  it("opens the exact full invalid raw note read-only outside the retained note search, without changing draft intent", () => {
+    const f = setup();
+    const raw = `  Exact e\u0301 東京 🧭\n${"raw ".repeat(510)}  `;
+    const target = { ...f.request.member, note: raw };
+    const memberships = [f.props.memberships[0]!, target];
+    f.render({ memberships, editable: false });
+    f.scope("notes");
+    f.search("Keep first");
+    f.commit();
+    const request = { ...f.request, member: target };
+    expect(f.ref.current!.reviewNote(request)).toBe(true);
+    expect(f.ref.current!.reviewNote(request)).toBe(false);
+    expect(f.reader.open).toBe(false);
+    const output = f.render();
+    f.commit();
+    expect(searchValue(output)).toBe("Keep first");
+    expect(scopeValue(output)).toBe("notes");
+    expect(choices(output)).toEqual(["one"]);
+    expect(
+      output.some((entry) =>
+        textContent(entry).includes("Selected BETA is outside this search."),
+      ),
+    ).toBe(true);
+    expect(
+      output.find((entry) => entry.type === ManagedNoteEditor)?.props,
+    ).toMatchObject({
+      listingId: "two",
+      note: raw,
+      disabled: true,
+      id: "managed-note-1",
+    });
+    expect(
+      output.find((entry) => entry.type === ManagedWatchlistComparison)?.props
+        .memberships,
+    ).toBe(memberships);
+    expect(f.props.onSelectedMember).toHaveBeenLastCalledWith(target);
+    expect(f.reader.open).toBe(true);
+    expect(f.summaryFocus).toHaveBeenCalledExactlyOnceWith({
+      preventScroll: true,
+    });
+    expect(f.summary.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "start",
+    });
+    expect(f.page.activeElement).toBe(f.summary);
+    expect(f.ref.current!.reviewNote(request)).toBe(false);
+    f.render();
+    f.commit();
+    expect(f.summaryFocus).toHaveBeenCalledOnce();
+    for (const handler of [
+      f.props.onNote,
+      f.props.onMove,
+      f.props.onRemove,
+      f.props.onLoadPrice,
+      f.props.onViewFilings,
+      f.props.onOpenAnnual,
+      f.props.onOpenEod,
+      f.props.comparisonNoteActions.append,
+    ])
+      expect(handler).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "stale predicate",
+    "copied member",
+    "inactive",
+    "hidden",
+    "detached",
+    "other focus",
+    "unmounted",
+  ] as const)("refuses a %s request without selecting a fallback", (change) => {
+    const f = setup();
+    const handle = f.ref.current!;
+    let request = f.request;
+    if (change === "stale predicate") f.retire();
+    if (change === "copied member")
+      request = { ...request, member: { ...request.member } };
+    if (change === "inactive") {
+      f.render({ active: false });
+      f.commit();
+    }
+    if (change === "hidden") f.panel.getClientRects = () => [];
+    if (change === "detached") f.panel.isConnected = false;
+    if (change === "other focus") f.page.activeElement = {};
+    if (change === "unmounted") f.unmount();
+    expect(handle.reviewNote(request)).toBe(false);
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.reader.open).toBe(false);
+    expect(f.summaryFocus).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "retired",
+    "replaced member",
+    "removed member",
+    "inactive",
+    "hidden panel",
+    "detached panel",
+    "hidden reader",
+    "detached reader",
+    "hidden summary",
+    "detached summary",
+    "wrong field",
+    "other focus",
+    "query",
+    "scope",
+    "selection",
+    "unmount",
+  ] as const)(
+    "consumes pending review after %s without opening or focusing another note",
+    (change) => {
+      const f = setup();
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      const changes: Partial<ManagedWatchlistEditorProps> = {};
+      if (change === "retired") f.retire();
+      if (change === "replaced member")
+        changes.memberships = [
+          f.props.memberships[0]!,
+          { ...f.request.member },
+        ];
+      if (change === "removed member")
+        changes.memberships = [f.props.memberships[0]!];
+      if (change === "inactive") changes.active = false;
+      if (change === "query") f.search("ALFA");
+      if (change === "scope") f.scope("notes");
+      if (change === "selection")
+        f.click("Edit research note for ALFA, Class A, XNAS");
+      f.render(changes);
+      if (change === "hidden panel") f.panel.getClientRects = () => [];
+      if (change === "detached panel") f.panel.isConnected = false;
+      if (change === "hidden reader") f.reader.getClientRects = () => [];
+      if (change === "detached reader") f.reader.isConnected = false;
+      if (change === "hidden summary") f.summary.getClientRects = () => [];
+      if (change === "detached summary") f.summary.isConnected = false;
+      if (change === "wrong field")
+        f.field.dataset.managedNoteListingId = "one";
+      if (change === "other focus") f.page.activeElement = {};
+      if (change === "unmount") f.unmount();
+      else f.commit();
+      expect(f.reader.open).toBe(false);
+      expect(f.summaryFocus).not.toHaveBeenCalled();
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+      if (change !== "unmount") {
+        f.render({ active: true });
+        f.commit();
+      }
+      expect(f.summaryFocus).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses committed members rather than an abandoned render and accepts a fresh request after the previous one was consumed", () => {
+    const f = setup();
+    const handle = f.ref.current!;
+    const replacement = {
+      ...f.request.member,
+      note: "Uncommitted replacement",
+    };
+    f.render({ memberships: [f.props.memberships[0]!, replacement] });
+    expect(handle.reviewNote({ ...f.request, member: replacement })).toBe(
+      false,
+    );
+    f.render({ memberships: f.props.memberships });
+    f.commit();
+    expect(handle.reviewNote(f.request)).toBe(true);
+    f.render();
+    f.commit();
+    const first = {
+      ...f.request,
+      member: f.props.memberships[0]!,
+      origin: f.summary as unknown as Element,
+    };
+    expect(f.ref.current!.reviewNote(first)).toBe(true);
+    f.render();
+    f.commit();
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.summaryFocus).toHaveBeenCalledTimes(2);
+    expect(f.ref.current!.reviewNote(first)).toBe(false);
+  });
+
+  it("lets the latest request own selection and allows unchanged member handles through a reorder", () => {
+    const f = setup();
+    expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+    const latest = { ...f.request, member: f.props.memberships[0]! };
+    expect(f.ref.current!.reviewNote(latest)).toBe(true);
+    f.render({ memberships: [...f.props.memberships].reverse() });
+    f.commit();
+    expect(f.field.dataset.managedNoteListingId).toBe("one");
+    expect(f.field.value).toBe("Keep first draft");
+    expect(f.summaryFocus).toHaveBeenCalledOnce();
+  });
+
+  it.each(["selection callback", "focus callback"] as const)(
+    "checks the live predicate after a synchronous %s retires the visit",
+    (phase) => {
+      const f = setup();
+      if (phase === "selection callback") {
+        vi.mocked(f.props.onSelectedMember).mockImplementation((selected) => {
+          if (selected === f.request.member) f.retire();
+        });
+      } else {
+        f.summaryFocus.mockImplementation(() => {
+          f.page.activeElement = f.summary;
+          f.retire();
+        });
+      }
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      f.render();
+      f.commit();
+      expect(f.reader.open).toBe(phase === "focus callback");
+      expect(f.summaryFocus).toHaveBeenCalledTimes(
+        phase === "focus callback" ? 1 : 0,
+      );
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+      expect(f.props.onNote).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["moved focus", "unmount", "hidden", "detached"] as const)(
+    "does not scroll after focus synchronously causes %s",
+    (change) => {
+      const f = setup();
+      f.summaryFocus.mockImplementation(() => {
+        f.page.activeElement = f.summary;
+        if (change === "moved focus") f.page.activeElement = {};
+        if (change === "unmount") f.unmount();
+        if (change === "hidden") f.summary.getClientRects = () => [];
+        if (change === "detached") f.summary.isConnected = false;
+      });
+      expect(f.ref.current!.reviewNote(f.request)).toBe(true);
+      f.render();
+      f.commit();
+      expect(f.summaryFocus).toHaveBeenCalledOnce();
+      expect(f.summary.scrollIntoView).not.toHaveBeenCalled();
+    },
+  );
 });

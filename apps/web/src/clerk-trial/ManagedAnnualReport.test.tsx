@@ -1,3 +1,5 @@
+import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
+import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as React from "react";
@@ -29,6 +31,15 @@ import {
   ManagedAnnualNoteAction,
   type ManagedAnnualNoteActions,
 } from "./ManagedAnnualNoteAction";
+import {
+  ManagedAnnualCashNoteAction,
+  type ManagedAnnualCashNoteActions,
+} from "./ManagedAnnualCashNoteAction";
+
+import {
+  ManagedAnnualLiquidityNoteAction,
+  type ManagedAnnualLiquidityNoteActions,
+} from "./ManagedAnnualLiquidityNoteAction";
 
 const panelHooks = vi.hoisted(() => ({
   enabled: false,
@@ -131,7 +142,237 @@ const laterResponse = () =>
     "2026-09-21T00:00:00.000Z",
   );
 
+function expectReportNavigation(html: string) {
+  expect(html.match(/<nav\b[^>]*aria-label="On this report"/gu)).toHaveLength(
+    1,
+  );
+  for (const target of ["income", "cash", "liquidity", "sources"])
+    expect(html).toContain(`data-annual-report-jump="${target}"`);
+}
+
 describe("managed annual refresh", () => {
+  it.each(["failure", "cancel"] as const)(
+    "keeps comparison provenance through a %s refresh until replacement or clear",
+    async (outcome) => {
+      const { model, load, html } = fixture();
+      const loaded = await response(annualComparativeRows());
+      model.open(
+        { ...selection, origin: "watchlist", cik: null },
+        { response: loaded, showingPrevious: false },
+      );
+      await vi.waitFor(() =>
+        expect(model.getSnapshot().checkingSeed).toBe(false),
+      );
+      const origin =
+        "Showing the report loaded in the watchlist comparison. Original source and observation times are unchanged.";
+      expect(html()).toContain(origin);
+      expectReportNavigation(html());
+      const held = deferred<typeof loaded>();
+      load.mockReturnValueOnce(held.promise);
+      const refreshing = model.load();
+      expect(html()).toContain(origin);
+      expectReportNavigation(html());
+      if (outcome === "cancel") model.cancel();
+      held.reject(new TrialApiError("unavailable"));
+      await refreshing;
+      expect(html()).toContain(origin);
+      expectReportNavigation(html());
+      expect(html()).toContain(loaded.evidence.generation.completedAt);
+      expect(model.getSnapshot().responseOrigin).toBe("watchlist-comparison");
+      const refreshed = await laterResponse();
+      load.mockResolvedValueOnce(refreshed);
+      await model.load();
+      expect(html()).not.toContain(origin);
+      expectReportNavigation(html());
+      expect(html()).toContain(refreshed.evidence.generation.completedAt);
+      expect(model.getSnapshot().responseOrigin).toBe("request");
+      model.close();
+      expect(html()).toBe("");
+      expect(load).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it("labels local report checking separately and renders original comparison provenance without a request", async () => {
+    const { model, load, html } = fixture();
+    const loaded = await response(annualComparativeRows());
+    model.open(
+      { ...selection, origin: "watchlist", cik: null },
+      { response: loaded, showingPrevious: true },
+    );
+    const checking = html();
+    expect(checking).toContain("Checking loaded report…");
+    expect(checking).toContain('aria-busy="true"');
+    expect(checking).toContain("Cancel annual report");
+    expect(checking).toContain(
+      "Checking the loaded comparison report does not request new evidence.",
+    );
+    expect(checking).not.toContain("Loading annual report…");
+    expect(checking).not.toContain('aria-label="On this report"');
+    await vi.waitFor(() =>
+      expect(model.getSnapshot().checkingSeed).toBe(false),
+    );
+    const accepted = html();
+    expectReportNavigation(accepted);
+    expect(accepted).toContain("watchlist comparison");
+    expect(accepted).toContain(loaded.evidence.generation.completedAt);
+    expect(accepted).toContain("Showing the previous report");
+    expect(accepted).toContain("Refresh annual report");
+    expect(accepted).not.toContain("Checking loaded report…");
+    expect(load).not.toHaveBeenCalled();
+    expect(model.getSnapshot().responseOrigin).toBe("watchlist-comparison");
+    const held = deferred<typeof loaded>();
+    load.mockReturnValueOnce(held.promise);
+    const refreshing = model.load();
+    expect(html()).toContain("Refreshing annual report…");
+    expect(html()).not.toContain("Checking loaded report…");
+    held.resolve(loaded);
+    await refreshing;
+    expect(load).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().responseOrigin).toBe("request");
+  });
+
+  it("keeps the existing Cancel control during local checking and never starts a fallback load", async () => {
+    const { model, load, html } = fixture();
+    model.open(
+      { ...selection, origin: "watchlist", cik: null },
+      { response: await response(), showingPrevious: false },
+    );
+    panelHooks.enabled = true;
+    const controls = buttons(Panel({ model }));
+    const cancel = controls.find(
+      (button) => button.props.children === "Cancel annual report",
+    )!;
+    const click = cancel.props
+      .onClick as React.MouseEventHandler<HTMLButtonElement>;
+    const origin = {} as HTMLButtonElement;
+    const priorDocument = globalThis.document;
+    vi.stubGlobal("document", { activeElement: origin });
+    try {
+      click({ currentTarget: origin } as React.MouseEvent<HTMLButtonElement>);
+      expect(model.getSnapshot().checkingSeed).toBe(false);
+      expect(model.getSnapshot().response).toBeNull();
+      panelHooks.index = 0;
+      expect(buttons(Panel({ model }))[0]!.props.children).toBe(
+        "Load annual report",
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(model.getSnapshot().response).toBeNull();
+      expect(load).not.toHaveBeenCalled();
+    } finally {
+      vi.stubGlobal("document", priorDocument);
+      panelHooks.enabled = false;
+    }
+    expect(html()).not.toContain("Checking loaded report…");
+  });
+
+  it("passes only the displayed response to an optional cash action and removes it with the report", async () => {
+    const { model, load } = fixture();
+    const old = await response();
+    const next = structuredClone(old);
+    load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
+    model.open(selection);
+    await model.load();
+    const cashNoteActions: ManagedAnnualCashNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({
+        appended: false,
+        message: "The report changed.",
+      })),
+    };
+    panelHooks.enabled = true;
+    const resultFor = (actions?: ManagedAnnualCashNoteActions) => {
+      panelHooks.index = 0;
+      const panel = Panel({
+        model,
+        ...(actions ? { cashNoteActions: actions } : {}),
+      }) as React.ReactElement<{ children?: React.ReactNode }> | null;
+      return React.Children.toArray(panel?.props.children).find(
+        (node) =>
+          React.isValidElement(node) && node.type === SecAnnualEvidenceResult,
+      ) as
+        | React.ReactElement<
+            React.ComponentProps<typeof SecAnnualEvidenceResult>
+          >
+        | undefined;
+    };
+    expect(resultFor()!.props.cashAction).toBeNull();
+    const captured = resultFor(cashNoteActions)!.props
+      .cashAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedAnnualCashNoteAction>
+    >;
+    expect(captured.type).toBe(ManagedAnnualCashNoteAction);
+    expect(captured.props.response).toBe(old);
+    expect(captured.props.actions).toBe(cashNoteActions);
+    expect(captured.key).toBeNull();
+    await model.load();
+    const current = resultFor(cashNoteActions)!.props
+      .cashAction as typeof captured;
+    expect(current.props.response).toBe(next);
+    expect(current.props.response).not.toBe(captured.props.response);
+    expect(current.key).toBe(captured.key);
+    expect(current.props.response.evidence.generation.sha256).toBe(
+      captured.props.response.evidence.generation.sha256,
+    );
+    model.close();
+    expect(resultFor(cashNoteActions)).toBeUndefined();
+    expect(cashNoteActions.append).not.toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes only the displayed response to an optional liquidity action and removes it with the report", async () => {
+    const { model, load } = fixture();
+    const old = await response();
+    const next = structuredClone(old);
+    load.mockResolvedValueOnce(old).mockResolvedValueOnce(next);
+    model.open(selection);
+    await model.load();
+    const liquidityNoteActions: ManagedAnnualLiquidityNoteActions = {
+      getAction: vi.fn(() => ({ canAppend: true, reason: null })),
+      append: vi.fn(() => ({
+        appended: false,
+        message: "The report changed.",
+      })),
+    };
+    panelHooks.enabled = true;
+    const resultFor = (actions?: ManagedAnnualLiquidityNoteActions) => {
+      panelHooks.index = 0;
+      const panel = Panel({
+        model,
+        ...(actions ? { liquidityNoteActions: actions } : {}),
+      }) as React.ReactElement<{ children?: React.ReactNode }> | null;
+      return React.Children.toArray(panel?.props.children).find(
+        (node) =>
+          React.isValidElement(node) && node.type === SecAnnualEvidenceResult,
+      ) as
+        | React.ReactElement<
+            React.ComponentProps<typeof SecAnnualEvidenceResult>
+          >
+        | undefined;
+    };
+    expect(resultFor()!.props.liquidityAction).toBeNull();
+    const captured = resultFor(liquidityNoteActions)!.props
+      .liquidityAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedAnnualLiquidityNoteAction>
+    >;
+    expect(captured.type).toBe(ManagedAnnualLiquidityNoteAction);
+    expect(captured.props.response).toBe(old);
+    expect(captured.props.actions).toBe(liquidityNoteActions);
+    expect(captured.key).toBeNull();
+    await model.load();
+    const current = resultFor(liquidityNoteActions)!.props
+      .liquidityAction as typeof captured;
+    expect(current.props.response).toBe(next);
+    expect(current.props.response).not.toBe(captured.props.response);
+    expect(current.key).toBe(captured.key);
+    expect(current.props.response.evidence.generation.sha256).toBe(
+      captured.props.response.evidence.generation.sha256,
+    );
+    model.close();
+    expect(resultFor(liquidityNoteActions)).toBeUndefined();
+    expect(liquidityNoteActions.append).not.toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
   it("binds each note action to the displayed response and pair, including a captured older control", async () => {
     const { model, load } = fixture();
     const old = await response();
@@ -446,7 +687,7 @@ describe("managed annual refresh", () => {
   it.each(["close", "retire", "selection"] as const)(
     "clears retained refresh evidence on %s and ignores its late result",
     async (action) => {
-      const { model, load } = fixture();
+      const { model, load, html } = fixture();
       const held = deferred<Awaited<ReturnType<ManagedApi["annualReport"]>>>();
       load
         .mockResolvedValueOnce(await response())
@@ -454,12 +695,14 @@ describe("managed annual refresh", () => {
       model.open(selection);
       await model.load();
       const pending = model.load();
+      expectReportNavigation(html());
       if (action === "selection")
         model.open({
           ...selection,
           listing: { ...selection.listing, symbol: "OTHER" },
         });
       else model[action]();
+      expect(html()).not.toContain('aria-label="On this report"');
       expect(load.mock.calls[1]![1].aborted).toBe(true);
       held.resolve(await laterResponse());
       await pending;
@@ -469,6 +712,7 @@ describe("managed annual refresh", () => {
         running: false,
       });
       expect(load).toHaveBeenCalledTimes(2);
+      expect(html()).not.toContain('aria-label="On this report"');
     },
   );
 
@@ -478,6 +722,7 @@ describe("managed annual refresh", () => {
     const next = await laterResponse();
     let input: PersonalSecAnnualResolutionInput = {
       ...next.evidence,
+      incomeScanStatus: "source_unavailable",
       observations: [],
       coverage: null,
       generation: {
@@ -513,6 +758,8 @@ describe("managed annual refresh", () => {
       evidence: {
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
+        cashGeneration: await cashGeneration(input),
+        liquidity: await liquidity(input),
       },
     };
     const admitted = await parseSecAnnualEvidenceResponse(
@@ -531,6 +778,7 @@ describe("managed annual refresh", () => {
       showingPrevious: false,
     });
     expect(html()).toContain("SEC source temporarily unavailable");
+    expectReportNavigation(html());
     expect(html()).not.toContain("Net margin · %</dt>");
     expect(html()).not.toContain(old.evidence.generation.sha256);
     expect(html()).not.toContain("Showing the previous report");
@@ -545,6 +793,7 @@ describe("managed annual read", () => {
     expect(load).not.toHaveBeenCalled();
     expect(html()).toContain("Load annual report");
     expect(html()).toContain("Annual report");
+    expect(html()).not.toContain('aria-label="On this report"');
     Object.assign(input.listing, { symbol: "MUTATED" });
     load.mockResolvedValue(await response());
     await model.load();
@@ -553,7 +802,9 @@ describe("managed annual read", () => {
       expect.any(AbortSignal),
     );
     expect(html()).toContain("Refresh annual report");
-    expect(html()).toContain("Inspect selected-report evidence");
+    expect(html()).toContain("Inspect selected-report income evidence");
+    expect(html()).toContain("Liquidity at fiscal year-end");
+    expectReportNavigation(html());
   });
 
   it("coalesces duplicate loads, aborts on Cancel and fences an uncooperative late result", async () => {
@@ -565,12 +816,14 @@ describe("managed annual read", () => {
     await model.load();
     expect(load).toHaveBeenCalledOnce();
     expect(html()).toContain("Cancel annual report");
+    expect(html()).not.toContain('aria-label="On this report"');
     model.cancel();
     expect(load.mock.calls[0]![1].aborted).toBe(true);
     held.resolve(await response());
     await pending;
     expect(model.getSnapshot().response).toBeNull();
     expect(html()).toContain("cancelled");
+    expect(html()).not.toContain('aria-label="On this report"');
   });
 
   it("fences A-to-B-to-A responses and Back discards the report", async () => {

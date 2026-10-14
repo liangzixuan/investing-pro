@@ -42,7 +42,29 @@ Our entry fixture does not establish the SDK widget's rendered result. Any futur
 SDK theme change needs its own rendered review in a controlled, signed-out Brave
 context at the canonical origin; the inert staging page does not mount Clerk.
 
+The company header includes a labelled **Company in My Watchlist** native
+selector and an explicit **Open company** action. Keep the selected company's
+full identity in wrapping text below the control, so narrow screens do not rely
+on a clipped option label. Use the existing managed field, 44px controls and
+focus tokens. At narrow widths, stack the field and action. A staged choice
+does not change the open company until the action is selected.
+
+Thesis review uses an initially closed native disclosure below the full-note
+reader. In company research, keep the existing note guidance before this
+disclosure so the original note controls stay together. Label each authored field,
+show the required fields and retain a readable
+preview before the explicit draft append. Use the existing 44px field and focus
+tokens. The field grid wraps to one column at narrow widths; the complete preview
+wraps long links. Keep the owner's assessment distinct from verified source facts.
+Reading stays available while note editing is paused.
+
 ## Color and surfaces
+
+The company snapshot uses an initially closed native disclosure below company
+navigation. Its two source cards sit side by side on wide screens and stack
+below 760px. Exact amounts and original timestamps wrap without truncation.
+Keep Price and Annual headings, missing states and historical warnings separate.
+The existing section actions remain the explicit way to inspect full evidence.
 
 Use these semantic managed tokens:
 
@@ -83,7 +105,168 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+After an accepted Fed refresh, place a quiet count above the complete list and
+**Newly observed in this refresh** below the dates of matching rows. Use the
+existing text hierarchy and thin rules. Keep the two original retrieval times,
+shown and available counts, and source inside **Compared loaded feeds**, a native
+disclosure with a 44px summary and visible focus. The previous-feed warning still
+qualifies a later unconfirmed attempt. Preserve every row and note choice;
+comparison must not move focus or change the local profile. Its count describes
+the complete loaded feed even when the owner searches titles.
+
+Place **Announcement view** after source metadata and refresh comparison, before
+title search. Use the existing managed native selector, 44px target and focus
+outline. Offer All loaded announcements and Newly observed links; disable the
+latter before a comparison tied to the current feed exists. Explain the loaded
+list scope beside the control. Keep full-feed counts outside these reading filters.
+Title search and this view share their result with note choices. Switching to All
+keeps the current phrase and requires a fresh choice for an excluded announcement.
+
+Place **Search announcement titles** after source metadata and refresh comparison,
+before the list. Use the existing managed field, 44px search and Clear controls,
+focus outline and muted match count. Wrap the controls at narrow widths. Keep
+full titles and dates; show a separate no-match message. The same title view
+drives note choices. An excluded choice requires a fresh selection and retains
+its valid destination. Reading search remains available while editing pauses.
+
+Keep the optional Fed note form after the list inside **Add an announcement to a
+note**, an initially closed native disclosure. Its summary uses the standard
+44px target, native marker and focus outline. Keep the form mounted so toggling
+preserves choices and feedback; retain the existing response and session rules.
+Source metadata, search, comparison and rows stay outside the disclosure.
+
+After the loaded Fed list, provide two native choices: **Announcement** and
+**Add to note**. Start both empty. Show the complete chosen title and destination
+identity in wrapping text below them. Use secondary 44px controls for adding the
+reference and reviewing it in My Watchlist. Keep refusal text beside the action
+and announce its result without moving focus. An added reference uses the existing
+note editor and whole-watchlist Save; do not add another editor or card. Response
+replacement and leaving Markets clear the staged announcement choice.
+
+Company and successful Fed **Review in My Watchlist** actions lead to the exact
+current destination's existing full-note reader. Select the member, open its
+native disclosure and focus the 44px summary near the top of the viewport so the
+note text is visible immediately. Preserve search query and scope;
+keep the outside-search explanation when needed. Show the complete raw note,
+including invalid text, and allow company review while editing is paused. Do not
+add a second reader or editor. Cancel pending focus when the destination, view or
+session becomes stale, or when the user moves focus or selects another listing.
+
+Place BEA **Search loaded releases** and **Release date** between the original
+loaded-window description and the dated releases. Keep visible labels, a persistent
+**Clear search** action, an All loaded dates option and readable Eastern dates
+with full-packet counts. Show the shared intersection count against the full
+loaded packet. Preserve the original source, dates and previous-result warning.
+Use the existing managed field tokens, 44px height and focus outline. Stack the
+controls and wrap help and status text at narrow widths. Keep search and Clear
+mounted when the count changes, without moving focus or scrolling. Announce a
+successful replacement's reset. The local profile keeps its full agenda.
+
+Add a native **Release view** choice for All loaded releases or
+Not in previous agenda above the existing date and series controls. Keep every
+date option and the full comparison visible; one final result must drive both
+rows and note choices. Explain unavailable and zero-match states. Use the existing
+44px select, field, help and focus tokens, with wrapping at narrow widths. New
+accepted data resets all local filters; retained attempts keep them. Default
+local agendas omit the managed selector.
+
+Place the managed BEA comparison between its loaded-window description and
+filters. Show a compact full-agenda count and a native **Compared loaded agendas**
+disclosure. Its two source records retain exact UTC retrieval times, half-open
+windows and counts. Use the existing ink, line and focus tokens, a 44px summary
+and wrapping two-column metadata that stacks on narrow screens. Mark each exact
+current-only scheduled entry in plain text under its full series name. Explain
+moving-window scope without suggesting publication or a confirmed reschedule.
+Filters must keep the full comparison visible. Default local agendas omit it.
+
+Keep the managed BEA note form in an initially closed native disclosure after
+the filters and count, before the release rows. Use **Add a release to a note**
+as its 44px summary, with the native marker and visible keyboard focus. Keep the
+form mounted when closed so toggling preserves current choices and feedback.
+Original source dates, timezone, warnings and release rows stay outside it.
+Use the existing spacing and tokens without another enclosing card.
+
+Place the selected watchlist's Recent filings check after dated price. Keep the
+newest observed filing, date and loaded-row count compact, with source times and
+coverage limits in one disclosure. Load, Refresh, Cancel and View filings retain
+44px targets. Wrap long forms and accessions without widening the page. Preserve
+the selected note and the return control's focus; selecting a listing sends no
+request. Empty and unavailable evidence keep distinct explanations.
+
+The Annual cash section follows income results. Show the two reported amounts and
+one labelled app calculation with exact USD values and a period for each available
+amount. Use a simple three-column definition list on wide screens and stacked
+rows below 640px. Keep thin separators, tabular figures and wrapped long values.
+Missing values and current-use restrictions stay readable beside their measure.
+Place observation IDs, scan counts and source pointers in the initially closed
+cash-source disclosure with a 44px summary target. Keep cash availability
+independent of the income overview warning.
+
+Place Annual liquidity after cash in a two-column Measure/Value table. Show the
+two reported balances and two labelled app calculations with their exact balance
+dates, USD or multiple units and current-use qualifications. Keep thin row rules,
+tabular right-aligned numbers, a focusable results region and wrapping long
+decimals at narrow widths. Original instant source fields and calculation inputs
+belong in an initially closed disclosure with 44px summary and link targets.
+Explain missing and rejected values independently of income and cash.
+
+Place **Add liquidity to note draft** after the calculation explanation and before
+source details. Reuse the secondary 44px action, associated reason and live status
+from cash-to-note. Keep an unavailable action focusable so its reason can be read.
+Appending leaves focus on the action; the existing shared editor and explicit
+whole-watchlist Save own the note. Do not add another card or editor.
+
+In the managed Annual overview, name revenue bases in plain language while
+keeping them distinct. Present genuinely missing bases as compact labelled rows
+below the financial tables. Rejected or withheld evidence keeps its explanation;
+it must not look like an absent source concept. Preserve every exact concept and
+its status in the existing source details. Keep the financial results region
+mounted and the local evidence presentation unchanged.
+
+Use those same labels in the Annual trend and company comparison selectors and
+summaries. Keep the full selected basis in a wrapping line below each selector,
+associated with that control for assistive technology. Native selectors may
+clip long names on narrow screens. Preserve exact concept identifiers in source
+details and raw option values; a missing selected basis remains unavailable.
+
 ## Typography and financial evidence
+
+Place a compact **On this report** navigator after the loaded Annual summary.
+Use quiet links with 44px targets for Revenue and net income, Cash generation,
+Liquidity and Report source details. Wrap them into two columns on narrow
+screens. Keep every section and unavailable explanation in the document.
+An explicit jump moves focus to its section and scrolls immediately; show the
+focus outline at the destination. Source details opens the existing disclosure.
+Keep this navigator in the document flow, with no new sticky layer or automatic
+scrolling when data changes. It leaves company routes, history and notes intact.
+
+Keep the company Filings source header compact. Show the original window, CIK,
+SEC source link and Retrieved or Checked time above the filters. Keep a short
+incomplete-coverage statement and all truncation, unavailable and retained-result
+warnings visible. Put request start/completion and full routine source detail in
+an initially closed **Filings source and coverage** native disclosure. Use a
+44px summary with the existing focus outline and wrapping metadata; do not add
+an enclosing card. Keep native open state while the results remain mounted.
+
+For a company Filings refresh, put the full-response newly observed count above
+the local filters. Use quiet row text to mark accessions absent from the previous
+loaded list. Keep the incomplete-coverage explanation visible. One initially
+closed **Compared loaded lists** disclosure contains the two source records in
+columns on wide screens and stacked at narrow widths. Preserve the current
+source dates and any retained-result warning. The marker conveys observation,
+not investment importance.
+
+In company Filings, place Form, Filing date and Refresh view in compact columns,
+stacked on narrow screens. Keep the native selects mounted with 44px targets.
+Refresh view starts with all loaded filings and offers newly observed accessions
+only for the current comparison. Keep its qualified empty result and the full
+comparison count visible. Filtering leaves focus on the selected control. Show the
+Annual filing date and same-day exclusion beside the date control; preserve a
+retained-baseline warning in view. Keep the original Annual identity, source
+clocks and date-window explanation in **Annual baseline and date limits**.
+Result counts describe only loaded rows. A baseline reset preserves Form and
+Refresh view. It explains the return to all filing dates without moving focus
+from a control.
 
 Use the bundled normal-style Inter Latin variable font for the managed profile,
 with system sans-serif fallbacks for characters outside its coverage. Its local
@@ -142,6 +325,38 @@ keyboard-focusable scroll region. Stack controls and source disclosures on narro
 screens; preserve exact amounts and 44px targets. Previous reports and historical
 use restrictions retain their visible warning treatment.
 
+Follow the income rows with three cash-generation rows in the same comparison
+table. Each cash cell shows its exact USD amount, its own period and current-use
+status, or its specific unavailable reason. Label the subtraction as an app
+calculation and show its limits once below the table. Keep income periods and
+warnings explicitly scoped to revenue and net income. Cash availability does
+not depend on the selected revenue basis. Put the complete cash inputs inside
+each company's existing source disclosure, preserving the original dates.
+
+Follow cash with four liquidity rows in that same table. Each balance and
+calculation keeps its own balance date and current-use warning. Distinguish exact
+USD balances from the rounded current-ratio multiple; label both calculated rows.
+Keep liquidity independent of revenue-basis selection and income/cash warnings.
+Place instant observations and calculation references inside each company's
+existing source disclosure. Use the same shared value and source presentation as
+company Annual, with comparison-sized type and contained long-value wrapping.
+
+Place the Annual comparison note action outside the horizontal table scroll.
+Use compact labelled selectors for evidence group and the destination listing,
+followed by one explicit append button. The destination begins empty; keep full
+company, share-class and exchange labels in its options. Stack the controls on
+narrow screens, preserve 44px targets and associate unavailable reasons with the
+controls. Keep focus on the chosen control after appending or refusal; the
+selected note editor stays unchanged. Saving remains in the existing watchlist
+workflow.
+
+After a successful price or Annual comparison append, show a secondary **Review
+note** button beside the action. Reuse the existing full-note disclosure and focus
+treatment. Select the exact destination and preserve search; do not move the
+editor until Review is chosen. Keep this read action available while editing is
+paused if its source and destination remain current. Use the existing 44px target
+and narrow-screen stacking rules.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well
@@ -185,6 +400,13 @@ retain the 44px height and visible focus treatment. Filtering never replaces the
 selected editor; if its note stops matching, keep the editor and explain that the
 selection is outside the results. Clear removes the query and retains the scope.
 
+For a nonempty Research notes query, put one muted note passage beneath each
+result's identity. Keep the text inside the existing selection button, with
+normal whitespace flow and wrapping long words. Bound the passage to 180 Unicode
+code points without splitting combined characters, and show ellipses at omitted
+edges. Retain the button's identity name and add the passage to its description.
+Identity and blank searches keep the compact rows without a passage.
+
 The managed Annual report leads with compact financial tables for each named
 revenue basis. Show exact periods, USD amounts, margins and dated reported changes
 before technical validation details. Keep unavailable and current-use restrictions
@@ -207,7 +429,10 @@ Company research shows Price, Annual or Filings beside the watchlist note on wid
 screens. Below 1150px the note follows that content in reading order. Opening
 research hides the origin view while preserving its mounted state. Returning
 restores focus after the origin is visible; route and Android Back behavior stay
-with their existing owners. Filings uses a compact dated list with original SEC
+with their existing owners. If the layout changes during research, keep the
+focused return control fully visible above mobile navigation. Leave its scroll
+position alone when it already fits, and never move focus back after the user
+has chosen another control. Filings uses a compact dated list with original SEC
 links, local page controls and a stable results region. Keep source coverage and
 previous-result notices beside the data; use the same 44px section controls.
 Each filing has a quiet 44px action that adds its dated reference to the existing
@@ -229,6 +454,15 @@ choices may scroll within their own horizontal strip; the page must not scroll
 horizontally. Preserve DOM reading order and avoid hover-only actions.
 
 ## Controls, state and accessibility
+
+The loaded BEA agenda offers native **Release** and **Add to note** selectors.
+Group every admitted event by Eastern date, keeping its full series label and
+the existing date filter. Start with empty choices. Show full selected date/time,
+series and destination identity in wrapping text outside the closed picker.
+Use the managed 44px controls, quiet grouping and narrow stacking. If filtering
+excludes a choice, explain its removal and select no fallback. Keep Add and Review
+focusable with a visible refusal reason when unavailable. A successful append
+changes one draft note; exact-note Review and whole-draft Save remain explicit.
 
 Maintain at least 44px interactive control height. Keep visible labels, accessible
 names, semantic headings, `aria-current`/`aria-pressed`, status regions, disabled
