@@ -42,9 +42,24 @@ original retrieval times, complete windows and event counts. Moving-window scope
 is explicit and makes no publication or rescheduling claim. Existing series/date
 filters and note metadata stay intact. Failed, invalid and cancelled attempts
 retain the accepted pair; retirement clears it and fences late responses. It
-adds no request, source, saved schema or preference. Source implementation and
-affected tests are in progress. Chrome, exact builds and original hosted native
-execution remain required before acceptance. See the
+adds no request, source, saved schema or preference. All 270 affected and composed
+cases pass, including the complete 176-case workspace suite, along with web
+types, scoped lint/format, source boundaries and Java syntax. Exact native and
+preview builds pass; the largest fixture scenario is 2,392,671 bytes under the
+unchanged 4 MiB limit. A separate four-read native journey preserves all 24 prior
+managed cases and their 52 captures; the suite now has 25 managed plus three
+disconnected cases. Original hosted compilation and execution remain required.
+
+Chrome at 1440, 390 and 320 CSS pixels verifies stacked metadata, wrapping,
+the 44px summary, keyboard disclosure/Clear and full counts during filtering.
+Excluded note choices clear without restoration while the destination stays.
+The complete scheduled reference retains its original UTC/Eastern time and
+window through the full note reader, one held RAM Save and reload; the other
+listing remains unchanged. Reading filters work while Save pauses editing.
+Pending, failed, invalid and cancelled reads retain the pair; equal and empty
+replacements reset the filters; retirement fences late authentication failure.
+These checks use invented data and establish no production or physical-device
+acceptance. See the
 [agenda guide](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-agendas).
 
 The preceding candidate adds **Announcement view** to the loaded Fed feed. Newly
