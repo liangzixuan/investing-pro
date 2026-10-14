@@ -837,6 +837,9 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedDraft();
         clickFedAction("Load announcements");
         assertFedPacket("2026-10-20T18:00:00.000Z");
+        awaitPage("first admitted feed establishes only a baseline",
+            "document.querySelector('.managed-fed-refresh-comparison') === null" +
+            " && document.querySelectorAll('.fed-announcements-new').length === 0");
         assertFedCounts(1, 0, 0, 0, 1);
         clickFedAction("Refresh announcements");
         awaitPage("failed refresh qualifies the retained original feed",
@@ -858,6 +861,11 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedDraft();
         clickFedAction("Refresh announcements");
         assertFedEmpty();
+        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
+        click(".managed-fed-refresh-comparison summary");
+        awaitPage("comparison disclosure opens with an accessible native target",
+            "document.querySelector('.managed-fed-refresh-comparison details')?.open === true" +
+            " && document.querySelector('.managed-fed-refresh-comparison summary')?.getBoundingClientRect().height >= 44");
         assertFedCounts(4, 1, 1, 0, 1);
         awaitPage("valid empty replacement clears old failures and retained qualification",
             "document.querySelector('.fed-announcements [role=alert]') === null" +
@@ -879,9 +887,15 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedDraft();
         selectWorkspaceView("Markets");
         assertFedEmpty();
+        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
         assertFedCounts(5, 2, 2, 0, 1);
         clickFedAction("Refresh announcements");
         assertFedPacket("2026-10-23T18:00:00.000Z");
+        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
+        awaitPage("newly observed markers preserve both current links and note choices",
+            "Array.from(document.querySelectorAll('.fed-announcements-new')).every(label => label.textContent === 'Newly observed in this refresh')" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 2" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
         assertFedCounts(6, 2, 2, 0, 1);
         assertFedDraft();
         appendAndSaveFedReference();
@@ -918,6 +932,16 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.fed-announcements-list li:first-child a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261019a.htm'" +
             " && document.querySelector('.fed-announcements-source a')?.href === 'https://www.federalreserve.gov/feeds/feeds.htm'" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 2 of 2 announcements from this feed.')");
+    }
+
+    private void assertFedComparison(String previousAt, String currentAt, int newlyObserved, int currentCount) throws Exception {
+        awaitPage("compared feeds retain both original clocks and the complete current-list count",
+            "document.querySelector('.managed-fed-refresh-count')?.textContent === " +
+            JSONObject.quote("Newly observed in this refresh: " + newlyObserved + " of " + currentCount + " links in the displayed feed.") +
+            " && Array.from(document.querySelectorAll('.managed-fed-refresh-comparison time')).map(time => time.dateTime).join('|') === " +
+            JSONObject.quote(previousAt + "|" + currentAt) +
+            " && document.querySelector('.managed-fed-refresh-comparison summary')?.textContent === 'Compared loaded feeds'" +
+            " && document.querySelectorAll('.fed-announcements-new').length === " + newlyObserved);
     }
 
     private void assertFedEmpty() throws Exception {
@@ -988,6 +1012,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFullNoteReading("managed-note-1", complete, true);
         selectWorkspaceView("Markets");
         assertFedPacket("2026-10-23T18:00:00.000Z");
+        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
         awaitPage("returning to Markets requires fresh choices without another feed read", saved +
             " && document.querySelector('#managed-fed-note-announcement')?.value === ''" +
             " && document.querySelector('#managed-fed-note-destination')?.value === ''");

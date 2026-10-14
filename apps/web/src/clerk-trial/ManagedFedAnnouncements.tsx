@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useSyncExternalStore, type Ref } from "react";
 import { FedMonetaryAnnouncements } from "../features/markets/FedMonetaryAnnouncements";
 import type { ManagedFedAnnouncements as Model } from "./managed-fed-announcements";
+import { ManagedFedRefreshComparisonDetails } from "./ManagedFedRefreshComparisonDetails";
 import {
   ManagedFedAnnouncementNoteAction,
   type ManagedFedAnnouncementNoteContext,
@@ -21,6 +22,10 @@ export function ManagedFedAnnouncements({
     model.getSnapshot,
   );
   const load = useRef<HTMLButtonElement>(null);
+  const comparison =
+    state.refreshComparison?.current === state.announcements
+      ? state.refreshComparison
+      : null;
   const restoreLoad = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
     if (state.busy || !restoreLoad.current) return;
@@ -41,6 +46,15 @@ export function ManagedFedAnnouncements({
     <FedMonetaryAnnouncements
       {...state}
       headingRef={headingRef}
+      refreshSummary={
+        comparison && (
+          <ManagedFedRefreshComparisonDetails
+            comparison={comparison}
+            showingPrevious={state.showingPrevious}
+          />
+        )
+      }
+      newlyObservedUrls={comparison?.newUrls ?? []}
       noteAction={
         <ManagedFedAnnouncementNoteAction {...noteContext} state={state} />
       }

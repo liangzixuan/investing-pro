@@ -1,9 +1,14 @@
 import type { PersonalMonetaryAnnouncementsDto } from "@research-cockpit/contracts";
 import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
+import {
+  compareManagedFedResponses,
+  type ManagedFedRefreshComparison,
+} from "./managed-fed-refresh-comparison";
 
 export interface ManagedFedAnnouncementsState {
   readonly announcements: PersonalMonetaryAnnouncementsDto | null;
+  readonly refreshComparison: ManagedFedRefreshComparison | null;
   readonly busy: boolean;
   readonly showingPrevious: boolean;
   readonly error: "invalid_response" | "unavailable" | null;
@@ -11,6 +16,7 @@ export interface ManagedFedAnnouncementsState {
 }
 const empty = (): ManagedFedAnnouncementsState => ({
   announcements: null,
+  refreshComparison: null,
   busy: false,
   showingPrevious: false,
   error: null,
@@ -90,6 +96,10 @@ export class ManagedFedAnnouncements {
       if (!current()) return;
       this.update({
         announcements,
+        refreshComparison: compareManagedFedResponses(
+          this.state.announcements,
+          announcements,
+        ),
         showingPrevious: false,
         message:
           "Federal Reserve announcements loaded. Refresh explicitly to check again.",

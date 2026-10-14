@@ -127,6 +127,28 @@ control remains visible. Load, Refresh and Cancel do not edit notes, save, reord
 or reconcile the watchlist. Ordinary source links open separately with their
 original validated URLs; the app does not fetch article contents.
 
+### Compare consecutive loaded feeds
+
+After a successful **Refresh announcements**, **Newly observed in this refresh**
+marks current links absent from the preceding accepted list. The count covers
+all current loaded items. The first accepted feed establishes a baseline without
+a comparison. Each later accepted feed, including an equal or empty response,
+advances that baseline. A changed title or publication time at the same URL does
+not create a newly observed link.
+
+**Compared loaded feeds** retains both original retrieval times, each list's
+shown and available counts, and the source. Only these two loaded lists are
+compared. Their ten-item limit can omit other feed entries; absence from the
+previous list does not establish a new publication, changed article or personal
+relevance. A removed link is not described as a retraction.
+
+Pending reads, failure and Cancel keep the last accepted pair and its original
+dates. The previous-feed notice still explains that the latest attempt has not
+confirmed a newer feed. Ordinary navigation preserves the pair; retirement
+clears it. Comparison makes no request and saves no history. It leaves every
+current item and note choice available, and adds no comparison label to a saved
+reference. See [Current work](CURRENT_WORK.md) for acceptance and delivery status.
+
 ### Add an announcement reference to a note
 
 After loading the feed, choose an **Announcement** and a current watchlist entry

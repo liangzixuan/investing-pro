@@ -697,7 +697,7 @@ describe("managed workspace screen", () => {
     return fed.props.noteContext;
   }
 
-  it("adds a chosen loaded Fed reference to the complete latest draft and reviews it through the existing Save flow", async () => {
+  it("adds a newly observed current Fed reference and preserves the complete draft through Review, Save and reload", async () => {
     const { workspace, api } = fixture({
       ...payload,
       memberships: [
@@ -715,10 +715,23 @@ describe("managed workspace screen", () => {
     await workspace.coordinator.load();
     await workspace.refreshCatalog();
     workspace.setView("markets");
-    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
-      fedAnnouncementsFixture(),
-    );
+    const current = fedAnnouncementsFixture();
+    const previous = {
+      ...current,
+      fetchedAt: "2026-10-19T19:00:00.000Z",
+      availableItemCount: 1,
+      items: [current.items[0]!],
+    };
+    vi.mocked(api.monetaryAnnouncements)
+      .mockResolvedValueOnce(previous)
+      .mockResolvedValueOnce(current);
     await workspace.announcements.load();
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBeNull();
+    await workspace.announcements.load();
+    const comparison = workspace.announcements.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(previous);
+    expect(comparison.current).toBe(current);
+    expect(comparison.newUrls).toEqual([current.items[1]!.url]);
     workspace.note("listing-two", "  Latest Café 東京 😀 thesis");
     workspace.move("listing-two", -1);
     const before = workspace.coordinator.getSnapshot().draft!;
@@ -779,7 +792,20 @@ describe("managed workspace screen", () => {
         note: member.note.trim().normalize("NFC"),
       })),
     );
-    expect(api.monetaryAnnouncements).toHaveBeenCalledOnce();
+    vi.mocked(api.load).mockResolvedValueOnce({
+      version: 2,
+      payload: savedPayload,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(savedPayload);
+    expect(workspace.coordinator.getSnapshot().baseVersion).toBe(2);
+    expect(workspace.coordinator.getSnapshot().dirty).toBe(false);
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(api.load).toHaveBeenCalledTimes(2);
+    expect(api.monetaryAnnouncements).toHaveBeenCalledTimes(2);
     expect(api.economicCalendar).not.toHaveBeenCalled();
     expect(api.eodHistory).not.toHaveBeenCalled();
     expect(api.annualReport).not.toHaveBeenCalled();
@@ -1448,18 +1474,43 @@ describe("managed workspace screen", () => {
     expect(loaded).toContain('dateTime="2026-10-19T18:00:00.000Z"');
     expect(loaded).not.toContain("local access");
     expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(loaded).not.toContain("Compared loaded feeds");
+    const previous = workspace.announcements.getSnapshot().announcements!;
+    const current = {
+      ...fedAnnouncementsFixture(),
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+    };
+    read.mockResolvedValueOnce(current);
+    await workspace.announcements.load();
+    const comparison = workspace.announcements.getSnapshot().refreshComparison!;
+    expect(comparison.previous).toBe(previous);
+    expect(comparison.current).toBe(current);
+    expect(comparison.newUrls).toEqual([]);
+    expect(html()).toContain("Compared loaded feeds");
+    expect(html()).toContain(
+      "Newly observed in this refresh: 0 of 2 links in the displayed feed.",
+    );
     read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
     await workspace.announcements.load();
     expect(html()).toContain("Previous announcements");
     expect(html()).toContain("could not be verified");
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
+    expect(html()).toContain('dateTime="2026-10-20T18:00:00.000Z"');
+    expect(html()).toContain('dateTime="2026-10-21T18:00:00.000Z"');
     workspace.setView("watchlist");
     expect(html()).not.toContain("fed-announcements");
     workspace.setView("markets");
     expect(html()).toContain("Invented monetary policy announcement");
-    expect(read).toHaveBeenCalledTimes(2);
+    expect(read).toHaveBeenCalledTimes(3);
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBe(
+      comparison,
+    );
     workspace.coordinator.retire();
     expect(html()).not.toContain("fed-announcements");
     expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(workspace.announcements.getSnapshot().refreshComparison).toBeNull();
     expect(api.save).not.toHaveBeenCalled();
   });
   it("shows the explicitly loaded dated agenda in Markets and hides it after shared retirement", async () => {

@@ -1,6 +1,6 @@
 # Current work
 
-Updated October 13, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns delivery
+Updated October 14, 2026. The [product roadmap](PRODUCT_ROADMAP.md) owns delivery
 order; [architecture](ARCHITECTURE.md) defines runtime boundaries. The
 [preceding status](https://github.com/liangzixuan/investing-pro/blob/997685543b701e30a9e6a3f4c894428746025aa9/docs/CURRENT_WORK.md)
 retains earlier increments, original failures and dated acceptance. Operational
@@ -802,8 +802,8 @@ journey completed Save, reload and retirement, then failed a final test boundary
 that still expected zero saves. Its one-call correction uses the existing helper
 with one expected save; all other assertions and deadlines remain unchanged.
 The corrected Android run passes all 27 cases and APK isolation, with independent
-saved-artifact review accepted. Four of five original Actions checks pass,
-including Ubuntu; Windows remains pending. APK isolation was skipped in the failed
+saved-artifact review accepted. All five original Actions checks pass,
+including both desktop jobs. APK isolation was skipped in the failed
 run, and the reviewed CodeScene advisory remains recorded. No new source, API or
 saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
@@ -836,6 +836,21 @@ accepts the saved browser evidence. The native suite retains 27 cases and 52 lit
 its updated reader assertions still require original hosted execution.
 See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
 
+### Consecutive Fed feed comparison candidate
+
+The next increment marks current announcement links absent from the preceding
+accepted feed. It compares exact URLs, retains current order and original dates,
+and shows both loaded lists' retrieval times and coverage counts in a native
+disclosure. First load establishes a baseline; equal and empty replacements
+advance it. Pending, failed or canceled attempts retain the accepted pair, while
+retirement clears it. The current list and note workflow remain complete.
+
+Implementation and affected acceptance are in progress. No new request, source,
+saved schema or stored feed history is planned. Existing native transitions can
+check full-to-empty and empty-to-full comparison before their unchanged exact
+reference, Review, Save and reload sequence. See
+[Compare consecutive loaded feeds](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -860,8 +875,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted execution for exact-note Review, the Fed candidate's
-pending Windows check, and source integration when permission arrives. Preserve explicit source requests,
+Complete feed-comparison implementation and affected acceptance, original hosted
+execution for exact-note Review, and source integration when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
