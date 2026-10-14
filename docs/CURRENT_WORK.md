@@ -969,6 +969,19 @@ search before its unchanged exact append and Review assertions. Execution of
 that updated native journey and hosted checks remain pending. See the
 [BEA agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
 
+### Named evidence-verifier refusal cases
+
+The image-configuration verifier test now registers its nine malformed inputs
+as separate named cases. Each keeps the original mutation, fresh input, strict
+verifier and complete refusal assertions. The existing five-second limit applies
+to each case; the combined group no longer shares one deadline. This improves
+failure identification without changing the production verifier.
+
+All 75 affected-file cases, package types and scoped lint/format pass. The original
+Windows timeout and its unknown cause remain recorded. These local results do
+not establish the cause or guarantee future timings. Hosted acceptance of this
+test change remains pending.
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -993,8 +1006,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete hosted acceptance for BEA series search and address the observed
-evidence-verifier test timeout without weakening its assertions. Source integration remains subject
+Complete hosted acceptance for BEA series search and the named verifier cases.
+Source integration remains subject
 to its existing permission boundary.
 Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101

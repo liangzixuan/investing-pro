@@ -1670,47 +1670,71 @@ describe("offline PostgreSQL acceptance evidence verifier", () => {
     );
   });
 
-  it("rejects image target, version, runner, and reviewed-input inconsistencies", () => {
-    const changes: Array<(value: Record<string, unknown>) => void> = [
+  it.each<[string, (value: Record<string, unknown>) => void]>([
+    [
+      "a mismatched index digest",
       (value) => {
         value.indexDigest = `sha256:${"0".repeat(64)}`;
       },
+    ],
+    [
+      "a mismatched image reference",
       (value) => {
         value.reference = `docker.io/library/postgres:17.11-bookworm@sha256:${"0".repeat(64)}`;
       },
+    ],
+    [
+      "a different server version number",
       (value) => {
         value.expectedServerVersionNumber = 170012;
       },
+    ],
+    [
+      "a different database name",
       (value) => {
         value.databaseName = "another_database";
       },
+    ],
+    [
+      "a mismatched workflow hash",
       (value) => {
         value.workflowSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched query-plan fixture hash",
       (value) => {
         value.queryPlanLoadFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched privacy-retention fixture hash",
       (value) => {
         value.privacyRetentionFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a mismatched populated-cutover fixture hash",
       (value) => {
         value.populatedCutoverFixtureSha256 = "0".repeat(64);
       },
+    ],
+    [
+      "a different runner architecture",
       (value) => {
         (value.runner as Record<string, unknown>).architecture = "arm64";
       },
-    ];
-    for (const change of changes) {
-      const input = replaceCanonicalSourceJson(
-        cloneInput(),
-        "imageConfig",
-        change,
-        false,
-      );
-      expectValueFreeFailure(() =>
-        verifyPostgresAcceptanceEvidenceOffline(input),
-      );
-    }
+    ],
+  ])("rejects an image configuration with %s", (_name, change) => {
+    const input = replaceCanonicalSourceJson(
+      cloneInput(),
+      "imageConfig",
+      change,
+      false,
+    );
+    expectValueFreeFailure(() =>
+      verifyPostgresAcceptanceEvidenceOffline(input),
+    );
   });
 
   it("requires canonical exact-schema image config bytes", () => {
