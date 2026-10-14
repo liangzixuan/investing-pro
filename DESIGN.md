@@ -385,6 +385,15 @@ horizontally. Preserve DOM reading order and avoid hover-only actions.
 
 ## Controls, state and accessibility
 
+The loaded BEA agenda offers native **Release** and **Add to note** selectors.
+Group every admitted event by Eastern date, keeping its full series label and
+the existing date filter. Start with empty choices. Show full selected date/time,
+series and destination identity in wrapping text outside the closed picker.
+Use the managed 44px controls, quiet grouping and narrow stacking. If filtering
+excludes a choice, explain its removal and select no fallback. Keep Add and Review
+focusable with a visible refusal reason when unavailable. A successful append
+changes one draft note; exact-note Review and whole-draft Save remain explicit.
+
 Maintain at least 44px interactive control height. Keep visible labels, accessible
 names, semantic headings, `aria-current`/`aria-pressed`, status regions, disabled
 states and keyboard access. Use native controls and flexible heights. Focus must

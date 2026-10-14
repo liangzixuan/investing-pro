@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 increment compares consecutive accepted Fed lists and marks
+The current M3/M4 increment connects one chosen loaded BEA release to one chosen
+watchlist note, followed by exact-note Review and whole-draft Save. It keeps the
+full scheduled series, original UTC/Eastern time and agenda source context. It
+adds no reminder, forecast, released value, request or saved schema. See
+[scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
+The preceding M3 increment compares consecutive accepted Fed lists and marks
 current URLs absent from the preceding loaded list. It retains both retrieval
 times and coverage counts, without a publication alert, relevance claim, new
 request or saved history. Existing note reference, exact Review and Save remain

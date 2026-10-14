@@ -866,6 +866,20 @@ this candidate remains pending. No request, source, saved schema, stored feed
 history or dependency was added. See
 [Compare consecutive loaded feeds](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
 
+### Scheduled BEA release reference candidate
+
+The next increment connects one explicitly chosen loaded BEA release to one
+chosen watchlist note. The reference keeps the complete series, scheduled Eastern
+time and exact UTC instant, original agenda retrieval/window/source and any
+retained-result qualification. It describes a schedule that may change, with no
+released value, forecast, reminder or company-relevance claim.
+
+Implementation and affected acceptance are in progress. Existing date selection
+narrows the complete native picker; no event is silently omitted. Add changes
+only the latest chosen note. Exact-note Review and whole-draft Save retain their
+current behavior. No source read, API/schema change or new persistence path is
+planned. See [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -890,8 +904,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for feed comparison and source integration
-when permission arrives. Preserve explicit source requests,
+Complete the BEA note workflow and its affected acceptance, original hosted
+acceptance for feed comparison, and source integration when permission arrives.
+Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

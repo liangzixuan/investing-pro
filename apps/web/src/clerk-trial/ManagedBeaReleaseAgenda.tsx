@@ -7,13 +7,19 @@ import {
 } from "react";
 import { BeaReleaseAgenda } from "../features/markets/BeaReleaseAgenda";
 import { groupBeaReleaseDates } from "../features/markets/bea-release-dates";
+import {
+  ManagedBeaReleaseNoteAction,
+  type ManagedBeaReleaseNoteContext,
+} from "./ManagedBeaReleaseNoteAction";
 import type { ManagedBeaReleaseAgenda as Model } from "./managed-bea-release-agenda";
 
 export function ManagedBeaReleaseAgenda({
   model,
   headingRef,
+  noteContext,
 }: {
   model: Model;
+  noteContext: ManagedBeaReleaseNoteContext;
   headingRef?: Ref<HTMLHeadingElement> | undefined;
 }) {
   const state = useSyncExternalStore(
@@ -81,6 +87,13 @@ export function ManagedBeaReleaseAgenda({
         resetNotice: selection.resetNotice,
         onDateChange: changeDate,
       }}
+      noteAction={
+        <ManagedBeaReleaseNoteAction
+          {...noteContext}
+          state={state}
+          selectedDate={selection.date}
+        />
+      }
       enabled
       loadButtonRef={load}
       onLoad={() => void model.load()}

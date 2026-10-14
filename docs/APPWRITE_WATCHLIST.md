@@ -512,6 +512,17 @@ watchlist's existing validation, version and conflict workflow. See
 for selection lifetime, duplicate handling and limits. It does not fetch article
 contents or classify the item as company news.
 
+## Scheduled BEA release references
+
+Markets can add one chosen loaded BEA release to one chosen watchlist note. The
+reference keeps its scheduled time, full series, original agenda dates, source
+and retained-result qualification. It describes scheduled metadata without
+claiming a released value, forecast, reminder or company relevance. Existing
+text and other notes remain in the complete draft. Exact-note Review and explicit
+whole-watchlist Save use the existing validation and recovery rules. See
+[scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note)
+for choices, lifetimes, duplicate handling and limits.
+
 ## References
 
 - [TablesDB transactions](https://appwrite.io/docs/products/databases/tablesdb/transactions)

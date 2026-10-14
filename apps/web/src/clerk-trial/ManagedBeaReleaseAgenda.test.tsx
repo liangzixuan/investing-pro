@@ -10,7 +10,15 @@ import { ManagedBeaReleaseAgenda } from "./ManagedBeaReleaseAgenda";
 import { ManagedBeaReleaseAgenda as Model } from "./managed-bea-release-agenda";
 import type { ManagedApi } from "./managed-api";
 import { economicCalendarFixture } from "./economic-calendar-fixture";
+import {
+  ManagedBeaReleaseNoteAction,
+  type ManagedBeaReleaseNoteContext,
+} from "./ManagedBeaReleaseNoteAction";
 import { TrialApiError } from "./api";
+
+vi.mock("./ManagedBeaReleaseNoteAction", () => ({
+  ManagedBeaReleaseNoteAction: () => null,
+}));
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -65,6 +73,19 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 function harness() {
+  const noteContext: ManagedBeaReleaseNoteContext = {
+    members: [],
+    active: true,
+    editable: true,
+    actions: {
+      getAction: vi.fn(() => ({
+        canAppend: false,
+        reason: "Choose a loaded release.",
+      })),
+      append: vi.fn(),
+    },
+    onReview: vi.fn(),
+  };
   const agenda = parseManagedEconomicCalendar(economicCalendarFixture())!;
   const read = vi
     .fn<ManagedApi["economicCalendar"]>()
@@ -82,7 +103,11 @@ function harness() {
       hooks.refIndex = 0;
       hooks.effects = [];
       hooks.changed = false;
-      node = ManagedBeaReleaseAgenda({ model: currentModel, headingRef });
+      node = ManagedBeaReleaseAgenda({
+        model: currentModel,
+        headingRef,
+        noteContext,
+      });
       if (!hooks.changed) break;
     }
     cleanups.forEach((cleanup) => cleanup?.());
@@ -91,6 +116,7 @@ function harness() {
   };
   return {
     model,
+    noteContext,
     read,
     retired,
     agenda,
@@ -104,6 +130,22 @@ function harness() {
 }
 
 describe("managed BEA date selection", () => {
+  it("passes the current packet, resolved date and exact note context through the managed-only slot", async () => {
+    const h = harness();
+    await h.model.load();
+    h.view().onDateChange("2026-11-02");
+    const slot = h.render().props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseNoteAction>
+    >;
+    expect(slot.type).toBe(ManagedBeaReleaseNoteAction);
+    expect(slot.props.state).toBe(h.model.getSnapshot());
+    expect(slot.props.selectedDate).toBe("2026-11-02");
+    expect(slot.props.actions).toBe(h.noteContext.actions);
+    expect(slot.props.members).toBe(h.noteContext.members);
+    expect(slot.props.onReview).toBe(h.noteContext.onReview);
+    expect(h.noteContext.actions.append).not.toHaveBeenCalled();
+    expect(h.read).toHaveBeenCalledOnce();
+  });
   it("passes the owned heading ref without loading or changing the date choice", async () => {
     const h = harness();
     const headingRef = { current: null };
