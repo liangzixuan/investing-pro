@@ -1259,11 +1259,9 @@ describe("managed workspace screen", () => {
       comparison,
       "new",
     ).view;
-    expect(readingView.response).toBe(response);
     expect(readingView.visibleItems).toEqual([response.items[1]]);
-    expect(readingView.visibleItems[0]).toBe(response.items[1]);
     const capture = {
-      response,
+      response: readingView.response!,
       item: readingView.visibleItems[0]!,
       showingPrevious: false,
     };

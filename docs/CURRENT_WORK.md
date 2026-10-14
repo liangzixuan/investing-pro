@@ -35,7 +35,20 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
-The current candidate adds **Announcement view** to the loaded Fed feed. Newly
+The current maintenance candidate keeps the native Fed journey in one focused
+test helper, with named phases for baseline, retained attempts, empty replacement,
+navigation and retirement. The named JUnit case and fixture owner stay in place.
+Shared gestures and assertions keep their original bodies. The composed reference
+test takes both response and item from the projected reading view, so its admitted
+append also checks response identity. Existing full-draft, metadata, Review,
+Save/reload and request bounds remain. An inverse source comparison preserves the
+moved literals, predicates and ordered calls, all 27 cases and 52 captures. Java
+syntax, the affected composed case, web types and scoped lint/format pass. Product,
+dependencies, fixtures, workflows and thresholds are unchanged. Existing frontend
+and Chrome evidence applies; original hosted Android compilation and execution of
+this test organization remain required.
+
+The preceding candidate adds **Announcement view** to the loaded Fed feed. Newly
 observed links require a comparison tied to the exact current response and
 intersect with title search. The list and note picker share the result, preserving
 original objects, order and dates. Complete feed metadata and comparison counts
@@ -54,8 +67,11 @@ full payload survive one RAM Save and reload; the other listing stays intact.
 Reading works during a held Save. Pending, failed and cancelled reads retain the
 view; equal and empty replacements reset it; retirement fences late completion.
 These checks use invented data. This browser run does not establish Review focus;
-the existing composed and native focus assertions remain. Original hosted native
-execution of the extended journey is required. See the
+the existing composed and native focus assertions remain. All five original Actions
+jobs passed. Its original Android report admits all 27
+required cases, exact producing assets and APK isolation gates. CodeScene retains
+two reviewed test-size warnings; the maintenance candidate above addresses them.
+No physical installation or live account acceptance is established. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
 
 The preceding design candidate keeps the optional Fed reference form in an initially
