@@ -42,8 +42,18 @@ intact. An excluded note choice clears with its feedback while a valid
 destination stays selected. Retained attempts keep the query; each accepted
 replacement resets it. No request, saved preference or provider change is added.
 See the [Markets guide](MANAGED_MARKETS_HOME.md#search-loaded-announcement-titles).
-Focused behavior checks and web types pass. Final source review, exact builds,
-Chrome and original hosted native acceptance remain pending.
+Focused behavior and composed workspace checks, web types, scoped lint/format,
+source boundaries and root diff review pass. Exact preview and native fixture
+builds pass; the largest native scenario is 2,387,072 bytes under the unchanged
+4 MiB limit. Chrome at 1440, 390 and 320 CSS pixels verifies normalized title
+search, keyboard Clear, shared choices, matching feedback and exclusion without
+restoration. The complete dated and unknown-time references match the focused
+full note reader. One explicit RAM Save preserves the complete watchlist payload.
+Reading search works during pending Save and feed requests; retained, equal,
+empty and retired responses retain their specified behavior. These checks use
+invented data. Chrome could not activate the already guarded duplicate Add action;
+the existing focused and updated native assertions retain that check. Original
+hosted native execution of the new title-search journey remains pending.
 
 [PR99](https://github.com/liangzixuan/investing-pro/pull/99) adds an optional
 indexed raw-price path to the existing two-listing watchlist comparison. It uses
@@ -1018,8 +1028,13 @@ still clear excluded choices while closed. Empty results remain readable and
 retirement rejects late completion. These checks use invented data.
 
 The existing native journey now checks the closed default and exact draft,
-choice and feedback retention across closing and reopening. Hosted execution of
-this updated journey remains pending. See the [BEA note guide](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+choice and feedback retention across closing and reopening. PR133's original
+five Actions jobs and CodeScene passed. Its original Android artifact passed
+all 27 cases and the complete APK isolation gate. The producing revision has
+the exact reviewed source tree. Root artifact review verified the disclosure
+predicates and original bundle markers; terminal screenshots show later board
+and retired views, so loaded geometry comes from the separate Chrome review.
+See the [BEA note guide](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ## Product scope
 
@@ -1045,7 +1060,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete hosted acceptance for the calendar note-form disclosure.
+Complete original hosted acceptance for the Fed title-search journey.
 Source integration remains subject
 to its existing permission boundary.
 Preserve explicit source requests,
