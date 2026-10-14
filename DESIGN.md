@@ -70,8 +70,8 @@ The company snapshot uses an initially closed native disclosure below company
 navigation. Price and Annual sit side by side on wide screens; Filings spans
 the next row. All cards stack below 760px. Exact amounts, accession numbers and
 original timestamps wrap without truncation. Keep each source heading, missing
-state and historical or coverage warning separate. Filings links and source
-disclosure retain at least 44px touch targets.
+state and historical or coverage warning separate. Snapshot links and source
+disclosures retain at least 44px touch targets.
 The existing section actions remain the explicit way to inspect full evidence.
 
 Use these semantic managed tokens:

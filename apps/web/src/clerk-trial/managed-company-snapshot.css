@@ -36,10 +36,7 @@
 .managed-frame .managed-snapshot-grid > section[aria-label="Snapshot filings"] {
   grid-column: 1 / -1;
 }
-.managed-frame
-  .managed-snapshot-grid
-  > section[aria-label="Snapshot filings"]
-  a {
+.managed-frame .managed-snapshot-grid a {
   display: inline-block;
   min-height: 44px;
   max-width: 100%;
