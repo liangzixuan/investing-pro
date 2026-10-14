@@ -3999,13 +3999,16 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("review requires authored conditions and keeps the note unchanged",
             "document.querySelector('.managed-thesis-review button')?.disabled === true" +
             " && document.querySelector('#managed-note-0')?.value === 'Original thesis'");
+        chooseNativeSelectOption("#managed-note-0-review-purpose", "holding_review", "Review a holding");
+        typeIntoInput("managed-note-0-review-horizon", "The next two filed reports");
         typeIntoInput("managed-note-0-review-thesis", "Margins can recover");
         typeIntoInput("managed-note-0-review-support", "Invented report 2026-10-01");
         typeIntoInput("managed-note-0-review-counter", "Demand remains uncertain");
         typeIntoInput("managed-note-0-review-confirm", "Two stronger reported periods");
         typeIntoInput("managed-note-0-review-invalidate", "Cash keeps falling");
         typeIntoInput("managed-note-0-review-next", "Read the next filed report");
-        String excerpt = "Thesis review (my assessment). My thesis: Margins can recover" +
+        String excerpt = "Thesis review (my assessment). Research purpose: Review a holding" +
+            " | Time horizon: The next two filed reports | My thesis: Margins can recover" +
             " | Supporting evidence: Invented report 2026-10-01" +
             " | Opposing evidence: Demand remains uncertain" +
             " | Confirmation condition: Two stronger reported periods" +
@@ -4016,7 +4019,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('#managed-note-0')?.value === 'Original thesis'" +
             " && " + DIAGNOSTICS + ".save === 0" +
             " && document.querySelector('.managed-thesis-review button')?.disabled === false" +
-            " && [...document.querySelectorAll('.managed-thesis-review input')].every(e => e.getBoundingClientRect().height >= 44)");
+            " && [...document.querySelectorAll('.managed-thesis-review input,.managed-thesis-review select')].every(e => e.getBoundingClientRect().height >= 44)");
         click(".managed-thesis-review button");
         awaitPage("one append preserves both identities and blocks an immediate duplicate",
             "document.querySelector('#managed-note-0')?.value === " + JSONObject.quote(expected) +

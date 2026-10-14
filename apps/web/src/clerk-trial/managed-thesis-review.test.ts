@@ -6,6 +6,7 @@ import {
 } from "./managed-thesis-review";
 
 const review = {
+  ...emptyThesisReview,
   thesis: "Margins can recover",
   support: "Invented report https://example.test/report dated 2026-10-01",
   counter: "Demand remains uncertain",
@@ -15,6 +16,58 @@ const review = {
 };
 
 describe("authored thesis review", () => {
+  it.each([
+    ["idea", "Explore an idea"],
+    ["holding_review", "Review a holding"],
+  ] as const)(
+    "keeps explicit %s purpose and horizon in the authored snapshot",
+    (purpose, label) => {
+      const result = proposeThesisReview("Original", {
+        ...review,
+        purpose,
+        horizon: "Through the next two filed reports",
+      });
+      expect(result.note).toContain(
+        `Original Thesis review (my assessment). Research purpose: ${label} | Time horizon: Through the next two filed reports | My thesis: Margins can recover`,
+      );
+      expect(result.note).not.toContain("position size");
+      expect(result.note).not.toContain("cost basis");
+      expect(result.reason).toBeNull();
+    },
+  );
+  it("does not invent a purpose or horizon and refuses an unknown purpose", () => {
+    expect(formatThesisReview(review).excerpt).not.toContain(
+      "Research purpose:",
+    );
+    expect(formatThesisReview(review).excerpt).not.toContain("Time horizon:");
+    const invalid = { ...review, purpose: "toString" };
+    expect(formatThesisReview(invalid as typeof review)).toEqual({
+      excerpt: null,
+      reason: "Choose a listed research purpose or leave it blank.",
+    });
+  });
+  it("applies the existing field and complete-note limits to the horizon", () => {
+    expect(
+      formatThesisReview({ ...review, horizon: "x".repeat(2001) }).reason,
+    ).toContain("Time horizon:");
+    expect(
+      proposeThesisReview("Original", { ...review, horizon: "next\nreport" })
+        .note,
+    ).toBeNull();
+    const withContext = {
+      ...review,
+      purpose: "holding_review" as const,
+      horizon: "Two reports",
+    };
+    const excerpt = proposeThesisReview("", withContext).excerpt!;
+    const remaining = 2000 - Array.from(excerpt).length - 1;
+    expect(
+      proposeThesisReview("😀".repeat(remaining), withContext).note,
+    ).not.toBeNull();
+    expect(
+      proposeThesisReview("😀".repeat(remaining + 1), withContext).note,
+    ).toBeNull();
+  });
   it("identifies an oversized field without blaming its line format", () => {
     const oversized = { ...review, support: "x".repeat(2001) };
     expect(formatThesisReview(oversized)).toEqual({

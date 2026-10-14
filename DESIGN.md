@@ -58,6 +58,12 @@ tokens. The field grid wraps to one column at narrow widths; the complete previe
 wraps long links. Keep the owner's assessment distinct from verified source facts.
 Reading stays available while note editing is paused.
 
+The optional research purpose uses a labelled native selector with an empty
+initial choice. Time horizon uses the same text field as other authored context.
+Keep both in the existing wrapping grid, with the same 44px targets and focus
+style. The preview places purpose and horizon before the thesis; neither choice
+establishes a position or starts monitoring.
+
 ## Color and surfaces
 
 The company snapshot uses an initially closed native disclosure below company

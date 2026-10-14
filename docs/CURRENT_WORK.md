@@ -21,6 +21,20 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The independent thesis-context candidate adds optional **Research purpose** and
+**Time horizon** to the authored review. Choose **Explore an idea** or **Review a
+holding**, preview the context, then use the existing explicit Add and Save.
+The choice does not infer holdings or start monitoring. Field and complete-note
+limits, intervening-edit protection and listing/editor reset still apply.
+Affected formatter, form and composed-save checks passed (22 cases), as did web
+types, scoped lint, formatting, Java syntax and source boundaries. Chrome passed
+at actual 1440/390/320 CSS widths, including one explicit RAM Save/reload,
+paused editing, complete note preservation and editor reset, without provider
+reads. The new synthetic native bundle has a maximum loader of 2,408,904 bytes
+under the unchanged 4 MiB cap, with exact software notices. Original feature-head
+CI and Android execution remain pending; the bundle is not emulator acceptance.
+This candidate extends the frozen integration source; it is not a live release.
+
 The candidate brings the accumulated company-research and daily-review work
 together for source integration. It includes:
 
@@ -70,8 +84,8 @@ cases with the same executable body, assertions and default deadline. Only that
 test's source hash changes in the existing manifest; payload and fixture-case
 bytes, validators, runtime, workflows and timeout settings remain unchanged.
 
-Exact application builds and Chrome evidence remain applicable because the latest
-corrections change tests, source-hash metadata and status only. The largest native
+The frozen integration's application builds and Chrome evidence remain applicable
+because its corrections change tests, source-hash metadata and status only. Its largest native
 fixture loader is 2,407,934 bytes under the unchanged 4 MiB cap, with exact software
 notices. Chrome covers actual 1440/390/320 widths, keyboard disclosure, explicit
 independent loads, retained failed reads, unchanged notes, company reset and late
@@ -80,11 +94,15 @@ geometry and the current desktop image have separate proof.
 
 The whole diff against main requires seven original workflows and eight Actions
 jobs: Android, Ubuntu/Windows CI, dependency review, parser isolation, parser
-normalization, payload custody and PostgreSQL. Those integration checks and the
-actual integration CodeScene review remain required. Parent-based passes alone
-do not establish acceptance against main. Prior failed and cancelled runs remain
-recorded. PR141's four reviewed maintainability advisories remain part of that
-history; PR142's narrower review does not erase them.
+normalization, payload custody and PostgreSQL. All eight original jobs passed on
+[PR143](https://github.com/liangzixuan/investing-pro/pull/143) at `bcf7a1a`.
+Its original Android report passes all 30 cases and 27 producer markers; the
+custody, normalization and PostgreSQL artifacts pass their source-bound reviews.
+CodeScene's main-based review failed with 141 maintenance warnings and 23 notices.
+Focused review retained the real screen/workspace complexity risk and identified
+no correctness blocker. This advisory failure was not suppressed or reported as
+passed. Source integration still needs authorization; production is unchanged.
+Prior failed and cancelled outcomes retain their original scope.
 
 ## Coordinated version boundary
 
