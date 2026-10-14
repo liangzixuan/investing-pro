@@ -784,13 +784,21 @@ successful replacement clears the announcement choice. Leaving Markets clears
 both choices. Duplicate comparison uses NFC while draft text remains unchanged.
 The existing complete-note validation refuses invalid or oversized results.
 
-Focused source and composed tests cover the formatter, choices, refusals and
-whole-draft Save. The existing native Fed journey now adds a reference with an
-unknown publication time, refuses a duplicate, reviews, saves and reloads it
-before exercising its existing retirement and late-response checks. Native case
-and capture counts are unchanged. Exact builds, Chrome and original hosted
-execution remain pending for this increment. No new source, API or saved schema
-is added. Production is unchanged. See the
+Focused source and composed tests, types, lint, formatting and source boundaries
+pass. Exact preview and native fixture builds pass independent saved-output
+review, preserving complete software notices and the unchanged 4 MiB native cap.
+Root-run Chrome checks at 1440, 390 and 320 CSS pixels pass keyboard, wrapping,
+control-size and overflow checks. They verify the exact full draft, explicit Save
+and reload, original retained dates, replacement, cancellation, late completion
+and retirement. Chrome confirms the duplicate action's disabled/refusal state
+without another append; the duplicate handler is covered by component tests.
+Independent review accepts the saved Chrome evidence with these limits.
+
+The existing native Fed journey now adds a reference with an unknown publication
+time, refuses a duplicate, reviews, saves and reloads it before its original
+retirement and late-response checks. The suite retains 27 total cases and 52
+literal capture calls. Original hosted execution for this increment remains
+pending. No new source, API or saved schema is added. Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
 
 ## Product scope
@@ -817,9 +825,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish the Fed reference candidate's source, rendered and native checks,
-Markets navigation's original hosted checks, and the
-source integration steps when permission arrives. Preserve explicit source requests,
+Complete the Fed reference candidate's original hosted checks and the source
+integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
