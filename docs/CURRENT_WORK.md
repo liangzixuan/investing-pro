@@ -59,8 +59,15 @@ the new hidden review button; their selectors now target the original action
 group, preserving the same six-control counts, geometry, text and deadlines.
 The thesis journey now uses a declared fixture that accepts only its exact whole
 draft and refuses other-listing changes. All older fixtures and expected payloads
-remain. Fresh company geometry and revised original hosted execution are pending.
-Native and preview builds pass. The largest synthetic loader is 2,398,325 bytes
+remain. Fresh Chrome checks at 360×600 CSS pixels preserve the exact six original
+company controls. Their translation-relative span is 566 pixels; native
+start-scroll execution remains a separate check. Company review fields survive
+section changes, and both company and watchlist appends preserve the same note.
+Ordinary typing retains unadded review fields; changing listing resets them.
+Two held RAM Saves, whole-payload reload, complete reading during Save and
+retirement fencing pass, with no provider reads or console warnings. Revised
+original hosted execution remains required.
+Native and preview builds pass. The largest synthetic loader is 2,399,332 bytes
 under the unchanged 4 MiB limit, with exact software notices preserved.
 
 Chrome at actual 1440, 390 and 320 CSS pixels verifies keyboard disclosure and
@@ -70,8 +77,9 @@ reload. Company research appends a second assessment to the same exact note and
 returns its editor in My Watchlist; the separate full reader remains available.
 Note search matches the new assessment. Two RAM writes, two loads, zero provider
 reads and retirement fencing of the late second receipt are verified. These
-checks use invented data. A separate native journey was added without changing
-any prior journey; original hosted execution remains required. No upstream code,
+checks use invented data. All earlier native cases, counts, bounds, goldens and
+deadlines remain, with four capture selectors scoped to their original controls;
+original hosted execution remains required. No upstream code,
 model entitlement or data source was added. Production remains unchanged.
 
 The preceding Release view candidate's original Android run failed window-focus
