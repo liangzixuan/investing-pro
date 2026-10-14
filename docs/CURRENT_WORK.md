@@ -39,8 +39,16 @@ The latest design candidate keeps the optional Fed reference form in an initiall
 closed native disclosure after the announcement list. The form stays mounted,
 preserving choices, feedback and the current note across toggling. Metadata,
 search, comparison, warnings and titles remain outside. Request, filter, note
-admission and session behavior are unchanged. Source and rendered verification
-of this presentation increment remain pending.
+admission and session behavior are unchanged. All 20 presenter cases, web types,
+scoped lint/format and root diff review pass. The exact preview and native fixture
+builds pass; the largest native scenario is 2,387,771 bytes under the unchanged
+4 MiB limit. Chrome at 1440, 390 and 320 CSS pixels verifies native Enter/Space
+toggling, 44px summaries, long titles and identities, and exact choice, feedback
+and full-note retention. Review focuses the complete note reader. One explicit
+RAM Save preserves the complete payload. Filtering, pending reads, failure,
+cancellation, replacement and retirement retain the form's existing behavior
+while open or closed. These checks use invented data. Updated original hosted
+native execution remains pending.
 
 The preceding candidate adds title search to the loaded Federal Reserve feed.
 The same view drives the list and announcement note choices. Original titles,
