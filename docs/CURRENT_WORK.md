@@ -55,6 +55,15 @@ invented data. Chrome could not activate the already guarded duplicate Add actio
 the existing focused and updated native assertions retain that check. Original
 hosted native execution of the new title-search journey remains pending.
 
+The original Android run passed 26 cases and failed the Fed journey at a new
+query-change check. The test inserted text into the existing phrase while
+expecting a replacement. Its original screenshot retains that combined input.
+The bounded correction focuses the exact search and uses the existing native
+Select all helper, which checks the prior value, full selection, focus and exact
+replacement. Note, duplicate, Save/reload, request and retirement assertions and
+deadlines remain unchanged. The original failure and skipped APK acceptance
+remain recorded; corrected hosted execution is still required.
+
 [PR99](https://github.com/liangzixuan/investing-pro/pull/99) adds an optional
 indexed raw-price path to the existing two-listing watchlist comparison. It uses
 only currently loaded shared observations and the chosen interval. Each series

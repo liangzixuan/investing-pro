@@ -1032,7 +1032,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("an identical Fed reference cannot append twice", exact +
             " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
         assertFedCounts(6, 2, 2, 0, 1);
-        typeIntoInput("managed-fed-title-search", " WITHOUT ");
+        touchInput("managed-fed-title-search");
+        replaceFocusedInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ", " WITHOUT ");
         awaitPage("a matching query keeps the selected announcement and duplicate feedback for Review", exact +
             " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
             " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
