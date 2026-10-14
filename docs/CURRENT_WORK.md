@@ -964,9 +964,12 @@ One explicit Save and reload preserve the complete payload, including the other
 note and listing order. Reading filters remain usable during Save, and retirement
 rejects late completion. Native popup geometry remains unverified.
 
-The existing native BEA journey now checks no match, Clear and mixed-case series
-search before its unchanged exact append and Review assertions. Execution of
-that updated native journey and hosted checks remain pending. See the
+The existing native BEA journey checks no match, Clear and mixed-case series
+search before its exact append and Review assertions. All five original Actions
+passed, including 27 native cases and the actual APK isolation gate. Independent
+review accepts the original native evidence; its end images do not show loaded
+search or popup geometry. CodeScene retains one reviewed maintenance warning
+and three notices. See the
 [BEA agenda guide](MANAGED_MARKETS_HOME.md#bea-release-agenda).
 
 ### Named evidence-verifier refusal cases
@@ -979,8 +982,10 @@ failure identification without changing the production verifier.
 
 All 75 affected-file cases, package types and scoped lint/format pass. The original
 Windows timeout and its unknown cause remain recorded. These local results do
-not establish the cause or guarantee future timings. Hosted acceptance of this
-test change remains pending.
+not establish the cause or guarantee future timings. All six original Actions
+and CodeScene passed. Both desktop jobs passed all 75 verifier cases and 610 DB
+tests; individual case timings were not printed. The original PostgreSQL proof
+and 27-case Android regression artifact passed independent review.
 
 ### Calendar note-form disclosure candidate
 
@@ -990,10 +995,21 @@ keeps the current form mounted. Toggling preserves choices and feedback; existin
 response, filter, navigation and session rules still apply. Original source dates,
 timezone, warnings and release rows remain outside the disclosure.
 
-All 23 direct presenter cases and scoped lint/format pass. The existing native
-journey now checks the closed default and exact draft, choice and feedback
-retention across closing and reopening. Integrated browser and native acceptance
-remain pending. See the [BEA note guide](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+All 23 direct presenter cases, web types, scoped lint/format and independent
+source review pass. Exact preview and native fixture builds passed review. The
+largest native scenario is 2,384,116 bytes, below the unchanged 4 MiB limit.
+
+Chrome at 1440, 390 and 320 CSS pixels verifies keyboard toggling, wrapped long
+labels and 44px summaries. Closing and reopening preserve the exact choices,
+success feedback and complete note. Review focuses the full note; one explicit
+RAM Save preserves the entire payload. Pending, failed and cancelled reads keep
+the disclosure state and current choice. Filtering and response replacement
+still clear excluded choices while closed. Empty results remain readable and
+retirement rejects late completion. These checks use invented data.
+
+The existing native journey now checks the closed default and exact draft,
+choice and feedback retention across closing and reopening. Hosted execution of
+this updated journey remains pending. See the [BEA note guide](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ## Product scope
 
@@ -1019,7 +1035,7 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete hosted acceptance for BEA series search and the named verifier cases.
+Complete hosted acceptance for the calendar note-form disclosure.
 Source integration remains subject
 to its existing permission boundary.
 Preserve explicit source requests,
