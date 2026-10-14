@@ -175,6 +175,14 @@ changes and choose **Save watchlist** to save the complete draft. Appending make
 no source or save request. Current work records browser, native and delivery
 acceptance separately.
 
+After a successful append, **Review note** opens that exact listing's full note
+and focuses its reader. The current search and scope remain, even if the listing
+is outside the results. Review can read the unchanged draft while Save or recovery
+pauses editing. A pending source read pauses Review; a changed report, company,
+basis, evidence group or destination removes the earlier success. Refusing a
+duplicate in the same context keeps Review available. Review does not append,
+load a report or save.
+
 ### Compare cash generation
 
 The same table adds reported operating cash flow, reported PP&E purchases and

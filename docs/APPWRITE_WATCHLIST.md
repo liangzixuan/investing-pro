@@ -152,9 +152,13 @@ Both the comparison and destination are checked again when the action runs.
 Retired selections, pending navigation, catalog changes and blocked edits refuse
 the append. If the complete resulting note fails the existing 2,000-code-point
 note contract, the action leaves it unchanged and explains why. It never truncates
-evidence. Review the draft, use Research notes search to find its text, and choose
-**Save watchlist** to save the complete draft explicitly. Save keeps its existing
-note normalization and recovery rules.
+evidence. After a successful append, **Review note** selects that exact listing
+and opens its full note, even outside the current search. Search and scope stay
+unchanged. Review remains available while Save pauses editing, provided the
+comparison and destination still match. A new source, interval or destination
+withdraws that success; a pending source read pauses Review. It sends no request
+or write. Choose **Save watchlist** to save the complete draft explicitly. Save
+keeps its existing note normalization and recovery rules.
 
 ## Compare two companies' annual results
 

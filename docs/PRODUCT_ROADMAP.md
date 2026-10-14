@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3/M4 increment connects one chosen loaded BEA release to one chosen
+The current M2/M4 increment connects price and Annual comparison appends to
+**Review note**. It opens the exact destination's full note while preserving
+search, draft and loaded evidence. Review remains readable while Save pauses
+editing. See [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+
+The preceding M3/M4 increment connects one chosen loaded BEA release to one chosen
 watchlist note, followed by exact-note Review and whole-draft Save. It keeps the
 full scheduled series, original UTC/Eastern time and agenda source context. It
 adds no reminder, forecast, released value, request or saved schema. See

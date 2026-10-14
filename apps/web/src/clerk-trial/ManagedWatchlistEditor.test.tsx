@@ -127,6 +127,7 @@ function fixture() {
     onSelectedMember: vi.fn(),
     onViewFilings: vi.fn(),
     comparisonNoteActions: {
+      review: vi.fn(),
       getAction: vi.fn(() => ({ canAppend: false, reason: "Choose a note." })),
       append: vi.fn(() => ({ appended: false, message: "Choose a note." })),
     },

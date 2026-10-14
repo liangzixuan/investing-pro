@@ -908,6 +908,32 @@ recorded. Complete native execution and package isolation still require the
 updated revision's hosted checks. See
 [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
+### Exact Review after a watchlist comparison
+
+Price and Annual comparison actions now offer **Review note** after a successful
+append. Review selects that exact current listing, preserves the search and opens
+the existing full-note reader. It remains available while Save pauses editing.
+A changed source, comparison choice or destination removes earlier success;
+pending source reads pause Review. The action adds no request or write.
+
+Focused action and composed reader tests, web types, lint and source boundaries
+pass. Checks include all three Annual groups, full-draft Save/reload, search-hidden
+destinations and cancellation of stale reader requests. Independent source and
+exact-bundle reviews pass. Chrome exposed an Annual handoff defect: the correct
+listing was selected, but an ordinary render cancelled the reader's focus request.
+The repair preserves Review through unchanged renders while cancelling it before
+changed source or choice contexts can reach the reader. All 59 focused Annual
+action cases pass, including 13 new commit-order cases; the original failure
+remains recorded.
+
+The corrected Chrome build passes at 1440, 390 and 320 CSS pixels. Both producers
+open the exact full note outside search, including while Save pauses editing.
+Whole-draft Save/reload, retained responses, cancellation, changed choices and
+retirement preserve their tested boundaries. The native fixture bundle remains
+below the unchanged 4 MiB limit. Original hosted Android execution for this
+candidate remains pending. See
+[comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -932,9 +958,9 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for the BEA note candidate, then connect the
-existing price and Annual comparison append actions to exact-note Review. Source
-integration remains subject to its existing permission boundary.
+Resolve the BEA candidate's original Android failures and complete hosted
+acceptance for comparison note Review. Source integration remains subject
+to its existing permission boundary.
 Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable

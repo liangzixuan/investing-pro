@@ -287,6 +287,13 @@ controls. Keep focus on the chosen control after appending or refusal; the
 selected note editor stays unchanged. Saving remains in the existing watchlist
 workflow.
 
+After a successful price or Annual comparison append, show a secondary **Review
+note** button beside the action. Reuse the existing full-note disclosure and focus
+treatment. Select the exact destination and preserve search; do not move the
+editor until Review is chosen. Keep this read action available while editing is
+paused if its source and destination remain current. Use the existing 44px target
+and narrow-screen stacking rules.
+
 Keep **Compare raw-price paths** closed by default. Use the selected shared
 interval and a clearly labelled Start = 100 axis with a scale fitted to the
 observed values. Distinguish both raw-price lines by marker and line style as well

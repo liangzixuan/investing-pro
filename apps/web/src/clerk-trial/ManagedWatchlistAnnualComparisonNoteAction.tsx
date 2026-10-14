@@ -1,4 +1,8 @@
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  membershipMatchesResult,
+  type WatchlistMembership,
+} from "@research-cockpit/contracts";
 import type {
   AnnualComparisonNoteCapture,
   AnnualComparisonNoteGroup,
@@ -13,6 +17,11 @@ export interface ManagedWatchlistAnnualComparisonNoteActions {
     capture: AnnualComparisonNoteCapture,
     destination: Member | null,
   ) => { canAppend: boolean; reason: string | null };
+  review: (
+    capture: AnnualComparisonNoteCapture,
+    member: WatchlistMembership,
+    isCurrentChoice: () => boolean,
+  ) => void;
   append: (
     capture: AnnualComparisonNoteCapture,
     destination: Member | null,
@@ -21,6 +30,7 @@ export interface ManagedWatchlistAnnualComparisonNoteActions {
 
 interface Props {
   state: ComparisonState;
+  memberships: readonly WatchlistMembership[];
   bases: { left: string | null; right: string | null };
   active: boolean;
   editable: boolean;
@@ -45,6 +55,12 @@ interface Context {
   group: AnnualComparisonNoteGroup;
   active: boolean;
   editable: boolean;
+}
+interface ReviewScope {
+  capture: AnnualComparisonNoteCapture | null;
+  destination: Destination;
+  active: boolean;
+  catalogChanged: boolean;
 }
 interface Feedback {
   context: Context;
@@ -135,20 +151,78 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
     () => ({ capture, destination, group, active, editable: props.editable }),
     [capture, destination, group, active, props.editable],
   );
+  const reviewScope = useMemo<ReviewScope>(
+    () => ({
+      capture,
+      destination,
+      active,
+      catalogChanged: props.state.catalogChanged,
+    }),
+    [capture, destination, active, props.state.catalogChanged],
+  );
+  const member = destination.member
+    ? (props.memberships.find((entry) =>
+        membershipMatchesResult(entry, destination.member!.listing),
+      ) ?? null)
+    : null;
+  const [success, setSuccess] = useState<ReviewScope | null>(null);
+  const hasSuccess =
+    success === reviewScope &&
+    member !== null &&
+    active &&
+    !props.state.catalogChanged;
+  if (success && !hasSuccess) setSuccess(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const latest = useRef<{ props: Props; context: Context } | null>(null);
+  const latest = useRef<{
+    props: Props;
+    context: Context | null;
+    reviewScope: ReviewScope;
+    member: WatchlistMembership | null;
+    hasSuccess: boolean;
+  } | null>(null);
   useLayoutEffect(() => {
-    latest.current = { props, context };
+    latest.current = { props, context, reviewScope, member, hasSuccess };
     return () => {
-      latest.current = null;
+      // Revoke append callbacks before publishing new props. A sibling reader may
+      // still check an unchanged Review scope during this commit.
+      if (latest.current) latest.current.context = null;
     };
-  }, [props, context]);
+  }, [props, context, reviewScope, member, hasSuccess]);
+  useLayoutEffect(
+    () => () => {
+      latest.current = null;
+    },
+    [
+      reviewScope,
+      member,
+      hasSuccess,
+      props.state.pending,
+      left.report.running,
+      right.report.running,
+    ],
+  );
   const capturedCurrent = () => {
     const current = latest.current;
     return current?.context === context && context.active && context.editable
       ? current
       : null;
   };
+  const reviewCurrent = () => {
+    const current = latest.current;
+    return current?.reviewScope === reviewScope &&
+      current.hasSuccess &&
+      current.member &&
+      !current.props.state.pending &&
+      !current.props.state.left.report.running &&
+      !current.props.state.right.report.running
+      ? current
+      : null;
+  };
+  const canReview =
+    hasSuccess &&
+    !props.state.pending &&
+    !left.report.running &&
+    !right.report.running;
   const action = currentAction(props, context);
   return (
     <div className="managed-annual-comparison-note-action">
@@ -209,6 +283,7 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
           const current = capturedCurrent();
           if (!current || !context.capture) return;
           const admitted = currentAction(current.props, context);
+          if (!capturedCurrent()) return;
           const result = admitted.canAppend
             ? current.props.actions.append(context.capture, destination.member)
             : {
@@ -216,6 +291,15 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
                 message:
                   admitted.reason ?? "This comparison cannot be added now.",
               };
+          const committed = latest.current;
+          if (
+            result.appended &&
+            committed?.reviewScope === reviewScope &&
+            committed.member &&
+            active &&
+            !reviewScope.catalogChanged
+          )
+            setSuccess(reviewScope);
           setFeedback({
             context,
             message: result.message,
@@ -225,6 +309,24 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
       >
         Add Annual comparison to note draft
       </button>
+      {hasSuccess && (
+        <button
+          type="button"
+          className="trial-secondary"
+          aria-disabled={!canReview}
+          onClick={() => {
+            const current = reviewCurrent();
+            if (current && capture && current.member)
+              current.props.actions.review(
+                capture,
+                current.member,
+                () => reviewCurrent() !== null,
+              );
+          }}
+        >
+          Review note
+        </button>
+      )}
       <p id={helpId} className="managed-annual-comparison-note-help">
         {action.reason ??
           "Adds both companies' selected evidence and original source dates to the chosen note draft. Review and Save separately."}

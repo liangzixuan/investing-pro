@@ -1,6 +1,7 @@
 import {
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -50,6 +51,17 @@ export function ManagedWatchlistComparison({
   const projection = projectManagedWatchlistComparison(selection, prices);
   const captured = projection.selection;
   if (selection !== captured) setSelection(captured);
+  const leftShowingPrevious = projection.left?.history.showingPrevious ?? false;
+  const rightShowingPrevious =
+    projection.right?.history.showingPrevious ?? false;
+  const noteCapture = useMemo(
+    () => ({
+      selection: captured,
+      leftShowingPrevious,
+      rightShowingPrevious,
+    }),
+    [captured, leftShowingPrevious, rightShowingPrevious],
+  );
   const latest = useRef({ prices, active, selection: captured });
   useLayoutEffect(() => {
     latest.current = { prices, active, selection: captured };
@@ -62,7 +74,9 @@ export function ManagedWatchlistComparison({
       projection={projection}
       noteAction={
         <ManagedWatchlistComparisonNoteAction
-          selection={captured}
+          capture={noteCapture}
+          memberships={memberships}
+          pending={prices.pending !== null}
           active={active}
           editable={editable}
           actions={comparisonNoteActions}
