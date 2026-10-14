@@ -1,6 +1,12 @@
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 
+export const thesisReviewPurposes = {
+  idea: "Explore an idea",
+  holding_review: "Review a holding",
+} as const;
+
 export const thesisReviewFields = [
+  { key: "horizon", label: "Time horizon", required: false },
   { key: "thesis", label: "My thesis", required: true },
   { key: "support", label: "Supporting evidence", required: false },
   { key: "counter", label: "Opposing evidence", required: false },
@@ -12,8 +18,10 @@ export const thesisReviewFields = [
 export type ThesisReview = Record<
   (typeof thesisReviewFields)[number]["key"],
   string
->;
+> & { purpose: "" | keyof typeof thesisReviewPurposes };
 export const emptyThesisReview: ThesisReview = {
+  purpose: "",
+  horizon: "",
   thesis: "",
   support: "",
   counter: "",
@@ -25,6 +33,14 @@ export const emptyThesisReview: ThesisReview = {
 /** Formats authored fields without reading or changing a note. */
 export function formatThesisReview(review: ThesisReview) {
   const parts: string[] = [];
+  if (review.purpose !== "") {
+    if (!Object.hasOwn(thesisReviewPurposes, review.purpose))
+      return {
+        excerpt: null,
+        reason: "Choose a listed research purpose or leave it blank.",
+      };
+    parts.push(`Research purpose: ${thesisReviewPurposes[review.purpose]}`);
+  }
   for (const field of thesisReviewFields) {
     const value = normalizeWatchlistNote(review[field.key]);
     if (value === null)

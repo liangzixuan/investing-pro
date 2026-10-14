@@ -962,7 +962,8 @@
   margin-bottom: 8px;
   font-weight: 600;
 }
-.clerk-trial.managed-frame .managed-thesis-review-fields input {
+.clerk-trial.managed-frame .managed-thesis-review-fields input,
+.clerk-trial.managed-frame .managed-thesis-review-fields select {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;

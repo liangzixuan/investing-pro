@@ -21,6 +21,15 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The independent thesis-context candidate adds optional **Research purpose** and
+**Time horizon** to the authored review. Choose **Explore an idea** or **Review a
+holding**, preview the context, then use the existing explicit Add and Save.
+The choice does not infer holdings or start monitoring. Field and complete-note
+limits, intervening-edit protection and listing/editor reset still apply.
+Affected formatter, form and composed-save checks passed (22 cases), as did web
+types and scoped lint. Browser and original Android acceptance remain pending.
+This candidate extends the frozen integration source; it is not a live release.
+
 The candidate brings the accumulated company-research and daily-review work
 together for source integration. It includes:
 

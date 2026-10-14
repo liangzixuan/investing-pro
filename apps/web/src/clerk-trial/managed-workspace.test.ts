@@ -221,6 +221,8 @@ describe("thesis review through the shared watchlist draft", () => {
     await ready(workspace);
     const review = {
       ...emptyThesisReview,
+      purpose: "holding_review" as const,
+      horizon: "The next two filed reports",
       thesis: "Cash recovery",
       invalidate: "Cash keeps falling",
       next: "Read the next filed report",

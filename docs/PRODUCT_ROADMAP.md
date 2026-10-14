@@ -18,6 +18,12 @@ Price and Annual keep separate source dates, revenue bases, availability and
 historical qualifications. It uses admitted evidence and explicit section
 navigation, with no automatic request, saved change or model verdict.
 
+The next M4 thesis candidate adds optional **Research purpose** and **Time horizon**
+to the authored review. The owner can distinguish exploring an idea from reviewing
+a holding, preview the complete text, then append and save it through the existing
+watchlist draft. The choice does not establish holdings or start monitoring. See
+[thesis reviews](APPWRITE_WATCHLIST.md#write-a-thesis-review).
+
 The preceding M3 increment narrows the loaded BEA agenda to scheduled entries absent
 from its preceding accepted agenda. Release view intersects with series search
 and Eastern date; rows and note choices share one result. Complete comparison

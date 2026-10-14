@@ -52,6 +52,12 @@ check. Supporting evidence, opposing evidence and a confirmation condition are
 optional. Include source links and dates with evidence; these are your authored
 assessments and are not independently verified citations.
 
+You can choose **Explore an idea** or **Review a holding** as the research purpose
+and enter a **Time horizon**. Both are optional and appear in the preview before
+the thesis. The app does not infer a position, holding size or cost basis from
+this choice. A time horizon states the period your assessment concerns; **Next
+check** states what you plan to check next. Neither field starts monitoring.
+
 The preview shows exactly what **Add review to note draft** will append. The
 original note stays intact. The complete note must pass its existing 2,000-character
 save policy. Invalid text, excess length and an immediate duplicate block Add.
