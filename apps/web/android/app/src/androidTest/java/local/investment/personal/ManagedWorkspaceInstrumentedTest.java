@@ -1216,7 +1216,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-bea-note-release')?.value === ''" +
             " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
             " && document.querySelector('.managed-bea-note-action button')?.getAttribute('aria-disabled') === 'true'");
-        chooseNativeSelectOption("#managed-bea-note-release", "0", "8:30 AM EDT · Invented GDP");
+        chooseNativeSelectOption("#managed-bea-note-release", "0", "    8:30 AM EDT · Invented GDP");
         chooseNativeSelectOption("#managed-bea-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
         assertBeaDraft();
         assertBeaCounts(4, 2, 2);
