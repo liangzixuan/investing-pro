@@ -21,6 +21,18 @@ and footer after one explicit catalog recovery, without provider reads or writes
 
 ## Consolidated research candidate
 
+The next snapshot increment adds Filings as an independent third source. It
+reuses the existing filing summary and source details, with its original window,
+clocks, availability and coverage limits. Navigation makes no source request.
+Snapshot, filing-renderer, native-fixture and full composed-screen checks pass
+(298 cases). Browser and new-head native execution remain separate.
+
+A regression check also reproduced a synthetic fixture mismatch in the preceding
+thesis-context candidate: its strict Save still expected the old note without
+purpose and horizon. The fixture now requires the exact new text, verified
+through the real formatter. No Save validator, identity, timeout or assertion was
+relaxed. This is a QA-fixture correction; the original PR144 outcome is preserved.
+
 The independent thesis-context candidate adds optional **Research purpose** and
 **Time horizon** to the authored review. Choose **Explore an idea** or **Review a
 holding**, preview the context, then use the existing explicit Add and Save.
@@ -58,7 +70,7 @@ together for source integration. It includes:
   to the existing note draft. The existing whole-draft Save and note limit apply.
   Authored links and dates are not automatically verified citations.
 - [Loaded company snapshot](MANAGED_COMPANY_SNAPSHOT.md): one initially closed
-  view of admitted Price and Annual evidence. Each source keeps its own dates,
+  view of admitted Price, Annual and Filings evidence. Each source keeps its own dates,
   revenue bases and historical qualifications. Opening it makes no request,
   calculation or saved change; its section actions use normal navigation.
 

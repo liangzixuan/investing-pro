@@ -247,9 +247,10 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("markets-price-handoff");
         if (testName.getMethodName().equals("rawCloseComparisonUsesObservedDatesAndPreservesDraft"))
             selectFixtureScenario("raw-close-comparison");
-        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource") ||
-                testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads"))
+        if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads"))
+            selectFixtureScenario("company-snapshot");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
         if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
@@ -1759,6 +1760,20 @@ public class ManagedWorkspaceInstrumentedTest {
             DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         retainAnnualNoteFrame("companySnapshotAnnualBasis", basis + " > h4",
             basis + " > h4, " + basis + " > div > p, " + basis + " > div > dl", 3);
+        click(".managed-snapshot-grid > section[aria-label='Snapshot filings'] > button");
+        awaitPage("snapshot Filings action navigates without fetching",
+            "document.querySelector('#managed-filings-heading') !== null && " + DIAGNOSTICS + ".filings === 0");
+        click(".managed-company-filings .trial-actions button:first-child");
+        String filingCard = "[aria-label='Snapshot filings']";
+        awaitPage("snapshot shows only observed metadata and retains separate evidence and the draft",
+            snapshot + ".open && " + DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " +
+            "document.querySelector(\"" + filingCard + "\")?.textContent.includes('Newest observed filing') && " +
+            "document.querySelector(\"" + filingCard + "\")?.textContent.includes('2026-06-23 to 2026-09-20') && " +
+            "document.querySelector(\"" + filingCard + "\")?.textContent.includes('26 loaded filings') && " +
+            "document.querySelector(\"" + filingCard + "\")?.textContent.includes('2026-09-20T00:00:01.000Z') && " +
+            snapshot + ".textContent.includes('101.5') && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
+        retainAnnualNoteFrame("companySnapshotFilings", filingCard + " > h3",
+            filingCard + " > h3, " + filingCard + " > p, " + filingCard + " .managed-watchlist-filings-summary", 3);
         pressBack();
         assertClosedDraft(true);
         awaitPage("leaving company removes its snapshot", snapshot + " === null");
@@ -1766,7 +1781,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("a new company visit does not restore prior snapshot evidence",
             snapshot + "?.open === false && " + snapshot + ".textContent.includes('No close history loaded') && " +
             snapshot + ".textContent.includes('No annual evidence loaded') && " +
-            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
+            snapshot + ".textContent.includes('No filing metadata loaded') && " +
+            DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".save === 0");
         assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
     }
@@ -4947,6 +4963,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
             scenarioName.equals("thesis-review") ||
+            scenarioName.equals("company-snapshot") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
         File index = new File(fixtureDirectory, "index.html");

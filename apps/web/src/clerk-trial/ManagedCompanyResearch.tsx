@@ -97,6 +97,7 @@ export function ManagedCompanyResearch({
         selection={research.selection}
         price={eod}
         annual={annual}
+        filings={filings}
         onSection={onSection}
       />
       <div className="managed-research-body">
