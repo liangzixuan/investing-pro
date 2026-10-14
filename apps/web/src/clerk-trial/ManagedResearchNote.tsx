@@ -1,5 +1,6 @@
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedThesisReview } from "./ManagedThesisReview";
 
 /** Edits the watchlist draft; the existing watchlist screen owns explicit saves. */
 export function ManagedResearchNote({
@@ -47,6 +48,16 @@ export function ManagedResearchNote({
         Up to 2,000 characters. Edit your watchlist draft here, then review and
         save all changes in My Watchlist.
       </p>
+      {state.member && (
+        <ManagedThesisReview
+          key={state.member.listingId}
+          id="managed-research-note"
+          symbol={symbol}
+          note={state.member.note}
+          disabled={!state.canEdit}
+          onChange={onNote}
+        />
+      )}
       {state.reason && <p role="status">{state.reason}</p>}
     </section>
   );

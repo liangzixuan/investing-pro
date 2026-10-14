@@ -12,6 +12,7 @@ import {
 } from "@research-cockpit/contracts";
 import { ListingIdentity } from "./ManagedListingIdentity";
 import { ManagedNoteEditor } from "./ManagedNoteEditor";
+import { ManagedThesisReview } from "./ManagedThesisReview";
 import { ManagedWatchlistComparison } from "./ManagedWatchlistComparison";
 import { ManagedWatchlistFilings } from "./ManagedWatchlistFilings";
 import {
@@ -525,6 +526,14 @@ function WatchlistDetail({
           note={selected.note}
           disabled={!props.editable}
           helpId="managed-watchlist-note-help"
+          onChange={(note) => props.onNote(selected.listingId, note)}
+        />
+        <ManagedThesisReview
+          key={`review:${selected.listingId}`}
+          id={`managed-note-${selectedIndex}`}
+          symbol={selected.symbol}
+          note={selected.note}
+          disabled={!props.editable}
           onChange={(note, expectedNote) =>
             props.onNote(selected.listingId, note, expectedNote)
           }

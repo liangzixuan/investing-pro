@@ -383,11 +383,7 @@ describe("ManagedWatchlistEditor", () => {
     vi.stubGlobal("document", page);
     const raw = `Keep latest ${"exact 🧭 ".repeat(40)} ending`;
     (note.props.onChange as (value: string) => void)(raw);
-    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith(
-      "one",
-      raw,
-      undefined,
-    );
+    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith("one", raw);
     const memberships = [
       { ...f.props.memberships[0]!, note: raw },
       f.props.memberships[1]!,
@@ -573,11 +569,7 @@ describe("ManagedWatchlistEditor", () => {
     expect(f.props.onNote).not.toHaveBeenCalled();
     expect(f.focus).not.toHaveBeenCalled();
     (notes[0]!.props.onChange as (value: string) => void)("  Raw draft  ");
-    expect(f.props.onNote).toHaveBeenCalledWith(
-      "two",
-      "  Raw draft  ",
-      undefined,
-    );
+    expect(f.props.onNote).toHaveBeenCalledWith("two", "  Raw draft  ");
     expect(
       output.filter((element) => element.props["data-watchlist-selection"]),
     ).toHaveLength(2);
@@ -701,11 +693,7 @@ describe("ManagedWatchlistEditor", () => {
     vi.stubGlobal("document", page);
     const changed = "Revised unsaved note — 東京 🧭";
     (before.props.onChange as (note: string) => void)(changed);
-    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith(
-      "one",
-      changed,
-      undefined,
-    );
+    expect(f.props.onNote).toHaveBeenCalledExactlyOnceWith("one", changed);
     const memberships = [
       { ...f.props.memberships[0]!, note: changed },
       f.props.memberships[1]!,

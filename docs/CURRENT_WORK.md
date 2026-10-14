@@ -44,14 +44,22 @@ and next check before an explicit draft append. The existing whole-draft Save,
 search, export and session lifetime remain the persistence path. A stale append
 cannot overwrite an intervening note edit. It preserves existing text and the
 2,000-character policy; invalid and immediate duplicate appends are refused.
-All 737 affected/composed cases pass, along with web types, scoped lint/format,
-source boundaries and Java syntax. Three ordinary callback arity assertions were
-updated without removing their existing checks. Final review separates authored
+All 811 affected/composed and fixture cases pass, along with web types, scoped
+lint/format, source boundaries and Java syntax. The raw editor and its ordinary
+typing assertions are restored unchanged; the review is composed by each note
+screen. Company research keeps its original guidance before the disclosure.
+Final review separates authored
 field formatting from note appending and identifies an invalid field with its
 2,000-character policy. Equivalent note/preview outcomes are checked against the
 first candidate across 294 cases. Chrome confirms the changed field-specific
 message for oversized and unsupported text, with the same valid preview and Add.
 Original CodeScene findings and first-head CI results remain recorded separately.
+The first Android report passed 24 of 29 cases. Four visibility captures included
+the new hidden review button; their selectors now target the original action
+group, preserving the same six-control counts, geometry, text and deadlines.
+The thesis journey now uses a declared fixture that accepts only its exact whole
+draft and refuses other-listing changes. All older fixtures and expected payloads
+remain. Fresh company geometry and revised original hosted execution are pending.
 Native and preview builds pass. The largest synthetic loader is 2,398,325 bytes
 under the unchanged 4 MiB limit, with exact software notices preserved.
 

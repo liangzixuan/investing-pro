@@ -44,6 +44,8 @@ import { annualComparisonResponse } from "../../src/clerk-trial/annual-compariso
 import { fedAnnouncementsFixture } from "../../src/clerk-trial/fed-announcements-fixture";
 
 const digest = `sha256:${"a".repeat(64)}` as const;
+export const thesisReviewNoteDraft =
+  "Original thesis Thesis review (my assessment). My thesis: Margins can recover | Supporting evidence: Invented report 2026-10-01 | Opposing evidence: Demand remains uncertain | Confirmation condition: Two stronger reported periods | Invalidation condition: Cash keeps falling | Next check: Read the next filed report";
 export const annualComparisonNoteDraft = [
   "Draft survives native Back Observed Annual cash comparison; exact, unscaled USD. OCF = NetCashProvidedByUsedInOperatingActivities; PP&E = PaymentsToAcquirePropertyPlantAndEquipment.",
   "ZERO (Zero Company; Zero Class A; Class A; XNAS, US): 10-K 2025-01-01 to 2025-12-31; reported OCF USD 1000; reported PP&E USD 250; app calculation OCF less PP&E USD 750.",
@@ -212,6 +214,7 @@ export async function createFixture(
     | "catalog-startup-recovery"
     | "company-direct-entry"
     | "annual-note"
+    | "thesis-review"
     | "price-comparison-note"
     | "company-filings"
     | "markets-price-handoff"
@@ -738,6 +741,41 @@ export async function createFixture(
     save: (command, signal) => {
       if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
+      if (scenario === "thesis-review") {
+        const expected = {
+          ...payload,
+          memberships: payload.memberships.map((member, index) =>
+            index === 0 ? { ...member, note: thesisReviewNoteDraft } : member,
+          ),
+        };
+        if (
+          signal.aborted ||
+          state.save !== 0 ||
+          state.load !== 1 ||
+          state.status !== 1 ||
+          state.annual !== 0 ||
+          state.eod !== 0 ||
+          state.marketsEod !== 0 ||
+          state.resolve !== 0 ||
+          state.filings !== 0 ||
+          state.calendar !== 0 ||
+          state.fed !== 0 ||
+          savedWatchlist.version !== 1 ||
+          captured?.expectedVersion !== 1 ||
+          encodeMainWatchlistPayload(captured.payload) !==
+            encodeMainWatchlistPayload(expected)
+        )
+          return unexpected("save");
+        count("save");
+        savedWatchlist = {
+          version: 2,
+          payload: structuredClone(captured.payload),
+        };
+        return Promise.resolve({
+          ...structuredClone(savedWatchlist),
+          replayed: false,
+        });
+      }
       if (scenario === "annual-comparison") {
         const expected: MainWatchlistPayload = {
           ...payload,

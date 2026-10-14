@@ -251,6 +251,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("priceComparisonNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("price-comparison-note");
+        if (testName.getMethodName().equals("thesisReviewPreviewAppendSaveAndReloadPreservesDraft"))
+            selectFixtureScenario("thesis-review");
         if (testName.getMethodName().equals("watchlistReplayReviewAndFailedReadPreserveDraft"))
             selectFixtureScenario("watchlist-recovery");
         if (testName.getMethodName().equals("signOutReviewKeepsDraftAndUpdatesAfterSave"))
@@ -2536,7 +2538,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.activeElement === document.querySelector(" + JSONObject.quote(add) + ")");
         // Exact textarea bytes are checked; this frame shows only the visible controls.
         retainAnnualNoteFrame("companyFilingsNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertFilingsNoteDraft(1, true);
         assertFilingsNoteCounts(0, 1);
@@ -3711,7 +3713,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertPriceNoteCounts(1, 0, 1);
         // Full textarea bytes are asserted; this frame claims only the visible note controls.
         retainAnnualNoteFrame("priceComparisonNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertPriceNoteDraft(1, true);
         assertPriceNoteCounts(1, 0, 1);
@@ -3893,7 +3895,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualNoteCounts(1, 0, 1);
         // The textarea contains the whole exact note, but this frame claims only its visible controls.
         retainAnnualNoteFrame("annualEvidenceNoteDraft", "#managed-research-note-heading",
-            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, " +
+            "#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, " +
             "label[for=managed-research-note], #managed-research-note, #managed-research-note-help", 6);
         assertAnnualNoteDraft(1, true);
         assertAnnualNoteCounts(1, 0, 1);
@@ -4410,7 +4412,7 @@ public class ManagedWorkspaceInstrumentedTest {
             ignored -> scrolled.countDown()));
         assertTrue("Company note did not scroll into view", scrolled.await(PAGE_TIMEOUT_MS, TimeUnit.MILLISECONDS));
         String visible = "(() => { const targets = Array.from(document.querySelectorAll(" +
-            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
+            "'#managed-research-note-heading, [aria-labelledby=managed-research-note-heading] > .trial-actions > button, label[for=managed-research-note], #managed-research-note, #managed-research-note-help'));" +
             " const v = visualViewport; const note = document.querySelector('#managed-research-note');" +
             " return v && targets.length === 6 && note?.value === " + JSONObject.quote(COMPANY_NOTE) +
             " && note.scrollHeight <= note.clientHeight && note.scrollWidth <= note.clientWidth" +
@@ -4887,6 +4889,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
+            scenarioName.equals("thesis-review") ||
             scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
         File index = new File(fixtureDirectory, "index.html");

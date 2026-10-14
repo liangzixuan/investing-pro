@@ -50,7 +50,9 @@ focus tokens. At narrow widths, stack the field and action. A staged choice
 does not change the open company until the action is selected.
 
 Thesis review uses an initially closed native disclosure below the full-note
-reader. Label each authored field, show the required fields and retain a readable
+reader. In company research, keep the existing note guidance before this
+disclosure so the original note controls stay together. Label each authored field,
+show the required fields and retain a readable
 preview before the explicit draft append. Use the existing 44px field and focus
 tokens. The field grid wraps to one column at narrow widths; the complete preview
 wraps long links. Keep the owner's assessment distinct from verified source facts.
