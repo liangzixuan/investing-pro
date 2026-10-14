@@ -45,9 +45,23 @@ view; accepted replacements and navigation reset it. Stale selection, response
 and comparison callbacks are fenced. Reading stays available during Save.
 It adds no request, saved preference or publication/rescheduling claim. The
 native workflow now explicitly requires the already added BEA comparison case,
-preserving all prior required cases and APK checks. Source
-verification is in progress; exact builds, Chrome and original hosted Android
-execution remain required. See the
+preserving all prior required cases and APK checks. All 265 affected and composed
+cases pass, including the 176-case workspace suite, along with web types,
+scoped lint/format, boundaries, Java syntax and root source review. Exact native
+and preview builds pass; the largest scenario is 2,394,443 bytes under the
+unchanged 4 MiB limit. The existing native comparison case gains assertions
+without changing its four-read limit, prior predicates, goldens or gestures.
+
+Chrome at 1440, 390 and 320 CSS pixels verifies native keyboard selection/Clear,
+44px controls, wrapping, date/series intersections, note exclusion without
+restoration and matching feedback retention. The complete 1,370 UTF-16-unit
+note with two original scheduled references opens and focuses the correct full
+reader. One held RAM Save and reload preserve every note and listing field.
+Reading works while Save pauses note editing. Retained attempts keep Release
+view; equal and empty replacements reset it with distinct zero/empty states;
+retirement fences late authentication failure. These checks use invented data.
+Original hosted compilation and execution of the extended selector journey
+remain required; no production or physical-device acceptance is included. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#inspect-entries-absent-from-the-previous-agenda).
 
 The preceding candidate compares consecutive accepted BEA agendas by exact series
@@ -63,7 +77,9 @@ types, scoped lint/format, source boundaries and Java syntax. Exact native and
 preview builds pass; the largest fixture scenario is 2,392,671 bytes under the
 unchanged 4 MiB limit. A separate four-read native journey preserves all 24 prior
 managed cases and their 52 captures; the suite now has 25 managed plus three
-disconnected cases. Original hosted compilation and execution remain required.
+disconnected cases. Its five original Actions jobs and all 28 Android cases
+passed. Five CodeScene test-fixture/suite maintenance warnings remain reviewed;
+no runtime module has an annotation. No production promotion is included.
 
 Chrome at 1440, 390 and 320 CSS pixels verifies stacked metadata, wrapping,
 the 44px summary, keyboard disclosure/Clear and full counts during filtering.
