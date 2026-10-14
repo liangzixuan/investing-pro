@@ -1440,6 +1440,27 @@
 .managed-frame .managed-fed-note-action p {
   margin: 8px 0;
 }
+.managed-frame .managed-fed-note-disclosure {
+  min-width: 0;
+  margin-block: 12px;
+  overflow-wrap: anywhere;
+}
+.managed-frame .managed-fed-note-disclosure > summary {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding-block: 10px;
+  color: var(--managed-ink);
+  cursor: pointer;
+}
+.managed-frame .managed-fed-note-disclosure > summary:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .managed-fed-note-disclosure > .managed-fed-note-action {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
 .managed-frame .managed-fed-note-choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

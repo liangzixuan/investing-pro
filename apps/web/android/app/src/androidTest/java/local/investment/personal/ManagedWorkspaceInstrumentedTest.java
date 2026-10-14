@@ -856,6 +856,13 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-fed-refresh-comparison') === null" +
             " && document.querySelectorAll('.fed-announcements-new').length === 0");
         assertFedCounts(1, 0, 0, 0, 1);
+        awaitPage("loaded Fed note tools start closed with original sources and titles outside",
+            "document.querySelector('#managed-fed-note-disclosure')?.open === false" +
+            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.textContent === 'Add an announcement to a note'" +
+            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-fed-note-disclosure #managed-fed-note-announcement') !== null" +
+            " && document.querySelector('.fed-announcements-source')?.closest('details') === null" +
+            " && document.querySelector('.fed-announcements-list')?.closest('details') === null");
         typeIntoInput("managed-fed-title-search", "no matching invented title");
         awaitPage("title search shares an empty view with the note picker without a read",
             "document.querySelector('#managed-fed-title-count')?.textContent.includes('0 of 2 loaded announcements.')" +
@@ -999,6 +1006,9 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
             " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
             " && document.querySelector('.managed-fed-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("Fed note tools open explicitly before a reference choice",
+            "document.querySelector('#managed-fed-note-disclosure')?.open === true");
         chooseNativeSelectOption("#managed-fed-note-announcement",
             "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
             "Invented announcement without a publication time");
@@ -1037,6 +1047,19 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("a matching query keeps the selected announcement and duplicate feedback for Review", exact +
             " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
             " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("closing Fed tools preserves exact choices feedback and the whole draft", exact +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false" +
+            " && document.activeElement === document.querySelector('#managed-fed-note-disclosure-toggle')" +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
+        click("#managed-fed-note-disclosure-toggle");
+        awaitPage("reopening Fed tools keeps the chosen reference and Review", exact +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === true" +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && Array.from(document.querySelectorAll('.managed-fed-note-action button')).some(button => button.textContent === 'Review in My Watchlist')");
         clickFedAction("Review in My Watchlist");
         awaitPage("Fed Review opens and focuses its exact destination while preserving the complete draft and search", exact +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
@@ -1068,7 +1091,8 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
         awaitPage("returning to Markets requires fresh choices without another feed read", saved +
             " && document.querySelector('#managed-fed-note-announcement')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === ''");
+            " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
         assertFedCounts(6, 2, 2, 1, 2);
     }
 
