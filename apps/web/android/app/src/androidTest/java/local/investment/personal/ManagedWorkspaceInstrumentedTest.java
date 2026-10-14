@@ -856,6 +856,17 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('.managed-fed-refresh-comparison') === null" +
             " && document.querySelectorAll('.fed-announcements-new').length === 0");
         assertFedCounts(1, 0, 0, 0, 1);
+        typeIntoInput("managed-fed-title-search", "no matching invented title");
+        awaitPage("title search shares an empty view with the note picker without a read",
+            "document.querySelector('#managed-fed-title-count')?.textContent.includes('0 of 2 loaded announcements.')" +
+            " && document.querySelector('.fed-announcements-list') === null" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 1" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('No loaded announcements match this title search.')" +
+            " && document.querySelector('#managed-fed-title-search')?.getBoundingClientRect().height >= 44");
+        clickFedAction("Clear title search");
+        assertFedPacket("2026-10-20T18:00:00.000Z");
+        typeIntoInput("managed-fed-title-search", "  INVENTED  ");
+        assertFedCounts(1, 0, 0, 0, 1);
         clickFedAction("Refresh announcements");
         awaitPage("failed refresh qualifies the retained original feed",
             "document.querySelector('.fed-announcements [role=alert]')?.textContent.includes('previously loaded announcements')" +
@@ -870,6 +881,9 @@ public class ManagedWorkspaceInstrumentedTest {
         click("#settle-cancelled-announcements");
         assertFedCounts(3, 1, 1, 0, 1);
         assertFedPacket("2026-10-20T18:00:00.000Z");
+        awaitPage("failure, held read, Cancel and late settlement preserve the title query",
+            "document.querySelector('#managed-fed-title-search')?.value === '  INVENTED  '" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('2 of 2 loaded announcements.')");
         awaitPage("Cancel preserves the original fetchedAt and qualifies retained content",
             "document.querySelector('.fed-announcements [role=status]')?.textContent === 'Announcements refresh cancelled. Refresh again when ready.'" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements.')");
@@ -877,6 +891,9 @@ public class ManagedWorkspaceInstrumentedTest {
         clickFedAction("Refresh announcements");
         assertFedEmpty();
         assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
+        awaitPage("accepted empty replacement clears the query with an explicit reset notice",
+            "document.querySelector('#managed-fed-title-search')?.value === ''" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('Feed response changed; showing all loaded announcements.')");
         click(".managed-fed-refresh-comparison summary");
         awaitPage("comparison disclosure opens with an accessible native target",
             "document.querySelector('.managed-fed-refresh-comparison details')?.open === true" +
@@ -946,13 +963,13 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.fed-announcements-list li:last-child p')?.textContent === 'Unknown publication time'" +
             " && document.querySelector('.fed-announcements-list li:first-child a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261019a.htm'" +
             " && document.querySelector('.fed-announcements-source a')?.href === 'https://www.federalreserve.gov/feeds/feeds.htm'" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 2 of 2 announcements from this feed.')");
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 2 of 2 announcements from this feed.')");
     }
 
     private void assertFedComparison(String previousAt, String currentAt, int newlyObserved, int currentCount) throws Exception {
         awaitPage("compared feeds retain both original clocks and the complete current-list count",
             "document.querySelector('.managed-fed-refresh-count')?.textContent === " +
-            JSONObject.quote("Newly observed in this refresh: " + newlyObserved + " of " + currentCount + " links in the displayed feed.") +
+            JSONObject.quote("Newly observed in this refresh: " + newlyObserved + " of " + currentCount + " links in the loaded feed.") +
             " && Array.from(document.querySelectorAll('.managed-fed-refresh-comparison time')).map(time => time.dateTime).join('|') === " +
             JSONObject.quote(previousAt + "|" + currentAt) +
             " && document.querySelector('.managed-fed-refresh-comparison summary')?.textContent === 'Compared loaded feeds'" +
@@ -963,7 +980,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("valid empty feed replaces prior items with its own exact fetchedAt",
             "document.querySelector('.fed-announcements-note time')?.dateTime === '2026-10-21T18:00:00.000Z'" +
             " && document.querySelector('.fed-announcements-list') === null" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Showing 0 of 0 announcements from this feed.')" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 0 of 0 announcements from this feed.')" +
             " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
     }
 
@@ -986,6 +1003,22 @@ public class ManagedWorkspaceInstrumentedTest {
             "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
             "Invented announcement without a publication time");
         chooseNativeSelectOption("#managed-fed-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        typeIntoInput("managed-fed-title-search", " MONETARY   POLICY ");
+        awaitPage("excluding the chosen announcement clears it while preserving its exact destination and whole-feed count",
+            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
+            " && document.querySelector('.managed-fed-note-action')?.textContent.includes('The chosen announcement is outside this title search.')" +
+            " && document.querySelector('.managed-fed-refresh-count')?.textContent.includes('2 of 2 links in the loaded feed.')");
+        clickFedAction("Clear title search");
+        awaitPage("Clear requires a fresh announcement choice without a fallback",
+            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
+            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
+        typeIntoInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ");
+        chooseNativeSelectOption("#managed-fed-note-announcement",
+            "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
+            "Invented announcement without a publication time");
         assertFedDraft();
         assertFedCounts(6, 2, 2, 0, 1);
         clickFedAction("Add announcement to note draft");
@@ -999,6 +1032,11 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("an identical Fed reference cannot append twice", exact +
             " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
         assertFedCounts(6, 2, 2, 0, 1);
+        touchInput("managed-fed-title-search");
+        replaceFocusedInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ", " WITHOUT ");
+        awaitPage("a matching query keeps the selected announcement and duplicate feedback for Review", exact +
+            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
         clickFedAction("Review in My Watchlist");
         awaitPage("Fed Review opens and focuses its exact destination while preserving the complete draft and search", exact +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +

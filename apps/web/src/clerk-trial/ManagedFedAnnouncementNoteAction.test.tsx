@@ -5,6 +5,7 @@ import { ManagedFedAnnouncementNoteAction } from "./ManagedFedAnnouncementNoteAc
 import { annualComparisonMemberships as members } from "./annual-comparison-fixture";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { parseManagedMonetaryAnnouncements } from "@research-cockpit/contracts";
+import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -88,11 +89,17 @@ function harness(initial: Partial<Props> = {}) {
     editable: true,
     actions: { getAction, append },
     onReview,
+    view: projectFedAnnouncementView(
+      initial.state?.announcements ?? packet,
+      "",
+    ),
     ...initial,
   };
   let cleanup: (() => void) | undefined;
   const render = (changes: Partial<Props> = {}, commit = true) => {
     props = { ...props, ...changes };
+    if (changes.state && !changes.view)
+      props.view = projectFedAnnouncementView(changes.state.announcements, "");
     let node: ReturnType<typeof ManagedFedAnnouncementNoteAction>;
     for (let i = 0; i < 4; i++) {
       hooks.stateIndex = 0;
@@ -148,6 +155,84 @@ function harness(initial: Partial<Props> = {}) {
 }
 
 describe("Fed announcement note choices", () => {
+  it("clears a hidden announcement and success without restoring them on Clear, and keeps its destination", () => {
+    const h = harness();
+    h.choose();
+    h.button().props.onClick!();
+    const old = h.render();
+    const filtered = h.render({
+      view: projectFedAnnouncementView(h.packet, "without"),
+    });
+    expect(h.select("announcement", filtered).props.value).toBe("");
+    expect(h.select("destination", filtered).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.html(filtered)).toContain(
+      "The chosen announcement is outside this title search.",
+    );
+    expect(h.html(filtered)).not.toContain("Reference added.");
+    expect(h.review(filtered)).toBeUndefined();
+    h.button(old).props.onClick!();
+    h.review(old)!.props.onClick!();
+    h.change("announcement", h.packet.items[0]!.url, filtered);
+    expect(h.append).toHaveBeenCalledOnce();
+    expect(h.onReview).not.toHaveBeenCalled();
+    const cleared = h.render({
+      view: projectFedAnnouncementView(h.packet, ""),
+    });
+    expect(h.select("announcement", cleared).props.value).toBe("");
+    expect(h.select("destination", cleared).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.review(cleared)).toBeUndefined();
+    h.change("announcement", h.packet.items[1]!.url);
+    expect(h.html()).not.toContain("outside this title search");
+    h.button().props.onClick!();
+    expect(h.append.mock.calls[1]![0]!.item).toBe(h.packet.items[1]);
+    expect(h.append.mock.calls[1]![1]).toBe(members.right);
+  });
+  it("keeps a matching choice, exact capture and Review during a reading-only search", () => {
+    const h = harness();
+    h.choose();
+    h.button().props.onClick!();
+    const node = h.render({
+      editable: false,
+      view: projectFedAnnouncementView(h.packet, " MONETARY   POLICY "),
+    });
+    expect(h.select("announcement", node).props.value).toBe(
+      h.packet.items[0]!.url,
+    );
+    expect(h.html(node)).toContain("Reference added.");
+    expect(h.select("announcement", node).props["aria-disabled"]).toBe(true);
+    expect(h.review(node)!.props["aria-disabled"]).toBe(false);
+    h.review(node)!.props.onClick!();
+    expect(h.onReview).toHaveBeenCalledWith(members.right);
+    expect(h.append).toHaveBeenCalledOnce();
+  });
+  it("offers only exact matching URLs in source order and refuses a mismatched view", () => {
+    const h = harness();
+    const node = h.render({
+      view: projectFedAnnouncementView(h.packet, "without"),
+    });
+    const options = controls(h.select("announcement", node)).filter(
+      (entry) => entry.type === "option",
+    );
+    expect(options.map((entry) => entry.props.value)).toEqual([
+      "",
+      h.packet.items[1]!.url,
+    ]);
+    h.change("announcement", h.packet.items[1]!.url, node);
+    h.change("destination", members.left.listingId);
+    const replacement = parseManagedMonetaryAnnouncements(
+      fedAnnouncementsFixture(),
+    )!;
+    const mismatch = h.render({
+      view: projectFedAnnouncementView(replacement, ""),
+    });
+    expect(h.select("announcement", mismatch).props.value).toBe("");
+    h.button(mismatch).props.onClick!();
+    expect(h.append).not.toHaveBeenCalled();
+  });
   it("starts with two explicit blank native choices and a focusable guarded action", () => {
     const h = harness();
     const node = h.render();

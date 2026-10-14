@@ -2004,7 +2004,7 @@ describe("managed workspace screen", () => {
     expect(comparison.newUrls).toEqual([]);
     expect(html()).toContain("Compared loaded feeds");
     expect(html()).toContain(
-      "Newly observed in this refresh: 0 of 2 links in the displayed feed.",
+      "Newly observed in this refresh: 0 of 2 links in the loaded feed.",
     );
     read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
     await workspace.announcements.load();

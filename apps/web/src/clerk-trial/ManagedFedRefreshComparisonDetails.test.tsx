@@ -51,7 +51,7 @@ describe("managed Fed loaded-feed comparison details", () => {
     const pair = compareManagedFedResponses(previous, current)!;
     const html = renderToStaticMarkup(view(pair));
     expect(html).toContain(
-      "Newly observed in this refresh: 9 of 10 links in the displayed feed.",
+      "Newly observed in this refresh: 9 of 10 links in the loaded feed.",
     );
     expect(html).toContain(
       "These URLs were absent from the previous loaded list.",
@@ -85,7 +85,7 @@ describe("managed Fed loaded-feed comparison details", () => {
       const previous = feed(count);
       const pair = compareManagedFedResponses(previous, feed(count))!;
       expect(renderToStaticMarkup(view(pair))).toContain(
-        `Newly observed in this refresh: 0 of ${count} links in the displayed feed.`,
+        `Newly observed in this refresh: 0 of ${count} links in the loaded feed.`,
       );
     },
   );

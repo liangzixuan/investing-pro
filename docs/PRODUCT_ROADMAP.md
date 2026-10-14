@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 design increment keeps the BEA note form in a native disclosure.
+The current M3/M4 increment searches full titles in the loaded Fed feed. One
+phrase filters rows and note choices while full-feed counts, source dates and
+refresh comparison remain visible. Retained reads keep the query; accepted
+replacement resets it. An excluded note choice clears without a fallback.
+This advances daily reading and explicit note connections using existing data.
+
+The preceding M3 design increment keeps the BEA note form in a native disclosure.
 The release list is easier to reach, while original source dates, warnings and
 filters stay visible. Opening and closing the form preserves current note choices
 and feedback. See [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).

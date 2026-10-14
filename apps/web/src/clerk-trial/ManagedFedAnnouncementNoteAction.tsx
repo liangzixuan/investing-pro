@@ -8,6 +8,7 @@ import {
 import type { ManagedFedAnnouncementsState } from "./managed-fed-announcements";
 import type { FedAnnouncementNoteCapture } from "./managed-fed-announcement-note";
 import type { ManagedWorkspace } from "./managed-workspace";
+import type { FedAnnouncementView } from "../features/markets/fed-announcement-view";
 
 export interface ManagedFedAnnouncementNoteActions {
   getAction: ManagedWorkspace["getFedAnnouncementNoteAction"];
@@ -24,11 +25,13 @@ export interface ManagedFedAnnouncementNoteContext {
 
 interface Props extends ManagedFedAnnouncementNoteContext {
   state: ManagedFedAnnouncementsState;
+  view: FedAnnouncementView;
 }
 interface Choices {
   response: PersonalMonetaryAnnouncementsDto | null;
   item: PersonalMonetaryAnnouncementDto | null;
   member: WatchlistMembership | null;
+  excluded: boolean;
 }
 type Action = ReturnType<ManagedFedAnnouncementNoteActions["getAction"]>;
 interface Feedback {
@@ -68,9 +71,23 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
     response,
     item: null,
     member: null,
+    excluded: false,
   });
+  const visibleItems =
+    props.view.response === response ? props.view.visibleItems : [];
+  const excluded =
+    props.active &&
+    stored.response === response &&
+    stored.item !== null &&
+    !visibleItems.includes(stored.item);
   const item =
-    props.active && stored.response === response ? stored.item : null;
+    props.active && stored.response === response && !excluded
+      ? stored.item
+      : null;
+  const exclusionNotice =
+    props.active &&
+    stored.response === response &&
+    (excluded || stored.excluded);
   const member =
     props.active && stored.member
       ? (props.members.find((entry) =>
@@ -80,9 +97,10 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
   if (
     stored.response !== response ||
     stored.item !== item ||
-    stored.member !== member
+    stored.member !== member ||
+    stored.excluded !== exclusionNotice
   )
-    setChoices({ response, item, member });
+    setChoices({ response, item, member, excluded: exclusionNotice });
   const capture = useMemo<FedAnnouncementNoteCapture | null>(
     () =>
       response && item
@@ -94,6 +112,7 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
   if (
     feedback &&
     (!props.active ||
+      excluded ||
       stored.response !== response ||
       (stored.member && !member))
   )
@@ -139,15 +158,20 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
             onChange={(event) => {
               if (!current() || !choiceEnabled) return;
               const value = event.currentTarget.value;
-              const next = response?.items.find((entry) => entry.url === value);
+              const next = visibleItems.find((entry) => entry.url === value);
               if (next || value === "") {
-                setChoices({ response, item: next ?? null, member });
+                setChoices({
+                  response,
+                  item: next ?? null,
+                  member,
+                  excluded: false,
+                });
                 setFeedback(null);
               }
             }}
           >
             <option value="">Choose an announcement</option>
-            {response?.items.map((entry) => (
+            {visibleItems.map((entry) => (
               <option key={entry.url} value={entry.url}>
                 {entry.title}
               </option>
@@ -168,7 +192,12 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
                 (entry) => entry.listingId === value,
               );
               if (next || value === "") {
-                setChoices({ response, item, member: next ?? null });
+                setChoices({
+                  response,
+                  item,
+                  member: next ?? null,
+                  excluded: exclusionNotice,
+                });
                 setFeedback(null);
               }
             }}
@@ -186,7 +215,9 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
       <p id={announcementId}>
         {item
           ? `Selected announcement: ${item.title}`
-          : "No announcement chosen."}
+          : exclusionNotice
+            ? "The chosen announcement is outside this title search. Choose another announcement."
+            : "No announcement chosen."}
       </p>
       <p id={memberId}>
         {member

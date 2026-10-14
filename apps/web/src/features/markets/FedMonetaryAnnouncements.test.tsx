@@ -9,6 +9,7 @@ import {
   FedMonetaryAnnouncements,
   type FedMonetaryAnnouncementsProps,
 } from "./FedMonetaryAnnouncements";
+import { projectFedAnnouncementView } from "./fed-announcement-view";
 
 function fixture(): PersonalMonetaryAnnouncementsDto {
   return {
@@ -69,6 +70,113 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it("shows a labelled reading search, exact matching title/link/date and full-feed metadata", () => {
+    const announcements = fixture();
+    const onQueryChange = vi.fn();
+    const view = FedMonetaryAnnouncements(
+      props({
+        announcements,
+        busy: true,
+        showingPrevious: true,
+        filterView: {
+          view: projectFedAnnouncementView(announcements, "undated"),
+          resetNotice: false,
+          onQueryChange,
+        },
+        newlyObservedUrls: announcements.items.map((item) => item.url),
+        refreshSummary: <p>Full-feed comparison count: 3 of 3</p>,
+      }),
+    );
+    const elements = nodes(view);
+    const rows = elements.filter((node) => node.type === "li");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.key).toBe(announcements.items[2]!.url);
+    expect(text(rows[0])).toContain(
+      "Synthetic undated announcement Unknown publication time Newly observed in this refresh",
+    );
+    const input = elements.find(
+      (node) => node.props.id === "managed-fed-title-search",
+    )!;
+    expect(input.props.disabled).toBeUndefined();
+    expect(input.props.value).toBe("undated");
+    (
+      input.props.onChange as (event: {
+        currentTarget: { value: string };
+      }) => void
+    )({ currentTarget: { value: "October" } });
+    const clear = elements.find(
+      (node) => node.type === "button" && text(node) === "Clear title search",
+    )!;
+    (clear.props.onClick as () => void)();
+    expect(onQueryChange.mock.calls).toEqual([["October"], [""]]);
+    const html = renderToStaticMarkup(view);
+    expect(html).toContain('for="managed-fed-title-search"');
+    expect(html).toContain(
+      'aria-describedby="managed-fed-title-search-help managed-fed-title-count"',
+    );
+    expect(html).toContain("Loaded 3 of 3 announcements from this feed.");
+    expect(html).toContain(announcements.fetchedAt);
+    expect(html).toContain("1 of 3 loaded announcements.");
+    expect(html).toContain("Full-feed comparison count: 3 of 3");
+    expect(html).toContain("Previous announcements.");
+    expect(html).toContain(PERSONAL_FED_MONETARY_SOURCE.directoryUrl);
+  });
+  it("separates no matches from an empty feed and announces replacement reset", () => {
+    const announcements = fixture();
+    const filtered = props({
+      announcements,
+      filterView: {
+        view: projectFedAnnouncementView(announcements, "absent"),
+        resetNotice: true,
+        onQueryChange: vi.fn(),
+      },
+    });
+    const html = renderToStaticMarkup(FedMonetaryAnnouncements(filtered));
+    expect(html).toContain("No loaded announcements match this title search.");
+    expect(html).not.toContain("No announcements were listed");
+    expect(html).toContain("0 of 3 loaded announcements.");
+    expect(html).toContain(
+      "Feed response changed; showing all loaded announcements.",
+    );
+    expect(html).not.toContain('class="fed-announcements-list"');
+    const empty = { ...announcements, items: [], availableItemCount: 0 };
+    const emptyHtml = renderToStaticMarkup(
+      FedMonetaryAnnouncements(
+        props({
+          announcements: empty,
+          filterView: {
+            view: projectFedAnnouncementView(empty, ""),
+            resetNotice: true,
+            onQueryChange: vi.fn(),
+          },
+        }),
+      ),
+    );
+    expect(emptyHtml).toContain(
+      "No announcements were listed in this loaded feed.",
+    );
+    expect(emptyHtml).not.toContain("No loaded announcements match");
+  });
+  it("does not apply a view for another response or opt a local presenter into search", () => {
+    const announcements = fixture();
+    const view = FedMonetaryAnnouncements(
+      props({
+        announcements,
+        filterView: {
+          view: projectFedAnnouncementView(fixture(), "absent"),
+          resetNotice: false,
+          onQueryChange: vi.fn(),
+        },
+      }),
+    );
+    expect(nodes(view).filter((node) => node.type === "li")).toHaveLength(3);
+    expect(renderToStaticMarkup(view)).not.toContain(
+      "managed-fed-title-search",
+    );
+    expect(renderToStaticMarkup(FedMonetaryAnnouncements(props()))).toContain(
+      "Showing 3 of 3 announcements from this feed.",
+    );
+  });
   it("places comparison before the full current list and marks only matching rows after their publication time", () => {
     const announcements = fixture();
     const input = props({

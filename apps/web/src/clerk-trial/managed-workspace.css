@@ -1342,6 +1342,42 @@
   margin: 0;
 }
 
+.managed-frame .managed-fed-title-filter {
+  min-width: 0;
+  margin: 16px 0;
+}
+.managed-frame .managed-fed-title-filter label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--managed-ink);
+  font-weight: 600;
+}
+.managed-frame .managed-fed-title-search-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.managed-frame .managed-fed-title-search-controls input {
+  flex: 1 1 240px;
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  border: 1px solid var(--managed-field-border);
+  border-radius: 7px;
+  background: var(--managed-surface);
+  color: var(--managed-ink);
+  font: inherit;
+}
+.managed-frame .managed-fed-title-search-controls input:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.managed-frame .managed-fed-title-filter p {
+  margin: 8px 0;
+}
+
 .managed-frame .managed-fed-refresh-comparison {
   min-width: 0;
   margin: 12px 0;
