@@ -6,6 +6,8 @@ import { annualComparisonMemberships as members } from "./annual-comparison-fixt
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
 import { parseManagedMonetaryAnnouncements } from "@research-cockpit/contracts";
 import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
+import { compareManagedFedResponses } from "./managed-fed-refresh-comparison";
+import { projectManagedFedUpdatesView } from "./managed-fed-updates-view";
 
 const hooks = vi.hoisted(() => ({
   states: [] as unknown[],
@@ -155,6 +157,61 @@ function harness(initial: Partial<Props> = {}) {
 }
 
 describe("Fed announcement note choices", () => {
+  it("clears an existing-link choice and success when the updates view excludes it, retaining its destination without restoration", () => {
+    const h = harness();
+    const previous = parseManagedMonetaryAnnouncements({
+      ...h.packet,
+      items: [h.packet.items[0]!],
+      availableItemCount: 1,
+    })!;
+    const comparison = compareManagedFedResponses(previous, h.packet)!;
+    h.choose();
+    h.button().props.onClick!();
+    const stale = h.render();
+    const titles = projectFedAnnouncementView(h.packet, "");
+    const filtered = h.render({
+      view: projectManagedFedUpdatesView(titles, comparison, "new").view,
+    });
+    expect(h.select("announcement", filtered).props.value).toBe("");
+    expect(h.select("destination", filtered).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(
+      controls(h.select("announcement", filtered))
+        .filter((c) => c.type === "option")
+        .map((c) => c.props.value),
+    ).toEqual(["", h.packet.items[1]!.url]);
+    expect(h.html(filtered)).toContain(
+      "The chosen announcement is outside the current announcement view.",
+    );
+    expect(h.html(filtered)).not.toContain("Reference added.");
+    expect(h.review(filtered)).toBeUndefined();
+    h.button(stale).props.onClick!();
+    h.review(stale)!.props.onClick!();
+    const all = h.render({
+      view: projectManagedFedUpdatesView(titles, comparison, "all").view,
+    });
+    expect(h.select("announcement", all).props.value).toBe("");
+    expect(h.select("destination", all).props.value).toBe(
+      members.right.listingId,
+    );
+    expect(h.append).toHaveBeenCalledOnce();
+    expect(h.onReview).not.toHaveBeenCalled();
+    h.change("announcement", h.packet.items[1]!.url);
+    h.button().props.onClick!();
+    const matching = h.render({
+      view: projectManagedFedUpdatesView(titles, comparison, "new").view,
+      editable: false,
+    });
+    expect(h.select("announcement", matching).props.value).toBe(
+      h.packet.items[1]!.url,
+    );
+    expect(h.html(matching)).toContain("Reference added.");
+    expect(h.review(matching)).toBeDefined();
+    h.review(matching)!.props.onClick!();
+    expect(h.onReview).toHaveBeenCalledWith(members.right);
+    expect(h.append).toHaveBeenCalledTimes(2);
+  });
   it("clears a hidden announcement and success without restoring them on Clear, and keeps its destination", () => {
     const h = harness();
     h.choose();
@@ -168,7 +225,7 @@ describe("Fed announcement note choices", () => {
       members.right.listingId,
     );
     expect(h.html(filtered)).toContain(
-      "The chosen announcement is outside this title search.",
+      "The chosen announcement is outside the current announcement view.",
     );
     expect(h.html(filtered)).not.toContain("Reference added.");
     expect(h.review(filtered)).toBeUndefined();

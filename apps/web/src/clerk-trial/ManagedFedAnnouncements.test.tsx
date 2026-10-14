@@ -158,6 +158,148 @@ function fixture() {
 }
 
 describe("managed announcement controls", () => {
+  it("requires a current comparison, then shares intersected updates with note choices and leaves the complete pair intact", async () => {
+    const f = fixture();
+    f.read.mockResolvedValueOnce(
+      parsedFeed({
+        items: [fedAnnouncementsFixture().items[0]!],
+        availableItemCount: 1,
+      }),
+    );
+    await f.model.load();
+    const first = f.render().props.filterView!;
+    expect(first.updatesView!.available).toBe(false);
+    first.updatesView!.onChange("new");
+    expect(f.render().props.filterView!.updatesView!.mode).toBe("all");
+    const current = parsedFeed();
+    f.read.mockResolvedValueOnce(current);
+    await f.model.load();
+    f.noteContext.editable = false;
+    f.render().props.filterView!.updatesView!.onChange("new");
+    f.render().props.filterView!.onQueryChange("  WITHOUT  A PUBLICATION ");
+    const view = f.render();
+    expect(view.props.filterView!.updatesView).toMatchObject({
+      available: true,
+      mode: "new",
+    });
+    expect(view.props.filterView!.view.visibleItems).toEqual([
+      current.items[1],
+    ]);
+    expect(view.props.filterView!.view.visibleItems[0]).toBe(current.items[1]);
+    const note = view.props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncementNoteAction>
+    >;
+    expect(note.props.view).toBe(view.props.filterView!.view);
+    expect(note.props.editable).toBe(false);
+    expect(comparisonSlot(view).props.comparison.current.items).toBe(
+      current.items,
+    );
+    expect(view.props.announcements).toBe(current);
+    view.props.filterView!.updatesView!.onChange("all");
+    expect(f.render().props.filterView!.view.query).toBe(
+      "  WITHOUT  A PUBLICATION ",
+    );
+    expect(f.read).toHaveBeenCalledTimes(2);
+    expect(f.noteContext.actions.append).not.toHaveBeenCalled();
+    expect(f.noteContext.onReview).not.toHaveBeenCalled();
+    expect(f.button.focus).not.toHaveBeenCalled();
+  });
+  it.each(["pending", "cancel", "failure"] as const)(
+    "retains the updates view and title phrase during %s",
+    async (attempt) => {
+      const f = fixture();
+      f.read
+        .mockResolvedValueOnce(parsedFeed())
+        .mockResolvedValueOnce(parsedFeed());
+      await f.model.load();
+      await f.model.load();
+      f.render().props.filterView!.updatesView!.onChange("new");
+      f.render().props.filterView!.onQueryChange("without");
+      const comparison = f.model.getSnapshot().refreshComparison;
+      if (attempt === "failure")
+        f.read.mockRejectedValueOnce(new TrialApiError("unavailable"));
+      const pending = f.model.load();
+      if (attempt === "cancel") f.model.cancel();
+      if (attempt === "failure") await pending;
+      const view = f.render();
+      expect(view.props.filterView!.updatesView!.mode).toBe("new");
+      expect(view.props.filterView!.view.query).toBe("without");
+      expect(view.props.filterView!.view.visibleItems).toEqual([]);
+      expect(comparisonSlot(view).props.comparison).toBe(comparison);
+      expect(f.read).toHaveBeenCalledTimes(3);
+    },
+  );
+  it.each(["equal", "empty", "retired", "model"] as const)(
+    "resets All and the phrase and refuses old updates callbacks after %s",
+    async (change) => {
+      const f = fixture();
+      f.read
+        .mockResolvedValueOnce(parsedFeed())
+        .mockResolvedValueOnce(parsedFeed());
+      await f.model.load();
+      await f.model.load();
+      f.render().props.filterView!.updatesView!.onChange("new");
+      f.render().props.filterView!.onQueryChange("without");
+      const stale = f.render().props.filterView!;
+      let model = f.model;
+      if (change === "retired") model.retire();
+      else if (change === "model") model = new Model(vi.fn(), vi.fn());
+      else {
+        f.read.mockResolvedValueOnce(
+          parsedFeed(
+            change === "empty" ? { items: [], availableItemCount: 0 } : {},
+          ),
+        );
+        await model.load();
+      }
+      stale.updatesView!.onChange("new");
+      stale.onQueryChange("stale before render");
+      const next = f.render(undefined, model).props.filterView!;
+      expect(next.updatesView!.mode).toBe("all");
+      expect(next.view.query).toBe("");
+      stale.updatesView!.onChange("new");
+      expect(
+        f.render(undefined, model).props.filterView!.updatesView!.mode,
+      ).toBe("all");
+    },
+  );
+  it("fences comparison-only changes and old selections without restoring a former mode or changing the current phrase", async () => {
+    const f = fixture();
+    f.read
+      .mockResolvedValueOnce(parsedFeed())
+      .mockResolvedValueOnce(parsedFeed());
+    await f.model.load();
+    await f.model.load();
+    f.render().props.filterView!.updatesView!.onChange("new");
+    f.render().props.filterView!.onQueryChange("without");
+    const original = f.model.getSnapshot();
+    const stale = f.render().props.filterView!;
+    const snapshot = vi
+      .spyOn(f.model, "getSnapshot")
+      .mockReturnValue({ ...original, refreshComparison: null });
+    stale.onQueryChange("stale comparison");
+    stale.updatesView!.onChange("new");
+    const unavailable = f.render().props.filterView!;
+    expect(unavailable.updatesView).toMatchObject({
+      mode: "all",
+      available: false,
+    });
+    expect(unavailable.view.query).toBe("without");
+    expect(unavailable.resetNotice).toBe(false);
+    snapshot.mockReturnValue(original);
+    expect(f.render().props.filterView!.updatesView!.mode).toBe("all");
+    unavailable.updatesView!.onChange("new");
+    expect(f.render().props.filterView!.updatesView!.mode).toBe("all");
+    const latest = f.render().props.filterView!;
+    latest.updatesView!.onChange("new");
+    f.render();
+    latest.updatesView!.onChange("all");
+    expect(f.render().props.filterView!.updatesView!.mode).toBe("new");
+    const committed = f.render().props.filterView!;
+    f.unmount();
+    committed.updatesView!.onChange("all");
+    expect(f.render().props.filterView!.updatesView!.mode).toBe("new");
+  });
   it("shares one title view with the list and note choices while keeping full-feed comparison", async () => {
     const f = fixture();
     const previous = parsedFeed();

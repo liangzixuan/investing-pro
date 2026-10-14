@@ -6,7 +6,13 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 design increment keeps the optional Fed reference form inside
+The current M3 increment narrows the loaded Fed feed to links absent from the
+preceding accepted list. Announcement view combines with title search and note
+choices, preserving complete comparison counts and original dates. It adds no
+request, publication alert, relevance claim or saved preference. See
+[newly observed links](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
+
+The preceding M3 design increment keeps the optional Fed reference form inside
 an initially closed native disclosure after the list. It preserves note choices
 and feedback across toggling, with the full feed's reading controls and source
 details outside. This follows the accepted BEA note-tools pattern.

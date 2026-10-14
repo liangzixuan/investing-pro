@@ -7,7 +7,11 @@ import {
   type Ref,
 } from "react";
 import { FedMonetaryAnnouncements } from "../features/markets/FedMonetaryAnnouncements";
-import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
+import {
+  projectFedAnnouncementView,
+  type FedAnnouncementRefreshView,
+} from "../features/markets/fed-announcement-view";
+import { projectManagedFedUpdatesView } from "./managed-fed-updates-view";
 import type { ManagedFedAnnouncements as Model } from "./managed-fed-announcements";
 import { ManagedFedRefreshComparisonDetails } from "./ManagedFedRefreshComparisonDetails";
 import {
@@ -30,26 +34,54 @@ export function ManagedFedAnnouncements({
     model.getSnapshot,
   );
   const load = useRef<HTMLButtonElement>(null);
-  const [choice, setChoice] = useState(() => ({
+  const comparison =
+    state.refreshComparison?.current === state.announcements
+      ? state.refreshComparison
+      : null;
+  const [choice, setChoice] = useState<{
+    model: Model;
+    response: typeof state.announcements;
+    comparison: typeof comparison;
+    query: string;
+    refreshView: FedAnnouncementRefreshView;
+    resetNotice: boolean;
+  }>(() => ({
     model,
     response: state.announcements,
+    comparison,
     query: "",
+    refreshView: "all",
     resetNotice: false,
   }));
-  const selection =
+  const selection: typeof choice =
     choice.model === model && choice.response === state.announcements
-      ? choice
+      ? choice.comparison === comparison
+        ? choice
+        : {
+            ...choice,
+            comparison,
+            refreshView: "all",
+            resetNotice: false,
+          }
       : {
           model,
           response: state.announcements,
+          comparison,
           query: "",
+          refreshView: "all",
           resetNotice: choice.response !== null && state.announcements !== null,
         };
   if (selection !== choice) setChoice(selection);
-  const view = useMemo(
-    () => projectFedAnnouncementView(state.announcements, selection.query),
-    [state.announcements, selection.query],
+  const updates = useMemo(
+    () =>
+      projectManagedFedUpdatesView(
+        projectFedAnnouncementView(state.announcements, selection.query),
+        comparison,
+        selection.refreshView,
+      ),
+    [state.announcements, selection.query, comparison, selection.refreshView],
   );
+  const view = updates.view;
   const committed = useRef<typeof selection | null>(null);
   useLayoutEffect(() => {
     committed.current = selection;
@@ -57,22 +89,38 @@ export function ManagedFedAnnouncements({
       committed.current = null;
     };
   }, [selection]);
+  const matchesCurrentSelection = () => {
+    const snapshot = model.getSnapshot();
+    const currentComparison =
+      snapshot.refreshComparison?.current === snapshot.announcements
+        ? snapshot.refreshComparison
+        : null;
+    return (
+      committed.current === selection &&
+      snapshot.announcements === selection.response &&
+      currentComparison === comparison
+    );
+  };
   const changeQuery = (query: string) => {
-    if (
-      committed.current !== selection ||
-      model.getSnapshot().announcements !== selection.response
-    )
-      return;
+    if (!matchesCurrentSelection()) return;
     setChoice((current) =>
       current === selection
         ? { ...current, query, resetNotice: false }
         : current,
     );
   };
-  const comparison =
-    state.refreshComparison?.current === state.announcements
-      ? state.refreshComparison
-      : null;
+  const changeRefreshView = (refreshView: FedAnnouncementRefreshView) => {
+    if (
+      !matchesCurrentSelection() ||
+      (refreshView === "new" && !updates.available)
+    )
+      return;
+    setChoice((current) =>
+      current === selection
+        ? { ...current, refreshView, resetNotice: false }
+        : current,
+    );
+  };
   const restoreLoad = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
     if (state.busy || !restoreLoad.current) return;
@@ -97,6 +145,11 @@ export function ManagedFedAnnouncements({
         view,
         resetNotice: selection.resetNotice,
         onQueryChange: changeQuery,
+        updatesView: {
+          mode: updates.refreshView,
+          available: updates.available,
+          onChange: changeRefreshView,
+        },
       }}
       refreshSummary={
         comparison && (

@@ -6,7 +6,10 @@ import {
 } from "@research-cockpit/contracts";
 import type { MouseEventHandler, ReactNode, Ref } from "react";
 import type { PersonalWorkspaceApiErrorCode } from "../../lib/personal-workspace-api";
-import type { FedAnnouncementView } from "./fed-announcement-view";
+import type {
+  FedAnnouncementRefreshView,
+  FedAnnouncementView,
+} from "./fed-announcement-view";
 import "./fed-announcements.css";
 
 export interface FedMonetaryAnnouncementsProps {
@@ -28,6 +31,11 @@ export interface FedMonetaryAnnouncementsProps {
     readonly view: FedAnnouncementView;
     readonly resetNotice: boolean;
     readonly onQueryChange: (query: string) => void;
+    readonly updatesView?: {
+      readonly mode: FedAnnouncementRefreshView;
+      readonly available: boolean;
+      readonly onChange: (mode: FedAnnouncementRefreshView) => void;
+    };
   };
 }
 
@@ -149,6 +157,39 @@ export function FedMonetaryAnnouncements({
             {refreshSummary}
             {filters && (
               <div className="managed-fed-title-filter">
+                {filters.updatesView && (
+                  <div className="managed-fed-updates-view">
+                    <label htmlFor="managed-fed-updates-view">
+                      Announcement view
+                    </label>
+                    <select
+                      id="managed-fed-updates-view"
+                      value={filters.updatesView.mode}
+                      aria-describedby="managed-fed-updates-view-help managed-fed-title-count"
+                      onChange={(event) => {
+                        const mode = event.currentTarget.value;
+                        if (
+                          mode === "all" ||
+                          (mode === "new" && filters.updatesView!.available)
+                        )
+                          filters.updatesView!.onChange(mode);
+                      }}
+                    >
+                      <option value="all">All loaded announcements</option>
+                      <option
+                        value="new"
+                        disabled={!filters.updatesView.available}
+                      >
+                        Newly observed links
+                      </option>
+                    </select>
+                    <p id="managed-fed-updates-view-help">
+                      {filters.updatesView.available
+                        ? "Newly observed links were absent from the previous loaded list. This does not establish a new publication."
+                        : "A successful refresh of a loaded feed provides the link comparison."}
+                    </p>
+                  </div>
+                )}
                 <label htmlFor="managed-fed-title-search">
                   Search announcement titles
                 </label>
@@ -191,8 +232,9 @@ export function FedMonetaryAnnouncements({
               </p>
             ) : items.length === 0 ? (
               <p className="fed-announcements-note">
-                No loaded announcements match this title search. Change or clear
-                the search.
+                {filters?.updatesView?.mode === "new"
+                  ? "No loaded announcements match these filters. Change the announcement view or clear the title search."
+                  : "No loaded announcements match this title search. Change or clear the search."}
               </p>
             ) : (
               <ul className="fed-announcements-list">

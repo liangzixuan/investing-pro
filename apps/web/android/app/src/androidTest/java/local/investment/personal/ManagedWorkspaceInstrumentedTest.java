@@ -854,7 +854,10 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFedPacket("2026-10-20T18:00:00.000Z");
         awaitPage("first admitted feed establishes only a baseline",
             "document.querySelector('.managed-fed-refresh-comparison') === null" +
-            " && document.querySelectorAll('.fed-announcements-new').length === 0");
+            " && document.querySelectorAll('.fed-announcements-new').length === 0" +
+            " && document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
+            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === true" +
+            " && document.querySelector('#managed-fed-updates-view')?.getBoundingClientRect().height >= 44");
         assertFedCounts(1, 0, 0, 0, 1);
         awaitPage("loaded Fed note tools start closed with original sources and titles outside",
             "document.querySelector('#managed-fed-note-disclosure')?.open === false" +
@@ -909,9 +912,15 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("valid empty replacement clears old failures and retained qualification",
             "document.querySelector('.fed-announcements [role=alert]') === null" +
             " && !document.querySelector('.fed-announcements').textContent.includes('Previous announcements.')");
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        awaitPage("empty comparison remains an available zero-result updates view",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === false" +
+            " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
         clickFedAction("Refresh announcements");
         awaitPage("fifth announcements read is pending before navigation", DIAGNOSTICS + ".fed === 5" +
-            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null" +
+            " && document.querySelector('#managed-fed-updates-view')?.value === 'new'");
         selectWorkspaceView("My Watchlist");
         assertFedCounts(5, 2, 1, 0, 1);
         selectWatchlistNote(0);
@@ -927,6 +936,9 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWorkspaceView("Markets");
         assertFedEmpty();
         assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
+        awaitPage("navigation remount resets the reading view without another feed request",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
+            " && document.querySelector('#managed-fed-title-search')?.value === ''");
         assertFedCounts(5, 2, 2, 0, 1);
         clickFedAction("Refresh announcements");
         assertFedPacket("2026-10-23T18:00:00.000Z");
@@ -937,10 +949,30 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
         assertFedCounts(6, 2, 2, 0, 1);
         assertFedDraft();
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        typeIntoInput("managed-fed-title-search", "WITHOUT A PUBLICATION");
+        awaitPage("updates and title search share one current reference while full comparison remains visible",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('1 of 2 loaded announcements.')" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
+            " && document.querySelector('.fed-announcements-list li > a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
+            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 2" +
+            " && document.querySelector('.managed-fed-refresh-count')?.textContent === 'Newly observed in this refresh: 2 of 2 links in the loaded feed.'" +
+            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
+        clickFedAction("Clear title search");
+        awaitPage("clearing the title search retains the explicitly selected updates view",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelectorAll('.fed-announcements-list li').length === 2");
+        chooseNativeSelectOption("#managed-fed-updates-view", "all", "All loaded announcements");
+        assertFedCounts(6, 2, 2, 0, 1);
         appendAndSaveFedReference();
         clickFedAction("Refresh announcements");
         awaitPage("seventh announcements read is held before session expiry", DIAGNOSTICS + ".fed === 7" +
             " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
+        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
+        awaitPage("the retained comparison remains readable during a pending feed request",
+            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
+            " && document.querySelector('#managed-fed-updates-view')?.disabled === false");
         click(CATALOG_REFRESH);
         awaitPage("expired session removes the loaded feed and unsaved draft",
             DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
@@ -1018,7 +1050,7 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
             " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
             " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
-            " && document.querySelector('.managed-fed-note-action')?.textContent.includes('The chosen announcement is outside this title search.')" +
+            " && document.querySelector('.managed-fed-note-action')?.textContent.includes('The chosen announcement is outside the current announcement view.')" +
             " && document.querySelector('.managed-fed-refresh-count')?.textContent.includes('2 of 2 links in the loaded feed.')");
         clickFedAction("Clear title search");
         awaitPage("Clear requires a fresh announcement choice without a fallback",

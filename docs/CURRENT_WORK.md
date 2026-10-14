@@ -35,7 +35,20 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
-The latest design candidate keeps the optional Fed reference form in an initially
+The current candidate adds **Announcement view** to the loaded Fed feed. Newly
+observed links require a comparison tied to the exact current response and
+intersect with title search. The list and note picker share the result, preserving
+original objects, order and dates. Complete feed metadata and comparison counts
+stay visible. An excluded choice clears without restoration; a valid note
+destination remains. Pending, failed and cancelled attempts retain the view;
+accepted replacements and navigation reset it. Reading stays available while
+Save pauses editing. It adds no request, saved preference or publication claim.
+Affected deterministic behavior, composed workspace checks, web types, scoped
+lint/format, source boundaries and Java syntax pass. Exact-build and Chrome review
+are in progress; native execution remains required. See the
+[Markets guide](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
+
+The preceding design candidate keeps the optional Fed reference form in an initially
 closed native disclosure after the announcement list. The form stays mounted,
 preserving choices, feedback and the current note across toggling. Metadata,
 search, comparison, warnings and titles remain outside. Request, filter, note
@@ -47,8 +60,10 @@ toggling, 44px summaries, long titles and identities, and exact choice, feedback
 and full-note retention. Review focuses the complete note reader. One explicit
 RAM Save preserves the complete payload. Filtering, pending reads, failure,
 cancellation, replacement and retirement retain the form's existing behavior
-while open or closed. These checks use invented data. Updated original hosted
-native execution remains pending.
+while open or closed. These checks use invented data. All five applicable Actions
+jobs and CodeScene passed the original published revision. Its original Android
+report admits all 27 required cases, the exact producing assets and APK isolation
+gates. These checks do not establish physical installation or live account use.
 
 The preceding candidate adds title search to the loaded Federal Reserve feed.
 The same view drives the list and announcement note choices. Original titles,
@@ -67,8 +82,8 @@ full note reader. One explicit RAM Save preserves the complete watchlist payload
 Reading search works during pending Save and feed requests; retained, equal,
 empty and retired responses retain their specified behavior. These checks use
 invented data. Chrome could not activate the already guarded duplicate Add action;
-the existing focused and updated native assertions retain that check. Original
-hosted native execution of the new title-search journey remains pending.
+the existing focused and updated native assertions retain that check. The original
+hosted failures and complete descendant acceptance are recorded below.
 
 The original Android run passed 26 cases and failed the Fed journey at a new
 query-change check. The test inserted text into the existing phrase while
@@ -77,7 +92,11 @@ The bounded correction focuses the exact search and uses the existing native
 Select all helper, which checks the prior value, full selection, focus and exact
 replacement. Note, duplicate, Save/reload, request and retirement assertions and
 deadlines remain unchanged. The original failure and skipped APK acceptance
-remain recorded; corrected hosted execution is still required.
+remain recorded. The corrected original run passed its desktop, parser, dependency
+and CodeScene checks but failed one native focus check before the query replacement,
+Review and Save steps. Its tap left the watchlist search-scope selector focused;
+the cause is unknown. The disclosure candidate above passed its complete descendant
+journey, while this separate failed outcome remains retained.
 
 [PR99](https://github.com/liangzixuan/investing-pro/pull/99) adds an optional
 indexed raw-price path to the existing two-listing watchlist comparison. It uses

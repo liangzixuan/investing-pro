@@ -65,6 +65,8 @@ import {
 import { economicCalendarFixture } from "./economic-calendar-fixture";
 import { projectBeaReleaseView } from "../features/markets/bea-release-view";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
+import { projectFedAnnouncementView } from "../features/markets/fed-announcement-view";
+import { projectManagedFedUpdatesView } from "./managed-fed-updates-view";
 import { filingsResponse } from "./sec-filings-fixture";
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
 import {
@@ -1252,9 +1254,17 @@ describe("managed workspace screen", () => {
     workspace.move("listing-two", -1);
     const before = workspace.coordinator.getSnapshot().draft!;
     const response = workspace.announcements.getSnapshot().announcements!;
+    const readingView = projectManagedFedUpdatesView(
+      projectFedAnnouncementView(response, "without a publication"),
+      comparison,
+      "new",
+    ).view;
+    expect(readingView.response).toBe(response);
+    expect(readingView.visibleItems).toEqual([response.items[1]]);
+    expect(readingView.visibleItems[0]).toBe(response.items[1]);
     const capture = {
       response,
-      item: response.items[1]!,
+      item: readingView.visibleItems[0]!,
       showingPrevious: false,
     };
     const context = fedNoteContext(workspace);
