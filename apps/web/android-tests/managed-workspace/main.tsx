@@ -32,6 +32,7 @@ if (
   scenario !== "signout-uncertain-review" &&
   scenario !== "raw-close-comparison" &&
   scenario !== "bea-agenda" &&
+  scenario !== "bea-agenda-comparison" &&
   scenario !== "bea-session-retirement" &&
   scenario !== "fed-announcements" &&
   scenario !== "annual-comparison" &&
@@ -167,6 +168,7 @@ function Fixture() {
           </>
         )}
         {(scenario === "bea-agenda" ||
+          scenario === "bea-agenda-comparison" ||
           scenario === "bea-session-retirement") && (
           <button
             id="settle-cancelled-calendar"

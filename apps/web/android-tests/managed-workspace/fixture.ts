@@ -220,6 +220,7 @@ export async function createFixture(
     | "signout-uncertain-review"
     | "raw-close-comparison"
     | "bea-agenda"
+    | "bea-agenda-comparison"
     | "bea-session-retirement"
     | "fed-announcements"
     | "annual-comparison"
@@ -677,14 +678,39 @@ export async function createFixture(
       });
     },
     economicCalendar: (signal) => {
+      const comparison = scenario === "bea-agenda-comparison";
       if (
         signal.aborted ||
-        (scenario !== "bea-agenda" && scenario !== "bea-session-retirement") ||
+        (scenario !== "bea-agenda" &&
+          scenario !== "bea-session-retirement" &&
+          !comparison) ||
         pendingCalendar ||
-        state.calendar >= (scenario === "bea-agenda" ? 4 : 2)
+        state.calendar >= (comparison ? 4 : scenario === "bea-agenda" ? 4 : 2)
       )
         throw new Error("Unexpected invented calendar read");
       count("calendar");
+      if (comparison && (state.calendar === 1 || state.calendar === 4)) {
+        const fetchedAt =
+          state.calendar === 1
+            ? "2026-10-20T17:59:00.000Z"
+            : "2026-10-20T18:01:00.000Z";
+        const empty = parseManagedEconomicCalendar({
+          ...beaAgenda!,
+          fetchedAt,
+          window: {
+            fromInclusive: fetchedAt,
+            toExclusive:
+              state.calendar === 1
+                ? "2026-11-19T17:59:00.000Z"
+                : "2026-11-19T18:01:00.000Z",
+          },
+          events: [],
+        });
+        if (!empty) throw new Error("Invalid invented comparison agenda");
+        return Promise.resolve(empty);
+      }
+      if (comparison && state.calendar === 2)
+        return Promise.resolve(structuredClone(beaAgenda!));
       if (state.calendar === 1)
         return Promise.resolve(structuredClone(beaAgenda!));
       if (scenario === "bea-agenda" && state.calendar === 2)

@@ -44,6 +44,7 @@ describe("managed BEA agenda lifetime", () => {
     await model.load();
     expect(read).toHaveBeenCalledOnce();
     expect(model.getSnapshot()).toMatchObject({ busy: true, agenda: null });
+    expect(model.getSnapshot().refreshComparison).toBeNull();
     const empty = { ...economicCalendarFixture(), events: [] };
     held.resolve(empty);
     await pending;
@@ -74,6 +75,7 @@ describe("managed BEA agenda lifetime", () => {
       expect(model.getSnapshot().agenda?.fetchedAt).toBe(
         "2026-10-20T18:00:00.000Z",
       );
+      expect(model.getSnapshot().refreshComparison).toBeNull();
       const next = { ...agenda, events: [] };
       read.mockResolvedValueOnce(next);
       await model.load();
@@ -83,6 +85,11 @@ describe("managed BEA agenda lifetime", () => {
         error: null,
       });
       expect(read).toHaveBeenCalledTimes(3);
+      expect(model.getSnapshot().refreshComparison).toMatchObject({
+        previous: agenda,
+        current: next,
+        addedEvents: [],
+      });
     },
   );
 
@@ -140,6 +147,7 @@ describe("managed BEA agenda lifetime", () => {
       busy: false,
       error: null,
       showingPrevious: false,
+      refreshComparison: null,
     });
     expect(read.mock.calls[1]![0].aborted).toBe(true);
     held.resolve(economicCalendarFixture());
@@ -160,8 +168,52 @@ describe("managed BEA agenda lifetime", () => {
       await model.load();
       expect(retire).toHaveBeenCalledExactlyOnceWith(error);
       expect(model.getSnapshot()).toMatchObject({ agenda: null, busy: false });
+      expect(model.getSnapshot().refreshComparison).toBeNull();
       await model.load();
       expect(read).toHaveBeenCalledTimes(2);
     },
   );
+
+  it("retains the exact last accepted comparison through held, rejected and cancelled attempts, then compares only accepted responses", async () => {
+    const { model, read, agenda } = fixture();
+    await model.load();
+    const replacement = parseManagedEconomicCalendar({
+      ...economicCalendarFixture(),
+      events: [agenda.events[0]!],
+    })!;
+    read.mockResolvedValueOnce(replacement);
+    await model.load();
+    const pair = model.getSnapshot().refreshComparison!;
+    expect(pair.previous).toBe(agenda);
+    expect(pair.current).toBe(replacement);
+    for (const error of [
+      new TrialApiError("unavailable"),
+      new TrialApiError("invalid_response"),
+    ]) {
+      read.mockRejectedValueOnce(error);
+      await model.load();
+      expect(model.getSnapshot().refreshComparison).toBe(pair);
+    }
+    const held = deferred<PersonalEconomicCalendarDto>();
+    read.mockReturnValueOnce(held.promise);
+    const pending = model.load();
+    expect(model.getSnapshot().refreshComparison).toBe(pair);
+    model.cancel();
+    held.resolve(agenda);
+    await pending;
+    expect(model.getSnapshot().refreshComparison).toBe(pair);
+    model.leave();
+    model.enter();
+    expect(model.getSnapshot().refreshComparison).toBe(pair);
+    read.mockResolvedValueOnce(agenda);
+    await model.load();
+    expect(model.getSnapshot().refreshComparison!.previous).toBe(replacement);
+    expect(model.getSnapshot().refreshComparison!.current).toBe(agenda);
+    expect(model.getSnapshot().refreshComparison!.addedEvents).toEqual([
+      agenda.events[1],
+    ]);
+    expect(read).toHaveBeenCalledTimes(6);
+    model.retire();
+    expect(model.getSnapshot().refreshComparison).toBeNull();
+  });
 });

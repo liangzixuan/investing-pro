@@ -8,11 +8,14 @@ import {
 import type { MouseEventHandler, ReactNode, Ref } from "react";
 import { formatBeaReleaseDate } from "./bea-release-dates";
 import { projectBeaReleaseView, type BeaReleaseView } from "./bea-release-view";
+import { BeaAgendaComparison } from "./BeaAgendaComparison";
+import type { BeaAgendaComparison as Comparison } from "./bea-agenda-comparison";
 import "./bea-release-agenda.css";
 
 export interface BeaReleaseAgendaProps {
   readonly className?: string;
   readonly agenda: PersonalEconomicCalendarDto | null;
+  readonly refreshComparison?: Comparison | null;
   readonly busy: boolean;
   readonly error: "invalid_response" | "rate_limited" | "unavailable" | null;
   readonly enabled: boolean;
@@ -42,6 +45,7 @@ const timestamp = (instant: string) =>
 export function BeaReleaseAgenda({
   className = "",
   agenda,
+  refreshComparison,
   busy,
   error,
   enabled,
@@ -55,6 +59,9 @@ export function BeaReleaseAgenda({
   noteAction,
 }: BeaReleaseAgendaProps) {
   const filters = filterView?.view.response === agenda ? filterView : undefined;
+  const comparison =
+    refreshComparison?.current === agenda ? refreshComparison : null;
+  const added = new Set(comparison?.addedEvents);
   const { groups, selectedDate, visibleGroups, visibleCount, query } =
     filters?.view ?? projectBeaReleaseView(agenda, "", "");
   return (
@@ -144,6 +151,7 @@ export function BeaReleaseAgenda({
               {timestamp(agenda.window.fromInclusive)} until{" "}
               {timestamp(agenda.window.toExclusive)} (end excluded).
             </p>
+            {comparison && <BeaAgendaComparison comparison={comparison} />}
             {filters && (
               <div className="managed-bea-release-date">
                 <label htmlFor="managed-bea-release-date">Release date</label>
@@ -235,7 +243,18 @@ export function BeaReleaseAgenda({
                           <time dateTime={event.scheduledAt}>
                             {time.format(new Date(event.scheduledAt))}
                           </time>
-                          <span>{event.series}</span>
+                          <span>
+                            {added.has(event) ? (
+                              <>
+                                {event.series}
+                                <small className="bea-agenda-new">
+                                  Not in previous loaded agenda
+                                </small>
+                              </>
+                            ) : (
+                              event.series
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>

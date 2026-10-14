@@ -6,7 +6,15 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3 increment narrows the loaded Fed feed to links absent from the
+The current M3 increment compares consecutive accepted BEA agendas. Exact
+series/time entries absent from the preceding loaded window receive a visible
+marker, while both original retrieval times and windows remain available.
+Series/date filters and explicit note actions retain their existing behavior.
+The comparison explains moving-window scope and establishes no reschedule or
+publication claim. It adds no request or saved history. See
+[agenda comparison](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-agendas).
+
+The preceding M3 increment narrows the loaded Fed feed to links absent from the
 preceding accepted list. Announcement view combines with title search and note
 choices, preserving complete comparison counts and original dates. It adds no
 request, publication alert, relevance claim or saved preference. See

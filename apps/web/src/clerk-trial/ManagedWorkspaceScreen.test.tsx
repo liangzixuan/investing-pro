@@ -3,6 +3,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
+  parseManagedEconomicCalendar,
   PERSONAL_BEA_CALENDAR_SOURCE,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
@@ -987,11 +988,26 @@ describe("managed workspace screen", () => {
     workspace.note("listing-two", "  Fresh Cafe\u0301 東京 🧭 thesis");
     workspace.move("listing-two", -1);
     workspace.setView("markets");
+    const priorAgenda = parseManagedEconomicCalendar({
+      ...economicCalendarFixture(),
+      fetchedAt: "2026-10-20T17:59:00.000Z",
+      window: {
+        fromInclusive: "2026-10-20T17:59:00.000Z",
+        toExclusive: "2026-11-19T17:59:00.000Z",
+      },
+      events: [economicCalendarFixture().events[0]!],
+    })!;
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(priorAgenda);
+    await workspace.agenda.load();
     vi.mocked(api.economicCalendar).mockResolvedValueOnce(
       economicCalendarFixture(),
     );
     await workspace.agenda.load();
     const response = workspace.agenda.getSnapshot().agenda!;
+    const pair = workspace.agenda.getSnapshot().refreshComparison!;
+    expect(pair.previous).toBe(priorAgenda);
+    expect(pair.current).toBe(response);
+    expect(pair.addedEvents[0]).toBe(response.events[1]);
     const beforeSearch = workspace.coordinator.getSnapshot().draft!;
     const view = projectBeaReleaseView(
       response,
@@ -1005,7 +1021,7 @@ describe("managed workspace screen", () => {
     expect(selectedEvent).toBe(response.events[1]);
     expect(response.events.indexOf(selectedEvent)).toBe(1);
     expect(workspace.coordinator.getSnapshot().draft).toBe(beforeSearch);
-    expect(api.economicCalendar).toHaveBeenCalledOnce();
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
     expect(api.save).not.toHaveBeenCalled();
     const capture = {
       response,
@@ -1084,7 +1100,8 @@ describe("managed workspace screen", () => {
       dirty: false,
     });
     expect(workspace.agenda.getSnapshot().agenda).toBe(response);
-    expect(api.economicCalendar).toHaveBeenCalledOnce();
+    expect(workspace.agenda.getSnapshot().refreshComparison).toBe(pair);
+    expect(api.economicCalendar).toHaveBeenCalledTimes(2);
     expect(api.load).toHaveBeenCalledTimes(2);
     expect(api.save).toHaveBeenCalledOnce();
     for (const read of [
