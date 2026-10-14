@@ -832,8 +832,11 @@ reader and focused 44px summary, ordinary Back, and reading while Save is pendin
 Explicit whole-draft Save and reload preserve version 2 and both notes. Fed Review
 selects its different destination; cancellation retains the feed, and late Save
 receipts or source failures cannot restore a retired session. Independent review
-accepts the saved browser evidence. The native suite retains 27 cases and 52 literal captures;
-its updated reader assertions still require original hosted execution.
+accepts the saved browser evidence. All five original Actions checks pass,
+including Ubuntu and Windows verification, 27 native cases and APK isolation.
+Independent review accepts the saved native artifact. CodeScene retains four
+reviewed complexity warnings and one improvement notice; its failed advisory
+remains visible. The native suite retains 52 literal captures.
 See [Review a destination note](APPWRITE_WATCHLIST.md#review-a-destination-note).
 
 ### Consecutive Fed feed comparison candidate
@@ -845,10 +848,22 @@ disclosure. First load establishes a baseline; equal and empty replacements
 advance it. Pending, failed or canceled attempts retain the accepted pair, while
 retirement clears it. The current list and note workflow remain complete.
 
-Implementation and affected acceptance are in progress. No new request, source,
-saved schema or stored feed history is planned. Existing native transitions can
-check full-to-empty and empty-to-full comparison before their unchanged exact
-reference, Review, Save and reload sequence. See
+Affected model, component and composed tests, web types, scoped lint/format and
+source boundaries pass. Independent source review and exact preview/native
+bundle review pass. Chrome checks at 1440, 390 and 320 CSS pixels verify original
+clocks, complete current rows and note choices, keyboard controls and narrow
+layouts. Pending, canceled, failed and malformed requests retain the accepted
+pair and open disclosure. Equal, empty and returning feeds advance the comparison.
+An unknown-time announcement reaches the exact destination reader, then explicit
+whole-draft Save and reload preserve both notes and version 2. Retirement and late
+responses leave the session cleared. Independent review accepts the saved browser
+evidence; excluded stale captures and tooling limits remain recorded.
+
+The existing native transitions now assert full-to-empty and empty-to-full
+comparison before the unchanged exact reference, Review, Save and reload sequence.
+The bundle stays within the existing asset limit; original hosted execution for
+this candidate remains pending. No request, source, saved schema, stored feed
+history or dependency was added. See
 [Compare consecutive loaded feeds](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
 
 ## Product scope
@@ -875,8 +890,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete feed-comparison implementation and affected acceptance, original hosted
-execution for exact-note Review, and source integration when permission arrives. Preserve explicit source requests,
+Complete original hosted acceptance for feed comparison and source integration
+when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original
