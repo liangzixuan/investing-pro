@@ -97,7 +97,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "Current-use policy at original load: eligible. " +
         "Evidence dates are unchanged; this action does not refresh sources. " +
         "Company balance dates may differ; no cross-company calculation or ranking.";
-    private static final String NOTE = "Draft survives native Back";
+    static final String NOTE = "Draft survives native Back";
     private static final String LIQUIDITY_NOTE_INITIAL =
         "Observed Annual liquidity: ZERO (XNAS); CIK 0000000001; 10-K balances at 2025-12-31. " +
         "Reported current assets (AssetsCurrent) USD 120.125; reported current liabilities (LiabilitiesCurrent) USD 80.025. " +
@@ -197,7 +197,7 @@ public class ManagedWorkspaceInstrumentedTest {
         "Current-use policy at original load: eligible. Evidence dates are unchanged; this action does not refresh sources.";
     private static final String ANNUAL = "button[aria-label='Annual report for saved ZERO']";
     private static final String DISCOVER = ".trial-panel[aria-labelledby='managed-discover-heading']";
-    private static final String CATALOG_REFRESH = ".managed-search-bar > button";
+    static final String CATALOG_REFRESH = ".managed-search-bar > button";
     private static final String CATALOG_STATUS = ".managed-discovery-status";
     private static final String CATALOG_FAILURE =
         "The catalog could not be loaded. Select Refresh catalog to try again.";
@@ -205,9 +205,9 @@ public class ManagedWorkspaceInstrumentedTest {
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
         "img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; " +
         "base-uri 'none'; form-action 'none'";
-    private static final String DRAFT =
+    static final String DRAFT =
         "JSON.parse(document.getElementById('fixture-workspace-draft').textContent)";
-    private static final String DIAGNOSTICS =
+    static final String DIAGNOSTICS =
         "JSON.parse(document.querySelector('#fixture-diagnostics').textContent)";
     private static final long PAGE_TIMEOUT_MS = 10_000;
     private static final long MAX_ASSET_BYTES = 4 * 1024 * 1024;
@@ -443,7 +443,7 @@ public class ManagedWorkspaceInstrumentedTest {
         return readFixtureString("JSON.parse(document.querySelector('#fixture-export-document').textContent).text");
     }
 
-    private String readFixtureString(String expression) throws Exception {
+    String readFixtureString(String expression) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> result = new AtomicReference<>();
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
@@ -837,306 +837,8 @@ public class ManagedWorkspaceInstrumentedTest {
 
     @Test
     public void fedAnnouncementsRetainDatesCancelAndRetireWithSession() throws Exception {
-        double documentTimeOrigin = readDocumentTimeOrigin();
-        awaitPage("Federal Reserve feed is unloaded until explicitly requested",
-            "document.querySelector('.fed-announcements') !== null && document.querySelector('.fed-announcements time') === null" +
-            " && document.querySelector('.fed-announcements-actions > button')?.textContent === 'Load announcements'" +
-            " && document.querySelector('.fed-announcements-actions > button')?.getBoundingClientRect().height >= 44");
-        assertFedCounts(0, 0, 0, 0, 1);
-        selectWorkspaceView("My Watchlist");
-        click("button[aria-label='Move ZERO down']");
-        awaitPage("announcements test reorders the draft before editing",
-            "document.querySelector('.managed-watchlist-choices li > button > strong')?.textContent === 'ONE'");
-        typeIntoInput("managed-note-1", NOTE);
-        selectWorkspaceView("Markets");
-        assertFedDraft();
-        clickFedAction("Load announcements");
-        assertFedPacket("2026-10-20T18:00:00.000Z");
-        awaitPage("first admitted feed establishes only a baseline",
-            "document.querySelector('.managed-fed-refresh-comparison') === null" +
-            " && document.querySelectorAll('.fed-announcements-new').length === 0" +
-            " && document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
-            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === true" +
-            " && document.querySelector('#managed-fed-updates-view')?.getBoundingClientRect().height >= 44");
-        assertFedCounts(1, 0, 0, 0, 1);
-        awaitPage("loaded Fed note tools start closed with original sources and titles outside",
-            "document.querySelector('#managed-fed-note-disclosure')?.open === false" +
-            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.textContent === 'Add an announcement to a note'" +
-            " && document.querySelector('#managed-fed-note-disclosure-toggle')?.getBoundingClientRect().height >= 44" +
-            " && document.querySelector('#managed-fed-note-disclosure #managed-fed-note-announcement') !== null" +
-            " && document.querySelector('.fed-announcements-source')?.closest('details') === null" +
-            " && document.querySelector('.fed-announcements-list')?.closest('details') === null");
-        typeIntoInput("managed-fed-title-search", "no matching invented title");
-        awaitPage("title search shares an empty view with the note picker without a read",
-            "document.querySelector('#managed-fed-title-count')?.textContent.includes('0 of 2 loaded announcements.')" +
-            " && document.querySelector('.fed-announcements-list') === null" +
-            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 1" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('No loaded announcements match this title search.')" +
-            " && document.querySelector('#managed-fed-title-search')?.getBoundingClientRect().height >= 44");
-        clickFedAction("Clear title search");
-        assertFedPacket("2026-10-20T18:00:00.000Z");
-        typeIntoInput("managed-fed-title-search", "  INVENTED  ");
-        assertFedCounts(1, 0, 0, 0, 1);
-        clickFedAction("Refresh announcements");
-        awaitPage("failed refresh qualifies the retained original feed",
-            "document.querySelector('.fed-announcements [role=alert]')?.textContent.includes('previously loaded announcements')" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements. This attempt has not confirmed a newer feed.')");
-        assertFedPacket("2026-10-20T18:00:00.000Z");
-        assertFedCounts(2, 0, 0, 0, 1);
-        clickFedAction("Refresh announcements");
-        awaitPage("third announcements read is held", DIAGNOSTICS + ".fed === 3" +
-            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
-        clickFedAction("Cancel announcements");
-        assertFedCounts(3, 1, 0, 0, 1);
-        click("#settle-cancelled-announcements");
-        assertFedCounts(3, 1, 1, 0, 1);
-        assertFedPacket("2026-10-20T18:00:00.000Z");
-        awaitPage("failure, held read, Cancel and late settlement preserve the title query",
-            "document.querySelector('#managed-fed-title-search')?.value === '  INVENTED  '" +
-            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('2 of 2 loaded announcements.')");
-        awaitPage("Cancel preserves the original fetchedAt and qualifies retained content",
-            "document.querySelector('.fed-announcements [role=status]')?.textContent === 'Announcements refresh cancelled. Refresh again when ready.'" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Previous announcements.')");
-        assertFedDraft();
-        clickFedAction("Refresh announcements");
-        assertFedEmpty();
-        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
-        awaitPage("accepted empty replacement clears the query with an explicit reset notice",
-            "document.querySelector('#managed-fed-title-search')?.value === ''" +
-            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('Feed response changed; showing all loaded announcements.')");
-        click(".managed-fed-refresh-comparison summary");
-        awaitPage("comparison disclosure opens with an accessible native target",
-            "document.querySelector('.managed-fed-refresh-comparison details')?.open === true" +
-            " && document.querySelector('.managed-fed-refresh-comparison summary')?.getBoundingClientRect().height >= 44");
-        assertFedCounts(4, 1, 1, 0, 1);
-        awaitPage("valid empty replacement clears old failures and retained qualification",
-            "document.querySelector('.fed-announcements [role=alert]') === null" +
-            " && !document.querySelector('.fed-announcements').textContent.includes('Previous announcements.')");
-        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
-        awaitPage("empty comparison remains an available zero-result updates view",
-            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
-            " && document.querySelector('#managed-fed-updates-view option[value=new]')?.disabled === false" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
-        clickFedAction("Refresh announcements");
-        awaitPage("fifth announcements read is pending before navigation", DIAGNOSTICS + ".fed === 5" +
-            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null" +
-            " && document.querySelector('#managed-fed-updates-view')?.value === 'new'");
-        selectWorkspaceView("My Watchlist");
-        assertFedCounts(5, 2, 1, 0, 1);
-        selectWatchlistNote(0);
-        chooseNativeSelectOption("#managed-watchlist-search-scope", "notes", "Research notes");
-        typeIntoInput("managed-watchlist-search", "Invented second");
-        awaitPage("Fed review will target a different note outside the retained notes search",
-            "document.querySelector('#managed-note-0')?.dataset.managedNoteListingId === 'listing-one'" +
-            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
-            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-one'");
-        click("#settle-cancelled-announcements");
-        assertFedCounts(5, 2, 2, 0, 1);
-        assertFedDraft();
-        selectWorkspaceView("Markets");
-        assertFedEmpty();
-        assertFedComparison("2026-10-20T18:00:00.000Z", "2026-10-21T18:00:00.000Z", 0, 0);
-        awaitPage("navigation remount resets the reading view without another feed request",
-            "document.querySelector('#managed-fed-updates-view')?.value === 'all'" +
-            " && document.querySelector('#managed-fed-title-search')?.value === ''");
-        assertFedCounts(5, 2, 2, 0, 1);
-        clickFedAction("Refresh announcements");
-        assertFedPacket("2026-10-23T18:00:00.000Z");
-        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
-        awaitPage("newly observed markers preserve both current links and note choices",
-            "Array.from(document.querySelectorAll('.fed-announcements-new')).every(label => label.textContent === 'Newly observed in this refresh')" +
-            " && document.querySelectorAll('.fed-announcements-list li').length === 2" +
-            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
-        assertFedCounts(6, 2, 2, 0, 1);
-        assertFedDraft();
-        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
-        typeIntoInput("managed-fed-title-search", "WITHOUT A PUBLICATION");
-        awaitPage("updates and title search share one current reference while full comparison remains visible",
-            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
-            " && document.querySelector('#managed-fed-title-count')?.textContent.includes('1 of 2 loaded announcements.')" +
-            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
-            " && document.querySelector('.fed-announcements-list li > a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
-            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 2" +
-            " && document.querySelector('.managed-fed-refresh-count')?.textContent === 'Newly observed in this refresh: 2 of 2 links in the loaded feed.'" +
-            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
-        clickFedAction("Clear title search");
-        awaitPage("clearing the title search retains the explicitly selected updates view",
-            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
-            " && document.querySelectorAll('.fed-announcements-list li').length === 2");
-        chooseNativeSelectOption("#managed-fed-updates-view", "all", "All loaded announcements");
-        assertFedCounts(6, 2, 2, 0, 1);
-        appendAndSaveFedReference();
-        clickFedAction("Refresh announcements");
-        awaitPage("seventh announcements read is held before session expiry", DIAGNOSTICS + ".fed === 7" +
-            " && document.querySelector('.fed-announcements [aria-busy=true]') !== null");
-        chooseNativeSelectOption("#managed-fed-updates-view", "new", "Newly observed links");
-        awaitPage("the retained comparison remains readable during a pending feed request",
-            "document.querySelector('#managed-fed-updates-view')?.value === 'new'" +
-            " && document.querySelector('#managed-fed-updates-view')?.disabled === false");
-        click(CATALOG_REFRESH);
-        awaitPage("expired session removes the loaded feed and unsaved draft",
-            DIAGNOSTICS + ".status === 2 && document.querySelector('.managed-navigation') === null" +
-            " && document.querySelector('.fed-announcements') === null" +
-            " && " + DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
-            " && " + DRAFT + ".baseVersion === null && " + DRAFT + ".dirty === false");
-        click("#settle-cancelled-announcements");
-        assertFedCounts(7, 3, 3, 1, 2);
-        awaitPage("late announcements cannot remount a retired session",
-            "document.querySelector('.fed-announcements') === null && document.querySelector('.managed-navigation') === null" +
-            " && !document.body.textContent.includes('Invented monetary policy announcement')" +
-            " && !document.body.textContent.includes(" + JSONObject.quote(NOTE) + ")");
-        assertEquals("Announcements preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
-        assertFixtureBoundary(0, 1);
+        new ManagedFedAnnouncementJourney(this).run();
     }
-
-    private void clickFedAction(String label) {
-        onWebView().withElement(findElement(Locator.XPATH,
-            "//section[contains(@class,'fed-announcements')]//button[normalize-space(.)='" + label + "']")).perform(webClick());
-    }
-
-    private void assertFedPacket(String fetchedAt) throws Exception {
-        awaitPage("Fed packet preserves source identities, exact dates and absent publication time",
-            "document.querySelector('.fed-announcements-note time')?.dateTime === " + JSONObject.quote(fetchedAt) +
-            " && Array.from(document.querySelectorAll('.fed-announcements-list li > a')).map(e => e.textContent).join('|') === 'Invented monetary policy announcement|Invented announcement without a publication time'" +
-            " && document.querySelector('.fed-announcements-list li:first-child time')?.dateTime === '2026-10-19T18:00:00.000Z'" +
-            " && document.querySelector('.fed-announcements-list li:last-child p')?.textContent === 'Unknown publication time'" +
-            " && document.querySelector('.fed-announcements-list li:first-child a')?.href === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261019a.htm'" +
-            " && document.querySelector('.fed-announcements-source a')?.href === 'https://www.federalreserve.gov/feeds/feeds.htm'" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 2 of 2 announcements from this feed.')");
-    }
-
-    private void assertFedComparison(String previousAt, String currentAt, int newlyObserved, int currentCount) throws Exception {
-        awaitPage("compared feeds retain both original clocks and the complete current-list count",
-            "document.querySelector('.managed-fed-refresh-count')?.textContent === " +
-            JSONObject.quote("Newly observed in this refresh: " + newlyObserved + " of " + currentCount + " links in the loaded feed.") +
-            " && Array.from(document.querySelectorAll('.managed-fed-refresh-comparison time')).map(time => time.dateTime).join('|') === " +
-            JSONObject.quote(previousAt + "|" + currentAt) +
-            " && document.querySelector('.managed-fed-refresh-comparison summary')?.textContent === 'Compared loaded feeds'" +
-            " && document.querySelectorAll('.fed-announcements-new').length === " + newlyObserved);
-    }
-
-    private void assertFedEmpty() throws Exception {
-        awaitPage("valid empty feed replaces prior items with its own exact fetchedAt",
-            "document.querySelector('.fed-announcements-note time')?.dateTime === '2026-10-21T18:00:00.000Z'" +
-            " && document.querySelector('.fed-announcements-list') === null" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('Loaded 0 of 0 announcements from this feed.')" +
-            " && document.querySelector('.fed-announcements')?.textContent.includes('No announcements were listed in this loaded feed.')");
-    }
-
-    private void assertFedDraft() throws Exception {
-        awaitPage("announcements preserve complete unsaved watchlist order, notes and version",
-            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) +
-            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
-            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
-            " && " + DRAFT + ".baseVersion === 1 && " + DRAFT + ".dirty === true");
-    }
-
-    private void appendAndSaveFedReference() throws Exception {
-        String complete = "Draft survives native Back Observed Federal Reserve announcement: Invented announcement without a publication time. Announcement URL: https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm. Source publication time: unknown. Source: Board of Governors of the Federal Reserve System; monetary-policy feed https://www.federalreserve.gov/feeds/press_monetary.xml. Original feed retrieved at: 2026-10-23T18:00:00.000Z (UTC). Only feed metadata was loaded; article contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
-        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
-        awaitPage("Fed reference starts with two explicit empty choices",
-            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
-            " && document.querySelector('.managed-fed-note-action button')?.getAttribute('aria-disabled') === 'true'");
-        click("#managed-fed-note-disclosure-toggle");
-        awaitPage("Fed note tools open explicitly before a reference choice",
-            "document.querySelector('#managed-fed-note-disclosure')?.open === true");
-        chooseNativeSelectOption("#managed-fed-note-announcement",
-            "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
-            "Invented announcement without a publication time");
-        chooseNativeSelectOption("#managed-fed-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
-        typeIntoInput("managed-fed-title-search", " MONETARY   POLICY ");
-        awaitPage("excluding the chosen announcement clears it while preserving its exact destination and whole-feed count",
-            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
-            " && document.querySelectorAll('.fed-announcements-list li').length === 1" +
-            " && document.querySelector('.managed-fed-note-action')?.textContent.includes('The chosen announcement is outside the current announcement view.')" +
-            " && document.querySelector('.managed-fed-refresh-count')?.textContent.includes('2 of 2 links in the loaded feed.')");
-        clickFedAction("Clear title search");
-        awaitPage("Clear requires a fresh announcement choice without a fallback",
-            "document.querySelector('#managed-fed-note-announcement')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
-            " && document.querySelectorAll('#managed-fed-note-announcement option').length === 3");
-        typeIntoInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ");
-        chooseNativeSelectOption("#managed-fed-note-announcement",
-            "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm",
-            "Invented announcement without a publication time");
-        assertFedDraft();
-        assertFedCounts(6, 2, 2, 0, 1);
-        clickFedAction("Add announcement to note draft");
-        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
-            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
-            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
-        awaitPage("Fed reference appends only the chosen note and retains all original metadata", exact +
-            " && document.querySelector('.managed-fed-note-status')?.textContent === 'Announcement reference added to the ZERO (Class A, XNAS) note draft. Review and save all changes in My Watchlist.'" +
-            " && document.activeElement === document.querySelector('.managed-fed-note-action button')");
-        clickFedAction("Add announcement to note draft");
-        awaitPage("an identical Fed reference cannot append twice", exact +
-            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
-        assertFedCounts(6, 2, 2, 0, 1);
-        touchInput("managed-fed-title-search");
-        replaceFocusedInput("managed-fed-title-search", " WITHOUT A   PUBLICATION ", " WITHOUT ");
-        awaitPage("a matching query keeps the selected announcement and duplicate feedback for Review", exact +
-            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
-            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
-        click("#managed-fed-note-disclosure-toggle");
-        awaitPage("closing Fed tools preserves exact choices feedback and the whole draft", exact +
-            " && document.querySelector('#managed-fed-note-disclosure')?.open === false" +
-            " && document.activeElement === document.querySelector('#managed-fed-note-disclosure-toggle')" +
-            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
-            " && document.querySelector('.managed-fed-note-status')?.textContent === 'This exact announcement reference is already in the note draft.'");
-        click("#managed-fed-note-disclosure-toggle");
-        awaitPage("reopening Fed tools keeps the chosen reference and Review", exact +
-            " && document.querySelector('#managed-fed-note-disclosure')?.open === true" +
-            " && document.querySelector('#managed-fed-note-announcement')?.value === 'https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm'" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === 'listing-zero'" +
-            " && Array.from(document.querySelectorAll('.managed-fed-note-action button')).some(button => button.textContent === 'Review in My Watchlist')");
-        clickFedAction("Review in My Watchlist");
-        awaitPage("Fed Review opens and focuses its exact destination while preserving the complete draft and search", exact +
-            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
-            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
-            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')" +
-            " && document.querySelector('#managed-watchlist-search')?.value === 'Invented second'" +
-            " && document.querySelector('#managed-watchlist-search-scope')?.value === 'notes'" +
-            " && document.querySelector('#managed-watchlist-search-count')?.textContent === '1 of 2 listings'" +
-            " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ZERO is outside this search.')");
-        assertFullNoteReading("managed-note-1", complete, true);
-        assertFedCounts(6, 2, 2, 0, 1);
-        onWebView().withElement(findElement(Locator.XPATH,
-            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Save watchlist']")).perform(webClick());
-        String saved = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
-            " expected.memberships[1].note = " + JSONObject.quote(complete) + "; expected.baseVersion = 2; expected.dirty = false;" +
-            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
-        awaitPage("explicit Save acknowledges the exact Fed note and full reordered payload", saved +
-            " && document.body.textContent.includes('Version 2 · Saved')");
-        assertFedCounts(6, 2, 2, 1, 1);
-        onWebView().withElement(findElement(Locator.XPATH,
-            "//section[@aria-labelledby='managed-watchlist-heading']//button[normalize-space(.)='Load saved watchlist']")).perform(webClick());
-        awaitPage("reload preserves the full saved Fed reference and other note", saved +
-            " && document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(complete) +
-            " && document.querySelector('#managed-note-1')?.disabled === false");
-        assertFedCounts(6, 2, 2, 1, 2);
-        assertFullNoteReading("managed-note-1", complete, true);
-        selectWorkspaceView("Markets");
-        assertFedPacket("2026-10-23T18:00:00.000Z");
-        assertFedComparison("2026-10-21T18:00:00.000Z", "2026-10-23T18:00:00.000Z", 2, 2);
-        awaitPage("returning to Markets requires fresh choices without another feed read", saved +
-            " && document.querySelector('#managed-fed-note-announcement')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-destination')?.value === ''" +
-            " && document.querySelector('#managed-fed-note-disclosure')?.open === false");
-        assertFedCounts(6, 2, 2, 1, 2);
-    }
-
-    private void assertFedCounts(int reads, int aborted, int late, int saves, int loads) throws Exception {
-        awaitPage("bounded Fed reads and explicit watchlist operations without another source request",
-            DIAGNOSTICS + ".fed === " + reads + " && " + DIAGNOSTICS + ".fedAborted === " + aborted +
-            " && " + DIAGNOSTICS + ".fedLateResolved === " + late + " && " + DIAGNOSTICS + ".save === " + saves +
-            " && " + DIAGNOSTICS + ".load === " + loads + " && " + DIAGNOSTICS + ".calendar === 0" +
-            " && " + DIAGNOSTICS + ".annual === 0 && " + DIAGNOSTICS + ".filings === 0" +
-            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
-    }
-
 
     @Test
     public void beaAgendaRefreshCancelAndNavigationPreserveDraft() throws Exception {
@@ -3235,7 +2937,7 @@ public class ManagedWorkspaceInstrumentedTest {
         chooseNativeSelectOption(scope + " .managed-raw-close-comparison-end-select", date, date);
     }
 
-    private void chooseNativeSelectOption(String selector, String optionValue, String label) throws Exception {
+    void chooseNativeSelectOption(String selector, String optionValue, String label) throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> id = new AtomicReference<>();
         scenario.onActivity(activity -> {
@@ -4177,7 +3879,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && document.querySelector('.managed-watchlist-detail')?.textContent.includes('Selected ' + " + JSONObject.quote(symbol) + " + ' is outside this search.'); })()");
     }
 
-    private void assertFullNoteReading(String id, String expected, boolean open) throws Exception {
+    void assertFullNoteReading(String id, String expected, boolean open) throws Exception {
         awaitPage("full current draft is literal wrapped text: " + id,
             "(() => { const text = document.getElementById(" + JSONObject.quote(id + "-reading-text") + ");" +
             " const disclosure = text?.closest('details'); const summary = disclosure?.querySelector('summary');" +
@@ -5018,7 +4720,7 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     /** Read-only document-generation evidence; never called while the Activity is stopped. */
-    private double readDocumentTimeOrigin() throws Exception {
+    double readDocumentTimeOrigin() throws Exception {
         CountDownLatch returned = new CountDownLatch(1);
         AtomicReference<String> observed = new AtomicReference<>();
         scenario.onActivity(activity -> activity.getBridge().getWebView().evaluateJavascript(
@@ -5064,7 +4766,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFixtureBoundary(expectedResolves, 0);
     }
 
-    private void assertFixtureBoundary(int expectedResolves, int expectedSaves) throws Exception {
+    void assertFixtureBoundary(int expectedResolves, int expectedSaves) throws Exception {
         awaitPage("test-only source, origin and disconnected boundaries",
             "location.origin === 'https://localhost' && location.hash === ''" +
             " && document.querySelector('meta[name=investment-build-sha]')?.content === " + JSONObject.quote(expectedSourceSha) +
@@ -5113,11 +4815,11 @@ public class ManagedWorkspaceInstrumentedTest {
         });
     }
 
-    private void click(String selector) {
+    void click(String selector) {
         onWebView().withElement(findElement(Locator.CSS_SELECTOR, selector)).perform(webClick());
     }
 
-    private void selectWorkspaceView(String label) throws Exception {
+    void selectWorkspaceView(String label) throws Exception {
         onWebView().withElement(findElement(Locator.XPATH,
             "//nav[@aria-label='Workspace']/button[normalize-space(.)='" + label + "']")).perform(webClick());
         String expectedHeading = label.equals("My Watchlist") ? "managed-watchlist-heading" :
@@ -5152,7 +4854,7 @@ public class ManagedWorkspaceInstrumentedTest {
         selectWatchlistNote(selected);
     }
 
-    private void selectWatchlistNote(int index) throws Exception {
+    void selectWatchlistNote(int index) throws Exception {
         assertTrue("Only bounded invented note positions are selected", index >= 0 && index < 3);
         awaitPage("watchlist is visible before selecting a note",
             "document.querySelector('[aria-labelledby=managed-watchlist-heading]')?.hidden === false");
@@ -5169,7 +4871,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " && input.value === member.note && input.getClientRects().length > 0; })()");
     }
 
-    private void typeIntoInput(String id, String text) throws Exception {
+    void typeIntoInput(String id, String text) throws Exception {
         if (id.matches("managed-note-[0-9]+"))
             selectWatchlistNote(Integer.parseInt(id.substring("managed-note-".length())));
         touchInput(id);
@@ -5184,7 +4886,7 @@ public class ManagedWorkspaceInstrumentedTest {
         closeSoftKeyboard();
     }
 
-    private void replaceFocusedInput(String id, String expectedBefore, String text) throws Exception {
+    void replaceFocusedInput(String id, String expectedBefore, String text) throws Exception {
         String focused = "(() => { const input = document.getElementById(" + JSONObject.quote(id) + ");" +
             " return input && document.activeElement === input && input.disabled === false" +
             " && input.value === " + JSONObject.quote(expectedBefore) + "; })()";
@@ -5203,7 +4905,7 @@ public class ManagedWorkspaceInstrumentedTest {
         closeSoftKeyboard();
     }
 
-    private void touchInput(String id) throws Exception {
+    void touchInput(String id) throws Exception {
         touchInput(id, null);
     }
 
@@ -5336,7 +5038,7 @@ public class ManagedWorkspaceInstrumentedTest {
         }
     }
 
-    private void awaitPage(String description, String predicate) throws Exception {
+    void awaitPage(String description, String predicate) throws Exception {
         awaitPage(description, predicate, false);
     }
 
