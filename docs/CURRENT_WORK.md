@@ -918,9 +918,21 @@ pending source reads pause Review. The action adds no request or write.
 
 Focused action and composed reader tests, web types, lint and source boundaries
 pass. Checks include all three Annual groups, full-draft Save/reload, search-hidden
-destinations and cancellation of stale reader requests. Independent action source
-reviews pass. Chrome rendering and original hosted Android execution remain
-pending. See [comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
+destinations and cancellation of stale reader requests. Independent source and
+exact-bundle reviews pass. Chrome exposed an Annual handoff defect: the correct
+listing was selected, but an ordinary render cancelled the reader's focus request.
+The repair preserves Review through unchanged renders while cancelling it before
+changed source or choice contexts can reach the reader. All 59 focused Annual
+action cases pass, including 13 new commit-order cases; the original failure
+remains recorded.
+
+The corrected Chrome build passes at 1440, 390 and 320 CSS pixels. Both producers
+open the exact full note outside search, including while Save pauses editing.
+Whole-draft Save/reload, retained responses, cancellation, changed choices and
+retirement preserve their tested boundaries. The native fixture bundle remains
+below the unchanged 4 MiB limit. Original hosted Android execution for this
+candidate remains pending. See
+[comparison notes](APPWRITE_WATCHLIST.md#keep-a-comparison-in-a-research-note).
 
 ## Product scope
 
@@ -946,8 +958,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Resolve the original BEA candidate's Android failure and complete rendered and
-hosted acceptance for comparison note Review. Source integration remains subject
+Resolve the BEA candidate's original Android failures and complete hosted
+acceptance for comparison note Review. Source integration remains subject
 to its existing permission boundary.
 Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
