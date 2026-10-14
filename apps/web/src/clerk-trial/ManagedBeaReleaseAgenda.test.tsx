@@ -146,6 +146,27 @@ function harness() {
 }
 
 describe("managed BEA date selection", () => {
+  it("passes the accepted pair alongside the unchanged current filter and note response across retained attempts", async () => {
+    const h = harness();
+    await h.model.load();
+    await h.model.load();
+    const pair = h.model.getSnapshot().refreshComparison!;
+    h.view().onDateChange("2026-11-02");
+    h.view().onQueryChange("November");
+    const node = h.render();
+    expect(node.props.refreshComparison).toBe(pair);
+    expect(node.props.filterView!.view.response).toBe(pair.current);
+    expect(node.props.filterView!.view.visibleGroups[0]!.events[0]).toBe(
+      h.agenda.events[1],
+    );
+    h.read.mockRejectedValueOnce(new TrialApiError("invalid_response"));
+    await h.model.load();
+    expect(h.render().props.refreshComparison).toBe(pair);
+    expect(h.view().view.query).toBe("November");
+    expect(h.view().view.selectedDate).toBe("2026-11-02");
+    h.model.retire();
+    expect(h.render().props.refreshComparison).toBeNull();
+  });
   it("passes the current packet, resolved date and exact note context through the managed-only slot", async () => {
     const h = harness();
     await h.model.load();

@@ -259,6 +259,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("signout-uncertain-review");
         if (testName.getMethodName().equals("beaAgendaRefreshCancelAndNavigationPreserveDraft"))
             selectFixtureScenario("bea-agenda");
+        if (testName.getMethodName().equals("beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair"))
+            selectFixtureScenario("bea-agenda-comparison");
         if (testName.getMethodName().equals("beaSessionExpiryClearsAgendaAndFencesLateResponse"))
             selectFixtureScenario("bea-session-retirement");
         if (testName.getMethodName().equals("watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft"))
@@ -1137,6 +1139,49 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".marketsEod === 0");
     }
 
+
+    @Test
+    public void beaAgendaComparisonKeepsOriginalWindowsAndRetainedPair() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        prepareBeaDraft();
+        clickBeaAction("Load agenda");
+        awaitPage("first empty accepted agenda has no comparison", "document.querySelector('.managed-bea-refresh-comparison') === null" +
+            " && document.querySelector('.bea-agenda-empty')?.textContent.includes('No BEA releases are listed')");
+        assertBeaCounts(1, 0, 0);
+        clickBeaAction("Refresh agenda");
+        awaitPage("second accepted agenda marks exact current entries and preserves both windows",
+            "document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 3" +
+            " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T17:59:00.000Z|2026-10-20T17:59:00.000Z|2026-11-19T17:59:00.000Z|2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z'" +
+            " && document.querySelector('.managed-bea-refresh-comparison summary')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('.managed-bea-refresh-comparison')?.textContent.includes('Windows move with each load.')");
+        typeIntoInput("managed-bea-release-search", "Trade");
+        awaitPage("series filter narrows rows and note choices while whole comparison remains",
+            "document.querySelectorAll('.bea-agenda-day li').length === 1 && document.querySelectorAll('.bea-agenda-new').length === 1" +
+            " && document.querySelectorAll('#managed-bea-note-release option').length === 2" +
+            " && document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')");
+        clickBeaAction("Refresh agenda");
+        awaitPage("third read retains the accepted pair while pending", DIAGNOSTICS + ".calendar === 3 && document.querySelector('.bea-release-agenda [aria-busy=true]') !== null");
+        clickBeaAction("Cancel agenda");
+        click("#settle-cancelled-calendar");
+        assertBeaCounts(3, 1, 1);
+        awaitPage("cancelled late response keeps accepted pair and query", "document.querySelector('#managed-bea-release-search')?.value === 'Trade'" +
+            " && document.querySelector('.managed-bea-refresh-count')?.textContent.includes('3 of 3 scheduled releases.')");
+        assertBeaDraft();
+        selectWorkspaceView("My Watchlist");
+        selectWorkspaceView("Markets");
+        awaitPage("navigation resets filters while retaining accepted comparison", "document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 3");
+        clickBeaAction("Refresh agenda");
+        awaitPage("verified empty replacement compares only the preceding accepted agenda",
+            "document.querySelector('.managed-bea-refresh-count')?.textContent.includes('0 of 0 scheduled releases.')" +
+            " && Array.from(document.querySelectorAll('.managed-bea-refresh-comparison time')).map(t => t.dateTime).join('|') === '2026-10-20T18:00:00.000Z|2026-10-20T18:00:00.000Z|2026-11-19T18:00:00.000Z|2026-10-20T18:01:00.000Z|2026-10-20T18:01:00.000Z|2026-11-19T18:01:00.000Z'" +
+            " && document.querySelectorAll('.bea-agenda-new').length === 0 && document.querySelector('.bea-agenda-days') === null");
+        assertBeaCounts(4, 1, 1);
+        assertBeaDraft();
+        assertEquals("Agenda comparisons preserve the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
 
     @Test
     public void beaAgendaRefreshCancelAndNavigationPreserveDraft() throws Exception {
@@ -4778,7 +4823,7 @@ public class ManagedWorkspaceInstrumentedTest {
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
-            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-session-retirement") ||
+            scenarioName.equals("bea-agenda") || scenarioName.equals("bea-agenda-comparison") || scenarioName.equals("bea-session-retirement") ||
             scenarioName.equals("watchlist-comparison") || scenarioName.equals("watchlist-export") || scenarioName.equals("company-filings") || scenarioName.equals("fed-announcements") || scenarioName.equals("annual-comparison"));
         File index = new File(fixtureDirectory, "index.html");
         byte[] original = Files.readAllBytes(index.toPath());

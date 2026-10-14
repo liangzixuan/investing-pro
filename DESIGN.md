@@ -147,6 +147,15 @@ controls and wrap help and status text at narrow widths. Keep search and Clear
 mounted when the count changes, without moving focus or scrolling. Announce a
 successful replacement's reset. The local profile keeps its full agenda.
 
+Place the managed BEA comparison between its loaded-window description and
+filters. Show a compact full-agenda count and a native **Compared loaded agendas**
+disclosure. Its two source records retain exact UTC retrieval times, half-open
+windows and counts. Use the existing ink, line and focus tokens, a 44px summary
+and wrapping two-column metadata that stacks on narrow screens. Mark each exact
+current-only scheduled entry in plain text under its full series name. Explain
+moving-window scope without suggesting publication or a confirmed reschedule.
+Filters must keep the full comparison visible. Default local agendas omit it.
+
 Keep the managed BEA note form in an initially closed native disclosure after
 the filters and count, before the release rows. Use **Add a release to a note**
 as its 44px summary, with the native marker and visible keyboard focus. Keep the

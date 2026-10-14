@@ -106,6 +106,29 @@ agenda layout. Actual-main checks include a separately accepted 22-case native
 gate. API, website and signed Android delivery are accepted.
 No new live authenticated managed read or physical use is established.
 
+### Compare consecutive loaded agendas
+
+After a second successful **Refresh agenda**, the managed calendar shows how
+many current scheduled entries were absent from the preceding loaded agenda.
+Each entry uses its exact series name and UTC scheduled time. Different series
+at the same time stay separate; a changed name or time is a different entry.
+Marked rows retain their original source text, dates and note metadata.
+
+**Compared loaded agendas** opens both original retrieval times, window bounds
+and full event counts. The windows move with each load. A current-only entry
+can result from that movement or a schedule change; this does not establish
+publication, rescheduling or complete history. It does not match old and new
+entries into reschedule pairs or infer removed releases.
+
+The count describes the complete current agenda while series and date filters
+narrow only its visible rows and note choices. A successful empty replacement
+keeps a comparison and the separate verified-empty message. First load has no
+comparison. Pending, failed, invalid and cancelled attempts retain the accepted
+pair. Returning to Markets keeps it without another read; retirement clears it
+and rejects late responses. Each successful replacement compares only with the
+preceding accepted response. No comparison is saved and no extra read is made.
+Source, Chrome and native acceptance remain separate in Current work.
+
 ## Add a scheduled release to a note
 
 After loading the BEA agenda, open **Add a release to a note**, then choose a

@@ -35,7 +35,34 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
-The current candidate adds **Announcement view** to the loaded Fed feed. Newly
+The current candidate compares consecutive accepted BEA agendas by exact series
+name and UTC scheduled time. Current entries absent from the preceding agenda
+receive a visible marker; a compact count and native disclosure retain both
+original retrieval times, complete windows and event counts. Moving-window scope
+is explicit and makes no publication or rescheduling claim. Existing series/date
+filters and note metadata stay intact. Failed, invalid and cancelled attempts
+retain the accepted pair; retirement clears it and fences late responses. It
+adds no request, source, saved schema or preference. All 270 affected and composed
+cases pass, including the complete 176-case workspace suite, along with web
+types, scoped lint/format, source boundaries and Java syntax. Exact native and
+preview builds pass; the largest fixture scenario is 2,392,671 bytes under the
+unchanged 4 MiB limit. A separate four-read native journey preserves all 24 prior
+managed cases and their 52 captures; the suite now has 25 managed plus three
+disconnected cases. Original hosted compilation and execution remain required.
+
+Chrome at 1440, 390 and 320 CSS pixels verifies stacked metadata, wrapping,
+the 44px summary, keyboard disclosure/Clear and full counts during filtering.
+Excluded note choices clear without restoration while the destination stays.
+The complete scheduled reference retains its original UTC/Eastern time and
+window through the full note reader, one held RAM Save and reload; the other
+listing remains unchanged. Reading filters work while Save pauses editing.
+Pending, failed, invalid and cancelled reads retain the pair; equal and empty
+replacements reset the filters; retirement fences late authentication failure.
+These checks use invented data and establish no production or physical-device
+acceptance. See the
+[agenda guide](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-agendas).
+
+The preceding candidate adds **Announcement view** to the loaded Fed feed. Newly
 observed links require a comparison tied to the exact current response and
 intersect with title search. The list and note picker share the result, preserving
 original objects, order and dates. Complete feed metadata and comparison counts
@@ -54,8 +81,9 @@ full payload survive one RAM Save and reload; the other listing stays intact.
 Reading works during a held Save. Pending, failed and cancelled reads retain the
 view; equal and empty replacements reset it; retirement fences late completion.
 These checks use invented data. This browser run does not establish Review focus;
-the existing composed and native focus assertions remain. Original hosted native
-execution of the extended journey is required. See the
+the existing composed and native focus assertions remain. Its five original
+Actions jobs and all 27 Android cases passed; two CodeScene test-size warnings
+remain reviewed maintenance findings. No production promotion is included. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#inspect-newly-observed-links).
 
 The preceding design candidate keeps the optional Fed reference form in an initially

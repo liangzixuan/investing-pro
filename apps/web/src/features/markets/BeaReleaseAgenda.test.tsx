@@ -12,6 +12,7 @@ import {
 } from "./BeaReleaseAgenda";
 
 import { projectBeaReleaseView } from "./bea-release-view";
+import { compareBeaAgendas } from "./bea-agenda-comparison";
 
 function fixture(): PersonalEconomicCalendarDto {
   return {
@@ -76,6 +77,96 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("BEA release agenda presentation", () => {
+  it("keeps whole-agenda comparison dates and counts outside filters and marks only exact current entries", () => {
+    const agenda = parseManagedEconomicCalendar(fixture())!;
+    const previous = parseManagedEconomicCalendar({
+      ...fixture(),
+      events: [fixture().events[0]!, fixture().events[1]!],
+    })!;
+    const comparison = compareBeaAgendas(previous, agenda)!;
+    const input = props({
+      agenda,
+      refreshComparison: comparison,
+      filterView: {
+        view: projectBeaReleaseView(agenda, "2026-10-30", "second"),
+        resetNotice: false,
+        onDateChange: vi.fn(),
+        onQueryChange: vi.fn(),
+      },
+    });
+    const view = BeaReleaseAgenda(input);
+    const html = renderToStaticMarkup(<BeaReleaseAgenda {...input} />);
+    expect(html).toContain(
+      "Not in the previous loaded agenda: 2 of 4 scheduled releases.",
+    );
+    expect(html).toContain("Not in previous loaded agenda");
+    expect(nodes(view).filter((n) => n.type === "li")).toHaveLength(1);
+    expect(html.indexOf("managed-bea-refresh-comparison")).toBeLessThan(
+      html.indexOf('id="managed-bea-release-date"'),
+    );
+    expect(input.onLoad).not.toHaveBeenCalled();
+    const noMatch = renderToStaticMarkup(
+      <BeaReleaseAgenda
+        {...input}
+        filterView={{
+          ...input.filterView!,
+          view: projectBeaReleaseView(agenda, "", "absent"),
+        }}
+      />,
+    );
+    expect(noMatch).toContain(
+      "Not in the previous loaded agenda: 2 of 4 scheduled releases.",
+    );
+    expect(noMatch).not.toContain('class="bea-agenda-new"');
+    expect(noMatch).toContain("No loaded releases match these filters.");
+    expect(
+      renderToStaticMarkup(
+        <BeaReleaseAgenda {...input} agenda={{ ...agenda }} />,
+      ),
+    ).not.toContain("managed-bea-refresh-comparison");
+    expect(
+      renderToStaticMarkup(<BeaReleaseAgenda {...props({ agenda })} />),
+    ).not.toContain("managed-bea-refresh-comparison");
+  });
+
+  it("shows both original UTC retrieval times and complete windows, including a verified empty replacement", () => {
+    const previous = parseManagedEconomicCalendar(fixture())!;
+    const current = parseManagedEconomicCalendar({
+      ...fixture(),
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+      window: {
+        fromInclusive: "2026-10-21T18:00:00.000Z",
+        toExclusive: "2026-11-20T18:00:00.000Z",
+      },
+      events: [],
+    })!;
+    const html = renderToStaticMarkup(
+      <BeaReleaseAgenda
+        {...props({
+          agenda: current,
+          refreshComparison: compareBeaAgendas(previous, current),
+        })}
+      />,
+    );
+    for (const instant of [
+      previous.fetchedAt,
+      previous.window.fromInclusive,
+      previous.window.toExclusive,
+      current.fetchedAt,
+      current.window.fromInclusive,
+      current.window.toExclusive,
+    ])
+      expect(html).toContain(`dateTime="${instant}"`);
+    expect(html).toContain(
+      "Not in the previous loaded agenda: 0 of 0 scheduled releases.",
+    );
+    expect(html).toContain("No BEA releases are listed");
+    expect(html).toContain("Windows move with each load.");
+    expect(html).toContain(
+      "does not establish publication, rescheduling or a complete schedule history.",
+    );
+    expect(html).toContain("UTC; end excluded");
+  });
   it("places an optional note action after loaded date controls and before releases, without adding it to the local default or unloaded agenda", () => {
     const noteAction = <div data-note-slot="bea">Note controls</div>;
     const agenda = fixture();
