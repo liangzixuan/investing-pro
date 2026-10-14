@@ -43,7 +43,9 @@ Complete comparison counts and both windows remain visible. Excluded choices
 clear without restoration while destinations remain. Retained reads keep the
 view; accepted replacements and navigation reset it. Stale selection, response
 and comparison callbacks are fenced. Reading stays available during Save.
-It adds no request, saved preference or publication/rescheduling claim. Source
+It adds no request, saved preference or publication/rescheduling claim. The
+native workflow now explicitly requires the already added BEA comparison case,
+preserving all prior required cases and APK checks. Source
 verification is in progress; exact builds, Chrome and original hosted Android
 execution remain required. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#inspect-entries-absent-from-the-previous-agenda).
