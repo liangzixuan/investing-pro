@@ -3,6 +3,7 @@ import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   encodeMainWatchlistPayload,
+  PERSONAL_BEA_CALENDAR_SOURCE,
   type MainWatchlistPayload,
   type ManagedCatalogSnapshotDto,
 } from "@research-cockpit/contracts";
@@ -678,6 +679,299 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  function beaNoteContext(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const agenda = elements(screen).find(
+      (node) => node.type === ManagedBeaReleaseAgenda,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedBeaReleaseAgenda>
+    >;
+    return agenda.props.noteContext;
+  }
+
+  it("keeps a scheduled BEA reference through exact-note Review outside a search and whole-draft Save/reload", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        { ...payload.memberships[0]!, note: "Keep first thesis" },
+        {
+          ...payload.memberships[0]!,
+          listingId: "listing-two",
+          securityId: "security-two",
+          shareClassId: "class-two",
+          shareClassName: "Class B",
+          symbol: "TWO",
+          note: "Saved second thesis",
+        },
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("watchlist");
+    const page = { body: {}, activeElement: {} as unknown };
+    vi.stubGlobal("document", page);
+    const summary = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      focus: vi.fn(() => {
+        page.activeElement = summary;
+      }),
+      scrollIntoView: vi.fn(),
+    };
+    const reader = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      open: false,
+      querySelector: () => summary,
+    };
+    const field = { dataset: { managedNoteListingId: "" }, value: "" };
+    const panel = {
+      isConnected: true,
+      getClientRects: () => [{}],
+      querySelector: (selector: string) =>
+        selector.startsWith("textarea") ? field : reader,
+    };
+    const render = () => {
+      const root = noteReviewScreen(workspace);
+      const nodes = editorElements(root.screen);
+      const note = nodes.find(
+        (node) => node.type === ManagedNoteEditor,
+      ) as React.ReactElement<React.ComponentProps<typeof ManagedNoteEditor>>;
+      field.dataset.managedNoteListingId = note.props.listingId;
+      field.value = note.props.note;
+      mounted.editorRefs[0]!.current = panel;
+      return {
+        nodes,
+        note,
+        commit: () => {
+          for (const effect of mounted.editorEffects) effect();
+          root.commit();
+        },
+      };
+    };
+    const initial = render();
+    initial.commit();
+    const scope = initial.nodes.find(
+      (node) =>
+        (node.props as { id?: string }).id === "managed-watchlist-search-scope",
+    ) as React.ReactElement<React.ComponentProps<"select">>;
+    scope.props.onChange!({
+      target: { value: "notes" },
+    } as React.ChangeEvent<HTMLSelectElement>);
+    const search = initial.nodes.find(
+      (node) =>
+        (node.props as { id?: string }).id === "managed-watchlist-search",
+    ) as React.ReactElement<React.ComponentProps<"input">>;
+    search.props.onChange!({
+      target: { value: "Keep first" },
+    } as React.ChangeEvent<HTMLInputElement>);
+    render().commit();
+    workspace.note("listing-two", "  Fresh Cafe\u0301 東京 🧭 thesis");
+    workspace.move("listing-two", -1);
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const capture = {
+      response,
+      event: response.events[1]!,
+      showingPrevious: false,
+    };
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const context = beaNoteContext(workspace);
+    expect(context.members).toBe(before.memberships);
+    expect(context.active && context.editable).toBe(true);
+    expect(context.actions.getAction(capture, null).canAppend).toBe(false);
+    expect(
+      context.actions.append(capture, before.memberships[0]!).appended,
+    ).toBe(true);
+    const expected =
+      "  Fresh Cafe\u0301 東京 🧭 thesis Scheduled BEA release: Invented November release. Scheduled time: Mon, Nov 2, 2026, 8:30 AM EST (America/New_York); 2026-11-02T13:30:00.000Z (UTC). " +
+      `Source: U.S. Bureau of Economic Analysis; official schedule ${PERSONAL_BEA_CALENDAR_SOURCE.scheduleUrl}. ` +
+      "Original agenda retrieved at: 2026-10-20T18:00:00.000Z (UTC). Loaded window: 2026-10-20T18:00:00.000Z inclusive to 2026-11-19T18:00:00.000Z exclusive (UTC). Only schedule metadata was loaded; forecasts and released values were not supplied. Scheduled times may change; this reference does not confirm a release or company relevance. Evidence dates are unchanged; this action does not refresh sources.";
+    const after = workspace.coordinator.getSnapshot().draft!;
+    expect(after).toEqual({
+      ...before,
+      memberships: [
+        { ...before.memberships[0]!, note: expected },
+        before.memberships[1]!,
+      ],
+    });
+    context.onReview(after.memberships[0]!);
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    render().commit();
+    const selected = render();
+    selected.commit();
+    expect(selected.note.props).toMatchObject({
+      listingId: "listing-two",
+      note: expected,
+    });
+    expect(
+      selected.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id === "managed-watchlist-search",
+      )?.props,
+    ).toMatchObject({ value: "Keep first" });
+    expect(
+      selected.nodes.find(
+        (node) =>
+          (node.props as { id?: string }).id ===
+          "managed-watchlist-search-scope",
+      )?.props,
+    ).toMatchObject({ value: "notes" });
+    expect(reader.open).toBe(true);
+    expect(summary.focus).toHaveBeenCalledOnce();
+    expect(summary.scrollIntoView).toHaveBeenCalledOnce();
+    expect(page.activeElement).toBe(summary);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    const saved = vi.mocked(api.save).mock.calls[0]![0].payload;
+    expect(saved).toEqual({
+      ...after,
+      memberships: [
+        { ...after.memberships[0]!, note: expected.trim().normalize("NFC") },
+        after.memberships[1]!,
+      ],
+    });
+    vi.mocked(api.load).mockResolvedValueOnce({ version: 2, payload: saved });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      draft: saved,
+      baseVersion: 2,
+      dirty: false,
+    });
+    expect(workspace.agenda.getSnapshot().agenda).toBe(response);
+    expect(api.economicCalendar).toHaveBeenCalledOnce();
+    expect(api.load).toHaveBeenCalledTimes(2);
+    expect(api.save).toHaveBeenCalledOnce();
+    for (const read of [
+      api.eodHistory,
+      api.annualReport,
+      api.recentFilings,
+      api.monetaryAnnouncements,
+    ])
+      expect(read).not.toHaveBeenCalled();
+  });
+
+  it("fences BEA note callbacks on hidden or invalid Markets routes", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const capture = {
+      response,
+      event: response.events[0]!,
+      showingPrevious: false,
+    };
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    let route = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn(() => false),
+    };
+    const context = beaNoteContext(workspace, navigation);
+    route = true;
+    expect(
+      context.actions.getAction(capture, draft.memberships[0]!).canAppend,
+    ).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    route = false;
+    const invalid = beaNoteContext(workspace, { ...navigation, invalid: true });
+    expect(invalid.active).toBe(false);
+    expect(
+      invalid.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    invalid.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    expect(beaNoteContext(workspace).active).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview(draft.memberships[0]!);
+    expect(navigation.view).not.toHaveBeenCalled();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("blocks BEA Review during a pending request and discards callbacks after retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.economicCalendar).mockResolvedValueOnce(
+      economicCalendarFixture(),
+    );
+    await workspace.agenda.load();
+    const response = workspace.agenda.getSnapshot().agenda!;
+    const capture = {
+      response,
+      event: response.events[0]!,
+      showingPrevious: false,
+    };
+    const destination =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const context = beaNoteContext(workspace);
+    const pending = deferred<ReturnType<typeof economicCalendarFixture>>();
+    vi.mocked(api.economicCalendar).mockReturnValueOnce(pending.promise);
+    const load = workspace.agenda.load();
+    context.onReview(destination);
+    expect(workspace.getSnapshot().view).toBe("markets");
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    workspace.agenda.cancel();
+    expect(
+      context.actions.getAction(
+        { ...capture, showingPrevious: true },
+        destination,
+      ).canAppend,
+    ).toBe(true);
+    workspace.coordinator.retire();
+    expect(context.actions.getAction(capture, destination).canAppend).toBe(
+      false,
+    );
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    context.onReview(destination);
+    pending.resolve(economicCalendarFixture());
+    await load;
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.agenda.getSnapshot().agenda).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   function fedNoteContext(
     workspace: ManagedWorkspace,
     navigation?: ManagedCompanyNavigation,

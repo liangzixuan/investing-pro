@@ -5,7 +5,7 @@ import {
   PERSONAL_ECONOMIC_CALENDAR_WINDOW_DAYS,
   type PersonalEconomicCalendarDto,
 } from "@research-cockpit/contracts";
-import type { MouseEventHandler, Ref } from "react";
+import type { MouseEventHandler, ReactNode, Ref } from "react";
 import {
   formatBeaReleaseDate,
   groupBeaReleaseDates,
@@ -24,6 +24,7 @@ export interface BeaReleaseAgendaProps {
   readonly headingRef?: Ref<HTMLHeadingElement> | undefined;
   readonly showingPrevious?: boolean;
   readonly message?: string;
+  readonly noteAction?: ReactNode;
   readonly dateView?: {
     readonly selectedDate: string;
     readonly resetNotice: boolean;
@@ -52,6 +53,7 @@ export function BeaReleaseAgenda({
   showingPrevious = false,
   message = "",
   dateView,
+  noteAction,
 }: BeaReleaseAgendaProps) {
   const groups = groupBeaReleaseDates(agenda);
   const selectedDate = groups.some(
@@ -185,6 +187,7 @@ export function BeaReleaseAgenda({
                 </p>
               </div>
             )}
+            {noteAction}
             {groups.length === 0 ? (
               <p className="bea-agenda-empty">
                 No BEA releases are listed in this loaded 30-day window.

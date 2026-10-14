@@ -1087,6 +1087,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaPacket();
         assertBeaCounts(4, 2, 2);
         assertBeaDraft();
+        appendAndReviewBeaReference();
         assertEquals("Calendar actions preserve the document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
     }
@@ -1206,6 +1207,47 @@ public class ManagedWorkspaceInstrumentedTest {
             " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
             " && Array.from(document.querySelectorAll('.managed-watchlist-choices li > button > strong')).map(e => e.textContent).join(',') === 'ONE,ZERO'" +
             " && document.body.textContent.includes('Version 1 · Unsaved changes')");
+    }
+
+    private void appendAndReviewBeaReference() throws Exception {
+        String complete = "Draft survives native Back Scheduled BEA release: Invented GDP. Scheduled time: Thu, Oct 29, 2026, 8:30 AM EDT (America/New_York); 2026-10-29T12:30:00.000Z (UTC). Source: U.S. Bureau of Economic Analysis; official schedule https://www.bea.gov/news/schedule. Original agenda retrieved at: 2026-10-20T18:00:00.000Z (UTC). Loaded window: 2026-10-20T18:00:00.000Z inclusive to 2026-11-19T18:00:00.000Z exclusive (UTC). Only schedule metadata was loaded; forecasts and released values were not supplied. Scheduled times may change; this reference does not confirm a release or company relevance. Retained previous agenda; a newer schedule was not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        awaitPage("BEA reference requires two explicit empty choices",
+            "document.querySelector('#managed-bea-note-release')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
+            " && document.querySelector('.managed-bea-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        chooseNativeSelectOption("#managed-bea-note-release", "0", "    8:30 AM EDT · Invented GDP");
+        chooseNativeSelectOption("#managed-bea-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        assertBeaDraft();
+        assertBeaCounts(4, 2, 2);
+        clickBeaAction("Add release to note draft");
+        String exact = "(() => { const expected = JSON.parse(" + JSONObject.quote(originalDraft) + ");" +
+            " expected.memberships[1].note = " + JSONObject.quote(complete) + ";" +
+            " return JSON.stringify(" + DRAFT + ") === JSON.stringify(expected); })()";
+        awaitPage("BEA append preserves the exact retained schedule and every other draft field", exact +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('note draft')" +
+            " && document.activeElement === document.querySelector('.managed-bea-note-action button')");
+        clickBeaAction("Add release to note draft");
+        awaitPage("duplicate BEA reference is refused without losing Review", exact +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('already in the note draft')");
+        clickBeaAction("Review in My Watchlist");
+        awaitPage("BEA Review opens and focuses the exact current destination", exact +
+            " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.activeElement === document.querySelector('#managed-note-1-reading-toggle')");
+        assertFullNoteReading("managed-note-1", complete, true);
+        assertBeaCounts(4, 2, 2);
+        touchInput("managed-note-1");
+        replaceFocusedInput("managed-note-1", complete, NOTE);
+        awaitPage("restoring the original draft preserves every field and save count",
+            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        selectWorkspaceView("Markets");
+        assertBeaPacket();
+        assertBeaDraft();
+        assertBeaCounts(4, 2, 2);
+        awaitPage("returning to Markets requires fresh BEA choices without reading again",
+            "document.querySelector('#managed-bea-note-release')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === ''");
     }
 
     private void assertBeaCounts(int reads, int aborted, int late) throws Exception {

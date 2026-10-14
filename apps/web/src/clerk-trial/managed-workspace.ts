@@ -63,6 +63,10 @@ import {
 } from "./managed-watchlist-prices";
 import { ManagedFedAnnouncements } from "./managed-fed-announcements";
 import {
+  getBeaReleaseNoteEvidence,
+  type BeaReleaseNoteCapture,
+} from "./managed-bea-release-note";
+import {
   getFedAnnouncementNoteEvidence,
   type FedAnnouncementNoteCapture,
 } from "./managed-fed-announcement-note";
@@ -1727,7 +1731,7 @@ export class ManagedWorkspace {
         "Filing reference added to the note draft. Review and save all changes in My Watchlist.",
     };
   }
-  private fedNoteDraft(): MainWatchlistPayload | null {
+  private marketsNoteDraft(): MainWatchlistPayload | null {
     const draft = this.coordinator.getSnapshot().draft;
     return this.canEdit() &&
       !this.navigationBlocked &&
@@ -1746,7 +1750,7 @@ export class ManagedWorkspace {
     | { note: string; member: WatchlistMembership; reason: null }
     | { note: null; member: null; reason: string } {
     const refuse = (reason: string) => ({ note: null, member: null, reason });
-    const draft = this.fedNoteDraft();
+    const draft = this.marketsNoteDraft();
     if (!draft)
       return refuse(
         "Return to Markets with an editable current watchlist before adding an announcement.",
@@ -1800,6 +1804,67 @@ export class ManagedWorkspace {
     return {
       appended: true,
       message: `Announcement reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
+    };
+  }
+  private beaReleaseNoteProposal(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    const draft = this.marketsNoteDraft();
+    if (!draft)
+      return refuse(
+        "Return to Markets with an editable current watchlist before adding a release.",
+      );
+    const current = this.agenda.getSnapshot();
+    if (current.busy)
+      return refuse("Wait for the agenda request to finish or cancel it.");
+    if (!capture) return refuse("Choose a loaded release.");
+    if (
+      current.agenda !== capture.response ||
+      current.showingPrevious !== capture.showingPrevious
+    )
+      return refuse("Choose a release from the current loaded agenda.");
+    const evidence = getBeaReleaseNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason);
+    if (!destination || !draft.memberships.includes(destination))
+      return refuse("Choose a current watchlist note.");
+    if (
+      destination.note
+        .normalize("NFC")
+        .includes(evidence.excerpt.normalize("NFC"))
+    )
+      return refuse(
+        "This exact release reference is already in the note draft.",
+      );
+    const note =
+      destination.note + (destination.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member: destination, reason: null };
+  }
+  getBeaReleaseNoteAction(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.beaReleaseNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendBeaReleaseToNote(
+    capture: BeaReleaseNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.beaReleaseNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Release reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {

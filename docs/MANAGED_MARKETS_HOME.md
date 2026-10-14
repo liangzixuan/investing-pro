@@ -67,7 +67,9 @@ window visible. Late responses cannot replace it. Cancel restores focus to Load
 or Refresh. Leaving Markets cancels pending work and retains accepted results
 within the session; returning, background/resume and opening company research
 make no calendar request. Session retirement clears the agenda immediately.
-Calendar actions do not save, reconcile, reorder or edit the watchlist.
+Load, Refresh, Cancel and date selection do not save, reconcile, reorder or edit
+the watchlist. The separate note action below changes only an explicitly chosen
+note draft.
 
 **Release date** focuses the loaded agenda on one Eastern date. **All loaded
 dates** shows the complete packet; each dated option includes its release count.
@@ -95,6 +97,38 @@ Java assertions. Invented-data Brave desktop and 390-pixel checks cover the shar
 agenda layout. Actual-main checks include a separately accepted 22-case native
 gate. API, website and signed Android delivery are accepted.
 No new live authenticated managed read or physical use is established.
+
+## Add a scheduled release to a note
+
+After loading the BEA agenda, choose a **Release** and an **Add to note**
+destination. Both choices start empty. The release picker keeps all admitted
+events, grouped by Eastern date. **Release date** narrows both the visible agenda
+and the picker; simultaneous series remain separate. Full selected release text
+and the destination's listing, share class and exchange wrap below the controls.
+
+**Add release to note draft** appends the complete series name, scheduled Eastern
+time and exact UTC instant, original retrieval time, loaded window and official
+source link to that member's latest note. A retained agenda is identified in the
+reference. It describes a schedule that may change; it does not confirm a release,
+report a value or forecast, or establish company relevance. Adding makes no request.
+
+The action changes only the selected note. It preserves existing raw text and
+membership order. An identical reference is refused, including after saved text
+normalization. If the complete note exceeds its limit, nothing is clipped or
+appended. **Review in My Watchlist** opens that exact note's full reader, even
+outside a retained search. **Save watchlist** remains explicit and saves the
+whole draft, including other changes.
+
+Pending reads pause choices, Add and Review. Failure or Cancel keeps the loaded
+event choice with the current retained-result qualification. An accepted response,
+including equal content, clears the release choice. A date change clears it only
+when the selected event is excluded, explains the change and chooses no fallback.
+The destination remains when it still exists; note edits and ordering use the
+current member. Leaving or hiding Markets clears both choices. Stale callbacks,
+catalog changes and session retirement cannot append to another draft.
+
+This action adds no reminder, event history or separate save path. Source,
+browser, native and delivery acceptance are recorded in [Current work](CURRENT_WORK.md).
 
 ## Federal Reserve announcements
 

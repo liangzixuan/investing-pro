@@ -861,10 +861,52 @@ evidence; excluded stale captures and tooling limits remain recorded.
 
 The existing native transitions now assert full-to-empty and empty-to-full
 comparison before the unchanged exact reference, Review, Save and reload sequence.
-The bundle stays within the existing asset limit; original hosted execution for
-this candidate remains pending. No request, source, saved schema, stored feed
-history or dependency was added. See
+The bundle stays within the existing asset limit. All five original PR128 Actions
+jobs passed, including 27 Android cases and the executed APK isolation gate.
+CodeScene passed with no annotations. The native case-end images do not establish
+loaded comparison geometry. No request, source, saved schema, stored feed history
+or dependency was added. See
 [Compare consecutive loaded feeds](MANAGED_MARKETS_HOME.md#compare-consecutive-loaded-feeds).
+
+### Scheduled BEA release reference candidate
+
+This increment connects one explicitly chosen loaded BEA release to one
+chosen watchlist note. The reference keeps the complete series, scheduled Eastern
+time and exact UTC instant, original agenda retrieval/window/source and any
+retained-result qualification. It describes a schedule that may change, with no
+released value, forecast, reminder or company-relevance claim.
+
+Existing date selection narrows the complete native picker; no event is silently
+omitted. Add changes only the latest chosen note. Exact-note Review opens the
+chosen reader, including a destination outside the current search. Whole-draft
+Save remains explicit. No source read, API/schema change or persistence path was
+added.
+
+Affected model, component and composed tests, web types, scoped lint/format and
+source boundaries pass. Independent source and exact preview/native bundle reviews
+pass. Chrome checks cover all 512 choices, keyboard selection of the last release,
+date filtering, equal and empty replacements, retained failed responses, pending
+guards and late completion. The exact reference reaches the chosen full-note
+reader, then whole-draft Save and reload preserve both notes and version 2.
+Retirement clears the active draft and loaded agenda.
+
+Layouts at 1440, 390 and 320 CSS pixels fit the page. Complete selected series and
+identities wrap, with 44px controls. The browser capture did not expose the native
+dropdown popup, so its popup geometry remains unverified. Saved notes span more
+than one mobile screen; complete DOM text and payload checks establish their full
+contents. A stalled screenshot call and capped diagnostic strings remain recorded
+with their limits. The original Android run passed 26 of 27 cases. The new BEA
+selection failed because its exact native label matcher omitted the four spaces
+that the grouped picker added before the visible release label. The test now uses
+that observed label; its generic picker helper, selected-value check, deadlines
+and remaining assertions are unchanged. That corrected run also passed 26 of 27
+cases. It passed exact append, duplicate refusal and full-note Review, then failed
+when restoration typed the old note into the existing paragraph. The test now
+uses the existing guarded native replacement helper, which verifies the full
+prior value and selection before replacing it. Both original failures remain
+recorded. Complete native execution and package isolation still require the
+updated revision's hosted checks. See
+[scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ## Product scope
 
@@ -890,8 +932,10 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Complete original hosted acceptance for feed comparison and source integration
-when permission arrives. Preserve explicit source requests,
+Complete original hosted acceptance for the BEA note candidate, then connect the
+existing price and Annual comparison append actions to exact-note Review. Source
+integration remains subject to its existing permission boundary.
+Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

@@ -74,6 +74,39 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("BEA release agenda presentation", () => {
+  it("places an optional note action after loaded date controls and before releases, without adding it to the local default or unloaded agenda", () => {
+    const noteAction = <div data-note-slot="bea">Note controls</div>;
+    const input = props({
+      noteAction,
+      dateView: { selectedDate: "", resetNotice: false, onDateChange: vi.fn() },
+    });
+    const html = renderToStaticMarkup(<BeaReleaseAgenda {...input} />);
+    expect(html.indexOf('id="managed-bea-release-date-count"')).toBeLessThan(
+      html.indexOf('data-note-slot="bea"'),
+    );
+    expect(html.indexOf('data-note-slot="bea"')).toBeLessThan(
+      html.indexOf('class="bea-agenda-days"'),
+    );
+    expect(
+      renderToStaticMarkup(
+        <BeaReleaseAgenda {...props({ noteAction, agenda: null })} />,
+      ),
+    ).not.toContain("data-note-slot");
+    expect(renderToStaticMarkup(<BeaReleaseAgenda {...props()} />)).toBe(
+      renderToStaticMarkup(
+        <BeaReleaseAgenda {...props({ noteAction: undefined })} />,
+      ),
+    );
+    expect(input.onLoad).not.toHaveBeenCalled();
+    const empty = renderToStaticMarkup(
+      <BeaReleaseAgenda
+        {...props({ noteAction, agenda: { ...fixture(), events: [] } })}
+      />,
+    );
+    expect(empty.indexOf('data-note-slot="bea"')).toBeLessThan(
+      empty.indexOf('class="bea-agenda-empty"'),
+    );
+  });
   it("makes only an opted-in heading focusable and preserves the local heading markup", () => {
     const headingRef = React.createRef<HTMLHeadingElement>();
     const input = props({ headingRef });

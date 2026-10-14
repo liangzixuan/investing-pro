@@ -986,6 +986,44 @@ export function ManagedWorkspaceScreen({
                   <ManagedBeaReleaseAgenda
                     model={workspace.agenda}
                     headingRef={agendaHeading}
+                    noteContext={{
+                      members: saved.draft?.memberships ?? [],
+                      active: isMarketsCurrent(),
+                      editable,
+                      actions: {
+                        getAction: (capture, destination) =>
+                          isMarketsCurrent()
+                            ? workspace.getBeaReleaseNoteAction(
+                                capture,
+                                destination,
+                              )
+                            : {
+                                canAppend: false,
+                                reason:
+                                  "Return to Markets with an editable current watchlist before adding a release.",
+                              },
+                        append: (capture, destination) =>
+                          isMarketsCurrent()
+                            ? workspace.appendBeaReleaseToNote(
+                                capture,
+                                destination,
+                              )
+                            : {
+                                appended: false,
+                                message:
+                                  "Return to Markets with an editable current watchlist before adding a release.",
+                              },
+                      },
+                      onReview: (member) => {
+                        if (
+                          !isMarketsCurrent() ||
+                          !workspace.canEdit() ||
+                          workspace.agenda.getSnapshot().busy
+                        )
+                          return;
+                        reviewWatchlistNote(member);
+                      },
+                    }}
                   />
                   <ManagedFedAnnouncements
                     model={workspace.announcements}
