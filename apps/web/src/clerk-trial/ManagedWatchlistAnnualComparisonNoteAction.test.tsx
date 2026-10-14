@@ -20,7 +20,10 @@ const hooks = vi.hoisted(() => ({
   memoIndex: 0,
   ref: { current: null },
   changed: false,
-  effect: undefined as undefined | (() => () => void),
+  effects: [] as Array<{
+    run: () => void | (() => void);
+    deps: readonly unknown[];
+  }>,
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof React>()),
@@ -44,15 +47,18 @@ vi.mock("react", async (original) => ({
     return hooks.memos[index]!.value;
   },
   useRef: () => hooks.ref,
-  useLayoutEffect: (effect: () => () => void) => {
-    hooks.effect = effect;
+  useLayoutEffect: (
+    run: () => void | (() => void),
+    deps: readonly unknown[],
+  ) => {
+    hooks.effects.push({ run, deps });
   },
 }));
 afterEach(() => {
   hooks.states = [];
   hooks.memos = [];
   hooks.ref.current = null;
-  hooks.effect = undefined;
+  hooks.effects = [];
   vi.unstubAllGlobals();
 });
 
@@ -118,19 +124,39 @@ async function harness(
     editable: true,
     actions,
   };
-  let cleanup: (() => void) | undefined;
-  const render = (changes: Partial<Props> = {}) => {
+  let committedEffects: Array<{
+    deps: readonly unknown[];
+    cleanup: void | (() => void);
+  }> = [];
+  const render = (changes: Partial<Props> = {}, beforeLayout?: () => void) => {
     props = { ...props, ...changes };
     let node: ReturnType<typeof ManagedWatchlistAnnualComparisonNoteAction>;
     for (let i = 0; i < 3; i++) {
       hooks.stateIndex = 0;
       hooks.memoIndex = 0;
       hooks.changed = false;
+      hooks.effects = [];
       node = ManagedWatchlistAnnualComparisonNoteAction(props);
       if (!hooks.changed) break;
     }
-    cleanup?.();
-    cleanup = hooks.effect?.();
+    const changedEffects = hooks.effects.map((effect, index) => {
+      const previous = committedEffects[index];
+      return (
+        !previous ||
+        effect.deps.length !== previous.deps.length ||
+        effect.deps.some((value, i) => !Object.is(value, previous.deps[i]))
+      );
+    });
+    committedEffects.forEach((effect, index) => {
+      if (changedEffects[index]) effect.cleanup?.();
+    });
+    // React cleans up changed effects before earlier siblings run their layout effects.
+    beforeLayout?.();
+    committedEffects = hooks.effects.map((effect, index) =>
+      changedEffects[index]
+        ? { deps: effect.deps, cleanup: effect.run() }
+        : committedEffects[index]!,
+    );
     return node!;
   };
   const select = (kind: "group" | "destination", node = render()) =>
@@ -162,7 +188,10 @@ async function harness(
     button,
     review,
     change,
-    unmount: () => cleanup?.(),
+    unmount: () => {
+      for (const effect of committedEffects) effect.cleanup?.();
+      committedEffects = [];
+    },
     html: (node = render()) => renderToStaticMarkup(node),
   };
 }
@@ -861,4 +890,98 @@ describe("Annual comparison note action", () => {
     expect(h.review()).toBeUndefined();
     expect(h.actions.review).not.toHaveBeenCalled();
   });
+  it.each(["parent", "read-only"] as const)(
+    "keeps queued Review live for an earlier sibling during an unchanged %s commit",
+    async (kind) => {
+      const h = await harness();
+      h.change("destination", members.left.listingId);
+      h.button().props.onClick!();
+      const node = h.render();
+      const append = h.button(node).props.onClick!;
+      h.review(node)!.props.onClick!();
+      const isCurrentChoice = vi.mocked(h.actions.review).mock.calls[0]![2];
+      expect(isCurrentChoice()).toBe(true);
+      h.render(
+        kind === "read-only"
+          ? { editable: false, state: { ...h.state, canRead: false } }
+          : {},
+        () => {
+          expect(isCurrentChoice()).toBe(true);
+          append();
+          expect(h.actions.append).toHaveBeenCalledOnce();
+        },
+      );
+      expect(isCurrentChoice()).toBe(true);
+      expect(h.read).toHaveBeenCalledTimes(2);
+      h.unmount();
+      expect(isCurrentChoice()).toBe(false);
+    },
+  );
+
+  it.each([
+    "group",
+    "basis",
+    "destination",
+    "member",
+    "pending",
+    "left-running",
+    "right-running",
+    "source",
+    "retained",
+    "inactive",
+    "catalog",
+  ] as const)(
+    "fences queued Review before earlier sibling effects when %s changes",
+    async (kind) => {
+      const h = await harness();
+      h.change("destination", members.left.listingId);
+      h.button().props.onClick!();
+      h.review()!.props.onClick!();
+      const isCurrentChoice = vi.mocked(h.actions.review).mock.calls[0]![2];
+      const changes: Partial<Props> = {};
+      if (kind === "group") h.change("group", "cash");
+      else if (kind === "destination")
+        h.change("destination", members.right.listingId);
+      else if (kind === "basis")
+        changes.bases = { left: "SalesRevenueNet", right: "SalesRevenueNet" };
+      else if (kind === "member")
+        changes.memberships = [
+          { ...members.left, note: "Changed draft" },
+          members.right,
+        ];
+      else if (kind === "inactive") changes.active = false;
+      else if (kind === "catalog")
+        changes.state = { ...h.state, catalogChanged: true };
+      else if (kind === "pending")
+        changes.state = {
+          ...h.state,
+          pending: { side: "left", cancel: vi.fn() },
+        };
+      else {
+        const side = kind === "right-running" ? "right" : "left";
+        const report = h.state[side].report;
+        changes.state = {
+          ...h.state,
+          [side]: {
+            ...h.state[side],
+            report: {
+              ...report,
+              ...(kind === "source"
+                ? { response: structuredClone(report.response) }
+                : kind === "retained"
+                  ? { showingPrevious: true }
+                  : { running: true }),
+            },
+          },
+        };
+      }
+      h.render(changes, () => expect(isCurrentChoice()).toBe(false));
+      // Fresh member publication permits a new Review; Screen separately fences
+      // the original request's exact draft and member.
+      expect(isCurrentChoice()).toBe(kind === "member");
+      expect(h.actions.append).toHaveBeenCalledOnce();
+      expect(h.actions.review).toHaveBeenCalledOnce();
+      expect(h.read).toHaveBeenCalledTimes(2);
+    },
+  );
 });

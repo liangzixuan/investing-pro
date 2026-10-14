@@ -175,7 +175,7 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const latest = useRef<{
     props: Props;
-    context: Context;
+    context: Context | null;
     reviewScope: ReviewScope;
     member: WatchlistMembership | null;
     hasSuccess: boolean;
@@ -183,9 +183,24 @@ export function ManagedWatchlistAnnualComparisonNoteAction(props: Props) {
   useLayoutEffect(() => {
     latest.current = { props, context, reviewScope, member, hasSuccess };
     return () => {
-      latest.current = null;
+      // Revoke append callbacks before publishing new props. A sibling reader may
+      // still check an unchanged Review scope during this commit.
+      if (latest.current) latest.current.context = null;
     };
   }, [props, context, reviewScope, member, hasSuccess]);
+  useLayoutEffect(
+    () => () => {
+      latest.current = null;
+    },
+    [
+      reviewScope,
+      member,
+      hasSuccess,
+      props.state.pending,
+      left.report.running,
+      right.report.running,
+    ],
+  );
   const capturedCurrent = () => {
     const current = latest.current;
     return current?.context === context && context.active && context.editable
