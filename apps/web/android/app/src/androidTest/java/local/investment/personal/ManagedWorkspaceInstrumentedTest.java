@@ -1055,6 +1055,14 @@ public class ManagedWorkspaceInstrumentedTest {
         assertBeaCounts(1, 0, 0);
         assertBeaDraft();
 
+        awaitPage("loaded agenda starts with note tools closed and source dates outside",
+            "document.querySelector('#managed-bea-note-disclosure')?.open === false" +
+            " && document.querySelector('#managed-bea-note-disclosure-toggle')?.textContent === 'Add a release to a note'" +
+            " && document.querySelector('#managed-bea-note-disclosure-toggle')?.getBoundingClientRect().height >= 44" +
+            " && document.querySelector('#managed-bea-note-disclosure #managed-bea-note-release') !== null" +
+            " && document.querySelector('.bea-agenda-source')?.closest('details') === null" +
+            " && document.querySelector('.bea-release-agenda .bea-agenda-note time')?.closest('details') === null");
+
         chooseNativeSelectOption("#managed-bea-release-date", "2026-10-29", "Thu, Oct 29, 2026 (2)");
         assertBeaDate("2026-10-29", "Invented GDP|Invented Income", 2);
         assertMarketsNavigation(1);
@@ -1251,6 +1259,9 @@ public class ManagedWorkspaceInstrumentedTest {
             "document.querySelector('#managed-bea-note-release')?.value === ''" +
             " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
             " && document.querySelector('.managed-bea-note-action button')?.getAttribute('aria-disabled') === 'true'");
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("note tools open explicitly before choosing a release",
+            "document.querySelector('#managed-bea-note-disclosure')?.open === true");
         chooseNativeSelectOption("#managed-bea-note-release", "0", "    8:30 AM EDT · Invented GDP");
         chooseNativeSelectOption("#managed-bea-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
         assertBeaDraft();
@@ -1265,6 +1276,20 @@ public class ManagedWorkspaceInstrumentedTest {
         clickBeaAction("Add release to note draft");
         awaitPage("duplicate BEA reference is refused without losing Review", exact +
             " && document.querySelector('.managed-bea-note-status')?.textContent.includes('already in the note draft')");
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("closing note tools retains exact choices, feedback and draft", exact +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === false" +
+            " && document.activeElement === document.querySelector('#managed-bea-note-disclosure-toggle')" +
+            " && document.querySelector('#managed-bea-note-release')?.value === '0'" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === 'listing-zero'" +
+            " && document.querySelector('.managed-bea-note-status')?.textContent.includes('already in the note draft')");
+        assertBeaCounts(4, 2, 2);
+        click("#managed-bea-note-disclosure-toggle");
+        awaitPage("reopening note tools retains exact choices and Review", exact +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === true" +
+            " && document.querySelector('#managed-bea-note-release')?.value === '0'" +
+            " && document.querySelector('#managed-bea-note-destination')?.value === 'listing-zero'" +
+            " && [...document.querySelectorAll('.managed-bea-note-action button')].some(b => b.textContent === 'Review in My Watchlist' && b.getAttribute('aria-disabled') === 'false')");
         clickBeaAction("Review in My Watchlist");
         awaitPage("BEA Review opens and focuses the exact current destination", exact +
             " && document.querySelector('.managed-navigation [aria-current=page]')?.textContent === 'My Watchlist'" +
@@ -1283,7 +1308,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("returning to Markets requires fresh BEA choices without reading again",
             "document.querySelector('#managed-bea-note-release')?.value === ''" +
             " && document.querySelector('#managed-bea-note-destination')?.value === ''" +
-            " && document.querySelector('#managed-bea-release-search')?.value === ''");
+            " && document.querySelector('#managed-bea-release-search')?.value === ''" +
+            " && document.querySelector('#managed-bea-note-disclosure')?.open === false");
     }
 
     private void assertBeaCounts(int reads, int aborted, int late) throws Exception {

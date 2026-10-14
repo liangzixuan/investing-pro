@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3/M4 increment searches full series names in the loaded BEA schedule.
+The current M3 design increment keeps the BEA note form in a native disclosure.
+The release list is easier to reach, while original source dates, warnings and
+filters stay visible. Opening and closing the form preserves current note choices
+and feedback. See [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
+The preceding M3/M4 increment searches full series names in the loaded BEA schedule.
 Search and Eastern date selection narrow the agenda and note picker together,
 preserving original source text, dates and all admitted events. Filters make no
 request or saved change. See [BEA agenda](MANAGED_MARKETS_HOME.md#bea-release-agenda).

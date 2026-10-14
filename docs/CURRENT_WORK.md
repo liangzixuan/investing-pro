@@ -982,6 +982,19 @@ Windows timeout and its unknown cause remain recorded. These local results do
 not establish the cause or guarantee future timings. Hosted acceptance of this
 test change remains pending.
 
+### Calendar note-form disclosure candidate
+
+The BEA note form starts closed behind **Add a release to a note**, between the
+reading filters and release rows. A native summary preserves keyboard access and
+keeps the current form mounted. Toggling preserves choices and feedback; existing
+response, filter, navigation and session rules still apply. Original source dates,
+timezone, warnings and release rows remain outside the disclosure.
+
+All 23 direct presenter cases and scoped lint/format pass. The existing native
+journey now checks the closed default and exact draft, choice and feedback
+retention across closing and reopening. Integrated browser and native acceptance
+remain pending. See the [BEA note guide](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,

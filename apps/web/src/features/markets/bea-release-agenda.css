@@ -150,3 +150,29 @@
     flex: 1 1 100%;
   }
 }
+
+.clerk-trial.managed-frame .managed-bea-note-disclosure {
+  min-width: 0;
+  margin-block: 12px;
+  overflow-wrap: anywhere;
+}
+.clerk-trial.managed-frame .managed-bea-note-disclosure > summary {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding-block: 10px;
+  color: var(--managed-ink);
+  cursor: pointer;
+}
+.clerk-trial.managed-frame
+  .managed-bea-note-disclosure
+  > summary:focus-visible {
+  outline: 3px solid var(--managed-action);
+  outline-offset: 3px;
+}
+.clerk-trial.managed-frame
+  .managed-bea-note-disclosure
+  > .managed-bea-note-action {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}

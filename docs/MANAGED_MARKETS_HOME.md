@@ -108,8 +108,13 @@ No new live authenticated managed read or physical use is established.
 
 ## Add a scheduled release to a note
 
-After loading the BEA agenda, choose a **Release** and an **Add to note**
-destination. Both choices start empty. The release picker keeps all admitted
+After loading the BEA agenda, open **Add a release to a note**, then choose a
+**Release** and an **Add to note** destination. The form starts closed so the
+release list is easier to reach. Closing and reopening it keeps current choices
+and feedback; it makes no request or draft change. Source dates, timezone,
+warnings and release rows remain visible outside the form.
+
+Both choices start empty. The release picker keeps all admitted
 events, grouped by Eastern date. Search and **Release date** narrow both the visible
 agenda and the picker; simultaneous series remain separate. Full selected release text
 and the destination's listing, share class and exchange wrap below the controls.
