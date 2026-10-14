@@ -70,6 +70,80 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it("keeps note controls mounted in an initially closed native disclosure after the list", () => {
+    const noteAction = (
+      <div data-note-action="disclosure">Current note controls</div>
+    );
+    const announcements = fixture();
+    const input = props({
+      announcements,
+      noteAction,
+      filterView: {
+        view: projectFedAnnouncementView(announcements, ""),
+        resetNotice: false,
+        onQueryChange: vi.fn(),
+      },
+    });
+    const view = FedMonetaryAnnouncements(input);
+    const disclosure = nodes(view).find(
+      (node) => node.props.id === "managed-fed-note-disclosure",
+    )!;
+    expect(disclosure.type).toBe("details");
+    expect(disclosure.key).toBeNull();
+    expect(disclosure.props.open).toBeUndefined();
+    expect(disclosure.props.defaultOpen).toBeUndefined();
+    expect(disclosure.props.onToggle).toBeUndefined();
+    const summary = nodes(disclosure).find((node) => node.type === "summary")!;
+    expect(summary.props.id).toBe("managed-fed-note-disclosure-toggle");
+    expect(text(summary)).toBe("Add an announcement to a note");
+    expect(nodes(disclosure)).toContain(noteAction);
+    expect(
+      nodes(disclosure).some(
+        (node) =>
+          node.type === "time" || node.type === "li" || node.type === "input",
+      ),
+    ).toBe(false);
+    const html = renderToStaticMarkup(view);
+    expect(html.indexOf("</ul>")).toBeLessThan(
+      html.indexOf('id="managed-fed-note-disclosure"'),
+    );
+    expect(html.indexOf('id="managed-fed-title-search"')).toBeLessThan(
+      html.indexOf('id="managed-fed-note-disclosure"'),
+    );
+    expect(html).toContain('data-note-action="disclosure"');
+    expect(html).not.toContain("<details open");
+  });
+  it.each([
+    { busy: true, showingPrevious: true, error: "invalid_response" as const },
+    { announcements: { ...fixture(), items: [], availableItemCount: 0 } },
+  ])(
+    "keeps loaded notices and empty results outside note tools for %j",
+    (change) => {
+      const view = FedMonetaryAnnouncements(
+        props({
+          ...change,
+          noteAction: (
+            <div data-note-action="disclosure">Current note controls</div>
+          ),
+        }),
+      );
+      const disclosure = nodes(view).find(
+        (node) => node.props.id === "managed-fed-note-disclosure",
+      )!;
+      expect(disclosure.props.open).toBeUndefined();
+      expect(
+        nodes(disclosure).filter(
+          (node) => node.props.role === "alert" || node.type === "time",
+        ),
+      ).toHaveLength(0);
+      expect(renderToStaticMarkup(view)).toContain(
+        'data-note-action="disclosure"',
+      );
+      expect(nodes(view).filter((node) => node.type === "li")).toHaveLength(
+        change.announcements ? 0 : 3,
+      );
+    },
+  );
   it("shows a labelled reading search, exact matching title/link/date and full-feed metadata", () => {
     const announcements = fixture();
     const onQueryChange = vi.fn();

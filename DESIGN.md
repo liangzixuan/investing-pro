@@ -106,6 +106,12 @@ full titles and dates; show a separate no-match message. The same title view
 drives note choices. An excluded choice requires a fresh selection and retains
 its valid destination. Reading search remains available while editing pauses.
 
+Keep the optional Fed note form after the list inside **Add an announcement to a
+note**, an initially closed native disclosure. Its summary uses the standard
+44px target, native marker and focus outline. Keep the form mounted so toggling
+preserves choices and feedback; retain the existing response and session rules.
+Source metadata, search, comparison and rows stay outside the disclosure.
+
 After the loaded Fed list, provide two native choices: **Announcement** and
 **Add to note**. Start both empty. Show the complete chosen title and destination
 identity in wrapping text below them. Use secondary 44px controls for adding the

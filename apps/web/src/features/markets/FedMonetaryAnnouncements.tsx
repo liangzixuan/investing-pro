@@ -226,7 +226,17 @@ export function FedMonetaryAnnouncements({
                 ))}
               </ul>
             )}
-            {noteAction}
+            {noteAction ? (
+              <details
+                id="managed-fed-note-disclosure"
+                className="managed-fed-note-disclosure"
+              >
+                <summary id="managed-fed-note-disclosure-toggle">
+                  Add an announcement to a note
+                </summary>
+                {noteAction}
+              </details>
+            ) : null}
           </>
         )}
       </div>

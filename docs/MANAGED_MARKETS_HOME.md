@@ -219,7 +219,13 @@ explicitly. A still-matching choice and its feedback remain available.
 
 ### Add an announcement reference to a note
 
-After loading the feed, choose an **Announcement** and a current watchlist entry
+After loading the feed, open **Add an announcement to a note**, a native disclosure
+after the announcement list. It starts closed. Closing and reopening keeps the
+current form mounted with its choices, feedback and note draft. Source metadata,
+search, refresh comparison, announcements and warnings remain outside it. A new
+Markets visit starts with the disclosure closed.
+
+Choose an **Announcement** and a current watchlist entry
 under **Add to note**. Both choices start empty. The complete chosen title and
 destination identity appear below the controls. **Add announcement to note draft**
 appends the reference to that entry's latest note without changing its existing

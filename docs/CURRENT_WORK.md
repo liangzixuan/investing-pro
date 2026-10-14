@@ -35,7 +35,14 @@ owner write was performed, and the initial failure's cause is unknown.
 
 ## Current task and next acceptance
 
-The latest candidate adds title search to the loaded Federal Reserve feed.
+The latest design candidate keeps the optional Fed reference form in an initially
+closed native disclosure after the announcement list. The form stays mounted,
+preserving choices, feedback and the current note across toggling. Metadata,
+search, comparison, warnings and titles remain outside. Request, filter, note
+admission and session behavior are unchanged. Source and rendered verification
+of this presentation increment remain pending.
+
+The preceding candidate adds title search to the loaded Federal Reserve feed.
 The same view drives the list and announcement note choices. Original titles,
 links, publication times, loaded metadata and complete refresh comparison stay
 intact. An excluded note choice clears with its feedback while a valid

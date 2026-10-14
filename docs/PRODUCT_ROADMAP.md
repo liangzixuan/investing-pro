@@ -6,7 +6,12 @@ release and the selected next task. The September market-platform goal remains;
 the October delivery sequence first established a usable managed website and
 Android client. Older sprint plans preserve their original scope and evidence.
 
-The current M3/M4 increment searches full titles in the loaded Fed feed. One
+The current M3 design increment keeps the optional Fed reference form inside
+an initially closed native disclosure after the list. It preserves note choices
+and feedback across toggling, with the full feed's reading controls and source
+details outside. This follows the accepted BEA note-tools pattern.
+
+The preceding M3/M4 increment searches full titles in the loaded Fed feed. One
 phrase filters rows and note choices while full-feed counts, source dates and
 refresh comparison remain visible. Retained reads keep the query; accepted
 replacement resets it. An excluded note choice clears without a fallback.
