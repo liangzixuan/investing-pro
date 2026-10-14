@@ -224,14 +224,15 @@ describe("Cycle 2c synthetic filing payload custody", () => {
     }
   });
 
-  it("rolls back every pre-publication fault and can stage cleanly afterward", async () => {
-    for (const faultPhase of [
-      "key_created",
-      "ciphertext_written",
-      "audit_written",
-      "before_publish",
-      "published",
-    ] satisfies readonly FilingPayloadCustodyFaultPhase[]) {
+  it.each([
+    "key_created",
+    "ciphertext_written",
+    "audit_written",
+    "before_publish",
+    "published",
+  ] satisfies readonly FilingPayloadCustodyFaultPhase[])(
+    "rolls back the %s fault and can stage cleanly afterward",
+    async (faultPhase) => {
       let enabled = true;
       const context = await createContext((phase) => {
         if (enabled && phase === faultPhase) throw new Error("SECRET-CANARY");
@@ -258,8 +259,8 @@ describe("Cycle 2c synthetic filing payload custody", () => {
       } finally {
         await disposeContext(context);
       }
-    }
-  });
+    },
+  );
 
   it("resumes an authenticated key-first transition after each post-forget fault", async () => {
     for (const faultPhase of [
