@@ -895,8 +895,13 @@ identities wrap, with 44px controls. The browser capture did not expose the nati
 dropdown popup, so its popup geometry remains unverified. Saved notes span more
 than one mobile screen; complete DOM text and payload checks establish their full
 contents. A stalled screenshot call and capped diagnostic strings remain recorded
-with their limits. The existing Android journey now checks exact append, duplicate
-refusal and Review; its original hosted execution is pending. See
+with their limits. The original Android run passed 26 of 27 cases. The new BEA
+selection failed because its exact native label matcher omitted the four spaces
+that the grouped picker added before the visible release label. The test now uses
+that observed label; its generic picker helper, selected-value check, deadlines
+and remaining assertions are unchanged. The original failure remains recorded.
+Append, duplicate refusal, Review and package isolation still require the updated
+revision's hosted execution. See
 [scheduled release references](MANAGED_MARKETS_HOME.md#add-a-scheduled-release-to-a-note).
 
 ### Exact Review after a watchlist comparison
