@@ -216,7 +216,7 @@ export function ManagedFedAnnouncementNoteAction(props: Props) {
         {item
           ? `Selected announcement: ${item.title}`
           : exclusionNotice
-            ? "The chosen announcement is outside this title search. Choose another announcement."
+            ? "The chosen announcement is outside the current announcement view. Choose another announcement."
             : "No announcement chosen."}
       </p>
       <p id={memberId}>

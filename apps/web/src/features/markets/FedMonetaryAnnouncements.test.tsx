@@ -70,6 +70,110 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it.each([false, true])(
+    "offers a labelled reading view with current comparison availability %s",
+    (available) => {
+      const announcements = fixture();
+      const onChange = vi.fn();
+      const view = FedMonetaryAnnouncements(
+        props({
+          announcements,
+          busy: true,
+          filterView: {
+            view: {
+              ...projectFedAnnouncementView(announcements, "undated"),
+              visibleItems: [announcements.items[2]!],
+            },
+            resetNotice: false,
+            onQueryChange: vi.fn(),
+            updatesView: {
+              mode: available ? "new" : "all",
+              available,
+              onChange,
+            },
+          },
+          refreshSummary: <p>Full-feed comparison: 2 of 3 links</p>,
+          noteAction: <div>Mounted note action</div>,
+        }),
+      );
+      const elements = nodes(view);
+      const select = elements.find(
+        (node) =>
+          node.props.id === "managed-fed-updates-view" &&
+          node.type === "select",
+      )!;
+      expect(select.props.disabled).toBeUndefined();
+      expect(select.props.value).toBe(available ? "new" : "all");
+      expect(select.props["aria-describedby"]).toBe(
+        "managed-fed-updates-view-help managed-fed-title-count",
+      );
+      const options = nodes(select).filter((node) => node.type === "option");
+      expect(options.map((node) => text(node))).toEqual([
+        "All loaded announcements",
+        "Newly observed links",
+      ]);
+      expect(options[1]!.props.disabled).toBe(!available);
+      const change = select.props.onChange as (event: {
+        currentTarget: { value: string };
+      }) => void;
+      change({ currentTarget: { value: "new" } });
+      change({ currentTarget: { value: "invalid" } });
+      change({ currentTarget: { value: "all" } });
+      expect(onChange.mock.calls).toEqual(
+        available ? [["new"], ["all"]] : [["all"]],
+      );
+      const html = renderToStaticMarkup(view);
+      expect(html).toContain('for="managed-fed-updates-view"');
+      expect(html).toContain(
+        available
+          ? "absent from the previous loaded list"
+          : "A successful refresh of a loaded feed",
+      );
+      expect(html).toContain("Loaded 3 of 3 announcements from this feed.");
+      expect(html).toContain("Full-feed comparison: 2 of 3 links");
+      expect(html).toContain("1 of 3 loaded announcements.");
+      expect(html).toContain(announcements.fetchedAt);
+      const disclosure = elements.find(
+        (node) => node.props.id === "managed-fed-note-disclosure",
+      )!;
+      expect(nodes(disclosure)).not.toContain(select);
+      expect(disclosure.props.open).toBeUndefined();
+    },
+  );
+  it.each([false, true])(
+    "keeps zero matching updates distinct from an empty loaded feed %s",
+    (empty) => {
+      const announcements = empty
+        ? { ...fixture(), items: [], availableItemCount: 0 }
+        : fixture();
+      const html = renderToStaticMarkup(
+        FedMonetaryAnnouncements(
+          props({
+            announcements,
+            filterView: {
+              view: {
+                ...projectFedAnnouncementView(announcements, ""),
+                visibleItems: [],
+              },
+              resetNotice: false,
+              onQueryChange: vi.fn(),
+              updatesView: { mode: "new", available: true, onChange: vi.fn() },
+            },
+          }),
+        ),
+      );
+      expect(html).toContain(
+        empty
+          ? "No announcements were listed in this loaded feed."
+          : "No loaded announcements match these filters.",
+      );
+      expect(html).not.toContain(
+        empty
+          ? "No loaded announcements match these filters."
+          : "No announcements were listed in this loaded feed.",
+      );
+    },
+  );
   it("keeps note controls mounted in an initially closed native disclosure after the list", () => {
     const noteAction = (
       <div data-note-action="disclosure">Current note controls</div>

@@ -202,10 +202,35 @@ reference. See [Current work](CURRENT_WORK.md) for acceptance and delivery statu
 
 **Search announcement titles** matches one phrase in the full titles already
 loaded. Matching ignores case, trims the phrase and treats repeated whitespace
-as one space. It searches titles only. **Clear title search** returns all loaded
-items in their source order. The match count describes the loaded list; the
+as one space. It searches titles only. **Clear title search** removes the phrase
+while retaining the selected Announcement view. Items keep their source order.
+The match count describes the loaded list; the
 source's available count, original retrieval time and full-feed refresh comparison
 remain visible. Search does not fetch article text or other feed entries.
+
+### Inspect newly observed links
+
+**Announcement view** offers **All loaded announcements** and **Newly observed
+links**. The latter becomes available after a successful refresh compares two
+accepted lists. It includes current URLs absent from the previous loaded list.
+This observation does not establish a new publication, article change, company
+relevance or complete history. The source may expose more entries than are loaded.
+
+Title search narrows the selected view. Rows and announcement note choices use
+the same result. Original titles, links, dates and source order stay intact.
+The match count describes this result; feed coverage and the complete comparison
+remain visible. Zero matching links and an empty loaded feed have separate messages.
+
+An excluded announcement choice clears with its feedback. A valid note destination
+stays selected. Returning to All does not restore an excluded choice. Choose another
+announcement. A matching choice and its feedback remain available.
+The note disclosure keeps its open or closed state through reading filters.
+
+Pending, failed and cancelled requests retain the view and phrase. Each accepted
+replacement, including equal or empty content, resets to All with a blank phrase.
+Navigation remount, model replacement and session retirement reset the view.
+Reading filters remain usable while Save pauses note editing. Selection and search
+make no request or saved preference. The local research profile stays unfiltered.
 
 Pending reads, failure and Cancel keep the search. Each accepted replacement,
 including an equal or empty feed, clears it and reports the reset. Leaving Markets

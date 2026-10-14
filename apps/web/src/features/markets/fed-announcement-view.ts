@@ -9,6 +9,8 @@ export interface FedAnnouncementView {
   readonly visibleItems: readonly PersonalMonetaryAnnouncementDto[];
 }
 
+export type FedAnnouncementRefreshView = "all" | "new";
+
 const normalize = (value: string) =>
   value.toLowerCase().trim().replace(/\s+/gu, " ");
 

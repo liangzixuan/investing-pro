@@ -99,6 +99,14 @@ qualifies a later unconfirmed attempt. Preserve every row and note choice;
 comparison must not move focus or change the local profile. Its count describes
 the complete loaded feed even when the owner searches titles.
 
+Place **Announcement view** after source metadata and refresh comparison, before
+title search. Use the existing managed native selector, 44px target and focus
+outline. Offer All loaded announcements and Newly observed links; disable the
+latter before a comparison tied to the current feed exists. Explain the loaded
+list scope beside the control. Keep full-feed counts outside these reading filters.
+Title search and this view share their result with note choices. Switching to All
+keeps the current phrase and requires a fresh choice for an excluded announcement.
+
 Place **Search announcement titles** after source metadata and refresh comparison,
 before the list. Use the existing managed field, 44px search and Clear controls,
 focus outline and muted match count. Wrap the controls at narrow widths. Keep
