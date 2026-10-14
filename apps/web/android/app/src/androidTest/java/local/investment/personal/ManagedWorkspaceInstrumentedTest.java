@@ -4280,7 +4280,7 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("cash reports exact independent amounts and a same-period subtraction",
             "document.querySelector('.sec-annual-cash')?.getAttribute('aria-label') === 'Annual cash generation'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
             " && document.querySelector('.sec-annual-cash > p:last-of-type')?.textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.')" +
@@ -4308,7 +4308,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(source + " > summary");
         awaitPage("closing cash details preserves values and the existing unsaved note",
             "document.querySelector('.sec-annual-cash-source')?.open === false" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
     }
 
