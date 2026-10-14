@@ -123,9 +123,41 @@ or retire a newer session. Current authentication failures retire the shared
 session, clearing the feed and draft through the existing coordinator.
 
 Cancel returns focus to Load or Refresh when Cancel had focus and the current
-control remains visible. Announcements actions do not edit notes, save, reorder
+control remains visible. Load, Refresh and Cancel do not edit notes, save, reorder
 or reconcile the watchlist. Ordinary source links open separately with their
 original validated URLs; the app does not fetch article contents.
+
+### Add an announcement reference to a note
+
+After loading the feed, choose an **Announcement** and a current watchlist entry
+under **Add to note**. Both choices start empty. The complete chosen title and
+destination identity appear below the controls. **Add announcement to note draft**
+appends the reference to that entry's latest note without changing its existing
+text, other notes or membership order. The choice is the owner's relevance
+judgment; it does not identify company news or infer an investment effect.
+
+The reference includes the complete title and original URL, source publication
+time or an explicit unknown value, the fixed Fed source and feed URL, and the
+original retrieval time. A retained previous feed is labelled. Only feed metadata
+was loaded; the action does not fetch the article or refresh its dates.
+
+An active refresh blocks adding the reference. Cancel or failure retains the
+loaded choice with its current previous-feed qualification. A successful
+replacement, including equal content, clears the announcement choice. Leaving
+Markets for company research or another view clears both choices; returning needs
+fresh intent. Current session, catalog, feed and complete destination identity
+are checked again on each action. A stale or removed destination is refused.
+
+The complete note must fit the existing 2,000-code-point limit after trim and NFC
+normalization and contain no forbidden control characters. Oversized text is
+refused without truncation. Exact-reference duplicate comparison also uses NFC so
+a saved and reloaded decomposed title cannot be appended twice. Different original
+retrieval times or retained-feed qualification remain different dated references.
+
+**Review in My Watchlist** uses the existing view and focus path. Review does not
+save. Explicit **Save watchlist** saves the complete draft, including its other
+unsaved changes. Delivery and rendered acceptance remain in
+[Current work](CURRENT_WORK.md).
 
 ## Dated raw-close change
 

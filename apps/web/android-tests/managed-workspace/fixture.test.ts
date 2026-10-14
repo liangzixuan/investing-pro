@@ -16,6 +16,7 @@ import {
   signOutNoteDraft,
   beaAgenda,
   fedAnnouncements,
+  fedNoteDraft,
 } from "./fixture";
 import { annualNoteExcerpt } from "../../src/clerk-trial/managed-annual-note";
 import { parseSecAnnualEvidenceResponse } from "../../src/lib/sec-annual-evidence-response";
@@ -168,7 +169,7 @@ describe("bounded invented Federal Reserve journey", () => {
     await workspace.refreshCatalog();
     workspace.setView("watchlist");
     workspace.move("listing-zero", 1);
-    workspace.note("listing-zero", "Fed research draft");
+    workspace.note("listing-zero", "Draft survives native Back");
     const draft = structuredClone(workspace.coordinator.getSnapshot().draft);
     workspace.setView("markets");
     expect(fixture.getSnapshot().fed).toBe(0);
@@ -217,6 +218,38 @@ describe("bounded invented Federal Reserve journey", () => {
       ...fedAnnouncements,
       fetchedAt: "2026-10-23T18:00:00.000Z",
     });
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const before = workspace.coordinator.getSnapshot().draft!;
+    expect(
+      workspace.appendFedAnnouncementToNote(
+        { response, item: response.items[1]!, showingPrevious: false },
+        before.memberships[1]!,
+      ).appended,
+    ).toBe(true);
+    const expected = {
+      ...before,
+      memberships: [
+        before.memberships[0]!,
+        { ...before.memberships[1]!, note: fedNoteDraft },
+      ],
+    };
+    expect(workspace.coordinator.getSnapshot().draft).toEqual(expected);
+    expect(fixture.getSnapshot().save).toBe(0);
+    workspace.setView("watchlist");
+    await workspace.coordinator.save();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      draft: expected,
+    });
+    await workspace.coordinator.load();
+    expect(workspace.coordinator.getSnapshot()).toMatchObject({
+      baseVersion: 2,
+      dirty: false,
+      draft: expected,
+    });
+    workspace.setView("markets");
+    expect(workspace.announcements.getSnapshot().announcements).toBe(response);
     const retired = workspace.announcements.load();
     await workspace.refreshCatalog();
     expect(workspace.coordinator.getSnapshot()).toMatchObject({
@@ -235,8 +268,8 @@ describe("bounded invented Federal Reserve journey", () => {
       fedAborted: 3,
       fedLateResolved: 3,
       status: 2,
-      load: 1,
-      save: 0,
+      load: 2,
+      save: 1,
       calendar: 0,
       annual: 0,
       filings: 0,

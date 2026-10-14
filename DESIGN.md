@@ -90,6 +90,14 @@ time with a thin rule; source links and Load, Refresh and Cancel controls retain
 44px targets. The previous-response notice stays visible during an unconfirmed
 refresh. Titles wrap at narrow widths, and unknown publication times stay explicit.
 
+After the loaded Fed list, provide two native choices: **Announcement** and
+**Add to note**. Start both empty. Show the complete chosen title and destination
+identity in wrapping text below them. Use secondary 44px controls for adding the
+reference and reviewing it in My Watchlist. Keep refusal text beside the action
+and announce its result without moving focus. An added reference uses the existing
+note editor and whole-watchlist Save; do not add another editor or card. Response
+replacement and leaving Markets clear the staged announcement choice.
+
 Place the BEA **Release date** native selector between the original loaded-window
 description and the dated releases. Keep a visible label, an All loaded dates
 option, readable Eastern dates with counts and a visible count against the full

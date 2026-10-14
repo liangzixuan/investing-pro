@@ -16,6 +16,7 @@ import {
   parseManagedEconomicCalendar,
   parseManagedSecFilingsRequest,
   PERSONAL_BEA_CALENDAR_SOURCE,
+  PERSONAL_FED_MONETARY_SOURCE,
   parseManagedMonetaryAnnouncements,
 } from "@research-cockpit/contracts";
 import {
@@ -64,6 +65,10 @@ export const priceNoteDraft =
 export const marketsPriceNoteDraft =
   "Markets research draft Observed raw-close comparison: BETA (XNAS); 2026-09-18 USD 20.75 to 2026-09-19 USD 20.5; raw close change -$0.25 (-1.2048%). Source: Tiingo; requested window 2026-08-20 to 2026-09-20; original request started 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:01.000Z. Raw closes are not adjusted for splits or dividends and are not live quotes. Retained previous history; newer prices were not confirmed. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoveryNoteDraft = "Retained recovery draft";
+export const fedNoteDraft =
+  "Draft survives native Back Observed Federal Reserve announcement: Invented announcement without a publication time. Announcement URL: https://www.federalreserve.gov/newsevents/pressreleases/monetary20261018a.htm. Source publication time: unknown. Source: Board of Governors of the Federal Reserve System; monetary-policy feed " +
+  PERSONAL_FED_MONETARY_SOURCE.feedUrl +
+  ". Original feed retrieved at: 2026-10-23T18:00:00.000Z (UTC). Only feed metadata was loaded; article contents were not fetched. Evidence dates are unchanged; this action does not refresh sources.";
 export const recoverySavedNote = "New saved research note";
 export const beaAgenda = parseManagedEconomicCalendar({
   schemaVersion: "1.0.0",
@@ -835,10 +840,16 @@ export async function createFixture(
       const expected = {
         ...payload,
         memberships:
-          scenario === "company-filings"
+          scenario === "company-filings" || scenario === "fed-announcements"
             ? [
                 payload.memberships[1]!,
-                { ...payload.memberships[0]!, note: filingsNoteDraft },
+                {
+                  ...payload.memberships[0]!,
+                  note:
+                    scenario === "company-filings"
+                      ? filingsNoteDraft
+                      : fedNoteDraft,
+                },
               ]
             : scenario === "markets-price-handoff"
               ? [
@@ -875,6 +886,17 @@ export async function createFixture(
         signal.aborted ||
         (scenario === "annual-note" && state.annual !== 1) ||
         (scenario === "price-comparison-note" && state.eod !== 1) ||
+        (scenario === "fed-announcements" &&
+          (state.fed !== 6 ||
+            state.fedAborted !== 2 ||
+            state.fedLateResolved !== 2 ||
+            state.load !== 1 ||
+            state.status !== 1 ||
+            state.annual !== 0 ||
+            state.filings !== 0 ||
+            state.eod !== 0 ||
+            state.marketsEod !== 0 ||
+            state.calendar !== 0)) ||
         (scenario === "company-filings" &&
           (state.filings !== 6 ||
             state.filingsAborted !== 2 ||

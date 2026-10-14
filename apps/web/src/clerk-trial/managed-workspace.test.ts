@@ -44,6 +44,16 @@ import {
 } from "./managed-watchlist-comparison";
 import { normalizeWatchlistNote } from "@research-cockpit/contracts";
 import {
+  parseManagedMonetaryAnnouncements,
+  type PersonalMonetaryAnnouncementsDto,
+  type WatchlistMembership,
+} from "@research-cockpit/contracts";
+import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
+import {
+  getFedAnnouncementNoteEvidence,
+  type FedAnnouncementNoteCapture,
+} from "./managed-fed-announcement-note";
+import {
   annualComparisonMemberships,
   annualComparisonResponse,
 } from "./annual-comparison-fixture";
@@ -193,6 +203,421 @@ async function ready(workspace: ManagedWorkspace) {
   workspace.setQuery("Invented");
   await workspace.search();
 }
+
+describe("Fed announcement appended to one current draft note", () => {
+  async function noteFixture(raw = fedAnnouncementsFixture()) {
+    const setup = fixture({
+      ...empty,
+      memberships: [
+        { ...listingMembership(result), note: "First thesis" },
+        { ...listingMembership(second), note: "Other share class thesis" },
+      ],
+    });
+    await ready(setup.workspace);
+    const response = parseManagedMonetaryAnnouncements(raw)!;
+    expect(response).not.toBeNull();
+    vi.mocked(setup.api.monetaryAnnouncements).mockResolvedValue(response);
+    setup.workspace.setView("markets");
+    await setup.workspace.announcements.load();
+    const capture = (): FedAnnouncementNoteCapture => {
+      const state = setup.workspace.announcements.getSnapshot();
+      return {
+        response: state.announcements!,
+        item: state.announcements!.items[0]!,
+        showingPrevious: state.showingPrevious,
+      };
+    };
+    const member = (listingId = result.listingId) =>
+      setup.workspace.coordinator
+        .getSnapshot()
+        .draft!.memberships.find((entry) => entry.listingId === listingId)!;
+    const counts = () =>
+      [
+        setup.api.monetaryAnnouncements,
+        setup.api.economicCalendar,
+        setup.api.eodHistory,
+        setup.api.annualReport,
+        setup.api.recentFilings,
+        setup.api.resolve,
+        setup.api.save,
+        setup.session.getToken,
+        setup.session.signOut,
+      ].map((call) => vi.mocked(call).mock.calls.length);
+    return { ...setup, response, capture, member, counts };
+  }
+
+  it.each([result.listingId, second.listingId])(
+    "appends to the latest %s note and explicitly saves the complete reordered draft",
+    async (listingId) => {
+      const { workspace, api, session, saved, capture, member, counts } =
+        await noteFixture();
+      const selected = capture();
+      const staleMember = member(listingId);
+      const raw = "  Cafe\u0301 updated 😀  ";
+      workspace.note(listingId, raw);
+      workspace.move(second.listingId, -1);
+      const before = workspace.coordinator.getSnapshot().draft!;
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, staleMember).appended,
+      ).toBe(false);
+      const originalCounts = counts();
+      const excerpt = getFedAnnouncementNoteEvidence(selected).excerpt!;
+      expect(
+        workspace.getFedAnnouncementNoteAction(selected, member(listingId)),
+      ).toEqual({ canAppend: true, reason: null });
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member(listingId))
+          .appended,
+      ).toBe(true);
+      expect(workspace.coordinator.getSnapshot().draft).toEqual({
+        ...before,
+        memberships: before.memberships.map((entry) =>
+          entry.listingId === listingId
+            ? { ...entry, note: raw + " " + excerpt }
+            : entry,
+        ),
+      });
+      expect(counts()).toEqual(originalCounts);
+      expect(api.save).not.toHaveBeenCalled();
+      await workspace.coordinator.save();
+      expect(api.save).toHaveBeenCalledOnce();
+      expect(vi.mocked(api.save).mock.calls[0]![0].payload).toEqual(
+        saved().payload,
+      );
+      expect(
+        saved().payload.memberships.find(
+          (entry) => entry.listingId === listingId,
+        )!.note,
+      ).toBe(normalizeWatchlistNote(raw + " " + excerpt));
+      const reopened = new ManagedWorkspace(api, session);
+      await reopened.coordinator.load();
+      expect(reopened.coordinator.getSnapshot().draft).toEqual(saved().payload);
+      expect(
+        saved().payload.memberships.map((entry) => entry.listingId),
+      ).toEqual([second.listingId, result.listingId]);
+    },
+  );
+
+  it("accepts an explicitly added unsaved member without reading or saving", async () => {
+    const { workspace, api, capture, member } = await noteFixture();
+    workspace.remove(second.listingId);
+    workspace.add(second);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    expect(
+      workspace.appendFedAnnouncementToNote(capture(), member(second.listingId))
+        .appended,
+    ).toBe(true);
+    expect(workspace.coordinator.getSnapshot().draft!.memberships[0]).toEqual(
+      before.memberships[0],
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.monetaryAnnouncements).toHaveBeenCalledOnce();
+  });
+
+  it("refuses a canonically identical duplicate after Save and allows a different original retrieval", async () => {
+    const raw = fedAnnouncementsFixture();
+    const { workspace, api, capture, member } = await noteFixture({
+      ...raw,
+      items: [{ ...raw.items[0]!, title: "Cafe\u0301 policy" }, raw.items[1]!],
+    });
+    const original = capture();
+    const excerpt = getFedAnnouncementNoteEvidence(original).excerpt!;
+    expect(excerpt).toContain("Cafe\u0301 policy");
+    expect(
+      workspace.appendFedAnnouncementToNote(original, member()).appended,
+    ).toBe(true);
+    const duplicate =
+      "This exact announcement reference is already in the note draft.";
+    expect(workspace.appendFedAnnouncementToNote(original, member())).toEqual({
+      appended: false,
+      message: duplicate,
+    });
+    await workspace.coordinator.save();
+    await workspace.coordinator.load();
+    expect(member().note).toContain("Café policy");
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(workspace.getFedAnnouncementNoteAction(original, member())).toEqual({
+      canAppend: false,
+      reason: duplicate,
+    });
+    expect(
+      workspace.appendFedAnnouncementToNote(original, member()).appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    const replacement = parseManagedMonetaryAnnouncements({
+      ...original.response,
+      fetchedAt: "2026-10-21T18:00:00.000Z",
+    })!;
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(replacement);
+    await workspace.announcements.load();
+    expect(
+      workspace.appendFedAnnouncementToNote(capture(), member()).appended,
+    ).toBe(true);
+    expect(member().note).toContain("2026-10-20T18:00:00.000Z");
+    expect(member().note).toContain("2026-10-21T18:00:00.000Z");
+    expect(api.save).toHaveBeenCalledOnce();
+  });
+
+  it.each(["exact", "overflow", "control", "format"] as const)(
+    "checks the complete latest raw note at %s without truncating it",
+    async (boundary) => {
+      const { workspace, capture, member } = await noteFixture();
+      const selected = capture();
+      const excerpt = getFedAnnouncementNoteEvidence(selected).excerpt!;
+      const remaining = 2000 - [...excerpt.normalize("NFC")].length - 1;
+      const raw =
+        boundary === "control"
+          ? "Private\ntext"
+          : boundary === "format"
+            ? "Private\u200btext"
+            : "😀".repeat(remaining + (boundary === "overflow" ? 1 : 0));
+      workspace.note(result.listingId, raw);
+      const before = workspace.coordinator.getSnapshot().draft;
+      const accepted = boundary === "exact";
+      expect(
+        workspace.getFedAnnouncementNoteAction(selected, member()).canAppend,
+      ).toBe(accepted);
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member()).appended,
+      ).toBe(accepted);
+      if (accepted) {
+        expect(member().note).toBe(raw + " " + excerpt);
+        expect([...normalizeWatchlistNote(member().note)!]).toHaveLength(2000);
+      } else expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    },
+  );
+
+  it.each([
+    "none",
+    "copied",
+    "removed",
+    "removed and re-added",
+    "changed identity",
+  ] as const)(
+    "refuses a %s destination without editing another member",
+    async (kind) => {
+      const { workspace, capture, member, counts } = await noteFixture();
+      let destination: WatchlistMembership | null = member();
+      if (kind === "none") destination = null;
+      if (kind === "copied") destination = { ...destination! };
+      if (kind === "removed" || kind === "removed and re-added")
+        workspace.remove(result.listingId);
+      if (kind === "removed and re-added") workspace.add(result);
+      if (kind === "changed identity") {
+        const draft = workspace.coordinator.getSnapshot().draft!;
+        workspace.coordinator.replaceDraft({
+          ...draft,
+          memberships: draft.memberships.map((entry) =>
+            entry.listingId === result.listingId
+              ? { ...entry, shareClassName: "Replacement class" }
+              : entry,
+          ),
+        });
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      const originalCounts = counts();
+      expect(
+        workspace.appendFedAnnouncementToNote(capture(), destination),
+      ).toEqual({
+        appended: false,
+        message: "Choose a current watchlist note.",
+      });
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(counts()).toEqual(originalCounts);
+    },
+  );
+
+  it.each([
+    "missing",
+    "copied item",
+    "copied response",
+    "equal replacement",
+    "empty replacement",
+  ] as const)(
+    "refuses %s evidence without changing the draft",
+    async (kind) => {
+      const { workspace, api, capture, member } = await noteFixture();
+      const original = capture();
+      let selected: FedAnnouncementNoteCapture | null = original;
+      if (kind === "missing") selected = null;
+      if (kind === "copied item")
+        selected = { ...original, item: { ...original.item } };
+      if (kind === "copied response")
+        selected = { ...original, response: { ...original.response } };
+      if (kind === "equal replacement" || kind === "empty replacement") {
+        const replacement = parseManagedMonetaryAnnouncements(
+          kind === "equal replacement"
+            ? original.response
+            : { ...original.response, availableItemCount: 0, items: [] },
+        )!;
+        vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(replacement);
+        await workspace.announcements.load();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member()).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses an append triggered synchronously by the busy publication", async () => {
+    const { workspace, api, capture, member } = await noteFixture();
+    const original = capture();
+    const destination = member();
+    const held = deferred<PersonalMonetaryAnnouncementsDto>();
+    vi.mocked(api.monetaryAnnouncements).mockReturnValueOnce(held.promise);
+    const attempted: boolean[] = [];
+    const unsubscribe = workspace.announcements.subscribe(() => {
+      if (workspace.announcements.getSnapshot().busy)
+        attempted.push(
+          workspace.appendFedAnnouncementToNote(original, destination).appended,
+        );
+    });
+    const before = workspace.coordinator.getSnapshot().draft;
+    const pending = workspace.announcements.load();
+    expect(attempted).toEqual([false]);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    workspace.announcements.cancel();
+    held.resolve(original.response);
+    await pending;
+    unsubscribe();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it.each(["unavailable", "invalid_response"] as const)(
+    "appends the retained exact packet after %s only with its current qualifier",
+    async (code) => {
+      const { workspace, api, capture, member, response } = await noteFixture();
+      const original = capture();
+      vi.mocked(api.monetaryAnnouncements).mockRejectedValueOnce(
+        new TrialApiError(code),
+      );
+      await workspace.announcements.load();
+      expect(workspace.announcements.getSnapshot().announcements).toBe(
+        response,
+      );
+      expect(
+        workspace.appendFedAnnouncementToNote(original, member()).appended,
+      ).toBe(false);
+      expect(
+        workspace.appendFedAnnouncementToNote(capture(), member()).appended,
+      ).toBe(true);
+      expect(member().note).toContain(
+        "Retained previous feed; a newer feed was not confirmed.",
+      );
+      expect(member().note).toContain(response.fetchedAt);
+    },
+  );
+
+  it.each(["success", "authentication error"] as const)(
+    "blocks a held request, permits Cancel, and ignores its late %s after append",
+    async (late) => {
+      const { workspace, api, capture, member, response } = await noteFixture();
+      const held = deferred<PersonalMonetaryAnnouncementsDto>();
+      vi.mocked(api.monetaryAnnouncements).mockReturnValueOnce(held.promise);
+      const pending = workspace.announcements.load();
+      expect(
+        workspace.appendFedAnnouncementToNote(capture(), member()),
+      ).toEqual({
+        appended: false,
+        message: "Wait for the announcements request to finish or cancel it.",
+      });
+      workspace.announcements.cancel();
+      expect(
+        vi.mocked(api.monetaryAnnouncements).mock.calls[1]![0].aborted,
+      ).toBe(true);
+      expect(
+        workspace.appendFedAnnouncementToNote(capture(), member()).appended,
+      ).toBe(true);
+      const after = workspace.coordinator.getSnapshot().draft;
+      if (late === "success")
+        held.resolve(
+          parseManagedMonetaryAnnouncements({
+            ...response,
+            availableItemCount: 0,
+            items: [],
+          })!,
+        );
+      else held.reject(new TrialApiError("unauthenticated"));
+      await pending;
+      expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+      expect(workspace.announcements.getSnapshot().announcements).toBe(
+        response,
+      );
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "watchlist",
+    "company",
+    "pending route",
+    "catalog",
+    "retired",
+    "authentication",
+  ] as const)(
+    "refuses a captured action after %s changes the active context",
+    async (boundary) => {
+      const { workspace, api, capture, member } = await noteFixture();
+      const selected = capture();
+      const destination = member();
+      if (boundary === "watchlist") workspace.setView("watchlist");
+      if (boundary === "company") workspace.openDiscoveryAnnual(result);
+      if (boundary === "pending route") workspace.setNavigationBlocked(true);
+      if (boundary === "catalog") {
+        vi.mocked(api.status).mockResolvedValueOnce({
+          snapshot: { ...snapshot, snapshotSha256: nextDigest },
+        });
+        await workspace.refreshCatalog();
+      }
+      if (boundary === "retired") workspace.coordinator.retire();
+      if (boundary === "authentication") {
+        vi.mocked(api.monetaryAnnouncements).mockRejectedValueOnce(
+          new TrialApiError("unauthenticated"),
+        );
+        await workspace.announcements.load();
+      }
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, destination).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      expect(api.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["conflict", "unavailable"] as const)(
+    "refuses while a Save is pending or %s until normal recovery settles",
+    async (code) => {
+      const { workspace, api, capture, member } = await noteFixture();
+      const selected = capture();
+      workspace.note(result.listingId, "Latest thesis");
+      const held = deferred<Awaited<ReturnType<ManagedApi["save"]>>>();
+      vi.mocked(api.save).mockReturnValueOnce(held.promise);
+      const pending = workspace.coordinator.save();
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member()).appended,
+      ).toBe(false);
+      held.reject(new TrialApiError(code));
+      await pending;
+      const before = workspace.coordinator.getSnapshot().draft;
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member()).appended,
+      ).toBe(false);
+      expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+      if (code === "conflict") {
+        await workspace.coordinator.load();
+        workspace.coordinator.keepDraft();
+      } else await workspace.coordinator.reconcile();
+      expect(
+        workspace.appendFedAnnouncementToNote(selected, member()).appended,
+      ).toBe(true);
+    },
+  );
+});
 
 describe("explicit in-company watchlist navigation", () => {
   const zero = listingMembership({

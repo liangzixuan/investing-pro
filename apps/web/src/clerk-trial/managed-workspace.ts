@@ -62,6 +62,10 @@ import {
   type ManagedWatchlistPriceHandle,
 } from "./managed-watchlist-prices";
 import { ManagedFedAnnouncements } from "./managed-fed-announcements";
+import {
+  getFedAnnouncementNoteEvidence,
+  type FedAnnouncementNoteCapture,
+} from "./managed-fed-announcement-note";
 import { ManagedBeaReleaseAgenda } from "./managed-bea-release-agenda";
 import { SaveCoordinator } from "./save-coordinator";
 import {
@@ -1721,6 +1725,81 @@ export class ManagedWorkspace {
       appended: true,
       message:
         "Filing reference added to the note draft. Review and save all changes in My Watchlist.",
+    };
+  }
+  private fedNoteDraft(): MainWatchlistPayload | null {
+    const draft = this.coordinator.getSnapshot().draft;
+    return this.canEdit() &&
+      !this.navigationBlocked &&
+      this.state.view === "markets" &&
+      !this.state.research &&
+      !this.state.companyRoute &&
+      this.state.snapshot !== null &&
+      draft?.snapshotSha256 === this.state.snapshot.snapshotSha256
+      ? draft
+      : null;
+  }
+  private fedAnnouncementNoteProposal(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ):
+    | { note: string; member: WatchlistMembership; reason: null }
+    | { note: null; member: null; reason: string } {
+    const refuse = (reason: string) => ({ note: null, member: null, reason });
+    const draft = this.fedNoteDraft();
+    if (!draft)
+      return refuse(
+        "Return to Markets with an editable current watchlist before adding an announcement.",
+      );
+    const current = this.announcements.getSnapshot();
+    if (current.busy)
+      return refuse(
+        "Wait for the announcements request to finish or cancel it.",
+      );
+    if (!capture) return refuse("Choose a loaded announcement.");
+    if (
+      current.announcements !== capture.response ||
+      current.showingPrevious !== capture.showingPrevious
+    )
+      return refuse("Choose an announcement from the current loaded feed.");
+    const evidence = getFedAnnouncementNoteEvidence(capture);
+    if (evidence.excerpt === null) return refuse(evidence.reason);
+    if (!destination || !draft.memberships.includes(destination))
+      return refuse("Choose a current watchlist note.");
+    if (
+      destination.note
+        .normalize("NFC")
+        .includes(evidence.excerpt.normalize("NFC"))
+    )
+      return refuse(
+        "This exact announcement reference is already in the note draft.",
+      );
+    const note =
+      destination.note + (destination.note ? " " : "") + evidence.excerpt;
+    if (normalizeWatchlistNote(note) === null)
+      return refuse(
+        "The complete note must fit within 2,000 characters without control characters. Edit it before adding evidence.",
+      );
+    return { note, member: destination, reason: null };
+  }
+  getFedAnnouncementNoteAction(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { canAppend: boolean; reason: string | null } {
+    const proposal = this.fedAnnouncementNoteProposal(capture, destination);
+    return { canAppend: proposal.note !== null, reason: proposal.reason };
+  }
+  appendFedAnnouncementToNote(
+    capture: FedAnnouncementNoteCapture | null,
+    destination: WatchlistMembership | null,
+  ): { appended: boolean; message: string } {
+    const proposal = this.fedAnnouncementNoteProposal(capture, destination);
+    if (proposal.note === null)
+      return { appended: false, message: proposal.reason };
+    this.note(proposal.member.listingId, proposal.note);
+    return {
+      appended: true,
+      message: `Announcement reference added to the ${proposal.member.symbol} (${proposal.member.shareClassName}, ${proposal.member.exchangeMic}) note draft. Review and save all changes in My Watchlist.`,
     };
   }
   private validateDraft(draft: MainWatchlistPayload): DraftValidation {

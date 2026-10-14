@@ -69,6 +69,38 @@ function text(node: ReactNode): string {
     : "";
 }
 describe("Federal Reserve announcements presentation", () => {
+  it("places the managed note slot after the list, keeps it for an empty packet and omits it before loading", () => {
+    const noteAction = <div data-note-action="test">Managed note action</div>;
+    const loaded = renderToStaticMarkup(
+      <FedMonetaryAnnouncements {...props({ noteAction })} />,
+    );
+    expect(loaded.indexOf("</ul>")).toBeLessThan(
+      loaded.indexOf('data-note-action="test"'),
+    );
+    const empty = renderToStaticMarkup(
+      <FedMonetaryAnnouncements
+        {...props({
+          noteAction,
+          announcements: { ...fixture(), items: [], availableItemCount: 0 },
+        })}
+      />,
+    );
+    expect(empty).toContain("No announcements were listed");
+    expect(empty).toContain('data-note-action="test"');
+    expect(
+      renderToStaticMarkup(
+        <FedMonetaryAnnouncements
+          {...props({ noteAction, announcements: null })}
+        />,
+      ),
+    ).not.toContain('data-note-action="test"');
+    const absent = props();
+    expect(renderToStaticMarkup(<FedMonetaryAnnouncements {...absent} />)).toBe(
+      renderToStaticMarkup(
+        <FedMonetaryAnnouncements {...absent} noteAction={null} />,
+      ),
+    );
+  });
   it("makes only an opted-in heading focusable and preserves the local heading markup", () => {
     const headingRef = React.createRef<HTMLHeadingElement>();
     const input = props({ headingRef });

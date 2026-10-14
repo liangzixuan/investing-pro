@@ -729,7 +729,8 @@ passing; later Filings assertions and APK isolation remain unaccepted. The
 updated source passed all 27 native cases and the APK isolation gate in its
 original hosted attempt. Independent review verified the complete result frame,
 later Filings assertions, source identity and full software notices. Both earlier
-failures remain recorded. The remaining desktop checks are separate.
+failures remain recorded. The repaired head's two desktop jobs, parser isolation,
+dependency review and CodeScene also passed in their original attempts.
 
 ### Markets section navigation candidate
 
@@ -769,6 +770,42 @@ the visual check. Hosted native execution for this new navigation remains pendin
 Production is unchanged. See the
 [Markets guide](MANAGED_MARKETS_HOME.md#move-between-markets-sections).
 
+### Fed announcement reference candidate
+
+Markets now offers two explicit choices after the loaded Fed list: an announcement
+and a destination watchlist note. The action appends complete metadata and original
+dates to the latest note draft. It preserves existing raw text, other notes and
+membership order. Review uses the existing My Watchlist navigation; the complete
+draft is saved only with Save watchlist.
+
+Admission checks current session, view, route, catalog, response/item identity,
+destination identity and pending requests. A retained feed is qualified; a
+successful replacement clears the announcement choice. Leaving Markets clears
+both choices. Duplicate comparison uses NFC while draft text remains unchanged.
+The existing complete-note validation refuses invalid or oversized results.
+
+Focused source and composed tests, types, lint, formatting and source boundaries
+pass. Exact preview and native fixture builds pass independent saved-output
+review, preserving complete software notices and the unchanged 4 MiB native cap.
+Root-run Chrome checks at 1440, 390 and 320 CSS pixels pass keyboard, wrapping,
+control-size and overflow checks. They verify the exact full draft, explicit Save
+and reload, original retained dates, replacement, cancellation, late completion
+and retirement. Chrome confirms the duplicate action's disabled/refusal state
+without another append; the duplicate handler is covered by component tests.
+Independent review accepts the saved Chrome evidence with these limits.
+
+The existing native Fed journey now adds a reference with an unknown publication
+time, refuses a duplicate, reviews, saves and reloads it before its original
+retirement and late-response checks. The suite retains 27 total cases and 52
+literal capture calls. The first Android run passed 26 of 27 cases. The Fed
+journey completed Save, reload and retirement, then failed a final test boundary
+that still expected zero saves. Its one-call correction uses the existing helper
+with one expected save; all other assertions and deadlines remain unchanged.
+Updated hosted execution is pending. APK isolation was skipped in the failed
+run, and the reviewed CodeScene advisory remains recorded. No new source, API or
+saved schema is added. Production is unchanged. See the
+[Markets guide](MANAGED_MARKETS_HOME.md#add-an-announcement-reference-to-a-note).
+
 ## Product scope
 
 The managed website and Android client share the Precision Desk presentation,
@@ -793,9 +830,8 @@ M2 or M3.
 
 ## Next acceptance and open limits
 
-Finish Markets navigation's rendered and native checks, the Filings source
-header's updated hosted checks, and the
-source integration steps when permission arrives. Preserve explicit source requests,
+Complete the Fed reference candidate's original hosted checks and the source
+integration steps when permission arrives. Preserve explicit source requests,
 same-company identity and the existing research-note workflow. PR100 and PR101
 merged in order after owner approval and verification of both bases and applicable
 checks. The final merged source has the reviewed PR101 tree; its original

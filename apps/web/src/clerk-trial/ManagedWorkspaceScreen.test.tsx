@@ -646,6 +646,213 @@ async function noteFocusFixture() {
 }
 
 describe("managed workspace screen", () => {
+  function fedNoteContext(
+    workspace: ManagedWorkspace,
+    navigation?: ManagedCompanyNavigation,
+  ) {
+    mounted.direct = true;
+    mounted.refIndex = 0;
+    const screen = ManagedWorkspaceScreen({
+      workspace,
+      ...(navigation ? { navigation } : {}),
+    });
+    mounted.direct = false;
+    const fed = elements(screen).find(
+      (node) => node.type === ManagedFedAnnouncements,
+    ) as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncements>
+    >;
+    return fed.props.noteContext;
+  }
+
+  it("adds a chosen loaded Fed reference to the complete latest draft and reviews it through the existing Save flow", async () => {
+    const { workspace, api } = fixture({
+      ...payload,
+      memberships: [
+        payload.memberships[0]!,
+        {
+          ...payload.memberships[0]!,
+          listingId: "listing-two",
+          securityId: "security-two",
+          shareClassId: "class-two",
+          shareClassName: "Class B",
+          note: "Keep this other thesis",
+        },
+      ],
+    });
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.announcements.load();
+    workspace.note("listing-two", "  Latest Café 東京 😀 thesis");
+    workspace.move("listing-two", -1);
+    const before = workspace.coordinator.getSnapshot().draft!;
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const capture = {
+      response,
+      item: response.items[1]!,
+      showingPrevious: false,
+    };
+    const context = fedNoteContext(workspace);
+    expect(context.active).toBe(true);
+    expect(context.editable).toBe(true);
+    expect(context.members).toBe(before.memberships);
+    expect(context.actions.getAction(capture, null).canAppend).toBe(false);
+    expect(context.actions.append(capture, context.members[0]!).appended).toBe(
+      true,
+    );
+    const after = workspace.coordinator.getSnapshot().draft!;
+    expect(after.memberships[0]!.note).toContain(
+      "  Latest Café 東京 😀 thesis Observed Federal Reserve announcement: Invented announcement without a publication time.",
+    );
+    expect(after.memberships[0]!.note).toContain(
+      "Source publication time: unknown.",
+    );
+    expect(after.memberships[0]!.note).toContain(
+      "Original feed retrieved at: 2026-10-20T18:00:00.000Z (UTC).",
+    );
+    expect(after.memberships[1]).toEqual(before.memberships[1]);
+    expect(after.memberships.map((member) => member.listingId)).toEqual(
+      before.memberships.map((member) => member.listingId),
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    context.onReview();
+    expect(workspace.getSnapshot().view).toBe("watchlist");
+    expect(focus).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(after);
+    expect(api.save).not.toHaveBeenCalled();
+    vi.mocked(api.save).mockImplementationOnce((command) =>
+      Promise.resolve({
+        version: 2,
+        payload: command.payload,
+        replayed: false,
+      }),
+    );
+    await workspace.coordinator.save();
+    const savedPayload = vi.mocked(api.save).mock.calls[0]![0].payload;
+    expect(savedPayload.memberships).toEqual(
+      after.memberships.map((member) => ({
+        ...member,
+        note: member.note.trim().normalize("NFC"),
+      })),
+    );
+    expect(api.monetaryAnnouncements).toHaveBeenCalledOnce();
+    expect(api.economicCalendar).not.toHaveBeenCalled();
+    expect(api.eodHistory).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+    expect(api.recentFilings).not.toHaveBeenCalled();
+  });
+
+  it("refuses Fed note and Review callbacks during pending or invalid routes and hidden company research", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.announcements.load();
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const capture = {
+      response,
+      item: response.items[0]!,
+      showingPrevious: false,
+    };
+    const draft = workspace.coordinator.getSnapshot().draft!;
+    let route = false;
+    const navigation: ManagedCompanyNavigation = {
+      invalid: false,
+      returnFocus: 0,
+      hasCompanyRoute: () => route,
+      open: (action) => action(),
+      section: vi.fn(),
+      back: vi.fn(),
+      view: vi.fn(() => false),
+    };
+    const context = fedNoteContext(workspace, navigation);
+    const focus = vi.fn();
+    mounted.refs[2]!.current = { focus };
+    route = true;
+    expect(
+      context.actions.getAction(capture, draft.memberships[0]!).canAppend,
+    ).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview();
+    expect(navigation.view).not.toHaveBeenCalled();
+    route = false;
+    const invalid = fedNoteContext(workspace, { ...navigation, invalid: true });
+    expect(invalid.active).toBe(false);
+    expect(
+      invalid.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    invalid.onReview();
+    expect(navigation.view).not.toHaveBeenCalled();
+    context.onReview();
+    expect(navigation.view).toHaveBeenCalledExactlyOnceWith("watchlist");
+    expect(focus).not.toHaveBeenCalled();
+    workspace.openWatchlistAnnual(draft.memberships[0]!);
+    expect(fedNoteContext(workspace).active).toBe(false);
+    expect(
+      context.actions.append(capture, draft.memberships[0]!).appended,
+    ).toBe(false);
+    context.onReview();
+    expect(navigation.view).toHaveBeenCalledOnce();
+    expect(workspace.coordinator.getSnapshot().draft).toBe(draft);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).not.toHaveBeenCalled();
+  });
+
+  it("blocks Review while a feed request is pending and fences all note callbacks on retirement", async () => {
+    const { workspace, api } = fixture();
+    await workspace.coordinator.load();
+    await workspace.refreshCatalog();
+    workspace.setView("markets");
+    vi.mocked(api.monetaryAnnouncements).mockResolvedValueOnce(
+      fedAnnouncementsFixture(),
+    );
+    await workspace.announcements.load();
+    const response = workspace.announcements.getSnapshot().announcements!;
+    const capture = {
+      response,
+      item: response.items[0]!,
+      showingPrevious: false,
+    };
+    const destination =
+      workspace.coordinator.getSnapshot().draft!.memberships[0]!;
+    const context = fedNoteContext(workspace);
+    const pending = deferred<ReturnType<typeof fedAnnouncementsFixture>>();
+    vi.mocked(api.monetaryAnnouncements).mockReturnValueOnce(pending.promise);
+    const load = workspace.announcements.load();
+    context.onReview();
+    expect(workspace.getSnapshot().view).toBe("markets");
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    workspace.announcements.cancel();
+    expect(
+      context.actions.getAction(
+        { ...capture, showingPrevious: true },
+        destination,
+      ).canAppend,
+    ).toBe(true);
+    workspace.coordinator.retire();
+    expect(context.actions.getAction(capture, destination).canAppend).toBe(
+      false,
+    );
+    expect(context.actions.append(capture, destination).appended).toBe(false);
+    context.onReview();
+    pending.resolve(fedAnnouncementsFixture());
+    await load;
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(workspace.announcements.getSnapshot().announcements).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
   function marketsNavigation(
     workspace: ManagedWorkspace,
     navigation?: ManagedCompanyNavigation,

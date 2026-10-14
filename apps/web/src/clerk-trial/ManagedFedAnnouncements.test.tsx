@@ -6,6 +6,8 @@ import { ManagedFedAnnouncements } from "./ManagedFedAnnouncements";
 import { ManagedFedAnnouncements as Model } from "./managed-fed-announcements";
 import type { ManagedApi } from "./managed-api";
 import { fedAnnouncementsFixture } from "./fed-announcements-fixture";
+import type { ManagedFedAnnouncementNoteContext } from "./ManagedFedAnnouncementNoteAction";
+import { ManagedFedAnnouncementNoteAction } from "./ManagedFedAnnouncementNoteAction";
 
 const hooks = vi.hoisted(() => ({
   refs: [] as Array<{ current: unknown }>,
@@ -42,20 +44,54 @@ function fixture() {
   const cancel = {};
   const doc = { activeElement: cancel, body: {} };
   vi.stubGlobal("document", doc);
+  const noteContext: ManagedFedAnnouncementNoteContext = {
+    members: [],
+    active: true,
+    editable: true,
+    actions: {
+      getAction: vi.fn(() => ({
+        canAppend: false,
+        reason: "Choose a loaded announcement.",
+      })),
+      append: vi.fn(() => ({
+        appended: false,
+        message: "Choose a loaded announcement.",
+      })),
+    },
+    onReview: vi.fn(),
+  };
   const render = (headingRef?: React.Ref<HTMLHeadingElement>) => {
     hooks.index = 0;
     const view = ManagedFedAnnouncements({
       model,
       headingRef,
+      noteContext,
     }) as React.ReactElement<FedMonetaryAnnouncementsProps>;
     hooks.refs[0]!.current = button;
     while (hooks.effects.length) hooks.effects.shift()!();
     return view;
   };
-  return { read, model, button, cancel, doc, render };
+  return { read, model, button, cancel, doc, render, noteContext };
 }
 
 describe("managed announcement controls", () => {
+  it("supplies the exact subscribed feed and note context without changing load or note state", async () => {
+    const f = fixture();
+    f.read.mockResolvedValueOnce(fedAnnouncementsFixture());
+    await f.model.load();
+    const view = f.render();
+    const slot = view.props.noteAction as React.ReactElement<
+      React.ComponentProps<typeof ManagedFedAnnouncementNoteAction>
+    >;
+    expect(slot.type).toBe(ManagedFedAnnouncementNoteAction);
+    expect(slot.props.state).toBe(f.model.getSnapshot());
+    expect(slot.props.members).toBe(f.noteContext.members);
+    expect(slot.props.actions).toBe(f.noteContext.actions);
+    expect(slot.props.onReview).toBe(f.noteContext.onReview);
+    expect(f.noteContext.actions.append).not.toHaveBeenCalled();
+    expect(f.noteContext.onReview).not.toHaveBeenCalled();
+    expect(f.read).toHaveBeenCalledOnce();
+  });
   it("passes the owned heading ref without loading or replacing accepted announcements", async () => {
     const f = fixture();
     const headingRef = { current: null };
