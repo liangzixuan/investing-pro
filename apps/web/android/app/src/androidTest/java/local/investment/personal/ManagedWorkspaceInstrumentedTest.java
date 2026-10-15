@@ -2038,8 +2038,11 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('2026-09-20T00:00:01.000Z') && " +
             snapshot + ".textContent.includes('unadjusted for splits or dividends') && " +
             snapshot + ".textContent.includes('No annual evidence loaded')");
+        awaitPage("snapshot range retains both exact closes, dates and actual loaded coverage",
+            observedCloseRangeAt(".managed-company-snapshot [aria-label='Snapshot price'] .managed-observed-close-range",
+                "One month", 2, "2026-09-18", "2026-09-19", "101.5", "2026-09-19", "100.25", "2026-09-18"));
         retainAnnualNoteFrame("companySnapshotPrice", "[aria-label='Snapshot price'] h3",
-            "[aria-label='Snapshot price'] h3, [aria-label='Snapshot price'] dl", 2);
+            "[aria-label='Snapshot price'] > h3, [aria-label='Snapshot price'] > dl", 2);
         click(".managed-snapshot-grid > section[aria-label='Snapshot annual'] > button");
         awaitPage("snapshot Annual action navigates without fetching",
             "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
@@ -3842,7 +3845,13 @@ public class ManagedWorkspaceInstrumentedTest {
 
     private String observedCloseRangeExact(String range, int count, String firstDate, String lastDate,
             String highest, String highestDate, String lowest, String lowestDate) {
-        return "(() => { const roots = document.querySelectorAll('.managed-eod-history .managed-observed-close-range');" +
+        return observedCloseRangeAt(".managed-eod-history .managed-observed-close-range", range, count, firstDate, lastDate,
+            highest, highestDate, lowest, lowestDate);
+    }
+
+    private String observedCloseRangeAt(String selector, String range, int count, String firstDate, String lastDate,
+            String highest, String highestDate, String lowest, String lowestDate) {
+        return "(() => { const roots = document.querySelectorAll(" + JSONObject.quote(selector) + ");" +
             " const root = roots[0], groups = root ? [...root.querySelectorAll('dl > div')] : [];" +
             " const expected = [['Highest reported close · USD', " + JSONObject.quote(highest) + ", " + JSONObject.quote(highestDate) + "]," +
             " ['Lowest reported close · USD', " + JSONObject.quote(lowest) + ", " + JSONObject.quote(lowestDate) + "]];" +

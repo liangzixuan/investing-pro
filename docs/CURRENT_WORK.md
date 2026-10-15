@@ -39,6 +39,13 @@ packet preserves an early 64-character extreme outside the latest 252 dates.
 The draft remains unchanged and unsaved. Hosted native execution, integration,
 live provider coverage and publication remain separate.
 
+The original Android run passed 33 of 34 cases. Its snapshot capture selector
+included the new nested range list, so a strict two-element frame could not pass.
+The test now captures the original quote through direct children and checks the
+new summary's exact values, dates and coverage separately. Geometry limits,
+deadlines and the native case/frame inventory stay unchanged. The failed original
+is preserved; a fresh source revision needs its own hosted acceptance.
+
 ## Annual operating-results candidate
 
 The next M2 increment adds reported operating income and an operating margin for
