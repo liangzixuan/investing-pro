@@ -19,7 +19,12 @@ and coverage qualifications. The Filings card reuses the existing admitted list
 and retains its original window, truncation and incomplete-coverage limits. It uses admitted evidence and explicit section
 navigation, with no automatic request, saved change or model verdict.
 
-The next M4 thesis candidate adds optional **Research purpose** and **Time horizon**
+The next M4 layer adds a [prepared research report preview](MANAGED_COMPANY_REPORT.md).
+It separates the exact authored watchlist draft from dated loaded source summaries.
+Preparation is explicit and adds no source read or saved change. Intervening source,
+note or visit changes remove the preview. Export and durable reports remain open.
+
+The preceding M4 thesis candidate adds optional **Research purpose** and **Time horizon**
 to the authored review. The owner can distinguish exploring an idea from reviewing
 a holding, preview the complete text, then append and save it through the existing
 watchlist draft. The choice does not establish holdings or start monitoring. See

@@ -1774,6 +1774,7 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('101.5') && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
         retainAnnualNoteFrame("companySnapshotFilings", filingCard + " > h3",
             filingCard + " > h3, " + filingCard + " > p, " + filingCard + " .managed-watchlist-filings-summary", 3);
+        assertPreparedCompanyReport();
         pressBack();
         assertClosedDraft(true);
         awaitPage("leaving company removes its snapshot", snapshot + " === null");
@@ -1783,8 +1784,41 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('No annual evidence loaded') && " +
             snapshot + ".textContent.includes('No filing metadata loaded') && " +
             DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".save === 0");
+        awaitPage("new company visit starts without a prepared report",
+            "document.querySelector('.managed-company-report')?.open === false && document.querySelector('#managed-prepared-report-heading') === null");
         assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         assertFixtureBoundary();
+    }
+
+    private void assertPreparedCompanyReport() throws Exception {
+        click(".managed-company-report > summary");
+        awaitPage("opening report makes no request or saved change",
+            "document.querySelector('#managed-prepared-report-heading') === null && " +
+            DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
+        click(".managed-company-report .trial-actions button:first-child");
+        String report = "document.querySelector('.managed-company-report')";
+        awaitPage("explicit prepared report keeps exact authored draft and original source dates",
+            "document.querySelector('#managed-prepared-report-heading')?.textContent === 'Research report · ZERO' && " +
+            "document.querySelector('.managed-company-report-note')?.textContent === " + JSONObject.quote(NOTE) + " && " +
+            report + ".textContent.includes('2026-08-20 to 2026-09-20') && " +
+            report + ".textContent.includes('2026-09-20T00:00:02.000Z') && " +
+            report + ".textContent.includes('2026-06-23 to 2026-09-20') && " +
+            report + ".textContent.includes('Preparation does not renew the source dates') && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " + DIAGNOSTICS + ".save === 0");
+        retainAnnualNoteFrame("companyResearchReport", "#managed-prepared-report-heading",
+            "#managed-prepared-report-heading, #managed-report-note-heading, .managed-company-report-note", 3);
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", NOTE, NOTE + " changed");
+        awaitPage("intervening draft edit immediately removes the prepared report",
+            "document.querySelector('#managed-prepared-report-heading') === null && " +
+            "document.querySelector('.managed-company-report-note') === null && " +
+            report + ".textContent.includes('Prepare a new report')");
+        touchInput("managed-research-note");
+        replaceFocusedInput("managed-research-note", NOTE + " changed", NOTE);
+        awaitPage("restoring a note does not silently restore the old report",
+            "document.querySelector('#managed-prepared-report-heading') === null && " +
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE) + " && " +
+            DIAGNOSTICS + ".filings === 1 && " + DIAGNOSTICS + ".annual === 1 && " + DIAGNOSTICS + ".eod === 1 && " + DIAGNOSTICS + ".save === 0");
     }
 
     @Test

@@ -74,6 +74,13 @@ state and historical or coverage warning separate. Snapshot links and source
 disclosures retain at least 44px touch targets.
 The existing section actions remain the explicit way to inspect full evidence.
 
+The research report follows the snapshot as a separate initially closed disclosure.
+Preparation and clear actions use existing secondary buttons. Keep the authored
+watchlist draft in a distinct block with preserved whitespace and a readable line
+length; source facts use the existing cards. The report preparation time must not
+compete with or replace original source dates. Remove stale prepared content as
+soon as its note, source state or company visit changes.
+
 Use these semantic managed tokens:
 
 | Role             | Token                      | Value     |

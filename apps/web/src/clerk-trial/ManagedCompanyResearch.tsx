@@ -1,4 +1,5 @@
 import { ManagedCompanyFilings } from "./ManagedCompanyFilings";
+import { ManagedCompanyReport } from "./ManagedCompanyReport";
 import { ManagedCompanySnapshot } from "./ManagedCompanySnapshot";
 import type { ManagedCompanyFilings as FilingsModel } from "./managed-company-filings";
 import type {
@@ -98,6 +99,15 @@ export function ManagedCompanyResearch({
         price={eod}
         annual={annual}
         filings={filings}
+        onSection={onSection}
+      />
+      <ManagedCompanyReport
+        key={`report:${research.selection.catalogSnapshotSha256}:${listing.listingId}`}
+        selection={research.selection}
+        price={eod}
+        annual={annual}
+        filings={filings}
+        watchlist={watchlist}
         onSection={onSection}
       />
       <div className="managed-research-body">

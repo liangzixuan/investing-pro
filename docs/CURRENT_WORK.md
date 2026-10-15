@@ -9,8 +9,9 @@ and physical-device use are separate acceptance events.
 
 Release `5b2715e` remains published on the managed website and API. Signed Android
 1.26.0, code 27, is delivered; physical installation was not performed. Previous
-website, API and Android releases remain preserved for rollback. The last checked
-main source is `9cc3423`, after the approved PR100 and PR101 merges.
+website, API and Android releases remain preserved for rollback. Reviewed PR143 is now merged into main at `a430cd3`; production publication is a
+separate boundary. The original source checks and reviewed maintenance advisories
+remain recorded below.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -20,6 +21,20 @@ original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
 ## Consolidated research candidate
+
+The next M4 increment adds an explicit [research report preview](MANAGED_COMPANY_REPORT.md).
+It separates the full authored watchlist draft from existing dated Price, Annual
+and Filings summaries. At least one loaded source is required; pending reads block
+preparation. Source, note or visit changes remove the preview immediately. There
+is no report export, durable storage, inferred holding or new source request.
+Affected report, snapshot, composed-screen and real-workspace fixture checks pass
+(235 cases), including unavailable-draft refusal. Chrome passes actual 1440/390/320 CSS widths with exact Unicode notes, no overflow,
+44px action targets, partial and independent source loads, intervening-edit
+invalidation, retained failed reads, invalid replacement, company changes and
+retirement. Web types, scoped lint, Java syntax and source boundaries pass. The
+native bundle's maximum loader is 2,414,911 bytes under the unchanged 4 MiB cap,
+with exact software notices. New-head execution remains separate. The report state and UI stay outside the large workspace
+runtime.
 
 The next snapshot increment adds Filings as an independent third source. It
 reuses the existing filing summary and source details, with its original window,
@@ -120,7 +135,7 @@ custody, normalization and PostgreSQL artifacts pass their source-bound reviews.
 CodeScene's main-based review failed with 141 maintenance warnings and 23 notices.
 Focused review retained the real screen/workspace complexity risk and identified
 no correctness blocker. This advisory failure was not suppressed or reported as
-passed. Source integration still needs authorization; production is unchanged.
+passed. The owner approved source integration and PR143 is merged; production is unchanged.
 Prior failed and cancelled outcomes retain their original scope.
 
 ## Coordinated version boundary
