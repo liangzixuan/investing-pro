@@ -132,6 +132,15 @@ periods, original completion time and a separate calculation-reference disclosur
 Each basis keeps its own accepted periods and first refusal. Opening history
 does not load sources or change the current-period note action.
 
+Reported liquidity history follows the current liquidity explanation and note
+action in its own closed disclosure. Use the shared Annual table style with
+right-aligned date headings and numeric values, exact units and four
+reported/calculated rows. Keep current two-column table rules scoped to that
+table. Preserve individual calculation refusals beside valid raw balances and
+name the actual date that stops history. State that reported dates need not be
+consecutive fiscal year-ends. Use contained keyboard scrolling, wrapping full
+values and a separate reference disclosure with 44px summaries.
+
 Use these semantic managed tokens:
 
 | Role             | Token                      | Value     |

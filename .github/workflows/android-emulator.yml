@@ -117,6 +117,7 @@ jobs:
                   "annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource",
                   "annualCashHistoryKeepsExactPeriodsAndRetiresWithSession",
                   "annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods",
+                  "annualLiquidityHistoryRetainsDatesAndRefusals",
                   "annualOperatingResultsRetainFactsDraftAndRetireWithSession",
                   "savedWatchlistExportUsesSystemPickerAndPreservesDraft",
                   "priceComparisonNoteDraftReviewSaveAndReloadPreservesSource",

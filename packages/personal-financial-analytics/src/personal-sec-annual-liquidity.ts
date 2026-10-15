@@ -24,6 +24,49 @@ type Metric = PersonalSecAnnualLiquidityMetricEvidenceDto;
 type Row = PersonalSecAnnualLiquidityObservationDto;
 type Amount = PersonalSecAnnualLiquidityValueDto<"USD">;
 type Reason = PersonalSecAnnualLiquidityUnavailableReason;
+
+export type PersonalSecAnnualLiquidityHistoryReason =
+  Reason | "current_use_unavailable";
+
+export type PersonalSecAnnualLiquidityHistoryCalculation<
+  Unit extends "USD" | "multiple",
+> =
+  | Pick<
+      Extract<
+        PersonalSecAnnualLiquidityValueDto<Unit>,
+        { status: "available" }
+      >,
+      "status" | "unit" | "value" | "observationIds"
+    >
+  | Extract<
+      PersonalSecAnnualLiquidityValueDto<Unit>,
+      { status: "unavailable" }
+    >;
+
+export type PersonalSecAnnualLiquidityHistoryBalance = Readonly<{
+  asOfDate: string;
+  currentAssets: string;
+  currentLiabilities: string;
+  workingCapital: PersonalSecAnnualLiquidityHistoryCalculation<"USD">;
+  currentRatio: PersonalSecAnnualLiquidityHistoryCalculation<"multiple">;
+  observationIds: readonly `sec-fact:${string}`[];
+}>;
+
+export type PersonalSecAnnualLiquidityHistory =
+  | Readonly<{
+      status: "unavailable";
+      reason: PersonalSecAnnualLiquidityHistoryReason;
+    }>
+  | Readonly<{
+      status: "available";
+      accessionNumber: string;
+      balances: readonly PersonalSecAnnualLiquidityHistoryBalance[];
+      stopped: Readonly<{
+        asOfDate: string;
+        reason: PersonalSecAnnualLiquidityHistoryReason;
+      }> | null;
+    }>;
+
 const limits = PERSONAL_SEC_ANNUAL_LIQUIDITY_LIMITS;
 const rowReasons: readonly Reason[] = [
   "unsupported_form",
@@ -195,7 +238,11 @@ function scanReason(metric: Metric): Reason | null {
   return absence;
 }
 
-function instantRowReason(row: Row, input: Input): Reason | null {
+function instantRowReason(
+  row: Row,
+  input: Input,
+  candidateDate?: string,
+): Reason | null {
   requireValid(input.target.status === "target");
   const target = input.target;
   if (row.form !== "10-K" && row.form !== "20-F") return "unsupported_form";
@@ -216,7 +263,7 @@ function instantRowReason(row: Row, input: Input): Reason | null {
     return "filing_unmatched_or_conflicted";
   if (
     filing.reportDate !== target.reportDate ||
-    row.endDate !== target.reportDate
+    row.endDate !== (candidateDate ?? target.reportDate)
   )
     return "report_end_mismatch";
   if (row.endDate > row.filedDate) return "future_or_inconsistent_dates";
@@ -228,14 +275,17 @@ function resolveMetric(
   input: Input,
   globalReason: Reason | null,
   currentUseEligible: boolean,
+  candidateDate?: string,
 ): Amount {
   const refused = globalReason ?? scanReason(metric);
   if (refused !== null) return unavailable(refused, metric.observations);
   requireValid(input.target.status === "target");
-  const reportDate = input.target.reportDate;
+  const reportDate = candidateDate ?? input.target.reportDate;
   const rows = metric.observations.filter((row) => row.endDate === reportDate);
   if (rows.length === 0) return unavailable("no_report_date");
-  const reasons = rows.map((row) => instantRowReason(row, input));
+  const reasons = rows.map((row) =>
+    instantRowReason(row, input, candidateDate),
+  );
   const reason = rowReasons.find((candidate) => reasons.includes(candidate));
   if (reason) return unavailable(reason, rows);
   const first = rows[0]!;
@@ -324,5 +374,114 @@ export function resolvePersonalSecAnnualLiquidity(
     workingCapital: calculation(assets, liabilities, "USD"),
     currentRatio: calculation(assets, liabilities, "multiple"),
     utilityAge,
+  });
+}
+
+function historyCalculation<Unit extends "USD" | "multiple">(
+  value: PersonalSecAnnualLiquidityValueDto<Unit>,
+): PersonalSecAnnualLiquidityHistoryCalculation<Unit> {
+  const common = {
+    unit: value.unit,
+    observationIds: [...value.observationIds],
+  };
+  return value.status === "available"
+    ? { ...common, status: "available", value: value.value }
+    : { ...common, status: "unavailable", reason: value.reason };
+}
+
+function historyBalance(
+  assets: Extract<Amount, { status: "available" }>,
+  liabilities: Extract<Amount, { status: "available" }>,
+): PersonalSecAnnualLiquidityHistoryBalance {
+  return {
+    asOfDate: assets.asOfDate,
+    currentAssets: assets.value,
+    currentLiabilities: liabilities.value,
+    workingCapital: historyCalculation(calculation(assets, liabilities, "USD")),
+    currentRatio: historyCalculation(
+      calculation(assets, liabilities, "multiple"),
+    ),
+    observationIds: [...assets.observationIds, ...liabilities.observationIds],
+  };
+}
+
+function requireBalanceDate(value: string): void {
+  requireValid(
+    typeof value === "string" && /^[1-9]\d{3}-\d{2}-\d{2}$/u.test(value),
+  );
+  const instant = Date.parse(`${value}T00:00:00.000Z`);
+  requireValid(
+    Number.isFinite(instant) &&
+      new Date(instant).toISOString().slice(0, 10) === value,
+  );
+}
+
+/** Complete observed balance dates in one filing; no annual adjacency inference. */
+export function resolvePersonalSecAnnualLiquidityHistory(
+  input: Input,
+): PersonalSecAnnualLiquidityHistory {
+  const current = resolvePersonalSecAnnualLiquidity(input);
+  const { currentAssets, currentLiabilities } = input.liquidity;
+  const rows = [
+    ...currentAssets.observations,
+    ...currentLiabilities.observations,
+  ];
+  // The new history entry admits every selected date before ordering candidates.
+  for (const row of rows) requireBalanceDate(row.endDate);
+  const assets = current.currentAssets;
+  const liabilities = current.currentLiabilities;
+  if (assets.status === "unavailable")
+    return freeze({ status: "unavailable", reason: assets.reason });
+  if (liabilities.status === "unavailable")
+    return freeze({ status: "unavailable", reason: liabilities.reason });
+  if (!assets.currentUseEligible || !liabilities.currentUseEligible)
+    return freeze({ status: "unavailable", reason: "current_use_unavailable" });
+  requireValid(input.target.status === "target");
+  const reportDate = input.target.reportDate;
+  requireValid(reportDate !== null);
+  if (rows.some((row) => row.endDate > reportDate))
+    return freeze({ status: "unavailable", reason: "report_end_mismatch" });
+
+  const dates = [...new Set(rows.map((row) => row.endDate))]
+    .filter((date) => date < assets.asOfDate)
+    .sort()
+    .reverse();
+  const balances = [historyBalance(assets, liabilities)];
+  let stopped: Extract<
+    PersonalSecAnnualLiquidityHistory,
+    { status: "available" }
+  >["stopped"] = null;
+  for (const asOfDate of dates) {
+    if (balances.length === 3) break;
+    // Only the candidate balance date varies; filing metadata keeps the target.
+    const priorAssets = resolveMetric(
+      currentAssets,
+      input,
+      null,
+      false,
+      asOfDate,
+    );
+    const priorLiabilities = resolveMetric(
+      currentLiabilities,
+      input,
+      null,
+      false,
+      asOfDate,
+    );
+    if (priorAssets.status === "unavailable") {
+      stopped = { asOfDate, reason: priorAssets.reason };
+      break;
+    }
+    if (priorLiabilities.status === "unavailable") {
+      stopped = { asOfDate, reason: priorLiabilities.reason };
+      break;
+    }
+    balances.push(historyBalance(priorAssets, priorLiabilities));
+  }
+  return freeze({
+    status: "available",
+    accessionNumber: assets.accessionNumber,
+    balances,
+    stopped,
   });
 }

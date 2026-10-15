@@ -16,7 +16,10 @@ CodeScene maintenance advisories remain recorded. PR153 is also merged into main
 at `866dbcf` after the owner's scoped email approval and a final revision, base
 and check recheck. Its seven original Actions checks pass; exact base-tree
 equivalence supports reuse of that evidence. Reviewed CodeScene debt remains.
-Production publication is a separate boundary.
+PR154 is merged at `09b601c` after the owner's scoped email approval and the
+final head, base and applicable-check recheck. Its six original Actions checks
+pass; the reviewed CodeScene maintenance advisories are retained. Production
+publication is a separate boundary.
 
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
@@ -24,6 +27,30 @@ session scope appears with sign-out review. Private fixture controls are exclude
 from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
+
+## Liquidity-history candidate
+
+Managed company Annual now has a closed Reported liquidity history disclosure
+with the current balances and up to two earlier reported dates from the same
+filing. It preserves exact raw balances and calculation-specific refusals,
+original filing metadata, source clocks and all agreeing references. A refused
+raw pair stops history at that date without filling the gap from older rows.
+Reported dates need not be consecutive fiscal year-ends. Missing income does not
+hide independently admitted liquidity. The existing packet and complete report
+JSON supply the inputs; no request, schema, note format or saved field is added.
+
+Focused domain and component checks, all 127 composed fixture cases and 65
+provider cases pass. The composed journey covers strict admission, captured
+report reproduction, failure, Cancel, late completion, replacement, leaving and
+reopening the company, unchanged Unicode draft and session retirement. The shared
+five-read invented history fixture preserves the existing operating-history
+journey. Combined source review found no actionable issue. Invented-data Chrome checks
+pass at 1440/390/320 CSS widths, including source references, keyboard scrolling,
+complete report JSON, failure/Cancel/late retention, replacement, navigation and
+session retirement. Full-length raw and derived amounts wrap inside the narrow
+scrolling table. The new native inventory has 37 cases and 101 expected PNGs,
+checked statically. This increment still needs hosted native acceptance; source
+integration and production publication remain separate.
 
 ## Operating-history candidate
 
@@ -52,8 +79,11 @@ controls; that diagnostic now wraps without clipping or changing its contents.
 The Back case now checks the existing keyboard and native window-focus
 preconditions before its single Back action. Its underlying cause remains
 unproven. All closure, restored-focus, draft, financial, geometry and deadline
-checks remain. These corrections require a fresh source revision's native
-acceptance; they do not change either failed original outcome.
+checks remain. The repaired revision passes all five applicable Actions checks and CodeScene.
+Its original Android run passes all 36 cases with the exact 99 expected PNGs.
+The saved artifact and immutable source agree; six representative frames were
+visually reviewed. These results accept the repaired revision and preserve each
+earlier failed outcome.
 
 ## Operating comparison candidate
 

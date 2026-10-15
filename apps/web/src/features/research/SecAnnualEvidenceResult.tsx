@@ -4,6 +4,7 @@ import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
 import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
 import { SecAnnualOperatingHistory } from "./SecAnnualOperatingHistory";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
+import { SecAnnualLiquidityHistory } from "./SecAnnualLiquidityHistory";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
@@ -207,6 +208,7 @@ function ManagedAnnualFinancialResult({
         response={response}
         liquidityAction={liquidityAction}
         headingTarget={targets.liquidity}
+        history={<SecAnnualLiquidityHistory response={response} />}
       />
       <details className="managed-annual-provenance" ref={sourceDetails}>
         <summary

@@ -265,7 +265,11 @@
 }
 
 .managed-frame
-  :is(.managed-annual-cash-history, .managed-annual-operating-history) {
+  :is(
+    .managed-annual-cash-history,
+    .managed-annual-operating-history,
+    .managed-annual-liquidity-history
+  ) {
   min-width: 0;
   margin: 12px 0;
   border-block: 1px solid var(--managed-line);
@@ -275,7 +279,9 @@
     .managed-annual-cash-history,
     .managed-cash-history-references,
     .managed-annual-operating-history,
-    .managed-operating-history-references
+    .managed-operating-history-references,
+    .managed-annual-liquidity-history,
+    .managed-liquidity-history-references
   )
   > summary {
   min-height: 44px;
@@ -286,41 +292,66 @@
   overflow-wrap: anywhere;
 }
 .managed-frame
-  :is(.managed-cash-history-table, .managed-operating-history-table) {
+  :is(
+    .managed-cash-history-table,
+    .managed-operating-history-table,
+    .managed-liquidity-history-table
+  ) {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
 }
 .managed-frame
-  :is(.managed-cash-history-table, .managed-operating-history-table)
+  :is(
+    .managed-cash-history-table,
+    .managed-operating-history-table,
+    .managed-liquidity-history-table
+  )
   table {
   min-width: 640px;
 }
 .managed-frame
-  :is(.managed-cash-history-table, .managed-operating-history-table)
+  :is(
+    .managed-cash-history-table,
+    .managed-operating-history-table,
+    .managed-liquidity-history-table
+  )
   :focus-visible,
 .managed-frame
   :is(
     .managed-cash-history-table,
-    .managed-operating-history-table
+    .managed-operating-history-table,
+    .managed-liquidity-history-table
   ):focus-visible {
   outline: 3px solid var(--managed-action);
   outline-offset: -3px;
 }
 .managed-frame
-  :is(.managed-cash-history-references, .managed-operating-history-references) {
+  :is(
+    .managed-cash-history-references,
+    .managed-operating-history-references,
+    .managed-liquidity-history-references
+  ) {
   min-width: 0;
   font-size: 13px;
   color: var(--managed-muted);
 }
 .managed-frame
-  :is(.managed-cash-history-references, .managed-operating-history-references)
+  :is(
+    .managed-cash-history-references,
+    .managed-operating-history-references,
+    .managed-liquidity-history-references
+  )
   dl {
   display: grid;
   gap: 12px;
 }
 .managed-frame
-  :is(.managed-cash-history-references, .managed-operating-history-references)
+  :is(
+    .managed-cash-history-references,
+    .managed-operating-history-references,
+    .managed-liquidity-history-references
+  )
   dd {
   margin: 4px 0 0;
   overflow-wrap: anywhere;
@@ -423,19 +454,19 @@
   outline: 3px solid var(--managed-action);
   outline-offset: 3px;
 }
-.managed-frame .sec-annual-liquidity table {
+.managed-frame .sec-annual-liquidity-results table {
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
-.managed-frame .sec-annual-liquidity caption {
+.managed-frame .sec-annual-liquidity-results caption {
   padding: 0 0 12px;
   text-align: left;
   color: var(--managed-ink);
   font-size: 13px;
 }
-.managed-frame .sec-annual-liquidity :is(th, td) {
+.managed-frame .sec-annual-liquidity-results :is(th, td) {
   padding: 12px 8px;
   border-bottom: 1px solid var(--managed-line);
   text-align: left;
@@ -443,16 +474,16 @@
   overflow-wrap: anywhere;
   font-size: 13px;
 }
-.managed-frame .sec-annual-liquidity th {
+.managed-frame .sec-annual-liquidity-results th {
   font-weight: 500;
 }
-.managed-frame .sec-annual-liquidity th:first-child {
+.managed-frame .sec-annual-liquidity-results th:first-child {
   width: 43%;
 }
-.managed-frame .sec-annual-liquidity thead th:last-child {
+.managed-frame .sec-annual-liquidity-results thead th:last-child {
   text-align: right;
 }
-.managed-frame .sec-annual-liquidity thead th {
+.managed-frame .sec-annual-liquidity-results thead th {
   color: var(--managed-muted);
   font-size: 12px;
 }

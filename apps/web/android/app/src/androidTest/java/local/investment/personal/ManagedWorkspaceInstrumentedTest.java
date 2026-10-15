@@ -249,6 +249,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("raw-close-comparison");
         if (testName.getMethodName().equals("annualEvidenceNoteDraftReviewSaveAndReloadPreservesSource"))
             selectFixtureScenario("annual-note");
+        if (testName.getMethodName().equals("annualLiquidityHistoryRetainsDatesAndRefusals"))
+            selectFixtureScenario("annual-liquidity-history");
         if (testName.getMethodName().equals("annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods"))
             selectFixtureScenario("annual-operating-history");
         if (testName.getMethodName().equals("annualCashHistoryKeepsExactPeriodsAndRetiresWithSession"))
@@ -4632,6 +4634,123 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void annualLiquidityHistoryRetainsDatesAndRefusals() throws Exception {
+        double origin = readDocumentTimeOrigin();
+        String note = "Liquidity history thesis · Café 東京 📈";
+        awaitPage("liquidity-history startup performs no financial read", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        awaitPage("liquidity draft retains exact listing order", DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'");
+        typeIntoInput("managed-note-1", NOTE);
+        click(ANNUAL);
+        awaitPage("liquidity history waits for explicit Annual load", "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(NOTE) + " && document.querySelector('.managed-annual-liquidity-history') === null");
+        replaceReportNoteWithNativeIme(NOTE, note);
+        String draft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        assertOperatingCounts(0, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        String history = ".managed-annual-liquidity-history";
+        String table = history + " .managed-liquidity-history-table";
+        String exact = liquidityHistoryExact(false, draft);
+        awaitPage("reported dates start closed with exact raw balances and per-cell refusals", exact +
+            " && document.querySelector('.managed-annual-liquidity-history')?.open === false && document.querySelector('.managed-liquidity-history-references')?.open === false");
+        focusCashHistoryControl(history + " > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native Space opens reported liquidity dates", exact + " && document.querySelector('.managed-annual-liquidity-history').open");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_TAB));
+        awaitPage("native Tab focuses the contained liquidity table",
+            "(() => { const table = document.querySelector('.managed-liquidity-history-table'); const r = table?.getBoundingClientRect(), v = visualViewport;" +
+            " return table && document.activeElement === table && getComputedStyle(table).outlineStyle !== 'none' && parseFloat(getComputedStyle(table).outlineWidth) >= 2" +
+            " && table.scrollWidth > table.clientWidth && getComputedStyle(table).overflowX === 'auto' && v && v.width <= 600" +
+            " && r.width > 0 && r.left >= v.offsetLeft && r.right <= v.offsetLeft + v.width && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_DPAD_RIGHT));
+        awaitPage("native Right scrolls only liquidity history", exact + " && document.querySelector('.managed-liquidity-history-table').scrollLeft > 0 && document.activeElement === document.querySelector('.managed-liquidity-history-table')");
+        retainAnnualNoteFrame("liquidityHistoryLoaded", table + " thead th:nth-child(2)", table + " thead th:nth-child(2), " + table + " tbody td:nth-of-type(1)", 5);
+        focusCashHistoryControl(history + " .managed-liquidity-history-references > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("each reported balance date retains all exact original source references and filing report date",
+            "(() => { const refs = document.querySelector('.managed-liquidity-history-references'), source = document.querySelector('.sec-annual-liquidity-source'); const entries = [...refs.querySelectorAll('dl > div')];" +
+            " const dates = ['2025-12-31','2024-12-28','2023-12-30']; const ids = []; return refs.open && entries.length === 3 && entries.every((entry,i) => {" +
+            " const observations = [...source.querySelectorAll(':scope > section > ol > li > details')].filter(d => d.querySelector('summary')?.textContent.includes('Source end ' + dates[i] + ' ·'));" +
+            " const field = (d,label) => [...d.querySelectorAll('dl > div')].find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent; const found = observations.map(d => field(d,'Observation identifier')); ids.push(...found);" +
+            " return entry.querySelector('time')?.dateTime === dates[i] && entry.querySelector('time')?.textContent === dates[i] && found.length === 2 && found.every(id => /^sec-fact:[a-f0-9]{64}$/.test(id))" +
+            " && entry.querySelector('dd')?.textContent.split(' · ').sort().join('|') === found.sort().join('|')" +
+            " && observations.every(d => field(d,'Accession') === '0000000001-26-000001' && field(d,'Joined report / accepted time') === '2025-12-31 · 2026-02-01T00:00:00.000Z'); }) && new Set(ids).size === 6; })()");
+        assertOperatingCounts(1, 0, 0, 1);
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("full report captures every liquidity comparative row and original metadata without another load",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value), e = doc.sources.annual.response.evidence; const assets = e.liquidity.currentAssets.observations, liabilities = e.liquidity.currentLiabilities.observations;" +
+            " return doc.authoredResearch.note === " + JSONObject.quote(note) + " && e.observations.length === 0" +
+            " && assets.map(row => row.endDate + '|' + row.value).join(';') === '2025-12-31|120.125;2024-12-28|-5;2023-12-30|0'" +
+            " && liabilities.map(row => row.endDate + '|' + row.value).join(';') === '2025-12-31|180.025;2024-12-28|2;2023-12-30|0'" +
+            " && [...assets,...liabilities].every(row => row.filing.reportDate === '2025-12-31' && row.accessionNumber === '0000000001-26-000001')" +
+            " && e.generation.cutoffAt === '2026-09-20T00:00:00.000Z' && e.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && e.generation.sources.companyFacts.fetchedAt === '2026-09-20T00:00:01.000Z' && e.generation.sources.submissions.fetchedAt === '2026-09-20T00:00:02.000Z'" +
+            " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'; })()");
+        String captured = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#managed-report-document').value).sources.annual.response)");
+        click(".managed-company-report > summary");
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("failed refresh retains exact reported dates, cell refusals, original clocks and Unicode draft", exact + " && " + DIAGNOSTICS + ".refreshFailed === 1");
+        assertOperatingCounts(2, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("third liquidity-history read is held", DIAGNOSTICS + ".annual === 3");
+        click(".managed-annual-report .trial-actions button:nth-child(2)");
+        click("#settle-cancelled-read");
+        awaitPage("Cancel fences changed late balances while retaining every original refusal", exact + " && " + DIAGNOSTICS + ".lateResolved === 1");
+        assertOperatingCounts(3, 1, 1, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("replacement stops at the actual missing side without borrowing older balances", liquidityHistoryExact(true, draft));
+        awaitPage("replacement preserves the blocked and older complete source rows",
+            "(() => { const source = document.querySelector('.sec-annual-liquidity-source'); return source?.textContent.includes('AssetsCurrent · Source end 2024-06-29 · 25 USD') && !source.textContent.includes('LiabilitiesCurrent · Source end 2024-06-29')" +
+            " && source.textContent.includes('AssetsCurrent · Source end 2023-12-30 · 500 USD') && source.textContent.includes('LiabilitiesCurrent · Source end 2023-12-30 · 100 USD'); })()");
+        assertOperatingCounts(4, 1, 1, 1);
+        JSONObject capturedEvidence = new JSONObject(captured).getJSONObject("evidence");
+        assertEquals("Captured report retains its initial clock after live replacement", "2026-09-20T00:00:02.000Z", capturedEvidence.getJSONObject("generation").getString("completedAt"));
+        assertEquals("Captured report retains all initial asset dates", 3, capturedEvidence.getJSONObject("liquidity").getJSONObject("currentAssets").getJSONArray("observations").length());
+        assertEquals("Captured report retains its original first raw balance", "120.125", capturedEvidence.getJSONObject("liquidity").getJSONObject("currentAssets").getJSONArray("observations").getJSONObject(0).getString("value"));
+        click(".managed-company-visit .trial-toolbar > button");
+        awaitPage("leaving clears loaded liquidity history while restoring the exact unsaved draft and Annual opener",
+            "document.querySelector('.managed-company-visit') === null && document.querySelector('.managed-annual-liquidity-history') === null && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) + " && document.activeElement === document.querySelector(" + JSONObject.quote(ANNUAL) + ")");
+        click(ANNUAL);
+        awaitPage("reopening starts a new unloaded liquidity visit without another read", "document.querySelector('#managed-annual-heading') !== null && document.querySelector('.managed-annual-liquidity-history') === null && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(note));
+        assertOperatingCounts(4, 1, 1, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("fifth liquidity-history read is held before session expiry", DIAGNOSTICS + ".annual === 5");
+        click(CATALOG_REFRESH);
+        awaitPage("expiry retires the whole draft and all history before late completion", DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-company-research') === null && document.querySelector('.managed-annual-liquidity-history') === null && " + DIAGNOSTICS + ".aborted === 2");
+        click("#settle-cancelled-read");
+        awaitPage("retired late balances cannot restore history or authored Unicode prose", DIAGNOSTICS + ".lateResolved === 2 && document.querySelector('.managed-annual-liquidity-history') === null && !document.querySelector('.managed-frame').textContent.includes(" + JSONObject.quote(note) + ")");
+        assertOperatingCounts(5, 2, 2, 2);
+        awaitPage("only the one explicit failure occurred", DIAGNOSTICS + ".refreshFailed === 1");
+        assertEquals("Liquidity lifetime preserves the original document", origin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String liquidityHistoryExact(boolean replacement, String draft) {
+        String sign = "Unavailable. This calculation requires nonnegative reported balances.";
+        String zero = "Unavailable. Current ratio requires current liabilities greater than zero.";
+        String values = replacement ? "Current assetsReported · USD|200.125|60;Current liabilitiesReported · USD|100|0;Working capitalApp calculation · USD|100.125|60;Current ratioApp calculation · multiple|2.00×|" + zero :
+            "Current assetsReported · USD|120.125|-5|0;Current liabilitiesReported · USD|180.025|2|0;Working capitalApp calculation · USD|-59.9|" + sign + "|0;Current ratioApp calculation · multiple|0.67×|" + sign + "|" + zero;
+        String dates = replacement ? "2025-12-31|2024-12-28" : "2025-12-31|2024-12-28|2023-12-30";
+        String day = replacement ? "2026-09-21" : "2026-09-20";
+        return "(() => { const history = document.querySelector('.managed-annual-liquidity-history'), table = history?.querySelector('.managed-liquidity-history-table'); const dates = " + JSONObject.quote(dates) + ";" +
+            " const rows = [...(table?.querySelectorAll('tbody tr') || [])]; const stopped = history?.querySelector(':scope > p.managed-annual-unavailable');" +
+            " return document.querySelectorAll('.managed-annual-liquidity-history').length === 1 && history.querySelector(':scope > summary')?.textContent === 'Reported liquidity history'" +
+            " && table?.getAttribute('role') === 'region' && table.tabIndex === 0 && table.getAttribute('aria-label') === 'Reported liquidity history balances'" +
+            " && table.querySelector('caption')?.textContent === 'Reported balances · " + (replacement ? "2" : "3") + " dates · newest first'" +
+            " && [...table.querySelectorAll('thead th[scope=col]')].slice(1).map(th => th.querySelector('time')?.dateTime).join('|') === dates" +
+            " && [...table.querySelectorAll('thead th[scope=col]')].slice(1).map(th => th.querySelector('time')?.textContent).join('|') === dates" +
+            " && rows.length === 4 && rows.every(row => row.cells.length === " + (replacement ? "3" : "4") + ") && rows.map(row => [...row.cells].map(c => c.textContent).join('|')).join(';') === " + JSONObject.quote(values) +
+            " && " + (replacement ? "stopped?.textContent === 'History stops at reported balance date 2024-06-29. One or both reported balances are missing at the required date. Older dates are not substituted.' && !history.textContent.includes('2023-12-30')" : "!stopped") +
+            " && history.textContent.includes('filing 0000000001-26-000001') && history.textContent.includes('Selected filing report date 2025-12-31') && history.textContent.includes('These dates need not be consecutive fiscal year-ends.')" +
+            " && history.textContent.includes('Original Annual cutoff " + day + "T00:00:00.000Z') && history.textContent.includes('Company Facts captured " + day + "T00:00:01.000Z')" +
+            " && history.textContent.includes('Submissions captured " + day + "T00:00:02.000Z') && history.textContent.includes('Original load completed " + day + "T00:00:02.000Z')" +
+            " && !history.textContent.includes('999.875') && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(draft) +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
+    }
+
+    @Test
     public void annualOperatingHistoryRetainsReplacesAndRetiresExactPeriods() throws Exception {
         double origin = readDocumentTimeOrigin();
         awaitPage("operating-history startup performs no financial read", DIAGNOSTICS + ".marketsResolve === 1");
@@ -5967,7 +6086,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-operating-comparison") ||
+            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-history") || scenarioName.equals("annual-liquidity-history") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
@@ -6116,7 +6235,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertRefreshLiquidity(boolean recovered) throws Exception {
         awaitPage("Annual liquidity retains exact balances and independently bounds current ratio",
             "(() => { const panel = document.querySelector('.sec-annual-liquidity');" +
-            " const rows = Array.from(panel?.querySelectorAll('tbody tr') ?? []);" +
+            " const rows = Array.from(panel?.querySelectorAll(':scope > .sec-annual-liquidity-results tbody tr') ?? []);" +
             " const amounts = rows.map(row => row.querySelector('.sec-annual-liquidity-amount')?.textContent ?? 'Unavailable');" +
             " return panel?.getAttribute('aria-label') === 'Annual liquidity' && rows.length === 4" +
             " && panel.querySelector('caption')?.textContent === 'Balances at 2025-12-31'" +

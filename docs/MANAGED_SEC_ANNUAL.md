@@ -426,7 +426,52 @@ freshness and 485-day report policies still apply; valid older balances remain
 readable with historical labels. The existing whole-response lifetime carries
 liquidity through refresh, cancellation, navigation and comparison-to-company
 handoff. The [comparison rows](#compare-liquidity-between-companies) reuse these
-checked balances and calculations. Liquidity history remains outside this scope.
+checked balances and calculations. The following history disclosure has its own
+reported-date admission and coverage limits.
+
+### Reported liquidity history
+
+Managed company Annual adds an initially closed **Reported liquidity history**
+disclosure. It shows the selected report-date balances and up to two earlier
+reported dates from the same filing, newest first. The rows retain exact current
+assets, current liabilities, working capital and current ratio, with reported
+amounts and app calculations labelled separately.
+
+These are observed balance dates. They need not be consecutive fiscal year-ends,
+and a date absent from both source concepts has no marker in the packet. The app
+does not subtract calendar years or borrow periods from income or cash flows.
+Accounting changes and restatements are unadjusted. The display does not establish
+a complete timeline, as-originally-filed history or a forecast.
+
+The selected current pair must be available and within the original load's
+current-use limits. Earlier candidates come from the complete union of both
+concepts' reported dates. A missing, invalid or conflicting raw pair stops history
+at that actual date; accepted newer balances remain readable, and older dates do
+not fill the gap. A selected observation after the report date refuses the new
+history. Original filing metadata, including its report date, remain unchanged
+for every comparative observation.
+
+Negative and zero reported balances remain visible. Working capital and current
+ratio keep their existing calculation rules and show their own refusal reasons.
+A refused calculation does not remove a valid raw pair or stop inspection of
+earlier dates. For example, zero current liabilities can retain working capital
+while the ratio is unavailable.
+
+**History calculation references** lists all agreeing input IDs for each date.
+Complete observations stay in **Liquidity sources and calculation inputs**.
+Original source captures, cutoff and completion remain visible. Opening, closing
+or scrolling history makes no request or saved change and grants no renewed
+freshness qualification. The labelled table supports keyboard scrolling inside
+the available width.
+
+Failed refresh and Cancel retain the accepted packet; discarded late responses
+cannot replace it. A successful refresh replaces the whole packet, and leaving
+the company or retiring the session clears it. Prepared report JSON keeps the
+complete admitted rows and reproduces the captured history after the live packet
+changes. Current note actions, snapshot and comparison scope stay unchanged.
+No source request, response field or schema version is added. Implementation,
+browser, native and publication acceptance remain separate in
+[Current work](CURRENT_WORK.md).
 
 ### Add liquidity to a note
 

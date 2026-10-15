@@ -7,7 +7,10 @@ import {
   type PersonalSecQuarterlyConcept,
 } from "@research-cockpit/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { serializePersonalSecAnnualGeneration } from "@research-cockpit/personal-financial-analytics";
+import {
+  resolvePersonalSecAnnualLiquidityHistory,
+  serializePersonalSecAnnualGeneration,
+} from "@research-cockpit/personal-financial-analytics";
 
 import {
   createSecPersonalAnnualEvidenceProvider,
@@ -1087,6 +1090,80 @@ describe("explicit observed annual SEC evidence provider", () => {
       value: "120",
       observationIds: [result.liquidity.currentAssets.observations[0]!.id],
     });
+  });
+
+  it("preserves three exact reported balance dates independently of refused income evidence in the same two reads", async () => {
+    const dates = ["2025-12-31", "2024-12-28", "2023-12-30"];
+    const { provider, fetch } = setup(() =>
+      Response.json(
+        companyFacts([fact({ val: "invalid" })], [], {
+          AssetsCurrent: {
+            units: {
+              USD: dates.map((end, index) =>
+                instant({ end, val: [120.125, -5, 0][index] }),
+              ),
+            },
+          },
+          LiabilitiesCurrent: {
+            units: {
+              USD: dates.map((end, index) =>
+                instant({ end, val: [180.025, 2, 0][index] }),
+              ),
+            },
+          },
+        }),
+      ),
+    );
+    const result = await finish(provider.loadEvidence(CIK));
+    expect(fetch.mock.calls.map(([input]) => url(input))).toEqual([
+      SUBMISSIONS_URL,
+      FACTS_URL,
+    ]);
+    expect(result.coverage?.full.invalidRows).toBe(1);
+    expect(
+      result.liquidity.currentAssets.observations.map((row) => row.endDate),
+    ).toEqual(dates);
+    expect(
+      result.liquidity.currentLiabilities.observations.map(
+        (row) => row.endDate,
+      ),
+    ).toEqual(dates);
+    expect(
+      result.liquidity.currentAssets.observations.every(
+        (row) => row.filing.reportDate === "2025-12-31",
+      ),
+    ).toBe(true);
+    expect(result.liquidity.resolution.currentAssets).toMatchObject({
+      status: "available",
+      value: "120.125",
+    });
+    expect(resolvePersonalSecAnnualLiquidityHistory(result)).toMatchObject({
+      status: "available",
+      balances: [
+        {
+          asOfDate: dates[0],
+          currentAssets: "120.125",
+          workingCapital: { status: "available", value: "-59.9" },
+          currentRatio: { status: "available", value: "0.67" },
+        },
+        {
+          asOfDate: dates[1],
+          currentAssets: "-5",
+          workingCapital: { status: "unavailable", reason: "unsupported_sign" },
+        },
+        {
+          asOfDate: dates[2],
+          currentAssets: "0",
+          workingCapital: { status: "available", value: "0" },
+          currentRatio: {
+            status: "unavailable",
+            reason: "nonpositive_current_liabilities",
+          },
+        },
+      ],
+      stopped: null,
+    });
+    expect(result.generation.cutoffAt).toBe(NOW.toISOString());
   });
 
   it("preserves lossless operands and long derived values without the source-input length cap", async () => {

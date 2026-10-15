@@ -1,3 +1,4 @@
+import { liquidityHistoryPacket } from "./liquidity-history-fixture";
 import { operatingHistoryPacket } from "./operating-history-fixture";
 import { inventedOperatingPacket } from "./operating-fixture";
 import {
@@ -224,6 +225,7 @@ export async function createFixture(
     | "annual-cash-history"
     | "annual-operating-results"
     | "annual-operating-history"
+    | "annual-liquidity-history"
     | "annual-operating-comparison"
     | "company-snapshot"
     | "company-price-ranges"
@@ -281,18 +283,20 @@ export async function createFixture(
           },
         }
       : annualBase;
-  const operatingHistory =
-    scenarioName === "annual-operating-history"
-      ? await operatingHistoryPacket()
-      : null;
-  const operatingHistoryReplacement =
-    scenarioName === "annual-operating-history"
-      ? await operatingHistoryPacket(true)
-      : null;
-  const operatingHistoryLate =
-    scenarioName === "annual-operating-history"
-      ? await operatingHistoryPacket(false, true)
-      : null;
+  const historyScenario =
+    scenarioName === "annual-operating-history" ||
+    scenarioName === "annual-liquidity-history";
+  const historyPacket =
+    scenarioName === "annual-liquidity-history"
+      ? liquidityHistoryPacket
+      : operatingHistoryPacket;
+  const annualHistory = historyScenario ? await historyPacket() : null;
+  const annualHistoryReplacement = historyScenario
+    ? await historyPacket(true)
+    : null;
+  const annualHistoryLate = historyScenario
+    ? await historyPacket(false, true)
+    : null;
   const operatingAnnual =
     scenarioName === "annual-operating-results"
       ? await inventedOperatingPacket()
@@ -644,10 +648,7 @@ export async function createFixture(
     state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
-      if (
-        scenarioName === "annual-operating-results" ||
-        scenarioName === "annual-operating-history"
-      ) {
+      if (scenarioName === "annual-operating-results" || historyScenario) {
         count("filings");
         throw new Error("Unexpected operating-results Filings read");
       }
@@ -739,16 +740,14 @@ export async function createFixture(
           );
         return Promise.reject(new TrialApiError("unauthenticated"));
       }
-      if (scenarioName === "annual-operating-history" && state.status === 2) {
+      if (historyScenario && state.status === 2) {
         if (
           state.annual !== 5 ||
           !pending ||
           state.aborted !== 1 ||
           state.lateResolved !== 1
         )
-          throw new Error(
-            "Hold the fifth operating-history read before expiry",
-          );
+          throw new Error("Hold the fifth annual-history read before expiry");
         return Promise.reject(new TrialApiError("unauthenticated"));
       }
       if (scenarioName === "annual-operating-results" && state.status === 2) {
@@ -886,10 +885,7 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
-      if (
-        scenarioName === "annual-operating-results" ||
-        scenarioName === "annual-operating-history"
-      )
+      if (scenarioName === "annual-operating-results" || historyScenario)
         return unexpected("save");
       if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
@@ -1199,10 +1195,7 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
-      if (
-        scenarioName === "annual-operating-results" ||
-        scenarioName === "annual-operating-history"
-      ) {
+      if (scenarioName === "annual-operating-results" || historyScenario) {
         count("eod");
         throw new Error("Unexpected operating-results eod operation");
       }
@@ -1350,10 +1343,10 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
-      if (scenarioName === "annual-operating-history") {
+      if (historyScenario) {
         if (
-          !operatingHistory ||
-          !operatingHistoryReplacement ||
+          !annualHistory ||
+          !annualHistoryReplacement ||
           signal.aborted ||
           pending ||
           request.schemaVersion !== "4.0.0" ||
@@ -1365,18 +1358,16 @@ export async function createFixture(
           (state.annual >= 3 &&
             (state.aborted !== 1 || state.lateResolved !== 1))
         )
-          throw new Error(
-            "Unexpected operating-history Annual request or order",
-          );
+          throw new Error("Unexpected annual-history Annual request or order");
         count("annual");
         if (state.annual === 1)
-          return Promise.resolve(structuredClone(operatingHistory));
+          return Promise.resolve(structuredClone(annualHistory));
         if (state.annual === 2) {
           count("refreshFailed");
           return Promise.reject(new TrialApiError("unavailable"));
         }
         if (state.annual === 4)
-          return Promise.resolve(structuredClone(operatingHistoryReplacement));
+          return Promise.resolve(structuredClone(annualHistoryReplacement));
         signal.addEventListener("abort", () => count("aborted"), {
           once: true,
         });
@@ -1690,17 +1681,17 @@ export async function createFixture(
       void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
-      if (scenarioName === "annual-operating-history") {
+      if (historyScenario) {
         if (
-          !operatingHistoryLate ||
+          !annualHistoryLate ||
           !pending ||
           state.aborted !== state.lateResolved + 1 ||
           ![3, 5].includes(state.annual)
         )
-          throw new Error("Only an aborted operating-history read may settle");
+          throw new Error("Only an aborted annual-history read may settle");
         const resolve = pending;
         pending = null;
-        resolve(structuredClone(operatingHistoryLate));
+        resolve(structuredClone(annualHistoryLate));
         void Promise.resolve().then(() => count("lateResolved"));
         return;
       }

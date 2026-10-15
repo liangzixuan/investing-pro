@@ -32,6 +32,7 @@ if (
   scenario !== "annual-cash-history" &&
   scenario !== "annual-operating-results" &&
   scenario !== "annual-operating-history" &&
+  scenario !== "annual-liquidity-history" &&
   scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
   scenario !== "company-price-ranges" &&
@@ -313,7 +314,8 @@ function Fixture() {
         <button
           id="settle-cancelled-read"
           disabled={
-            scenario === "annual-operating-history"
+            scenario === "annual-operating-history" ||
+            scenario === "annual-liquidity-history"
               ? state.aborted !== state.lateResolved + 1 ||
                 ![3, 5].includes(state.annual)
               : scenario === "annual-operating-results"
