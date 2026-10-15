@@ -2,9 +2,18 @@ import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualResolutionInput,
 } from "@research-cockpit/contracts";
-import { resolvePersonalSecAnnualEvidence } from "@research-cockpit/personal-financial-analytics";
+import {
+  resolvePersonalSecAnnualEvidence,
+  serializePersonalSecAnnualGeneration,
+} from "@research-cockpit/personal-financial-analytics";
 import React from "react";
 import { request, row, response } from "./sec-annual-evidence-fixture";
+import { cashGeneration } from "./sec-annual-cash-fixture";
+import { liquidity } from "./sec-annual-liquidity-fixture";
+import { operatingResults } from "./sec-annual-operating-fixture";
+import { balanceSheet } from "./sec-annual-balance-sheet-fixture";
+import { hash } from "../../lib/sec-annual-response-validation";
+import { parseSecAnnualEvidenceResponse } from "../../lib/sec-annual-evidence-response";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PersonalWorkspaceApiError } from "../../lib/personal-workspace-api";
@@ -142,16 +151,36 @@ describe("PersonalSecAnnualEvidence", () => {
         },
       },
       completeness: { status: "refused", reason: "source_unavailable" },
+      incomeScanStatus: "source_unavailable",
       coverage: null,
       observations: [],
     };
-    api.fetchPersonalSecAnnualEvidence.mockResolvedValue({
+    const refused = {
+      ...evidence,
+      generation: {
+        ...evidence.generation,
+        sha256: await hash(serializePersonalSecAnnualGeneration(evidence)),
+      },
+    };
+    const packet: PersonalSecAnnualEvidenceResponseDto = {
       ...wire,
       evidence: {
-        ...evidence,
-        resolution: resolvePersonalSecAnnualEvidence(evidence),
+        ...refused,
+        resolution: resolvePersonalSecAnnualEvidence(refused),
+        cashGeneration: await cashGeneration(refused),
+        liquidity: await liquidity(refused),
+        operatingResults: await operatingResults(refused),
+        balanceSheet: await balanceSheet(refused),
       },
-    });
+    };
+    const admitted = await parseSecAnnualEvidenceResponse(
+      packet,
+      request(),
+      new AbortController().signal,
+    );
+    expect(admitted).toEqual(packet);
+    expect(admitted).not.toBeNull();
+    api.fetchPersonalSecAnnualEvidence.mockResolvedValue(admitted);
     await load();
     const view = render();
     const sourceGroups = elements(view).filter(
@@ -169,6 +198,9 @@ describe("PersonalSecAnnualEvidence", () => {
     );
     expect(text(view)).toContain("A required SEC source is unavailable");
     expect(text(view)).not.toContain("Net margin · %");
+    const markup = renderToStaticMarkup(view);
+    expect(markup).toContain("SEC request rate limited");
+    expect(markup).toContain("Balance sheet history unavailable.");
   });
 
   it("exposes conflicted signed inputs without presenting an admitted numeric margin", async () => {
