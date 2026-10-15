@@ -1,3 +1,7 @@
+import {
+  createNativeCompanyReportAdapter,
+  type InvestmentCompanyReportPlugin,
+} from "../../src/clerk-trial/native-company-report";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { createFixture } from "./fixture";
@@ -7,8 +11,8 @@ import {
   companyReportIsCurrent,
   prepareCompanyReport,
 } from "../../src/clerk-trial/managed-company-report";
-import { CompanyReportDownload } from "../../src/clerk-trial/company-report-download";
-import { ManagedCompanyReportDownload } from "../../src/clerk-trial/ManagedCompanyReportDownload";
+import { PreparedReportDelivery } from "../../src/clerk-trial/prepared-report-delivery";
+import { ManagedCompanyReportDelivery } from "../../src/clerk-trial/ManagedCompanyReportDelivery";
 import { formatCompanyReportDocument } from "../../src/clerk-trial/managed-company-report-document";
 import type { CompanyReportDeliveryAdapter } from "../../src/clerk-trial/company-report-delivery";
 
@@ -54,6 +58,103 @@ async function fixture() {
 }
 
 describe("explicit company report download in the real workspace", () => {
+  it("saves through the native destination capability without calling browser transport or Save", async () => {
+    const f = await fixture();
+    const deliver = vi
+      .fn<CompanyReportDeliveryAdapter["deliver"]>()
+      .mockResolvedValue("written");
+    const delivery: CompanyReportDeliveryAdapter = {
+      destination: "system_document",
+      deliver,
+    };
+    const model = new PreparedReportDelivery(f.report, delivery, f.isCurrent);
+    const html = renderToStaticMarkup(
+      <ManagedCompanyReportDelivery
+        report={f.report}
+        delivery={delivery}
+        isCurrent={f.isCurrent}
+      />,
+    );
+    expect(html).toContain("Save report (JSON)");
+    expect(html).not.toContain("Download report (JSON)");
+    expect(html).toContain("Choose a destination");
+    await model.start();
+    expect(deliver).toHaveBeenCalledOnce();
+    expect(model.getSnapshot().message).toBe(
+      `Saved report ${deliver.mock.calls[0]![0].filename} to the chosen document.`,
+    );
+    expect(f.source.getSnapshot()).toMatchObject({
+      annual: 1,
+      save: 0,
+      eod: 0,
+      filings: 0,
+    });
+    model.retire();
+    f.workspace.coordinator.retire();
+  });
+  it.each(["note", "retire"])(
+    "rechecks actual %s state after the native picker returns before writing",
+    async (kind) => {
+      const f = await fixture();
+      let choose!: (value: { status: "chosen"; handle: string }) => void;
+      const plugin: InvestmentCompanyReportPlugin = {
+        choose: vi.fn<InvestmentCompanyReportPlugin["choose"]>(
+          () =>
+            new Promise((resolve) => {
+              choose = resolve;
+            }),
+        ),
+        write: vi.fn().mockResolvedValue({ status: "written" }),
+        cancel: vi.fn().mockResolvedValue(undefined),
+      };
+      const model = new PreparedReportDelivery(
+        f.report,
+        createNativeCompanyReportAdapter(plugin),
+        f.isCurrent,
+      );
+      const pending = model.start();
+      if (kind === "note")
+        f.workspace.note("listing-zero", "changed while choosing");
+      else f.workspace.coordinator.retire();
+      choose({
+        status: "chosen",
+        handle: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      });
+      await pending;
+      expect(plugin.write).not.toHaveBeenCalled();
+      expect(plugin.cancel).toHaveBeenCalledOnce();
+      expect(model.getSnapshot()).toEqual({ busy: false, message: "" });
+      model.retire();
+      f.workspace.coordinator.retire();
+    },
+  );
+  it.each(["cancelled", "reject", "download_requested"] as const)(
+    "reports native %s truthfully and refuses a browser outcome from the native capability",
+    async (kind) => {
+      const f = await fixture();
+      const deliver = vi.fn<CompanyReportDeliveryAdapter["deliver"]>();
+      if (kind === "reject")
+        deliver.mockRejectedValue(new Error("private native exception"));
+      else deliver.mockResolvedValue(kind);
+      const model = new PreparedReportDelivery(
+        f.report,
+        { destination: "system_document", deliver },
+        f.isCurrent,
+      );
+      await model.start();
+      expect(model.getSnapshot()).toEqual({
+        busy: false,
+        message:
+          kind === "cancelled"
+            ? "Report save cancelled."
+            : "Report could not be saved. Check the chosen destination before trying again.",
+      });
+      expect(deliver).toHaveBeenCalledOnce();
+      model.retire();
+      f.workspace.coordinator.retire();
+    },
+  );
+
   it("keeps the native journey's separate original source clocks in the complete document", async () => {
     const f = await fixture();
     f.workspace.switchToEod();
@@ -124,7 +225,11 @@ describe("explicit company report download in the real workspace", () => {
     const deliver = vi
       .fn<CompanyReportDeliveryAdapter["deliver"]>()
       .mockResolvedValue("download_requested");
-    const model = new CompanyReportDownload(f.report, { deliver }, f.isCurrent);
+    const model = new PreparedReportDelivery(
+      f.report,
+      { deliver, destination: "browser_download" },
+      f.isCurrent,
+    );
     const operation = model.start();
     expect(deliver).toHaveBeenCalledOnce();
     expect(deliver.mock.calls[0]![0]).toEqual(
@@ -160,9 +265,9 @@ describe("explicit company report download in the real workspace", () => {
       const deliver = vi
         .fn<CompanyReportDeliveryAdapter["deliver"]>()
         .mockResolvedValue("download_requested");
-      const model = new CompanyReportDownload(
+      const model = new PreparedReportDelivery(
         f.report,
-        { deliver },
+        { deliver, destination: "browser_download" },
         f.isCurrent,
       );
       if (kind === "note")
@@ -193,7 +298,11 @@ describe("explicit company report download in the real workspace", () => {
           settle = resolve;
         }),
     );
-    const model = new CompanyReportDownload(f.report, { deliver }, f.isCurrent);
+    const model = new PreparedReportDelivery(
+      f.report,
+      { deliver, destination: "browser_download" },
+      f.isCurrent,
+    );
     const listener = vi.fn();
     model.subscribe(listener);
     const pending = model.start();
@@ -228,9 +337,9 @@ describe("explicit company report download in the real workspace", () => {
                 : resolve("download_requested");
           }),
       );
-      const model = new CompanyReportDownload(
+      const model = new PreparedReportDelivery(
         f.report,
-        { deliver },
+        { deliver, destination: "browser_download" },
         f.isCurrent,
       );
       const pending = model.start();
@@ -249,7 +358,11 @@ describe("explicit company report download in the real workspace", () => {
     const deliver = vi
       .fn<CompanyReportDeliveryAdapter["deliver"]>()
       .mockRejectedValue(new Error("private exception"));
-    const model = new CompanyReportDownload(f.report, { deliver }, f.isCurrent);
+    const model = new PreparedReportDelivery(
+      f.report,
+      { deliver, destination: "browser_download" },
+      f.isCurrent,
+    );
     await model.start();
     expect(model.getSnapshot()).toEqual({
       busy: false,
@@ -260,9 +373,9 @@ describe("explicit company report download in the real workspace", () => {
     await model.start();
     expect(deliver).toHaveBeenCalledTimes(2);
     model.retire();
-    const oversized = new CompanyReportDownload(
+    const oversized = new PreparedReportDelivery(
       { ...f.report, note: "x".repeat(17000) },
-      { deliver },
+      { deliver, destination: "browser_download" },
       () => true,
     );
     await oversized.start();
@@ -278,9 +391,9 @@ describe("explicit company report download in the real workspace", () => {
       .fn<CompanyReportDeliveryAdapter["deliver"]>()
       .mockResolvedValue("download_requested");
     const html = renderToStaticMarkup(
-      <ManagedCompanyReportDownload
+      <ManagedCompanyReportDelivery
         report={f.report}
-        delivery={{ deliver }}
+        delivery={{ deliver, destination: "browser_download" }}
         isCurrent={f.isCurrent}
       />,
     );

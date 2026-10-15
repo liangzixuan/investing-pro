@@ -1,7 +1,7 @@
 import type { CompanyReportDeliveryAdapter } from "./company-report-delivery";
 import type { ManagedResearchSelection } from "./managed-research-selection";
 import { companySnapshotEvidence } from "./managed-company-snapshot";
-import { ManagedCompanyReportDownload } from "./ManagedCompanyReportDownload";
+import { ManagedCompanyReportDelivery } from "./ManagedCompanyReportDelivery";
 import { useEffect, useState, type ReactNode } from "react";
 import type { ResearchWatchlistState } from "./managed-workspace";
 import { CompanySnapshotEvidenceView } from "./ManagedCompanySnapshot";
@@ -61,7 +61,7 @@ export function ManagedCompanyReport({
       onSection={onSection}
       download={
         report && current && reportDelivery && readReportWatchlist ? (
-          <ManagedCompanyReportDownload
+          <ManagedCompanyReportDelivery
             report={report}
             delivery={reportDelivery}
             isCurrent={() =>
