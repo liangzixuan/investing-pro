@@ -85,6 +85,14 @@ eligibility. Place the explicit note action below its basis. The source disclosu
 starts closed; full concepts, identifiers and dates wrap at narrow widths. The
 in-report Operating results link moves focus to the existing section heading.
 
+Annual comparison places operating income, selected-basis revenue and operating
+margin in the existing two-column table. Keep each cell's period and eligibility
+with its value, and show the readable revenue concept beside its amount. The
+existing per-company source disclosure contains operating references. Add
+Operating results to the existing evidence choice and retain the same note
+destination, feedback and Review controls. The table keeps its contained
+horizontal scroll and 44px keyboard-accessible selectors on narrow screens.
+
 ## Color and surfaces
 
 The company snapshot uses an initially closed native disclosure below company

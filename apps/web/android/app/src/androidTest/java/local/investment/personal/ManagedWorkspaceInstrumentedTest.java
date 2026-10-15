@@ -276,6 +276,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("bea-session-retirement");
         if (testName.getMethodName().equals("watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft"))
             selectFixtureScenario("annual-comparison");
+        if (testName.getMethodName().equals("operatingComparisonNoteKeepsSeparateSourcesAndExplicitSave"))
+            selectFixtureScenario("annual-operating-comparison");
         if (testName.getMethodName().equals("fedAnnouncementsRetainDatesCancelAndRetireWithSession"))
             selectFixtureScenario("fed-announcements");
         if (testName.getMethodName().equals("savedWatchlistExportUsesSystemPickerAndPreservesDraft"))
@@ -501,6 +503,149 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void operatingComparisonNoteKeepsSeparateSourcesAndExplicitSave() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        String prefix = readFixtureString("JSON.parse(document.querySelector('#fixture-operating-comparison').textContent).prefix");
+        String expectedNote = readFixtureString("JSON.parse(document.querySelector('#fixture-operating-comparison').textContent).expectedNote");
+        assertEquals("Café 東京📈", prefix);
+        assertEquals(1532, expectedNote.codePointCount(0, expectedNote.length()));
+        assertEquals(1540, expectedNote.getBytes(StandardCharsets.UTF_8).length);
+        selectWorkspaceView("My Watchlist");
+        click("button[aria-label='Move ZERO down']");
+        typeIntoInput("managed-note-1", NOTE);
+        click(ANNUAL);
+        replaceReportNoteWithNativeIme(NOTE, prefix);
+        pressBack();
+        awaitPage("native Unicode authorship returns to comparison without reading a financial source",
+            "document.querySelector('.managed-company-visit') === null && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(prefix));
+        assertAnnualComparisonCounts(0, 0, 0);
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-company']", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-right-company']", "listing-one", "ONE · One Company · Class A · XNAS");
+        assertAnnualComparisonCounts(0, 0, 0);
+        clickAnnualComparisonAction("Load first annual report");
+        awaitPage("one explicit report leaves the second operating column unloaded",
+            "(() => { const row = document.querySelector('[data-annual-comparison-operating=operatingIncome]');" +
+            " return row?.querySelectorAll('td')[0]?.textContent.includes('-250.125') && row.querySelectorAll('td')[1]?.textContent === 'Not loaded'; })()");
+        clickAnnualComparisonAction("Load second annual report");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "Revenues", "Revenue · revenue/net-income pair unavailable");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-right-basis']", "SalesRevenueNet", "Net sales revenue · revenue/net-income pair unavailable");
+        assertOperatingComparisonValues("1000", "-25.01%", "Revenue");
+        chooseNativeSelectOption(".managed-annual-comparison select[id$='-left-basis']", "RevenueFromContractWithCustomerExcludingAssessedTax", "Customer contract revenue, excluding assessed tax · revenue/net-income pair unavailable");
+        assertOperatingComparisonValues("500", "-50.03%", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonCounts(2, 0, 0);
+        click(".managed-annual-comparison-source:first-child details > summary");
+        click(".managed-annual-comparison-source:last-child details > summary");
+        assertOperatingComparisonSources();
+        assertAnnualComparisonSources();
+        String firstObservation = "[data-annual-comparison-operating-source='left'] > ol:first-of-type > li:first-child > details > summary";
+        retainAnnualNoteFrame("annualOperatingComparisonSource", firstObservation, firstObservation, 1);
+        click(".managed-annual-report-opener[aria-label='Open full Annual report for ONE (One Company; Class A; XNAS)']");
+        assertComparisonReportVisit("ONE", "One Company", "0000000002-25-000001", "2025-06-30", false);
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("full-report handoff retains the complete operating packet without loading net income",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value);" +
+            " const report = doc.sources.annual.response; return report.security.symbol === 'ONE' && report.schemaVersion === '4.0.0'" +
+            " && report.evidence.observations.every(row => row.metric === 'revenue')" +
+            " && report.evidence.operatingResults.resolution.operatingIncome.value === '125.25'" +
+            " && report.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'; })()");
+        pressBack();
+        assertOperatingComparisonValues("500", "-50.03%", "Customer contract revenue, excluding assessed tax");
+        assertAnnualComparisonCounts(2, 0, 0);
+        clickAnnualComparisonAction("Refresh first annual report");
+        awaitPage("transient refresh failure retains the original operating packet and clocks",
+            "document.querySelector('.managed-annual-comparison-choice:first-child [role=alert]') !== null" +
+            " && document.querySelector('.managed-annual-comparison-choice:first-child .discovery-warning time')?.dateTime === '2026-09-20T00:00:02.000Z'");
+        assertOperatingComparisonValues("500", "-50.03%", "Customer contract revenue, excluding assessed tax");
+        clickAnnualComparisonAction("Refresh first annual report");
+        awaitPage("operating refresh is explicitly held", DIAGNOSTICS + ".annual === 4");
+        clickAnnualComparisonAction("Cancel first annual report");
+        click("#settle-cancelled-annual-comparison");
+        assertAnnualComparisonCounts(4, 1, 1);
+        assertOperatingComparisonValues("500", "-50.03%", "Customer contract revenue, excluding assessed tax");
+        assertOperatingComparisonSources();
+        chooseNativeSelectOption("#managed-annual-comparison-note-group", "operating", "Operating results");
+        chooseNativeSelectOption("#managed-annual-comparison-note-destination", "listing-zero", "ZERO · Zero Company · Class A · XNAS");
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        assertOperatingComparisonNote(expectedNote, 1, true);
+        clickAnnualComparisonAction("Add Annual comparison to note draft");
+        awaitPage("duplicate operating comparison cannot append a second paragraph",
+            "document.querySelector('.managed-annual-comparison-note-status')?.textContent === 'This exact Annual comparison reference is already in the note draft.'");
+        assertOperatingComparisonNote(expectedNote, 1, true);
+        clickAnnualComparisonAction("Review note");
+        awaitPage("Review selects the full exact Unicode operating note before Save",
+            "document.querySelector('#managed-note-1')?.value === " + JSONObject.quote(expectedNote) +
+            " && document.querySelector('#managed-note-1')?.dataset.managedNoteListingId === 'listing-zero'" +
+            " && document.querySelector('.managed-watchlist-choice[aria-pressed=true]')?.dataset.watchlistSelection === 'listing-zero'");
+        click("#managed-unsaved-review-summary");
+        awaitPage("unsaved review exposes both complete original filing references",
+            "document.querySelector('#managed-unsaved-review')?.open === true && document.querySelector('#managed-unsaved-review').textContent.includes(" + JSONObject.quote(expectedNote) + ")");
+        assertAnnualComparisonCounts(4, 1, 1);
+        clickWatchlistAction("Save watchlist");
+        assertOperatingComparisonNote(expectedNote, 2, false);
+        clickWatchlistAction("Load saved watchlist");
+        assertOperatingComparisonNote(expectedNote, 2, false);
+        assertAnnualComparisonCounts(4, 1, 1, 1, 2);
+        assertOperatingComparisonValues("500", "-50.03%", "Customer contract revenue, excluding assessed tax");
+        clickAnnualComparisonAction("Refresh second annual report");
+        awaitPage("second operating packet is held before session expiry", DIAGNOSTICS + ".annual === 5");
+        click(CATALOG_REFRESH);
+        awaitPage("retirement removes both operating reports and the draft",
+            DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && document.querySelector('.managed-annual-comparison') === null");
+        click("#settle-cancelled-annual-comparison");
+        assertAnnualComparisonCounts(5, 2, 2, 1, 2);
+        awaitPage("retired late operating packet cannot restore evidence, note or controls",
+            "document.querySelector('.managed-annual-comparison') === null && document.querySelector('.managed-navigation') === null" +
+            " && (() => { const product = document.querySelector('.managed-frame'); return product && !product.textContent.includes('999.875') && !product.textContent.includes(" + JSONObject.quote(prefix) + "); })()" +
+            " && " + DIAGNOSTICS + ".status === 2 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+        assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary(0, 1);
+    }
+
+    private void assertOperatingComparisonValues(String leftRevenue, String leftMargin, String leftBasis) throws Exception {
+        awaitPage("operating operands retain separate fiscal periods despite unavailable net-income pairs",
+            "(() => { const rows = [...document.querySelectorAll('[data-annual-comparison-operating]')];" +
+            " const expected = [['operatingIncome','Operating income','Reported · USD','-250.125','125.25'], ['revenue','Operating revenue basis','Reported · USD'," + JSONObject.quote(leftRevenue) + ",'750'], ['operatingMargin','Operating margin','App calculation · %'," + JSONObject.quote(leftMargin) + ",'16.7%']];" +
+            " const periods = ['2025-01-01 to 2025-12-31','2024-07-01 to 2025-06-30'];" +
+            " return rows.length === 3 && rows.every((row,i) => { const cells = [...row.querySelectorAll('td')], header = row.querySelector('th');" +
+            " return row.dataset.annualComparisonOperating === expected[i][0] && header.scope === 'row' && header.firstChild.textContent === expected[i][1]" +
+            " && header.querySelector('small').textContent === expected[i][2] && cells.length === 2 && cells.every((cell,side) => {" +
+            " const small = [...cell.querySelectorAll('small')]; return cell.querySelector('.sec-annual-liquidity-amount')?.textContent === expected[i][3+side]" +
+            " && small[i === 1 ? 1 : 0]?.textContent === periods[side] && small.at(-1)?.textContent === 'Within current-use limits at this load.'; }); })" +
+            " && rows[1].querySelectorAll('td')[0].querySelector('small').textContent === " + JSONObject.quote(leftBasis) +
+            " && rows[1].querySelectorAll('td')[1].querySelector('small').textContent === 'Net sales revenue'" +
+            " && [...document.querySelectorAll('.managed-annual-comparison select[id$=\"-basis\"]')].every(s => s.selectedOptions[0].textContent.includes('revenue/net-income pair unavailable'))" +
+            " && [...document.querySelectorAll('.managed-annual-comparison-table tbody tr')][3].textContent.includes('Unavailable')" +
+            " && !document.querySelector('.managed-annual-comparison').textContent.includes('999.875')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()");
+    }
+
+    private void assertOperatingComparisonSources() throws Exception {
+        awaitPage("complete operating observations retain each filing and original source times",
+            "(() => { const sources = [...document.querySelectorAll('[data-annual-comparison-operating-source]')];" +
+            " return sources.length === 2 && sources.every((source,side) => { const item = source.querySelector('ol:first-of-type > li > details');" +
+            " const pairs = item ? [...item.querySelectorAll('dl > div')] : []; const field = label => pairs.find(p => p.querySelector('dt')?.textContent === label)?.querySelector('dd')?.textContent;" +
+            " const period = side === 0 ? '2025-01-01 to 2025-12-31' : '2024-07-01 to 2025-06-30'; const value = side === 0 ? '-250.125' : '125.25';" +
+            " return source.dataset.annualComparisonOperatingSource === (side === 0 ? 'left' : 'right')" +
+            " && source.querySelector('h4')?.textContent === 'Operating sources and calculation inputs'" +
+            " && source.querySelector(':scope > p')?.textContent === 'Annual cutoff 2026-09-20T00:00:00.000Z. Company Facts captured 2026-09-20T00:00:01.000Z. Submissions captured 2026-09-20T00:00:02.000Z. Completed 2026-09-20T00:00:02.000Z.'" +
+            " && item?.querySelector('summary')?.textContent === 'OperatingIncomeLoss · ' + period + ' · ' + value + ' USD'" +
+            " && field('Exact USD observation') === value && field('Accession') === (side === 0 ? '0000000001-26-000001' : '0000000002-25-000001')" +
+            " && field('Company Facts source pointer') === '/facts/us-gaap/OperatingIncomeLoss/units/USD/0'" +
+            " && /^sec-fact:[a-f0-9]{64}$/.test(field('Observation identifier')) && source.textContent.includes(field('Observation identifier')); }); })()");
+    }
+
+    private void assertOperatingComparisonNote(String expected, int version, boolean dirty) throws Exception {
+        awaitPage("operating note preserves all Unicode prose, provenance, other note and order",
+            DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(expected) +
+            " && " + DRAFT + ".memberships?.[0]?.note === 'Invented second note'" +
+            " && " + DRAFT + ".memberships?.map(member => member.symbol).join(',') === 'ONE,ZERO'" +
+            " && " + DRAFT + ".baseVersion === " + version + " && " + DRAFT + ".dirty === " + dirty);
+    }
+
+    @Test
     public void watchlistAnnualComparisonKeepsSeparateFilingsAndPreservesDraft() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         selectWorkspaceView("My Watchlist");
@@ -654,7 +799,7 @@ public class ManagedWorkspaceInstrumentedTest {
     private void assertAnnualComparisonValues(String revenue, String margin, String change, String rawBasis, String basisLabel) throws Exception {
         awaitPage("exact Annual values retain distinct fiscal periods and bases",
             "(() => { const rows = document.querySelectorAll('.managed-annual-comparison-table tbody tr');" +
-            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 13" +
+            " const cells = i => [...rows[i].querySelectorAll('td')]; return rows.length === 16" +
             " && [...cells(0)[0].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2025-01-01|2025-12-31'" +
             " && [...cells(0)[1].querySelectorAll('time')].map(t => t.dateTime).join('|') === '2024-07-01|2025-06-30'" +
             " && cells(1)[0].textContent === " + JSONObject.quote(basisLabel) +
@@ -5714,7 +5859,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") ||
+            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") || scenarioName.equals("annual-operating-comparison") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||

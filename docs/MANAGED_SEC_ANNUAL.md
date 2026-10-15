@@ -121,6 +121,29 @@ report owner. Rendering and changing a basis send no extra request. Choose
 **Liquidity** in the comparison note action to keep both companies' admitted
 balances and calculations with their original provenance.
 
+### Compare operating results between companies
+
+Three rows show **Operating income**, **Operating revenue basis** and
+**Operating margin** from each loaded Annual report. Income and selected revenue
+retain exact, unscaled USD amounts; the margin reuses the admitted calculation.
+Each value shows its own period and current-use status. Negative operating income
+is valid. Missing net income does not hide available operating evidence.
+
+Use each company's existing revenue selector to choose its operating denominator.
+The selected readable concept appears with that revenue amount. A missing or
+unknown basis stays unavailable until another is chosen explicitly. The selector's
+income-pair availability label refers to revenue and net income; operating values
+have their own eligibility. Changing a basis makes no source request and leaves
+the other company's values, cash and liquidity unchanged.
+
+Operating margin requires positive revenue and operating income from the same
+filing and exact annual period. The companies keep their separate fiscal calendars
+and bases; this table adds no cross-company calculation or ranking. The existing
+source disclosure includes complete operating observations, scan counts and
+calculation references. Refresh, Cancel, retention and full-report navigation use
+the existing report owner. Choose **Operating results** in the note action to
+append both companies' complete chosen evidence with original provenance.
+
 ### Open the full report from a comparison
 
 Each loaded column offers **Open full Annual report** beside its load controls.
@@ -144,7 +167,8 @@ cache or automatic fallback request. Current work records acceptance separately.
 
 ### Keep Annual comparison evidence in a note
 
-Below the comparison, choose **Revenue and net income**, **Cash generation** or **Liquidity**,
+Below the comparison, choose **Revenue and net income**, **Cash generation**,
+**Liquidity** or **Operating results**,
 then choose one of the two listings in **Add Annual comparison to**. The
 destination starts empty and identifies the company, share class and exchange.
 **Add Annual comparison to note draft** appends both companies' selected evidence
@@ -161,6 +185,13 @@ working capital remains valid. Its complete source details and separate balance
 dates are retained. Both companies must have the chosen group's evidence; missing
 income or cash does not block valid liquidity. No field is substituted, rounded
 further or loaded by this action.
+
+Operating results copies each company's operating income, selected revenue and
+checked margin, with separate periods, named concepts and original source clocks.
+Both companies need the full chosen operating evidence. A refused margin leaves
+independent table operands visible but prevents this complete note append. The
+shared formula and rounding explanation appears once. The complete note must fit
+the same limit; evidence is never truncated to make it fit.
 
 Changing a company or replacing a report clears the note destination. Changing
 the revenue basis or evidence group keeps the destination but discards earlier
@@ -452,8 +483,9 @@ shared request, source-body, response, deadline and cancellation limits stay fix
 The loaded company snapshot and prepared research report reuse these admitted
 results. The report's existing `1.0.0` document contains the complete Annual packet,
 including operating observations and resolutions. Preparation does not renew dates.
-Watchlist Annual comparison retains its named income, cash and liquidity groups;
-its full-report handoff carries the complete operating packet without a new read.
+Watchlist Annual comparison includes its own operating rows and chosen-basis note
+group alongside income, cash and liquidity. Its full-report handoff carries the
+complete operating packet without a new read.
 
 **Add operating results to note draft** under a chosen basis appends its exact
 operating income, revenue, margin, period, filing link and original source dates

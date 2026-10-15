@@ -8,6 +8,10 @@ import { ManagedWorkspace } from "../../src/clerk-trial/managed-workspace";
 import { TrialFrame } from "../../src/clerk-trial/TrialFrame";
 import "../../src/clerk-trial/trial.css";
 import { createFixture } from "./fixture";
+import {
+  operatingComparisonPrefix,
+  operatingComparisonNoteDraft,
+} from "./operating-comparison-fixture";
 import { createNativeExportFixture } from "./native-export-fixture";
 import { formatManagedWatchlistExport } from "../../src/clerk-trial/managed-watchlist-export-document";
 
@@ -27,6 +31,7 @@ if (
   scenario !== "annual-note" &&
   scenario !== "annual-cash-history" &&
   scenario !== "annual-operating-results" &&
+  scenario !== "annual-operating-comparison" &&
   scenario !== "company-snapshot" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
@@ -199,7 +204,8 @@ function Fixture() {
             Settle cancelled invented filings response
           </button>
         )}
-        {scenario === "annual-comparison" && (
+        {(scenario === "annual-comparison" ||
+          scenario === "annual-operating-comparison") && (
           <button
             id="settle-cancelled-annual-comparison"
             disabled={state.aborted !== state.lateResolved + 1}
@@ -274,6 +280,17 @@ function Fixture() {
         >
           {JSON.stringify(fixture.generations)}
         </pre>
+        {scenario === "annual-operating-comparison" && (
+          <pre
+            id="fixture-operating-comparison"
+            style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+          >
+            {JSON.stringify({
+              prefix: operatingComparisonPrefix,
+              expectedNote: operatingComparisonNoteDraft,
+            })}
+          </pre>
+        )}
         <button
           id="enable-refresh-scenario"
           disabled={state.refreshScenario || state.annual !== 0}

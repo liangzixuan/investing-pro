@@ -13,7 +13,14 @@ portfolio inspection and daily follow-up to M2–M5. The first candidate lets th
 owner preview a thesis, counterevidence, conditions and next check before adding
 an authored review to the existing note draft and saving it explicitly.
 
-The next M2 candidate adds [observed close extremes](MANAGED_EOD_HISTORY.md#read-the-observed-close-range)
+The next M2 candidate adds [operating results to Annual comparison](MANAGED_SEC_ANNUAL.md#compare-operating-results-between-companies).
+Each loaded company retains its own operating income, selected revenue basis,
+margin, period and eligibility, independently of net income. A guarded explicit
+note action keeps both companies' complete evidence under the existing note limit.
+It adds no source request or cross-company ranking. Operating history and broader
+peer coverage remain open.
+
+The preceding M2 candidate adds [observed close extremes](MANAGED_EOD_HISTORY.md#read-the-observed-close-range)
 to company Price, the loaded snapshot and prepared report. Highest and lowest
 reported raw USD closes retain their exact values and dates across the entire
 loaded packet. Ties, sparse coverage and single observations stay explicit.

@@ -20,6 +20,28 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Operating comparison candidate
+
+The current source extends the two-company Annual comparison with reported
+operating income, selected-basis revenue and operating margin. Each company keeps
+its own period, current-use status and refusal, independently of net income.
+Operating results is also an explicit comparison-note choice with both companies'
+complete provenance and the existing full-note limit. No API, schema or request
+change is needed. Focused component, formatter, workspace and fixture checks,
+types, scoped lint/format, source boundaries and bounded source review pass.
+Invented Chrome checks at 1440/390/320 CSS widths confirm independent bases,
+exact values without net income, retained failure/Cancel/late responses, complete
+Unicode note append, Review, explicit Save/reload, full-report handoff and session
+retirement. Long 64-character amounts remain inside the narrow scrolling table.
+The new 35-case native inventory is checked statically; original hosted execution,
+main integration and publication remain separate.
+
+The preceding close-range candidate's original Android run failed. Its original
+evidence identified a stale exact screenshot selector. Repair `e1514a3` retains
+the strict quote capture and separately checks the new summary; its fresh original
+run is pending. That failed original remains recorded. The comparison source
+includes the repair. Main and production remain unchanged.
+
 ## Observed close-range candidate
 
 Company Price, the loaded snapshot and prepared report now show the highest and
@@ -71,8 +93,11 @@ an income-only snapshot warning was corrected. Chrome confirms exact negative
 results without net income at 1440/390/320 CSS widths, 44px controls, keyboard focus,
 chosen-basis note append, complete report JSON, retained failed/cancelled reads and
 late-response fencing through session retirement. No Save or other-source read was
-made. These checks use invented data; live SEC coverage, hosted native execution,
-source integration and publication remain separate.
+made. All six original Actions jobs and all 34 emulator cases pass for that
+operating-results source revision, with its original artifact admitted once.
+CodeScene's reviewed maintenance debt remains recorded. These checks use invented
+data; live SEC coverage, source integration, publication and physical-device use
+remain separate.
 
 ## Company Price range candidate
 
