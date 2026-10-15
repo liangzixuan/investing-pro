@@ -21,6 +21,12 @@ final head, base and applicable-check recheck. Its six original Actions checks
 pass; the reviewed CodeScene maintenance advisories are retained. Production
 publication is a separate boundary.
 
+PR162 is merged at `0859865` and PR163 at `dd5e64b` after the owner's scoped
+email approval, revision and base checks, and review of the applicable original
+Actions results. The actual source trees and ordered parents match the reviewed
+changes. The owner accepted their recorded CodeScene maintenance advisories.
+Final-main checks and live publication remain separate.
+
 That release includes watchlist note search, explicit comparison-to-note actions
 and the compact workspace footer. Software licenses follow the main content;
 session scope appears with sign-out review. Private fixture controls are excluded
@@ -28,9 +34,9 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
-## Balance sheet totals in development
+## Balance sheet totals in main
 
-The next candidate adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
+The source adds [reported balance sheet totals](MANAGED_SEC_ANNUAL.md#reported-balance-sheet-totals)
 to Annual, the company snapshot and captured reports. Total assets, total
 liabilities and parent equity keep independent exact USD values, filing
 references and unavailable reasons. It uses the existing SEC requests and
@@ -45,8 +51,9 @@ cases and 110 screenshots. Navigation readiness from `493bd65` is now integrated
 in source. The combined 278 focused web tests, full web type check, scoped lint,
 format and boundary checks pass. Java and constructed predicate syntax checks
 pass; only the three additive readiness waits differ from the P11 native source.
-Its six report links and 40-case, 110-screenshot inventory remain intact. Fresh
-integrated hosted acceptance and live delivery remain separate. This does not
+Its six report links and 40-case, 110-screenshot inventory remain intact. The
+integrated source's five original Actions workflows and six jobs passed. The
+latest native archive contents and live delivery remain separate. This does not
 establish full financial statements or complete InvestingPro coverage.
 
 ## Company research overview candidate
@@ -67,9 +74,17 @@ Android failure cause remains unproven. A current-source Chrome check holds the
 Annual route commit, verifies disabled navigation and editable notes, releases
 the commit, then returns to exact Price evidence with one enabled click. The
 original focus, draft and request-count predicates pass throughout their relevant
-states. The private preview and tab are closed. Fresh hosted native acceptance
-remains separate. Those Chrome observations cover the P10 source; they do not
-establish acceptance of this integrated balance-sheet candidate.
+states. The private preview and tab are closed. Those Chrome observations cover
+the P10 source. Integrated balance-sheet acceptance has its own recorded scope.
+
+A separate source increment prepares a fixed, private Follow-ups storage proof.
+It uses invented records and the existing bounded transport and typed repository.
+Focused offline checks cover the 18-read preflight, ten storage phases, strict
+request admission, rollback capacity and cleanup failures. The build binds its
+source, fixed data, tools and actual dependency graph. The local artifact build
+and static syntax check pass on source `490bd92`. The proof entry has not been
+invoked. Schema, authority, service limits and live persistence remain unverified;
+see the [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base

@@ -11041,6 +11041,13 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
       ],
     ],
     [
+      "apps/api/src/research-followups-proof-data.ts",
+      [
+        "admitManagedSecurityMasterSnapshot",
+        "lookupPersonalSecurityMasterListing",
+      ],
+    ],
+    [
       "apps/api/src/appwrite-research-followups-repository.ts",
       [
         "lookupPersonalSecurityMasterListing",
@@ -11293,6 +11300,62 @@ async function personalSecurityMasterBoundaryViolations(): Promise<string[]> {
     found.push(
       "scripts/verify-boundaries.ts: managed filings security-master import classifier regressed",
     );
+  const followupsProofDataPath =
+    "apps/api/src/research-followups-proof-data.ts";
+  const followupsProofDataSource = await cycle2kText(
+    followupsProofDataPath,
+    found,
+  );
+  if (
+    personalSecurityMasterApiImportViolation(
+      followupsProofDataPath,
+      followupsProofDataSource,
+      allowedApiImporters,
+    ) !== null ||
+    personalSecurityMasterApiImportViolation(
+      "apps/api/src/research-followups-proof-data-neighbor.ts",
+      followupsProofDataSource,
+      allowedApiImporters,
+    ) === null ||
+    [
+      followupsProofDataSource.replace(
+        "lookupPersonalSecurityMasterListing",
+        "searchPersonalSecurityMaster",
+      ),
+      `${followupsProofDataSource}\nimport * as extra from "@research-cockpit/personal-security-master";`,
+      `${followupsProofDataSource}\nimport { searchPersonalSecurityMaster } from "@research-cockpit/personal-security-master";`,
+    ].some(
+      (changed) =>
+        personalSecurityMasterApiImportViolation(
+          followupsProofDataPath,
+          changed,
+          allowedApiImporters,
+        ) === null,
+    )
+  )
+    found.push(
+      "scripts/verify-boundaries.ts: fixed Follow-ups proof catalog import scope regressed",
+    );
+  const followupsProofBuilderPath = "scripts/research-followups/build-proof.ts";
+  const followupsProofBuilder = await cycle2kText(
+    followupsProofBuilderPath,
+    found,
+  );
+  for (const violation of [
+    filingParserNormalizationHandoffExternalCompositionViolation,
+    filingParserNormalizationExecutionExternalCompositionViolation,
+  ]) {
+    if (
+      violation(followupsProofBuilderPath, followupsProofBuilder) !== null ||
+      violation(
+        followupsProofBuilderPath,
+        `${followupsProofBuilder}\nconst path = process.argv[2]; await import(path);`,
+      ) === null
+    )
+      found.push(
+        "scripts/verify-boundaries.ts: fixed Follow-ups builder must retain execution isolation",
+      );
+  }
   const managedEodPath = "apps/api/src/managed-eod-service.ts";
   const managedEodSource = await cycle2kText(managedEodPath, found);
   const managedEodImports = [

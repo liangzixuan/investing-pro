@@ -485,6 +485,49 @@ server execution. Cancelling a client request cannot undo an already dispatched
 commit; `commit_unknown` and receipt reconciliation remain necessary. The trial
 composition has exercised this transport against the isolated Appwrite tables.
 
+## Fixed Follow-ups storage proof
+
+The separate private Follow-ups proof uses the typed repository and bounded
+transport against `investment_managed_followups_v1`, with `followups` and
+`receipts` tables. Its source defines the target, invented principals, commands
+and exact row locations. The request selects one fixed phase; it cannot supply
+data, identities or storage configuration. Admission requires `POST`, the exact
+phase path, no query, and empty `bodyText` and `bodyBinary`. Execution authority
+comes from the platform's `x-appwrite-key` header, captured before any await.
+
+An 18-read preflight requires all three current rows and fifteen receipt rows to
+be absent. Ten later phases check independent storage, stale edits, races,
+rollback, locally suppressed commit acknowledgement, a later invocation,
+capacity and domain refusals. Offline tests establish a successful model trace
+of 127 local calls, including preflight, within combined phase ceilings of 156.
+These counts do not measure live service calls or prove cold-process reopening.
+The maximum current-catalog packet is 250,191 bytes. The separate 262,144-byte
+saved-shape limit and 262,145-byte refusal do not establish a catalog-matching
+write at that size.
+
+Each phase shares one transport and its existing 12-second deadline, 2-second
+request deadline, 9-second mutation window, 1 MiB response limit and 20 dispatch
+ceiling. Local and trace capacity reserve rollback while a transaction begins
+or remains eligible. Cleanup starts transport closure even if an actor rejects
+or does not settle; it must finish within the remaining deadline. An unfinished
+rollback or failed cleanup makes the result incomplete. There is no automatic
+retry or record-deletion phase.
+
+Successful writes use the repository's actual UTC clock. The fixed year-9999
+completion probe and an injected old clock check refusals; neither supplies a
+successful synthetic write timestamp. Current `updatedAt` must equal its
+receipt's application `committedAt`. SDK metadata timestamps are validated in
+their supported format and are not assumed to equal those application fields.
+
+The fixed Node 24 builder disables configuration discovery and pins its explicit
+TypeScript configuration, source, lockfile, tools, catalog and commands. A
+discovery build records the full module graph; the final identity includes that
+graph and its bytes, which the final build must reproduce. The output admits one
+ESM entry plus its manifests. The local build and static
+syntax check pass. The proof entry has not been invoked.
+Schema provisioning, private function authority, service cost and limits, and
+live persistence require separate reviewed evidence and authorization.
+
 ## Cloud evidence and remaining acceptance
 
 The original isolated storage proof used invented data for creation, stale
