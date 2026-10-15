@@ -27,8 +27,13 @@ It checks the actual draft and source models before the file handoff and fences
 late results after report closure. It includes unsaved authored text, retains
 source clocks and uses its own purpose and filename. Only temporary browser
 transport is shared with saved-watchlist export. Android keeps inspection without
-a browser download action. Local verification is in progress; new-head hosted
-execution and publication remain separate.
+a browser download action. All 303 affected/composed cases, web types, scoped lint/format, Java syntax and
+source boundaries pass. Chrome verifies exact received UTF-8 files against the
+inspection, Unicode/whitespace, partial/full packets, keyboard delivery, retained
+failures, document bounds, edit/clear/retirement guards and actual 1440/390/320
+layouts with zero writes or console warnings. The native bundle's maximum loader
+is 2,421,662 bytes under the unchanged 4 MiB cap with exact software notices.
+New-head hosted execution and publication remain separate.
 
 The original JSON-inspection Android run exposed a test clock mismatch: its
 Price fixture completes at 00:00:01 while Annual and Filings complete at 00:00:02.
@@ -38,12 +43,12 @@ soft keyboard before the same native picker checks; the exact input race is not
 proven, and new emulator evidence is required. No deadline, gate or validator is
 relaxed. Original failed outcomes remain recorded.
 
-The next report increment adds an inspectable JSON document to the current
+The preceding report increment adds an inspectable JSON document to the current
 prepared preview. It separates the exact authored draft from complete admitted
 source packets, including Annual's original income, cash and liquidity inputs,
 filing coordinates, coverage and validation. Each source retains its original
 clocks and previous-response status. The document starts closed and clears with
-the parent report. It adds no request, calculation, Save, clipboard access or file
+the parent report. Inspection adds no request, calculation, Save, clipboard access or automatic file
 delivery; browser and Android share the read-only inspection. Its new-head
 acceptance remains separate from the preceding preview.
 
@@ -61,8 +66,7 @@ with exact software notices. Its own hosted execution remains separate.
 The next M4 increment adds an explicit [research report preview](MANAGED_COMPANY_REPORT.md).
 It separates the full authored watchlist draft from existing dated Price, Annual
 and Filings summaries. At least one loaded source is required; pending reads block
-preparation. Source, note or visit changes remove the preview immediately. There
-is no report export, durable storage, inferred holding or new source request.
+preparation. Source, note or visit changes remove the preview immediately. That preview layer adds no durable storage, inferred holding or new source request.
 Affected report, snapshot, composed-screen and real-workspace fixture checks pass
 (235 cases), including unavailable-draft refusal. Chrome passes actual 1440/390/320 CSS widths with exact Unicode notes, no overflow,
 44px action targets, partial and independent source loads, intervening-edit
