@@ -16,6 +16,11 @@ import { TrialApiError } from "./api";
 import type { ManagedApi } from "./managed-api";
 import { ManagedWorkspace } from "./managed-workspace";
 import { annualLiquidityNoteExcerpt } from "./managed-annual-liquidity-note";
+import { annualOperatingNoteExcerpt } from "./managed-annual-operating-note";
+import {
+  operatingResponse,
+  operatingRow,
+} from "../features/research/sec-annual-operating-fixture";
 import { eodSelection } from "./eod-history-fixture";
 import type { TrialSession } from "./session";
 
@@ -182,6 +187,165 @@ function noOtherRequests(api: ManagedApi) {
   ])
     expect(method).not.toHaveBeenCalled();
 }
+
+describe("workspace Annual operating note action", () => {
+  it("fences an old response after successful replacement and direct Annual retirement", async () => {
+    const { workspace, api, selection, response } = await fixture(
+      await operatingResponse(),
+    );
+    const basis = response.evidence.operatingResults.resolution.margins[1]!;
+    const replacement = await operatingResponse([operatingRow("300")]);
+    vi.mocked(api.annualReport).mockResolvedValueOnce(replacement);
+    await workspace.annual.load();
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    const current = workspace.annual.getSnapshot().response!;
+    const chosen = current.evidence.operatingResults.resolution.margins[1]!;
+    expect(
+      workspace.getAnnualOperatingNoteAction(selection, current, chosen)
+        .canAppend,
+    ).toBe(true);
+    workspace.coordinator.retire();
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, current, chosen)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBeNull();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("accepts exactly 2,000 normalized code points and refuses one more without truncation", async () => {
+    const { workspace, api, selection, response } = await fixture(
+      await operatingResponse(),
+    );
+    const basis = response.evidence.operatingResults.resolution.margins[1]!;
+    const excerpt = annualOperatingNoteExcerpt(response, basis, false)!;
+    const room = 2000 - [...excerpt].length - 1;
+    workspace.noteResearch(selection, "😀".repeat(room + 1));
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    workspace.noteResearch(selection, "😀".repeat(room));
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(true);
+    expect([
+      ...normalizeWatchlistNote(
+        workspace.getResearchWatchlist(selection).member!.note,
+      )!,
+    ]).toHaveLength(2000);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+  });
+  it("uses latest Unicode prose and one exact basis, then saves the whole draft explicitly", async () => {
+    const raw = await operatingResponse([operatingRow("-25.125")]);
+    const packet = await parseSecAnnualEvidenceResponse(
+      raw,
+      request(),
+      new AbortController().signal,
+    );
+    expect(packet).not.toBeNull();
+    const { workspace, api, selection, response, saved } = await fixture(
+      packet!,
+    );
+    const basis = response.evidence.operatingResults.resolution.margins.find(
+      (b) => b.concept === "Revenues",
+    )!;
+    const prose = "  Café thesis 😀  keep whitespace  ";
+    workspace.noteResearch(selection, prose);
+    expect(
+      workspace.getAnnualOperatingNoteAction(selection, response, basis),
+    ).toEqual({ canAppend: true, reason: null });
+    const text = annualOperatingNoteExcerpt(response, basis, false)!;
+    const before = workspace.coordinator.getSnapshot().draft!;
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(true);
+    expect(workspace.getResearchWatchlist(selection).member?.note).toBe(
+      prose + " " + text,
+    );
+    expect(workspace.coordinator.getSnapshot().draft!.memberships[0]).toEqual(
+      before.memberships[0],
+    );
+    expect(api.save).not.toHaveBeenCalled();
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    noOtherRequests(api);
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    await workspace.coordinator.save();
+    expect(api.save).toHaveBeenCalledOnce();
+    expect(saved().payload.memberships[1]?.note).toBe(
+      normalizeWatchlistNote(prose + " " + text),
+    );
+  });
+
+  it("refuses copied basis and stale response, waits during refresh, and fences retirement", async () => {
+    const { workspace, api, selection, response } = await fixture(
+      await operatingResponse(),
+    );
+    const basis = response.evidence.operatingResults.resolution.margins.find(
+      (b) => b.concept === "Revenues",
+    )!;
+    expect(
+      workspace.getAnnualOperatingNoteAction(selection, response, { ...basis })
+        .canAppend,
+    ).toBe(false);
+    const waiting = deferred<Report>();
+    vi.mocked(api.annualReport).mockReturnValueOnce(waiting.promise);
+    const pending = workspace.annual.load();
+    expect(
+      workspace.getAnnualOperatingNoteAction(selection, response, basis)
+        .canAppend,
+    ).toBe(false);
+    workspace.annual.cancel();
+    expect(
+      workspace.getAnnualOperatingNoteAction(selection, response, basis)
+        .canAppend,
+    ).toBe(true);
+    const replacement = await operatingResponse([operatingRow("300")]);
+    waiting.resolve(replacement);
+    await pending;
+    expect(workspace.annual.getSnapshot().response).toBe(response);
+    workspace.switchToEod();
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    workspace.coordinator.retire();
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+
+  it("refuses oversized prose without truncation or a request", async () => {
+    const { workspace, api, selection, response } = await fixture(
+      await operatingResponse(),
+    );
+    const basis = response.evidence.operatingResults.resolution.margins.find(
+      (b) => b.concept === "Revenues",
+    )!;
+    workspace.noteResearch(selection, "x".repeat(2000));
+    const before = workspace.coordinator.getSnapshot().draft;
+    expect(
+      workspace.appendAnnualOperatingToResearchNote(selection, response, basis)
+        .appended,
+    ).toBe(false);
+    expect(workspace.coordinator.getSnapshot().draft).toBe(before);
+    expect(api.annualReport).toHaveBeenCalledOnce();
+    expect(api.save).not.toHaveBeenCalled();
+  });
+});
 
 describe("workspace Annual liquidity note action", () => {
   it("uses latest raw prose and preserves the complete draft until explicit whole-list Save and reload", async () => {

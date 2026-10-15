@@ -957,6 +957,7 @@ describe("managed annual composed function", () => {
           "us-gaap": {
             Revenues: { units: { USD: [fact] } },
             NetIncomeLoss: { units: { USD: [{ ...fact, val: -30 }] } },
+            OperatingIncomeLoss: { units: { USD: [{ ...fact, val: 18 }] } },
             AssetsCurrent: {
               units: { USD: [{ ...fact, start: undefined, val: 120 }] },
             },
@@ -984,6 +985,34 @@ describe("managed annual composed function", () => {
         security: { symbol: "AAPL", cik: "0000320193" },
         evidence: {
           resolution: { currentTargetEligible: true },
+          operatingResults: {
+            resolution: {
+              operatingIncome: {
+                status: "available",
+                unit: "USD",
+                value: "18",
+              },
+              margins: [
+                {
+                  concept:
+                    "RevenueFromContractWithCustomerExcludingAssessedTax",
+                },
+                {
+                  concept: "Revenues",
+                  revenue: {
+                    status: "available",
+                    value: "120",
+                  },
+                  operatingMargin: {
+                    status: "available",
+                    unit: "percent",
+                    value: "15",
+                  },
+                },
+                { concept: "SalesRevenueNet" },
+              ],
+            },
+          },
           liquidity: {
             resolution: {
               workingCapital: { status: "available", unit: "USD", value: "40" },

@@ -2,6 +2,7 @@ import type { PersonalSecAnnualEvidenceResponseDto } from "@research-cockpit/con
 import type { ManagedAnnualReportState } from "./managed-annual-report";
 import { managedAnnualBasisLabel } from "../features/research/managed-annual-basis-label";
 import { SecAnnualCashValueContent } from "../features/research/SecAnnualCashGeneration";
+import { SecAnnualOperatingValueContent } from "../features/research/SecAnnualOperatingResults";
 import { SecAnnualLiquidityValueContent } from "../features/research/SecAnnualLiquidity";
 
 export function CompanySnapshotAnnual({
@@ -43,6 +44,7 @@ function AnnualSnapshot({ response }: Props) {
     <>
       <AnnualSnapshotHeader response={response} />
       <SnapshotIncome response={response} />
+      <SnapshotOperating response={response} />
       <SnapshotCashLiquidity response={response} />
     </>
   );
@@ -83,8 +85,8 @@ function AnnualSnapshotHeader({ response }: Props) {
       </p>
       {!resolution.currentTargetEligible && (
         <p className="discovery-warning">
-          Revenue and income are unavailable under the current-use policy at
-          this load. Any valid reported amounts below are historical.
+          Revenue and net income cannot form a current-use pair at this load.
+          Independent measures retain their own eligibility below.
         </p>
       )}
     </>
@@ -196,5 +198,35 @@ function SnapshotCashLiquidity({ response }: Props) {
         and validation details.
       </p>
     </>
+  );
+}
+
+function SnapshotOperating({ response }: Props) {
+  const { operatingIncome, margins } =
+    response.evidence.operatingResults.resolution;
+  return (
+    <section aria-label="Snapshot operating results">
+      <h4>Operating results</h4>
+      <dl className="managed-snapshot-independent">
+        <div>
+          <dt>Reported operating income · USD</dt>
+          <dd>
+            <SecAnnualOperatingValueContent value={operatingIncome} />
+          </dd>
+        </div>
+        {margins.map((basis) => (
+          <div key={basis.concept}>
+            <dt>Operating margin · {managedAnnualBasisLabel(basis.concept)}</dt>
+            <dd>
+              <SecAnnualOperatingValueContent value={basis.operatingMargin} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p>
+        Margins use each named positive revenue basis and the same filing and
+        period. Open Annual for exact inputs and references.
+      </p>
+    </section>
   );
 }

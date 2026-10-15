@@ -26,6 +26,7 @@ if (
   scenario !== "company-direct-entry" &&
   scenario !== "annual-note" &&
   scenario !== "annual-cash-history" &&
+  scenario !== "annual-operating-results" &&
   scenario !== "company-snapshot" &&
   scenario !== "company-price-ranges" &&
   scenario !== "thesis-review" &&
@@ -293,7 +294,12 @@ function Fixture() {
         </button>
         <button
           id="settle-cancelled-read"
-          disabled={state.aborted !== 1 || state.lateResolved !== 0}
+          disabled={
+            scenario === "annual-operating-results"
+              ? state.aborted !== state.lateResolved + 1 ||
+                ![3, 4].includes(state.annual)
+              : state.aborted !== 1 || state.lateResolved !== 0
+          }
           onClick={fixture.settleCancelledRead}
         >
           Settle cancelled fixture response

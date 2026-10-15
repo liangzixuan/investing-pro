@@ -5,6 +5,7 @@ import {
   PERSONAL_SEC_QUARTERLY_EVIDENCE_LIMITS as LIMITS,
   type PersonalSecAnnualCashMetricEvidenceDto,
   type PersonalSecAnnualLiquidityMetricEvidenceDto,
+  type PersonalSecAnnualOperatingMetricEvidenceDto,
   type PersonalSecAnnualEvidenceDto,
   type PersonalSecAnnualMetricCountsDto,
   type PersonalSecAnnualResolutionInput,
@@ -16,6 +17,7 @@ import {
   resolvePersonalSecAnnualEvidence,
   resolvePersonalSecAnnualCashGeneration,
   resolvePersonalSecAnnualLiquidity,
+  resolvePersonalSecAnnualOperatingResults,
   selectPersonalSecAnnualTarget,
   serializePersonalSecAnnualGeneration,
 } from "@research-cockpit/personal-financial-analytics";
@@ -24,8 +26,10 @@ import {
   normalizePersonalSecAnnualCompanyFacts,
   unavailablePersonalSecAnnualCashMetric,
   unavailablePersonalSecAnnualLiquidityMetric,
+  unavailablePersonalSecAnnualOperatingMetric,
   type PersonalSecAnnualCashSourceMetric,
   type PersonalSecAnnualLiquiditySourceMetric,
+  type PersonalSecAnnualOperatingSourceMetric,
 } from "./personal-sec-annual-company-facts";
 import {
   decodePersonalSecSourceUtf8,
@@ -321,6 +325,12 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
           submissions.value,
         ),
       });
+      const operatingResults = Object.freeze({
+        operatingIncome: joinOperatingMetric(
+          facts.value?.operatingIncome,
+          submissions.value,
+        ),
+      });
       return Object.freeze({
         ...input,
         resolution: resolvePersonalSecAnnualEvidence(input),
@@ -340,6 +350,13 @@ class SecPersonalAnnualEvidenceProvider implements PersonalSecAnnualEvidenceProv
             generation: boundGeneration,
             target,
             liquidity,
+          }),
+        }),
+        operatingResults: Object.freeze({
+          ...operatingResults,
+          resolution: resolvePersonalSecAnnualOperatingResults({
+            ...input,
+            operatingResults,
           }),
         }),
       });
@@ -482,6 +499,25 @@ function joinLiquidityMetric(
 
 function sha256(value: string | Uint8Array): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(value).digest("hex")}`;
+}
+
+function joinOperatingMetric(
+  source: PersonalSecAnnualOperatingSourceMetric | undefined,
+  submissions: Submissions | undefined,
+): PersonalSecAnnualOperatingMetricEvidenceDto {
+  const metric =
+    source ?? unavailablePersonalSecAnnualOperatingMetric("source_unavailable");
+  return Object.freeze({
+    scan: metric.scan,
+    observations: Object.freeze(
+      metric.observations.map((row) =>
+        Object.freeze({
+          ...row,
+          filing: joinFiling(row, submissions),
+        }),
+      ),
+    ),
+  });
 }
 
 function fail(code: PersonalSecAnnualEvidenceProviderErrorCode): never {

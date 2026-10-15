@@ -1,3 +1,4 @@
+import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import {
   liquidity,
   liquidityRow,
@@ -119,10 +120,14 @@ export async function parseAnnualComparisonFixture(
         resolution: resolvePersonalSecAnnualEvidence(evidence),
         cashGeneration: await cashGeneration(evidence, cashRows),
         liquidity: await liquidity(evidence, liquidityRows),
+        operatingResults: await operatingResults(
+          evidence,
+          raw.evidence.operatingResults.operatingIncome.observations,
+        ),
       },
     },
     {
-      schemaVersion: "3.0.0",
+      schemaVersion: "4.0.0",
       catalogSnapshotSha256: raw.catalogSnapshotSha256,
       listingId: raw.security.listingId,
       symbol: raw.security.symbol,

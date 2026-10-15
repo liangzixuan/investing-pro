@@ -1,3 +1,4 @@
+import { inventedOperatingPacket } from "./operating-fixture";
 import type {
   MainWatchlistPayload,
   ManagedCatalogSnapshotDto,
@@ -216,6 +217,7 @@ export async function createFixture(
     | "company-direct-entry"
     | "annual-note"
     | "annual-cash-history"
+    | "annual-operating-results"
     | "company-snapshot"
     | "company-price-ranges"
     | "thesis-review"
@@ -270,6 +272,14 @@ export async function createFixture(
           },
         }
       : annualBase;
+  const operatingAnnual =
+    scenarioName === "annual-operating-results"
+      ? await inventedOperatingPacket()
+      : null;
+  const operatingLate =
+    scenarioName === "annual-operating-results"
+      ? await inventedOperatingPacket("2026-09-21T00:00:00.000Z", "999.875")
+      : null;
   const recovered = await response(
     [row("Revenues", "2000"), row("NetIncomeLoss", "300")],
     "2026-09-21T00:00:00.000Z",
@@ -606,6 +616,10 @@ export async function createFixture(
     state.load === 2;
   const api: ManagedApi = {
     recentFilings: (input, signal) => {
+      if (scenarioName === "annual-operating-results") {
+        count("filings");
+        throw new Error("Unexpected operating-results Filings read");
+      }
       if (scenario === "company-price-ranges") {
         count("filings");
         throw new Error("Unexpected invented price-range Filings read");
@@ -691,6 +705,13 @@ export async function createFixture(
         )
           return Promise.reject(
             new Error("Hold the fifth price-range read before expiry"),
+          );
+        return Promise.reject(new TrialApiError("unauthenticated"));
+      }
+      if (scenarioName === "annual-operating-results" && state.status === 2) {
+        if (state.annual !== 4 || !pending)
+          throw new Error(
+            "Hold the fourth operating-results read before expiry",
           );
         return Promise.reject(new TrialApiError("unauthenticated"));
       }
@@ -822,6 +843,8 @@ export async function createFixture(
       });
     },
     save: (command, signal) => {
+      if (scenarioName === "annual-operating-results")
+        return unexpected("save");
       if (scenario === "company-price-ranges") return unexpected("save");
       if (scenario === "watchlist-comparison") return unexpected("save");
       const captured = parseManagedWatchlistCommand(command);
@@ -1124,6 +1147,10 @@ export async function createFixture(
       return Promise.resolve(resolved);
     },
     eodHistory: (request, signal) => {
+      if (scenarioName === "annual-operating-results") {
+        count("eod");
+        throw new Error("Unexpected operating-results eod operation");
+      }
       if (scenario === "company-price-ranges") {
         const index = state.eod;
         const expectedSettled = index < 2 ? 0 : index < 4 ? 1 : 2;
@@ -1268,6 +1295,38 @@ export async function createFixture(
       });
     },
     annualReport: (request, signal) => {
+      if (scenarioName === "annual-operating-results") {
+        if (
+          !operatingAnnual ||
+          signal.aborted ||
+          pending ||
+          request.schemaVersion !== "4.0.0" ||
+          request.catalogSnapshotSha256 !== digest ||
+          request.listingId !== "listing-zero" ||
+          request.symbol !== "ZERO" ||
+          state.annual >= 4 ||
+          (state.annual === 2 && state.refreshFailed !== 1) ||
+          (state.annual === 3 &&
+            (state.aborted !== 1 || state.lateResolved !== 1))
+        )
+          throw new Error(
+            "Unexpected operating-results Annual request or order",
+          );
+        count("annual");
+        if (state.annual === 1)
+          return Promise.resolve(structuredClone(operatingAnnual));
+        if (state.annual === 2) {
+          count("refreshFailed");
+          return Promise.reject(new TrialApiError("unavailable"));
+        }
+        signal.addEventListener("abort", () => count("aborted"), {
+          once: true,
+        });
+        // Ignore abort deliberately; the real model must fence both late packets.
+        return new Promise((resolve) => {
+          pending = resolve;
+        });
+      }
       if (scenario === "company-price-ranges") {
         count("annual");
         throw new Error("Unexpected invented price-range Annual read");
@@ -1278,7 +1337,7 @@ export async function createFixture(
           !comparisonReports ||
           signal.aborted ||
           pendingAnnualComparison ||
-          request.schemaVersion !== "3.0.0" ||
+          request.schemaVersion !== "4.0.0" ||
           request.catalogSnapshotSha256 !== digest ||
           request.listingId !== (second ? "listing-one" : "listing-zero") ||
           request.symbol !== (second ? "ONE" : "ZERO") ||
@@ -1313,7 +1372,7 @@ export async function createFixture(
       if (
         signal.aborted ||
         pending ||
-        request.schemaVersion !== "3.0.0" ||
+        request.schemaVersion !== "4.0.0" ||
         request.catalogSnapshotSha256 !== digest ||
         request.listingId !== "listing-zero" ||
         request.symbol !== "ZERO"
@@ -1542,6 +1601,20 @@ export async function createFixture(
       void Promise.resolve().then(() => count("eodLateResolved"));
     },
     settleCancelledRead: () => {
+      if (scenarioName === "annual-operating-results") {
+        if (
+          !operatingLate ||
+          !pending ||
+          state.aborted !== state.lateResolved + 1 ||
+          ![3, 4].includes(state.annual)
+        )
+          throw new Error("Only an aborted operating-results read may settle");
+        const resolve = pending;
+        pending = null;
+        resolve(structuredClone(operatingLate));
+        void Promise.resolve().then(() => count("lateResolved"));
+        return;
+      }
       if (!pending || state.aborted !== 1 || state.lateResolved !== 0)
         throw new Error("Only the cancelled fixture read may settle");
       const resolve = pending;

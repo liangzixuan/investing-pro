@@ -1,3 +1,4 @@
+import { operatingResults } from "./sec-annual-operating-fixture";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type {
@@ -175,6 +176,7 @@ describe("managed Annual revenue-basis readability", () => {
         evidence: {
           ...input,
           resolution: resolvePersonalSecAnnualEvidence(input),
+          operatingResults: await operatingResults(input),
         },
       });
       const html = render(wire);
@@ -198,7 +200,7 @@ describe("managed Annual revenue-basis readability", () => {
     expect(shown).toContain("<h4>Revenue</h4>");
     expect(shown).toContain("<td>1000</td>");
     expect(shown).toContain(
-      "Revenue and income are unavailable under the current-use policy",
+      "Revenue and net income do not form a current-use pair",
     );
     expect(shown).toContain(
       "outside the current-use policy at its original load",

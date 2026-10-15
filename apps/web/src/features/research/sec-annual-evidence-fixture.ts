@@ -1,4 +1,5 @@
 import { liquidity } from "./sec-annual-liquidity-fixture";
+import { operatingResults } from "./sec-annual-operating-fixture";
 import { cashGeneration } from "./sec-annual-cash-fixture";
 import type {
   PersonalSecAnnualEvidenceRequestDto,
@@ -15,7 +16,7 @@ type Wire = PersonalSecAnnualEvidenceResponseDto;
 // Invented annual packets shared by the UI and transport boundary tests.
 export function request(): PersonalSecAnnualEvidenceRequestDto {
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: `sha256:${"a".repeat(64)}`,
     listingId: "listing-zero",
     symbol: "ZERO",
@@ -123,7 +124,7 @@ export async function response(
   const input: PersonalSecAnnualResolutionInput = {
     cik: "0000000001",
     generation: {
-      definitionVersion: "3.0.0",
+      definitionVersion: "4.0.0",
       cutoffAt,
       completedAt: capturedAt(2),
       sha256: `sha256:${"0".repeat(64)}`,
@@ -183,7 +184,7 @@ export async function response(
   };
   const evidence = { ...input, generation };
   return {
-    schemaVersion: "3.0.0",
+    schemaVersion: "4.0.0",
     catalogSnapshotSha256: request().catalogSnapshotSha256,
     security: {
       country: "US",
@@ -200,6 +201,7 @@ export async function response(
       resolution: resolvePersonalSecAnnualEvidence(evidence),
       cashGeneration: await cashGeneration(evidence),
       liquidity: await liquidity(evidence),
+      operatingResults: await operatingResults(evidence),
     },
   };
 }

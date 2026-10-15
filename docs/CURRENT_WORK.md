@@ -20,6 +20,34 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Annual operating-results candidate
+
+The next M2 increment adds reported operating income and an operating margin for
+all three named revenue bases in the selected annual filing. Revenue operands are
+admitted independently of net income. Negative operating income is valid; margins
+require positive revenue from the same filing and exact period. Missing operating
+evidence leaves valid income, cash and liquidity independent. Annual schema and
+generation definition are 4.0.0; the existing two source requests, byte bounds and
+deadlines remain. API, website and Android publication must be coordinated.
+
+The Annual section, loaded snapshot and prepared report share the admitted results.
+An explicit per-basis note action appends exact values and original dates to the
+current draft. The report retains the complete new packet in its existing document
+format. Source and note changes keep the existing stale-preview and request fences.
+No new feed, automatic load, saved data or quarterly contract is added. Operating
+history, growth, peer ranking and complete statements remain open. See the
+[Annual guide](MANAGED_SEC_ANNUAL.md#reported-operating-results).
+
+Contract/domain and API checks pass, including a real service response with 700
+admitted observations under the unchanged 2 MiB limit and exactly two fixed fetches.
+Independent financial and web source review found no open actionable defects after
+an income-only snapshot warning was corrected. Chrome confirms exact negative
+results without net income at 1440/390/320 CSS widths, 44px controls, keyboard focus,
+chosen-basis note append, complete report JSON, retained failed/cancelled reads and
+late-response fencing through session retirement. No Save or other-source read was
+made. These checks use invented data; live SEC coverage, hosted native execution,
+source integration and publication remain separate.
+
 ## Company Price range candidate
 
 The next M2 increment adds a staged **History range** choice in company Price:
@@ -45,7 +73,14 @@ and session retirement. A maximum-bound invented year renders all 367 exact rows
 and selected endpoint comparison without overflow. The strict synthetic native
 journey and its source checks pass; fresh Android execution remains separate.
 The common response bound and ten-second service lifetime remain unchanged.
-Live one-year provider availability is unverified. See the [EOD guide](MANAGED_EOD_HISTORY.md).
+The original range candidate passed all seven Actions jobs across six workflows
+and all 33 Android cases, including exact year/month retention and late-response
+fences. CodeScene's 16 maintenance warnings and three notices remain reviewed debt.
+Normalization full offline review passes; custody/isolation canonical and immutable
+source bindings pass, while their full local reviewers hit Windows command-length
+limits during historical Git inspection. Their original Ubuntu jobs passed; the
+local review failures remain recorded. Source integration and publication remain
+separate. Live one-year provider availability is unverified. See the [EOD guide](MANAGED_EOD_HISTORY.md).
 
 ## Consolidated research candidate
 

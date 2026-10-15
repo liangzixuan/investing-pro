@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, type RefObject } from "react";
 
 const sections = {
   income: "Revenue and net income",
+  operating: "Operating results",
   cash: "Cash generation",
   liquidity: "Liquidity",
   sources: "Report source details",

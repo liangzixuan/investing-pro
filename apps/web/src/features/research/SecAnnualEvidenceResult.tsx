@@ -1,10 +1,12 @@
 import { ObservationDetails } from "./SecAnnualObservation";
 import { SecAnnualCashGeneration } from "./SecAnnualCashGeneration";
 import { SecAnnualCashHistory } from "./SecAnnualCashHistory";
+import { SecAnnualOperatingResults } from "./SecAnnualOperatingResults";
 import { SecAnnualLiquidity } from "./SecAnnualLiquidity";
 import type {
   PersonalSecAnnualEvidenceResponseDto,
   PersonalSecAnnualPairDto,
+  PersonalSecAnnualOperatingMarginDto,
   PersonalSecQuarterlyObservationDto,
 } from "@research-cockpit/contracts";
 import { useId, useRef, type ReactNode } from "react";
@@ -89,12 +91,16 @@ export function SecAnnualEvidenceResult({
   renderPairAction,
   cashAction,
   liquidityAction,
+  renderOperatingAction,
   appearance = "evidence",
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction?: (pair: PersonalSecAnnualPairDto) => ReactNode;
   readonly cashAction?: ReactNode;
   readonly liquidityAction?: ReactNode;
+  readonly renderOperatingAction?: (
+    basis: PersonalSecAnnualOperatingMarginDto,
+  ) => ReactNode;
   readonly appearance?: "evidence" | "financial";
 }) {
   if (appearance === "financial")
@@ -104,12 +110,14 @@ export function SecAnnualEvidenceResult({
         renderPairAction={renderPairAction}
         cashAction={cashAction}
         liquidityAction={liquidityAction}
+        renderOperatingAction={renderOperatingAction}
       />
     );
   return (
     <div className="sec-quarterly-comparison">
       <AnnualEvidenceContext response={response} />
       <AnnualBases response={response} renderPairAction={renderPairAction} />
+      <SecAnnualOperatingResults response={response} />
       <SecAnnualCashGeneration response={response} />
       <AnnualEvidenceSources response={response} />
     </div>
@@ -121,21 +129,26 @@ function ManagedAnnualFinancialResult({
   renderPairAction,
   cashAction,
   liquidityAction,
+  renderOperatingAction,
 }: {
   readonly response: PersonalSecAnnualEvidenceResponseDto;
   readonly renderPairAction:
     ((pair: PersonalSecAnnualPairDto) => ReactNode) | undefined;
   readonly cashAction: ReactNode;
   readonly liquidityAction: ReactNode;
+  readonly renderOperatingAction:
+    ((basis: PersonalSecAnnualOperatingMarginDto) => ReactNode) | undefined;
 }) {
   const id = useId();
   const income = useRef<HTMLDivElement>(null);
+  const operating = useRef<HTMLHeadingElement>(null);
   const cash = useRef<HTMLHeadingElement>(null);
   const liquidity = useRef<HTMLHeadingElement>(null);
   const sources = useRef<HTMLElement>(null);
   const sourceDetails = useRef<HTMLDetailsElement>(null);
   const targets = {
     income: { id: `${id}-income`, ref: income },
+    operating: { id: `${id}-operating`, ref: operating },
     cash: { id: `${id}-cash`, ref: cash },
     liquidity: { id: `${id}-liquidity`, ref: liquidity },
     sources: { id: `${id}-sources`, ref: sources },
@@ -172,6 +185,11 @@ function ManagedAnnualFinancialResult({
           financial
         />
       </div>
+      <SecAnnualOperatingResults
+        response={response}
+        headingTarget={targets.operating}
+        {...(renderOperatingAction ? { renderOperatingAction } : {})}
+      />
       <SecAnnualCashGeneration
         response={response}
         cashAction={cashAction}
@@ -192,10 +210,11 @@ function ManagedAnnualFinancialResult({
           Source and validation details
         </summary>
         <p className="sec-quarterly-message">
-          Observed SEC annual revenue, net income, net margin and cash
-          generation, plus liquidity balances and calculations. Revenue concepts
-          stay separate. This view covers the observed report in current
-          submissions; it does not provide complete filing history or prices.
+          Observed SEC annual revenue, net income, net margin, operating results
+          and cash generation, plus liquidity balances and calculations. Revenue
+          concepts stay separate. This view covers the observed report in
+          current submissions; it does not provide complete filing history or
+          prices.
         </p>
         <AnnualBasisSources bases={response.evidence.resolution.bases} />
         <SecAnnualSourceDetails response={response} />

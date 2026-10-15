@@ -20,7 +20,7 @@ describe("reported cash history", () => {
     const response = await parseSecAnnualEvidenceResponse(
       raw,
       {
-        schemaVersion: "3.0.0",
+        schemaVersion: "4.0.0",
         catalogSnapshotSha256: raw.catalogSnapshotSha256,
         listingId: raw.security.listingId,
         symbol: raw.security.symbol,
@@ -142,7 +142,9 @@ describe("reported cash history", () => {
       <SecAnnualEvidenceResult response={response} appearance="financial" />,
     );
     expect(html).toContain("Annual cash amounts · 3 periods");
-    expect(html).toContain("Revenue and income are unavailable");
+    expect(html).toContain(
+      "Revenue and net income do not form a current-use pair",
+    );
     expect(html).toContain("<td>-250</td>");
   });
 

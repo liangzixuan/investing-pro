@@ -1,3 +1,4 @@
+import { operatingResults } from "../features/research/sec-annual-operating-fixture";
 import { cashGeneration } from "../features/research/sec-annual-cash-fixture";
 import { liquidity } from "../features/research/sec-annual-liquidity-fixture";
 import type { ManagedResearchSelection } from "./managed-research-selection";
@@ -760,6 +761,7 @@ describe("managed annual refresh", () => {
         resolution: resolvePersonalSecAnnualEvidence(input),
         cashGeneration: await cashGeneration(input),
         liquidity: await liquidity(input),
+        operatingResults: await operatingResults(input),
       },
     };
     const admitted = await parseSecAnnualEvidenceResponse(

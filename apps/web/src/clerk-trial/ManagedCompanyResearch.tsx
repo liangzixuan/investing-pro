@@ -16,6 +16,7 @@ import { ManagedEodHistory } from "./ManagedEodHistory";
 import { ManagedResearchNote } from "./ManagedResearchNote";
 import type { ManagedAnnualNoteActions } from "./ManagedAnnualNoteAction";
 import type { ManagedAnnualCashNoteActions } from "./ManagedAnnualCashNoteAction";
+import type { ManagedAnnualOperatingNoteActions } from "./ManagedAnnualOperatingNoteAction";
 import type { ManagedAnnualLiquidityNoteActions } from "./ManagedAnnualLiquidityNoteAction";
 import type { ManagedPriceNoteActions } from "./ManagedPriceNoteAction";
 import type { ManagedFilingsNoteActions } from "./ManagedFilingsNoteAction";
@@ -38,6 +39,7 @@ export function ManagedCompanyResearch({
   annualNoteActions,
   annualCashNoteActions,
   annualLiquidityNoteActions,
+  annualOperatingNoteActions,
   priceNoteActions,
   filingsNoteActions,
   companyNavigationState,
@@ -61,6 +63,7 @@ export function ManagedCompanyResearch({
   annualNoteActions: ManagedAnnualNoteActions;
   annualCashNoteActions: ManagedAnnualCashNoteActions;
   annualLiquidityNoteActions: ManagedAnnualLiquidityNoteActions;
+  annualOperatingNoteActions: ManagedAnnualOperatingNoteActions;
   priceNoteActions: ManagedPriceNoteActions;
   filingsNoteActions: ManagedFilingsNoteActions;
   companyNavigationState: ResearchCompanyNavigationState;
@@ -146,6 +149,7 @@ export function ManagedCompanyResearch({
                 noteActions={annualNoteActions}
                 cashNoteActions={annualCashNoteActions}
                 liquidityNoteActions={annualLiquidityNoteActions}
+                operatingNoteActions={annualOperatingNoteActions}
               />
             ) : research.section === "eod" ? (
               <ManagedEodHistory model={eod} noteActions={priceNoteActions} />

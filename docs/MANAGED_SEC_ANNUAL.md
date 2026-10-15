@@ -414,11 +414,65 @@ explicitly **Save watchlist** to save the whole draft. Appending requests no dat
 and adds no saved field. See the
 [liquidity-to-note workflow](MANAGED_RESEARCH_NAVIGATION.md#add-liquidity-to-a-note-draft).
 
+## Reported operating results
+
+**Operating results** shows reported operating income from the selected annual
+filing, followed by operating margin for each named revenue basis. Use **Operating
+results** in **On this report** to move focus to this section. The local evidence
+view also shows the same results. Opening the section makes no source request.
+
+The reported amount uses only `us-gaap:OperatingIncomeLoss` in USD. It is checked
+independently of revenue, net income, cash generation and liquidity. Negative
+operating income is valid. Missing or conflicting operating evidence does not
+clear valid measures in the other sections. No older filing or substitute concept
+fills a missing value.
+
+Operating margin is an app calculation:
+
+`reported operating income / selected positive revenue * 100`
+
+Each calculation needs the same accession and exact annual start/end dates.
+The three existing revenue concepts remain separate. The calculation uses complete
+admitted revenue observations and does not require net income. Zero or negative
+revenue makes the margin unavailable while valid operating income remains visible.
+Decimal.js calculates the percentage with isolated precision and rounds to two
+decimal places, half up. The [SEC financial-statement guide](https://www.sec.gov/about/reports-publications/investorpubsbegfinstmtguide)
+describes this ratio; [Investing.com's operating-margin guide](https://www.investing.com/academy/analysis/operating-income-margin-definition/)
+identifies it in InvestingPro. These references supply the definition, not company
+data or implementation code.
+
+Each amount keeps its original period, filing, source captures and current-use
+status. **Operating sources and calculation inputs** starts closed and exposes
+the scan counts, complete selected observations and calculation references.
+The independent scan inspects at most 10,000 candidates and returns at most 100
+selected-filing observations before annual filtering. Overflow refuses the metric;
+it does not clip. Source decimals retain the existing 64-character bound. The
+shared request, source-body, response, deadline and cancellation limits stay fixed.
+
+The loaded company snapshot and prepared research report reuse these admitted
+results. The report's existing `1.0.0` document contains the complete Annual packet,
+including operating observations and resolutions. Preparation does not renew dates.
+Watchlist Annual comparison retains its named income, cash and liquidity groups;
+its full-report handoff carries the complete operating packet without a new read.
+
+**Add operating results to note draft** under a chosen basis appends its exact
+operating income, revenue, margin, period, filing link and original source dates
+to the latest note. It requires an available margin from the current response and
+basis. Pending loads, stale choices, duplicate excerpts and notes above the complete
+2,000-character limit are refused. Cancel or a failed refresh can retain the original
+evidence with its previous-report qualification. Review the full note and use the
+existing explicit whole-watchlist Save. No source request or save occurs on append.
+
+This increment covers the selected annual period. Operating history, growth,
+adjusted earnings, peer ranking and full financial-statement coverage remain open.
+Synthetic acceptance does not establish current SEC coverage for the real cohort.
+
 ### Version boundary
 
-The Annual request/response schema and generation definition are `3.0.0`. The
-route and four request keys are unchanged. Version-1 and version-2 Annual requests
-are rejected before provider or budget work; version-3 clients reject old responses. A later
+The Annual request/response schema and generation definition are `4.0.0`. The
+route and four request keys are unchanged. Version-1, version-2 and version-3 requests
+are rejected before provider or budget work; version-4 clients reject old or
+incomplete responses. A later
 release must coordinate the API, website and Android client. During a mismatched
 rollout, Annual reads are unavailable until the matching client is installed or
 loaded. Saved watchlists and notes require no migration. Current work records

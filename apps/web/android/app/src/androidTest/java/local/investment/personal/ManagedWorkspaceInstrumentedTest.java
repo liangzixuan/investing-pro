@@ -251,6 +251,8 @@ public class ManagedWorkspaceInstrumentedTest {
             selectFixtureScenario("annual-note");
         if (testName.getMethodName().equals("annualCashHistoryKeepsExactPeriodsAndRetiresWithSession"))
             selectFixtureScenario("annual-cash-history");
+        if (testName.getMethodName().equals("annualOperatingResultsRetainFactsDraftAndRetireWithSession"))
+            selectFixtureScenario("annual-operating-results");
         if (testName.getMethodName().equals("companyPriceRangesRetainDatesAndFenceCancelledVisits"))
             selectFixtureScenario("company-price-ranges");
         if (testName.getMethodName().equals("loadedCompanySnapshotKeepsSeparateEvidenceWithoutAutomaticReads") ||
@@ -4300,6 +4302,135 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     @Test
+    public void annualOperatingResultsRetainFactsDraftAndRetireWithSession() throws Exception {
+        double documentTimeOrigin = readDocumentTimeOrigin();
+        awaitPage("operating results startup performs no source read", DIAGNOSTICS + ".marketsResolve === 1");
+        selectWorkspaceView("My Watchlist");
+        typeIntoInput("managed-note-0", NOTE);
+        String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
+        click(ANNUAL);
+        String operating = ".managed-annual-report section[aria-label='Annual operating results']";
+        String basis = operating + " > section[aria-label='Operating margin basis Revenues']";
+        String add = basis + " .managed-annual-operating-note-action button";
+        awaitPage("opening Annual leaves operating evidence unloaded and preserves the exact draft",
+            "document.querySelector('#managed-company-heading')?.textContent === 'Company research · ZERO'" +
+            " && document.querySelector(" + JSONObject.quote(operating) + ") === null" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        assertOperatingCounts(0, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        String exact = operatingResultsExact();
+        awaitPage("the explicit load admits negative operating income and three independent named revenue margins",
+            exact + " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        assertOperatingCounts(1, 0, 0, 1);
+        retainAnnualNoteFrame("annualOperatingBasis", basis,
+            basis + " > h5, " + basis + " > dl, " + add, 3);
+        focusCashHistoryControl(operating + " > details > summary");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        awaitPage("native keyboard opens exact operating references without refreshing evidence",
+            exact + " && document.querySelector(" + JSONObject.quote(operating + " > details") + ")?.open === true" +
+            " && document.activeElement === document.querySelector(" + JSONObject.quote(operating + " > details > summary") + ")" +
+            " && document.querySelector(" + JSONObject.quote(operating) + ").textContent.includes('/facts/us-gaap/OperatingIncomeLoss/units/USD/0')" +
+            " && document.querySelector(" + JSONObject.quote(operating) + ").textContent.includes('2026-09-20T00:00:02.000Z')");
+        onView(isAssignableFrom(WebView.class)).perform(pressKey(KeyEvent.KEYCODE_SPACE));
+        click(".managed-company-snapshot > summary");
+        awaitPage("snapshot retains operating results despite unavailable net income",
+            "document.querySelector('.managed-company-snapshot')?.open === true" +
+            " && (() => { const root = document.querySelector('.managed-company-snapshot section[aria-label=\"Snapshot operating results\"]'); const values = root ? [...root.querySelectorAll('dl > div')] : [];" +
+            " const expected = {'Reported operating income · USD':'-250.125', 'Operating margin · Revenue':'-25.01%', 'Operating margin · Net sales revenue':'-31.27%', 'Operating margin · Customer contract revenue, excluding assessed tax':'-50.03%'};" +
+            " return values.length === 4 && values.every(row => row.querySelector('.sec-annual-liquidity-amount')?.textContent === expected[row.querySelector('dt')?.textContent]); })()" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        click(".managed-company-snapshot > summary");
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("complete report retains the operating graph, raw revenue and missing net income",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field?.readOnly) return false;" +
+            " const doc = JSON.parse(field.value), annual = doc.sources.annual.response;" +
+            " return doc.purpose === 'investment.company-research' && doc.schemaVersion === '1.0.0' && annual.schemaVersion === '4.0.0'" +
+            " && annual.evidence.operatingResults.operatingIncome.observations[0].value === '-250.125'" +
+            " && annual.evidence.operatingResults.resolution.margins.length === 3" +
+            " && annual.evidence.observations.length === 3 && annual.evidence.observations.every(row => row.metric === 'revenue')" +
+            " && annual.evidence.generation.completedAt === '2026-09-20T00:00:02.000Z'" +
+            " && doc.sources.price.status === 'not_loaded' && doc.sources.filings.status === 'not_loaded'" +
+            " && doc.authoredResearch.note === " + JSONObject.quote(NOTE) + "; })()");
+        String originalAnnual = readFixtureString("JSON.stringify(JSON.parse(document.querySelector('#managed-report-document').value).sources.annual.response)");
+        click(".managed-company-report > summary");
+        assertOperatingCounts(1, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("failed refresh retains exact original operating values and invalidates the old capture",
+            exact + " && " + DIAGNOSTICS + ".refreshFailed === 1" +
+            " && document.querySelector('.managed-annual-report [role=alert]') !== null" +
+            " && document.querySelector('#managed-prepared-report-heading') === null" +
+            " && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        assertOperatingCounts(2, 0, 0, 1);
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("third operating read holds while preserving the original packet", exact + " && " + DIAGNOSTICS + ".annual === 3 && document.querySelector('.managed-annual-report')?.getAttribute('aria-busy') === 'true'");
+        click(".managed-annual-report .trial-actions button:nth-child(2)");
+        awaitPage("Cancel aborts only the pending read", exact + " && " + DIAGNOSTICS + ".aborted === 1");
+        click("#settle-cancelled-read");
+        awaitPage("late changed operating packet cannot replace the original values or draft",
+            exact + " && " + DIAGNOSTICS + ".lateResolved === 1 && JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+        assertOperatingCounts(3, 1, 1, 1);
+        click(add);
+        String expectedNote = NOTE + " Observed Annual operating results: ZERO (XNAS); CIK 0000000001; 10-K, 2025-01-01 to 2025-12-31. " +
+            "Reported operating income (OperatingIncomeLoss) USD -250.125; reported revenue (Revenues) USD 1000. " +
+            "App calculation: operating margin -25.01% = operating income / positive revenue * 100 (two decimal places, half up). Same filing and exact period; revenue bases stay separate. " +
+            "Filed 2026-02-01; accession 0000000001-26-000001; filing https://www.sec.gov/Archives/edgar/data/1/0000000001-26-000001-index.htm. " +
+            "Original load cutoff 2026-09-20T00:00:00.000Z; completed 2026-09-20T00:00:02.000Z; Company Facts captured 2026-09-20T00:00:01.000Z; Submissions captured 2026-09-20T00:00:02.000Z. " +
+            "Current-use policy at original load: eligible. Retained previous report. Evidence dates are unchanged; this action does not refresh sources.";
+        awaitPage("one explicit append retains the entire prior draft and exact chosen operating paragraph",
+            "document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expectedNote) +
+            " && " + DRAFT + ".memberships?.[0]?.note === " + JSONObject.quote(expectedNote) +
+            " && " + DRAFT + ".memberships?.[1]?.note === 'Invented second note'" +
+            " && [...document.querySelectorAll('.managed-watchlist-choices li > button > strong')].map(e => e.textContent).join('|') === 'ZERO|ONE'");
+        click(".managed-company-report > summary");
+        click(".managed-company-report .trial-actions button:first-child");
+        click(".managed-report-document > summary");
+        awaitPage("new report preserves complete original source packet and the full unsaved appended note",
+            "(() => { const field = document.querySelector('#managed-report-document'); if (!field) return false; const doc = JSON.parse(field.value);" +
+            " return doc.authoredResearch.note === " + JSONObject.quote(expectedNote) +
+            " && doc.sources.annual.retainedPrevious === true && JSON.stringify(doc.sources.annual.response) === " + JSONObject.quote(originalAnnual) + "; })()");
+        assertOperatingCounts(3, 1, 1, 1);
+        click(".managed-company-report > summary");
+        click(".managed-annual-report .trial-actions button:first-child");
+        awaitPage("fourth operating read remains pending with the unsaved note", exact + " && " + DIAGNOSTICS + ".annual === 4 && document.querySelector('#managed-research-note')?.value === " + JSONObject.quote(expectedNote));
+        click(CATALOG_REFRESH);
+        awaitPage("normal session expiry clears company evidence, captures and the local draft",
+            DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null" +
+            " && document.querySelector('.managed-company-research') === null && document.querySelector('.managed-company-snapshot') === null" +
+            " && document.querySelector('#managed-prepared-report-heading') === null && document.querySelector('#managed-report-document') === null" +
+            " && " + DIAGNOSTICS + ".aborted === 2");
+        click("#settle-cancelled-read");
+        awaitPage("retired-session late operating result cannot restore sources or the draft",
+            DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " + DIAGNOSTICS + ".lateResolved === 2" +
+            " && document.querySelector('.managed-annual-report') === null && document.querySelector('.managed-company-research') === null");
+        assertOperatingCounts(4, 2, 2, 2);
+        assertEquals(documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
+        assertFixtureBoundary();
+    }
+
+    private String operatingResultsExact() {
+        return "(() => { const root = document.querySelector('.managed-annual-report section[aria-label=\"Annual operating results\"]');" +
+            " const expected = { Revenues: ['1000','-25.01%','Revenue'], SalesRevenueNet: ['800','-31.27%','Net sales revenue'], RevenueFromContractWithCustomerExcludingAssessedTax: ['500','-50.03%','Customer contract revenue, excluding assessed tax'] };" +
+            " const bases = root ? [...root.querySelectorAll(':scope > section')] : [];" +
+            " return root?.querySelector(':scope > dl .sec-annual-liquidity-amount')?.textContent === '-250.125' && bases.length === 3" +
+            " && bases.every(basis => { const concept = basis.getAttribute('aria-label').replace('Operating margin basis ', ''); const amounts = [...basis.querySelectorAll('.sec-annual-liquidity-amount')].map(e => e.textContent);" +
+            " return expected[concept] && basis.querySelector('h5').textContent === expected[concept][2] && JSON.stringify(amounts) === JSON.stringify(expected[concept].slice(0,2)); })" +
+            " && root.textContent.includes('2025-01-01 to 2025-12-31') && root.textContent.includes('2026-09-20T00:00:02.000Z')" +
+            " && !root.textContent.includes('999.875') && document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1; })()";
+    }
+
+    private void assertOperatingCounts(int annual, int aborted, int late, int status) throws Exception {
+        awaitPage("operating evidence uses only its explicit reads and no persistence or other sources",
+            DIAGNOSTICS + ".annual === " + annual + " && " + DIAGNOSTICS + ".aborted === " + aborted +
+            " && " + DIAGNOSTICS + ".lateResolved === " + late + " && " + DIAGNOSTICS + ".status === " + status +
+            " && " + DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".save === 0 && " + DIAGNOSTICS + ".marketsResolve === 1" +
+            " && " + DIAGNOSTICS + ".eod === 0 && " + DIAGNOSTICS + ".filings === 0 && " + DIAGNOSTICS + ".marketsEod === 0" +
+            " && " + DIAGNOSTICS + ".calendar === 0 && " + DIAGNOSTICS + ".fed === 0 && " + DIAGNOSTICS + ".search === 0" +
+            " && " + DIAGNOSTICS + ".resolve === 0 && " + DIAGNOSTICS + ".token === 0 && " + DIAGNOSTICS + ".signOut === 0");
+    }
+
+    @Test
     public void annualCashHistoryKeepsExactPeriodsAndRetiresWithSession() throws Exception {
         double documentTimeOrigin = readDocumentTimeOrigin();
         awaitPage("cash-history startup admits no source read", DIAGNOSTICS + ".marketsResolve === 1");
@@ -4814,13 +4945,13 @@ public class ManagedWorkspaceInstrumentedTest {
         String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         String originalLocation = readFixtureString("location.href");
         String originalHistoryLength = readFixtureString("String(history.length)");
-        awaitPage("loaded report has four explicit destinations and initially closed source details",
+        awaitPage("loaded report has five explicit destinations and initially closed source details",
             "(() => { const nav = document.querySelector('nav[aria-label=\"On this report\"]');" +
             " const links = [...(nav?.querySelectorAll('a') || [])];" +
-            " return links.length === 4 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Cash generation|Liquidity|Report source details'" +
+            " return links.length === 5 && links.map(a => a.textContent).join('|') === 'Revenue and net income|Operating results|Cash generation|Liquidity|Report source details'" +
             " && links.every(a => a.getBoundingClientRect().height >= 44 && document.getElementById(a.getAttribute('href').slice(1))?.getAttribute('data-annual-report-target') === a.getAttribute('data-annual-report-jump'))" +
             " && document.querySelector('.managed-annual-provenance')?.open === false; })()");
-        for (String section : new String[] {"income", "cash", "liquidity", "sources"}) {
+        for (String section : new String[] {"income", "operating", "cash", "liquidity", "sources"}) {
             click("a[data-annual-report-jump='" + section + "']");
             awaitPage("report jump focuses its visible destination without changing history or draft: " + section,
                 "(() => { const target = document.querySelector('[data-annual-report-target=\"" + section + "\"]');" +
@@ -4890,10 +5021,10 @@ public class ManagedWorkspaceInstrumentedTest {
         String inputs = source + " > section > ol > li > details";
         awaitPage("cash reports exact independent amounts and a same-period subtraction",
             "document.querySelector('.sec-annual-cash')?.getAttribute('aria-label') === 'Annual cash generation'" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values dt')).map(e => e.textContent).join('|') === 'Operating cash flowReported · USD|PP&E purchasesReported · USD|Operating cash flow less PP&E purchasesApp calculation · USD'" +
             " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values .sec-annual-cash-amount')).map(e => e.textContent).join(',') === '120.125,20.025,100.1'" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
-            " && Array.from(document.querySelectorAll('.sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values dd small:first-of-type')).map(e => e.textContent).join('|') === '2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31|2025-01-01 to 2025-12-31'" +
+            " && Array.from(document.querySelectorAll('.sec-annual-cash > .sec-annual-cash-values dd small:last-of-type')).every(e => e.textContent === 'Within current-use limits at this load.')" +
             " && document.querySelector('.sec-annual-cash > p:last-of-type')?.textContent.includes('It does not adjust for leases, acquisitions or other investing cash flows.')" +
             " && document.querySelector('.sec-annual-cash-source')?.open === false" +
             " && document.querySelector('#managed-research-note')?.value === 'Annual research draft'");
@@ -5551,7 +5682,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertTrue("Only fixed invented fixture scenarios are allowed",
             scenarioName.equals("catalog-startup-recovery") || scenarioName.equals("company-direct-entry") ||
             scenarioName.equals("markets-selected-price") || scenarioName.equals("annual-note") ||
-            scenarioName.equals("annual-cash-history") ||
+            scenarioName.equals("annual-cash-history") || scenarioName.equals("annual-operating-results") ||
             scenarioName.equals("markets-price-handoff") || scenarioName.equals("watchlist-recovery") ||
             scenarioName.equals("signout-save-review") || scenarioName.equals("signout-uncertain-review") ||
             scenarioName.equals("raw-close-comparison") || scenarioName.equals("price-comparison-note") ||
@@ -5713,16 +5844,16 @@ public class ManagedWorkspaceInstrumentedTest {
     }
 
     private void assertRefreshLiquiditySources(boolean recovered) throws Exception {
-        String source = ".sec-annual-liquidity-source";
+        String source = ".sec-annual-liquidity > .sec-annual-liquidity-source";
         String inputs = source + " > section > ol > li > details";
         String capturedDay = recovered ? "2026-09-21" : "2026-09-20";
         awaitPage("liquidity provenance starts closed",
-            "document.querySelector('.sec-annual-liquidity-source')?.open === false");
+            "document.querySelector('.sec-annual-liquidity > .sec-annual-liquidity-source')?.open === false");
         click(source + " > summary");
         awaitPage("liquidity shows its original cutoff and bounded instant observations",
-            "document.querySelector('.sec-annual-liquidity-source')?.open === true" +
-            " && document.querySelector('.sec-annual-liquidity-source > p:first-of-type')?.textContent === " + JSONObject.quote("Annual cutoff " + capturedDay + "T00:00:00.000Z. Company Facts captured " + capturedDay + "T00:00:01.000Z. Submissions captured " + capturedDay + "T00:00:02.000Z. Completed " + capturedDay + "T00:00:02.000Z.") +
-            " && Array.from(document.querySelectorAll('.sec-annual-liquidity-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
+            "document.querySelector('.sec-annual-liquidity > .sec-annual-liquidity-source')?.open === true" +
+            " && document.querySelector('.sec-annual-liquidity > .sec-annual-liquidity-source > p:first-of-type')?.textContent === " + JSONObject.quote("Annual cutoff " + capturedDay + "T00:00:00.000Z. Company Facts captured " + capturedDay + "T00:00:01.000Z. Submissions captured " + capturedDay + "T00:00:02.000Z. Completed " + capturedDay + "T00:00:02.000Z.") +
+            " && Array.from(document.querySelectorAll('.sec-annual-liquidity > .sec-annual-liquidity-source > section > p')).map(e => e.textContent).join('|') === 'Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.|Scanned 1 rows: 0 invalid, 0 identical duplicates. Returned 1 of 1 selected-filing observations; 0 omitted.'" +
             " && Array.from(document.querySelectorAll(" + JSONObject.quote(inputs + " > summary") + ")).map(e => e.textContent).join('|') === " + JSONObject.quote("AssetsCurrent · Source end 2025-12-31 · 120.125 USD|LiabilitiesCurrent · Source end 2025-12-31 · " + (recovered ? "0" : "80.025") + " USD"));
         click(source + " > section:nth-of-type(1) > ol > li > details > summary");
         click(source + " > section:nth-of-type(2) > ol > li > details > summary");
@@ -5731,7 +5862,7 @@ public class ManagedWorkspaceInstrumentedTest {
             " const values = rows.map(row => Array.from(row.querySelectorAll('dd')).map(e => e.textContent));" +
             " const shared = '|2025-12-31|Not supplied|Not supplied; an instant balance requires no duration.|2025 · FY|CY2025Q4I|10-K · 2026-02-01|0000000001-26-000001|Matched to current submissions · 10-K · 2026-02-01|2025-12-31 · 2026-02-01T00:00:00.000Z|Open original filing index|';" +
             " const ids = values.map(row => row[12]);" +
-            " const paragraphs = Array.from(document.querySelectorAll('.sec-annual-liquidity-source > p'));" +
+            " const paragraphs = Array.from(document.querySelectorAll('.sec-annual-liquidity > .sec-annual-liquidity-source > p'));" +
             " return rows.length === 2 && rows.every(row => row.open)" +
             " && values[0].slice(0, 12).join('|') === '120.125' + shared + '/facts/us-gaap/AssetsCurrent/units/USD/0'" +
             " && values[1].slice(0, 12).join('|') === " + JSONObject.quote(recovered ? "0" : "80.025") + " + shared + '/facts/us-gaap/LiabilitiesCurrent/units/USD/0'" +
@@ -5743,7 +5874,7 @@ public class ManagedWorkspaceInstrumentedTest {
         click(source + " > section:nth-of-type(2) > ol > li > details > summary");
         click(source + " > summary");
         awaitPage("closing liquidity provenance preserves the native draft and read count",
-            "document.querySelector('.sec-annual-liquidity-source')?.open === false" +
+            "document.querySelector('.sec-annual-liquidity > .sec-annual-liquidity-source')?.open === false" +
             " && " + DIAGNOSTICS + ".annual === " + (recovered ? 3 : 1) +
             " && " + DIAGNOSTICS + ".save === 0 && " + DRAFT + ".memberships?.[1]?.note === " + JSONObject.quote(NOTE));
     }

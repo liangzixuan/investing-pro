@@ -18,7 +18,7 @@ const overview = (html: string) =>
 const incomeRegion = (html: string) =>
   html
     .split('<div class="managed-annual-financial-region"')[1]!
-    .split('<section class="sec-annual-cash"')[0]!;
+    .split('<section class="sec-annual-operating"')[0]!;
 
 describe("managed annual financial overview", () => {
   it.each([
@@ -51,7 +51,7 @@ describe("managed annual financial overview", () => {
       expect(visible).not.toContain("Source ages at completion:");
       expect(
         visible.split(
-          '<details class="sec-quarterly-row-details sec-annual-cash-source">',
+          '<details class="sec-quarterly-row-details sec-annual-operating-source">',
         )[0],
       ).not.toContain("Report age at cutoff:");
       expect(visible).not.toContain("485-day");
@@ -229,7 +229,7 @@ describe("managed annual financial overview", () => {
       render(await response(annualHistoryRows(), "2027-09-20T00:00:00.000Z")),
     );
     expect(visible).toContain(
-      "Revenue and income are unavailable under the current-use policy at this load.",
+      "Revenue and net income do not form a current-use pair at this load.",
     );
     expect(visible).toContain(
       "outside the current-use policy at its original load",

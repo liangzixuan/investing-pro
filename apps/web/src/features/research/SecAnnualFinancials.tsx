@@ -60,7 +60,7 @@ export function AnnualOverviewSummary({
       >
         {resolution.currentTargetEligible
           ? "Revenue and income are within current-use limits at this load."
-          : "Revenue and income are unavailable under the current-use policy at this load. Any valid reported income amounts remain historical; their comparison and history are unavailable."}
+          : "Revenue and net income do not form a current-use pair at this load. Their comparison and history are unavailable; independent measures retain their own eligibility."}
       </p>
       {completenessMessage && (
         <p className="discovery-warning">

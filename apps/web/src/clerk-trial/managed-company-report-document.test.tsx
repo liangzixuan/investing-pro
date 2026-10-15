@@ -1,3 +1,7 @@
+import {
+  operatingResults,
+  operatingRow,
+} from "../features/research/sec-annual-operating-fixture";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -56,6 +60,9 @@ async function fixture(range: "1m" | "1y" = "1m") {
     ...annualPacket,
     evidence: {
       ...annualPacket.evidence,
+      operatingResults: await operatingResults(annualPacket.evidence, [
+        operatingRow("-25.125"),
+      ]),
       cashGeneration: await cashGeneration(annualPacket.evidence, [
         cashRow("operating_cash_flow", "250"),
         cashRow("ppe_purchases", "75"),
@@ -170,9 +177,14 @@ describe("company research document inspection", () => {
           cashGeneration:
             f.report.evidence.annual!.response!.evidence.cashGeneration,
           liquidity: f.report.evidence.annual!.response!.evidence.liquidity,
+          operatingResults:
+            f.report.evidence.annual!.response!.evidence.operatingResults,
         },
       },
     });
+    expect(document.text).toContain('"operating_income"');
+    expect(document.text).toContain('"OperatingIncomeLoss"');
+    expect(document.text).toContain('"-2.51"');
     expect(document.byteLength).toBe(
       new TextEncoder().encode(document.text).byteLength,
     );

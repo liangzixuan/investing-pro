@@ -1,3 +1,7 @@
+import {
+  ManagedAnnualOperatingNoteAction,
+  type ManagedAnnualOperatingNoteActions,
+} from "./ManagedAnnualOperatingNoteAction";
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import "./managed-annual-overview.css";
 import { SecAnnualEvidenceResult } from "../features/research/SecAnnualEvidenceResult";
@@ -20,11 +24,13 @@ export function ManagedAnnualReport({
   noteActions,
   cashNoteActions,
   liquidityNoteActions,
+  operatingNoteActions,
 }: {
   model: AnnualReportModel;
   noteActions?: ManagedAnnualNoteActions;
   cashNoteActions?: ManagedAnnualCashNoteActions;
   liquidityNoteActions?: ManagedAnnualLiquidityNoteActions;
+  operatingNoteActions?: ManagedAnnualOperatingNoteActions;
 }) {
   const state = useSyncExternalStore(
     model.subscribe,
@@ -81,8 +87,8 @@ export function ManagedAnnualReport({
         </div>
       </div>
       <p className="managed-annual-scope">
-        Reported revenue, net income, cash generation and liquidity from SEC
-        Company Facts.
+        Reported revenue, net income, operating results, cash generation and
+        liquidity from SEC Company Facts.
       </p>
       <p
         className="managed-annual-status"
@@ -108,6 +114,15 @@ export function ManagedAnnualReport({
         <SecAnnualEvidenceResult
           response={state.response}
           appearance="financial"
+          renderOperatingAction={(basis) =>
+            operatingNoteActions && state.response ? (
+              <ManagedAnnualOperatingNoteAction
+                response={state.response}
+                basis={basis}
+                actions={operatingNoteActions}
+              />
+            ) : null
+          }
           liquidityAction={
             liquidityNoteActions ? (
               <ManagedAnnualLiquidityNoteAction
