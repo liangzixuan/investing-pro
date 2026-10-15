@@ -6,6 +6,7 @@ import {
 } from "react";
 import { CloseHistoryChart } from "../features/research/CloseHistoryChart";
 import type { ManagedEodHistory as Model } from "./managed-eod-history";
+import { ObservedRawCloseRange } from "./ObservedRawCloseRange";
 import {
   ManagedPriceNoteAction,
   type ManagedPriceNoteActions,
@@ -135,13 +136,7 @@ export function ManagedEodHistory({
                 <dt>Last trading date</dt>
                 <dd>{last.date}</dd>
               </dl>
-              <p className="managed-eod-help">
-                Loaded request range:{" "}
-                {response.range === "1y" ? "One year" : "One month"}.{" "}
-                {response.rows.length} reported closes from{" "}
-                {response.rows[0]!.date} to {last.date}. The source can return
-                fewer trading dates than the requested window.
-              </p>
+              <ObservedRawCloseRange response={response} />
               <CloseHistoryChart
                 appearance="precision-desk"
                 rows={response.rows}

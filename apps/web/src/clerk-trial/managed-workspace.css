@@ -862,6 +862,37 @@
   color: var(--managed-muted);
   font-size: 13px;
 }
+.managed-frame .managed-observed-close-range {
+  min-width: 0;
+  margin-block: 16px;
+}
+.managed-frame .managed-observed-close-range dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 16px;
+  margin: 0;
+}
+.managed-frame .managed-observed-close-range dl > div {
+  min-width: 0;
+}
+.managed-frame .managed-observed-close-range :is(dt, p, small, time) {
+  color: var(--managed-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.managed-frame .managed-observed-close-range dd {
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.managed-frame .managed-observed-close-range :is(time, small) {
+  display: block;
+}
+.managed-frame .managed-observed-close-amount {
+  color: var(--managed-ink);
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 .managed-frame .managed-eod-exact-values {
   border-bottom: 1px solid var(--managed-line);
 }
