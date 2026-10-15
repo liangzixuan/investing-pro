@@ -1073,6 +1073,7 @@ public class ManagedWorkspaceInstrumentedTest {
         assertAnnualComparisonCash();
         assertAnnualComparisonLiquidity();
         assertAnnualComparisonBalanceSheet();
+        assertAnnualComparisonBalanceSheetSources();
     }
 
     private void assertAnnualComparisonCash() throws Exception {
@@ -1125,7 +1126,6 @@ public class ManagedWorkspaceInstrumentedTest {
             " && field('Company Facts source pointer') === '/facts/us-gaap/' + concepts[i] + '/units/USD/0'; })" +
             " && cash.lastElementChild.textContent === 'Calculation references: ' + ids.join(' · '); }); })()");
         assertAnnualComparisonLiquiditySources();
-        assertAnnualComparisonBalanceSheetSources();
     }
 
     private void assertAnnualComparisonBalanceSheet() throws Exception {
