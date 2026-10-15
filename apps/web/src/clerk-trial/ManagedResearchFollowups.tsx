@@ -131,8 +131,8 @@ export function ManagedResearchFollowups({
             Follow-ups
           </h2>
           <p>
-            Keep a dated research check and your own result for an exact
-            listing. Save follow-ups separately from My Watchlist.
+            Keep a dated research check for each listing. Save follow-ups
+            separately from My Watchlist.
           </p>
         </div>
         <p>
@@ -216,7 +216,7 @@ export function ManagedResearchFollowups({
         <>
           <div className="managed-followups-create">
             <label htmlFor="managed-followups-member">
-              Company in the current watchlist draft
+              Listing in My Watchlist draft
             </label>
             <select
               id="managed-followups-member"
@@ -265,8 +265,7 @@ export function ManagedResearchFollowups({
               </button>
             </div>
             <p className="managed-followups-help">
-              Each listing can have one follow-up. An unsaved watchlist member
-              can be used; this action does not save My Watchlist.
+              One check per listing. Adding a check does not save My Watchlist.
               {!creationCurrent
                 ? " Load a current catalog and review the watchlist identity before adding."
                 : ""}
@@ -420,8 +419,7 @@ export function ManagedResearchFollowups({
                     id="managed-followup-check-help"
                     className="managed-followups-help"
                   >
-                    Required: 1–500 characters on one line. Raw invalid text
-                    stays visible until corrected.
+                    Required. 1–500 characters, one line.
                   </p>
                   <label htmlFor="managed-followup-due">
                     Due date (UTC, YYYY-MM-DD)
@@ -437,7 +435,7 @@ export function ManagedResearchFollowups({
                     />
                   </label>
                   <label htmlFor="managed-followup-result">
-                    Your result or assessment
+                    Your assessment
                     <textarea
                       id="managed-followup-result"
                       rows={4}
@@ -461,8 +459,8 @@ export function ManagedResearchFollowups({
                     id="managed-followup-result-help"
                     className="managed-followups-help"
                   >
-                    Optional: up to 2,000 characters on one line. This is your
-                    authored assessment, not a verified source fact.
+                    Optional. Up to 2,000 characters, one line. Your assessment
+                    is not a verified source fact.
                   </p>
                   <div className="trial-actions">
                     {selected.status === "open" ? (
@@ -509,11 +507,33 @@ export function ManagedResearchFollowups({
                     </button>
                   </div>
                   <p className="managed-followups-help">
-                    Completion, reopening and removal change only this draft.
-                    Save follow-ups to keep them. Opening research checks this
-                    exact listing; financial sources still need an explicit
-                    load.
+                    Changes stay in this draft until you select Save follow-ups.
+                    Research sources load only when requested.
                   </p>
+                  <details
+                    id="managed-followup-guidance"
+                    className="managed-followups-guidance managed-followups-help"
+                  >
+                    <summary>How follow-ups work</summary>
+                    <ul>
+                      <li>
+                        Unsaved listings in My Watchlist can be used to add a
+                        check. Adding one does not save My Watchlist.
+                      </li>
+                      <li>
+                        Invalid text stays visible for correction. Save
+                        follow-ups stays unavailable while a field is invalid.
+                      </li>
+                      <li>
+                        Completing, reopening or removing a check changes only
+                        this draft. Select Save follow-ups to keep the change.
+                      </li>
+                      <li>
+                        Open company research checks this listing’s identity. It
+                        does not load Price, Annual or Filings.
+                      </li>
+                    </ul>
+                  </details>
                 </section>
               ) : (
                 <p>Select a follow-up to read or edit it.</p>

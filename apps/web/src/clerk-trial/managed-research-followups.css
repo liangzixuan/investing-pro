@@ -133,10 +133,18 @@
   padding-block: 12px;
   border-bottom: 1px solid var(--managed-line);
 }
-.clerk-trial.managed-frame .managed-followups-saved summary {
+.clerk-trial.managed-frame .managed-followups-saved summary,
+.clerk-trial.managed-frame .managed-followups-guidance > summary {
   display: list-item;
   align-content: center;
   cursor: pointer;
+}
+.clerk-trial.managed-frame .managed-followups .managed-followups-guidance > ul {
+  padding-inline-start: 20px;
+  list-style: disc;
+}
+.clerk-trial.managed-frame .managed-followups-guidance li + li {
+  margin-top: 8px;
 }
 @media (max-width: 760px) {
   .clerk-trial.managed-frame .managed-followups-workspace {

@@ -3,7 +3,8 @@
 Status: in development. Source checks cover the contract, repository, transport,
 authoring model, screen and workspace lifetimes. Invented-data Chrome checks
 verify the workflow, save recovery and rendered layout at desktop and narrow
-mobile widths. Hosted native and live-storage acceptance remain incomplete.
+mobile widths. The current form-guidance candidate has no new hosted native run;
+live-storage qualification and production publication remain incomplete.
 
 ## Keep the next research check
 
@@ -22,6 +23,19 @@ notification or monitor a company.
    source actions.
 6. Return to Follow-ups. Write your result and explicitly mark the check complete.
    Save follow-ups to persist that change.
+
+The form keeps required/optional states, field limits and assessment provenance
+visible beside the fields. **Your assessment** is authored text, not a verified
+source fact. The initially closed **How follow-ups work** disclosure below the
+editor actions explains draft, save and source rules. Validation, identity and
+save-recovery messages remain visible outside it. Opening the guidance does not
+change either draft or request data.
+
+Focused local checks and invented-data Chrome checks cover the guidance at 1440,
+390 and 320 CSS pixels, with no page overflow and at least 44px control targets.
+Keyboard disclosure/focus, exact Unicode and invalid draft retention, explicit
+Save/reload, research return focus and conflict recovery pass within that scope.
+These checks do not establish a physical mobile keyboard or live persistence.
 
 Back preserves the list filter, selected row and both local drafts. It restores
 the row's Research button when that row still exists. A direct company URL in a
