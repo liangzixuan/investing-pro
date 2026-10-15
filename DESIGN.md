@@ -71,6 +71,13 @@ while loading. Show the loaded packet's actual range and observed-date coverage
 beside the close summary; keep the requested window in source details. Retained
 history must keep its original range when another range is staged or fails.
 
+The observed-close summary follows the latest close in company Price and appears
+in the loaded snapshot and report. Use a wrapping two-column definition list for
+the highest and lowest reported USD closes, with the exact date below each value.
+Stack the values when space is limited and wrap long decimals without truncation.
+Keep the loaded range, observed coverage and raw-price limits together below
+the values. The smaller summary must not compete with the latest close.
+
 Annual operating results reuse the existing exact-amount definition lists and
 source disclosure. Keep the reported operating income separate from each named
 revenue basis and its calculated margin. Show each value's exact period and own

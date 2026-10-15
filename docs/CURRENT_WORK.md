@@ -20,6 +20,32 @@ from production. Its source, staging and Android package checks retain their
 original scope. A separate Chrome check confirmed the signed-in Markets layout
 and footer after one explicit catalog recovery, without provider reads or writes.
 
+## Observed close-range candidate
+
+Company Price, the loaded snapshot and prepared report now show the highest and
+lowest reported raw USD closes with exact dates. A shared Decimal calculation
+uses the entire loaded packet, preserves the earliest tied value and counts
+ties. The display names the actual loaded range and observed coverage, including
+single-row and sparse histories. It adds no source request, state, persistence
+or contract change. Report JSON retains its format and complete source rows.
+
+Focused arithmetic, component, Price, snapshot, report and composed fixture checks
+pass. Types, scoped lint and formatting, Java syntax, the exact native inventory
+and source boundaries pass. Independent review found no open correctness defect
+within that scope. Invented-data Chrome checks confirm the desktop layout and
+390/320px mobile containment, exact report rows, staged-range retention, Cancel
+and discarded late responses, replacement and removal on Back. A maximum 367-row
+packet preserves an early 64-character extreme outside the latest 252 dates.
+The draft remains unchanged and unsaved. Hosted native execution, integration,
+live provider coverage and publication remain separate.
+
+The original Android run passed 33 of 34 cases. Its snapshot capture selector
+included the new nested range list, so a strict two-element frame could not pass.
+The test now captures the original quote through direct children and checks the
+new summary's exact values, dates and coverage separately. Geometry limits,
+deadlines and the native case/frame inventory stay unchanged. The failed original
+is preserved; a fresh source revision needs its own hosted acceptance.
+
 ## Annual operating-results candidate
 
 The next M2 increment adds reported operating income and an operating margin for

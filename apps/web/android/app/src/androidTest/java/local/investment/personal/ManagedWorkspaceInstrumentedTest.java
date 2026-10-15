@@ -2038,8 +2038,11 @@ public class ManagedWorkspaceInstrumentedTest {
             snapshot + ".textContent.includes('2026-09-20T00:00:01.000Z') && " +
             snapshot + ".textContent.includes('unadjusted for splits or dividends') && " +
             snapshot + ".textContent.includes('No annual evidence loaded')");
+        awaitPage("snapshot range retains both exact closes, dates and actual loaded coverage",
+            observedCloseRangeAt(".managed-company-snapshot [aria-label='Snapshot price'] .managed-observed-close-range",
+                "One month", 2, "2026-09-18", "2026-09-19", "101.5", "2026-09-19", "100.25", "2026-09-18"));
         retainAnnualNoteFrame("companySnapshotPrice", "[aria-label='Snapshot price'] h3",
-            "[aria-label='Snapshot price'] h3, [aria-label='Snapshot price'] dl", 2);
+            "[aria-label='Snapshot price'] > h3, [aria-label='Snapshot price'] > dl", 2);
         click(".managed-snapshot-grid > section[aria-label='Snapshot annual'] > button");
         awaitPage("snapshot Annual action navigates without fetching",
             "document.querySelector('#managed-annual-heading') !== null && " + DIAGNOSTICS + ".annual === 0");
@@ -3735,7 +3738,8 @@ public class ManagedWorkspaceInstrumentedTest {
         awaitPage("company Price starts with a staged month and no read",
             "document.querySelector('#managed-eod-range')?.value === '1m' && " +
             "document.querySelector('#managed-eod-range')?.disabled === false && " +
-            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 0");
+            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 0" +
+            " && document.querySelector('.managed-observed-close-range') === null");
         String originalDraft = readFixtureString("JSON.stringify(" + DRAFT + ")");
         chooseNativeSelectOption("#managed-eod-range", "1y", "One year");
         awaitPage("the labelled range picker fits the narrow viewport with a full native target",
@@ -3757,7 +3761,8 @@ public class ManagedWorkspaceInstrumentedTest {
             " && Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2025-09-22|80.125;2026-03-20|90.25;2026-09-19|101.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '101.5|2026-09-19|2025-09-20 to 2026-09-20|2026-09-20T00:00:00.000Z|2026-09-20T00:00:01.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Loaded request range: One year.')" +
-            " && document.querySelector('.managed-eod-history')?.textContent.includes('not adjusted for splits or dividends and are not live quotes')";
+            " && document.querySelector('.managed-eod-history')?.textContent.includes('not adjusted for splits or dividends and are not live quotes')" +
+            " && " + observedCloseRangeExact("One year", 3, "2025-09-22", "2026-09-19", "101.5", "2026-09-19", "80.125", "2025-09-22");
         awaitPage("one year keeps exact sparse observed dates and original request metadata", year);
         assertEodDraftAndCounts(1, 0, 0);
         click(".managed-eod-source > summary");
@@ -3787,7 +3792,8 @@ public class ManagedWorkspaceInstrumentedTest {
             "Array.from(document.querySelectorAll('.managed-eod-history tbody tr')).map(tr => Array.from(tr.cells).map(e => e.textContent.trim()).join('|')).join(';') === '2026-09-19|102.75;2026-09-20|103.5'" +
             " && Array.from(document.querySelectorAll('.managed-eod-history .managed-metadata dd')).map(e => e.textContent).join('|') === '103.5|2026-09-20|2026-08-21 to 2026-09-21|2026-09-21T00:00:00.000Z|2026-09-21T00:00:02.000Z'" +
             " && document.querySelector('.managed-eod-history')?.textContent.includes('Loaded request range: One month.')" +
-            " && document.querySelector('.managed-eod-previous') === null";
+            " && document.querySelector('.managed-eod-previous') === null" +
+            " && " + observedCloseRangeExact("One month", 2, "2026-09-19", "2026-09-20", "103.5", "2026-09-20", "102.75", "2026-09-19");
         awaitPage("explicit month recovery replaces the data and its own original dates together", month);
         assertEodDraftAndCounts(3, 1, 1);
         awaitPage("range operations preserve every draft field",
@@ -3800,16 +3806,19 @@ public class ManagedWorkspaceInstrumentedTest {
         pressBack();
         awaitPage("native Back closes the pending visit and preserves the exact draft",
             "document.querySelector('.managed-eod-history') === null && " +
-            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft));
+            "JSON.stringify(" + DRAFT + ") === " + JSONObject.quote(originalDraft) +
+            " && document.querySelector('.managed-observed-close-range') === null");
         assertEodDraftAndCounts(4, 2, 1);
         click("#settle-cancelled-eod");
         assertEodDraftAndCounts(4, 2, 2);
         awaitPage("late year completion cannot reopen the company",
-            "document.querySelector('.managed-eod-history') === null && document.querySelector('#managed-company-heading') === null");
+            "document.querySelector('.managed-eod-history') === null && document.querySelector('#managed-company-heading') === null" +
+            " && document.querySelector('.managed-observed-close-range') === null");
         click("button[aria-label='EOD close history for saved ZERO']");
         awaitPage("new company visit resets staging and carries no disposed packet",
             "document.querySelector('#managed-eod-range')?.value === '1m' && " +
-            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 4");
+            "document.querySelector('.managed-eod-history tbody') === null && " + DIAGNOSTICS + ".eod === 4" +
+            " && document.querySelector('.managed-observed-close-range') === null");
         clickEodAction("Load one-month close history");
         awaitPage("last month read is held before explicit session expiry",
             DIAGNOSTICS + ".eod === 5 && document.querySelector('#managed-eod-range')?.disabled === true");
@@ -3823,6 +3832,7 @@ public class ManagedWorkspaceInstrumentedTest {
             DIAGNOSTICS + ".eodLateResolved === 3 && " + DIAGNOSTICS + ".eod === 5 && " +
             DRAFT + ".phase === 'retired' && " + DRAFT + ".memberships === null && " +
             "document.querySelector('.managed-eod-history') === null && " +
+            "document.querySelector('.managed-observed-close-range') === null && " +
             "document.querySelector('#managed-company-heading') === null && " +
             "document.querySelector('#managed-research-note') === null && " +
             DIAGNOSTICS + ".load === 1 && " + DIAGNOSTICS + ".search === 1 && " +
@@ -3831,6 +3841,28 @@ public class ManagedWorkspaceInstrumentedTest {
         assertFixtureBoundary();
         assertEquals("Range journey preserves the original document", documentTimeOrigin, readDocumentTimeOrigin(), 0.0);
         Log.i("ManagedPriceRanges", "phase=retired-after-cancel-back-and-late-completions; " + pageDiagnostic());
+    }
+
+    private String observedCloseRangeExact(String range, int count, String firstDate, String lastDate,
+            String highest, String highestDate, String lowest, String lowestDate) {
+        return observedCloseRangeAt(".managed-eod-history .managed-observed-close-range", range, count, firstDate, lastDate,
+            highest, highestDate, lowest, lowestDate);
+    }
+
+    private String observedCloseRangeAt(String selector, String range, int count, String firstDate, String lastDate,
+            String highest, String highestDate, String lowest, String lowestDate) {
+        return "(() => { const roots = document.querySelectorAll(" + JSONObject.quote(selector) + ");" +
+            " const root = roots[0], groups = root ? [...root.querySelectorAll('dl > div')] : [];" +
+            " const expected = [['Highest reported close · USD', " + JSONObject.quote(highest) + ", " + JSONObject.quote(highestDate) + "]," +
+            " ['Lowest reported close · USD', " + JSONObject.quote(lowest) + ", " + JSONObject.quote(lowestDate) + "]];" +
+            " return roots.length === 1 && root.getAttribute('role') === 'group' && root.getAttribute('aria-label') === 'Observed raw-close range'" +
+            " && groups.length === 2 && groups.every((group,i) => group.querySelector('dt')?.textContent === expected[i][0]" +
+            " && group.querySelector('dd > span')?.textContent === expected[i][1] && group.querySelector('time')?.dateTime === expected[i][2]" +
+            " && group.querySelector('time')?.textContent === expected[i][2])" +
+            " && root.textContent.includes(" + JSONObject.quote("Loaded request range: " + range + ".") + ")" +
+            " && root.textContent.includes(" + JSONObject.quote("Among " + count + " reported closes from " + firstDate + " to " + lastDate + ".") + ")" +
+            " && !root.textContent.includes('First of ')" +
+            " && document.documentElement.scrollWidth <= document.documentElement.clientWidth; })()";
     }
 
     private void chooseNativeSelectOption(String selector, String optionValue, String label) throws Exception {

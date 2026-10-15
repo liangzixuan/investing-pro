@@ -1,4 +1,5 @@
 import type { ManagedEodHistoryState } from "./managed-eod-history";
+import { ObservedRawCloseRange } from "./ObservedRawCloseRange";
 
 export function CompanySnapshotPrice({
   state,
@@ -25,11 +26,7 @@ export function CompanySnapshotPrice({
             </div>
           </dl>
           <p>Tiingo · unadjusted for splits or dividends; not a live quote.</p>
-          <p>
-            Loaded request range:{" "}
-            {price.range === "1y" ? "One year" : "One month"}.{" "}
-            {price.rows.length} reported closes.
-          </p>
+          <ObservedRawCloseRange response={price} />
           <p>
             Window {price.window.startDate} to {price.window.endDate}. Request
             started {price.requestStartedAt}; completed {price.completedAt}.

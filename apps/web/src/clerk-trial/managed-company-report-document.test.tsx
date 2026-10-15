@@ -2,6 +2,8 @@ import {
   operatingResults,
   operatingRow,
 } from "../features/research/sec-annual-operating-fixture";
+import type { ManagedEodHistoryResponseDto } from "@research-cockpit/contracts";
+import { calculatePersonalRawCloseExtrema } from "@research-cockpit/personal-market-analytics";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -355,6 +357,19 @@ it("serializes a loaded year packet with its actual window and exact rows under 
   expect(parsed.sources.price).toMatchObject({
     status: "loaded",
     response: eodResponse("1y"),
+  });
+  const price = parsed.sources.price as {
+    response: ManagedEodHistoryResponseDto;
+  };
+  expect(Object.keys(price.response).sort()).toEqual(
+    Object.keys(eodResponse("1y")).sort(),
+  );
+  expect(
+    calculatePersonalRawCloseExtrema({ rows: price.response.rows }),
+  ).toEqual({
+    status: "available",
+    highest: { date: "2026-09-19", close: "101.5", occurrences: 1 },
+    lowest: { date: "2025-09-22", close: "90.125", occurrences: 1 },
   });
   expect(document.byteLength).toBe(
     new TextEncoder().encode(document.text).byteLength,
