@@ -1,5 +1,11 @@
 import type { AppwriteVersionedRowStore } from "./appwrite-versioned-row-store";
 import { createHash } from "node:crypto";
+import {
+  StorageProofPhase,
+  ProofFailure,
+  type ProofActor,
+  type OperationTrace,
+} from "./appwrite-storage-proof-phase";
 
 import { AppwriteException, TablesDB } from "node-appwrite";
 
@@ -120,38 +126,6 @@ export interface ClerkTrialProofOperation {
 export type ClerkTrialProofFactory = (
   signal: AbortSignal,
 ) => ClerkTrialProofOperation;
-type ProofActor =
-  "read" | "writer" | "winner" | "loser" | "replay" | "inspection";
-type TraceOperation =
-  | "read_current"
-  | "read_receipt"
-  | "begin"
-  | "create_current"
-  | "create_receipt"
-  | "update_payload"
-  | "increment"
-  | "commit"
-  | "rollback";
-const ERROR_TYPES = [
-  "row_not_found",
-  "attribute_limit_exceeded",
-  "transaction_conflict",
-  "transaction_failed",
-  "document_invalid_structure",
-  "row_invalid_structure",
-  "general_argument_invalid",
-] as const;
-type TraceErrorType = (typeof ERROR_TYPES)[number] | "other";
-interface OperationTrace {
-  sequence: number;
-  actor: ProofActor;
-  operation: TraceOperation;
-  outcome: "pending" | "ok" | "appwrite_error" | "error";
-  status: number | null;
-  errorType: TraceErrorType | null;
-  transactionStatus:
-    "pending" | "committing" | "committed" | "failed" | "other" | null;
-}
 export interface ClerkTrialProofReport {
   readonly version: 1;
   readonly buildProof: string;
@@ -181,11 +155,6 @@ export interface ClerkTrialProofReport {
     "none" | "before_receipt" | "after_commit_acknowledgment";
   /** Store dispatch order after hooks; this is not a wire trace. */
   readonly trace: readonly Readonly<OperationTrace>[];
-}
-class ProofFailure extends Error {
-  constructor(readonly reason: ClerkTrialProofReport["failure"]) {
-    super(reason);
-  }
 }
 function requireProof(value: unknown): asserts value {
   if (!value) throw new ProofFailure("unexpected_result");
@@ -241,221 +210,57 @@ export async function runClerkTrialStorageProof(
       .digest("hex")
       .slice(0, 32)}`;
   }
-  const started = performance.now();
-  const controller = new AbortController();
-  // Reserve the final second of the 12-second invocation for cancellation/close.
-  const timer = setTimeout(() => controller.abort(), 11000);
-  const abort = new Promise<never>((_, reject) =>
-    controller.signal.addEventListener(
-      "abort",
-      () => reject(new ProofFailure("deadline")),
-      { once: true },
-    ),
-  );
-  // The shared abort promise may reject while no operation is waiting on it.
-  void abort.catch(() => undefined);
-  let stopped = false;
+  const lifetime = new StorageProofPhase(LIMITS[phase]);
+  const { started, controller, actors, trace } = lifetime;
+  const bounded = lifetime.bounded;
+  const barrier = () => lifetime.barrier();
   let operation: ClerkTrialProofOperation | undefined;
-  let count = 0;
-  let upstreamStatus: number | null = null;
   let observedVersion: number | null = null;
   let payloadEqual = false,
     receiptEqual = false,
     losingReceiptAbsent = false,
-    rollbackObserved = false,
     replayed = false;
   const injection: { value: ClerkTrialProofReport["injectedFailure"] } = {
     value: "none",
   };
-  let limitReached = false;
   let overlapLoserReceiptAbsentAfterCommit = false;
   let outcome: ClerkTrialProofReport["outcome"];
   let failure: ClerkTrialProofReport["failure"] = "none";
   let errorCode: WatchlistRepositoryErrorCode | null = null;
-  const releases: (() => void)[] = [];
-  const actors: Promise<PutOutcome>[] = [];
-  const trace: OperationTrace[] = [];
-  const bounded = <T>(promise: Promise<T>) => Promise.race([promise, abort]);
-  function assertRunning() {
-    if (stopped || controller.signal.aborted)
-      throw new ProofFailure("deadline");
-  }
-  function barrier() {
-    let release!: () => void;
-    const promise = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    releases.push(release);
-    return { wait: () => bounded(promise), release };
-  }
-  async function call<T>(
-    method: keyof AppwriteVersionedRowStore,
-    action: () => Promise<T>,
-  ) {
-    assertRunning();
-    if (count >= LIMITS[phase]) {
-      limitReached = true;
-      throw new ProofFailure("operation_limit");
-    }
-    count++;
-    try {
-      return await bounded(action());
-    } catch (error) {
-      if (
-        (method === "incrementRowColumn" || method === "updateTransaction") &&
-        error instanceof AppwriteException &&
-        Number.isInteger(error.code) &&
-        error.code >= 400 &&
-        error.code <= 599
-      )
-        upstreamStatus = error.code;
-      throw error;
-    }
-  }
-  async function observe<T>(
-    actor: ProofActor,
-    operation: TraceOperation,
-    action: () => Promise<T>,
-  ) {
-    assertRunning();
-    if (trace.length >= 20) throw new ProofFailure("operation_limit");
-    const entry: OperationTrace = {
-      sequence: trace.length + 1,
-      actor,
-      operation,
-      outcome: "pending",
-      status: null,
-      errorType: null,
-      transactionStatus: null,
-    };
-    trace.push(entry);
-    try {
-      const result = await action();
-      entry.outcome = "ok";
-      if (
-        ["begin", "commit", "rollback"].includes(operation) &&
-        typeof result === "object" &&
-        result !== null &&
-        "status" in result
-      ) {
-        const status = result.status;
-        entry.transactionStatus =
-          status === "pending" ||
-          status === "committing" ||
-          status === "committed" ||
-          status === "failed"
-            ? status
-            : "other";
-      }
-      return result;
-    } catch (error) {
-      entry.outcome =
-        error instanceof AppwriteException ? "appwrite_error" : "error";
-      if (error instanceof AppwriteException) {
-        entry.status =
-          Number.isInteger(error.code) && error.code >= 100 && error.code <= 599
-            ? error.code
-            : null;
-        entry.errorType =
-          ERROR_TYPES.find((value) => value === error.type) ?? "other";
-      }
-      throw error;
-    }
-  }
   function store(
     hooks: Hooks = {},
     actor: ProofActor = "writer",
   ): AppwriteVersionedRowStore {
-    const base = operation!.newStore();
     let commitLimitRejected = false;
-    return {
-      getRow: (input) =>
-        call("getRow", () =>
-          observe(
-            actor,
-            input.tableId === "receipts" ? "read_receipt" : "read_current",
-            async () => {
-              try {
-                return await base.getRow(input);
-              } catch (error) {
-                if (
-                  phase === "overlap" &&
-                  actor === "loser" &&
-                  commitLimitRejected &&
-                  input.databaseId === profile.database &&
-                  input.tableId === "receipts" &&
-                  input.rowId === receiptId("overlap-loser") &&
-                  error instanceof AppwriteException &&
-                  error.code === 404 &&
-                  error.type === "row_not_found"
-                )
-                  overlapLoserReceiptAbsentAfterCommit = true;
-                throw error;
-              }
-            },
-          ),
-        ),
-      createTransaction: (input) =>
-        call("createTransaction", () =>
-          observe(actor, "begin", () => base.createTransaction(input)),
-        ),
-      createRow: (input) =>
-        call("createRow", async () => {
-          if (input.tableId === "receipts") hooks.beforeReceipt?.();
-          return observe(
-            actor,
-            input.tableId === "receipts" ? "create_receipt" : "create_current",
-            () => base.createRow(input),
-          );
-        }),
-      updateRow: (input) =>
-        call("updateRow", () =>
-          observe(actor, "update_payload", () => base.updateRow(input)),
-        ),
-      incrementRowColumn: (input) =>
-        call("incrementRowColumn", async () => {
-          await hooks.beforeIncrement?.();
-          assertRunning();
-          return observe(actor, "increment", () =>
-            base.incrementRowColumn(input),
-          );
-        }),
-      updateTransaction: (input) =>
-        call("updateTransaction", async () => {
-          if (input.commit) await hooks.beforeCommit?.();
-          assertRunning();
-          const result = await observe(
-            actor,
-            input.commit ? "commit" : "rollback",
-            async () => {
-              try {
-                return await base.updateTransaction(input);
-              } catch (error) {
-                if (
-                  input.commit &&
-                  error instanceof AppwriteException &&
-                  error.code === 400 &&
-                  error.type === "attribute_limit_exceeded"
-                )
-                  commitLimitRejected = true;
-                throw error;
-              }
-            },
-          );
+    return lifetime.store(
+      operation!.newStore(),
+      {
+        ...hooks,
+        commitError(error) {
           if (
-            input.rollback &&
-            typeof result === "object" &&
-            result !== null &&
-            "$id" in result &&
-            result.$id === input.transactionId &&
-            "status" in result &&
-            result.status === "failed"
+            error instanceof AppwriteException &&
+            error.code === 400 &&
+            error.type === "attribute_limit_exceeded"
           )
-            rollbackObserved = true;
-          if (input.commit) hooks.afterCommit?.(input, result);
-          return result;
-        }),
-    };
+            commitLimitRejected = true;
+        },
+        readError(input, error) {
+          if (
+            phase === "overlap" &&
+            actor === "loser" &&
+            commitLimitRejected &&
+            input.databaseId === profile.database &&
+            input.tableId === "receipts" &&
+            input.rowId === receiptId("overlap-loser") &&
+            error instanceof AppwriteException &&
+            error.code === 404 &&
+            error.type === "row_not_found"
+          )
+            overlapLoserReceiptAbsentAfterCommit = true;
+        },
+      },
+      actor,
+    );
   }
   function repository(hooks?: Hooks, actor: ProofActor = "writer") {
     return createAppwriteWatchlistRepository({
@@ -660,7 +465,9 @@ export async function runClerkTrialStorageProof(
         }),
         "unavailable",
       );
-      requireProof(injection.value === "before_receipt" && rollbackObserved);
+      requireProof(
+        injection.value === "before_receipt" && lifetime.rollbackObserved,
+      );
       await read(4, NOTES.overlap);
       await absent("rollback");
     } else if (phase === "unknown") {
@@ -694,7 +501,7 @@ export async function runClerkTrialStorageProof(
     errorCode = repositoryCode(error) ?? errorCode;
     failure = controller.signal.aborted
       ? "deadline"
-      : limitReached
+      : lifetime.limitReached
         ? "operation_limit"
         : error instanceof ProofFailure
           ? error.reason
@@ -706,36 +513,14 @@ export async function runClerkTrialStorageProof(
         ? "incomplete"
         : "failed";
   } finally {
-    stopped = true;
-    controller.abort();
-    clearTimeout(timer);
-    releases.forEach((release) => release());
     try {
-      let cleanupTimer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        await Promise.race([
-          (async () => {
-            await Promise.all(actors);
-            await operation?.close();
-          })(),
-          new Promise<never>((_, reject) => {
-            cleanupTimer = setTimeout(
-              () => reject(new ProofFailure("cleanup_failed")),
-              Math.max(
-                0,
-                Math.min(1000, 12000 - (performance.now() - started)),
-              ),
-            );
-          }),
-        ]);
-      } finally {
-        clearTimeout(cleanupTimer);
-      }
+      await lifetime.close(operation);
     } catch {
       outcome = "incomplete";
       failure = "cleanup_failed";
     }
   }
+
   const snapshot = operation?.snapshot();
   const report: ClerkTrialProofReport = {
     version: 1,
@@ -746,14 +531,14 @@ export async function runClerkTrialStorageProof(
     observedVersion,
     repositoryError: errorCode,
     failure,
-    upstreamStatus: upstreamStatus ?? snapshot?.lastStatus ?? null,
-    operationCount: count,
+    upstreamStatus: lifetime.upstreamStatus ?? snapshot?.lastStatus ?? null,
+    operationCount: lifetime.count,
     httpDispatches: snapshot?.requests ?? 0,
     elapsedMs: Math.max(0, Math.round(performance.now() - started)),
     payloadEqual,
     receiptEqual,
     losingReceiptAbsent,
-    rollbackObserved,
+    rollbackObserved: lifetime.rollbackObserved,
     replayed,
     injectedFailure: injection.value,
     trace: trace.map((entry) => ({ ...entry })),

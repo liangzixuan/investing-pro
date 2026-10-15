@@ -25,6 +25,7 @@ const outDir = resolve(
 const inputs = [
   "apps/api/src/clerk-trial-proof-entry.ts",
   "apps/api/src/clerk-trial-storage-proof.ts",
+  "apps/api/src/appwrite-storage-proof-phase.ts",
   "apps/api/src/clerk-trial-catalog.ts",
   "apps/api/src/appwrite-transport.ts",
   "apps/api/src/appwrite-watchlist-repository.ts",

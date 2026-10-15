@@ -46,9 +46,15 @@ Annual route commit, verifies disabled navigation and editable notes, releases
 the commit, then returns to exact Price evidence with one enabled click. The
 original focus, draft and request-count predicates pass throughout their relevant
 states. The private preview and tab are closed. Fresh hosted native acceptance
-remains separate; see
-`tmp/project-manager-20261015/research-followups/navigation-readiness/WORK.md`
-in the parent workspace.
+remains separate from this browser check.
+
+A separate source increment prepares a fixed, private Follow-ups storage proof.
+It uses invented records and the existing bounded transport and typed repository.
+Focused offline checks cover the 18-read preflight, ten storage phases, strict
+request admission, rollback capacity and cleanup failures. The build binds its
+source, fixed data, tools and actual dependency graph. A local artifact build and static syntax check pass.
+The proof entry has not been invoked. Schema, authority, service limits and live persistence
+remain unverified; see the [storage guide](APPWRITE_WATCHLIST.md#fixed-follow-ups-storage-proof).
 
 The operating-change and company-overview source increments are merged into main
 at `18b08b8` after the owner's scoped email approval and the final revision, base
